@@ -8,6 +8,7 @@ import java.util.List;
 
 /**
  * The result of the execution of an algorithm
+ * Contains all the generated solutions and some stats about them
  */
 public class Result {
 

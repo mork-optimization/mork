@@ -1,5 +1,8 @@
 package util;
 
+/**
+ * Helper methods to perform comparisons between doubles (or floats)
+ */
 public class DoubleComparator {
 
     public static final double DEFAULT_EPSILON = 0.000_010;

@@ -3,7 +3,7 @@ package io;
 import java.io.File;
 import java.nio.file.Path;
 
-public interface InstanceLoader {
+interface InstanceLoader {
 
     Instance loadInstance(File f);
 

@@ -2,6 +2,9 @@ package util;
 
 import java.util.*;
 
+/**
+ * Contains methods to generate permutations
+ */
 public class PermutationGenerator {
 
     /**

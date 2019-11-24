@@ -3,10 +3,15 @@ package solution;
 import java.util.Optional;
 import java.util.stream.Stream;
 
+/**
+ * Defines a neighbourhood for the local search methods
+ */
 public abstract class Neighborhood {
 
     /**
-     * Build a stream that allows iterating the whole neighborhood
+     * Build an exhaustive stream that allows iterating the whole neighborhood
+     * Using a stream is more efficient that a list
+     * as movements are only generated if they are needed
      * @return Stream with all the available moves in the neighborhood
      */
     public abstract Stream<? extends Move> stream(Solution s);

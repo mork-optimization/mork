@@ -1,11 +1,9 @@
 package io;
 
-import solution.Result;
-
 import java.io.File;
 import java.nio.file.Path;
 
-public interface ResultsExporter {
+interface ResultsExporter {
     void saveResult(Result s, File f);
 
     default void saveResult(Result s, Path p){

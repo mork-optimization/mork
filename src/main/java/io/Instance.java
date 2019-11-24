@@ -11,11 +11,21 @@ public abstract class Instance implements Comparable<Instance>{
         this.name = name;
     }
 
+    /**
+     * Sort order will determine in which order the instances will be solved
+     * Sort defaults to instance name
+     * @param o
+     * @return
+     */
     @Override
     public int compareTo(Instance o) {
         return this.name.compareTo(o.name);
     }
 
+    /**
+     * Returns the Instance name
+     * @return instance name
+     */
     public String getName() {
         return name;
     }

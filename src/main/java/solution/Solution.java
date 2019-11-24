@@ -16,7 +16,6 @@ public abstract class Solution {
      */
     long version = 0;
 
-
     private long executionTimeInNanos;
 
     public Solution(Instance ins) {

@@ -9,6 +9,7 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public final class RandomManager {
 
+    // TODO usar $SEED como variable de entorno para facilitar la integracion con Docker
     private static final AtomicInteger SEED;
     private static final ThreadLocal<Random> localRandom;
 
