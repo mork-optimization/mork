@@ -33,9 +33,9 @@ public class GVNS extends Algorithm{
      * @return Best solution found
      */
     @Override
-    public Solution algorithm(Instance ins, int hardCostLimit, int k, double[] weights) {
+    public Solution algorithm(Instance ins) {
 
-        Solution current = this.constructor.construct(ins, hardCostLimit, k, weights);
+        Solution current = this.constructor.construct(ins);
         current = vnd.doIt(current, improvers);
         int currentK = 0;
         while(currentK < maxK){

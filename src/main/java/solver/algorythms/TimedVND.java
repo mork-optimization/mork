@@ -30,7 +30,7 @@ public class TimedVND extends Algorithm{
      * @return Best solution found
      */
     @Override
-    public Solution algorithm(Instance ins, int hardCostLimit, int k, double[] weights) {
+    public Solution algorithm(Instance ins) {
         Solution best = this.constructor.construct(ins);
         long nanos = System.nanoTime();
         while (System.nanoTime() - nanos < limit) {

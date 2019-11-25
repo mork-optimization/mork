@@ -19,10 +19,10 @@ public class MultiStartAlgorithm extends Algorithm {
     }
 
     @Override
-    public Solution algorithm(Instance ins, int hardCostLimit, int k, double[] weights) {
+    public Solution algorithm(Instance ins) {
         Solution s = null;
         for (int i = 0; i < executions; i++) {
-            Solution temp = this.constructor.construct(ins, hardCostLimit, k, weights);
+            Solution temp = this.constructor.construct(ins);
             //double bef = temp.getOptimalValue();
             improve(temp);
             //if(bef != temp.getOptimalValue())

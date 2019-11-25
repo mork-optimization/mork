@@ -28,11 +28,11 @@ public abstract class Algorithm {
      * @param repetitions How many times should we repeat the experiment to make it more robust.
      * @return Result of the execution
      */
-    public Result execute(Instance ins, int repetitions, int hardCostLimit, int k, double[] weights) {
+    public Result execute(Instance ins, int repetitions) {
         Result result = new Result(repetitions, this.toString(), ins.getName());
         for (int i = 0; i < repetitions; i++) {
             long startTime = System.nanoTime();
-            Solution s = algorithm(ins, hardCostLimit, k, weights);
+            Solution s = algorithm(ins);
             long ellapsedTime = System.nanoTime() - startTime;
             System.out.format("\t%s.\tBenefit: %.3f -- Time: %.3f\n", i+1, s.getOptimalValue(), ellapsedTime / 1000000000D);
             result.addSolution(s, ellapsedTime);
@@ -46,7 +46,7 @@ public abstract class Algorithm {
      * @param ins Instance the algorithm will process
      * @return Proposed solution
      */
-    protected abstract Solution algorithm(Instance ins, int hardCostLimit, int k, double[] weights);
+    protected abstract Solution algorithm(Instance ins);
 
     /**
      * Current algorithm short name, must be unique per execution

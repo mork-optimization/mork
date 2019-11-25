@@ -47,7 +47,7 @@ public class MultiStartILS extends Algorithm{
      * @return Best solution found
      */
     @Override
-    public Solution algorithm(Instance ins, int hardCostLimit, int k, double[] weights) {
+    public Solution algorithm(Instance ins) {
         int nThreads = ConcurrencyUtil.getNThreads();
         var executor = Executors.newFixedThreadPool(nThreads);
         var futures = Collections.synchronizedList(new ArrayList<Future<Solution>>());

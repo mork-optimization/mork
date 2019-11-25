@@ -29,10 +29,10 @@ public class BestConstruction1LS extends Algorithm {
      * @return Best solution found
      */
     @Override
-    public Solution algorithm(Instance ins, int hardCostLimit, int k, double[] weights) {
-        Solution s = this.constructor.construct(ins,  hardCostLimit, k, weights);
+    public Solution algorithm(Instance ins) {
+        Solution s = this.constructor.construct(ins);
         for (int i = 1; i < executions; i++) {
-            Solution temp = this.constructor.construct(ins, hardCostLimit, k, weights);
+            Solution temp = this.constructor.construct(ins);
             s = temp.getBetterSolution(s);
         }
         Solution javaPlis = s;
