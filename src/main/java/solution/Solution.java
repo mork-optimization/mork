@@ -65,4 +65,16 @@ public abstract class Solution {
     public long getExecutionTimeInNanos() {
         return executionTimeInNanos;
     }
+
+    public static Solution getBest(Iterable<Solution> solutions){
+        Solution best = null;
+        for (Solution solution : solutions) {
+            if(best == null){
+                best = solution;
+            } else {
+                best = best.getBetterSolution(solution);
+            }
+        }
+        return best;
+    }
 }

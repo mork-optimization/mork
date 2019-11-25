@@ -28,7 +28,7 @@ public class ConcurrencyUtil {
         System.out.println('[' + Thread.currentThread().getName() + "] " + String.format(s, o));
     }
 
-    private static int getNThreads(){
+    public static int getNThreads(){
         // divide by 2 as hyperthreading is enabled in most computers
         // and we do not want to overload it
         return Runtime.getRuntime().availableProcessors() / 2;
