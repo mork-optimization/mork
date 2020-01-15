@@ -1,14 +1,20 @@
 package solver.create;
 
 import io.Instance;
+import solution.ConstructiveNeighborhood;
 import solution.Solution;
 
-public interface Constructor {
+public abstract class Constructor {
 
     /**
-     * Constructs a solution for the GOP problem
-     * @param ins Inmutable instance data
-     * @return
+     * Initialize a solution using any of the available strategies
+     * @param builder Specify how a solution is initialized from an instance
+     * @return A valid solution that fulfills all the problem constraints
      */
-    Solution construct(Instance ins);
+    abstract <S extends Solution> S construct(Instance i, SolutionBuilder builder, ConstructiveNeighborhood neighborhood);
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "{}";
+    }
 }

@@ -1,5 +1,6 @@
 package solver.create;
 
+import solution.ConstructiveNeighborhood;
 import solution.Solution;
 
 /**
@@ -11,5 +12,5 @@ public interface SolutionFixer {
      * @param sol partially assigned solution
      * @return Valid solution, with no constraints broken and all elements assigned
      */
-    Solution assignMissing(Solution sol);
+    <S extends Solution> S assignMissing(S sol, ConstructiveNeighborhood neighborhood);
 }

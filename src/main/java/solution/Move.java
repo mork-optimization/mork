@@ -37,6 +37,7 @@ public abstract class Move {
         }
         _execute();
         s.version++;
+        // TODO validate solution state after each move is applied
     }
 
     /**
