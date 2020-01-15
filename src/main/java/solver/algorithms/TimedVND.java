@@ -1,4 +1,4 @@
-package solver.algorythms;
+package solver.algorithms;
 
 import io.Instance;
 import solution.Solution;

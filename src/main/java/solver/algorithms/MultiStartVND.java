@@ -1,26 +1,27 @@
-package solver.algorythms;
+package solver.algorithms;
 
 import io.Instance;
 import solution.Solution;
 import solver.create.Constructor;
 import solver.improve.Improver;
+import solver.improve.VND;
 
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 
-//TODO pass an executor to the algotythm, sequential or parallel
-public class BestConstruction1LS extends Algorithm {
+public class MultiStartVND extends Algorithm {
 
     private int executions;
-
+    private VND vnd;
     /**
      * Create a new MultiStartAlgorithm, @see algorithm
-     * @param i Tries, the algorythm will be executed i times, returns the best.
+     * @param nStarts Tries, the algorythm will be executed i times, returns the best.
+     *          If -1, calculate automatically the number of iterations
      */
     @SafeVarargs
-    public BestConstruction1LS(int i, Supplier<Constructor> constructorSupplier, Supplier<Improver>... improvers) {
+    public MultiStartVND(int nStarts, Supplier<Constructor> constructorSupplier, Supplier<Improver>... improvers) {
         super(constructorSupplier, improvers);
-        this.executions = i;
+        this.executions = nStarts;
+        vnd = new VND();
     }
 
     /**
@@ -30,14 +31,15 @@ public class BestConstruction1LS extends Algorithm {
      */
     @Override
     public Solution algorithm(Instance ins) {
-        Solution s = this.constructor.construct(ins);
-        for (int i = 1; i < executions; i++) {
-            Solution temp = this.constructor.construct(ins);
-            s = temp.getBetterSolution(s);
+
+        Solution best = null;
+        for (int i = 1; i <= executions; i++) {
+            Solution current = this.constructor.construct(ins);
+            current = vnd.doIt(current, improvers);
+            best = current.getBetterSolution(best);
         }
-        Solution javaPlis = s;
-        improvers.forEach(i -> i.improve(javaPlis, 10, TimeUnit.MINUTES));
-        return javaPlis;
+
+        return best;
     }
 
     @Override
