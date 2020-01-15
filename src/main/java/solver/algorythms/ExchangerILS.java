@@ -4,7 +4,7 @@ import io.Instance;
 import io.Result;
 import solution.Solution;
 import solver.create.Constructor;
-import solver.destructor.Destructor;
+import solver.destructor.Shake;
 import solver.improve.Improver;
 
 import java.util.ArrayList;
@@ -95,21 +95,21 @@ public class ExchangerILS {
 
     public static class ILSConfig {
         final Constructor constructor;
-        final Destructor destructor;
+        final Shake shake;
         final Improver improver;
         final int shakeStrength;
         final int nShakes;
 
-        public ILSConfig(int shakeStrength, int nShakes, Supplier<Constructor> constructorSupplier, Supplier<Destructor> destructorSupplier, Supplier<Improver> improver) {
+        public ILSConfig(int shakeStrength, int nShakes, Supplier<Constructor> constructorSupplier, Supplier<Shake> destructorSupplier, Supplier<Improver> improver) {
             this.shakeStrength = shakeStrength;
             this.nShakes = nShakes;
             assert constructorSupplier != null && destructorSupplier != null && improver != null;
             this.constructor = constructorSupplier.get();
-            this.destructor = destructorSupplier.get();
+            this.shake = destructorSupplier.get();
             this.improver = improver.get();
         }
 
-        public ILSConfig(int shakeStrength, Supplier<Constructor> constructorSupplier, Supplier<Destructor> destructorSupplier, Supplier<Improver> improvers) {
+        public ILSConfig(int shakeStrength, Supplier<Constructor> constructorSupplier, Supplier<Shake> destructorSupplier, Supplier<Improver> improvers) {
             this(shakeStrength, -1, constructorSupplier, destructorSupplier, improvers);
         }
 
@@ -119,7 +119,7 @@ public class ExchangerILS {
                     "shakeStrength=" + shakeStrength +
                     ", nShakes=" + nShakes +
                     ", constructor=" + constructor +
-                    ", destructor=" + destructor +
+                    ", destructor=" + shake +
                     ", improver=" + improver +
                     '}';
         }
@@ -184,7 +184,7 @@ public class ExchangerILS {
 
         private Solution iteration(Solution best) {
             var current = best.clone();
-            this.config.destructor.iteration(current, this.config.shakeStrength);
+            this.config.shake.iteration(current, this.config.shakeStrength);
             this.config.improver.improve(current);
             if (current.getOptimalValue() < best.getOptimalValue()) {
                 best = current;

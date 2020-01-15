@@ -15,22 +15,22 @@ public abstract class LocalSearch implements Improver {
 
     public boolean iteration(Solution s) {
 
-        // Buscar el movement a ejecutar
-        var movement = getMovement(s);
+        // Buscar el move a ejecutar
+        var move = getMove(s);
 
-        if(movement == null || !movement.improves()) {
+        if(move == null || !move.improves()) {
             return false; // No existen movimientos válidos, finalizar
         }
 
-        // Ejecutamos el movement y pedimos otra iteracion
-        movement.execute();
+        // Ejecutamos el move y pedimos otra iteracion
+        move.execute();
         return true;
     }
 
     /**
-     * Get movement to execute, different strategies are possible
+     * Get move to execute, different strategies are possible
      * @param s Solution
-     * @return Proposed movement
+     * @return Proposed move
      */
-    protected abstract Move getMovement(Solution s);
+    protected abstract Move getMove(Solution s);
 }

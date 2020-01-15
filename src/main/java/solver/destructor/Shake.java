@@ -3,6 +3,6 @@ package solver.destructor;
 
 import solution.Solution;
 
-public interface Destructor {
+public interface Shake {
     void iteration(Solution s, int k);
 }

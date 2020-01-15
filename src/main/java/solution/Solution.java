@@ -12,7 +12,7 @@ public abstract class Solution {
     private final Instance ins;
 
     /**
-     * Each time a movement is executed solution version number must be incremented
+     * Each time a move is executed solution version number must be incremented
      */
     long version = 0;
 

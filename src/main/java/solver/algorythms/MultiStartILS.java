@@ -3,7 +3,7 @@ package solver.algorythms;
 import io.Instance;
 import solution.Solution;
 import solver.create.Constructor;
-import solver.destructor.Destructor;
+import solver.destructor.Shake;
 import solver.improve.Improver;
 import solver.improve.VND;
 import util.ConcurrencyUtil;
@@ -21,7 +21,7 @@ public class MultiStartILS extends Algorithm{
     private final int nShakes;
     private final int k;
     private final int n;
-    private final Destructor destructor;
+    private final Shake shake;
     private final VND vnd;
 
     /**
@@ -32,12 +32,12 @@ public class MultiStartILS extends Algorithm{
      * @param k destructor strength
      */
     @SafeVarargs
-    public MultiStartILS(int nShakes, int k, int n, Supplier<Constructor> constructorSupplier, Supplier<Destructor> destructor, Supplier<Improver>... improvers) {
+    public MultiStartILS(int nShakes, int k, int n, Supplier<Constructor> constructorSupplier, Supplier<Shake> destructor, Supplier<Improver>... improvers) {
         super(constructorSupplier, improvers);
         this.nShakes = nShakes;
         this.k = k;
         this.n = n;
-        this.destructor = destructor.get();
+        this.shake = destructor.get();
         vnd = new VND();
     }
 
@@ -71,7 +71,7 @@ public class MultiStartILS extends Algorithm{
 
         for (int i = 1; i <= this.nShakes; i++) {
             var copy = best.clone();
-            this.destructor.iteration(copy, k);
+            this.shake.iteration(copy, k);
             copy = this.vnd.doIt(copy, this.improvers);
             best = copy.getBetterSolution(best);
         }
@@ -86,7 +86,7 @@ public class MultiStartILS extends Algorithm{
                 ", n=" + n +
                 ", k=" + k +
                 ", constructor=" + constructor +
-                ", destructor=" + destructor +
+                ", destructor=" + shake +
                 ", improver=" + improvers +
                 '}';
     }

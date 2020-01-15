@@ -5,7 +5,6 @@ import solution.Solution;
 
 public interface Constructor {
 
-
     /**
      * Constructs a solution for the GOP problem
      * @param ins Inmutable instance data

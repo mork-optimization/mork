@@ -9,13 +9,13 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.Random;
 
-public class RandomMovement implements Destructor {
+public class RandomMoveShake implements Shake {
 
     Neighborhood[] neighborhoods;
 
-    public RandomMovement(Neighborhood... neighborhoods) {
+    public RandomMoveShake(Neighborhood... neighborhoods) {
         if(neighborhoods.length == 0){
-            throw new IllegalArgumentException("Use at least one MovementProvider");
+            throw new IllegalArgumentException("Use at least one MoveProvider");
         }
         this.neighborhoods = neighborhoods;
     }
@@ -28,13 +28,13 @@ public class RandomMovement implements Destructor {
     public void iteration(Solution s, int k) {
         Random random = RandomManager.getRandom();
 
-        // Execute k random movements in different neighbourhoods
+        // Execute k random moves in different neighbourhoods
         for (int i = 0; i < k; i++) {
             int chosenNeigh = random.nextInt(neighborhoods.length);
             int copy = chosenNeigh;
             Optional<Move> move;
             do {
-                move = neighborhoods[chosenNeigh % neighborhoods.length].getRandomMovement(s);
+                move = neighborhoods[chosenNeigh % neighborhoods.length].getRandomMove(s);
                 if (move.isPresent()) {
                     break;
                 }
@@ -44,7 +44,7 @@ public class RandomMovement implements Destructor {
                 move.get().execute();
                 s.getOptimalValue(); // Trigger validation
             } else {
-                System.out.println("WARNING: No movement available in any of the given providers, ending Destruction phase now");
+                System.out.println("WARNING: No move available in any of the given providers, ending Destruction phase now");
                 break;
             }
         }

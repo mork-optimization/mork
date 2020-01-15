@@ -11,14 +11,17 @@ public class LocalSearchFirstImprovement extends LocalSearch {
     }
 
     @Override
-    protected Move getMovement(Solution s){
+    protected Move getMove(Solution s){
         Move move = null;
         for (var provider : providers) {
             var optionalMove = provider.stream(s).filter(Move::improves).findAny();
             if(optionalMove.isEmpty()) continue;
             Move _move = optionalMove.get();
-            if (move == null || _move.compareTo(move) > 0) // >, we want bigger things
+            if (move == null) {
                 move = _move;
+            } else {
+                move = move.getBestMove(_move);
+            }
         }
         return move;
     }

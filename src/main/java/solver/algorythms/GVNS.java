@@ -3,7 +3,7 @@ package solver.algorythms;
 import io.Instance;
 import solution.Solution;
 import solver.create.Constructor;
-import solver.destructor.Destructor;
+import solver.destructor.Shake;
 import solver.improve.Improver;
 import solver.improve.VND;
 import util.DoubleComparator;
@@ -13,17 +13,17 @@ import java.util.function.Supplier;
 public class GVNS extends Algorithm{
 
     private final int maxK;
-    private final Destructor destructor;
+    private final Shake shake;
     private final VND vnd;
 
     /**
      * Create a new MultiStartAlgorithm, @see algorithm
      */
     @SafeVarargs
-    public GVNS(int maxK, Supplier<Constructor> constructorSupplier, Supplier<Destructor> destructor, Supplier<Improver>... improvers) {
+    public GVNS(int maxK, Supplier<Constructor> constructorSupplier, Supplier<Shake> destructor, Supplier<Improver>... improvers) {
         super(constructorSupplier, improvers);
         this.maxK = maxK;
-        this.destructor = destructor.get();
+        this.shake = destructor.get();
         vnd = new VND();
     }
 
@@ -40,7 +40,7 @@ public class GVNS extends Algorithm{
         int currentK = 0;
         while(currentK < maxK){
             Solution cloned = current.clone();
-            this.destructor.iteration(cloned, currentK);
+            this.shake.iteration(cloned, currentK);
             this.vnd.doIt(cloned, this.improvers);
             if(DoubleComparator.isPositiveOrZero(current.getOptimalValue() - cloned.getOptimalValue())){
                 currentK++;
@@ -58,7 +58,7 @@ public class GVNS extends Algorithm{
         return this.getClass().getSimpleName() + "{" +
                 ", maxK=" + maxK +
                 ", constructor=" + constructor +
-                ", destructor=" + destructor +
+                ", destructor=" + shake +
                 ", improver=" + improvers +
                 '}';
     }
