@@ -24,7 +24,7 @@ public final class RandomManager {
         return localRandom.get();
     }
 
-    public static int nextInt(Random r, int min, int max){
+    public static int nextInt(int min, int max){
         return localRandom.get().nextInt(max - min) + min;
     }
 

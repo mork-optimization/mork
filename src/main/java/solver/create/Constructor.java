@@ -4,14 +4,14 @@ import io.Instance;
 import solution.ConstructiveNeighborhood;
 import solution.Solution;
 
-public abstract class Constructor {
+public abstract class Constructor<S extends Solution> {
 
     /**
      * Initialize a solution using any of the available strategies
      * @param builder Specify how a solution is initialized from an instance
      * @return A valid solution that fulfills all the problem constraints
      */
-    abstract <S extends Solution> S construct(Instance i, SolutionBuilder builder, ConstructiveNeighborhood neighborhood);
+    abstract S construct(Instance i, SolutionBuilder builder, ConstructiveNeighborhood neighborhood);
 
     @Override
     public String toString() {

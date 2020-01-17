@@ -1,5 +1,7 @@
 package solution;
 
+import java.util.Comparator;
+
 /**
  * All neighborhood moves should be represented by different instances of this class.
  * As they are in the same package as the Solution, they can efficiently manipulate it
@@ -7,6 +9,14 @@ package solution;
 public abstract class Move {
 
     protected final long solutionVersion;
+    public static final Comparator<Move> COMPARATOR = (a,b) -> {
+        boolean bestA = a.getBestMove(b) == a;
+        boolean bestB = b.getBestMove(a) == b;
+        assert bestA || bestB;
+        if(bestA && bestB)  return 0;
+        if(bestA)           return -1;
+        else                return 1;
+    };
 
     protected Solution s;
 
