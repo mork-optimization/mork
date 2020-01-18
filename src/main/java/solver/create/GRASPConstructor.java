@@ -96,14 +96,16 @@ public abstract class GRASPConstructor<T extends GRASPMove, S extends Solution> 
             // The better the movement the more to the right in the list, so take from
             int limitIndex = binarySearchFindLimit(cl, limit, asc);
 
-            T chosen = cl.get(RandomManager.nextInt(limitIndex, cl.size()));
+            int index = RandomManager.nextInt(limitIndex, cl.size());
+            T chosen = cl.get(index);
             chosen.execute();
-            cl = updateCandidateList(sol, chosen);
+            cl = updateCandidateList(sol, chosen, index);
             assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
             cl.sort(Move.COMPARATOR);
 
             // Catch bugs while building the solution
             // no-op if running in performance mode, triggers score recalculation if debugging
+            // TODO  implement validation function inside the solution, isValid() and checkafter each movement is applied, not here
             assert isPositiveOrZero(sol.getOptimalValue());
         }
         return sol;
@@ -120,9 +122,11 @@ public abstract class GRASPConstructor<T extends GRASPMove, S extends Solution> 
     /**
      * Update candidate list after each movement. The list will be sorted by the constructor.
      * @param s Current solution, move has been already applied
+     * @param t Chosen move
+     * @param index index of the chosen move in the candidate list
      * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
      */
-    public abstract  List<T> updateCandidateList(S s, T t);
+    public abstract  List<T> updateCandidateList(S s, T t, int index);
 
     @Override
     public String toString() {

@@ -42,6 +42,7 @@ public class RandomMoveShake implements Shake {
             } while (chosenNeigh % neighborhoods.length != copy);
             if(move.isPresent()){
                 move.get().execute();
+                // TODO change the way validation is triggered
                 s.getOptimalValue(); // Trigger validation
             } else {
                 System.out.println("WARNING: No move available in any of the given providers, ending Destruction phase now");
