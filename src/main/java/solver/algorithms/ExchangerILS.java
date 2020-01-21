@@ -2,8 +2,10 @@ package solver.algorithms;
 
 import io.Instance;
 import io.Result;
+import solution.ConstructiveNeighborhood;
 import solution.Solution;
 import solver.create.Constructor;
+import solver.create.SolutionBuilder;
 import solver.destructor.Shake;
 import solver.improve.Improver;
 
@@ -93,24 +95,28 @@ public class ExchangerILS {
         return best;
     }
 
-    public static class ILSConfig {
-        final Constructor constructor;
+    public static class ILSConfig<S extends Solution> {
+        final Constructor<S> constructor;
+        final ConstructiveNeighborhood constructiveNeighborhood;
+        final SolutionBuilder solutionBuilder;
         final Shake shake;
         final Improver improver;
         final int shakeStrength;
         final int nShakes;
 
-        public ILSConfig(int shakeStrength, int nShakes, Supplier<Constructor> constructorSupplier, Supplier<Shake> destructorSupplier, Supplier<Improver> improver) {
+        public ILSConfig(int shakeStrength, int nShakes, Supplier<Constructor<S>> constructorSupplier, ConstructiveNeighborhood constructiveNeighborhood, SolutionBuilder solutionBuilder, Supplier<Shake> destructorSupplier, Supplier<Improver> improver) {
             this.shakeStrength = shakeStrength;
             this.nShakes = nShakes;
+            this.constructiveNeighborhood = constructiveNeighborhood;
+            this.solutionBuilder = solutionBuilder;
             assert constructorSupplier != null && destructorSupplier != null && improver != null;
             this.constructor = constructorSupplier.get();
             this.shake = destructorSupplier.get();
             this.improver = improver.get();
         }
 
-        public ILSConfig(int shakeStrength, Supplier<Constructor> constructorSupplier, Supplier<Shake> destructorSupplier, Supplier<Improver> improvers) {
-            this(shakeStrength, -1, constructorSupplier, destructorSupplier, improvers);
+        public ILSConfig(int shakeStrength, Supplier<Constructor<S>> constructorSupplier, ConstructiveNeighborhood constructiveNeighborhood, SolutionBuilder solutionBuilder, Supplier<Shake> destructorSupplier, Supplier<Improver> improver) {
+            this(shakeStrength, -1, constructorSupplier, constructiveNeighborhood, solutionBuilder, destructorSupplier, improver);
         }
 
         @Override
@@ -125,9 +131,9 @@ public class ExchangerILS {
         }
     }
 
-    public static class Worker {
+    public static class Worker<S extends Solution> {
         private final ExecutorService executor;
-        private final ILSConfig config;
+        private final ILSConfig<S> config;
         private final BlockingQueue<Solution> prev;
         private final BlockingQueue<Solution> next;
         private final CyclicBarrier barrier;
@@ -135,7 +141,7 @@ public class ExchangerILS {
         private final int nWorkers;
         private final int nRotaterounds;
 
-        public Worker(ExecutorService executor, ILSConfig config, BlockingQueue<Solution> prev, BlockingQueue<Solution> next, CyclicBarrier barrier, AtomicInteger activeWorkers, int nWorkers, int nRotaterounds) {
+        public Worker(ExecutorService executor, ILSConfig<S> config, BlockingQueue<Solution> prev, BlockingQueue<Solution> next, CyclicBarrier barrier, AtomicInteger activeWorkers, int nWorkers, int nRotaterounds) {
             this.executor = executor;
             this.config = config;
             this.prev = prev;
@@ -147,7 +153,7 @@ public class ExchangerILS {
         }
 
         public Future<Solution> buildInitialSolution(Instance instance){
-            return executor.submit(() -> config.constructor.construct(instance));
+            return executor.submit(() -> config.constructor.construct(instance, config.solutionBuilder, config.constructiveNeighborhood));
         }
 
         public Future<Solution> startWorker(Solution initialSolution){

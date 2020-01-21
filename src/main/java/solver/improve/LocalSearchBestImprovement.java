@@ -4,6 +4,8 @@ import solution.Move;
 import solution.Neighborhood;
 import solution.Solution;
 
+import java.util.Optional;
+
 public class LocalSearchBestImprovement extends LocalSearch {
 
     public LocalSearchBestImprovement(String lsType, Neighborhood... ps){

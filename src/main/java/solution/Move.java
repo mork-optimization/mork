@@ -36,7 +36,7 @@ public abstract class Move {
      * @param o The other move
      * @return Returns the best move
      */
-    public abstract <T extends Move> T getBestMove(T o);
+    public abstract Move getBestMove(Move o);
 
     /**
      * Executes the proposed move

@@ -11,7 +11,7 @@ public abstract class Constructor<S extends Solution> {
      * @param builder Specify how a solution is initialized from an instance
      * @return A valid solution that fulfills all the problem constraints
      */
-    abstract S construct(Instance i, SolutionBuilder builder, ConstructiveNeighborhood neighborhood);
+    public abstract S construct(Instance i, SolutionBuilder builder, ConstructiveNeighborhood neighborhood);
 
     @Override
     public String toString() {
