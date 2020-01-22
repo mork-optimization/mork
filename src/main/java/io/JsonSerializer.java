@@ -2,18 +2,27 @@ package io;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.databind.*;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Objects;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * Generic JSON serializer / deserializer
  */
-public class JsonSerializer implements InstanceLoader, ResultsExporter {
+public class JsonSerializer<I extends Instance> implements InstanceLoader<I>, ResultsExporter {
 
-    private final ObjectReader instanceReader;
-    private final ObjectWriter instanceWriter;
-    private final ObjectWriter resultWriter;
+    private static final Logger log = Logger.getLogger(JsonSerializer.class.getCanonicalName());
+    private static final Pattern FILE_PATTERN = Pattern.compile("(.*)\\.(.*)");
+    private static final String JSON_EXTENSION = ".json";
+
+    private final ObjectMapper mapper;
 
     public JsonSerializer() {
         ObjectMapper mapper = new ObjectMapper();
@@ -26,15 +35,13 @@ public class JsonSerializer implements InstanceLoader, ResultsExporter {
                 .withGetterVisibility(JsonAutoDetect.Visibility.NONE)
                 .withSetterVisibility(JsonAutoDetect.Visibility.NONE)
                 .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
-        instanceReader = mapper.readerFor(Instance.class);
-        instanceWriter = mapper.writerFor(Instance.class);
-        resultWriter = mapper.writerFor(Result.class);
+        this.mapper = mapper;
     }
 
     @Override
-    public Instance loadInstance(File f) {
+    public I loadInstance(File f, Class<I> type) {
         try {
-            return instanceReader.readValue(f);
+            return mapper.readValue(f, type);
         } catch (IOException e) {
             throw new RuntimeException(String.format("Jackson serializer failed while reading file: %s", f.getAbsolutePath()), e);
         }
@@ -46,7 +53,7 @@ public class JsonSerializer implements InstanceLoader, ResultsExporter {
 
     public void saveInstance(Instance i, File f) {
         try {
-            instanceWriter.writeValue(f, i);
+            mapper.writeValue(f, i);
         } catch (IOException e) {
             throw new RuntimeException(String.format("Jackson serializer failed while writing instance file: %s", f.getAbsolutePath()), e);
         }
@@ -55,7 +62,7 @@ public class JsonSerializer implements InstanceLoader, ResultsExporter {
     @Override
     public void saveResult(Result s, File f) {
         try {
-            resultWriter.writeValue(f, s);
+            mapper.writeValue(f, s);
         } catch (IOException e) {
             throw new RuntimeException(String.format("Jackson serializer failed while writing results file: %s", f.getAbsolutePath()), e);
         }
@@ -67,4 +74,47 @@ public class JsonSerializer implements InstanceLoader, ResultsExporter {
             throw new IllegalArgumentException(outputDir.isDirectory()? "Output is not empty": "Output is not a folder");
         }
     }
+
+    public static void importAll(String path, DataImporter<? extends Instance> importer) {
+        importAll(path, importer, false);
+    }
+
+    /**
+     * Standarize all raw instance files to JSON format, using the user provided converted
+     * @param path Folder where instances are stored
+     * @param importer User implemented importer
+     * @param force Delete converted files
+     */
+    public static void importAll(String path, DataImporter<? extends Instance> importer, boolean force){
+        JsonSerializer<? extends Instance> serializer = new JsonSerializer<>();
+
+        var dir = new File(path);
+        if(!dir.isDirectory()){
+            throw new IllegalArgumentException(String.format("Path (%s) is not a directory", path));
+        }
+        for(File f: Objects.requireNonNull(dir.listFiles())){
+            Matcher m = FILE_PATTERN.matcher(f.getAbsolutePath());
+            if(!m.matches()){
+                throw new IllegalArgumentException("Invalid filename: " + f.getName());
+            }
+            var folder = f.getParent();
+            var filename = m.group(1);
+            var extension = m.group(2);
+            log.fine(String.format("Processing file with path (%s), name (%s), extension (%s)", folder, filename, extension));
+            File destination = new File(filename + JSON_EXTENSION);
+            if(destination.exists()){
+                if(force && !destination.delete()){
+                    throw new IllegalStateException(String.format("Failed delete of file %s", destination.getAbsolutePath()));
+                } else {
+                    log.fine(String.format("Already converted, ignoring file: %s",destination.getAbsolutePath()));
+                    continue;
+                }
+            }
+            log.info("Importing file: " + f.getName());
+            Instance importedInstance = importer.importInstance(f);
+            serializer.saveInstance(importedInstance, destination);
+        }
+    }
+
+
 }

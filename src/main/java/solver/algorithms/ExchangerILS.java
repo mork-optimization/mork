@@ -18,7 +18,7 @@ import static util.ConcurrencyUtil.awaitAll;
 
 
 @SuppressWarnings("DuplicatedCode")
-public class ExchangerILS {
+public class ExchangerILS<I extends Instance, S extends Solution<I>> {
 
     private final int nRotateRounds;
     private final ILSConfig[] configs;
@@ -35,7 +35,7 @@ public class ExchangerILS {
         Result result = new Result(repetitions, this.toString(), ins.getName());
         for (int i = 0; i < repetitions; i++) {
             long startTime = System.nanoTime();
-            Solution s = algorithm(ins);
+            Solution<I> s = algorithm(ins);
             long ellapsedTime = System.nanoTime() - startTime;
             result.addSolution(s, ellapsedTime);
         }
@@ -48,7 +48,7 @@ public class ExchangerILS {
      * @param ins Instance the algorithm will process
      * @return Best solution found
      */
-    public Solution algorithm(Instance ins) {
+    public Solution<I> algorithm(Instance ins) {
 
         int nThreads = Runtime.getRuntime().availableProcessors() / 2;
 
@@ -59,20 +59,20 @@ public class ExchangerILS {
 
         // Create threads and workers
         var executor = Executors.newFixedThreadPool(nThreads);
-        var first = new LinkedBlockingQueue<Solution>();
+        var first = new LinkedBlockingQueue<Solution<I>>();
         var activeWorkers = new AtomicInteger(nWorkers);
         var barrier = new CyclicBarrier(nWorkers, () -> activeWorkers.set(nWorkers));
         var prev = first;
         var workers = new ArrayList<Worker>();
         for (int i = 0; i < nWorkers; i++) {
             // Next is a new queue if not the last element, and the first element if we are the last
-            var next = i == nWorkers - 1? first: new LinkedBlockingQueue<Solution>();
+            var next = i == nWorkers - 1? first: new LinkedBlockingQueue<Solution<I>>();
             workers.add(new Worker(executor, configs[i], prev, next, barrier, activeWorkers, nWorkers, nRotateRounds));
             prev = next;
         }
 
         // Generate initial solutions IN PARALLEL
-        var futures = new ArrayList<Future<Solution>>();
+        var futures = new ArrayList<Future<Solution<I>>>();
         for (var worker : workers) {
             futures.add(worker.buildInitialSolution(ins));
         }
@@ -89,13 +89,13 @@ public class ExchangerILS {
             futures.add(workers.get(j).startWorker(solutions.get(j)));
         }
 
-        Solution best = Solution.getBest(awaitAll(futures));
+        Solution<I> best = Solution.getBest(awaitAll(futures));
         executor.shutdown();
 
         return best;
     }
 
-    public static class ILSConfig<S extends Solution> {
+    public class ILSConfig {
         final Constructor<S> constructor;
         final ConstructiveNeighborhood constructiveNeighborhood;
         final SolutionBuilder solutionBuilder;
@@ -131,17 +131,17 @@ public class ExchangerILS {
         }
     }
 
-    public static class Worker<S extends Solution> {
+    public class Worker {
         private final ExecutorService executor;
-        private final ILSConfig<S> config;
-        private final BlockingQueue<Solution> prev;
-        private final BlockingQueue<Solution> next;
+        private final ILSConfig config;
+        private final BlockingQueue<Solution<I>> prev;
+        private final BlockingQueue<Solution<I>> next;
         private final CyclicBarrier barrier;
         private final AtomicInteger activeWorkers; // Used to sync the workers
         private final int nWorkers;
         private final int nRotaterounds;
 
-        public Worker(ExecutorService executor, ILSConfig<S> config, BlockingQueue<Solution> prev, BlockingQueue<Solution> next, CyclicBarrier barrier, AtomicInteger activeWorkers, int nWorkers, int nRotaterounds) {
+        public Worker(ExecutorService executor, ILSConfig config, BlockingQueue<Solution<I>> prev, BlockingQueue<Solution<I>> next, CyclicBarrier barrier, AtomicInteger activeWorkers, int nWorkers, int nRotaterounds) {
             this.executor = executor;
             this.config = config;
             this.prev = prev;
@@ -152,16 +152,16 @@ public class ExchangerILS {
             this.nRotaterounds = nRotaterounds;
         }
 
-        public Future<Solution> buildInitialSolution(Instance instance){
+        public Future<Solution<I>> buildInitialSolution(Instance instance){
             return executor.submit(() -> config.constructor.construct(instance, config.solutionBuilder, config.constructiveNeighborhood));
         }
 
-        public Future<Solution> startWorker(Solution initialSolution){
+        public Future<Solution<I>> startWorker(Solution<I> initialSolution){
             return executor.submit(() -> work(initialSolution));
         }
 
-        private Solution work(Solution initialSolution) throws InterruptedException, BrokenBarrierException {
-            Solution best = initialSolution;
+        private Solution<I> work(Solution<I> initialSolution) throws InterruptedException, BrokenBarrierException {
+            Solution<I> best = initialSolution;
             var nShakes = this.config.nShakes;
             var iterations = nShakes / (this.nWorkers * nRotaterounds);
 
@@ -188,7 +188,7 @@ public class ExchangerILS {
             return best;
         }
 
-        private Solution iteration(Solution best) {
+        private Solution<I> iteration(Solution<I> best) {
             var current = best.clone();
             this.config.shake.iteration(current, this.config.shakeStrength);
             this.config.improver.improve(current);

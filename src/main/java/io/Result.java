@@ -38,9 +38,9 @@ public class Result {
         s.setExecutionTimeInNanos(nanos);
         this.s.add(s);
         if(instance == null){
-            instance = s.getIns();
-        } else if(instance != s.getIns()){
-            throw new AssertionError(String.format("Instance mismatch, expected %s got %s", instance.getName(), s.getIns().getName()));
+            instance = s.getInstance();
+        } else if(instance != s.getInstance()){
+            throw new AssertionError(String.format("Instance mismatch, expected %s got %s", instance.getName(), s.getInstance().getName()));
         }
     }
 

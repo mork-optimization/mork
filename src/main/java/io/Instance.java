@@ -11,6 +11,11 @@ public abstract class Instance implements Comparable<Instance>{
         this.name = name;
     }
 
+    // Used by Jackson
+    protected Instance(){
+        this.name = "JACKSON_LOADED";
+    }
+
     /**
      * Sort order will determine in which order the instances will be solved
      * Sort defaults to instance name

@@ -3,13 +3,13 @@ package solution;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.Instance;
 
-public abstract class Solution {
+public abstract class Solution<I extends Instance> {
 
     /**
      * Ignore field when serializing solutions to avoid data duplication
      */
     @JsonIgnore
-    private final Instance ins;
+    private final I ins;
 
     /**
      * Each time a move is executed solution version number must be incremented
@@ -18,7 +18,7 @@ public abstract class Solution {
 
     private long executionTimeInNanos;
 
-    public Solution(Instance ins) {
+    public Solution(I ins) {
         this.ins = ins;
     }
 
@@ -34,7 +34,7 @@ public abstract class Solution {
      * Deep clone mutable data or you will regret it.
      * @return A deep clone of the current solution
      */
-    public abstract Solution clone();
+    public abstract Solution<I> clone();
 
     /**
      * Compare current solution against another. Depending on the problem type (minimiz, max, multiobject)
@@ -42,7 +42,7 @@ public abstract class Solution {
      * @param o Solution to compare
      * @return Best solution
      */
-    public abstract Solution getBetterSolution(Solution o);
+    public abstract Solution<I> getBetterSolution(Solution<I> o);
 
     // TODO que pasa si la solucion es multiobjetivo?
     public abstract double getOptimalValue();
@@ -50,11 +50,11 @@ public abstract class Solution {
     /**
      * Resume this solution
      * Generate a toString method using your IDE
-     * @return
+     * @return string representation of the current solution
      */
     public abstract String toString();
 
-    public Instance getIns() {
+    public I getInstance() {
         return ins;
     }
 
@@ -66,9 +66,9 @@ public abstract class Solution {
         return executionTimeInNanos;
     }
 
-    public static Solution getBest(Iterable<Solution> solutions){
-        Solution best = null;
-        for (Solution solution : solutions) {
+    public static <I extends Instance> Solution<I> getBest(Iterable<Solution<I>> solutions){
+        Solution<I> best = null;
+        for (Solution<I> solution : solutions) {
             if(best == null){
                 best = solution;
             } else {

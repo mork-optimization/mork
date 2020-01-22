@@ -3,15 +3,15 @@ package io;
 import java.io.File;
 import java.nio.file.Path;
 
-interface InstanceLoader {
+interface InstanceLoader<I extends Instance> {
 
-    Instance loadInstance(File f);
+    I loadInstance(File f, Class<I> type);
 
-    default Instance loadInstance(String s){
-        return loadInstance(Path.of(s));
+    default I loadInstance(String s, Class<I> type){
+        return loadInstance(Path.of(s), type);
     }
 
-    default Instance loadInstance(Path p){
-        return loadInstance(p.toFile());
+    default I loadInstance(Path p, Class<I> type){
+        return loadInstance(p.toFile(), type);
     }
 }
