@@ -2,7 +2,6 @@ package solver.create;
 
 import io.Instance;
 import solution.ConstructiveNeighborhood;
-import solution.GRASPMove;
 import solution.Move;
 import solution.Solution;
 import util.DoubleComparator;
@@ -12,7 +11,7 @@ import java.util.*;
 
 import static util.DoubleComparator.*;
 
-public abstract class GRASPConstructor<T extends GRASPMove, S extends Solution> extends Constructor<S> {
+public abstract class GRASPConstructor<T extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Constructor<S> {
 
     private final AlphaProvider alphaProvider;
     private final String randomType;
@@ -86,7 +85,8 @@ public abstract class GRASPConstructor<T extends GRASPMove, S extends Solution> 
         double alpha = alphaProvider.getAlpha();
         var cl = buildInitialCandidateList(sol);
         assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
-        cl.sort(Move.COMPARATOR);
+        var comparator = new Move.MoveComparator<S,I>();
+        cl.sort(comparator);
         while (!cl.isEmpty()) {
             double left = cl.get(0).getValue();
             double right = cl.get(cl.size() - 1).getValue();
@@ -99,9 +99,9 @@ public abstract class GRASPConstructor<T extends GRASPMove, S extends Solution> 
             int index = RandomManager.nextInt(limitIndex, cl.size());
             T chosen = cl.get(index);
             chosen.execute();
-            cl = updateCandidateList(sol, chosen, index);
+            cl = updateCandidateList(sol, chosen, cl, index);
             assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
-            cl.sort(Move.COMPARATOR);
+            cl.sort(comparator);
 
             // Catch bugs while building the solution
             // no-op if running in performance mode, triggers score recalculation if debugging
@@ -126,7 +126,7 @@ public abstract class GRASPConstructor<T extends GRASPMove, S extends Solution> 
      * @param index index of the chosen move in the candidate list
      * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
      */
-    public abstract  List<T> updateCandidateList(S s, T t, int index);
+    public abstract List<T> updateCandidateList(S s, T t, List<T> candidateList, int index);
 
     @Override
     public String toString() {

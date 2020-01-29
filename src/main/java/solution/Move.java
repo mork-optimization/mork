@@ -1,26 +1,32 @@
 package solution;
 
+import io.Instance;
+
 import java.util.Comparator;
 
 /**
  * All neighborhood moves should be represented by different instances of this class.
  * As they are in the same package as the Solution, they can efficiently manipulate it
  */
-public abstract class Move {
+public abstract class Move<S extends Solution<I>, I extends Instance> {
 
     protected final long solutionVersion;
-    public static final Comparator<Move> COMPARATOR = (a,b) -> {
-        boolean bestA = a.getBestMove(b) == a;
-        boolean bestB = b.getBestMove(a) == b;
-        assert bestA || bestB;
-        if(bestA && bestB)  return 0;
-        if(bestA)           return -1;
-        else                return 1;
-    };
 
-    protected Solution s;
+    public static final class MoveComparator<S extends Solution<I>, I extends Instance> implements Comparator<Move<S,I>> {
+        @Override
+        public int compare(Move<S, I> a, Move<S, I> b) {
+            boolean bestA = a.getBestMove(b) == a;
+            boolean bestB = b.getBestMove(a) == b;
+            assert bestA || bestB;
+            if(bestA && bestB)  return 0;
+            if(bestA)           return -1;
+            else                return 1;
+        }
+    }
 
-    public Move(Solution s) {
+    protected S s;
+
+    public Move(S s) {
         this.s = s;
         this.solutionVersion = s.version;
     }
@@ -36,7 +42,7 @@ public abstract class Move {
      * @param o The other move
      * @return Returns the best move
      */
-    public abstract Move getBestMove(Move o);
+    public abstract Move<S,I> getBestMove(Move<S,I> o);
 
     /**
      * Executes the proposed move
@@ -57,8 +63,14 @@ public abstract class Move {
     protected abstract void _execute();
 
     /**
+     * Get the movement value, represents how much does the move affect the solution if executed
+     * @return
+     */
+    public abstract double getValue();
+
+    /**
      * Get next move in this sequence.
      * @return the next move in this generator sequence if there is a next move, null otherwise
      */
-    protected abstract Move next();
+    protected abstract Move<S,I> next();
 }

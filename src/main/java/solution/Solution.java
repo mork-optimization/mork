@@ -42,7 +42,7 @@ public abstract class Solution<I extends Instance> {
      * @param o Solution to compare
      * @return Best solution
      */
-    public abstract Solution<I> getBetterSolution(Solution<I> o);
+    public abstract <S extends Solution<I>> S getBetterSolution(S o);
 
     // TODO que pasa si la solucion es multiobjetivo?
     public abstract double getOptimalValue();
