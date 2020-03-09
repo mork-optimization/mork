@@ -11,7 +11,13 @@ import java.util.*;
 
 import static es.urjc.etsii.grafo.util.DoubleComparator.*;
 
-public abstract class GRASPConstructor<T extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Constructor<S> {
+/**
+ * GRASP Constructive method
+ * @param <M> Move type
+ * @param <S> Solution type
+ * @param <I> Instance type
+ */
+public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Constructor<M,S,I> {
 
     private final AlphaProvider alphaProvider;
     private final String randomType;
@@ -49,7 +55,7 @@ public abstract class GRASPConstructor<T extends Move<S,I>, S extends Solution<I
         this(0, 1);
     }
 
-    private int binarySearchFindLimit(List<T> cl, double v, boolean asc){
+    private int binarySearchFindLimit(List<M> cl, double v, boolean asc){
         // Adapted from the Java Collections Implementation
         int low = 0;
         int high = cl.size() - 1;
@@ -76,12 +82,12 @@ public abstract class GRASPConstructor<T extends Move<S,I>, S extends Solution<I
     }
 
     @Override
-    public S construct(Instance i, SolutionBuilder builder, ConstructiveNeighborhood neighborhood) {
+    public S construct(Instance i, SolutionBuilder builder, ConstructiveNeighborhood<M,S,I> neighborhood) {
         S sol = builder.initializeSolution(i);
-        return assignMissing(sol, neighborhood);
+        return assignMissing(sol);
     }
 
-    public S assignMissing(S sol, ConstructiveNeighborhood neighborhood) {
+    public S assignMissing(S sol) {
         double alpha = alphaProvider.getAlpha();
         var cl = buildInitialCandidateList(sol);
         assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
@@ -97,7 +103,7 @@ public abstract class GRASPConstructor<T extends Move<S,I>, S extends Solution<I
             int limitIndex = binarySearchFindLimit(cl, limit, asc);
 
             int index = RandomManager.nextInt(limitIndex, cl.size());
-            T chosen = cl.get(index);
+            M chosen = cl.get(index);
             chosen.execute();
             cl = updateCandidateList(sol, chosen, cl, index);
             assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
@@ -117,7 +123,7 @@ public abstract class GRASPConstructor<T extends Move<S,I>, S extends Solution<I
      * @param sol Current es.urjc.etsii.grafo.solution
      * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
      */
-    public abstract List<T> buildInitialCandidateList(S sol);
+    public abstract List<M> buildInitialCandidateList(S sol);
 
     /**
      * Update candidate list after each movement. The list will be sorted by the constructor.
@@ -126,7 +132,7 @@ public abstract class GRASPConstructor<T extends Move<S,I>, S extends Solution<I
      * @param index index of the chosen move in the candidate list
      * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
      */
-    public abstract List<T> updateCandidateList(S s, T t, List<T> candidateList, int index);
+    public abstract List<M> updateCandidateList(S s, M t, List<M> candidateList, int index);
 
     @Override
     public String toString() {
