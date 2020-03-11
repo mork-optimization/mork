@@ -1,7 +1,10 @@
 package es.urjc.etsii.grafo.io;
 
+import org.springframework.stereotype.Component;
+
 import java.io.File;
 
+@Component
 public interface DataImporter<T extends Instance> {
 
     /**

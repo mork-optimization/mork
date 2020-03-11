@@ -17,7 +17,7 @@ import static es.urjc.etsii.grafo.util.DoubleComparator.*;
  * @param <S> Solution type
  * @param <I> Instance type
  */
-public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Constructor<M,S,I> {
+public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Constructor<S,I> {
 
     private final AlphaProvider alphaProvider;
     private final String randomType;
@@ -82,7 +82,7 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
     }
 
     @Override
-    public S construct(Instance i, SolutionBuilder builder, ConstructiveNeighborhood<M,S,I> neighborhood) {
+    public S construct(Instance i, SolutionBuilder builder, ConstructiveNeighborhood<S,I> neighborhood) {
         S sol = builder.initializeSolution(i);
         return assignMissing(sol);
     }

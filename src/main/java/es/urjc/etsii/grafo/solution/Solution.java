@@ -34,7 +34,7 @@ public abstract class Solution<I extends Instance> {
      * Deep clone mutable data or you will regret it.
      * @return A deep clone of the current es.urjc.etsii.grafo.solution
      */
-    public abstract Solution<I> clone();
+    public abstract <S extends Solution<I>> S cloneSolution();
 
     /**
      * Compare current es.urjc.etsii.grafo.solution against another. Depending on the problem type (minimiz, max, multiobject)
@@ -66,9 +66,9 @@ public abstract class Solution<I extends Instance> {
         return executionTimeInNanos;
     }
 
-    public static <I extends Instance> Solution<I> getBest(Iterable<Solution<I>> solutions){
-        Solution<I> best = null;
-        for (Solution<I> solution : solutions) {
+    public static <I extends Instance, S extends Solution<I>> S getBest(Iterable<S> solutions){
+        S best = null;
+        for (S solution : solutions) {
             if(best == null){
                 best = solution;
             } else {

@@ -1,17 +1,18 @@
 package es.urjc.etsii.grafo.solver.improve;
 
+import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
 import java.util.concurrent.TimeUnit;
 
-public interface Improver {
+public interface Improver<S extends Solution<I>,I extends Instance> {
     /**
      * Improves a model.Solution
      * Iterates until we run out of time, or we cannot improve the current es.urjc.etsii.grafo.solution any further
      * @param s model.Solution to improve
      * @return Improved s
      */
-    default Solution improve(Solution s, long quantity, TimeUnit time) {
+    default S improve(S s, long quantity, TimeUnit time) {
         long stopTime = System.nanoTime() + time.toNanos(quantity);
         //int rounds = 0;
         while (System.nanoTime() < stopTime && iteration(s)){
@@ -25,7 +26,7 @@ public interface Improver {
      * @param s
      * @return
      */
-    default Solution improve(Solution s){
+    default S improve(S s){
         return improve(s, 1, TimeUnit.DAYS);
     }
 
@@ -34,7 +35,5 @@ public interface Improver {
      * @param s Solution to improve
      * @return True if the es.urjc.etsii.grafo.solution has been improved, false otherwise
      */
-    boolean iteration(Solution s);
-
-
+    boolean iteration(S s);
 }

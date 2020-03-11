@@ -42,7 +42,7 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
      * @param o The other move
      * @return Returns the best move
      */
-    public abstract Move<S,I> getBestMove(Move<S,I> o);
+    public abstract <M extends Move<S,I>> M getBestMove(Move<S,I> o);
 
     /**
      * Executes the proposed move

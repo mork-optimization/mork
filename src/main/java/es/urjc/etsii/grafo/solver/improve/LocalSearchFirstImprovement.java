@@ -1,22 +1,23 @@
 package es.urjc.etsii.grafo.solver.improve;
 
+import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Neighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 
-public class LocalSearchFirstImprovement extends LocalSearch {
+public class LocalSearchFirstImprovement<S extends Solution<I>, I extends Instance> extends LocalSearch<S,I> {
 
-    public LocalSearchFirstImprovement(String lsType, Neighborhood... ps){
+    public LocalSearchFirstImprovement(String lsType, Neighborhood<S, I>... ps){
         super(lsType, ps);
     }
 
     @Override
-    protected Move getMove(Solution s){
-        Move move = null;
+    protected Move<S,I> getMove(S s){
+        Move<S,I> move = null;
         for (var provider : providers) {
             var optionalMove = provider.stream(s).filter(Move::improves).findAny();
             if(optionalMove.isEmpty()) continue;
-            Move _move = optionalMove.get();
+            Move<S,I> _move = optionalMove.get();
             if (move == null) {
                 move = _move;
             } else {

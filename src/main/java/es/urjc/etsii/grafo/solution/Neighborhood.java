@@ -8,7 +8,7 @@ import java.util.stream.Stream;
 /**
  * Defines a neighbourhood for the local search methods
  */
-public abstract class Neighborhood<M extends Move<S,I>, S extends Solution<I>, I extends Instance> {
+public abstract class Neighborhood<S extends Solution<I>, I extends Instance> {
 
     /**
      * Build an exhaustive stream that allows iterating the whole neighborhood
@@ -16,13 +16,13 @@ public abstract class Neighborhood<M extends Move<S,I>, S extends Solution<I>, I
      * as moves are only generated if they are needed
      * @return Stream with all the available moves in the neighborhood
      */
-    public abstract Stream<M> stream(S s);
+    public abstract Stream<? extends Move<S,I>> stream(S s);
 
     /**
      * Pick a random move within the neighborhood
      * @return a random move, if there is at least one valid move
      */
-    public abstract Optional<M> getRandomMove(S s);
+    public abstract Optional<? extends Move<S,I>> getRandomMove(S s);
 
     @Override
     public String toString() {

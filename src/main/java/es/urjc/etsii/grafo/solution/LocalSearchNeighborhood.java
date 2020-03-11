@@ -7,10 +7,9 @@ import es.urjc.etsii.grafo.io.Instance;
  */
 public abstract class LocalSearchNeighborhood
         <
-                M extends Move<S,I>,
                 S extends Solution<I>,
                 I extends Instance
         >
-        extends Neighborhood<M, S, I> {
+        extends Neighborhood<S, I> {
 
 }
