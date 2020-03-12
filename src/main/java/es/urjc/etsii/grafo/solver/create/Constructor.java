@@ -12,7 +12,7 @@ public abstract class Constructor<S extends Solution<I>, I extends Instance> {
      * @param builder Specify how a es.urjc.etsii.grafo.solution is initialized from an instance
      * @return A valid es.urjc.etsii.grafo.solution that fulfills all the problem constraints
      */
-    public abstract S construct(Instance i, SolutionBuilder builder, ConstructiveNeighborhood<S, I> neighborhood);
+    public abstract S construct(I i, SolutionBuilder<S,I> builder);
 
     @Override
     public String toString() {

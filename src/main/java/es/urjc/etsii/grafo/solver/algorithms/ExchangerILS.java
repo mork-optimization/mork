@@ -32,7 +32,7 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> implements 
         this.configs = config.getConfigs();
     }
 
-    public Result execute(Instance ins, int repetitions) {
+    public Result execute(I ins, int repetitions) {
         Result result = new Result(repetitions, this.toString(), ins.getName());
         for (int i = 0; i < repetitions; i++) {
             long startTime = System.nanoTime();
@@ -49,7 +49,7 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> implements 
      * @param ins Instance the algorithm will process
      * @return Best es.urjc.etsii.grafo.solution found
      */
-    public S algorithm(Instance ins) {
+    public S algorithm(I ins) {
 
         int nThreads = Runtime.getRuntime().availableProcessors() / 2;
 
@@ -96,16 +96,16 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> implements 
         return best;
     }
 
-    public class ILSConfig {
+    public static class ILSConfig<S extends Solution<I>, I extends Instance> {
         final Constructor<S, I> constructor;
         final ConstructiveNeighborhood<S,I> constructiveNeighborhood;
-        final SolutionBuilder solutionBuilder;
+        final SolutionBuilder<S,I> solutionBuilder;
         final Shake<S,I> shake;
         final Improver<S,I> improver;
         final int shakeStrength;
         final int nShakes;
 
-        public ILSConfig(int shakeStrength, int nShakes, Supplier<Constructor<S, I>> constructorSupplier, ConstructiveNeighborhood<S, I> constructiveNeighborhood, SolutionBuilder solutionBuilder, Supplier<Shake<S,I>> destructorSupplier, Supplier<Improver<S,I>> improver) {
+        public ILSConfig(int shakeStrength, int nShakes, Supplier<Constructor<S, I>> constructorSupplier, ConstructiveNeighborhood<S, I> constructiveNeighborhood, SolutionBuilder<S,I> solutionBuilder, Supplier<Shake<S,I>> destructorSupplier, Supplier<Improver<S,I>> improver) {
             this.shakeStrength = shakeStrength;
             this.nShakes = nShakes;
             this.constructiveNeighborhood = constructiveNeighborhood;
@@ -116,7 +116,7 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> implements 
             this.improver = improver.get();
         }
 
-        public ILSConfig(int shakeStrength, Supplier<Constructor<S, I>> constructorSupplier, ConstructiveNeighborhood<S,I> constructiveNeighborhood, SolutionBuilder solutionBuilder, Supplier<Shake<S,I>> destructorSupplier, Supplier<Improver<S,I>> improver) {
+        public ILSConfig(int shakeStrength, Supplier<Constructor<S, I>> constructorSupplier, ConstructiveNeighborhood<S,I> constructiveNeighborhood, SolutionBuilder<S,I> solutionBuilder, Supplier<Shake<S,I>> destructorSupplier, Supplier<Improver<S,I>> improver) {
             this(shakeStrength, -1, constructorSupplier, constructiveNeighborhood, solutionBuilder, destructorSupplier, improver);
         }
 
@@ -134,7 +134,7 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> implements 
 
     public class Worker {
         private final ExecutorService executor;
-        private final ILSConfig config;
+        private final ILSConfig<S,I> config;
         private final BlockingQueue<S> prev;
         private final BlockingQueue<S> next;
         private final CyclicBarrier barrier;
@@ -142,7 +142,7 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> implements 
         private final int nWorkers;
         private final int nRotaterounds;
 
-        public Worker(ExecutorService executor, ILSConfig config, BlockingQueue<S> prev, BlockingQueue<S> next, CyclicBarrier barrier, AtomicInteger activeWorkers, int nWorkers, int nRotaterounds) {
+        public Worker(ExecutorService executor, ILSConfig<S,I> config, BlockingQueue<S> prev, BlockingQueue<S> next, CyclicBarrier barrier, AtomicInteger activeWorkers, int nWorkers, int nRotaterounds) {
             this.executor = executor;
             this.config = config;
             this.prev = prev;
@@ -153,8 +153,8 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> implements 
             this.nRotaterounds = nRotaterounds;
         }
 
-        public Future<S> buildInitialSolution(Instance instance){
-            return executor.submit(() -> config.constructor.construct(instance, config.solutionBuilder, config.constructiveNeighborhood));
+        public Future<S> buildInitialSolution(I instance){
+            return executor.submit(() -> config.constructor.construct(instance, config.solutionBuilder)); //config.constructiveNeighborhood
         }
 
         public Future<S> startWorker(S initialSolution){

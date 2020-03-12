@@ -82,7 +82,7 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
     }
 
     @Override
-    public S construct(Instance i, SolutionBuilder builder, ConstructiveNeighborhood<S,I> neighborhood) {
+    public S construct(I i, SolutionBuilder<S,I> builder) {
         S sol = builder.initializeSolution(i);
         return assignMissing(sol);
     }

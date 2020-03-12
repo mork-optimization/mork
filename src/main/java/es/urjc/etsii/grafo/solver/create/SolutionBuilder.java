@@ -8,9 +8,9 @@ import es.urjc.etsii.grafo.solution.Solution;
  * Problem dependant, empty es.urjc.etsii.grafo.solution will then be filled by a constructor
  */
 @FunctionalInterface
-public interface SolutionBuilder {
+public interface SolutionBuilder<S extends Solution<I>, I extends Instance> {
     /**
      * Generate an empty es.urjc.etsii.grafo.solution with the parameters given by the user
      */
-    <S extends Solution> S initializeSolution(Instance i);
+     S initializeSolution(I i);
 }

@@ -28,7 +28,7 @@ public abstract class BaseAlgorithm<S extends Solution<I>, I extends Instance> i
      * @param repetitions How many times should we repeat the experiment to make it more robust.
      * @return Result of the execution
      */
-    public Result execute(Instance ins, int repetitions) {
+    public Result execute(I ins, int repetitions) {
         Result result = new Result(repetitions, this.toString(), ins.getName());
         for (int i = 0; i < repetitions; i++) {
             long startTime = System.nanoTime();
@@ -46,7 +46,7 @@ public abstract class BaseAlgorithm<S extends Solution<I>, I extends Instance> i
      * @param ins Instance the algorithm will process
      * @return Proposed es.urjc.etsii.grafo.solution
      */
-    protected abstract Solution<I> algorithm(Instance ins);
+    protected abstract Solution<I> algorithm(I ins);
 
     /**
      * Current algorithm short name, must be unique per execution

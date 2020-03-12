@@ -28,12 +28,14 @@ public class Orquestrator implements CommandLineRunner {
     @Override
     public void run(String... args) {
         log.info("App started, lets rock & roll...");
+        log.info("Available algorithms: " + this.algorithmsManager.getAlgorithms());
         io.getInstances().forEach(this::runAlgorithmsForInstance);
     }
 
     public void runAlgorithmsForInstance(Instance i){
         log.info("Running algorithms for instance: " + i.getName());
-        for(BaseAlgorithm<?,?> alg: this.algorithmsManager.getAlgorithms()){
+        for(var alg: this.algorithmsManager.getAlgorithms()){
+            log.info("Algorithm: "+ alg);
             alg.execute(i, repetitions);
         }
     }

@@ -6,9 +6,16 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @ConfigurationProperties(prefix = "algorithms.exchangerils")
-public class ExchangerILSConfig {
+public class ExchangerILSConfig implements AlgorithmConfig{
     private int nRotateRounds;
     private ExchangerILS.ILSConfig[] configs;
+
+    public ExchangerILSConfig(int nRotateRounds, ExchangerILS.ILSConfig[] configs) {
+        this.nRotateRounds = nRotateRounds;
+        this.configs = configs;
+    }
+
+    protected ExchangerILSConfig() { }
 
     public int getnRotateRounds() {
         return nRotateRounds;

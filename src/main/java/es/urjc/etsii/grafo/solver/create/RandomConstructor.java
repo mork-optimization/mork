@@ -10,8 +10,14 @@ public class RandomConstructor<S extends Solution<I>, I extends Instance> extend
 
     protected final Supplier<? extends RuntimeException> NOT_ENOUGH_MOVES = () -> new RuntimeException("Solution is not in a valid state but we do not have any available moves");
 
+    private ConstructiveNeighborhood<S,I> neighborhood;
+
+    public RandomConstructor(ConstructiveNeighborhood<S,I> neighborhood) {
+        this.neighborhood = neighborhood;
+    }
+
     @Override
-    public S construct(Instance i, SolutionBuilder builder, ConstructiveNeighborhood<S,I> neighborhood) {
+    public S construct(I i, SolutionBuilder<S,I> builder) {
         return assignMissing(builder.initializeSolution(i), neighborhood);
     }
 
