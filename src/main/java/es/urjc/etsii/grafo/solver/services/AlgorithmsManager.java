@@ -1,15 +1,12 @@
 package es.urjc.etsii.grafo.solver.services;
 
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
-import org.springframework.beans.factory.annotation.Autowired;
+import es.urjc.etsii.grafo.solver.algorithms.BaseAlgorithm;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -18,14 +15,18 @@ public class AlgorithmsManager {
 
     private static final Logger log = Logger.getLogger(Orquestrator.class.toString());
 
-    private final List<Algorithm<?, ?>> allAlgorithms;
-    private final List<Algorithm<?, ?>> filteredAlgorithms = new ArrayList<>();
+    private final List<BaseAlgorithm<?,?>> allAlgorithms = new ArrayList<>();
+    private final List<BaseAlgorithm<?, ?>> filteredAlgorithms = new ArrayList<>();
 
     @Value("${solver.algorithms}")
     private String algFilter;
 
-    public AlgorithmsManager(List<Algorithm<?, ?>> allAlgorithms) {
-        this.allAlgorithms = allAlgorithms;
+    public AlgorithmsManager(List<BaseAlgorithm<?, ?>> allAlgorithms) {
+//        for(var alg: allAlgorithms){
+//            var clase = alg.getClass();
+//            this.allAlgorithms.put(clase.getSimpleName(), clase);
+//        }
+        this.allAlgorithms.addAll(allAlgorithms);
     }
 
     @PostConstruct
@@ -55,7 +56,7 @@ public class AlgorithmsManager {
         }
     }
 
-    public List<Algorithm<?,?>> getAlgorithms(){
+    public List<BaseAlgorithm<?,?>> getAlgorithms(){
         return Collections.unmodifiableList(this.filteredAlgorithms);
     }
 }

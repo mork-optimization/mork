@@ -47,7 +47,7 @@ public class IOManager {
             createIfNotExists(this.solutionsTemp);
             createIfNotExists(this.instanceCache);
 
-            return Files.list(Path.of(this.instanceIn)).map(this::tryGetFromCache);
+            return Files.walk(Path.of(this.instanceIn)).filter(Files::isRegularFile).map(this::tryGetFromCache);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -55,14 +55,15 @@ public class IOManager {
 
     private Instance tryGetFromCache(Path p){
         // Check if exists in cache, if it does not convert then load.
-        File cacheFile = new File(p.toFile().getName() + CACHE_SUFFIX);
-        if(!cacheFile.exists()){
-            log.info("");
-            Instance imported = this.dataImporter.importInstance(p.toFile());
-            this.serializer.saveInstance(imported, cacheFile);
-        }
-
-        return this.serializer.loadInstance(cacheFile);
+//        File cacheFile = new File(p.toFile().getName() + CACHE_SUFFIX);
+//        if(!cacheFile.exists()){
+//            log.info("Saving cached file: " + cacheFile.getAbsolutePath());
+//            Instance imported = this.dataImporter.importInstance(p.toFile());
+//            this.serializer.saveInstance(imported, cacheFile);
+//        }
+//
+//        return this.serializer.loadInstance(cacheFile);
+        return this.dataImporter.importInstance(p.toFile());
     }
 
     private static void createIfNotExists(String path) {

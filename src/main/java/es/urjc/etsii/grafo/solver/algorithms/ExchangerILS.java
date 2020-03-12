@@ -4,10 +4,12 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.Result;
 import es.urjc.etsii.grafo.solution.ConstructiveNeighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.algorithms.config.ExchangerILSConfig;
 import es.urjc.etsii.grafo.solver.create.Constructor;
 import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.destructor.Shake;
 import es.urjc.etsii.grafo.solver.improve.Improver;
+import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.concurrent.*;
@@ -16,9 +18,8 @@ import java.util.function.Supplier;
 
 import static es.urjc.etsii.grafo.util.ConcurrencyUtil.awaitAll;
 
-
-@SuppressWarnings("DuplicatedCode")
-public class ExchangerILS<S extends Solution<I>, I extends Instance> {
+@Component
+public class ExchangerILS<S extends Solution<I>, I extends Instance> implements Algorithm<S,I> {
 
     private final int nRotateRounds;
     private final ILSConfig[] configs;
@@ -26,12 +27,12 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> {
     /**
      * Create a new MultiStartAlgorithm, @see algorithm
      */
-    public ExchangerILS(int nRotateRounds, ILSConfig... configs) {
-        this.nRotateRounds = nRotateRounds;
-        this.configs = configs;
+    public ExchangerILS(ExchangerILSConfig config) {
+        this.nRotateRounds = config.getnRotateRounds();
+        this.configs = config.getConfigs();
     }
 
-    public Result execute(I ins, int repetitions) {
+    public Result execute(Instance ins, int repetitions) {
         Result result = new Result(repetitions, this.toString(), ins.getName());
         for (int i = 0; i < repetitions; i++) {
             long startTime = System.nanoTime();
@@ -48,7 +49,7 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> {
      * @param ins Instance the algorithm will process
      * @return Best es.urjc.etsii.grafo.solution found
      */
-    public S algorithm(I ins) {
+    public S algorithm(Instance ins) {
 
         int nThreads = Runtime.getRuntime().availableProcessors() / 2;
 
@@ -152,7 +153,7 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> {
             this.nRotaterounds = nRotaterounds;
         }
 
-        public Future<S> buildInitialSolution(I instance){
+        public Future<S> buildInitialSolution(Instance instance){
             return executor.submit(() -> config.constructor.construct(instance, config.solutionBuilder, config.constructiveNeighborhood));
         }
 

@@ -3,8 +3,11 @@ package es.urjc.etsii.grafo.io;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
+import org.springframework.core.type.filter.AssignableTypeFilter;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
 import java.util.Objects;
@@ -31,7 +34,7 @@ public class JsonSerializer {
         mapper.enable(SerializationFeature.WRITE_SINGLE_ELEM_ARRAYS_UNWRAPPED);
         mapper.enable(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY);
         mapper.activateDefaultTyping(BasicPolymorphicTypeValidator.builder()
-                .allowIfSubType("es.urjc.etsii.grafo.io.Instance")
+                .allowIfBaseType("es.urjc.etsii.grafo.io.Instance")
                 .build());
         mapper.setVisibility(mapper.getSerializationConfig().getDefaultVisibilityChecker()
                 .withFieldVisibility(JsonAutoDetect.Visibility.ANY)
@@ -39,6 +42,23 @@ public class JsonSerializer {
                 .withSetterVisibility(JsonAutoDetect.Visibility.NONE)
                 .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
         this.mapper = mapper;
+    }
+
+    @PostConstruct
+    private void findInstanceClases(){
+        var provider = new ClassPathScanningCandidateComponentProvider(false);
+        provider.addIncludeFilter(new AssignableTypeFilter(Instance.class));
+
+        var components = provider.findCandidateComponents("es/urjc/etsii/grafo");
+        for (var component : components)
+        {
+            try {
+                mapper.registerSubtypes(Class.forName(component.getBeanClassName()));
+            } catch (ClassNotFoundException e) {
+                e.printStackTrace();
+            }
+        }
+
     }
 
     public Instance loadInstance(File f) {
