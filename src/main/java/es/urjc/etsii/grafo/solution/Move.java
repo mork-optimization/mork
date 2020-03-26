@@ -42,7 +42,7 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
      * @param o The other move
      * @return Returns the best move
      */
-    public abstract <M extends Move<S,I>> M getBestMove(Move<S,I> o);
+    public abstract Move<S,I> getBestMove(Move<S,I> o);
 
     /**
      * Executes the proposed move
@@ -72,5 +72,5 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
      * Get next move in this sequence.
      * @return the next move in this generator sequence if there is a next move, null otherwise
      */
-    protected abstract Move<S,I> next();
+    public abstract Move<S,I> next();
 }

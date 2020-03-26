@@ -16,7 +16,7 @@ public abstract class Neighborhood<S extends Solution<I>, I extends Instance> {
      * as moves are only generated if they are needed
      * @return Stream with all the available moves in the neighborhood
      */
-    public abstract Stream<? extends Move<S,I>> stream(S s);
+    public abstract Stream<Move<S,I>> stream(S s);
 
     /**
      * Pick a random move within the neighborhood

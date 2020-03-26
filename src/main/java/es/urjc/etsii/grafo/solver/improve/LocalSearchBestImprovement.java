@@ -5,6 +5,9 @@ import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Neighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 
+import java.util.Optional;
+import java.util.stream.Stream;
+
 public class LocalSearchBestImprovement<S extends Solution<I>,I extends Instance> extends LocalSearch<S,I> {
 
     public LocalSearchBestImprovement(String lsType, Neighborhood<S,I>... ps){
@@ -15,7 +18,7 @@ public class LocalSearchBestImprovement<S extends Solution<I>,I extends Instance
     protected Move<S,I> getMove(S s){
         Move<S,I> move = null;
         for (var provider : providers) {
-            var _move = provider.stream(s).reduce((a, b) -> b.getBestMove(a));
+            var _move = getBest(provider.stream(s));
             if(_move.isEmpty()) continue;
             if (move == null) {
                 move = _move.get();
@@ -24,6 +27,10 @@ public class LocalSearchBestImprovement<S extends Solution<I>,I extends Instance
             }
         }
         return move;
+    }
+
+    private Optional<Move<S,I>> getBest(Stream<Move<S,I>> stream){
+        return stream.reduce((a, b) -> b.getBestMove(a));
     }
 
 
