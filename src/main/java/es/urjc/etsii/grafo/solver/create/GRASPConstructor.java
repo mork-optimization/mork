@@ -1,13 +1,13 @@
 package es.urjc.etsii.grafo.solver.create;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solution.ConstructiveNeighborhood;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.RandomManager;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.util.DoubleComparator.*;
 
@@ -18,6 +18,8 @@ import static es.urjc.etsii.grafo.util.DoubleComparator.*;
  * @param <I> Instance type
  */
 public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Constructor<S,I> {
+
+    private static final Logger log = Logger.getLogger(GRASPConstructor.class.getName());
 
     private final AlphaProvider alphaProvider;
     private final String randomType;
@@ -84,6 +86,7 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
     @Override
     public S construct(I i, SolutionBuilder<S,I> builder) {
         S sol = builder.initializeSolution(i);
+        this.beforeGRASP(sol);
         return assignMissing(sol);
     }
 
@@ -111,7 +114,6 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
 
             // Catch bugs while building the es.urjc.etsii.grafo.solution
             // no-op if running in performance mode, triggers score recalculation if debugging
-            // TODO  implement validation function inside the es.urjc.etsii.grafo.solution, isValid() and checkafter each movement is applied, not here
             assert isPositiveOrZero(sol.getOptimalValue());
         }
         return sol;
@@ -133,6 +135,16 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
      * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
      */
     public abstract List<M> updateCandidateList(S s, M t, List<M> candidateList, int index);
+
+    /**
+     * Initialize solution before GRASP algorithm is run
+     * F.e: In the case of clustering algorithms, usually each cluster needs to have at least one point,
+     * different solutions types may require different initialization
+     * @param s
+     */
+    public void beforeGRASP(S s){
+
+    }
 
     @Override
     public String toString() {

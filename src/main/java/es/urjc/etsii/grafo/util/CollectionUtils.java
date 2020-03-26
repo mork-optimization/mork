@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.util;
 import java.util.Arrays;
 import java.util.List;
 import java.util.RandomAccess;
+import java.util.Set;
 import java.util.stream.Stream;
 
 /**
@@ -68,5 +69,16 @@ public class CollectionUtils {
     @SafeVarargs
     public static <T> Stream<T> merge(Stream<T>... streams){
         return Arrays.stream(streams).flatMap(s -> s);
+    }
+
+    public static <T> T pickRandom(Set<T> set){
+        int index = RandomManager.nextInt(0, set.size());
+        int i = 0;
+        for(T t : set) {
+            if (i++ == index)
+                return t;
+        }
+
+        throw new IllegalStateException("Never going to execute, but compiler does not think so, lets see");
     }
 }

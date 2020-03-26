@@ -25,7 +25,11 @@ public class DoubleComparator {
      * @return True, if the difference between them is less than the error margin, false otherwise
      */
     public static boolean equals(double d1, double d2, double eps) {
-        return Math.abs(d1 - d2) - eps < 0;
+        if(Double.isFinite(d1) && Double.isFinite(d2)){
+            return Math.abs(d1 - d2) - eps < 0;
+        } else {
+            return Double.compare(d1, d2) == 0;
+        }
     }
 
     public static int comparator(double d1, double d2, double eps){
