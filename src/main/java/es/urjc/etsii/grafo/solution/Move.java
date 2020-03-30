@@ -15,12 +15,16 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
     public static final class MoveComparator<S extends Solution<I>, I extends Instance> implements Comparator<Move<S,I>> {
         @Override
         public int compare(Move<S, I> a, Move<S, I> b) {
+
             boolean bestA = a.getBestMove(b) == a;
             boolean bestB = b.getBestMove(a) == b;
+            //System.out.format("\tDEBUG: %s, %s, %s, %s\n", a.getValue(), b.getValue(), bestA, bestB);
+
             assert bestA || bestB;
             if(bestA && bestB)  return 0;
             if(bestA)           return -1;
             else                return 1;
+
         }
     }
 

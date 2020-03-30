@@ -20,4 +20,6 @@ public class ConstructionOnlyAlgorithm<S extends Solution<I>, I extends Instance
     protected Solution<I> algorithm(I ins) {
         return this.constructor.construct(ins, builder);
     }
+
+
 }

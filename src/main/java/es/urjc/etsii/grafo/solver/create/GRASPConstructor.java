@@ -71,9 +71,8 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
                 else    high = mid - 1;
             } else {
                 if (cmp == 0) {
-                    // Found exact match --> Should never happen??
-                    //return mid;
-                    throw new IllegalStateException("Found exact match in bin search");
+                    // Found exact match --> Return current mid element
+                    return mid;
                 }
                 if(asc) high = mid - 1;
                 else    low = mid + 1;
@@ -99,7 +98,7 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
         while (!cl.isEmpty()) {
             double left = cl.get(0).getValue();
             double right = cl.get(cl.size() - 1).getValue();
-            boolean asc = DoubleComparator.isLessOrEquals(left, right);
+            boolean asc = left < right;
             double limit = left + (alpha) * (right - left);
 
             // The better the movement the more to the right in the list, so take from

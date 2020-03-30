@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.util;
 
 /**
  * Helper methods to perform comparisons between doubles (or floats)
+ * DANGER: DoubleComparator VIOLATES COMPARISON CONTRACT, DO NOT USE IN SORTS
+
  */
 public class DoubleComparator {
 
