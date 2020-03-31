@@ -21,5 +21,10 @@ public class ConstructionOnlyAlgorithm<S extends Solution<I>, I extends Instance
         return this.constructor.construct(ins, builder);
     }
 
-
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "{" +
+                "constructor=" + constructor +
+                '}';
+    }
 }

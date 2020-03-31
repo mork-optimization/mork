@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.solver.algorithms;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.io.Result;
+import es.urjc.etsii.grafo.io.WorkingOnResult;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.Constructor;
 import es.urjc.etsii.grafo.solver.improve.Improver;
@@ -28,8 +28,8 @@ public abstract class BaseAlgorithm<S extends Solution<I>, I extends Instance> i
      * @param repetitions How many times should we repeat the experiment to make it more robust.
      * @return Result of the execution
      */
-    public Result execute(I ins, int repetitions) {
-        Result result = new Result(repetitions, this.toString(), ins.getName());
+    public WorkingOnResult execute(I ins, int repetitions) {
+        WorkingOnResult result = new WorkingOnResult(repetitions, this.toString(), ins.getName());
         for (int i = 0; i < repetitions; i++) {
             long startTime = System.nanoTime();
             Solution<I> s = algorithm(ins);

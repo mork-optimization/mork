@@ -1,8 +1,6 @@
 package es.urjc.etsii.grafo.io;
 
-import com.fasterxml.jackson.databind.ser.FilterProvider;
-import com.fasterxml.jackson.databind.ser.impl.SimpleBeanPropertyFilter;
-import com.fasterxml.jackson.databind.ser.impl.SimpleFilterProvider;
+import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -21,6 +19,11 @@ public class CSVSerializer {
 
     public CSVSerializer() {
         this.csvMapper = new CsvMapper();
+        csvMapper.setVisibility(csvMapper.getSerializationConfig().getDefaultVisibilityChecker()
+                .withFieldVisibility(JsonAutoDetect.Visibility.ANY)
+                .withGetterVisibility(JsonAutoDetect.Visibility.NONE)
+                .withSetterVisibility(JsonAutoDetect.Visibility.NONE)
+                .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
     }
 
     public void saveResult(List<Result> s, Path p) {
@@ -40,8 +43,12 @@ public class CSVSerializer {
         }
     }
 
-    private FilterProvider getFilters(){
-        SimpleBeanPropertyFilter filter = SimpleBeanPropertyFilter.serializeAllExcept("s", "instance");
-        return new SimpleFilterProvider().addFilter("Solution/Instance filter in CSV", filter);
-    }
+//    /**
+//     * It makes no sense to serialize an instance or a solution to a CSV results file, ignore them
+//     * @return Fields that should not be serialized to CSV (solutions and instances)
+//     */
+//    private FilterProvider getFilters(){
+//        SimpleBeanPropertyFilter filter = SimpleBeanPropertyFilter.serializeAllExcept("solutions", "bestSolution", "instance");
+//        return new SimpleFilterProvider().addFilter("Solution/Instance filter in CSV", filter);
+//    }
 }

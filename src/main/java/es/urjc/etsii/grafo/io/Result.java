@@ -1,118 +1,67 @@
 package es.urjc.etsii.grafo.io;
 
-import es.urjc.etsii.grafo.solution.Solution;
-
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-
 /**
  * The result of the execution of an algorithm
  * Contains all the generated solutions and some stats about them
  */
 public class Result {
 
-    private final ArrayList<Solution> solution;
-    private Instance instance;
     private final String algorythmName;
     private final String instanceName;
+    private final String avgValue;
+    private final String bestValue;
+    private final String std;
+    private final String avgTime;
+    private final String bestTime;
 
-    /**
-     * Initialize a result class.
-     * @param nSolutions estimated number of solutions we are generating
-     * @param algName Algorithm's name
-     * @param instanceName Instance name
-     */
-    public Result(int nSolutions, String algName, String instanceName) {
-        this.solution = new ArrayList<>(nSolutions);
-        this.algorythmName = algName;
+    public Result(String algorythmName, String instanceName, String avgValue, String bestValue, String std, String avgTime, String bestTime) {
+        this.algorythmName = algorythmName;
         this.instanceName = instanceName;
-    }
-
-    /**
-     * Store new result
-     * @param s Calculated es.urjc.etsii.grafo.solution
-     * @param nanos Time used to calculate the given es.urjc.etsii.grafo.solution
-     */
-    public void addSolution(Solution s, long nanos){
-        s.setExecutionTimeInNanos(nanos);
-        this.solution.add(s);
-        if(instance == null){
-            instance = s.getInstance();
-        } else if(instance != s.getInstance()){
-            throw new AssertionError(String.format("Instance mismatch, expected %s got %s", instance.getName(), s.getInstance().getName()));
-        }
-    }
-
-    public long getAverageExecTime(){
-        long totalTime = 0;
-        for (Solution solution : this.solution) {
-            totalTime += solution.getExecutionTimeInNanos();
-        }
-        return totalTime / this.solution.size() / 1000000; // 1 millisecond = 10^6 nanos
-    }
-
-    public String getFormattedAverageFO(int nDecimales){
-        String formatString = "%." + nDecimales + "f";
-        return String.format(formatString, this.getAverageFOValue());
-    }
-
-    public double getAverageFOValue(){
-        double value = 0;
-        for (Solution solution : solution) {
-            value += solution.getOptimalValue();
-        }
-        return value / solution.size();
-    }
-
-    /**
-     * Returns the standard deviation for the objective values of all solutions
-     * @return The STD
-     */
-    public double getStd(){
-        double total = 0;
-        double avg = getAverageFOValue();
-        for (Solution solution : this.solution) {
-            // La varianza es la suma de las diferencias al cuadrado
-            // dividido entre el tamaño del conjunto menos 1
-            // La desviacion estandar es sqrt(varianza)
-            double difference = solution.getOptimalValue() - avg;
-            total += difference * difference;
-        }
-
-        return Math.sqrt(total / (this.solution.size() - 1));
-    }
-
-    public Solution getBestSolution(){
-        double best = Double.MAX_VALUE;
-        Solution chosen = null;
-        for (Solution solution : solution) {
-            if (solution.getOptimalValue() < best) {
-                chosen = solution;
-                best = solution.getOptimalValue();
-            }
-        }
-        return chosen;
-    }
-
-    public List<Solution> getSolutions(){
-        return Collections.unmodifiableList(this.solution);
+        this.avgValue = avgValue;
+        this.bestValue = bestValue;
+        this.std = std;
+        this.avgTime = avgTime;
+        this.bestTime = bestTime;
     }
 
     public String getAlgorythmName() {
-        return this.algorythmName;
+        return algorythmName;
     }
 
     public String getInstanceName() {
         return instanceName;
     }
 
-    // TODO review result to string
+    public String getAvgValue() {
+        return avgValue;
+    }
+
+    public String getBestValue() {
+        return bestValue;
+    }
+
+    public String getStd() {
+        return std;
+    }
+
+    public String getAvgTime() {
+        return avgTime;
+    }
+
+    public String getBestTime() {
+        return bestTime;
+    }
+
+    @Override
     public String toString() {
-        return "Instance Name: " + this.instanceName
-                + "\nAlgorythm Used: " + this.algorythmName
-                + "\nAverage Obj.Function: " + getFormattedAverageFO(2)
-                + "\nExecution Time (ms): " + this.getAverageExecTime()
-                + "\n---------------------------------------------------------";
+        return "Result{" +
+                "algorythmName='" + algorythmName + '\'' +
+                ", instanceName='" + instanceName + '\'' +
+                ", avgValue='" + avgValue + '\'' +
+                ", bestValue='" + bestValue + '\'' +
+                ", std='" + std + '\'' +
+                ", avgTime='" + avgTime + '\'' +
+                ", bestTime='" + bestTime + '\'' +
+                '}';
     }
 }

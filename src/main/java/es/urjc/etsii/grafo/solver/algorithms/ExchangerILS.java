@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.solver.algorithms;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.io.Result;
+import es.urjc.etsii.grafo.io.WorkingOnResult;
 import es.urjc.etsii.grafo.solution.ConstructiveNeighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.config.ExchangerILSConfig;
@@ -32,8 +32,8 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> implements 
         this.configs = config.getConfigs();
     }
 
-    public Result execute(I ins, int repetitions) {
-        Result result = new Result(repetitions, this.toString(), ins.getName());
+    public WorkingOnResult execute(I ins, int repetitions) {
+        WorkingOnResult result = new WorkingOnResult(repetitions, this.toString(), ins.getName());
         for (int i = 0; i < repetitions; i++) {
             long startTime = System.nanoTime();
             S s = algorithm(ins);

@@ -22,7 +22,7 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
     private static final Logger log = Logger.getLogger(GRASPConstructor.class.getName());
 
     private final AlphaProvider alphaProvider;
-    private final String randomType;
+    protected final String randomType;
 
     /**
      * GRASP Constructor, mantains a fixed alpha value

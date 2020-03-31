@@ -9,9 +9,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
-import java.time.LocalDate;
+import java.util.Date;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -61,9 +62,9 @@ public class IOManager {
         }
     }
 
-    public void saveResult(List<Result> result){
+    public void saveResults(List<WorkingOnResult> result){
         Path p = Path.of(this.solutionsOut, this.getFormattedDate() + ".csv");
-        this.csvSerializer.saveResult(result, p);
+        this.csvSerializer.saveResult(result.stream().map(WorkingOnResult::finish).collect(Collectors.toList()), p);
     }
 
     private Instance tryGetFromCache(Path p){
@@ -84,7 +85,7 @@ public class IOManager {
     }
 
     private String getFormattedDate(){
-        return new SimpleDateFormat(dateformatPattern).format(LocalDate.now());
+        return new SimpleDateFormat(dateformatPattern).format(new Date());
     }
 
     //    private Instance tryGetFromCache(Path p){
