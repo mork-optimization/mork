@@ -57,6 +57,16 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
         this(0, 1);
     }
 
+    /**
+     * Initialize solution before GRASP algorithm is run
+     * F.e: In the case of clustering algorithms, usually each cluster needs to have at least one point,
+     * different solutions types may require different initialization
+     * @param s
+     */
+    public void beforeGRASP(S s){
+
+    }
+
     private int binarySearchFindLimit(List<M> cl, double v, boolean asc){
         // Adapted from the Java Collections Implementation
         int low = 0;
@@ -135,15 +145,6 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
      */
     public abstract List<M> updateCandidateList(S s, M t, List<M> candidateList, int index);
 
-    /**
-     * Initialize solution before GRASP algorithm is run
-     * F.e: In the case of clustering algorithms, usually each cluster needs to have at least one point,
-     * different solutions types may require different initialization
-     * @param s
-     */
-    public void beforeGRASP(S s){
-
-    }
 
     @Override
     public String toString() {

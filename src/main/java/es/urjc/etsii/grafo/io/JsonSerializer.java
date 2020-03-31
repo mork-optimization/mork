@@ -3,6 +3,8 @@ package es.urjc.etsii.grafo.io;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
+import com.fasterxml.jackson.dataformat.csv.CsvMapper;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AssignableTypeFilter;
 import org.springframework.stereotype.Service;
@@ -10,9 +12,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.io.File;
 import java.io.IOException;
-import java.util.Objects;
 import java.util.logging.Logger;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
@@ -25,7 +25,7 @@ public class JsonSerializer {
     private static final Pattern FILE_PATTERN = Pattern.compile("(.*)\\.(.*)");
     private static final String JSON_EXTENSION = ".json";
 
-    private final ObjectMapper mapper;
+    private final ObjectMapper objectMapper;
 
     public JsonSerializer() {
         ObjectMapper mapper = new ObjectMapper();
@@ -41,7 +41,7 @@ public class JsonSerializer {
                 .withGetterVisibility(JsonAutoDetect.Visibility.NONE)
                 .withSetterVisibility(JsonAutoDetect.Visibility.NONE)
                 .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
-        this.mapper = mapper;
+        this.objectMapper = mapper;
     }
 
     @PostConstruct
@@ -53,7 +53,7 @@ public class JsonSerializer {
         for (var component : components)
         {
             try {
-                mapper.registerSubtypes(Class.forName(component.getBeanClassName()));
+                objectMapper.registerSubtypes(Class.forName(component.getBeanClassName()));
             } catch (ClassNotFoundException e) {
                 e.printStackTrace();
             }
@@ -63,7 +63,7 @@ public class JsonSerializer {
 
     public Instance loadInstance(File f) {
         try {
-            return mapper.readValue(f, Instance.class);
+            return objectMapper.readValue(f, Instance.class);
         } catch (IOException e) {
             throw new RuntimeException(String.format("Jackson serializer failed while reading file: %s", f.getAbsolutePath()), e);
         }
@@ -79,19 +79,12 @@ public class JsonSerializer {
 
     public void saveInstance(Instance i, File f) {
         try {
-            mapper.writeValue(f, i);
+            objectMapper.writeValue(f, i);
         } catch (IOException e) {
             throw new RuntimeException(String.format("Jackson serializer failed while writing instance file: %s", f.getAbsolutePath()), e);
         }
     }
 
-    public void saveResult(Result s, File f) {
-        try {
-            mapper.writeValue(f, s);
-        } catch (IOException e) {
-            throw new RuntimeException(String.format("Jackson serializer failed while writing results file: %s", f.getAbsolutePath()), e);
-        }
-    }
 
 //    /**
 //     * Standarize all raw instance files to JSON format, using the user provided converted

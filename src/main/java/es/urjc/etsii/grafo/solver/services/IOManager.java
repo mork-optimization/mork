@@ -1,8 +1,6 @@
 package es.urjc.etsii.grafo.solver.services;
 
-import es.urjc.etsii.grafo.io.DataImporter;
-import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.io.JsonSerializer;
+import es.urjc.etsii.grafo.io.*;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -10,6 +8,9 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.SimpleDateFormat;
+import java.time.LocalDate;
+import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -31,11 +32,18 @@ public class IOManager {
     @Value("${solutions.path.out}")
     String solutionsOut;
 
-    private final JsonSerializer serializer;
+    @Value("${solutions.dateformat}")
+    String dateformatPattern;
+
+    // Results CSV --> date to string
+    // Solution file --> instance_algoritm
+    private final JsonSerializer jsonSerializer;
+    private final CSVSerializer csvSerializer;
     private final DataImporter<?> dataImporter;
 
-    public IOManager(JsonSerializer serializer, DataImporter<?> dataImporter) {
-        this.serializer = serializer;
+    public IOManager(JsonSerializer jsonSerializer, CSVSerializer csvSerializer, DataImporter<?> dataImporter) {
+        this.jsonSerializer = jsonSerializer;
+        this.csvSerializer = csvSerializer;
         this.dataImporter = dataImporter;
     }
 
@@ -53,16 +61,12 @@ public class IOManager {
         }
     }
 
+    public void saveResult(List<Result> result){
+        Path p = Path.of(this.solutionsOut, this.getFormattedDate() + ".csv");
+        this.csvSerializer.saveResult(result, p);
+    }
+
     private Instance tryGetFromCache(Path p){
-        // Check if exists in cache, if it does not convert then load.
-//        File cacheFile = new File(p.toFile().getName() + CACHE_SUFFIX);
-//        if(!cacheFile.exists()){
-//            log.info("Saving cached file: " + cacheFile.getAbsolutePath());
-//            Instance imported = this.dataImporter.importInstance(p.toFile());
-//            this.serializer.saveInstance(imported, cacheFile);
-//        }
-//
-//        return this.serializer.loadInstance(cacheFile);
         return this.dataImporter.importInstance(p.toFile());
     }
 
@@ -78,4 +82,20 @@ public class IOManager {
             throw new IllegalArgumentException("Path does not exist or not a folder: " + dir.getAbsolutePath());
         }
     }
+
+    private String getFormattedDate(){
+        return new SimpleDateFormat(dateformatPattern).format(LocalDate.now());
+    }
+
+    //    private Instance tryGetFromCache(Path p){
+//         Check if exists in cache, if it does not convert then load.
+//        File cacheFile = new File(p.toFile().getName() + CACHE_SUFFIX);
+//        if(!cacheFile.exists()){
+//            log.info("Saving cached file: " + cacheFile.getAbsolutePath());
+//            Instance imported = this.dataImporter.importInstance(p.toFile());
+//            this.serializer.saveInstance(imported, cacheFile);
+//        }
+//
+//        return this.serializer.loadInstance(cacheFile);
+//    }
 }

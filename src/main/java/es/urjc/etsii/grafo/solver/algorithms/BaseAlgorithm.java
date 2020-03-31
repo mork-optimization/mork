@@ -48,12 +48,4 @@ public abstract class BaseAlgorithm<S extends Solution<I>, I extends Instance> i
      */
     protected abstract Solution<I> algorithm(I ins);
 
-    /**
-     * Current algorithm short name, must be unique per execution
-     * @return Alg. name, can include parameter configuration
-     */
-    public String getShortName(){
-        return this.getClass().getSimpleName();
-    }
-
 }

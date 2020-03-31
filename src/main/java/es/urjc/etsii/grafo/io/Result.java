@@ -12,7 +12,7 @@ import java.util.List;
  */
 public class Result {
 
-    private final ArrayList<Solution> s;
+    private final ArrayList<Solution> solution;
     private Instance instance;
     private final String algorythmName;
     private final String instanceName;
@@ -24,7 +24,7 @@ public class Result {
      * @param instanceName Instance name
      */
     public Result(int nSolutions, String algName, String instanceName) {
-        this.s = new ArrayList<>(nSolutions);
+        this.solution = new ArrayList<>(nSolutions);
         this.algorythmName = algName;
         this.instanceName = instanceName;
     }
@@ -36,7 +36,7 @@ public class Result {
      */
     public void addSolution(Solution s, long nanos){
         s.setExecutionTimeInNanos(nanos);
-        this.s.add(s);
+        this.solution.add(s);
         if(instance == null){
             instance = s.getInstance();
         } else if(instance != s.getInstance()){
@@ -46,10 +46,10 @@ public class Result {
 
     public long getAverageExecTime(){
         long totalTime = 0;
-        for (Solution solution : this.s) {
+        for (Solution solution : this.solution) {
             totalTime += solution.getExecutionTimeInNanos();
         }
-        return totalTime / this.s.size() / 1000000; // 1 millisecond = 10^6 nanos
+        return totalTime / this.solution.size() / 1000000; // 1 millisecond = 10^6 nanos
     }
 
     public String getFormattedAverageFO(int nDecimales){
@@ -59,10 +59,10 @@ public class Result {
 
     public double getAverageFOValue(){
         double value = 0;
-        for (Solution solution : s) {
+        for (Solution solution : solution) {
             value += solution.getOptimalValue();
         }
-        return value / s.size();
+        return value / solution.size();
     }
 
     /**
@@ -72,7 +72,7 @@ public class Result {
     public double getStd(){
         double total = 0;
         double avg = getAverageFOValue();
-        for (Solution solution : this.s) {
+        for (Solution solution : this.solution) {
             // La varianza es la suma de las diferencias al cuadrado
             // dividido entre el tamaño del conjunto menos 1
             // La desviacion estandar es sqrt(varianza)
@@ -80,13 +80,13 @@ public class Result {
             total += difference * difference;
         }
 
-        return Math.sqrt(total / (this.s.size() - 1));
+        return Math.sqrt(total / (this.solution.size() - 1));
     }
 
     public Solution getBestSolution(){
         double best = Double.MAX_VALUE;
         Solution chosen = null;
-        for (Solution solution : s) {
+        for (Solution solution : solution) {
             if (solution.getOptimalValue() < best) {
                 chosen = solution;
                 best = solution.getOptimalValue();
@@ -96,7 +96,7 @@ public class Result {
     }
 
     public List<Solution> getSolutions(){
-        return Collections.unmodifiableList(this.s);
+        return Collections.unmodifiableList(this.solution);
     }
 
     public String getAlgorythmName() {
