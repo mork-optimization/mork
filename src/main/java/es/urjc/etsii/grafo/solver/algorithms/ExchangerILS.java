@@ -5,7 +5,7 @@ import es.urjc.etsii.grafo.io.WorkingOnResult;
 import es.urjc.etsii.grafo.solution.ConstructiveNeighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.config.ExchangerILSConfig;
-import es.urjc.etsii.grafo.solver.create.Constructor;
+import es.urjc.etsii.grafo.solver.create.Constructive;
 import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.destructor.Shake;
 import es.urjc.etsii.grafo.solver.improve.Improver;
@@ -97,7 +97,7 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> implements 
     }
 
     public static class ILSConfig<S extends Solution<I>, I extends Instance> {
-        final Constructor<S, I> constructor;
+        final Constructive<S, I> constructive;
         final ConstructiveNeighborhood<S,I> constructiveNeighborhood;
         final SolutionBuilder<S,I> solutionBuilder;
         final Shake<S,I> shake;
@@ -105,18 +105,18 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> implements 
         final int shakeStrength;
         final int nShakes;
 
-        public ILSConfig(int shakeStrength, int nShakes, Supplier<Constructor<S, I>> constructorSupplier, ConstructiveNeighborhood<S, I> constructiveNeighborhood, SolutionBuilder<S,I> solutionBuilder, Supplier<Shake<S,I>> destructorSupplier, Supplier<Improver<S,I>> improver) {
+        public ILSConfig(int shakeStrength, int nShakes, Supplier<Constructive<S, I>> constructorSupplier, ConstructiveNeighborhood<S, I> constructiveNeighborhood, SolutionBuilder<S,I> solutionBuilder, Supplier<Shake<S,I>> destructorSupplier, Supplier<Improver<S,I>> improver) {
             this.shakeStrength = shakeStrength;
             this.nShakes = nShakes;
             this.constructiveNeighborhood = constructiveNeighborhood;
             this.solutionBuilder = solutionBuilder;
             assert constructorSupplier != null && destructorSupplier != null && improver != null;
-            this.constructor = constructorSupplier.get();
+            this.constructive = constructorSupplier.get();
             this.shake = destructorSupplier.get();
             this.improver = improver.get();
         }
 
-        public ILSConfig(int shakeStrength, Supplier<Constructor<S, I>> constructorSupplier, ConstructiveNeighborhood<S,I> constructiveNeighborhood, SolutionBuilder<S,I> solutionBuilder, Supplier<Shake<S,I>> destructorSupplier, Supplier<Improver<S,I>> improver) {
+        public ILSConfig(int shakeStrength, Supplier<Constructive<S, I>> constructorSupplier, ConstructiveNeighborhood<S,I> constructiveNeighborhood, SolutionBuilder<S,I> solutionBuilder, Supplier<Shake<S,I>> destructorSupplier, Supplier<Improver<S,I>> improver) {
             this(shakeStrength, -1, constructorSupplier, constructiveNeighborhood, solutionBuilder, destructorSupplier, improver);
         }
 
@@ -125,7 +125,7 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> implements 
             return "ILSConfig{" +
                     "shakeStrength=" + shakeStrength +
                     ", nShakes=" + nShakes +
-                    ", constructor=" + constructor +
+                    ", constructor=" + constructive +
                     ", destructor=" + shake +
                     ", improver=" + improver +
                     '}';
@@ -154,7 +154,7 @@ public class ExchangerILS<S extends Solution<I>, I extends Instance> implements 
         }
 
         public Future<S> buildInitialSolution(I instance){
-            return executor.submit(() -> config.constructor.construct(instance, config.solutionBuilder)); //config.constructiveNeighborhood
+            return executor.submit(() -> config.constructive.construct(instance, config.solutionBuilder)); //config.constructiveNeighborhood
         }
 
         public Future<S> startWorker(S initialSolution){

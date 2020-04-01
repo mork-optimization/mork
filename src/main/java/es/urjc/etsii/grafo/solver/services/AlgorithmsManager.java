@@ -1,15 +1,10 @@
 package es.urjc.etsii.grafo.solver.services;
 
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
-import es.urjc.etsii.grafo.solver.algorithms.BaseAlgorithm;
-import es.urjc.etsii.grafo.solver.algorithms.config.AlgorithmConfig;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import javax.annotation.PostConstruct;
 import java.util.*;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 
 @Service
 public class AlgorithmsManager {

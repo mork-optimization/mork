@@ -6,13 +6,13 @@ import es.urjc.etsii.grafo.solution.Solution;
 
 import java.util.function.Supplier;
 
-public class RandomConstructor<S extends Solution<I>, I extends Instance> extends Constructor<S, I>  {
+public class RandomConstructive<S extends Solution<I>, I extends Instance> extends Constructive<S, I> {
 
     protected final Supplier<? extends RuntimeException> NOT_ENOUGH_MOVES = () -> new RuntimeException("Solution is not in a valid state but we do not have any available moves");
 
     private ConstructiveNeighborhood<S,I> neighborhood;
 
-    public RandomConstructor(ConstructiveNeighborhood<S,I> neighborhood) {
+    public RandomConstructive(ConstructiveNeighborhood<S,I> neighborhood) {
         this.neighborhood = neighborhood;
     }
 

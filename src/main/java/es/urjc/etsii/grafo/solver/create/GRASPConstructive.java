@@ -3,7 +3,6 @@ package es.urjc.etsii.grafo.solver.create;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.RandomManager;
 
 import java.util.*;
@@ -17,9 +16,9 @@ import static es.urjc.etsii.grafo.util.DoubleComparator.*;
  * @param <S> Solution type
  * @param <I> Instance type
  */
-public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Constructor<S,I> {
+public abstract class GRASPConstructive<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Constructive<S,I> {
 
-    private static final Logger log = Logger.getLogger(GRASPConstructor.class.getName());
+    private static final Logger log = Logger.getLogger(GRASPConstructive.class.getName());
 
     private final AlphaProvider alphaProvider;
     protected final String randomType;
@@ -29,7 +28,7 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
      * @param alpha Randomness, adjusts the candidate list size.
      *                   Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
      */
-    public GRASPConstructor(double alpha){
+    public GRASPConstructive(double alpha){
         assert isGreaterOrEqualsThan(alpha, 0) && isLessOrEquals(alpha, 1);
 
         randomType = String.format("FIXED{a=%.2f}", alpha);
@@ -41,7 +40,7 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
      * @param minAlpha minimum value for the random alpha
      * @param maxAlpha maximum value for the random alpha
      */
-    public GRASPConstructor(double minAlpha, double maxAlpha){
+    public GRASPConstructive(double minAlpha, double maxAlpha){
         assert isGreaterOrEqualsThan(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
         assert isGreaterOrEqualsThan(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
         assert isGreaterThan(maxAlpha, minAlpha);
@@ -53,7 +52,7 @@ public abstract class GRASPConstructor<M extends Move<S,I>, S extends Solution<I
     /**
      * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
      */
-    public GRASPConstructor(){
+    public GRASPConstructive(){
         this(0, 1);
     }
 
