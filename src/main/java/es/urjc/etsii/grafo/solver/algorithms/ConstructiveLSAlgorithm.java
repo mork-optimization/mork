@@ -8,16 +8,17 @@ import es.urjc.etsii.grafo.solver.improve.Improver;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.function.Supplier;
-import java.util.stream.Collectors;
+import java.util.logging.Logger;
 
 public class ConstructiveLSAlgorithm<S extends Solution<I>, I extends Instance> extends BaseAlgorithm<S,I>{
+
+    private static Logger log = Logger.getLogger(ConstructiveLSAlgorithm.class.getName());
 
     List<Improver<S,I>> improvers;
     Constructive<S,I> constructive;
 
     @SafeVarargs
-    ConstructiveLSAlgorithm(SolutionBuilder<S,I> builder, Constructive<S, I> constructive, Improver<S,I>... improvers){
+    public ConstructiveLSAlgorithm(SolutionBuilder<S,I> builder, Constructive<S, I> constructive, Improver<S,I>... improvers){
         super(builder);
         this.constructive = constructive;
         this.improvers = Arrays.asList(improvers);
@@ -30,10 +31,14 @@ public class ConstructiveLSAlgorithm<S extends Solution<I>, I extends Instance> 
      */
     protected Solution<I> algorithm(I ins){
         var solution = constructive.construct(ins, builder);
+        //HashMap<Improver<?, ?>, Double> effectiveness = new HashMap<>();
         for (var ls : improvers) {
-            //TODO Store how much each local search contributes as metadata in the result, result subclass or somewhere.
+            //double before = solution.getOptimalValue();
             solution = ls.improve(solution);
+            //effectiveness.put(ls, before - solution.getOptimalValue());
         }
+
+        //log.info("LS effectiveness: " + effectiveness);
         return solution;
     }
 

@@ -15,7 +15,7 @@ public class LocalSearchFirstImprovement<S extends Solution<I>, I extends Instan
     protected Move<S,I> getMove(S s){
         Move<S,I> move = null;
         for (var provider : providers) {
-            var optionalMove = provider.stream(s).filter(Move::improves).findAny();
+            var optionalMove = provider.stream(s).filter(Move::isValid).filter(Move::improves).findAny();
             if(optionalMove.isEmpty()) continue;
             Move<S,I> _move = optionalMove.get();
             if (move == null) {

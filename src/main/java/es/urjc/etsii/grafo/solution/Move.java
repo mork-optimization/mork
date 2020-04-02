@@ -36,10 +36,17 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
     }
 
     /**
-     * Does the es.urjc.etsii.grafo.solution improve if the current move is applied
-     * @return True if the es.urjc.etsii.grafo.solution improves, false otherwise
+     * Does the solution improve if the current move is applied?
+     * @return True if solution improves, false otherwise
      */
     public abstract boolean improves();
+
+    /**
+     * Is the solution in a valid state after this movement is applied?
+     * @return True if the solution is in a valid state after applying the movement, false otherwise
+     */
+    public abstract boolean isValid();
+
 
     /**
      * Get the best move between two candidates
