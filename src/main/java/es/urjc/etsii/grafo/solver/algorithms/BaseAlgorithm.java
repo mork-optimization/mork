@@ -25,7 +25,7 @@ public abstract class BaseAlgorithm<S extends Solution<I>, I extends Instance> i
             long startTime = System.nanoTime();
             Solution<I> s = algorithm(ins);
             long ellapsedTime = System.nanoTime() - startTime;
-            System.out.format("\t%s.\tOptimal Value: %.3f -- Time: %.3f (s)\n", i+1, s.getOptimalValue(), ellapsedTime / 1000_000_000D);
+            System.out.format("\t%s.\tTime: %.3f (s) \t%s -- \n", i+1, ellapsedTime / 1000_000_000D, s);
             result.addSolution(s, ellapsedTime);
         }
 

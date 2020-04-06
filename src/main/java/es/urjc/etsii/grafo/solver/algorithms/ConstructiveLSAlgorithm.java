@@ -31,15 +31,24 @@ public class ConstructiveLSAlgorithm<S extends Solution<I>, I extends Instance> 
      */
     protected Solution<I> algorithm(I ins){
         var solution = constructive.construct(ins, builder);
-        //HashMap<Improver<?, ?>, Double> effectiveness = new HashMap<>();
-        for (var ls : improvers) {
-            //double before = solution.getOptimalValue();
+        printStatus("Constructive", solution);
+        for (int i = 0; i < improvers.size(); i++) {
+            Improver<S, I> ls = improvers.get(i);
             solution = ls.improve(solution);
-            //effectiveness.put(ls, before - solution.getOptimalValue());
+            printStatus("Improver " + i, solution);
         }
-
-        //log.info("LS effectiveness: " + effectiveness);
         return solution;
     }
 
+    private void printStatus(String phase, S s){
+        //log.fine(() -> String.format("\t\t%s: %s", phase, s));
+    }
+
+    @Override
+    public String toString() {
+        return "ConstructiveLSAlgorithm{" +
+                "constructive=" + constructive +
+                ", improvers=" + improvers +
+                '}';
+    }
 }
