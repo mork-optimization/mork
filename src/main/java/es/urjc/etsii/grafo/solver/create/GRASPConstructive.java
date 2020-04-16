@@ -25,6 +25,7 @@ public abstract class GRASPConstructive<M extends Move<S,I>, S extends Solution<
 
     private final AlphaProvider alphaProvider;
     private final ToIntBiFunction<Double, List<M>> indexStrategy;
+    protected final Type type;
 
     protected final String randomType;
 
@@ -51,6 +52,7 @@ public abstract class GRASPConstructive<M extends Move<S,I>, S extends Solution<
         randomType = String.format("FIXED{a=%.2f}", alpha);
         alphaProvider = () -> alpha;
         this.indexStrategy = getStrategy(graspType);
+        this.type = graspType;
     }
 
     /**
@@ -67,6 +69,8 @@ public abstract class GRASPConstructive<M extends Move<S,I>, S extends Solution<
         alphaProvider = () -> RandomManager.getRandom().nextDouble() * (maxAlpha - minAlpha) + minAlpha;
         randomType = String.format("RANGE{min=%.2f, max=%.2f}", minAlpha, maxAlpha);
         this.indexStrategy = getStrategy(graspType);
+        this.type = graspType;
+
     }
 
     /**
