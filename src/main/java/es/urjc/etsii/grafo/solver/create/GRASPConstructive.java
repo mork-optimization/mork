@@ -5,7 +5,10 @@ import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.RandomManager;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.RandomAccess;
+import java.util.function.ToIntBiFunction;
 import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.util.DoubleComparator.*;
@@ -21,50 +24,65 @@ public abstract class GRASPConstructive<M extends Move<S,I>, S extends Solution<
     private static final Logger log = Logger.getLogger(GRASPConstructive.class.getName());
 
     private final AlphaProvider alphaProvider;
+    private final ToIntBiFunction<Double, List<M>> indexStrategy;
+
     protected final String randomType;
+
+    private ToIntBiFunction<Double, List<M>> getStrategy(Type type){
+        switch (type){
+            case GreedyRandom:
+                return this::greedyRandom;
+            case RandomGreedy:
+                return this::randomGreedy;
+            default:
+                throw new UnsupportedOperationException("GRASP Type not implemented yet: " + type);
+        }
+    }
 
     /**
      * GRASP Constructor, mantains a fixed alpha value
+     * Stops when the neighborhood does not provide any movement
      * @param alpha Randomness, adjusts the candidate list size.
-     *                   Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
+     *              Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
      */
-    public GRASPConstructive(double alpha){
+    public GRASPConstructive(double alpha, Type graspType){
         assert isGreaterOrEqualsThan(alpha, 0) && isLessOrEquals(alpha, 1);
 
         randomType = String.format("FIXED{a=%.2f}", alpha);
         alphaProvider = () -> alpha;
+        this.indexStrategy = getStrategy(graspType);
     }
 
     /**
      * GRASP Constructor, generates a random alpha in each construction
+     * Alpha Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
      * @param minAlpha minimum value for the random alpha
      * @param maxAlpha maximum value for the random alpha
      */
-    public GRASPConstructive(double minAlpha, double maxAlpha){
+    public GRASPConstructive(double minAlpha, double maxAlpha, Type graspType){
         assert isGreaterOrEqualsThan(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
         assert isGreaterOrEqualsThan(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
         assert isGreaterThan(maxAlpha, minAlpha);
 
         alphaProvider = () -> RandomManager.getRandom().nextDouble() * (maxAlpha - minAlpha) + minAlpha;
         randomType = String.format("RANGE{min=%.2f, max=%.2f}", minAlpha, maxAlpha);
+        this.indexStrategy = getStrategy(graspType);
     }
 
     /**
      * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
      */
-    public GRASPConstructive(){
-        this(0, 1);
+    public GRASPConstructive(Type graspType){
+        this(0, 1, graspType);
     }
 
     /**
      * Initialize solution before GRASP algorithm is run
      * F.e: In the case of clustering algorithms, usually each cluster needs to have at least one point,
      * different solutions types may require different initialization
-     * @param s
+     * @param s Solution to initialize before running the GRASP constructive method
      */
-    public void beforeGRASP(S s){
-
-    }
+    public void beforeGRASP(S s){ }
 
     private int binarySearchFindLimit(List<M> cl, double v, boolean asc){
         // Adapted from the Java Collections Implementation
@@ -105,15 +123,8 @@ public abstract class GRASPConstructive<M extends Move<S,I>, S extends Solution<
         var comparator = new Move.MoveComparator<S,I>();
         cl.sort(comparator);
         while (!cl.isEmpty()) {
-            double left = cl.get(0).getValue();
-            double right = cl.get(cl.size() - 1).getValue();
-            boolean asc = left < right;
-            double limit = left + (alpha) * (right - left);
-
-            // The better the movement the more to the right in the list, so take from
-            int limitIndex = binarySearchFindLimit(cl, limit, asc);
-
-            int index = RandomManager.nextInt(limitIndex, cl.size());
+            // Choose an index from the candidate list following different strategies, GreedyRandom, RandomGreedy...
+            int index = indexStrategy.applyAsInt(alpha, cl);
             M chosen = cl.get(index);
             chosen.execute();
             cl = updateCandidateList(sol, chosen, cl, index);
@@ -125,6 +136,40 @@ public abstract class GRASPConstructive<M extends Move<S,I>, S extends Solution<
             assert isPositiveOrZero(sol.getOptimalValue());
         }
         return sol;
+    }
+
+    private int greedyRandom(double alpha, List<M> cl) {
+        double left = cl.get(0).getValue();
+        double right = cl.get(cl.size() - 1).getValue();
+        boolean asc = left < right;
+        double limit = left + (alpha) * (right - left);
+
+        // The better the movement the more to the right in the list, so take from
+        int limitIndex = binarySearchFindLimit(cl, limit, asc);
+
+        return RandomManager.nextInt(limitIndex, cl.size());
+    }
+
+    private int randomGreedy(double alpha, List<M> cl) {
+        // TODO can we avoid creating another list?
+        var rcl = new ArrayList<M>(cl.size());
+        for(var element: cl){
+            if(RandomManager.getRandom().nextDouble() >= alpha){
+                rcl.add(element);
+            }
+        }
+        if(rcl.isEmpty()){
+            // Return a random element and call it a day
+            return RandomManager.nextInt(0, cl.size());
+        }
+
+        // get best
+        M best = null;
+        for (M m : rcl) {
+            if (best == null) best = m;
+            else best = (M) best.getBestMove(m);
+        }
+        return cl.indexOf(best);
     }
 
 
@@ -155,5 +200,10 @@ public abstract class GRASPConstructive<M extends Move<S,I>, S extends Solution<
     @FunctionalInterface
     interface AlphaProvider {
         double getAlpha();
+    }
+
+    public enum Type {
+        RandomGreedy,
+        GreedyRandom
     }
 }

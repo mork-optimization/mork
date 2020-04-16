@@ -2,13 +2,17 @@ package es.urjc.etsii.grafo.solver.create;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.ConstructiveNeighborhood;
+import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 
-import java.util.function.Supplier;
+import java.util.Optional;
 
+/**
+ * Executes random movements from the given neighborhood until there are no moves left to execute
+ * @param <S> Solution type
+ * @param <I> Instance type
+ */
 public class RandomConstructive<S extends Solution<I>, I extends Instance> extends Constructive<S, I> {
-
-    protected final Supplier<? extends RuntimeException> NOT_ENOUGH_MOVES = () -> new RuntimeException("Solution is not in a valid state but we do not have any available moves");
 
     private ConstructiveNeighborhood<S,I> neighborhood;
 
@@ -18,14 +22,15 @@ public class RandomConstructive<S extends Solution<I>, I extends Instance> exten
 
     @Override
     public S construct(I i, SolutionBuilder<S,I> builder) {
-        return assignMissing(builder.initializeSolution(i), neighborhood);
+        return exhaustNeighborhood(builder.initializeSolution(i), neighborhood);
     }
 
-    private S assignMissing(S s, ConstructiveNeighborhood<S,I> neighborhood) {
-        while(!s.isValid()){
-            var move = neighborhood.getRandomMove(s).orElseThrow(NOT_ENOUGH_MOVES);
-            move.execute();
+    private S exhaustNeighborhood(S s, ConstructiveNeighborhood<S,I> neighborhood) {
+        Optional<? extends Move<S,I>> move;
+        while((move = neighborhood.getRandomMove(s)).isPresent()){
+            move.get().execute();
         }
+
         return s;
     }
 }
