@@ -11,17 +11,17 @@ public class Result {
     private final String avgValue;
     private final String bestValue;
     private final String std;
-    private final String avgTime;
-    private final String bestTime;
+    private final String avgTimeInMs;
+    private final String totalTimeInMs;
 
-    public Result(String algorythmName, String instanceName, String avgValue, String bestValue, String std, String avgTime, String bestTime) {
+    public Result(String algorythmName, String instanceName, String avgValue, String bestValue, String std, String avgTimeInMs, String totalTimeInMs) {
         this.algorythmName = algorythmName;
         this.instanceName = instanceName;
         this.avgValue = avgValue;
         this.bestValue = bestValue;
         this.std = std;
-        this.avgTime = avgTime;
-        this.bestTime = bestTime;
+        this.avgTimeInMs = avgTimeInMs;
+        this.totalTimeInMs = totalTimeInMs;
     }
 
     public String getAlgorythmName() {
@@ -44,12 +44,12 @@ public class Result {
         return std;
     }
 
-    public String getAvgTime() {
-        return avgTime;
+    public String getAvgTimeInMs() {
+        return avgTimeInMs;
     }
 
-    public String getBestTime() {
-        return bestTime;
+    public String getTotalTimeInMs() {
+        return totalTimeInMs;
     }
 
     @Override
@@ -60,8 +60,8 @@ public class Result {
                 ", avgValue='" + avgValue + '\'' +
                 ", bestValue='" + bestValue + '\'' +
                 ", std='" + std + '\'' +
-                ", avgTime='" + avgTime + '\'' +
-                ", bestTime='" + bestTime + '\'' +
+                ", avgTime='" + avgTimeInMs + '\'' +
+                ", bestTime='" + totalTimeInMs + '\'' +
                 '}';
     }
 }

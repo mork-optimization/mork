@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.solver.destructor;
 
+import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Neighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -9,11 +10,12 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.Random;
 
-public class RandomMoveShake implements Shake {
+public class RandomMoveShake<S extends Solution<I>, I extends Instance> implements Shake<S,I> {
 
-    Neighborhood[] neighborhoods;
+    Neighborhood<S,I>[] neighborhoods;
 
-    public RandomMoveShake(Neighborhood... neighborhoods) {
+    @SafeVarargs
+    public RandomMoveShake(Neighborhood<S,I>... neighborhoods) {
         if(neighborhoods.length == 0){
             throw new IllegalArgumentException("Use at least one MoveProvider");
         }
@@ -25,14 +27,14 @@ public class RandomMoveShake implements Shake {
      * @param s
      * @param k K >= 1 and K<= 20
      */
-    public void iteration(Solution s, int k) {
+    public void iteration(S s, double k) {
         Random random = RandomManager.getRandom();
 
         // Execute k random moves in different neighbourhoods
         for (int i = 0; i < k; i++) {
             int chosenNeigh = random.nextInt(neighborhoods.length);
             int copy = chosenNeigh;
-            Optional<Move> move;
+            Optional<? extends Move<S,I>> move;
             do {
                 move = neighborhoods[chosenNeigh % neighborhoods.length].getRandomMove(s);
                 if (move.isPresent()) {

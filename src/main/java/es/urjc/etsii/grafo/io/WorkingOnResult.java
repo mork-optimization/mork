@@ -48,10 +48,10 @@ public class WorkingOnResult {
 
     public long getAverageExecTime() {
         long totalTime = 0;
-        for (Solution solution : this.solutions) {
+        for (var solution : this.solutions) {
             totalTime += solution.getExecutionTimeInNanos();
         }
-        return totalTime / this.solutions.size() / 1000000; // 1 millisecond = 10^6 nanos
+        return totalTime / this.solutions.size() / 1_000_000; // 1 millisecond = 10^6 nanos
     }
 
     public String getFormattedAverageFO(int nDecimales) {
@@ -61,10 +61,18 @@ public class WorkingOnResult {
 
     public double getAverageFOValue() {
         double value = 0;
-        for (Solution solution : solutions) {
+        for (var solution : solutions) {
             value += solution.getOptimalValue();
         }
         return value / solutions.size();
+    }
+
+    public long getTotalTime() {
+        long totalTime = 0;
+        for (var solution : solutions) {
+            totalTime += solution.getExecutionTimeInNanos();
+        }
+        return totalTime / 1_000_000;
     }
 
     /**
@@ -87,13 +95,10 @@ public class WorkingOnResult {
     }
 
     public Solution getBestSolution() {
-        double best = Double.MAX_VALUE;
         Solution chosen = null;
         for (Solution solution : solutions) {
-            if (solution.getOptimalValue() < best) {
-                chosen = solution;
-                best = solution.getOptimalValue();
-            }
+            if(chosen == null)  chosen = solution;
+            else chosen = chosen.getBetterSolution(solution);
         }
         return chosen;
     }
@@ -127,7 +132,7 @@ public class WorkingOnResult {
                 Double.toString(this.getBestSolution().getOptimalValue()),
                 Double.toString(this.getStd()),
                 Double.toString(this.getAverageExecTime()),
-                Double.toString(this.getBestSolution().getExecutionTimeInNanos() / (double) 1_000_000)
+                Long.toString(this.getTotalTime())
         );
     }
 }
