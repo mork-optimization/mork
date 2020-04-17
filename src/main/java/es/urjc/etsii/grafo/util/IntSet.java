@@ -119,7 +119,7 @@ public class IntSet extends AbstractSet<Integer> {
         @Override
         public Integer next() {
             if(currentUsed){
-                throw new IllegalStateException("Called next() without hashNext()");
+                throw new IllegalStateException("Called next() without calling hashNext() first");
             }
             currentUsed = true;
             return nextValid;

@@ -96,4 +96,26 @@ public class IntSetTests {
         IntSet set = new IntSet(10);
         Assertions.assertThrows(IllegalArgumentException.class, () -> set.add(n));
     }
+
+    @Test
+    void checkIteratorNoException(){
+        IntSet set = new IntSet(10);
+        int total = 4 + 7 + 8;
+        set.add(4);
+        set.add(7);
+        set.add(8);
+        for (Integer integer : set) {
+            total -= integer;
+        }
+        assertEquals(0, total);
+    }
+
+    @Test
+    void checkIteratorException(){
+        IntSet set = new IntSet(10);
+        set.add(4);
+        set.add(7);
+        set.add(8);
+        assertThrows(RuntimeException.class, () -> set.iterator().next());
+    }
 }
