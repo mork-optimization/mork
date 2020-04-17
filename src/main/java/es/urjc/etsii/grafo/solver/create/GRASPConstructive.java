@@ -148,10 +148,9 @@ public abstract class GRASPConstructive<M extends Move<S,I>, S extends Solution<
         boolean asc = left < right;
         double limit = left + (alpha) * (right - left);
 
-        // The better the movement the more to the right in the list, so take from
         int limitIndex = binarySearchFindLimit(cl, limit, asc);
 
-        return RandomManager.nextInt(limitIndex, cl.size());
+        return RandomManager.nextInt(0, limitIndex + 1);
     }
 
     private int randomGreedy(double alpha, List<M> cl) {
