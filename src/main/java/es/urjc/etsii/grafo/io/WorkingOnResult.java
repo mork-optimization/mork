@@ -3,8 +3,6 @@ package es.urjc.etsii.grafo.io;
 import es.urjc.etsii.grafo.solution.Solution;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
 
 /**
  * The result of the execution of an algorithm
@@ -12,8 +10,9 @@ import java.util.List;
  */
 public class WorkingOnResult {
 
-    private final ArrayList<Solution> solutions;
+    private final ArrayList<SolutionData> solutions;
     private Instance instance;
+    private Solution best;
     private final String algorythmName;
     private final String instanceName;
 
@@ -37,8 +36,12 @@ public class WorkingOnResult {
      * @param nanos Time used to calculate the given es.urjc.etsii.grafo.solution
      */
     public void addSolution(Solution s, long nanos) {
+        if(this.best == null){
+            this.best = s;
+        }
+        this.best = best.getBetterSolution(s);
         s.setExecutionTimeInNanos(nanos);
-        this.solutions.add(s);
+        this.solutions.add(new SolutionData(s.getOptimalValue(), nanos));
         if (instance == null) {
             instance = s.getInstance();
         } else if (instance != s.getInstance()) {
@@ -49,7 +52,7 @@ public class WorkingOnResult {
     public long getAverageExecTime() {
         long totalTime = 0;
         for (var solution : this.solutions) {
-            totalTime += solution.getExecutionTimeInNanos();
+            totalTime += solution.getNanos();
         }
         return totalTime / this.solutions.size() / 1_000_000; // 1 millisecond = 10^6 nanos
     }
@@ -62,7 +65,7 @@ public class WorkingOnResult {
     public double getAverageFOValue() {
         double value = 0;
         for (var solution : solutions) {
-            value += solution.getOptimalValue();
+            value += solution.getValue();
         }
         return value / solutions.size();
     }
@@ -70,7 +73,7 @@ public class WorkingOnResult {
     public long getTotalTime() {
         long totalTime = 0;
         for (var solution : solutions) {
-            totalTime += solution.getExecutionTimeInNanos();
+            totalTime += solution.getNanos();
         }
         return totalTime / 1_000_000;
     }
@@ -83,11 +86,11 @@ public class WorkingOnResult {
     public double getStd() {
         double total = 0;
         double avg = getAverageFOValue();
-        for (Solution solution : this.solutions) {
+        for (var solution : this.solutions) {
             // La varianza es la suma de las diferencias al cuadrado
             // dividido entre el tamaño del conjunto menos 1
             // La desviacion estandar es sqrt(varianza)
-            double difference = solution.getOptimalValue() - avg;
+            double difference = solution.getValue() - avg;
             total += difference * difference;
         }
 
@@ -95,16 +98,7 @@ public class WorkingOnResult {
     }
 
     public Solution getBestSolution() {
-        Solution chosen = null;
-        for (Solution solution : solutions) {
-            if(chosen == null)  chosen = solution;
-            else chosen = chosen.getBetterSolution(solution);
-        }
-        return chosen;
-    }
-
-    public List<Solution> getSolutions() {
-        return Collections.unmodifiableList(this.solutions);
+        return best;
     }
 
     public String getAlgorythmName() {
@@ -134,5 +128,26 @@ public class WorkingOnResult {
                 Double.toString(this.getAverageExecTime()),
                 Long.toString(this.getTotalTime())
         );
+    }
+
+    /**
+     * Let the solutions and the instances get garbage collected, only keep whatever is interesing for us
+     */
+    private class SolutionData {
+        private final double value;
+        private final long nanos;
+
+        public SolutionData(double value, long nanos) {
+            this.value = value;
+            this.nanos = nanos;
+        }
+
+        public double getValue() {
+            return value;
+        }
+
+        public long getNanos() {
+            return nanos;
+        }
     }
 }
