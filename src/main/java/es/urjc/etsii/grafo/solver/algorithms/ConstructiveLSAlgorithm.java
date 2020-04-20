@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.Constructive;
 import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.improve.Improver;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.Arrays;
 import java.util.List;
@@ -32,11 +33,18 @@ public class ConstructiveLSAlgorithm<S extends Solution<I>, I extends Instance> 
     protected Solution<I> algorithm(I ins){
         var solution = constructive.construct(ins, builder);
         printStatus("Constructive", solution);
-        for (int i = 0; i < improvers.size(); i++) {
-            Improver<S, I> ls = improvers.get(i);
-            solution = ls.improve(solution);
-            printStatus("Improver " + i, solution);
-        }
+        double previous;
+        do {
+            previous = solution.getOptimalValue();
+            for (int i = 0; i < improvers.size(); i++) {
+                Improver<S, I> ls = improvers.get(i);
+                solution = ls.improve(solution);
+                printStatus("Improver " + i, solution);
+            }
+
+            // Repeat until we reach the local search plateau
+        } while (!DoubleComparator.equals(previous, solution.getOptimalValue()));
+
         return solution;
     }
 
