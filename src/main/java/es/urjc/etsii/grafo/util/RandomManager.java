@@ -1,24 +1,20 @@
 package es.urjc.etsii.grafo.util;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
 import java.util.Random;
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * Multi-threads aware random manager
- * Use -Dseed=1111 when starting the JVM to set the initial seed
+ * Multi-thread aware random manager
  */
+@Service
 public final class RandomManager {
 
-    // TODO usar $SEED como variable de entorno para facilitar la integracion con Docker
-    private static final AtomicInteger SEED;
-    private static final ThreadLocal<Random> localRandom;
-
-    static {
-        String maybeSeed = System.getProperty("seed");
-        SEED = new AtomicInteger(maybeSeed == null ? 1234 : Integer.parseInt(maybeSeed));
-        System.out.println("[INFO] Using seed = " + SEED.get());
-        localRandom = ThreadLocal.withInitial(() -> new Random(SEED.getAndIncrement()));
-    }
+    // If the RandomManager is called before Spring starts, static methods will throw a NPE.
+    private final AtomicInteger SEED;
+    private static ThreadLocal<Random> localRandom;
 
     public static Random getRandom(){
         return localRandom.get();
@@ -28,6 +24,10 @@ public final class RandomManager {
         return localRandom.get().nextInt(max - min) + min;
     }
 
-    private RandomManager(){}
+    protected RandomManager(@Value("${randomseed}") int seed){
+        SEED = new AtomicInteger(seed);
+        System.out.println("[INFO] Using seed = " + SEED.get());
+        localRandom = ThreadLocal.withInitial(() -> new Random(SEED.getAndIncrement()));
+    }
 }
 

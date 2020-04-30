@@ -62,6 +62,7 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
         if(this.solutionVersion != s.version){
             throw new AssertionError(String.format("Solution state changed (%s), cannot execute move (%s)", s.version, this.solutionVersion));
         }
+        //s.lastMoves.add(this);
         _execute();
         s.version++;
         // TODO validate es.urjc.etsii.grafo.solution state after each move is applied

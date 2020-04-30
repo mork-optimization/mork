@@ -3,6 +3,10 @@ package es.urjc.etsii.grafo.solution;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import es.urjc.etsii.grafo.io.Instance;
 
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Queue;
+
 public abstract class Solution<I extends Instance> {
 
     /**
@@ -15,6 +19,8 @@ public abstract class Solution<I extends Instance> {
      * Each time a move is executed es.urjc.etsii.grafo.solution version number must be incremented
      */
     long version = 0;
+
+    //protected List<Move> lastMoves = new ArrayList<>(10000);
 
     private long executionTimeInNanos;
 

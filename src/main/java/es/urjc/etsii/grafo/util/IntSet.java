@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.util;
 
 import java.util.AbstractSet;
+import java.util.Arrays;
 import java.util.Iterator;
 
 /**
@@ -24,6 +25,14 @@ public class IntSet extends AbstractSet<Integer> {
         }
 
         this.data = new boolean[maxValue];
+    }
+
+    /**
+     * Copy an Intset
+     */
+    public IntSet(IntSet set) {
+        this.data = Arrays.copyOf(set.data, set.data.length);
+        this.size = set.size;
     }
 
     @Override

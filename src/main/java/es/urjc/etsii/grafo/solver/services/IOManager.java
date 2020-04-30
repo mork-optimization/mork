@@ -56,7 +56,7 @@ public class IOManager {
             createIfNotExists(this.solutionsTemp);
             createIfNotExists(this.instanceCache);
 
-            return Files.walk(Path.of(this.instanceIn)).filter(Files::isRegularFile).map(this::tryGetFromCache);
+            return Files.walk(Path.of(this.instanceIn)).filter(Files::isRegularFile).sorted().map(this::tryGetFromCache);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }

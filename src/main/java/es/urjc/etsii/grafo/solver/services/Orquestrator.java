@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 @Service
@@ -17,13 +18,15 @@ public class Orquestrator implements CommandLineRunner {
 
     private final IOManager io;
     private final AlgorithmsManager algorithmsManager;
+    private final Optional<TimeProvider<?>> timeProvider;
 
     @Value("${solver.repetitions:1}")
     private int repetitions;
 
-    public Orquestrator(IOManager io, AlgorithmsManager algorithmsManager) {
+    public Orquestrator(IOManager io, AlgorithmsManager algorithmsManager, Optional<TimeProvider<?>> timeProvider) {
         this.io = io;
         this.algorithmsManager = algorithmsManager;
+        this.timeProvider = timeProvider;
     }
 
     @Override
