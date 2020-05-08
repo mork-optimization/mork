@@ -8,7 +8,6 @@ import es.urjc.etsii.grafo.util.RandomManager;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.RandomAccess;
-import java.util.function.ToIntBiFunction;
 import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.util.DoubleComparator.*;
@@ -25,6 +24,13 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S,I>, S exten
     private final AlphaProvider alphaProvider;
     protected final String randomType;
 
+
+    public RandomGreedyGRASPConstructive(double alpha){
+        assert isGreaterOrEqualsThan(alpha, 0) && isLessOrEquals(alpha, 1);
+
+        randomType = String.format("FIXED{a=%.2f}", alpha);
+        alphaProvider = () -> alpha;
+    }
 
     /**
      * GRASP Constructor, generates a random alpha in each construction
