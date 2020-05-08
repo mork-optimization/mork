@@ -18,12 +18,19 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
     List<Improver<S,I>> improvers;
     Constructive<S,I> constructive;
     private final Shake<S, I> shake;
-    private final double[] ks;
+    private final int[] ks;
+    private final int maxK;
 
     @SafeVarargs
-    public VNS(double[] ks, SolutionBuilder<S,I> builder, Shake<S,I> shake, Constructive<S, I> constructive, Improver<S,I>... improvers){
+    public VNS(int[] ks, SolutionBuilder<S,I> builder, Shake<S,I> shake, Constructive<S, I> constructive, Improver<S,I>... improvers){
         super(builder);
+        if(ks == null || ks.length == 0){
+            throw new IllegalArgumentException("Invalid Ks array, must have at least one element");
+        }
         this.ks = ks;
+        // Ensure Ks are sorted, maxK is the last element
+        Arrays.sort(ks);
+        this.maxK = ks[ks.length - 1];
         this.shake = shake;
         this.constructive = constructive;
         this.improvers = Arrays.asList(improvers);
@@ -37,7 +44,7 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
         while(currentKIndex < ks.length){
             printStatus(String.valueOf(currentKIndex), solution);
             S copy = solution.cloneSolution();
-            shake.iteration(copy, this.ks[currentKIndex]);
+            shake.shake(copy, this.ks[currentKIndex], maxK);
             copy = localSearch(copy);
             S bestSolution = copy.getBetterSolution(solution);
             if(bestSolution == solution){   // No improve

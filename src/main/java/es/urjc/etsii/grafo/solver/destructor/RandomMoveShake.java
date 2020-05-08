@@ -23,11 +23,11 @@ public class RandomMoveShake<S extends Solution<I>, I extends Instance> implemen
     }
 
     /**
-     *
-     * @param s
-     * @param k K >= 1 and K<= 20
+     * Shake the solution applying random movements from the configured neighborhood
+     * @param s Solution to shake
+     * @param k Number of movements to apply, maxK is not used in this implementation
      */
-    public void iteration(S s, double k) {
+    public void shake(S s, int k, int maxK) {
         Random random = RandomManager.getRandom();
 
         // Execute k random moves in different neighbourhoods
