@@ -4,6 +4,8 @@ import es.urjc.etsii.grafo.io.Instance;
 
 import java.util.Comparator;
 
+import static es.urjc.etsii.grafo.solution.Solution.MAX_DEBUG_MOVES;
+
 /**
  * All neighborhood moves should be represented by different instances of this class.
  * As they are in the same package as the Solution, they can efficiently manipulate it
@@ -47,7 +49,6 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
      */
     public abstract boolean isValid();
 
-
     /**
      * Get the best move between two candidates
      * @param o The other move
@@ -62,10 +63,18 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
         if(this.solutionVersion != s.version){
             throw new AssertionError(String.format("Solution state changed (%s), cannot execute move (%s)", s.version, this.solutionVersion));
         }
-        //s.lastMoves.add(this);
+        assert saveLastMoves(this);
         _execute();
         s.version++;
         // TODO validate es.urjc.etsii.grafo.solution state after each move is applied
+    }
+
+    private boolean saveLastMoves(Move<?,?> move){
+        if(this.s.lastMoves.size()>=MAX_DEBUG_MOVES){
+            this.s.lastMoves.removeFirst();
+        }
+        this.s.lastMoves.add(move);
+        return true;
     }
 
     /**
@@ -85,4 +94,6 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
      * @return the next move in this generator sequence if there is a next move, null otherwise
      */
     public abstract Move<S,I> next();
+
+    public abstract String toString();
 }
