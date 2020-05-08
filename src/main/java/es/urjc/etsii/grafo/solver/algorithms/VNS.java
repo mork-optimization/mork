@@ -29,13 +29,8 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
         this.improvers = Arrays.asList(improvers);
     }
 
-    /**
-     * Algorithm: Execute a single construction and then all the local searchs a single time.
-     * @param ins Instance the algorithm will use
-     * @return Returns a valid solution
-     */
     protected Solution<I> algorithm(I ins){
-        var solution = constructive.construct(ins, builder);
+        S solution = constructive.construct(ins, builder);
         solution = localSearch(solution);
 
         int currentKIndex = 0;
@@ -44,9 +39,10 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
             S copy = solution.cloneSolution();
             shake.iteration(copy, this.ks[currentKIndex]);
             copy = localSearch(copy);
-            if(copy.getBetterSolution(solution) == solution){
+            S bestSolution = copy.getBetterSolution(solution);
+            if(bestSolution == solution){   // No improve
                 currentKIndex++;
-            } else {
+            } else {                        // Improved
                 solution = copy;
                 currentKIndex = 0;
             }
