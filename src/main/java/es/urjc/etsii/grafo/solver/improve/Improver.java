@@ -12,22 +12,12 @@ public interface Improver<S extends Solution<I>,I extends Instance> {
      * @param s model.Solution to improve
      * @return Improved s
      */
-    default S improve(S s, long quantity, TimeUnit time) {
-        long stopTime = System.nanoTime() + time.toNanos(quantity);
-        //int rounds = 0;
-        while (System.nanoTime() < stopTime && iteration(s)){
-            //rounds++;
+    default S improve(S s) {
+        int rounds = 0;
+        while (!s.stop() && iteration(s)){
+            rounds++;
         }
         return s;
-    }
-
-    /**
-     * Improves a Solution "indefinitely", timeouts after 1 Day (timeout may change)
-     * @param s
-     * @return
-     */
-    default S improve(S s){
-        return improve(s, 1, TimeUnit.DAYS);
     }
 
     /**

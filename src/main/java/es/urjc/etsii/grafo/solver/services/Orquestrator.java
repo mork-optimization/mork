@@ -18,16 +18,18 @@ public class Orquestrator implements CommandLineRunner {
 
     private final IOManager io;
     private final AlgorithmsManager algorithmsManager;
-    private final Optional<TimeProvider<?>> timeProvider;
 
     @Value("${solver.repetitions:1}")
     private int repetitions;
 
-    public Orquestrator(IOManager io, AlgorithmsManager algorithmsManager, Optional<TimeProvider<?>> timeProvider) {
+    public Orquestrator(IOManager io, AlgorithmsManager algorithmsManager) {
         this.io = io;
         this.algorithmsManager = algorithmsManager;
-        this.timeProvider = timeProvider;
     }
+
+    // TODO TimeProvider starts a new Thread that changes algorithms stopping conditions
+    // DANGER time should only start counting when the algorithm starts executing not when it is enqueued
+
 
     @Override
     public void run(String... args) {

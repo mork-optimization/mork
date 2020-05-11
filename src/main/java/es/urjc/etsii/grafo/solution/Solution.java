@@ -2,11 +2,9 @@ package es.urjc.etsii.grafo.solution;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.stopping.StopPoint;
 
 import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Queue;
 
 public abstract class Solution<I extends Instance> {
 
@@ -18,6 +16,9 @@ public abstract class Solution<I extends Instance> {
     @JsonIgnore
     private final I ins;
 
+    @JsonIgnore
+    protected final StopPoint stopPoint;
+
     /**
      * Each time a move is executed es.urjc.etsii.grafo.solution version number must be incremented
      */
@@ -27,8 +28,9 @@ public abstract class Solution<I extends Instance> {
 
     private long executionTimeInNanos;
 
-    public Solution(I ins) {
+    public Solution(I ins, StopPoint stopPoint) {
         this.ins = ins;
+        this.stopPoint = stopPoint;
     }
 
     /**
@@ -79,6 +81,10 @@ public abstract class Solution<I extends Instance> {
         return executionTimeInNanos;
     }
 
+    public boolean stop(){
+        return this.stopPoint.stop();
+    }
+
     public static <I extends Instance, S extends Solution<I>> S getBest(Iterable<S> solutions) {
         S best = null;
         for (S solution : solutions) {
@@ -91,4 +97,10 @@ public abstract class Solution<I extends Instance> {
         return best;
     }
 
+    protected void copyInternalData(Solution<I> s){
+        // Only copy lastMoves when debugging
+        assert (this.lastMoves = new ArrayDeque<>(s.lastMoves)) != null;
+        this.version = s.version;
+        this.executionTimeInNanos = s.executionTimeInNanos;
+    }
 }
