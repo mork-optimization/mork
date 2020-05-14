@@ -13,7 +13,7 @@ public class VND {
         while(currentLS < improvers.size()){
             double prev = current.getOptimalValue();
             Improver ls = improvers.get(currentLS);
-            current = ls.improve(current, 10, TimeUnit.MINUTES);
+            current = ls.improve(current);
             if (DoubleComparator.isLessOrEquals(prev, current.getOptimalValue())) {
                 currentLS++;
             } else {

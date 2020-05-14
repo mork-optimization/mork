@@ -44,16 +44,31 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
         this.improvers = Arrays.asList(improvers);    }
 
     protected Solution<I> algorithm(I ins) {
+        S solution;
+        S best = null;
+        do {
+            solution = iteration(ins);
+            if(best == null){
+                best = solution;
+            }
+            best = best.getBetterSolution(solution);
+            //System.out.println(best.getOptimalValue());
+        } while (!best.stop()); // TODO Possible bug, each iteration resets the solution time counter
+        return best;
+    }
+
+    private S iteration(I ins) {
         S solution = constructive.construct(ins, builder);
         solution = localSearch(solution);
 
         int currentKIndex = 0;
         while (currentKIndex < ks.length && !solution.stop()) {
+            //System.out.print(currentKIndex + ","); // TODO remove debug
             printStatus(String.valueOf(currentKIndex), solution);
             S copy = solution.cloneSolution();
             shake.shake(copy, this.ks[currentKIndex], maxK);
             copy = localSearch(copy);
-            S bestSolution = copy.getBetterSolution(solution);
+            S bestSolution = solution.getBetterSolution(copy);
             if (bestSolution == solution) {   // No improve
                 currentKIndex++;
             } else {                        // Improved
@@ -61,7 +76,7 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
                 currentKIndex = 0;
             }
         }
-
+        //System.out.print("---"); // TODO remove debug
         return solution;
     }
 

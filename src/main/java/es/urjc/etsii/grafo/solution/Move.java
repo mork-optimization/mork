@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.solution;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.Comparator;
 
@@ -64,7 +65,12 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
             throw new AssertionError(String.format("Solution state changed (%s), cannot execute move (%s)", s.version, this.solutionVersion));
         }
         assert saveLastMoves(this);
+        double prevScore = s.getOptimalValue();
         _execute();
+        if (!DoubleComparator.equals(prevScore, s.getOptimalValue())) {
+            // Some moves may not affect the optimal score
+            s.lastModifiedTime = System.nanoTime();
+        }
         s.version++;
         // TODO validate es.urjc.etsii.grafo.solution state after each move is applied
     }

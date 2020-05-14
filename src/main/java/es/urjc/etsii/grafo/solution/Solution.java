@@ -28,6 +28,8 @@ public abstract class Solution<I extends Instance> {
 
     private long executionTimeInNanos;
 
+    long lastModifiedTime;
+
     public Solution(I ins, StopPoint stopPoint) {
         this.ins = ins;
         this.stopPoint = stopPoint;
@@ -102,5 +104,10 @@ public abstract class Solution<I extends Instance> {
         assert (this.lastMoves = new ArrayDeque<>(s.lastMoves)) != null;
         this.version = s.version;
         this.executionTimeInNanos = s.executionTimeInNanos;
+        this.lastModifiedTime = s.lastModifiedTime;
+    }
+
+    public long getLastModifiedTime() {
+        return lastModifiedTime;
     }
 }

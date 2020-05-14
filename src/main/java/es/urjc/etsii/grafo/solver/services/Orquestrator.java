@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.solver.services;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.io.Result;
 import es.urjc.etsii.grafo.io.WorkingOnResult;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -36,18 +37,24 @@ public class Orquestrator implements CommandLineRunner {
         log.info("App started, lets rock & roll...");
         log.info("Available algorithms: " + this.algorithmsManager.getAlgorithms());
 
-        List<WorkingOnResult> results = new ArrayList<>();
+        List<Result> results = new ArrayList<>();
         io.getInstances().forEach(instance -> runAlgorithmsForInstance(results, instance));
         // TODO Update results file in disk after each instance is solved, not in the end
         this.io.saveResults(results);
     }
 
-    public void runAlgorithmsForInstance(List<WorkingOnResult> results, Instance i){
+    public void runAlgorithmsForInstance(List<Result> results, Instance i){
         log.info("Running algorithms for instance: " + i.getName());
         for(var alg: this.algorithmsManager.getAlgorithms()){
             log.info("Algorithm: "+ alg);
-            WorkingOnResult r = alg.execute(i, repetitions);
-            results.add(r);
+            try {
+                WorkingOnResult r = alg.execute(i, repetitions);
+                results.add(r.finish());
+            } catch (Exception e){
+                log.severe(String.format("Error while executing instance %s with algorithm %s, skipping: ", i.getName(), alg.toString()));
+                log.severe(e.toString());
+            }
+
         }
     }
 }

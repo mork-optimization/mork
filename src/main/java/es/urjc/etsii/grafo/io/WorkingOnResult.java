@@ -31,17 +31,18 @@ public class WorkingOnResult {
 
     /**
      * Store new result
-     *
-     * @param s     Calculated es.urjc.etsii.grafo.solution
+     *  @param s     Calculated es.urjc.etsii.grafo.solution
      * @param nanos Time used to calculate the given es.urjc.etsii.grafo.solution
+     * @param timeToTarget
      */
-    public void addSolution(Solution s, long nanos) {
+    public void addSolution(Solution<? extends Instance> s, long nanos, long timeToTarget) {
         if(this.best == null){
             this.best = s;
         }
         this.best = best.getBetterSolution(s);
+        // TODO workingOnSolution vs finishedSolution
         s.setExecutionTimeInNanos(nanos);
-        this.solutions.add(new SolutionData(s.getOptimalValue(), nanos));
+        this.solutions.add(new SolutionData(s.getOptimalValue(), nanos, timeToTarget));
         if (instance == null) {
             instance = s.getInstance();
         } else if (instance != s.getInstance()) {
@@ -52,7 +53,7 @@ public class WorkingOnResult {
     public long getAverageExecTime() {
         long totalTime = 0;
         for (var solution : this.solutions) {
-            totalTime += solution.getNanos();
+            totalTime += solution.getExecutionTimeInNanos();
         }
         return totalTime / this.solutions.size() / 1_000_000; // 1 millisecond = 10^6 nanos
     }
@@ -73,7 +74,7 @@ public class WorkingOnResult {
     public long getTotalTime() {
         long totalTime = 0;
         for (var solution : solutions) {
-            totalTime += solution.getNanos();
+            totalTime += solution.getExecutionTimeInNanos();
         }
         return totalTime / 1_000_000;
     }
@@ -135,19 +136,25 @@ public class WorkingOnResult {
      */
     private class SolutionData {
         private final double value;
-        private final long nanos;
+        private final long executionTimeInNanos;
+        private final long timeToTargetInNanos;
 
-        public SolutionData(double value, long nanos) {
+        public SolutionData(double value, long executionTimeInNanos, long timeToTargetInNanos) {
             this.value = value;
-            this.nanos = nanos;
+            this.executionTimeInNanos = executionTimeInNanos;
+            this.timeToTargetInNanos = timeToTargetInNanos;
         }
 
         public double getValue() {
             return value;
         }
 
-        public long getNanos() {
-            return nanos;
+        public long getExecutionTimeInNanos() {
+            return executionTimeInNanos;
+        }
+
+        public long getTimeToTargetInNanos() {
+            return timeToTargetInNanos;
         }
     }
 }

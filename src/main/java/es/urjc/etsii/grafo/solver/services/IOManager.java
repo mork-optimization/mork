@@ -9,10 +9,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
+import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.logging.Logger;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
 @Service
@@ -56,15 +56,15 @@ public class IOManager {
             createIfNotExists(this.solutionsTemp);
             createIfNotExists(this.instanceCache);
 
-            return Files.walk(Path.of(this.instanceIn)).filter(Files::isRegularFile).sorted().map(this::tryGetFromCache);
+            return Files.walk(Path.of(this.instanceIn)).filter(Files::isRegularFile).sorted(Comparator.comparing(f -> f.toFile().getName().toLowerCase())).map(this::tryGetFromCache);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void saveResults(List<WorkingOnResult> result){
+    public void saveResults(List<Result> result){
         Path p = Path.of(this.solutionsOut, this.getFormattedDate() + ".csv");
-        this.csvSerializer.saveResult(result.stream().map(WorkingOnResult::finish).collect(Collectors.toList()), p);
+        this.csvSerializer.saveResult(result, p);
     }
 
     private Instance tryGetFromCache(Path p){

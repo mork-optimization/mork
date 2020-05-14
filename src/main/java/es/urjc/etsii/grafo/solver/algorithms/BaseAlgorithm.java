@@ -24,9 +24,11 @@ public abstract class BaseAlgorithm<S extends Solution<I>, I extends Instance> i
         for (int i = 0; i < repetitions; i++) {
             long startTime = System.nanoTime();
             Solution<I> s = algorithm(ins);
-            long ellapsedTime = System.nanoTime() - startTime;
-            System.out.format("\t%s.\tTime: %.3f (s) \t%s -- \n", i+1, ellapsedTime / 1000_000_000D, s);
-            result.addSolution(s, ellapsedTime);
+            long currentTime = System.nanoTime();
+            long ellapsedTime = currentTime - startTime;
+            long timeToTarget = s.getLastModifiedTime() - startTime;
+            System.out.format("\t%s.\tTime: %.3f (s) \tTTT: %.3f (s) \t%s -- \n", i+1, ellapsedTime / 1000_000_000D, timeToTarget / 1000_000_000D, s);
+            result.addSolution(s, ellapsedTime, timeToTarget);
         }
 
         return result;
