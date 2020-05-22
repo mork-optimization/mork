@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.WorkingOnResult;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
+import es.urjc.etsii.grafo.util.RandomManager;
 
 public abstract class BaseAlgorithm<S extends Solution<I>, I extends Instance> implements Algorithm<S,I> {
 
@@ -20,6 +21,8 @@ public abstract class BaseAlgorithm<S extends Solution<I>, I extends Instance> i
      * @return Result of the execution
      */
     public WorkingOnResult execute(I ins, int repetitions) {
+        // Reset random state before each algorithm/instance pair execution
+        RandomManager.reset();
         WorkingOnResult result = new WorkingOnResult(repetitions, this.toString(), ins.getName());
         for (int i = 0; i < repetitions; i++) {
             long startTime = System.nanoTime();

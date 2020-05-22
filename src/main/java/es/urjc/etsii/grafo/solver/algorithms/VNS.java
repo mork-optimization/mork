@@ -8,6 +8,7 @@ import es.urjc.etsii.grafo.solver.destructor.Shake;
 import es.urjc.etsii.grafo.solver.improve.Improver;
 
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -20,6 +21,22 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
     private final List<Shake<S, I>> shakes;
     private final int[] ks;
     private final int maxK;
+
+
+
+    /**
+     * Execute VNS until finished
+     * @param ks Integer array that will be used for the shake/perturbation
+     * @param builder How to build a Solution from the given Instance
+     * @param shake Perturbation method
+     * @param constructive Constructive method
+     * @param improvers List of improvers/local searches
+     */
+    @SafeVarargs
+    public VNS(int[] ks, SolutionBuilder<S, I> builder, Shake<S, I> shake, Constructive<S, I> constructive, Improver<S, I>... improvers) {
+        this(ks, builder, Collections.singletonList(shake), constructive, improvers);
+    }
+
 
     /**
      * Execute VNS until finished
@@ -41,7 +58,8 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
         this.maxK = ks[ks.length - 1];
         this.shakes = shakes;
         this.constructive = constructive;
-        this.improvers = Arrays.asList(improvers);    }
+        this.improvers = Arrays.asList(improvers);
+    }
 
     protected Solution<I> algorithm(I ins) {
         S solution;
