@@ -13,11 +13,11 @@ import java.util.logging.Logger;
 
 public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorithm<S, I> {
 
-    private static Logger log = Logger.getLogger(VNS.class.getName());
+    private static final Logger log = Logger.getLogger(VNS.class.getName());
 
     List<Improver<S, I>> improvers;
     Constructive<S, I> constructive;
-    private final Shake<S, I> shake;
+    private final List<Shake<S, I>> shakes;
     private final int[] ks;
     private final int maxK;
 
@@ -25,12 +25,12 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
      * Execute VNS until finished
      * @param ks Integer array that will be used for the shake/perturbation
      * @param builder How to build a Solution from the given Instance
-     * @param shake Perturbation method
+     * @param shakes Perturbation method
      * @param constructive Constructive method
      * @param improvers List of improvers/local searches
      */
     @SafeVarargs
-    public VNS(int[] ks, SolutionBuilder<S, I> builder, Shake<S, I> shake, Constructive<S, I> constructive, Improver<S, I>... improvers) {
+    public VNS(int[] ks, SolutionBuilder<S, I> builder, List<Shake<S, I>> shakes, Constructive<S, I> constructive, Improver<S, I>... improvers) {
         super(builder);
         if (ks == null || ks.length == 0) {
             throw new IllegalArgumentException("Invalid Ks array, must have at least one element");
@@ -39,7 +39,7 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
         // Ensure Ks are sorted, maxK is the last element
         Arrays.sort(ks);
         this.maxK = ks[ks.length - 1];
-        this.shake = shake;
+        this.shakes = shakes;
         this.constructive = constructive;
         this.improvers = Arrays.asList(improvers);    }
 
@@ -63,20 +63,22 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
 
         int currentKIndex = 0;
         while (currentKIndex < ks.length && !solution.stop()) {
-            //System.out.print(currentKIndex + ","); // TODO remove debug
             printStatus(String.valueOf(currentKIndex), solution);
-            S copy = solution.cloneSolution();
-            shake.shake(copy, this.ks[currentKIndex], maxK);
-            copy = localSearch(copy);
-            S bestSolution = solution.getBetterSolution(copy);
-            if (bestSolution == solution) {   // No improve
+            S bestSolution = solution;
+            for(var shake: shakes){
+                S copy = bestSolution.cloneSolution();
+                shake.shake(copy, this.ks[currentKIndex], maxK);
+                copy = localSearch(copy);
+                //System.out.print(copy.getOptimalValue()+",");
+                bestSolution = bestSolution.getBetterSolution(copy);
+            }
+            if (bestSolution == solution) {
                 currentKIndex++;
-            } else {                        // Improved
-                solution = copy;
+            } else {
+                solution = bestSolution;
                 currentKIndex = 0;
             }
         }
-        //System.out.print("---"); // TODO remove debug
         return solution;
     }
 
@@ -96,7 +98,7 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
         return "VNS{" +
                 "improvers=" + improvers +
                 ", constructive=" + constructive +
-                ", shake=" + shake +
+                ", shakes=" + shakes +
                 ", ks=" + Arrays.toString(ks) +
                 '}';
     }

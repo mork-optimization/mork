@@ -9,13 +9,18 @@ import es.urjc.etsii.grafo.util.RandomManager;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.Random;
+import java.util.logging.Logger;
 
 public class RandomMoveShake<S extends Solution<I>, I extends Instance> implements Shake<S,I> {
 
+    private static final Logger log = Logger.getLogger(RandomMoveShake.class.getName());
+
     Neighborhood<S,I>[] neighborhoods;
+    private int ratio;
 
     @SafeVarargs
-    public RandomMoveShake(Neighborhood<S,I>... neighborhoods) {
+    public RandomMoveShake(int ratio, Neighborhood<S,I>... neighborhoods) {
+        this.ratio = ratio;
         if(neighborhoods.length == 0){
             throw new IllegalArgumentException("Use at least one MoveProvider");
         }
@@ -30,8 +35,8 @@ public class RandomMoveShake<S extends Solution<I>, I extends Instance> implemen
     public void shake(S s, int k, int maxK) {
         Random random = RandomManager.getRandom();
 
-        // Execute k random moves in different neighbourhoods
-        for (int i = 0; i < k; i++) {
+        // Execute k*RATIO random moves in different neighbourhoods
+        for (int i = 0; i < k*ratio; i++) {
             int chosenNeigh = random.nextInt(neighborhoods.length);
             int copy = chosenNeigh;
             Optional<? extends Move<S,I>> move;
@@ -47,7 +52,7 @@ public class RandomMoveShake<S extends Solution<I>, I extends Instance> implemen
                 // TODO change the way validation is triggered
                 s.getOptimalValue(); // Trigger validation
             } else {
-                System.out.println("WARNING: No move available in any of the given providers, ending Destruction phase now");
+                log.warning("No move available in any of the given providers, ending Destruction phase now");
                 break;
             }
         }

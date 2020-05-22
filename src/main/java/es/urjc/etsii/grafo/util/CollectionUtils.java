@@ -1,9 +1,6 @@
 package es.urjc.etsii.grafo.util;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.RandomAccess;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Stream;
 
 /**
@@ -80,5 +77,10 @@ public class CollectionUtils {
         }
 
         throw new IllegalStateException("Never going to execute, but compiler does not think so, lets see");
+    }
+
+    public static <T> T pickRandom(ArrayList<T> list){
+        var random = RandomManager.getRandom();
+        return list.get(random.nextInt(list.size()));
     }
 }
