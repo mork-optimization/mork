@@ -1,6 +1,8 @@
 package es.urjc.etsii.grafo.solver.services;
 
 import es.urjc.etsii.grafo.io.*;
+import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -12,6 +14,7 @@ import java.text.SimpleDateFormat;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -41,11 +44,13 @@ public class IOManager {
     private final JsonSerializer jsonSerializer;
     private final CSVSerializer csvSerializer;
     private final DataImporter<?> dataImporter;
+    private Optional<SolutionExporter<?, ?>> solutionExporter;
 
-    public IOManager(JsonSerializer jsonSerializer, CSVSerializer csvSerializer, DataImporter<?> dataImporter) {
+    public IOManager(JsonSerializer jsonSerializer, CSVSerializer csvSerializer, DataImporter<?> dataImporter, Optional<SolutionExporter<?,?>> solutionExporter) {
         this.jsonSerializer = jsonSerializer;
         this.csvSerializer = csvSerializer;
         this.dataImporter = dataImporter;
+        this.solutionExporter = solutionExporter;
     }
 
     public Stream<? extends Instance> getInstances(){
@@ -86,6 +91,18 @@ public class IOManager {
 
     private String getFormattedDate(){
         return new SimpleDateFormat(dateformatPattern).format(new Date());
+    }
+
+    // TODO call method
+    private <S extends Solution<I>, I extends Instance> void exportSolution(Algorithm<S,I> alg, S s){
+        if(this.solutionExporter.isEmpty()){
+            log.fine("Skipping solution export, no implementation of SolutionExporter found");
+            return;
+        }
+        String filename = s.getInstance().getName() + "__" + alg.getShortName();
+        File f = new File(solutionsOut, filename);
+        SolutionExporter<S,I> exporter = (SolutionExporter<S, I>) solutionExporter.get();
+        exporter.export(f, s);
     }
 
     //    private Instance tryGetFromCache(Path p){

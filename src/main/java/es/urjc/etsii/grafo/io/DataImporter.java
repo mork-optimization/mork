@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.io;
 
-import org.springframework.stereotype.Component;
+import es.urjc.etsii.grafo.solver.services.InheritedComponent;
 
 import java.io.File;
 
-@Component
-public interface DataImporter<T extends Instance> {
+@InheritedComponent
+public abstract class DataImporter<T extends Instance> {
 
     /**
      * Create an instance from the format used by the problem.
@@ -13,5 +13,5 @@ public interface DataImporter<T extends Instance> {
      * @param f File from where we will load the data
      * @return The instance object that represents this object
      */
-    T importInstance(File f);
+    public abstract T importInstance(File f);
 }
