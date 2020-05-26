@@ -18,5 +18,5 @@ public interface Shake<S extends Solution<I>, I extends Instance> {
      * @param currentK Current shake strength
      * @param maxK Max strength
      */
-    void shake(S s, int currentK, int maxK);
+    S shake(S s, int currentK, int maxK, boolean inPlace);
 }

@@ -11,7 +11,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.logging.Logger;
 
-public class RandomMoveShake<S extends Solution<I>, I extends Instance> implements Shake<S,I> {
+public abstract class RandomMoveShake<S extends Solution<I>, I extends Instance> implements Shake<S,I> {
 
     private static final Logger log = Logger.getLogger(RandomMoveShake.class.getName());
 
@@ -32,7 +32,10 @@ public class RandomMoveShake<S extends Solution<I>, I extends Instance> implemen
      * @param s Solution to shake
      * @param k Number of movements to apply, maxK is not used in this implementation
      */
-    public void shake(S s, int k, int maxK) {
+    public S shake(S s, int k, int maxK, boolean inPlace) {
+        if(!inPlace){
+            s = s.cloneSolution();
+        }
         Random random = RandomManager.getRandom();
 
         // Execute k*RATIO random moves in different neighbourhoods
@@ -49,13 +52,14 @@ public class RandomMoveShake<S extends Solution<I>, I extends Instance> implemen
             } while (chosenNeigh % neighborhoods.length != copy);
             if(move.isPresent()){
                 move.get().execute();
-                // TODO change the way validation is triggered
-                s.getOptimalValue(); // Trigger validation
+                // TODO proper solution validation
             } else {
                 log.warning("No move available in any of the given providers, ending Destruction phase now");
                 break;
             }
         }
+        repairSolution(s);
+        return s;
     }
 
     @Override
@@ -64,4 +68,11 @@ public class RandomMoveShake<S extends Solution<I>, I extends Instance> implemen
                 "neighborhoods=" + Arrays.toString(this.neighborhoods) +
                 '}';
     }
+
+    /**
+     * Repairs a solution after applying a set of random movements
+     * If the solution does not need to be repaired, this method should be empty
+     * @param s Solution to repair
+     */
+    protected abstract void repairSolution(S s);
 }

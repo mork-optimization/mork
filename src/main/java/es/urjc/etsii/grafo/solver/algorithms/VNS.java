@@ -85,7 +85,7 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
             S bestSolution = solution;
             for(var shake: shakes){
                 S copy = bestSolution.cloneSolution();
-                shake.shake(copy, this.ks[currentKIndex], maxK);
+                shake.shake(copy, this.ks[currentKIndex], maxK, true);
                 copy = localSearch(copy);
                 //System.out.print(copy.getOptimalValue()+",");
                 bestSolution = bestSolution.getBetterSolution(copy);
