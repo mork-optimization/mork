@@ -6,6 +6,14 @@ package es.urjc.etsii.grafo.solution.stopping;
 public class DummyStop implements StopPoint {
 
     /**
+     * Do nothing
+     */
+    @Override
+    public void start() {
+
+    }
+
+    /**
      * Always false
      * @return false
      */

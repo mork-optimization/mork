@@ -39,7 +39,7 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
     }
 
     public SimpleAlgorithm(SolutionBuilder<S,I> builder, Constructive<S, I> constructive){
-        this(builder, constructive, null);
+        this(builder, constructive, (Improver<S, I>) null);
     }
 
     @SafeVarargs
