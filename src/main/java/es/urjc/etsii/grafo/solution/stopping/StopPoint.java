@@ -12,6 +12,13 @@ public interface StopPoint {
     void start();
 
     /**
+     * Check if a StopPoint has already been started (to avoid initializing it twice)
+     * @return true if the StopPoint has already been initialized, false otherwise
+     */
+    boolean isStarted();
+
+
+    /**
      * Check if we should stop working on the current solution
      * @return true if we should stop working on the current solution, false otherwise
      */

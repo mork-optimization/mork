@@ -42,7 +42,9 @@ public abstract class Solution<I extends Instance> {
     public Solution(I ins, StopPoint stopPoint) {
         this.ins = ins;
         this.stopPoint = stopPoint;
-        this.stopPoint.start();
+        if(!stopPoint.isStarted()){
+            this.stopPoint.start();
+        }
     }
 
     /**

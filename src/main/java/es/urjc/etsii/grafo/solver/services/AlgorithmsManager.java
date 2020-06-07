@@ -17,7 +17,9 @@ public class AlgorithmsManager<S extends Solution<I>, I extends Instance> {
 
     private final List<Algorithm<S,I>> allAlgorithms = new ArrayList<>();
 
-    public AlgorithmsManager() {}
+    public AlgorithmsManager(AbstractExperimentSetup<S,I> experimentSetup) {
+        allAlgorithms.addAll(experimentSetup.getAlgorithms());
+    }
 
     public List<Algorithm<S,I>> getAlgorithms(){
         return Collections.unmodifiableList(this.allAlgorithms);

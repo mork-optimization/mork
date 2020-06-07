@@ -32,7 +32,7 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
         } else {
             this.nWorkers = nWorkers;
         }
-        this.executor = Executors.newFixedThreadPool(nWorkers);
+        this.executor = Executors.newFixedThreadPool(this.nWorkers);
     }
 
     @Override

@@ -28,6 +28,11 @@ public class TimeBasedStop implements StopPoint{
     }
 
     @Override
+    public boolean isStarted() {
+        return startTime != 0;
+    }
+
+    @Override
     public boolean stop() {
         return System.nanoTime() > endTime;
     }

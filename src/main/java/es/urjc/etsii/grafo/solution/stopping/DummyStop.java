@@ -9,8 +9,11 @@ public class DummyStop implements StopPoint {
      * Do nothing
      */
     @Override
-    public void start() {
+    public void start() {}
 
+    @Override
+    public boolean isStarted() {
+        return true;
     }
 
     /**
