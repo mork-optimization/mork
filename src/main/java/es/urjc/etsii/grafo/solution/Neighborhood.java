@@ -18,12 +18,6 @@ public abstract class Neighborhood<S extends Solution<I>, I extends Instance> {
      */
     public abstract Stream<Move<S,I>> stream(S s);
 
-    /**
-     * Pick a random move within the neighborhood
-     * @return a random move, if there is at least one valid move
-     */
-    public abstract Optional<? extends Move<S,I>> getRandomMove(S s);
-
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "{}";

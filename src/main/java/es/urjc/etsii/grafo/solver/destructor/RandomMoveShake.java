@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.solver.destructor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Neighborhood;
+import es.urjc.etsii.grafo.solution.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.RandomManager;
 
@@ -15,11 +16,11 @@ public abstract class RandomMoveShake<S extends Solution<I>, I extends Instance>
 
     private static final Logger log = Logger.getLogger(RandomMoveShake.class.getName());
 
-    Neighborhood<S,I>[] neighborhoods;
+    RandomizableNeighborhood<S,I>[] neighborhoods;
     private int ratio;
 
     @SafeVarargs
-    public RandomMoveShake(int ratio, Neighborhood<S,I>... neighborhoods) {
+    public RandomMoveShake(int ratio, RandomizableNeighborhood<S,I>... neighborhoods) {
         this.ratio = ratio;
         if(neighborhoods.length == 0){
             throw new IllegalArgumentException("Use at least one MoveProvider");

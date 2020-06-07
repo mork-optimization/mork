@@ -64,8 +64,7 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S,I>, S exten
     public void beforeGRASP(S s){ }
 
     @Override
-    public S construct(I i, SolutionBuilder<S,I> builder) {
-        S sol = builder.initializeSolution(i);
+    public S construct(S sol) {
         this.beforeGRASP(sol);
         return assignMissing(sol);
     }

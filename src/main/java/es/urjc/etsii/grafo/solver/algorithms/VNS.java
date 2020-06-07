@@ -12,7 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
-public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorithm<S, I> {
+public class VNS<S extends Solution<I>, I extends Instance> implements Algorithm<S, I> {
 
     private static final Logger log = Logger.getLogger(VNS.class.getName());
 
@@ -22,33 +22,28 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
     private final int[] ks;
     private final int maxK;
 
-
-
     /**
      * Execute VNS until finished
      * @param ks Integer array that will be used for the shake/perturbation
-     * @param builder How to build a Solution from the given Instance
      * @param shake Perturbation method
      * @param constructive Constructive method
      * @param improvers List of improvers/local searches
      */
     @SafeVarargs
-    public VNS(int[] ks, SolutionBuilder<S, I> builder, Shake<S, I> shake, Constructive<S, I> constructive, Improver<S, I>... improvers) {
-        this(ks, builder, Collections.singletonList(shake), constructive, improvers);
+    public VNS(int[] ks, Shake<S, I> shake, Constructive<S, I> constructive, Improver<S, I>... improvers) {
+        this(ks, Collections.singletonList(shake), constructive, improvers);
     }
 
 
     /**
      * Execute VNS until finished
      * @param ks Integer array that will be used for the shake/perturbation
-     * @param builder How to build a Solution from the given Instance
      * @param shakes Perturbation method
      * @param constructive Constructive method
      * @param improvers List of improvers/local searches
      */
     @SafeVarargs
-    public VNS(int[] ks, SolutionBuilder<S, I> builder, List<Shake<S, I>> shakes, Constructive<S, I> constructive, Improver<S, I>... improvers) {
-        super(builder);
+    public VNS(int[] ks, List<Shake<S, I>> shakes, Constructive<S, I> constructive, Improver<S, I>... improvers) {
         if (ks == null || ks.length == 0) {
             throw new IllegalArgumentException("Invalid Ks array, must have at least one element");
         }
@@ -61,11 +56,12 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
         this.improvers = Arrays.asList(improvers);
     }
 
-    protected Solution<I> algorithm(I ins) {
+    public S algorithm(I ins, SolutionBuilder<S,I> builder) {
         S solution;
         S best = null;
         do {
-            solution = iteration(ins);
+            solution = builder.initializeSolution(ins);
+            solution = iteration(solution);
             if(best == null){
                 best = solution;
             }
@@ -75,8 +71,8 @@ public class VNS<S extends Solution<I>, I extends Instance> extends BaseAlgorith
         return best;
     }
 
-    private S iteration(I ins) {
-        S solution = constructive.construct(ins, builder);
+    private S iteration(S s) {
+        S solution = constructive.construct(s);
         solution = localSearch(solution);
 
         int currentKIndex = 0;

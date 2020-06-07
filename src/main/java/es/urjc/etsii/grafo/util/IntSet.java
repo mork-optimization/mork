@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.util;
 import java.util.AbstractSet;
 import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Set;
 
 /**
  * Fast integer set implementation compatible with Java Collections API.
@@ -33,6 +34,10 @@ public class IntSet extends AbstractSet<Integer> {
     public IntSet(IntSet set) {
         this.data = Arrays.copyOf(set.data, set.data.length);
         this.size = set.size;
+    }
+
+    public IntSet(Set<Integer> set){
+        this((IntSet) set); // TODO assumes it is an intset, should be able to accept HashSets
     }
 
     @Override

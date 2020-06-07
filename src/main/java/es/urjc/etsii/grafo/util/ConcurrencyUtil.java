@@ -2,7 +2,9 @@ package es.urjc.etsii.grafo.util;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.*;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -56,6 +58,22 @@ public class ConcurrencyUtil {
             return f.get();
         } catch (InterruptedException | ExecutionException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * Block until the task is completed.
+     * Handles the exception with the given handler
+     * @param f Future we will wait for
+     * @return Result of the task
+     * @throws RuntimeException in case any error happened during the execution
+     */
+    public static <T> Optional<T> await(Future<T> f, Consumer<Exception> exceptionHandler){
+        try {
+            return Optional.of(f.get());
+        } catch (InterruptedException | ExecutionException e) {
+            exceptionHandler.accept(e);
+            return Optional.empty();
         }
     }
 

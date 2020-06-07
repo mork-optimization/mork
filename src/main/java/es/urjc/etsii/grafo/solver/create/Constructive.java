@@ -7,10 +7,10 @@ public abstract class Constructive<S extends Solution<I>, I extends Instance> {
 
     /**
      * Initialize a es.urjc.etsii.grafo.solution using any of the available strategies
-     * @param builder Specify how a es.urjc.etsii.grafo.solution is initialized from an instance
+     * @param s Specify how a es.urjc.etsii.grafo.solution is initialized from an instance
      * @return A valid es.urjc.etsii.grafo.solution that fulfills all the problem constraints
      */
-    public abstract S construct(I i, SolutionBuilder<S,I> builder);
+    public abstract S construct(S s);
 
     @Override
     public String toString() {

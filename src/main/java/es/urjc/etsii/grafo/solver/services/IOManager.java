@@ -39,6 +39,9 @@ public class IOManager {
     @Value("${solutions.dateformat}")
     String dateformatPattern;
 
+    @Value("${errors.path}")
+    String errorFolder;
+
     // Results CSV --> date to string
     // Solution file --> instance_algoritm
     private final JsonSerializer jsonSerializer;

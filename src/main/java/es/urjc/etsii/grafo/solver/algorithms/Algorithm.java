@@ -1,14 +1,12 @@
 package es.urjc.etsii.grafo.solver.algorithms;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.io.WorkingOnResult;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.InheritedComponent;
 
 @InheritedComponent
 public interface Algorithm<S extends Solution<I>, I extends Instance> {
-
-    WorkingOnResult execute(I ins, int repetitions);
 
     /**
      * Current algorithm short name, must be unique per execution
@@ -17,4 +15,12 @@ public interface Algorithm<S extends Solution<I>, I extends Instance> {
     default String getShortName(){
         return this.toString().replaceAll("[\\s{}\\[\\]-_=?+&^%$#@!]", "");
     }
+
+    /**
+     * Runs the algorithm over the empty but initialized solution
+     * @param i Instance
+     * @return Built solution
+     */
+    S algorithm(I instance, SolutionBuilder<S,I> builder);
+
 }

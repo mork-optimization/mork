@@ -20,7 +20,7 @@ import java.util.logging.Logger;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends BaseAlgorithm<S,I>{
+public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> implements Algorithm<S,I>{
 
     private static Logger log = Logger.getLogger(SimpleAlgorithm.class.getName());
 
@@ -29,8 +29,7 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
     Shake<S, I> shake;
 
     @SafeVarargs
-    public SimpleAlgorithm(SolutionBuilder<S,I> builder, Constructive<S, I> constructive, Shake<S,I> shake, Improver<S,I>... improvers){
-        super(builder);
+    public SimpleAlgorithm(Constructive<S, I> constructive, Shake<S,I> shake, Improver<S,I>... improvers){
         this.constructive = constructive;
         this.shake = shake;
         if(improvers != null && improvers.length >= 1){
@@ -38,22 +37,24 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
         }
     }
 
-    public SimpleAlgorithm(SolutionBuilder<S,I> builder, Constructive<S, I> constructive){
-        this(builder, constructive, (Improver<S, I>) null);
+    public SimpleAlgorithm(Constructive<S, I> constructive){
+        this(constructive, (Improver<S, I>) null);
     }
 
     @SafeVarargs
-    public SimpleAlgorithm(SolutionBuilder<S,I> builder, Constructive<S, I> constructive, Improver<S,I>... improvers){
-        this(builder, constructive, null, improvers);
+    public SimpleAlgorithm(Constructive<S, I> constructive, Improver<S,I>... improvers){
+        this(constructive, null, improvers);
     }
 
     /**
      * Algorithm: Execute a single construction and then all the local searchs a single time.
-     * @param ins Instance the algorithm will use
+     * @param instance Instance the algorithm will use
      * @return Returns a valid solution
      */
-    protected Solution<I> algorithm(I ins){
-        var solution = constructive.construct(ins, builder);
+    @Override
+    public S algorithm(I instance, SolutionBuilder<S,I> builder) {
+        var solution = builder.initializeSolution(instance);
+        solution = constructive.construct(solution);
         printStatus("Constructive", solution);
         solution = localSearch(solution);
 

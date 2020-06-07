@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.solver.create;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.ConstructiveNeighborhood;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 
 import java.util.Optional;
@@ -14,18 +15,18 @@ import java.util.Optional;
  */
 public class RandomConstructive<S extends Solution<I>, I extends Instance> extends Constructive<S, I> {
 
-    private ConstructiveNeighborhood<S,I> neighborhood;
+    private RandomizableNeighborhood<S,I> neighborhood;
 
-    public RandomConstructive(ConstructiveNeighborhood<S,I> neighborhood) {
+    public RandomConstructive(RandomizableNeighborhood<S, I> neighborhood) {
         this.neighborhood = neighborhood;
     }
 
     @Override
-    public S construct(I i, SolutionBuilder<S,I> builder) {
-        return exhaustNeighborhood(builder.initializeSolution(i), neighborhood);
+    public S construct(S solution) {
+        return exhaustNeighborhood(solution, neighborhood);
     }
 
-    private S exhaustNeighborhood(S s, ConstructiveNeighborhood<S,I> neighborhood) {
+    private S exhaustNeighborhood(S s, RandomizableNeighborhood<S,I> neighborhood) {
         Optional<? extends Move<S,I>> move;
         while((move = neighborhood.getRandomMove(s)).isPresent()){
             move.get().execute();
