@@ -25,14 +25,16 @@ public class SequentialExecutor<S extends Solution<I>, I extends Instance> exten
         for(var algorithm: list){
             try {
                 logger.info("Algorithm: "+ algorithm);
-                var workingOnResult = new WorkingOnResult(repetitions, algorithm.getShortName(), ins.getName());
+                var workingOnResult = new WorkingOnResult(repetitions, algorithm.toString(), ins.getName());
                 for (int i = 0; i < repetitions; i++) {
                     RandomManager.reset(i);
                     long starTime = System.nanoTime();
                     var solution = algorithm.algorithm(ins, solutionBuilder);
                     long endTime = System.nanoTime();
                     long timeToTarget = solution.getLastModifiedTime() - starTime;
-                    workingOnResult.addSolution(solution, endTime - starTime, timeToTarget);
+                    long ellapsedTime = endTime - starTime;
+                    System.out.format("\t%s.\tTime: %.3f (s) \tTTT: %.3f (s) \t%s -- \n", i+1, ellapsedTime / 1000_000_000D, timeToTarget / 1000_000_000D, solution);
+                    workingOnResult.addSolution(solution, ellapsedTime, timeToTarget);
                 }
                 results.add(workingOnResult.finish());
             } catch (Exception e){
@@ -41,5 +43,10 @@ public class SequentialExecutor<S extends Solution<I>, I extends Instance> exten
         }
         //logger.info("Tasks submited, awaiting termination for instance: "+ins.getName());
         return results;
+    }
+
+    @Override
+    public void shutdown() {
+        logger.info("Shutting down executor");
     }
 }

@@ -37,12 +37,13 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
 
     @Override
     public Collection<Result> execute(I ins, int repetitions, List<Algorithm<S,I>> list, SolutionBuilder<S,I> solutionBuilder, ExceptionHandler<S,I> exceptionHandler) {
-        var futures = new ArrayList<Future<Object>>();
+
         Map<Algorithm<S, I>, WorkingOnResult> resultsMap = new ConcurrentHashMap<>();
 
         logger.info("Submitting tasks for instance: "+ins.getName());
         for(var algorithm: list){
-            resultsMap.put(algorithm, new WorkingOnResult(repetitions, algorithm.getShortName(), ins.getName()));
+            var futures = new ArrayList<Future<Object>>();
+            resultsMap.put(algorithm, new WorkingOnResult(repetitions, algorithm.toString(), ins.getName()));
             for (int i = 0; i < repetitions; i++) {
                 int _i = i;
                 futures.add(executor.submit(() -> {
@@ -52,18 +53,26 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
                         var solution = algorithm.algorithm(ins, solutionBuilder);
                         long endTime = System.nanoTime();
                         long timeToTarget = solution.getLastModifiedTime() - starTime;
-                        resultsMap.get(algorithm).addSolution(solution, endTime-starTime, timeToTarget);
+                        long ellapsedTime = endTime - starTime;
+                        resultsMap.get(algorithm).addSolution(solution, ellapsedTime, timeToTarget);
+                        System.out.format("\t%s.\tTime: %.3f (s) \tTTT: %.3f (s) \t%s -- \n", _i+1, ellapsedTime / 1000_000_000D, timeToTarget / 1000_000_000D, solution);
+
                     } catch (Exception e){
                         exceptionHandler.handleException(e, ins, algorithm);
                     }
                     return null;
                 }));
             }
+            logger.info(String.format("Waiting for combo instance %s, algorithm %s ",ins.getName(), algorithm.toString()));
+            ConcurrencyUtil.awaitAll(futures);
         }
 
-        logger.info("Tasks submited, awaiting termination for instance: "+ins.getName());
-        ConcurrencyUtil.awaitAll(futures);
-
         return resultsMap.values().stream().map(WorkingOnResult::finish).collect(Collectors.toList());
+    }
+
+    @Override
+    public void shutdown() {
+        logger.info("Shutting down executor");
+        this.executor.shutdown();
     }
 }

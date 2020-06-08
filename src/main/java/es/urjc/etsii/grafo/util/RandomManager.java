@@ -4,7 +4,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.Random;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.logging.Logger;
 
 /**
@@ -16,9 +15,8 @@ public final class RandomManager {
     private static final Logger logger = Logger.getLogger(RandomManager.class.getName());
 
     // If the RandomManager is called before Spring starts, static methods will throw a NPE.
-    private static AtomicInteger seed;
     private static ThreadLocal<Random> localRandom;
-    private static ThreadLocal<Integer> initialSeed;
+    private static int initialSeed;
 
     public static Random getRandom(){
         return localRandom.get();
@@ -30,13 +28,10 @@ public final class RandomManager {
 
     // a bit hacky but uses constructor instead of static initializer for Spring compatibility
     protected RandomManager(@Value("${seed}") int seed){
-        RandomManager.seed = new AtomicInteger(seed);
-        logger.info("Using initial seed = " + seed);
+        initialSeed = seed;
+        logger.info("Using initial seed = " + initialSeed);
         localRandom = ThreadLocal.withInitial(() -> {
-            int chosenSed = RandomManager.seed.getAndIncrement();
-            var r = new Random(chosenSed);
-            initialSeed = new ThreadLocal<>();
-            initialSeed.set(chosenSed);
+            var r = new Random(initialSeed);
             return r;
         });
     }
@@ -46,7 +41,7 @@ public final class RandomManager {
      * each thread is responsible of resetting their random state when appropriate
      */
     public static void reset(){
-        RandomManager.localRandom.get().setSeed(initialSeed.get());
+        RandomManager.localRandom.get().setSeed(initialSeed);
     }
 
     /**
@@ -54,7 +49,7 @@ public final class RandomManager {
      * each thread is responsible of resetting their random state when appropriate
      */
     public static void reset(int iteration){
-        RandomManager.localRandom.get().setSeed(initialSeed.get()+iteration);
+        RandomManager.localRandom.get().setSeed(initialSeed+iteration);
     }
 }
 

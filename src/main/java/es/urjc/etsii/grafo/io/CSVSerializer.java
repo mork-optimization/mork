@@ -33,7 +33,7 @@ public class CSVSerializer {
 
         var schema = csvMapper.schemaFor(s.get(0).getClass())
                 .withColumnSeparator(CSV_SEPARATOR)
-                .sortedBy("instanceName", "algorythmName")
+                .sortedBy("instanceName", "algorithmName")
                 .withHeader();
         try(var br = Files.newBufferedWriter(p)){
            var writer =  csvMapper.writer(schema);

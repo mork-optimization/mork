@@ -62,7 +62,9 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         io.getInstances().forEach(instance -> runAlgorithmsForInstance(results, (I) instance));
         // TODO Update results file in disk after each instance is solved, not in the end
         // Resume functionality: Define work units, each workunit reurns what
+        log.info("Saving all results...");
         this.io.saveResults(results);
+        executor.shutdown();
     }
 
 

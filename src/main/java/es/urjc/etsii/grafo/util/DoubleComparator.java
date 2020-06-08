@@ -7,7 +7,8 @@ package es.urjc.etsii.grafo.util;
  */
 public class DoubleComparator {
 
-    public static final double DEFAULT_EPSILON = 0.000_010;
+    // TODO config value
+    public static final double DEFAULT_EPSILON = 0.000_001;
 
     /**
      * Test two doubles for equality, uses default error margin

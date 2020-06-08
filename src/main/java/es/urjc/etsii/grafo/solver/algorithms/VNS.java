@@ -79,9 +79,10 @@ public class VNS<S extends Solution<I>, I extends Instance> implements Algorithm
         while (currentKIndex < ks.length && !solution.stop()) {
             printStatus(String.valueOf(currentKIndex), solution);
             S bestSolution = solution;
+
             for(var shake: shakes){
                 S copy = bestSolution.cloneSolution();
-                shake.shake(copy, this.ks[currentKIndex], maxK, true);
+                copy = shake.shake(copy, this.ks[currentKIndex], maxK, true);
                 copy = localSearch(copy);
                 //System.out.print(copy.getOptimalValue()+",");
                 bestSolution = bestSolution.getBetterSolution(copy);

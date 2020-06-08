@@ -27,4 +27,9 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
      * @return Experiment results for the given instance
      */
     public abstract Collection<Result> execute(I ins, int repetitions, List<Algorithm<S,I>> algorithms, SolutionBuilder<S,I> solutionBuilder,  ExceptionHandler<S,I> exceptionHandler);
+
+    /**
+     * Finalize and destroy all resources, we have finished and are shutting down now.
+     */
+    public abstract void shutdown();
 }
