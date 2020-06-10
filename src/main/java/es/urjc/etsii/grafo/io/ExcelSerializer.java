@@ -51,17 +51,6 @@ public class ExcelSerializer {
 
     }
 
-//    private void chapuza(XSSFSheet pivotSheet, int nInstances, int nAlgorithms) {
-//        int columns = nAlgorithms * __.values().length + 4; // Por si aca +4
-//        int rows = nInstances + 4; // El buen margen de 4
-//        for (int i = 0; i < columns; i++) {
-//            var row = pivotSheet.createRow(i);
-//            for (int j = 0; j < rows; j++) {
-//                row.createCell(j);
-//            }
-//        }
-//    }
-
 
     private AreaReference fillRawSheet(XSSFSheet rawSheet, List<Result> results) {
         // Create headers
@@ -93,18 +82,25 @@ public class ExcelSerializer {
             data[i][__.TOTAL_TIME.getIndex()] = r.getTotalTimeInMs();
         }
 
+        // TODO improvements: isBest column, option to generate pivot table instances in either columns or rows, option to disable each serializer
         // Write matrix data to cell Excel sheet
         for (int i = 0; i < data.length; i++) {
             var row = rawSheet.createRow(i);
             for (int j = 0; j < data[0].length; j++) {
                 var cell = row.createCell(j);
-                cell.setCellValue(data[i][j]);
+                // Either numeric (and parseable to double) or string
+                var d = data[i][j];
+                try {
+                    cell.setCellValue(Double.parseDouble(d));
+                } catch (NumberFormatException e){
+                    cell.setCellValue(d);
+                }
+
             }
         }
 
         // Return total area used
         return new AreaReference(new CellReference(0,0), new CellReference(nRows-1, nColumns-1), SpreadsheetVersion.EXCEL2007);
-        //return new AreaReference(new CellReference(0,0), new CellReference(rawSheet.getLastRowNum(), rawSheet.getRow(rawSheet.getLastRowNum()).getLastCellNum()), SpreadsheetVersion.EXCEL2007);
     }
 
     private enum __ {
