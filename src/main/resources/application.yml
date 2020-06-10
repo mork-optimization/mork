@@ -3,7 +3,8 @@ seed: 1234
 instances:
   path:
     #in: 'instancesPreeliminares'
-    in: 'instancesTestCompareSmall'
+    #in: 'instancesTestCompareSmall'
+    in: 'instancesValidate'
     cache: 'instances.cached'
 
 solutions:
@@ -15,10 +16,41 @@ solutions:
 errors:
   path: 'errors'
 
-csv:
-  # Can use commas, \t (tabs) or any other character to separate columns when exporting the results to CSV
-  # USE A SINGLE CHARACTER
-  separator: ','
+serializers:
+  csv:
+    # Enable CSV serializer, set to false to skip serializing results to CSV
+    enabled: true
+
+    # Can use commas, \t (tabs) or any other character to separate columns when exporting the results to CSV
+    # USE A SINGLE CHARACTER
+    separator: ','
+
+    # Results folder
+    folder: 'results'
+
+    # Filename format, replacements are applied as follows
+    # yyyy: replaced with current year, ex 2020
+    # MM, dd, HH, mm, ss: replaced by month, day, hour, minute and seconds
+    # letters [a-zA-Z] can be part of the filename as long as they are between single quotes
+    format: "'Results'_yyyy-MM-dd_HH-mm-ss.'csv'"
+
+  xlsx:
+    # Enable XLSX serializer, set to false to skip serializing results to Excel 2007+
+    enabled: true
+
+    # When generating the pivot table, should algorithms be in rows or columns?
+    # True: Instances per row, algorithms in columns
+    # False: Algorithms in rows, instances in columns
+    algorithmsInColumns: true
+
+    # Results folder
+    folder: 'results'
+
+    # Filename format, replacements are applied as follows
+    # yyyy: replaced with current year, ex 2020
+    # MM, dd, HH, mm, ss: replaced by month, day, hour, minute and seconds
+    # letters [a-zA-Z] can be part of the filename as long as they are between single quotes
+    format: "'Results'_yyyy-MM-dd_HH-mm-ss.'xlsx'"
 
 solver:
 

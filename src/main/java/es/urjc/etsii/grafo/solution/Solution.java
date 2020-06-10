@@ -80,7 +80,6 @@ public abstract class Solution<I extends Instance> implements Comparable<Solutio
      */
     public abstract <S extends Solution<I>> S getBetterSolution(S o);
 
-    // TODO que pasa si la solucion es multiobjetivo?
     public abstract double getOptimalValue();
 
     /**

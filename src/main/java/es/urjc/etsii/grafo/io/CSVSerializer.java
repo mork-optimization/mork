@@ -3,21 +3,25 @@ package es.urjc.etsii.grafo.io;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-@Service
-public class CSVSerializer {
+public class CSVSerializer extends ResultsSerializer{
 
-    @Value("${csv.separator}")
-    private char CSV_SEPARATOR;
+    @Value("${serializers.csv.separator}")
+    private char csvSeparator;
+
     private final CsvMapper csvMapper;
 
-    public CSVSerializer() {
+    public CSVSerializer(
+            @Value("${serializers.csv.enabled}") boolean enabled,
+            @Value("${serializers.csv.folder}") String folder,
+            @Value("${serializers.csv.format}") String format
+    ) {
+        super(enabled, folder, format);
         this.csvMapper = new CsvMapper();
         csvMapper.setVisibility(csvMapper.getSerializationConfig().getDefaultVisibilityChecker()
                 .withFieldVisibility(JsonAutoDetect.Visibility.ANY)
@@ -26,13 +30,11 @@ public class CSVSerializer {
                 .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
     }
 
-    public void saveResult(List<Result> s, Path p) {
-        if(s.isEmpty()){
-            throw new IllegalArgumentException("Cannot save empty list of results");
-        }
+    public void _serializeResults(List<Result> s, Path p) {
+        log.info("Exporting result data to CSV...");
 
         var schema = csvMapper.schemaFor(s.get(0).getClass())
-                .withColumnSeparator(CSV_SEPARATOR)
+                .withColumnSeparator(csvSeparator)
                 .sortedBy("instanceName", "algorithmName")
                 .withHeader();
         try(var br = Files.newBufferedWriter(p)){

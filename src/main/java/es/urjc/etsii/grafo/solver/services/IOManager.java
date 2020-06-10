@@ -10,18 +10,18 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.SimpleDateFormat;
 import java.util.Comparator;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-@Service
-public class IOManager {
+import static es.urjc.etsii.grafo.util.IOUtil.createIfNotExists;
+import static es.urjc.etsii.grafo.util.IOUtil.errorIfNotExists;
 
-    private static final String CACHE_SUFFIX = ".cached";
+@Service
+public class IOManager<S extends Solution<I>, I extends Instance> {
+
     private static final Logger log = Logger.getLogger(IOManager.class.toString());
 
     @Value("${instances.path.in}")
@@ -30,14 +30,8 @@ public class IOManager {
     @Value("${instances.path.cache}")
     String instanceCache;
 
-    @Value("${solutions.path.temp}")
-    String solutionsTemp;
-
     @Value("${solutions.path.out}")
     String solutionsOut;
-
-    @Value("${solutions.dateformat}")
-    String dateformatPattern;
 
     @Value("${errors.path}")
     String errorFolder;
@@ -45,25 +39,21 @@ public class IOManager {
     // Results CSV --> date to string
     // Solution file --> instance_algoritm
     private final JsonSerializer jsonSerializer;
-    private final ExcelSerializer excelSerializer;
-    private final CSVSerializer csvSerializer;
+    private final List<ResultsSerializer> resultsSerializers;
     private final DataImporter<?> dataImporter;
-    private Optional<SolutionExporter<?, ?>> solutionExporter;
+    private Optional<SolutionExporter<S, I>> solutionExporter;
 
-    public IOManager(JsonSerializer jsonSerializer, ExcelSerializer excelSerializer, CSVSerializer csvSerializer, DataImporter<?> dataImporter, Optional<SolutionExporter<?, ?>> solutionExporter) {
+    public IOManager(JsonSerializer jsonSerializer, List<ResultsSerializer> resultsSerializers, DataImporter<?> dataImporter, Optional<SolutionExporter<S, I>> solutionExporter) {
         this.jsonSerializer = jsonSerializer;
-        this.excelSerializer = excelSerializer;
-        this.csvSerializer = csvSerializer;
         this.dataImporter = dataImporter;
         this.solutionExporter = solutionExporter;
+        this.resultsSerializers = resultsSerializers;
     }
 
     public Stream<? extends Instance> getInstances(){
         try {
             errorIfNotExists(this.instanceIn);
-
             createIfNotExists(this.solutionsOut);
-            createIfNotExists(this.solutionsTemp);
             createIfNotExists(this.instanceCache);
 
             return Files.walk(Path.of(this.instanceIn)).filter(Files::isRegularFile).sorted(Comparator.comparing(f -> f.toFile().getName().toLowerCase())).map(this::tryGetFromCache);
@@ -73,44 +63,24 @@ public class IOManager {
     }
 
     public void saveResults(List<Result> result){
-        Path csvPath = Path.of(this.solutionsOut, this.getFormattedDate() + ".csv");
-        Path excelPath = Path.of(this.solutionsOut, this.getFormattedDate() + ".xlsx");
-        log.info("Exporting result data to CSV...");
-        this.csvSerializer.saveResult(result, csvPath);
-        log.info("Exporting result data to XLSX...");
-        this.excelSerializer.saveResult(result, excelPath);
+        for (ResultsSerializer serializer : resultsSerializers) {
+            serializer.serializeResults(result);
+        }
     }
 
     private Instance tryGetFromCache(Path p){
         return this.dataImporter.importInstance(p.toFile());
     }
 
-    private static void createIfNotExists(String path) {
-        File dir = new File(path);
-        dir.mkdir();
-        errorIfNotExists(path);
-    }
-
-    private static void errorIfNotExists(String path){
-        File dir = new File(path);
-        if(!dir.isDirectory()){
-            throw new IllegalArgumentException("Path does not exist or not a folder: " + dir.getAbsolutePath());
-        }
-    }
-
-    private String getFormattedDate(){
-        return new SimpleDateFormat(dateformatPattern).format(new Date());
-    }
-
     // TODO call method
-    private <S extends Solution<I>, I extends Instance> void exportSolution(Algorithm<S,I> alg, S s){
+    private void exportSolution(Algorithm<S,I> alg, S s){
         if(this.solutionExporter.isEmpty()){
             log.fine("Skipping solution export, no implementation of SolutionExporter found");
             return;
         }
         String filename = s.getInstance().getName() + "__" + alg.getShortName();
         File f = new File(solutionsOut, filename);
-        SolutionExporter<S,I> exporter = (SolutionExporter<S, I>) solutionExporter.get();
+        SolutionExporter<S,I> exporter = solutionExporter.get();
         exporter.export(f, s);
     }
 

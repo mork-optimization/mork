@@ -40,7 +40,6 @@ public class WorkingOnResult {
             this.best = s;
         }
         this.best = best.getBetterSolution(s);
-        // TODO workingOnSolution vs finishedSolution
         s.setExecutionTimeInNanos(nanos);
         this.solutions.add(new SolutionData(s.getOptimalValue(), nanos, timeToTarget));
         if (instance == null) {

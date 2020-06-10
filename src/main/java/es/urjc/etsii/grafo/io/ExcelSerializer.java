@@ -1,28 +1,41 @@
 package es.urjc.etsii.grafo.io;
 
+import es.urjc.etsii.grafo.solver.TestingThings;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
 import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
-@Service
-public class ExcelSerializer {
+public class ExcelSerializer extends ResultsSerializer {
 
     public static final String RAW_SHEET = "Raw Results";
     public static final String PIVOT_SHEET = "Pivot Table";
 
-    public void saveResult(List<Result> results, Path p) {
-        if(results.isEmpty()){
-            throw new IllegalArgumentException("Cannot save empty list of results");
-        }
+    @Value("${serializers.xlsx.algorithmsInColumns}")
+    private boolean algorithmsInColumns;
+
+    public ExcelSerializer(
+            @Value("${serializers.xlsx.enabled}") boolean enabled,
+            @Value("${serializers.xlsx.folder}") String folder,
+            @Value("${serializers.xlsx.format}") String format
+    ) {
+        super(enabled, folder, format);
+    }
+
+    public void _serializeResults(List<Result> results, Path p) {
+        log.info("Exporting result data to XLSX...");
 
         File f = p.toFile();
         try (var outputStream = new FileOutputStream(f)){
@@ -41,18 +54,29 @@ public class ExcelSerializer {
 
     private void fillPivotSheet(XSSFSheet pivotSheet, AreaReference area, XSSFSheet source) {
         var pivotTable = pivotSheet.createPivotTable(area, new CellReference(0,0), source);
-        pivotTable.addRowLabel(__.INSTANCE_NAME.getIndex()); // Instances label in rows
-        pivotTable.addColLabel(__.ALG_NAME.getIndex());      // Algorithm labels in columns
-        pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.BEST_VALUE.getIndex(), __.BEST_VALUE.getName());
-        pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.AVG_VALUE.getIndex(), __.AVG_VALUE.getName());
-        pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.STD.getIndex(), __.STD.getName());
-        pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.AVG_TIME.getIndex(), __.AVG_TIME.getName());
-        pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.TOTAL_TIME.getIndex(), __.TOTAL_TIME.getName());
+        if(algorithmsInColumns){
+            pivotTable.addRowLabel(__.INSTANCE_NAME.getIndex()); // Instances label in rows
+            pivotTable.addColLabel(__.ALG_NAME.getIndex());      // Algorithm labels in columns
+        } else {
+            pivotTable.addColLabel(__.INSTANCE_NAME.getIndex()); // Instances label in columns
+            pivotTable.addRowLabel(__.ALG_NAME.getIndex());      // Algorithm labels in rows
+        }
 
+        pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.BEST_VALUE.getIndex(), __.BEST_VALUE.getName());
+        pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.AVG_VALUE.getIndex(), __.AVG_VALUE.getName());
+        pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.STD.getIndex(), __.STD.getName());
+        pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.AVG_TIME.getIndex(), __.AVG_TIME.getName());
+        pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.TOTAL_TIME.getIndex(), __.TOTAL_TIME.getName());
+        pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.IS_BEST.getIndex(), __.IS_BEST.getName());
     }
 
 
     private AreaReference fillRawSheet(XSSFSheet rawSheet, List<Result> results) {
+        // Best values per instance
+        Map<String, Optional<Double>> bestValuesPerInstance = bestPerInstance(results);
+        if(bestValuesPerInstance.values().stream().anyMatch(Optional::isEmpty)){
+            throw new RuntimeException("Cannot export instances that have not been solved at least once");
+        }
         // Create headers
         String[] header = new String[]{
                 __.INSTANCE_NAME.getName(),
@@ -61,7 +85,8 @@ public class ExcelSerializer {
                 __.AVG_VALUE.getName(),
                 __.STD.getName(),
                 __.AVG_TIME.getName(),
-                __.TOTAL_TIME.getName()
+                __.TOTAL_TIME.getName(),
+                __.IS_BEST.getName()
         };
 
         int nColumns = header.length;
@@ -80,9 +105,11 @@ public class ExcelSerializer {
             data[i][__.STD.getIndex()] = r.getStd();
             data[i][__.AVG_TIME.getIndex()] = r.getAvgTimeInMs();
             data[i][__.TOTAL_TIME.getIndex()] = r.getTotalTimeInMs();
+
+            boolean isBest = DoubleComparator.equals(bestValuesPerInstance.get(r.getInstanceName()).get(), Double.parseDouble(r.getBestValue())); // TODO fix? parsing as double, originally was a double
+            data[i][__.IS_BEST.getIndex()] = isBest? "1": "0";
         }
 
-        // TODO improvements: isBest column, option to generate pivot table instances in either columns or rows, option to disable each serializer
         // Write matrix data to cell Excel sheet
         for (int i = 0; i < data.length; i++) {
             var row = rawSheet.createRow(i);
@@ -95,12 +122,20 @@ public class ExcelSerializer {
                 } catch (NumberFormatException e){
                     cell.setCellValue(d);
                 }
-
             }
         }
 
         // Return total area used
         return new AreaReference(new CellReference(0,0), new CellReference(nRows-1, nColumns-1), SpreadsheetVersion.EXCEL2007);
+    }
+
+    private Map<String, Optional<Double>> bestPerInstance(List<Result> results) {                                       // Reduce by last
+        return results.stream().collect(Collectors.groupingBy(Result::getInstanceName,
+                Collectors.mapping(a -> Double.parseDouble(a.getBestValue()), Collectors.reducing((a, b) -> TestingThings.isMaximizing.get() ?
+                        Math.max(a, b) :
+                        Math.min(a, b)
+                ))
+        ));
     }
 
     private enum __ {
@@ -110,7 +145,8 @@ public class ExcelSerializer {
         AVG_VALUE(3,"Avg. Value"),
         STD(4, "Std"),
         AVG_TIME(5, "Avg. Time (ms)"),
-        TOTAL_TIME(6, "Total Time (ms)");
+        TOTAL_TIME(6, "Total Time (ms)"),
+        IS_BEST(7, "Is Best Known?");
 
         private final int index;
         private final String name;
