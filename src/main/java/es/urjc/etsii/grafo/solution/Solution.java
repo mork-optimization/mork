@@ -7,7 +7,7 @@ import es.urjc.etsii.grafo.solution.stopping.StopPoint;
 
 import java.util.ArrayDeque;
 
-public abstract class Solution<I extends Instance> {
+public abstract class Solution<I extends Instance> implements Comparable<Solution<I>> {
 
     static final int MAX_DEBUG_MOVES = 10;
 
@@ -129,5 +129,21 @@ public abstract class Solution<I extends Instance> {
 
     public long getLastModifiedTime() {
         return lastModifiedTime;
+    }
+
+    /**
+     * Note, this compareTo implementation imposes orderings that are inconsistent with equals.
+     * @param s Solution to compare against
+     * @return -1, zero, or +1 if the current solution is better, equal or worse than the argument.
+     */
+    @Override
+    public int compareTo(Solution<I> s) {
+        boolean bestA = this.getBetterSolution(s) == this;
+        boolean bestB = s.getBetterSolution(this) == s;
+
+        assert bestA || bestB;
+        if(bestA && bestB)  return 0;
+        if(bestA)           return -1; // Best solutions go first
+        else                return 1;
     }
 }
