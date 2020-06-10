@@ -45,12 +45,14 @@ public class IOManager {
     // Results CSV --> date to string
     // Solution file --> instance_algoritm
     private final JsonSerializer jsonSerializer;
+    private final ExcelSerializer excelSerializer;
     private final CSVSerializer csvSerializer;
     private final DataImporter<?> dataImporter;
     private Optional<SolutionExporter<?, ?>> solutionExporter;
 
-    public IOManager(JsonSerializer jsonSerializer, CSVSerializer csvSerializer, DataImporter<?> dataImporter, Optional<SolutionExporter<?,?>> solutionExporter) {
+    public IOManager(JsonSerializer jsonSerializer, ExcelSerializer excelSerializer, CSVSerializer csvSerializer, DataImporter<?> dataImporter, Optional<SolutionExporter<?, ?>> solutionExporter) {
         this.jsonSerializer = jsonSerializer;
+        this.excelSerializer = excelSerializer;
         this.csvSerializer = csvSerializer;
         this.dataImporter = dataImporter;
         this.solutionExporter = solutionExporter;
@@ -71,8 +73,12 @@ public class IOManager {
     }
 
     public void saveResults(List<Result> result){
-        Path p = Path.of(this.solutionsOut, this.getFormattedDate() + ".csv");
-        this.csvSerializer.saveResult(result, p);
+        Path csvPath = Path.of(this.solutionsOut, this.getFormattedDate() + ".csv");
+        Path excelPath = Path.of(this.solutionsOut, this.getFormattedDate() + ".xlsx");
+        log.info("Exporting result data to CSV...");
+        this.csvSerializer.saveResult(result, csvPath);
+        log.info("Exporting result data to XLSX...");
+        this.excelSerializer.saveResult(result, excelPath);
     }
 
     private Instance tryGetFromCache(Path p){

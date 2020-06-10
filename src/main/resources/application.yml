@@ -1,0 +1,54 @@
+seed: 1234
+
+instances:
+  path:
+    #in: 'instancesPreeliminares'
+    in: 'instancesTestCompareSmall'
+    cache: 'instances.cached'
+
+solutions:
+  path:
+    temp: 'solutions.temp'
+    out: 'solutions'
+  dateformat: 'yyyy-MM-dd_HH-mm-ss'
+
+errors:
+  path: 'errors'
+
+csv:
+  # Can use commas, \t (tabs) or any other character to separate columns when exporting the results to CSV
+  # USE A SINGLE CHARACTER
+  separator: ','
+
+solver:
+
+  # Which algorithms should be loaded? * --> All
+  # Accepts a comma separated list, case insensitive
+  # algorithms: '*'
+
+  # How many times should each experiment be repeated, in order to guarantee stability
+  repetitions: 8
+
+  # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALELIZED
+  # Valid Values: true, false
+  parallelExecutor: true
+
+  # Number of workers to use if parallelExecutor is enabled
+  # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
+  nWorkers: -1
+
+#algorithms:
+#  exchangerils:
+#    nRotateRounds: 2
+#    configs:
+
+
+
+logging:
+  level:
+    root: 'info'
+    es:
+      urjc:
+        etsii:
+          #grafo: 'DEBUG'
+          grafo: 'info'
