@@ -58,6 +58,9 @@ solver:
   # Accepts a comma separated list, case insensitive
   # algorithms: '*'
 
+  # Maximize or minimize objective function? Only used in the XLSX exporter right now.
+  maximizing: true
+
   # How many times should each experiment be repeated, in order to guarantee stability
   repetitions: 8
 

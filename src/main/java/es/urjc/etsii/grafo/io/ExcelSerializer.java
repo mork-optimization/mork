@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.io;
 
-import es.urjc.etsii.grafo.solver.TestingThings;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
@@ -25,6 +24,9 @@ public class ExcelSerializer extends ResultsSerializer {
 
     @Value("${serializers.xlsx.algorithmsInColumns}")
     private boolean algorithmsInColumns;
+
+    @Value("${solver.maximizing}")
+    private boolean maximizing;
 
     public ExcelSerializer(
             @Value("${serializers.xlsx.enabled}") boolean enabled,
@@ -131,7 +133,7 @@ public class ExcelSerializer extends ResultsSerializer {
 
     private Map<String, Optional<Double>> bestPerInstance(List<Result> results) {                                       // Reduce by last
         return results.stream().collect(Collectors.groupingBy(Result::getInstanceName,
-                Collectors.mapping(a -> Double.parseDouble(a.getBestValue()), Collectors.reducing((a, b) -> TestingThings.isMaximizing.get() ?
+                Collectors.mapping(a -> Double.parseDouble(a.getBestValue()), Collectors.reducing((a, b) -> maximizing ?
                         Math.max(a, b) :
                         Math.min(a, b)
                 ))
