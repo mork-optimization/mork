@@ -67,4 +67,17 @@ public class DisjointSetTests {
         Assertions.assertThrows(IllegalArgumentException.class, () -> set.union(n,1));
     }
 
+    @Test
+    void cloneTest(){
+        DisjointSet set = new DisjointSet(10);
+        set.union(1, 2);
+        set.union(3, 4);
+        DisjointSet copy = new DisjointSet(set);
+        assertEquals(set.size(1), copy.size(1));
+        assertEquals(set.size(2), copy.size(2));
+        assertEquals(set.size(3), copy.size(4));
+        assertEquals(set.find(1), copy.find(2));
+        assertEquals(set.find(3), copy.find(4));
+    }
+
 }

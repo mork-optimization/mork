@@ -32,6 +32,16 @@ public class DisjointSet {
     }
 
     /**
+     * Clone a DisjointSet
+     * @param original original disjointSet
+     */
+    public DisjointSet(DisjointSet original){
+        this.offset = original.offset;
+        this.parent = Arrays.copyOf(original.parent, original.parent.length);
+        this.size = Arrays.copyOf(original.size, original.size.length);
+    }
+
+    /**
      * Create a Disjoint set where the n elements are initially all disjoint
      * @param n number of elements to hold
      */
@@ -39,14 +49,28 @@ public class DisjointSet {
         this(n, 0);
     }
 
+    /**
+     * Returns the size of set/cluster the given points is part of
+     * @param n node to check
+     * @return size of the cluster n is part of
+     */
     public int size(int n){
         n -= offset;
+        return _size(n);
+    }
+
+    private int _size(int n){
         if(n<0 || n>= this.size.length){
             throw new IllegalArgumentException("Out of bounds n: " + n);
         }
         return size[_find(n)];
     }
 
+    /**
+     *
+     * @param n
+     * @return
+     */
     public int find(int n){
         n -= offset;
         if(n<0 || n>= this.size.length){
@@ -55,8 +79,19 @@ public class DisjointSet {
         return offset + _find(n);
     }
 
+    /**
+     * Check if two nodes are in the same set
+     * @param a first node to check
+     * @param b second node to check
+     * @return true if the two nodes are in the same set/cluster, false otherwise
+     */
+    public boolean areJoined(int a, int b){
+        return find(a) == find(b);
+    }
+
     private int _find(int n){
         if(parent[n] != n){
+            // Path compression
             parent[n] = _find(parent[n]);
         }
         return parent[n];
@@ -82,8 +117,8 @@ public class DisjointSet {
 
         if(rootA == rootB) return false;
 
-        int sizeA = size(rootA);
-        int sizeB = size(rootB);
+        int sizeA = _size(rootA);
+        int sizeB = _size(rootB);
 
         if(sizeA < sizeB){ //SWAP
             int t = rootA;
