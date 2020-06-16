@@ -5,7 +5,7 @@ import es.urjc.etsii.grafo.solver.services.InheritedComponent;
 import java.io.File;
 
 @InheritedComponent
-public abstract class DataImporter<T extends Instance> {
+public abstract class InstanceImporter<T extends Instance> {
 
     /**
      * Create an instance from the format used by the problem.

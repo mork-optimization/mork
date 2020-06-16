@@ -72,7 +72,7 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
             s.lastModifiedTime = System.nanoTime();
         }
         s.version++;
-        // TODO validate es.urjc.etsii.grafo.solution state after each move is applied
+        assert s.isValid();
     }
 
     private boolean saveLastMoves(Move<?,?> move){

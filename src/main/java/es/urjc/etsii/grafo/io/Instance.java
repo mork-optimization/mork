@@ -11,7 +11,9 @@ public abstract class Instance implements Comparable<Instance>{
         this.name = name;
     }
 
-    // Used by Jackson
+    /**
+     * Used only by Jackson
+     */
     protected Instance(){
         this.name = "JACKSON_LOADED";
     }

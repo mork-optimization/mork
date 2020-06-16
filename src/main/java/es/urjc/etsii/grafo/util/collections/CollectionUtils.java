@@ -1,4 +1,6 @@
-package es.urjc.etsii.grafo.util;
+package es.urjc.etsii.grafo.util.collections;
+
+import es.urjc.etsii.grafo.util.RandomManager;
 
 import java.util.*;
 import java.util.stream.Stream;

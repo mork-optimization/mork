@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.util;
+package es.urjc.etsii.grafo.util.collections;
 
 import java.util.AbstractSet;
 import java.util.Arrays;

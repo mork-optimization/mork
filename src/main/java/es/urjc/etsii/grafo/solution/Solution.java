@@ -21,7 +21,7 @@ public abstract class Solution<I extends Instance> implements Comparable<Solutio
      * Dummy stop by default, can be changed as the user wants
      */
     @JsonIgnore
-    protected final StopPoint stopPoint;
+    protected StopPoint stopPoint;
 
     /**
      * Each time a move is executed es.urjc.etsii.grafo.solution version number must be incremented
@@ -124,6 +124,7 @@ public abstract class Solution<I extends Instance> implements Comparable<Solutio
         this.version = s.version;
         this.executionTimeInNanos = s.executionTimeInNanos;
         this.lastModifiedTime = s.lastModifiedTime;
+        this.stopPoint = s.stopPoint;
     }
 
     public long getLastModifiedTime() {

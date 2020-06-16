@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.util.collections.IntSet;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -14,7 +15,7 @@ public class IntSetTests {
     @ParameterizedTest
     @ValueSource(ints = {0, -1, -5, Integer.MIN_VALUE})
     void negativeOrZeroSize(int size){
-        Assertions.assertThrows(IllegalArgumentException.class, () -> new IntSet(-5));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new IntSet(size));
     }
 
     @Test

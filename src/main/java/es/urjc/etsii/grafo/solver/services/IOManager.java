@@ -40,12 +40,12 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     // Solution file --> instance_algoritm
     private final JsonSerializer jsonSerializer;
     private final List<ResultsSerializer> resultsSerializers;
-    private final DataImporter<?> dataImporter;
+    private final InstanceImporter<?> instanceImporter;
     private Optional<SolutionExporter<S, I>> solutionExporter;
 
-    public IOManager(JsonSerializer jsonSerializer, List<ResultsSerializer> resultsSerializers, DataImporter<?> dataImporter, Optional<SolutionExporter<S, I>> solutionExporter) {
+    public IOManager(JsonSerializer jsonSerializer, List<ResultsSerializer> resultsSerializers, InstanceImporter<?> instanceImporter, Optional<SolutionExporter<S, I>> solutionExporter) {
         this.jsonSerializer = jsonSerializer;
-        this.dataImporter = dataImporter;
+        this.instanceImporter = instanceImporter;
         this.solutionExporter = solutionExporter;
         this.resultsSerializers = resultsSerializers;
     }
@@ -69,7 +69,7 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     }
 
     private Instance tryGetFromCache(Path p){
-        return this.dataImporter.importInstance(p.toFile());
+        return this.instanceImporter.importInstance(p.toFile());
     }
 
     // TODO call method
