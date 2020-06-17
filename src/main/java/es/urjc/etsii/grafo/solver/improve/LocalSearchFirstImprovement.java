@@ -2,13 +2,14 @@ package es.urjc.etsii.grafo.solver.improve;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Neighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 
 public class LocalSearchFirstImprovement<S extends Solution<I>, I extends Instance> extends LocalSearch<S,I> {
 
-    public LocalSearchFirstImprovement(String lsType, Neighborhood<S, I>... ps){
-        super(lsType, ps);
+    public LocalSearchFirstImprovement(MoveComparator<Move<S,I>> comparator, String lsType, Neighborhood<S, I>... ps){
+        super(comparator, lsType, ps);
     }
 
     @Override
@@ -21,7 +22,7 @@ public class LocalSearchFirstImprovement<S extends Solution<I>, I extends Instan
             if (move == null) {
                 move = _move;
             } else {
-                move = move.getBestMove(_move);
+                move = comparator.getBestMove(move, _move);
             }
         }
         return move;

@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.solver.create;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.RandomManager;
 
@@ -23,9 +24,11 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S,I>, S exten
 
     private final AlphaProvider alphaProvider;
     protected final String randomType;
+    private final MoveComparator<M> comparator;
 
 
-    public RandomGreedyGRASPConstructive(double alpha){
+    public RandomGreedyGRASPConstructive(double alpha, MoveComparator<M> comparator){
+        this.comparator = comparator;
         assert isGreaterOrEqualsThan(alpha, 0) && isLessOrEquals(alpha, 1);
 
         randomType = String.format("FIXED{a=%.2f}", alpha);
@@ -37,28 +40,30 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S,I>, S exten
      * Alpha Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
      * @param minAlpha minimum value for the random alpha
      * @param maxAlpha maximum value for the random alpha
+     * @param comparator
      */
-    public RandomGreedyGRASPConstructive(double minAlpha, double maxAlpha){
+    public RandomGreedyGRASPConstructive(double minAlpha, double maxAlpha, MoveComparator<M> comparator){
+        this.comparator = comparator;
         assert isGreaterOrEqualsThan(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
         assert isGreaterOrEqualsThan(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
         assert isGreaterThan(maxAlpha, minAlpha);
 
         alphaProvider = () -> RandomManager.getRandom().nextDouble() * (maxAlpha - minAlpha) + minAlpha;
         randomType = String.format("RANGE{min=%.2f, max=%.2f}", minAlpha, maxAlpha);
-
     }
 
     /**
      * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
+     * @param comparator
      */
-    public RandomGreedyGRASPConstructive(){
-        this(0, 1);
+    public RandomGreedyGRASPConstructive(MoveComparator<M> comparator){
+        this(0, 1, comparator);
     }
 
     /**
      * Initialize solution before GRASP algorithm is run
      * F.e: In the case of clustering algorithms, usually each cluster needs to have at least one point,
-     * different solutionss types may require different initialization
+     * different solutions types may require different initialization
      * @param s Solution to initialize before running the GRASP constructive method
      */
     public void beforeGRASP(S s){ }
@@ -83,6 +88,7 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S,I>, S exten
 
             // Catch bugs while building the es.urjc.etsii.grafo.solution
             // no-op if running in performance mode, triggers score recalculation if debugging
+            // TODO use validation method
             assert isPositiveOrZero(sol.getOptimalValue());
         }
         return sol;
@@ -105,7 +111,7 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S,I>, S exten
         M best = null;
         for (M m : rcl) {
             if (best == null) best = m;
-            else best = (M) best.getBestMove(m);
+            else best = comparator.getBestMove(best, m);
         }
         return cl.indexOf(best);
     }

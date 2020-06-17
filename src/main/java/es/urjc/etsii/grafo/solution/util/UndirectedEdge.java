@@ -7,7 +7,7 @@ import java.util.Objects;
  */
 public class UndirectedEdge {
 
-    private final int a, b;
+    protected final int a, b;
 
     /**
      * Create a new undirected edge.

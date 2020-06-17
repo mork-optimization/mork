@@ -2,13 +2,13 @@ package es.urjc.etsii.grafo.solver.create;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.RandomManager;
 
-import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.RandomAccess;
-import java.util.function.ToIntBiFunction;
 import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.util.DoubleComparator.*;
@@ -24,6 +24,7 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
 
     private final AlphaProvider alphaProvider;
     protected final String randomType;
+    protected final Comparator<M> comparator;
 
     /**
      * GRASP Constructor, mantains a fixed alpha value
@@ -31,9 +32,9 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
      * @param alpha Randomness, adjusts the candidate list size.
      *              Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
      */
-    public GreedyRandomGRASPConstructive(double alpha){
+    public GreedyRandomGRASPConstructive(double alpha, MoveComparator<M> comparator){
         assert isGreaterOrEqualsThan(alpha, 0) && isLessOrEquals(alpha, 1);
-
+        this.comparator = comparator;
         randomType = String.format("FIXED{a=%.2f}", alpha);
         alphaProvider = () -> alpha;
     }
@@ -44,7 +45,8 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
      * @param minAlpha minimum value for the random alpha
      * @param maxAlpha maximum value for the random alpha
      */
-    public GreedyRandomGRASPConstructive(double minAlpha, double maxAlpha){
+    public GreedyRandomGRASPConstructive(double minAlpha, double maxAlpha, Comparator<M> comparator){
+        this.comparator = comparator;
         assert isGreaterOrEqualsThan(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
         assert isGreaterOrEqualsThan(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
         assert isGreaterThan(maxAlpha, minAlpha);
@@ -56,8 +58,8 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
     /**
      * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
      */
-    public GreedyRandomGRASPConstructive(){
-        this(0, 1);
+    public GreedyRandomGRASPConstructive(Comparator<M> comparator){
+        this(0, 1, comparator);
     }
 
     /**
@@ -103,7 +105,6 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
         double alpha = alphaProvider.getAlpha();
         var cl = buildInitialCandidateList(sol);
         assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
-        var comparator = new Move.MoveComparator<S,I>();
         cl.sort(comparator);
         while (!cl.isEmpty()) {
             // Choose an index from the candidate list following different strategies, GreedyRandom, RandomGreedy...

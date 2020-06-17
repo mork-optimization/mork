@@ -2,14 +2,17 @@ package es.urjc.etsii.grafo.solver.improve;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Neighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 
 public abstract class LocalSearch<S extends Solution<I>,I extends Instance> implements Improver<S,I> {
     protected final Neighborhood<S,I>[] providers;
+    protected final MoveComparator<Move<S, I>> comparator;
     protected String lsType;
 
-    public LocalSearch(String lsType, Neighborhood<S,I>... ps) {
+    public LocalSearch(MoveComparator<Move<S,I>> comparator, String lsType, Neighborhood<S,I>... ps) {
+        this.comparator = comparator;
         this.lsType = lsType;
         this.providers = ps;
     }

@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.solver.improve;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Neighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 
@@ -10,8 +11,8 @@ import java.util.stream.Stream;
 
 public class LocalSearchBestImprovement<S extends Solution<I>,I extends Instance> extends LocalSearch<S,I> {
 
-    public LocalSearchBestImprovement(String lsType, Neighborhood<S,I>... ps){
-        super(lsType, ps);
+    public LocalSearchBestImprovement(MoveComparator<Move<S,I>> comparator, String lsType, Neighborhood<S,I>... ps){
+        super(comparator, lsType, ps);
     }
 
     @Override
@@ -23,14 +24,14 @@ public class LocalSearchBestImprovement<S extends Solution<I>,I extends Instance
             if (move == null) {
                 move = _move.get();
             } else {
-                move = move.getBestMove(_move.get());
+                move = this.comparator.getBestMove(move, _move.get());
             }
         }
         return move;
     }
 
     private Optional<Move<S,I>> getBest(Stream<Move<S,I>> stream){
-        return stream.filter(Move::isValid).reduce((a, b) -> b.getBestMove(a));
+        return stream.filter(Move::isValid).reduce((a, b) -> comparator.getBestMove(b,a));
     }
 
 

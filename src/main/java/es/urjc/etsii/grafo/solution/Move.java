@@ -15,22 +15,6 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
 
     protected final long solutionVersion;
 
-    public static final class MoveComparator<S extends Solution<I>, I extends Instance> implements Comparator<Move<S,I>> {
-        @Override
-        public int compare(Move<S, I> a, Move<S, I> b) {
-
-            boolean bestA = a.getBestMove(b) == a;
-            boolean bestB = b.getBestMove(a) == b;
-            //System.out.format("\tDEBUG: %s, %s, %s, %s\n", a.getValue(), b.getValue(), bestA, bestB);
-
-            assert bestA || bestB;
-            if(bestA && bestB)  return 0;
-            if(bestA)           return -1;
-            else                return 1;
-
-        }
-    }
-
     protected S s;
 
     public Move(S s) {
@@ -49,13 +33,6 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
      * @return True if the solution is in a valid state after applying the movement, false otherwise
      */
     public abstract boolean isValid();
-
-    /**
-     * Get the best move between two candidates
-     * @param o The other move
-     * @return Returns the best move
-     */
-    public abstract Move<S,I> getBestMove(Move<S,I> o);
 
     /**
      * Executes the proposed move
