@@ -22,7 +22,7 @@ public class LocalSearchFirstImprovement<S extends Solution<I>, I extends Instan
             if (move == null) {
                 move = _move;
             } else {
-                move = comparator.getBestMove(move, _move);
+                move = comparator.getBest(move, _move);
             }
         }
         return move;

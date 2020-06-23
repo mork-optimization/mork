@@ -2,11 +2,9 @@ package es.urjc.etsii.grafo.solver.services;
 
 import org.springframework.boot.Banner;
 import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Service;
 
 import java.io.PrintStream;
 
-@Service
 public class BannerProvider implements Banner {
     @Override
     public void printBanner(Environment environment, Class<?> sourceClass, PrintStream out) {
@@ -18,7 +16,7 @@ public class BannerProvider implements Banner {
                 " | | |  | |  | | (_) | |  |   <   | | |\n" +
                 " | | |  |_|  |_|\\___/|_|  |_|\\_\\  | | |\n" +
                 "  \\_\\_\\ ________________________ /_/_/\n" +
-                "                        "+environment.getProperty("application.formatted-version");
+                "                        v0.1";
         out.println(banner);
     }
 }

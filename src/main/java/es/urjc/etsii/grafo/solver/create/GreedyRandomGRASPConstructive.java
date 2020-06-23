@@ -113,6 +113,7 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
             chosen.execute();
             cl = updateCandidateList(sol, chosen, cl, index);
             assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
+            //assert validateComparator(comparator, cl);
             cl.sort(comparator);
 
             // Catch bugs while building the es.urjc.etsii.grafo.solution

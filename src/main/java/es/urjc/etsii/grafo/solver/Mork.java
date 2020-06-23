@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.solver;
 
+import es.urjc.etsii.grafo.solver.services.BannerProvider;
 import es.urjc.etsii.grafo.solver.services.InheritedComponent;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -10,6 +11,8 @@ import org.springframework.context.annotation.ComponentScan;
 @ComponentScan(basePackages = "es.urjc.etsii", includeFilters = @ComponentScan.Filter(InheritedComponent.class))
 public class Mork {
     public static void start(String[] args) {
-        SpringApplication.run(Mork.class, args);
+        SpringApplication application = new SpringApplication(Mork.class);
+        application.setBanner(new BannerProvider());
+        application.run(args);
     }
 }

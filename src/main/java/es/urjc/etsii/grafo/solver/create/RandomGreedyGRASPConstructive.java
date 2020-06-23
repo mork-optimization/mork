@@ -111,7 +111,7 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S,I>, S exten
         M best = null;
         for (M m : rcl) {
             if (best == null) best = m;
-            else best = comparator.getBestMove(best, m);
+            else best = comparator.getBest(best, m);
         }
         return cl.indexOf(best);
     }

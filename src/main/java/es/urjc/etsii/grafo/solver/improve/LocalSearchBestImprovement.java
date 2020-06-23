@@ -24,14 +24,14 @@ public class LocalSearchBestImprovement<S extends Solution<I>,I extends Instance
             if (move == null) {
                 move = _move.get();
             } else {
-                move = this.comparator.getBestMove(move, _move.get());
+                move = this.comparator.getBest(move, _move.get());
             }
         }
         return move;
     }
 
     private Optional<Move<S,I>> getBest(Stream<Move<S,I>> stream){
-        return stream.filter(Move::isValid).reduce((a, b) -> comparator.getBestMove(b,a));
+        return stream.filter(Move::isValid).reduce((a, b) -> comparator.getBest(b,a));
     }
 
 

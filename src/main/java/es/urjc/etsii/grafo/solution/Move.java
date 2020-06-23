@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.solution;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
-import java.util.Comparator;
+import java.util.Objects;
 
 import static es.urjc.etsii.grafo.solution.Solution.MAX_DEBUG_MOVES;
 
@@ -79,4 +79,20 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
     public abstract Move<S,I> next();
 
     public abstract String toString();
+
+    @Override
+    public abstract boolean equals(Object o);
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(solutionVersion, s);
+    }
+
+    /**
+     * Get the solution this move originated from
+     * @return Solution
+     */
+    public S getSolution() {
+        return s;
+    }
 }
