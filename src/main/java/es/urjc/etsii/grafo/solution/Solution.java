@@ -32,7 +32,7 @@ public abstract class Solution<I extends Instance> implements Comparable<Solutio
 
     private long executionTimeInNanos;
 
-    long lastModifiedTime;
+    private long lastModifiedTime;
 
     /**
      * Create a solution for a given instance using a custom StopPoint
@@ -62,6 +62,10 @@ public abstract class Solution<I extends Instance> implements Comparable<Solutio
      * @return True if the es.urjc.etsii.grafo.solution is in a valid state, false otherwise
      */
     public abstract boolean isValid();
+
+    public void updateLastModifiedTime() {
+        this.lastModifiedTime = System.nanoTime();
+    }
 
     /**
      * Clone the current es.urjc.etsii.grafo.solution.

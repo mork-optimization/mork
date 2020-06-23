@@ -46,7 +46,7 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
         _execute();
         if (!DoubleComparator.equals(prevScore, s.getOptimalValue())) {
             // Some moves may not affect the optimal score
-            s.lastModifiedTime = System.nanoTime();
+            s.updateLastModifiedTime();
         }
         s.version++;
         assert s.isValid();
