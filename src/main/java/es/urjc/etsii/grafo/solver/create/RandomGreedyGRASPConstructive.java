@@ -24,10 +24,10 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S,I>, S exten
 
     private final AlphaProvider alphaProvider;
     protected final String randomType;
-    private final MoveComparator<M> comparator;
+    private final MoveComparator<M,S,I> comparator;
 
 
-    public RandomGreedyGRASPConstructive(double alpha, MoveComparator<M> comparator){
+    public RandomGreedyGRASPConstructive(double alpha, MoveComparator<M,S,I> comparator){
         this.comparator = comparator;
         assert isGreaterOrEqualsThan(alpha, 0) && isLessOrEquals(alpha, 1);
 
@@ -42,7 +42,7 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S,I>, S exten
      * @param maxAlpha maximum value for the random alpha
      * @param comparator
      */
-    public RandomGreedyGRASPConstructive(double minAlpha, double maxAlpha, MoveComparator<M> comparator){
+    public RandomGreedyGRASPConstructive(double minAlpha, double maxAlpha, MoveComparator<M,S,I> comparator){
         this.comparator = comparator;
         assert isGreaterOrEqualsThan(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
         assert isGreaterOrEqualsThan(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
@@ -56,7 +56,7 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S,I>, S exten
      * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
      * @param comparator
      */
-    public RandomGreedyGRASPConstructive(MoveComparator<M> comparator){
+    public RandomGreedyGRASPConstructive(MoveComparator<M,S,I> comparator){
         this(0, 1, comparator);
     }
 

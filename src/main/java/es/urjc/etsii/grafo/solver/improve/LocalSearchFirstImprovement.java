@@ -6,19 +6,19 @@ import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Neighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 
-public class LocalSearchFirstImprovement<S extends Solution<I>, I extends Instance> extends LocalSearch<S,I> {
+public class LocalSearchFirstImprovement<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends LocalSearch<M,S,I> {
 
-    public LocalSearchFirstImprovement(MoveComparator<Move<S,I>> comparator, String lsType, Neighborhood<S, I>... ps){
+    public LocalSearchFirstImprovement(MoveComparator<M,S,I> comparator, String lsType, Neighborhood<M,S, I>... ps){
         super(comparator, lsType, ps);
     }
 
     @Override
-    protected Move<S,I> getMove(S s){
-        Move<S,I> move = null;
+    protected M getMove(S s){
+        M move = null;
         for (var provider : providers) {
             var optionalMove = provider.stream(s).filter(Move::isValid).filter(Move::improves).findAny();
             if(optionalMove.isEmpty()) continue;
-            Move<S,I> _move = optionalMove.get();
+            M _move = optionalMove.get();
             if (move == null) {
                 move = _move;
             } else {

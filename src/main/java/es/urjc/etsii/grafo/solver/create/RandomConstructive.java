@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.solver.create;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solution.ConstructiveNeighborhood;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -13,11 +12,11 @@ import java.util.Optional;
  * @param <S> Solution type
  * @param <I> Instance type
  */
-public class RandomConstructive<S extends Solution<I>, I extends Instance> extends Constructive<S, I> {
+public class RandomConstructive<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Constructive<S, I> {
 
-    private RandomizableNeighborhood<S,I> neighborhood;
+    private RandomizableNeighborhood<M,S,I> neighborhood;
 
-    public RandomConstructive(RandomizableNeighborhood<S, I> neighborhood) {
+    public RandomConstructive(RandomizableNeighborhood<M,S,I> neighborhood) {
         this.neighborhood = neighborhood;
     }
 
@@ -26,7 +25,7 @@ public class RandomConstructive<S extends Solution<I>, I extends Instance> exten
         return exhaustNeighborhood(solution, neighborhood);
     }
 
-    private S exhaustNeighborhood(S s, RandomizableNeighborhood<S,I> neighborhood) {
+    private S exhaustNeighborhood(S s, RandomizableNeighborhood<M,S,I> neighborhood) {
         Optional<? extends Move<S,I>> move;
         while((move = neighborhood.getRandomMove(s)).isPresent()){
             move.get().execute();

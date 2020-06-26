@@ -12,20 +12,25 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.logging.Logger;
 
-public abstract class RandomMoveShake<S extends Solution<I>, I extends Instance> implements Shake<S,I> {
+public abstract class RandomMoveShake<S extends Solution<I>, I extends Instance> extends Shake<S,I> {
 
     private static final Logger log = Logger.getLogger(RandomMoveShake.class.getName());
 
-    RandomizableNeighborhood<S,I>[] neighborhoods;
+    RandomizableNeighborhood<?,S,I>[] neighborhoods;
     private int ratio;
 
     @SafeVarargs
-    public RandomMoveShake(int ratio, RandomizableNeighborhood<S,I>... neighborhoods) {
+    public RandomMoveShake(int ratio, RandomizableNeighborhood<?,S,I>... neighborhoods) {
         this.ratio = ratio;
         if(neighborhoods.length == 0){
             throw new IllegalArgumentException("Use at least one MoveProvider");
         }
         this.neighborhoods = neighborhoods;
+    }
+
+    @SafeVarargs
+    public RandomMoveShake(RandomizableNeighborhood<?,S,I>... neighborhoods) {
+        this(1, neighborhoods);
     }
 
     /**

@@ -9,7 +9,7 @@ import java.util.Optional;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-public abstract class RandomizableNeighborhood<S extends Solution<I>, I extends Instance> extends Neighborhood<S,I>{
+public abstract class RandomizableNeighborhood<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Neighborhood<M,S,I>{
 
     /**
      * Pick a random move within the neighborhood

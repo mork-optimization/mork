@@ -1,10 +1,12 @@
 package es.urjc.etsii.grafo.solution;
 
+import es.urjc.etsii.grafo.io.Instance;
+
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
-public abstract class MoveComparator<M extends Move<?,?>> implements Comparator<M> {
+public abstract class MoveComparator<M extends Move<S,I>, S extends Solution<I>, I extends Instance> implements Comparator<M> {
 
     @Override
     public int compare(M m1, M m2) {

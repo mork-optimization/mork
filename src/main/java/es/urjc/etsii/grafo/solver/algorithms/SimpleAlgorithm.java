@@ -20,13 +20,16 @@ import java.util.logging.Logger;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> implements Algorithm<S,I>{
+public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends Algorithm<S,I>{
 
     private static Logger log = Logger.getLogger(SimpleAlgorithm.class.getName());
 
     Constructive<S,I> constructive;
     List<Improver<S,I>> improvers;
     Shake<S, I> shake;
+
+    // todo remove empty protected constructors, spring should be able to inject everything
+    protected SimpleAlgorithm(){}
 
     @SafeVarargs
     public SimpleAlgorithm(Constructive<S, I> constructive, Shake<S,I> shake, Improver<S,I>... improvers){

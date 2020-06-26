@@ -6,12 +6,13 @@ import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Neighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 
-public abstract class LocalSearch<S extends Solution<I>,I extends Instance> implements Improver<S,I> {
-    protected final Neighborhood<S,I>[] providers;
-    protected final MoveComparator<Move<S, I>> comparator;
+public abstract class LocalSearch<M extends Move<S,I>, S extends Solution<I>,I extends Instance> implements Improver<S,I> {
+    protected final Neighborhood<M,S,I>[] providers;
+    protected final MoveComparator<M,S,I> comparator;
     protected String lsType;
 
-    public LocalSearch(MoveComparator<Move<S,I>> comparator, String lsType, Neighborhood<S,I>... ps) {
+    @SafeVarargs
+    public LocalSearch(MoveComparator<M,S,I> comparator, String lsType, Neighborhood<M,S,I>... ps) {
         this.comparator = comparator;
         this.lsType = lsType;
         this.providers = ps;
@@ -36,5 +37,5 @@ public abstract class LocalSearch<S extends Solution<I>,I extends Instance> impl
      * @param s Solution
      * @return Proposed move
      */
-    protected abstract Move<S,I> getMove(S s);
+    protected abstract M getMove(S s);
 }

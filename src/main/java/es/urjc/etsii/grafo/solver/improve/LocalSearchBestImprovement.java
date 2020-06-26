@@ -9,15 +9,15 @@ import es.urjc.etsii.grafo.solution.Solution;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-public class LocalSearchBestImprovement<S extends Solution<I>,I extends Instance> extends LocalSearch<S,I> {
+public class LocalSearchBestImprovement<M extends Move<S,I>, S extends Solution<I>,I extends Instance> extends LocalSearch<M,S,I> {
 
-    public LocalSearchBestImprovement(MoveComparator<Move<S,I>> comparator, String lsType, Neighborhood<S,I>... ps){
+    public LocalSearchBestImprovement(MoveComparator<M,S,I> comparator, String lsType, Neighborhood<M,S,I>... ps){
         super(comparator, lsType, ps);
     }
 
     @Override
-    protected Move<S,I> getMove(S s){
-        Move<S,I> move = null;
+    protected M getMove(S s){
+        M move = null;
         for (var provider : providers) {
             var _move = getBest(provider.stream(s));
             if(_move.isEmpty()) continue;
@@ -30,7 +30,7 @@ public class LocalSearchBestImprovement<S extends Solution<I>,I extends Instance
         return move;
     }
 
-    private Optional<Move<S,I>> getBest(Stream<Move<S,I>> stream){
+    private Optional<M> getBest(Stream<M> stream){
         return stream.filter(Move::isValid).reduce((a, b) -> comparator.getBest(b,a));
     }
 

@@ -12,15 +12,15 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
-public class VNS<S extends Solution<I>, I extends Instance> implements Algorithm<S, I> {
+public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S, I> {
 
     private static final Logger log = Logger.getLogger(VNS.class.getName());
 
     List<Improver<S, I>> improvers;
     Constructive<S, I> constructive;
-    private final List<Shake<S, I>> shakes;
-    private final int[] ks;
-    private final int maxK;
+    private List<Shake<S, I>> shakes;
+    private int[] ks;
+    private int maxK;
 
     /**
      * Execute VNS until finished
@@ -33,6 +33,9 @@ public class VNS<S extends Solution<I>, I extends Instance> implements Algorithm
     public VNS(int[] ks, Shake<S, I> shake, Constructive<S, I> constructive, Improver<S, I>... improvers) {
         this(ks, Collections.singletonList(shake), constructive, improvers);
     }
+
+    // todo remove empty protected constructors, spring should be able to inject everything
+    protected VNS(){}
 
 
     /**

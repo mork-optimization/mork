@@ -32,7 +32,7 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
      * @param alpha Randomness, adjusts the candidate list size.
      *              Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
      */
-    public GreedyRandomGRASPConstructive(double alpha, MoveComparator<M> comparator){
+    public GreedyRandomGRASPConstructive(double alpha, MoveComparator<M,S,I> comparator){
         assert isGreaterOrEqualsThan(alpha, 0) && isLessOrEquals(alpha, 1);
         this.comparator = comparator;
         randomType = String.format("FIXED{a=%.2f}", alpha);
