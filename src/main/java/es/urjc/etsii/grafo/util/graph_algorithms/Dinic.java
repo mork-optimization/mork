@@ -12,6 +12,7 @@ import java.util.Arrays;
 
 /**
  * Dinic's algorithm for the maxflow problem.
+ * See https://www.geeksforgeeks.org/dinics-algorithm-maximum-flow/
  */
 public class Dinic {
 
@@ -21,11 +22,6 @@ public class Dinic {
     // Stores the graph.
     public ArrayList<Edge>[] adj;
     public int n;
-
-    // s = source, t = sink
-    public int s;
-    public int t;
-
 
     // For BFS.
     public boolean[] blocked;
@@ -37,7 +33,7 @@ public class Dinic {
     public Dinic(int N) {
 
         // s is the source, t is the sink, add these as last two nodes.
-        n = N; s = n++; t = n++;
+        n = N;
 
         // Everything else is empty.
         blocked = new boolean[n];
@@ -59,19 +55,19 @@ public class Dinic {
     }
 
     // Runs other level BFS.
-    public boolean bfs() {
+    public boolean bfs(int source, int sink) {
 
         // Set up BFS
         q.clear();
         Arrays.fill(dist, -1);
-        dist[t] = 0;
-        q.add(t);
+        dist[sink] = 0;
+        q.add(sink);
 
         // Go backwards from sink looking for source.
         // We just care to mark distances left to the sink.
         while(!q.isEmpty()) {
             int node = q.poll();
-            if(node == s)
+            if(node == source)
                 return true;
             for(Edge e : adj[node]) {
                 if(e.rev.cap > e.rev.flow && dist[e.v2] == -1) {
@@ -82,27 +78,27 @@ public class Dinic {
         }
 
         // Augmenting paths exist iff we made it back to the source.
-        return dist[s] != -1;
+        return dist[source] != -1;
     }
 
     // Runs inner DFS in Dinic's, from node pos with a flow of min.
-    public int dfs(int pos, int min) {
+    public int dfs(int source, int sink, int min) {
 
         // Made it to the sink, we're good, return this as our max flow for the augmenting path.
-        if(pos == t)
+        if(source == sink)
             return min;
         int flow = 0;
 
         // Try each edge from here.
-        for(Edge e : adj[pos]) {
+        for(Edge e : adj[source]) {
             int cur = 0;
 
             // If our destination isn't blocked and it's 1 closer to the sink and there's flow, we
             // can go this way.
-            if(!blocked[e.v2] && dist[e.v2] == dist[pos]-1 && e.cap - e.flow > 0) {
+            if(!blocked[e.v2] && dist[e.v2] == dist[source]-1 && e.cap - e.flow > 0) {
 
                 // Recursively run dfs from here - limiting flow based on current and what's left on this edge.
-                cur = dfs(e.v2, Math.min(min-flow, e.cap - e.flow));
+                cur = dfs(e.v2, sink, Math.min(min-flow, e.cap - e.flow));
 
                 // Add the flow through this edge and subtract it from the reverse flow.
                 e.flow += cur;
@@ -118,23 +114,23 @@ public class Dinic {
         }
 
         // mark if this node is now blocked.
-        blocked[pos] = flow != min;
+        blocked[source] = flow != min;
 
         // This is the flow
         return flow;
     }
 
-    public int flow() {
+    public int flow(int source, int sink) {
         int ret = 0;
 
         // Run a top level BFS.
-        while(bfs()) {
+        while(bfs(source, sink)) {
 
             // Reset this.
             Arrays.fill(blocked, false);
 
             // Run multiple DFS's until there is no flow left to push through.
-            ret += dfs(s, oo);
+            ret += dfs(source, sink, oo);
         }
         return ret;
     }
