@@ -74,4 +74,9 @@ public abstract class MoveComparator<M extends Move<S,I>, S extends Solution<I>,
 
         return true;
     }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName();
+    }
 }

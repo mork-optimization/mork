@@ -57,7 +57,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
     public void run(String... args) {
         log.info("App started, lets rock & roll...");
         log.info("Available algorithms: " + this.algorithmsManager.getAlgorithms());
-
+        long startTime = System.nanoTime();
         try{
             List<Result> results = Collections.synchronizedList(new ArrayList<>());
             io.getInstances().forEach(instance -> runAlgorithmsForInstance(results, (I) instance));
@@ -67,6 +67,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
             this.io.saveResults(results);
         } finally {
             executor.shutdown();
+            log.info(String.format("Total execution time: %s (s)", (System.nanoTime() - startTime) / 1_000_000_000));
         }
     }
 

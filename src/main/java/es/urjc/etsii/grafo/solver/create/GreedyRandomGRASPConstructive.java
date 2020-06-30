@@ -15,11 +15,12 @@ import static es.urjc.etsii.grafo.util.DoubleComparator.*;
 
 /**
  * GRASP Constructive method
+ *
  * @param <M> Move type
  * @param <S> Solution type
  * @param <I> Instance type
  */
-public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Constructive<S,I> {
+public abstract class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solution<I>, I extends Instance> extends Constructive<S, I> {
     private static final Logger log = Logger.getLogger(GreedyRandomGRASPConstructive.class.getName());
 
     private final AlphaProvider alphaProvider;
@@ -29,10 +30,11 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
     /**
      * GRASP Constructor, mantains a fixed alpha value
      * Stops when the neighborhood does not provide any movement
+     *
      * @param alpha Randomness, adjusts the candidate list size.
      *              Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
      */
-    public GreedyRandomGRASPConstructive(double alpha, MoveComparator<M,S,I> comparator){
+    public GreedyRandomGRASPConstructive(double alpha, MoveComparator<M, S, I> comparator) {
         assert isGreaterOrEqualsThan(alpha, 0) && isLessOrEquals(alpha, 1);
         this.comparator = comparator;
         randomType = String.format("FIXED{a=%.2f}", alpha);
@@ -42,10 +44,11 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
     /**
      * GRASP Constructor, generates a random alpha in each construction
      * Alpha Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
+     *
      * @param minAlpha minimum value for the random alpha
      * @param maxAlpha maximum value for the random alpha
      */
-    public GreedyRandomGRASPConstructive(double minAlpha, double maxAlpha, Comparator<M> comparator){
+    public GreedyRandomGRASPConstructive(double minAlpha, double maxAlpha, Comparator<M> comparator) {
         this.comparator = comparator;
         assert isGreaterOrEqualsThan(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
         assert isGreaterOrEqualsThan(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
@@ -58,7 +61,7 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
     /**
      * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
      */
-    public GreedyRandomGRASPConstructive(Comparator<M> comparator){
+    public GreedyRandomGRASPConstructive(Comparator<M> comparator) {
         this(0, 1, comparator);
     }
 
@@ -66,29 +69,31 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
      * Initialize solution before GRASP algorithm is run
      * F.e: In the case of clustering algorithms, usually each cluster needs to have at least one point,
      * different solutions types may require different initialization
+     *
      * @param s Solution to initialize before running the GRASP constructive method
      */
-    public void beforeGRASP(S s){ }
+    public void beforeGRASP(S s) {
+    }
 
-    private int binarySearchFindLimit(List<M> cl, double v, boolean asc){
+    private int binarySearchFindLimit(List<M> cl, double v, boolean asc) {
         // Adapted from the Java Collections Implementation
         int low = 0;
         int high = cl.size() - 1;
 
-        while(low <= high) {
+        while (low <= high) {
             int mid = low + high >>> 1;
             var midVal = cl.get(mid);
             int cmp = Double.compare(midVal.getValue(), v);
             if (cmp < 0) {
-                if(asc) low = mid + 1;
-                else    high = mid - 1;
+                if (asc) low = mid + 1;
+                else high = mid - 1;
             } else {
                 if (cmp == 0) {
                     // Found exact match --> Return current mid element
                     return mid;
                 }
-                if(asc) high = mid - 1;
-                else    low = mid + 1;
+                if (asc) high = mid - 1;
+                else low = mid + 1;
             }
         }
 
@@ -137,6 +142,7 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
 
     /**
      * Generate initial candidate list. The list will be sorted by the constructor.
+     *
      * @param sol Current es.urjc.etsii.grafo.solution
      * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
      */
@@ -144,8 +150,9 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
 
     /**
      * Update candidate list after each movement. The list will be sorted by the constructor.
-     * @param s Current es.urjc.etsii.grafo.solution, move has been already applied
-     * @param t Chosen move
+     *
+     * @param s     Current es.urjc.etsii.grafo.solution, move has been already applied
+     * @param t     Chosen move
      * @param index index of the chosen move in the candidate list
      * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
      */
@@ -155,7 +162,8 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S,I>, S exten
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "{" +
-                "alpha=" + randomType +
+                "randomType='" + randomType + '\'' +
+                ", comparator=" + comparator +
                 '}';
     }
 
