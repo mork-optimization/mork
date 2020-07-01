@@ -55,8 +55,9 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
 
     @Override
     public void run(String... args) {
-        log.info("App started, lets rock & roll...");
+        log.info("App started, calculating workload...");
         log.info("Available algorithms: " + this.algorithmsManager.getAlgorithms());
+        log.info("Ready to start solving!");
         long startTime = System.nanoTime();
         try{
             List<Result> results = Collections.synchronizedList(new ArrayList<>());

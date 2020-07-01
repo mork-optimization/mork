@@ -7,9 +7,12 @@ import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.services.InheritedComponent;
+import es.urjc.etsii.grafo.solver.services.SolutionValidator;
 
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+import java.util.logging.Logger;
 
 /**
  * Processes work units and returns results
@@ -18,6 +21,19 @@ import java.util.List;
  */
 @InheritedComponent
 public abstract class Executor<S extends Solution<I>, I extends Instance> {
+
+    private static final Logger log = Logger.getLogger(Executor.class.getName());
+
+    private final Optional<SolutionValidator<S,I>> validator;
+
+    protected Executor(Optional<SolutionValidator<S,I>> validator) {
+        this.validator = validator;
+        if(validator.isEmpty()){
+            log.warning("No SolutionValidator implementation has been found, solution correctness will not be validated");
+        } else {
+            log.info("SolutionValidator implementation found: " + this.validator.get().getClass().getSimpleName());
+        }
+    }
 
     /**
      * Execute all the available algorithms for the given instance, repeated N times
@@ -32,4 +48,8 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
      * Finalize and destroy all resources, we have finished and are shutting down now.
      */
     public abstract void shutdown();
+
+    public void validate(S s){
+        this.validator.ifPresent(validator -> validator.validate(s));
+    }
 }

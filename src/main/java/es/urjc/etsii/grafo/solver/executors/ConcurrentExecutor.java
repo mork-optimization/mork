@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
+import es.urjc.etsii.grafo.solver.services.SolutionValidator;
 import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 import es.urjc.etsii.grafo.util.RandomManager;
 import org.springframework.beans.factory.annotation.Value;
@@ -26,7 +27,8 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
     private final int nWorkers;
     private final ExecutorService executor;
 
-    public ConcurrentExecutor(@Value("${solver.nWorkers:-1}") int nWorkers) {
+    public ConcurrentExecutor(@Value("${solver.nWorkers:-1}") int nWorkers, Optional<SolutionValidator<S,I>> validator) {
+        super(validator);
         if(nWorkers == -1){
             this.nWorkers = Runtime.getRuntime().availableProcessors() / 2;
         } else {
@@ -54,6 +56,7 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
                         long endTime = System.nanoTime();
                         long timeToTarget = solution.getLastModifiedTime() - starTime;
                         long ellapsedTime = endTime - starTime;
+                        validate(solution);
                         resultsMap.get(algorithm).addSolution(solution, ellapsedTime, timeToTarget);
                         System.out.format("\t%s.\tTime: %.3f (s) \tTTT: %.3f (s) \t%s -- \n", _i+1, ellapsedTime / 1000_000_000D, timeToTarget / 1000_000_000D, solution);
 

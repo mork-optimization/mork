@@ -6,9 +6,7 @@ package es.urjc.etsii.grafo.util.graph_algorithms;
 // Commented and Edited by Arup Guha on 3/6/2017 for COP 4516
 // Code for Dinic's Network Flow Algorithm
 
-import java.util.ArrayDeque;
-import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.*;
 
 /**
  * Dinic's algorithm for the maxflow problem.
@@ -20,7 +18,7 @@ public class Dinic {
     public ArrayDeque<Integer> q;
 
     // Stores the graph.
-    public ArrayList<Edge>[] adj;
+    public HashSet<Edge>[] adj;
     public int n;
 
     // For BFS.
@@ -39,14 +37,15 @@ public class Dinic {
         blocked = new boolean[n];
         dist = new int[n];
         q = new ArrayDeque<>();
-        adj = new ArrayList[n];
+        adj = new HashSet[n];
         for(int i = 0; i < n; ++i)
-            adj[i] = new ArrayList<>();
+            adj[i] = new HashSet<>();
     }
 
 
 
     // Just adds an edge and ALSO adds it going backwards.
+    // EDGES ARE IGNORED IF ALREADY EXISTS FROM V1 TO V2
     public void add(int v1, int v2, int cap) {
         Edge e = new Edge(v1, v2, cap, 0);
         Edge rev = new Edge(v2, v1, 0, 0);
@@ -146,5 +145,19 @@ class Edge {
         v2 = V2;
         cap = Cap;
         flow = Flow;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Edge edge = (Edge) o;
+        return v1 == edge.v1 &&
+                v2 == edge.v2;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(v1, v2);
     }
 }

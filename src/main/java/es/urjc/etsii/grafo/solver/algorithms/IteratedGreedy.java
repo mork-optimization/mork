@@ -8,6 +8,8 @@ import es.urjc.etsii.grafo.solver.destructor.Shake;
 import es.urjc.etsii.grafo.solver.improve.Improver;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
+import java.util.Arrays;
+
 public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends Algorithm<S, I> {
 
     private Constructive<S, I> constructive;
@@ -54,5 +56,14 @@ public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends A
             s = improver.improve(s);
         }
         return s;
+    }
+
+    @Override
+    public String toString() {
+        return "IteratedGreedy{" +
+                "constructive=" + constructive +
+                ", shake=" + shake +
+                ", improvers=" + Arrays.toString(improvers) +
+                '}';
     }
 }
