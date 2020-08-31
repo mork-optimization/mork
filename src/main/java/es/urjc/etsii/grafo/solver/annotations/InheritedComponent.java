@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.solver.services;
+package es.urjc.etsii.grafo.solver.annotations;
 
 import org.springframework.stereotype.Component;
 

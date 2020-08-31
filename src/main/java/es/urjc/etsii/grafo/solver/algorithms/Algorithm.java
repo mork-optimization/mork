@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.solver.algorithms;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
-import es.urjc.etsii.grafo.solver.services.InheritedComponent;
+import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 
 @InheritedComponent
 public abstract class Algorithm<S extends Solution<I>, I extends Instance> {

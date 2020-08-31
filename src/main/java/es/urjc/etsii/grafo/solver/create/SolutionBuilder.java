@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.solver.create;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solver.services.InheritedComponent;
+import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 
 /**
  * How to generate empty solutions from a given instance.

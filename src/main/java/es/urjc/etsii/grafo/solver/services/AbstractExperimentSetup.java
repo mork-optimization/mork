@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.solver.services;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
+import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 
 import java.util.List;
 

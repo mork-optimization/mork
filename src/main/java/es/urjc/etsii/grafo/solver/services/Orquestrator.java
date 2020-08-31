@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 @Service
@@ -31,7 +32,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
     public Orquestrator(
             @Value("${solver.repetitions:1}") int repetitions,
             @Value("${solver.parallelExecutor:false}") boolean useParallelExecutor,
-            IOManager io,
+            IOManager<S,I> io,
             AlgorithmsManager<S,I> algorithmsManager,
             ExceptionHandler<S,I> exceptionHandler,
             ConcurrentExecutor<S,I> concurrentExecutor,
@@ -43,6 +44,8 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         this.algorithmsManager = algorithmsManager;
         this.exceptionHandler = exceptionHandler;
         this.solutionBuilder = solutionBuilder;
+        log.info("Using SolutionBuilder implementation: "+this.solutionBuilder.getClass().getSimpleName());
+
         if(useParallelExecutor){
             executor = concurrentExecutor;
         } else {

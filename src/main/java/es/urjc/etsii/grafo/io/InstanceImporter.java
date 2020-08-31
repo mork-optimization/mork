@@ -1,6 +1,6 @@
 package es.urjc.etsii.grafo.io;
 
-import es.urjc.etsii.grafo.solver.services.InheritedComponent;
+import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 
 import java.io.File;
 
