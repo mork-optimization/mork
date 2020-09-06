@@ -1,18 +1,18 @@
 package es.urjc.etsii.grafo.solver.improve;
 
+import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 
-public class VND {
+public class VND<S extends Solution<I>,I extends Instance> {
 
-    public Solution doIt(Solution current,List<Improver> improvers) {
+    public S doIt(S current,List<Improver<S,I>> improvers) {
         int currentLS = 0;
         while(currentLS < improvers.size()){
             double prev = current.getOptimalValue();
-            Improver ls = improvers.get(currentLS);
+            var ls = improvers.get(currentLS);
             current = ls.improve(current);
             if (DoubleComparator.isLessOrEquals(prev, current.getOptimalValue())) {
                 currentLS++;

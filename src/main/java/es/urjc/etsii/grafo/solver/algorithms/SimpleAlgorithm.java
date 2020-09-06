@@ -62,16 +62,18 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
         solution = localSearch(solution);
 
         S previous;
-        while(true) {
-            previous = solution.cloneSolution();
-            previous = localSearch(previous);
-            if(shake != null){
-                previous = shake.shake(previous, 1, 1, true);
-            }
-            if(DoubleComparator.equals(previous.getOptimalValue(), solution.getOptimalValue())){
-                break;
-            } else {
-                solution = previous;
+        if(this.shake != null){
+            while(true) {
+                previous = solution.cloneSolution();
+                previous = localSearch(previous);
+                if(shake != null){
+                    previous = shake.shake(previous, 1, 1, true);
+                }
+                if(DoubleComparator.equals(previous.getOptimalValue(), solution.getOptimalValue())){
+                    break;
+                } else {
+                    solution = previous;
+                }
             }
         }
 
@@ -96,9 +98,9 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
     @Override
     public String toString() {
         return "Simple{" +
-                "constructive=" + constructive +
-                ", improvers=" + improvers +
-                ", shake=" + shake +
+                "cnstr=" + constructive +
+                ", impr=" + improvers +
+                ", shk=" + shake +
                 '}';
     }
 }

@@ -61,6 +61,23 @@ public class CollectionUtils {
     }
 
     /**
+     * Shuffle an array IN PLACE using Fisher–Yates shuffle
+     * @param array Array to shuffle IN PLACE
+     */
+    public static int[] shuffle(int[] array){
+        var rnd = RandomManager.getRandom();
+        for (int i = array.length - 1; i > 0; i--)
+        {
+            int index = rnd.nextInt(i + 1);
+            // Simple swap
+            int a = array[index];
+            array[index] = array[i];
+            array[i] = a;
+        }
+        return array;
+    }
+
+    /**
      * Merges several streams into one
      * @param streams Streams to merge
      * @return A single stream containing all the given streams
@@ -85,4 +102,5 @@ public class CollectionUtils {
         var random = RandomManager.getRandom();
         return list.get(random.nextInt(list.size()));
     }
+
 }

@@ -34,6 +34,7 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     String solutionsOut;
 
     @Value("${errors.path}")
+    // todo: store exceptions with state to file to ease debugging
     String errorFolder;
 
     // Results CSV --> date to string

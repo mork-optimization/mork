@@ -11,7 +11,7 @@ public class DefaultExceptionHandler<S extends Solution<I>, I extends Instance> 
     private static final Logger logger = Logger.getLogger(DefaultExceptionHandler.class.getName());
 
     public void handleException(Exception e, I i, Algorithm<S,I> algorithm){
-        logger.severe(String.format("Error while executing instance %s with algorithm %s, skipping. Exception message: %s", i.getName(), algorithm.toString(), e.getMessage()));
-        logger.info("Stacktrace: " + Arrays.toString(e.getStackTrace()));
+        logger.severe(String.format("Error while solving instance %s with algorithm %s, skipping. Exception message: %s", i.getName(), algorithm.toString(), e.getMessage()));
+        logger.fine("Stacktrace: " + Arrays.toString(e.getStackTrace()));
     }
 }
