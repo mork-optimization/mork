@@ -42,14 +42,15 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
             throw new AssertionError(String.format("Solution state changed (%s), cannot execute move (%s)", s.version, this.solutionVersion));
         }
         assert saveLastMoves(this);
-        double prevScore = s.getOptimalValue();
+        double prevScore = s.getScore();
         _execute();
-        if (!DoubleComparator.equals(prevScore, s.getOptimalValue())) {
+        if (!DoubleComparator.equals(prevScore, s.getScore())) {
             // Some moves may not affect the optimal score
             s.updateLastModifiedTime();
         }
         s.version++;
-        assert s.isValid();
+        assert DoubleComparator.equals(s.getScore(), s.recalculateScore()) :
+                String.format("Score mismatch, incremental %s, absolute %s. Review your incremental score calculation.", s.getScore(), s.recalculateScore());
     }
 
     private boolean saveLastMoves(Move<?,?> move){

@@ -20,11 +20,12 @@ public abstract class Solution<I extends Instance> implements Comparable<Solutio
     /**
      * Dummy stop by default, can be changed as the user wants
      */
+    // todo no me gusta demasiado esto, mejor algoritmo que envuelva otro para el limite de tiempo?
     @JsonIgnore
     protected StopPoint stopPoint;
 
     /**
-     * Each time a move is executed es.urjc.etsii.grafo.solution version number must be incremented
+     * Each time a move is executed solution version number must be incremented
      */
     long version = 0;
 
@@ -55,42 +56,49 @@ public abstract class Solution<I extends Instance> implements Comparable<Solutio
         this(ins, new DummyStop());
     }
 
-    /**
-     * Validate current es.urjc.etsii.grafo.solution state
-     * You must check that no constraints are broken, and that all costs are valid
-     *
-     * @return True if the es.urjc.etsii.grafo.solution is in a valid state, false otherwise
-     */
-    public abstract boolean isValid();
-
     public void updateLastModifiedTime() {
         this.lastModifiedTime = System.nanoTime();
     }
 
     /**
-     * Clone the current es.urjc.etsii.grafo.solution.
+     * Clone the current solution.
      * Deep clone mutable data or you will regret it.
      *
-     * @return A deep clone of the current es.urjc.etsii.grafo.solution
+     * @return A deep clone of the current solution
      */
     public abstract <S extends Solution<I>> S cloneSolution();
 
     /**
-     * Compare current es.urjc.etsii.grafo.solution against another. Depending on the problem type (minimiz, max, multiobject)
+     * Compare current solution against another. Depending on the problem type (minimiz, max, multiobject)
      * the comparison will be different
      *
      * @param o Solution to compare
-     * @return Best es.urjc.etsii.grafo.solution
+     * @return Best solution
      */
     public abstract <S extends Solution<I>> S getBetterSolution(S o);
 
-    public abstract double getOptimalValue();
+    /**
+     * Get the current solution optimal value.
+     * The difference between this method and recalculateScore is that
+     * this result be a property of the solution, or cached, it does not have to be calcylated
+     * @return current solution score as double
+     */
+    public abstract double getScore();
 
     /**
-     * Resume this es.urjc.etsii.grafo.solution
+     * Recalculate solution score and validate current solution state
+     * You must check that no constraints are broken, and that all costs are valid
+     * The difference between this method and getScore is that we must recalculate the score from scratch,
+     * without using any cache/shortcuts
+     * @return current solution score as double
+     */
+    public abstract double recalculateScore();
+
+    /**
+     * Resume this solution
      * Generate a toString method using your IDE
      *
-     * @return string representation of the current es.urjc.etsii.grafo.solution
+     * @return string representation of the current solution
      */
     public abstract String toString();
 

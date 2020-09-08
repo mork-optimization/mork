@@ -41,7 +41,7 @@ public class WorkingOnResult {
         }
         this.best = best.getBetterSolution(s);
         s.setExecutionTimeInNanos(nanos);
-        this.solutions.add(new SolutionData(s.getOptimalValue(), nanos, timeToTarget));
+        this.solutions.add(new SolutionData(s.getScore(), nanos, timeToTarget));
         if (instance == null) {
             instance = s.getInstance();
         } else if (instance != s.getInstance()) {
@@ -123,7 +123,7 @@ public class WorkingOnResult {
                 this.algorythmName,
                 this.instanceName,
                 Double.toString(this.getAverageFOValue()),
-                Double.toString(this.getBestSolution().getOptimalValue()),
+                Double.toString(this.getBestSolution().getScore()),
                 Double.toString(this.getStd()),
                 Double.toString(this.getAverageExecTime()),
                 Long.toString(this.getTotalTime())

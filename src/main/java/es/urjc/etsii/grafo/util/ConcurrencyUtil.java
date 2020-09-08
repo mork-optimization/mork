@@ -26,26 +26,6 @@ public class ConcurrencyUtil {
         }
     }
 
-    public static void printf(String s, Object... o) {
-        System.out.println('[' + Thread.currentThread().getName() + "] " + String.format(s, o));
-    }
-
-    public static int getNThreads(){
-        // divide by 2 as hyperthreading is enabled in most computers
-        // and we do not want to overload it
-        return Runtime.getRuntime().availableProcessors() / 2;
-    }
-
-    public static ExecutorService buildExecutorService(){
-        var parallel = System.getProperty("parallel");
-        if(parallel != null && Boolean.parseBoolean(parallel)){
-            return Executors.newFixedThreadPool(getNThreads());
-        } else {
-            return Executors.newSingleThreadExecutor();
-        }
-    }
-
-
     /**
      * Block until the task is completed.
      * Wraps the annoying checked exception.
@@ -83,34 +63,4 @@ public class ConcurrencyUtil {
     public static <T> List<T> awaitAll(Stream<Future<T>> futures){
         return futures.map(ConcurrencyUtil::await).collect(Collectors.toList());
     }
-
-//    TODO Not good enough as is, but can be a starting point for future work
-//    public static Map<Instance, List<Result>> parallelExecutor(Function<Instance, List<Result>> doWork, File[] instanceFiles, int nThreads) {
-//        System.out.println("Starting es.urjc.etsii.grafo.solver with " + nThreads + " workers");
-//        Map<Instance, List<Result>> results = new ConcurrentHashMap<>(instanceFiles.length);
-//        var executor = Executors.newFixedThreadPool(nThreads);
-//        var futures = new ArrayList<Future<Object>>();
-//        for (File file : instanceFiles) {
-//            var instance = Instance.loadInstance(file);
-//            futures.add(executor.submit(
-//                    () -> results.put(instance, doWork.apply(instance))
-//            ));
-//        }
-//
-//        System.out.println("Tasks scheduled, awaiting termination");
-//        executor.shutdown();
-//        checkErrors(futures);
-//        awaitTermination(executor);
-//        return results;
-//    }
-//
-//    public static Map<Instance, List<Result>> sequentialExecutor(Function<Instance, List<Result>> doWork, File[] instanceFiles) {
-//        System.out.println("Starting sequential es.urjc.etsii.grafo.solver");
-//        Map<Instance, List<Result>> results = new HashMap<>(instanceFiles.length);
-//        for (File file : instanceFiles) {
-//            var instance = Instance.loadInstance(file);
-//            results.put(instance, doWork.apply(instance));
-//        }
-//        return results;
-//    }
 }

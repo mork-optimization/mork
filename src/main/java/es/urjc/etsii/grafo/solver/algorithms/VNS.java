@@ -34,10 +34,6 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
         this(ks, Collections.singletonList(shake), constructive, improvers);
     }
 
-    // todo remove empty protected constructors, spring should be able to inject everything
-    protected VNS(){}
-
-
     /**
      * Execute VNS until finished
      * @param ks Integer array that will be used for the shake/perturbation

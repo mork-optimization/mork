@@ -34,7 +34,6 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     String solutionsOut;
 
     @Value("${errors.path}")
-    // todo: store exceptions with state to file to ease debugging
     String errorFolder;
 
     // Results CSV --> date to string
@@ -73,16 +72,22 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         return this.instanceImporter.importInstance(p.toFile());
     }
 
-    // TODO call method
-    private void exportSolution(Algorithm<S,I> alg, S s){
+    public void exportSolution(Algorithm<S,I> alg, S s){
         if(this.solutionExporter.isEmpty()){
             log.fine("Skipping solution export, no implementation of SolutionExporter found");
             return;
+        } else {
+            log.fine(String.format("Exporting solution %s", s));
         }
         String filename = s.getInstance().getName() + "__" + alg.getShortName();
         File f = new File(solutionsOut, filename);
         SolutionExporter<S,I> exporter = solutionExporter.get();
         exporter.export(f, s);
+    }
+
+    public void exportError(Algorithm<S,I> alg, I i, Throwable t){
+        // todo: store exceptions with state to file to ease debugging
+        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     //    private Instance tryGetFromCache(Path p){

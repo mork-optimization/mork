@@ -2,9 +2,9 @@ package es.urjc.etsii.grafo.solver.destructor;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
-import es.urjc.etsii.grafo.solution.Neighborhood;
 import es.urjc.etsii.grafo.solution.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.RandomManager;
 
 import java.util.Arrays;
@@ -58,7 +58,8 @@ public abstract class RandomMoveShake<S extends Solution<I>, I extends Instance>
             } while (chosenNeigh % neighborhoods.length != copy);
             if(move.isPresent()){
                 move.get().execute();
-                // TODO proper solution validation
+                assert DoubleComparator.equals(s.getScore(), s.recalculateScore()) :
+                        String.format("Score mismatch, incremental %s, absolute %s. Review your incremental score calculation.", s.getScore(), s.recalculateScore());
             } else {
                 log.warning("No move available in any of the given providers, ending Destruction phase now");
                 break;

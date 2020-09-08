@@ -11,10 +11,10 @@ public class VND<S extends Solution<I>,I extends Instance> {
     public S doIt(S current,List<Improver<S,I>> improvers) {
         int currentLS = 0;
         while(currentLS < improvers.size()){
-            double prev = current.getOptimalValue();
+            double prev = current.getScore();
             var ls = improvers.get(currentLS);
             current = ls.improve(current);
-            if (DoubleComparator.isLessOrEquals(prev, current.getOptimalValue())) {
+            if (DoubleComparator.isLessOrEquals(prev, current.getScore())) {
                 currentLS++;
             } else {
                 currentLS = 0;

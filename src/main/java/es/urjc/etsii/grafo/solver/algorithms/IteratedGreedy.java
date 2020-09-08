@@ -41,10 +41,10 @@ public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends A
 
         double current;
         do {
-            current = s.getOptimalValue();
+            current = s.getScore();
             s = this.shake.shake(s, 1, 1, false);
             s = ls(s);
-        } while (!DoubleComparator.equals(current, s.getOptimalValue()));
+        } while (!DoubleComparator.equals(current, s.getScore()));
 
         return s;
     }

@@ -28,9 +28,6 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
     List<Improver<S,I>> improvers;
     Shake<S, I> shake;
 
-    // todo remove empty protected constructors, spring should be able to inject everything
-    protected SimpleAlgorithm(){}
-
     @SafeVarargs
     public SimpleAlgorithm(Constructive<S, I> constructive, Shake<S,I> shake, Improver<S,I>... improvers){
         this.constructive = constructive;
@@ -69,7 +66,7 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
                 if(shake != null){
                     previous = shake.shake(previous, 1, 1, true);
                 }
-                if(DoubleComparator.equals(previous.getOptimalValue(), solution.getOptimalValue())){
+                if(DoubleComparator.equals(previous.getScore(), solution.getScore())){
                     break;
                 } else {
                     solution = previous;

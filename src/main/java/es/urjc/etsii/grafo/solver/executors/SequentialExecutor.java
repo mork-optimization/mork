@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
+import es.urjc.etsii.grafo.solver.services.IOManager;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
 import es.urjc.etsii.grafo.util.RandomManager;
 
@@ -20,8 +21,8 @@ public class SequentialExecutor<S extends Solution<I>, I extends Instance> exten
 
     private static final Logger logger = Logger.getLogger(SequentialExecutor.class.getName());
 
-    public SequentialExecutor(Optional<SolutionValidator<S,I>> validator) {
-        super(validator);
+    public SequentialExecutor(Optional<SolutionValidator<S,I>> validator, IOManager<S,I> io) {
+        super(validator, io);
     }
 
     @Override
@@ -29,24 +30,15 @@ public class SequentialExecutor<S extends Solution<I>, I extends Instance> exten
         List<Result> results = new ArrayList<>();
 
         for(var algorithm: list){
-            try {
-                logger.info("Algorithm: "+ algorithm);
-                var workingOnResult = new WorkingOnResult(repetitions, algorithm.toString(), ins.getName());
-                for (int i = 0; i < repetitions; i++) {
-                    RandomManager.reset(i);
-                    long starTime = System.nanoTime();
-                    var solution = algorithm.algorithm(ins, solutionBuilder);
-                    long endTime = System.nanoTime();
-                    long timeToTarget = solution.getLastModifiedTime() - starTime;
-                    long ellapsedTime = endTime - starTime;
-                    validate(solution);
-                    System.out.format("\t%s.\tTime: %.3f (s) \tTTT: %.3f (s) \t%s -- \n", i+1, ellapsedTime / 1000_000_000D, timeToTarget / 1000_000_000D, solution);
-                    workingOnResult.addSolution(solution, ellapsedTime, timeToTarget);
+            logger.info("Algorithm: "+ algorithm);
+            var workingOnResult = new WorkingOnResult(repetitions, algorithm.toString(), ins.getName());
+            for (int i = 0; i < repetitions; i++) {
+                WorkUnit workUnit = doWork(ins, solutionBuilder, algorithm, i, exceptionHandler);
+                if(workUnit!=null) {
+                    workingOnResult.addSolution(workUnit.getSolution(), workUnit.getEllapsedTime(), workUnit.getTimeToTarget());
                 }
-                results.add(workingOnResult.finish());
-            } catch (Exception e){
-                exceptionHandler.handleException(e, ins, algorithm);
             }
+            results.add(workingOnResult.finish());
         }
         //logger.info("Tasks submited, awaiting termination for instance: "+ins.getName());
         return results;

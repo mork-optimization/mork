@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.RandomManager;
 
 import java.util.ArrayList;
@@ -91,10 +92,9 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S, I>, S exte
             cl = updateCandidateList(sol, chosen, cl, index);
             assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
 
-            // Catch bugs while building the es.urjc.etsii.grafo.solution
-            // no-op if running in performance mode, triggers score recalculation if debugging
-            // TODO use validation method
-            assert isPositiveOrZero(sol.getOptimalValue());
+            // Catch bugs while building a solution
+            assert DoubleComparator.equals(sol.getScore(), sol.recalculateScore()) :
+                    String.format("Score mismatch, incremental %s, absolute %s. Review your incremental score calculation.", sol.getScore(), sol.recalculateScore());
         }
         return sol;
     }

@@ -123,7 +123,7 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S, I>, S exte
 
             // Catch bugs while building the es.urjc.etsii.grafo.solution
             // no-op if running in performance mode, triggers score recalculation if debugging
-            assert isPositiveOrZero(sol.getOptimalValue());
+            assert isPositiveOrZero(sol.getScore());
         }
         return sol;
     }
