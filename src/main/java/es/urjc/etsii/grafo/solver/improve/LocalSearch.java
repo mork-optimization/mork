@@ -18,7 +18,18 @@ public abstract class LocalSearch<M extends Move<S,I>, S extends Solution<I>,I e
         this.providers = ps;
     }
 
-    public boolean iteration(S s) {
+    /**
+     * Build a new local search
+     * @param maximizing true if a movement with a bigger score is better
+     * @param lsType name for the local search
+     * @param ps neighborhood that generates the movements
+     */
+    public LocalSearch(boolean maximizing, String lsType, Neighborhood<M,S,I>... ps) {
+        this(new DefaultMoveComparator<>(maximizing), lsType, ps);
+    }
+
+
+        public boolean iteration(S s) {
 
         // Buscar el move a ejecutar
         var move = getMove(s);

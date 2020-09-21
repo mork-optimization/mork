@@ -12,6 +12,10 @@ public class LocalSearchFirstImprovement<M extends Move<S,I>, S extends Solution
         super(comparator, lsType, ps);
     }
 
+    public LocalSearchFirstImprovement(boolean maximizing, String lsType, Neighborhood<M,S, I>... ps){
+        super(maximizing, lsType, ps);
+    }
+
     @Override
     protected M getMove(S s){
         M move = null;

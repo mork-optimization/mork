@@ -8,6 +8,16 @@ package es.urjc.etsii.grafo.util;
 public class DoubleComparator {
 
     public static final double DEFAULT_EPSILON = 0.000_001;
+    private static double epsilon = DEFAULT_EPSILON;
+
+    /**
+     * BE CAREFUL WITH THIS METHOD!
+     * Change default comparator precision. Defaults to DEFAULT_EPSILON
+     * @param epsilon
+     */
+    public static void setPrecision(double epsilon){
+        DoubleComparator.epsilon = epsilon;
+    }
 
     /**
      * Test two doubles for equality, uses default error margin
@@ -16,7 +26,7 @@ public class DoubleComparator {
      * @return True, if the difference between them is less than 0.001%, false otherwise
      */
     public static boolean equals(double d1, double d2) {
-        return equals(d1, d2, DEFAULT_EPSILON);
+        return equals(d1, d2, epsilon);
     }
 
     /**
@@ -41,27 +51,27 @@ public class DoubleComparator {
     }
 
     public static int comparator(double d1, double d2){
-        return comparator(d1, d2, DEFAULT_EPSILON);
+        return comparator(d1, d2, epsilon);
     }
 
     public static boolean isNegative(double d1){
-        return comparator(d1, 0d, DEFAULT_EPSILON) < 0;
+        return comparator(d1, 0d, epsilon) < 0;
     }
 
     public static boolean isNegativeOrZero(double d1){
-        return comparator(d1, 0d, DEFAULT_EPSILON) <= 0;
+        return comparator(d1, 0d, epsilon) <= 0;
     }
 
     public static boolean isZero(double d1){
-        return comparator(d1, 0d, DEFAULT_EPSILON) == 0;
+        return comparator(d1, 0d, epsilon) == 0;
     }
 
     public static boolean isPositive(double d1){
-        return comparator(d1, 0d, DEFAULT_EPSILON) > 0;
+        return comparator(d1, 0d, epsilon) > 0;
     }
 
     public static boolean isPositiveOrZero(double d1){
-        return comparator(d1, 0d, DEFAULT_EPSILON) >= 0;
+        return comparator(d1, 0d, epsilon) >= 0;
     }
 
     public static boolean isGreaterThan(double d1, double d2){

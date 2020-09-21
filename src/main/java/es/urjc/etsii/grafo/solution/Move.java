@@ -30,7 +30,7 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
 
     /**
      * Is the solution in a valid state after this movement is applied?
-     * @return True if the solution is in a valid state after applying the movement, false otherwise
+     * @return True if the solution is in a valid state after applying the movement, false if we break any constraint
      */
     public abstract boolean isValid();
 
@@ -50,9 +50,10 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
         }
         s.version++;
         assert DoubleComparator.equals(s.getScore(), s.recalculateScore()) :
-                String.format("Score mismatch, incremental %s, absolute %s. Review your incremental score calculation.", s.getScore(), s.recalculateScore());
+                String.format("Score mismatch, incremental %s, absolute %s. Last move: %s. Review your incremental score calculation.", s.getScore(), s.recalculateScore(), this);
     }
 
+    // todo in case of failure print the last movements in reverse order
     private boolean saveLastMoves(Move<?,?> move){
         if(this.s.lastMoves.size()>=MAX_DEBUG_MOVES){
             this.s.lastMoves.removeFirst();
