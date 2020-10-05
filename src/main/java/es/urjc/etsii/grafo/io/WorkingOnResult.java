@@ -35,7 +35,7 @@ public class WorkingOnResult {
      * @param nanos Time used to calculate the given es.urjc.etsii.grafo.solution
      * @param timeToTarget
      */
-    public void addSolution(Solution<? extends Instance> s, long nanos, long timeToTarget) {
+    public synchronized void addSolution(Solution<? extends Instance> s, long nanos, long timeToTarget) {
         if(this.best == null){
             this.best = s;
         }
