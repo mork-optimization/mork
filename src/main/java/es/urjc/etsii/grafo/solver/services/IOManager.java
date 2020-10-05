@@ -48,6 +48,10 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         this.instanceImporter = instanceImporter;
         this.solutionExporter = solutionExporter;
         this.resultsSerializers = resultsSerializers;
+
+        if(solutionExporter.isEmpty()){
+            log.warning("No solution exporter implementation found, SOLUTIONS WILL NOT BE SERIALIZED");
+        }
     }
 
     public Stream<? extends Instance> getInstances(){

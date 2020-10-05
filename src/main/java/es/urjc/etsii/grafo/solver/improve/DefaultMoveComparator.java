@@ -21,11 +21,17 @@ public class DefaultMoveComparator<M extends Move<S,I>, S extends Solution<I>, I
             return Optional.empty();
         }
         if(maximizing){
-            return Optional.of(DoubleComparator.isGreaterThan(m1.getValue(), m2.getValue()) ?
-                    m1 : m2);
+            if (DoubleComparator.isGreaterThan(m1.getValue(), m2.getValue())) {
+                return Optional.of(m1);
+            } else {
+                return Optional.of(m2);
+            }
         } else {
-            return Optional.of(DoubleComparator.isGreaterThan(m1.getValue(), m2.getValue()) ?
-                    m2 : m1);
+            if (DoubleComparator.isGreaterThan(m1.getValue(), m2.getValue())) {
+                return Optional.of(m2);
+            } else {
+                return Optional.of(m1);
+            }
         }
     }
 }

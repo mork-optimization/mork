@@ -33,7 +33,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
         this.validator = validator;
         this.io = io;
         if(validator.isEmpty()){
-            log.warning("No SolutionValidator implementation has been found, solution correctness will not be validated");
+            log.warning("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
         } else {
             log.info("SolutionValidator implementation found: " + this.validator.get().getClass().getSimpleName());
         }

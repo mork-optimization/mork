@@ -2,8 +2,8 @@ package es.urjc.etsii.grafo.solver.create;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
-import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.improve.DefaultMoveComparator;
 import es.urjc.etsii.grafo.util.RandomManager;
 
 import java.util.Comparator;
@@ -33,10 +33,11 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S, I>, S exte
      *
      * @param alpha Randomness, adjusts the candidate list size.
      *              Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
+     * @param maximizing true if we are maximizing the score, false if minimizing
      */
-    public GreedyRandomGRASPConstructive(double alpha, MoveComparator<M, S, I> comparator) {
+    public GreedyRandomGRASPConstructive(double alpha, boolean maximizing) {
         assert isGreaterOrEqualsThan(alpha, 0) && isLessOrEquals(alpha, 1);
-        this.comparator = comparator;
+        this.comparator = new DefaultMoveComparator<>(maximizing);
         randomType = String.format("FIXED{a=%.2f}", alpha);
         alphaProvider = () -> alpha;
     }
@@ -59,10 +60,22 @@ public abstract class GreedyRandomGRASPConstructive<M extends Move<S, I>, S exte
     }
 
     /**
-     * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
+     * GRASP Constructor, generates a random alpha in each construction
+     * Alpha Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
+     *
+     * @param minAlpha minimum value for the random alpha
+     * @param maxAlpha maximum value for the random alpha
+     * @param maximizing true if maximizing, false if minimizing
      */
-    public GreedyRandomGRASPConstructive(Comparator<M> comparator) {
-        this(0, 1, comparator);
+    public GreedyRandomGRASPConstructive(double minAlpha, double maxAlpha, boolean maximizing) {
+        this(minAlpha, maxAlpha, new DefaultMoveComparator<>(maximizing));
+    }
+
+        /**
+         * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
+         */
+    public GreedyRandomGRASPConstructive(boolean maximizing) {
+        this(0, 1, maximizing);
     }
 
     /**
