@@ -1,6 +1,10 @@
 package es.urjc.etsii.grafo.solver.services;
 
-import es.urjc.etsii.grafo.io.*;
+import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.io.InstanceImporter;
+import es.urjc.etsii.grafo.io.Result;
 import es.urjc.etsii.grafo.io.serializers.DefaultJSONSolutionSerializer;
 import es.urjc.etsii.grafo.io.serializers.JsonSerializer;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
@@ -14,8 +18,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.text.SimpleDateFormat;
 import java.util.Comparator;
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -84,20 +91,18 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         solutionSerializer.export(f, s);
     }
 
-    public void exportError(Algorithm<S,I> alg, I i, Throwable t){
-        // todo: store exceptions with state to file to ease debugging
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
+    public synchronized void exportError(Algorithm<S,I> alg, I i, Throwable t){
+        SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss.SSS");
+        Date d = new Date();
+        String filename = sdf.format(d) + "_error.json";
+        var errorData = Map.of("Algorithm", alg, "InstanceName", i.getName(), "Error", t);
+        var p = Path.of(errorFolder, filename);
+        try (var outputStream = Files.newOutputStream(p)){
+            var writer = new ObjectMapper().writer(new DefaultPrettyPrinter());
+            writer.writeValue(outputStream, errorData);
+        } catch (IOException e) {
+            throw new RuntimeException("Additional error while writting errors to path " + p, e);
+        }
 
-    //    private Instance tryGetFromCache(Path p){
-//         Check if exists in cache, if it does not convert then load.
-//        File cacheFile = new File(p.toFile().getName() + CACHE_SUFFIX);
-//        if(!cacheFile.exists()){
-//            log.info("Saving cached file: " + cacheFile.getAbsolutePath());
-//            Instance imported = this.dataImporter.importInstance(p.toFile());
-//            this.serializer.saveInstance(imported, cacheFile);
-//        }
-//
-//        return this.serializer.loadInstance(cacheFile);
-//    }
+    }
 }

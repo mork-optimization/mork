@@ -91,8 +91,9 @@ solver:
 #    configs:
 
 
-
 logging:
+  file:
+    name: 'console.log'
   level:
     root: 'info'
     es:
@@ -100,3 +101,4 @@ logging:
         etsii:
           #grafo: 'DEBUG'
           grafo: 'info'
+
