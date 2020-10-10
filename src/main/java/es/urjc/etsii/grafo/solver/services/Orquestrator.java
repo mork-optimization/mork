@@ -37,13 +37,13 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
             ExceptionHandler<S,I> exceptionHandler,
             ConcurrentExecutor<S,I> concurrentExecutor,
             SequentialExecutor<S,I> sequentialExecutor,
-            SolutionBuilder<S,I> solutionBuilder
+            List<SolutionBuilder<S,I>> solutionBuilders
     ) {
         this.repetitions = repetitions;
         this.io = io;
         this.algorithmsManager = algorithmsManager;
         this.exceptionHandler = exceptionHandler;
-        this.solutionBuilder = solutionBuilder;
+        this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         log.info("Using SolutionBuilder implementation: "+this.solutionBuilder.getClass().getSimpleName());
 
         if(useParallelExecutor){
@@ -80,5 +80,15 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         log.info("Running algorithms for instance: " + i.getName());
         var result = executor.execute(i, repetitions, algorithmsManager.getAlgorithms(), solutionBuilder, exceptionHandler);
         results.addAll(result);
+    }
+
+    public static <T> T decideImplementation(List<? extends T> list, Class<? extends T> defaultClass){
+        //String qualifiedDefaultname = defaultClass.getName();
+        for(var e: list){
+            if(!e.getClass().equals(defaultClass)){
+                return e;
+            }
+        }
+        throw new IllegalStateException("Where is the default implementation???");
     }
 }
