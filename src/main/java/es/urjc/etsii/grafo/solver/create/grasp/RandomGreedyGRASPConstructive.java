@@ -1,9 +1,10 @@
-package es.urjc.etsii.grafo.solver.create;
+package es.urjc.etsii.grafo.solver.create.grasp;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.create.Constructive;
 import es.urjc.etsii.grafo.solver.improve.DefaultMoveComparator;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.RandomManager;
@@ -24,13 +25,13 @@ import static es.urjc.etsii.grafo.util.DoubleComparator.*;
  */
 public abstract class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solution<I>, I extends Instance> extends Constructive<S, I> {
     private static final Logger log = Logger.getLogger(RandomGreedyGRASPConstructive.class.getName());
-
-    private final AlphaProvider alphaProvider;
     protected final String randomType;
+    protected final GRASPListManager<M, S, I> candidateListManager;
+    private final AlphaProvider alphaProvider;
     private final MoveComparator<M, S, I> comparator;
 
-
-    public RandomGreedyGRASPConstructive(double alpha, boolean maximizing) {
+    public RandomGreedyGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double alpha, boolean maximizing) {
+        this.candidateListManager = candidateListManager;
         this.comparator = new DefaultMoveComparator<>(maximizing);
         assert isGreaterOrEqualsThan(alpha, 0) && isLessOrEquals(alpha, 1);
 
@@ -46,7 +47,8 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S, I>, S exte
      * @param maxAlpha   maximum value for the random alpha
      * @param comparator
      */
-    public RandomGreedyGRASPConstructive(double minAlpha, double maxAlpha, MoveComparator<M, S, I> comparator) {
+    public RandomGreedyGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, MoveComparator<M, S, I> comparator) {
+        this.candidateListManager = candidateListManager;
         this.comparator = comparator;
         assert isGreaterOrEqualsThan(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
         assert isGreaterOrEqualsThan(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
@@ -55,6 +57,7 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S, I>, S exte
         alphaProvider = () -> RandomManager.getRandom().nextDouble() * (maxAlpha - minAlpha) + minAlpha;
         randomType = String.format("RANGE{min=%.2f, max=%.2f}", minAlpha, maxAlpha);
     }
+
     /**
      * GRASP Constructor, generates a random alpha in each construction
      * Alpha Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
@@ -63,45 +66,33 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S, I>, S exte
      * @param maxAlpha   maximum value for the random alpha
      * @param maximizing True if maximizing, false if minimizing
      */
-    public RandomGreedyGRASPConstructive(double minAlpha, double maxAlpha, boolean maximizing) {
-        this(minAlpha, maxAlpha, new DefaultMoveComparator<>(maximizing));
-    }
-
-        /**
-         * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
-         *
-         * @param comparator
-         */
-    public RandomGreedyGRASPConstructive(boolean maximizing) {
-        this(0, 1, maximizing);
+    public RandomGreedyGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, boolean maximizing) {
+        this(candidateListManager, minAlpha, maxAlpha, new DefaultMoveComparator<>(maximizing));
     }
 
     /**
-     * Initialize solution before GRASP algorithm is run
-     * F.e: In the case of clustering algorithms, usually each cluster needs to have at least one point,
-     * different solutions types may require different initialization
-     *
-     * @param s Solution to initialize before running the GRASP constructive method
+     * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
      */
-    public void beforeGRASP(S s) {
+    public RandomGreedyGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, boolean maximizing) {
+        this(candidateListManager, 0, 1, maximizing);
     }
 
     @Override
     public S construct(S sol) {
-        this.beforeGRASP(sol);
+        candidateListManager.beforeGRASP(sol);
         return assignMissing(sol);
     }
 
     public S assignMissing(S sol) {
         double alpha = alphaProvider.getAlpha();
-        var cl = buildInitialCandidateList(sol);
+        var cl = candidateListManager.buildInitialCandidateList(sol);
         assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
         while (!cl.isEmpty()) {
             // Choose an index from the candidate list following different strategies, GreedyRandom, RandomGreedy...
             int index = randomGreedy(alpha, cl);
             M chosen = cl.get(index);
             chosen.execute();
-            cl = updateCandidateList(sol, chosen, cl, index);
+            cl = candidateListManager.updateCandidateList(sol, chosen, cl, index);
             assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
 
             // Catch bugs while building a solution
@@ -132,25 +123,6 @@ public abstract class RandomGreedyGRASPConstructive<M extends Move<S, I>, S exte
         }
         return cl.indexOf(best);
     }
-
-
-    /**
-     * Generate initial candidate list. The list will be sorted by the constructor.
-     *
-     * @param sol Current es.urjc.etsii.grafo.solution
-     * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
-     */
-    public abstract List<M> buildInitialCandidateList(S sol);
-
-    /**
-     * Update candidate list after each movement. The list will be sorted by the constructor.
-     *
-     * @param s     Current es.urjc.etsii.grafo.solution, move has been already applied
-     * @param t     Chosen move
-     * @param index index of the chosen move in the candidate list
-     * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
-     */
-    public abstract List<M> updateCandidateList(S s, M t, List<M> candidateList, int index);
 
     @Override
     public String toString() {

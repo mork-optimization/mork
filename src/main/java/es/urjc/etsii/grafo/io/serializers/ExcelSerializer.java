@@ -1,5 +1,6 @@
-package es.urjc.etsii.grafo.io;
+package es.urjc.etsii.grafo.io.serializers;
 
+import es.urjc.etsii.grafo.io.Result;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;

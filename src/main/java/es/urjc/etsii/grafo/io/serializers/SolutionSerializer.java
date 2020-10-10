@@ -1,5 +1,6 @@
-package es.urjc.etsii.grafo.io;
+package es.urjc.etsii.grafo.io.serializers;
 
+import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 

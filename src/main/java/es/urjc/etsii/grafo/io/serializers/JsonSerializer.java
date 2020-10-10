@@ -1,10 +1,9 @@
-package es.urjc.etsii.grafo.io;
+package es.urjc.etsii.grafo.io.serializers;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.databind.*;
 import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
-import com.fasterxml.jackson.dataformat.csv.CsvMapper;
-import org.springframework.beans.factory.annotation.Value;
+import es.urjc.etsii.grafo.io.Instance;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AssignableTypeFilter;
 import org.springframework.stereotype.Service;

@@ -1,7 +1,8 @@
-package es.urjc.etsii.grafo.io;
+package es.urjc.etsii.grafo.io.serializers;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
+import es.urjc.etsii.grafo.io.Result;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
