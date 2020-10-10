@@ -12,7 +12,6 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Comparator;
 import java.util.List;
-import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
@@ -41,17 +40,15 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     private final JsonSerializer jsonSerializer;
     private final List<ResultsSerializer> resultsSerializers;
     private final InstanceImporter<?> instanceImporter;
-    private Optional<SolutionExporter<S, I>> solutionExporter;
+    private SolutionSerializer<S, I> solutionSerializer;
 
-    public IOManager(JsonSerializer jsonSerializer, List<ResultsSerializer> resultsSerializers, InstanceImporter<?> instanceImporter, Optional<SolutionExporter<S, I>> solutionExporter) {
+    public IOManager(JsonSerializer jsonSerializer, List<ResultsSerializer> resultsSerializers, InstanceImporter<?> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
         this.jsonSerializer = jsonSerializer;
         this.instanceImporter = instanceImporter;
-        this.solutionExporter = solutionExporter;
+        this.solutionSerializer = Orquestrator.decideImplementation(solutionSerializers, DefaultJSONSolutionSerializer.class);
         this.resultsSerializers = resultsSerializers;
 
-        if(solutionExporter.isEmpty()){
-            log.warning("No solution exporter implementation found, SOLUTIONS WILL NOT BE SERIALIZED");
-        }
+        log.info("Using solution exporter: "+this.solutionSerializer.getClass().getTypeName());
     }
 
     public Stream<? extends Instance> getInstances(){
@@ -77,16 +74,10 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     }
 
     public void exportSolution(Algorithm<S,I> alg, S s){
-        if(this.solutionExporter.isEmpty()){
-            log.fine("Skipping solution export, no implementation of SolutionExporter found");
-            return;
-        } else {
-            log.fine(String.format("Exporting solution %s", s));
-        }
+        log.fine(String.format("Exporting solution for algorithm %s using %s", alg.getClass().getSimpleName(), solutionSerializer.getClass().getSimpleName()));
         String filename = s.getInstance().getName() + "__" + alg.getShortName();
         File f = new File(solutionsOut, filename);
-        SolutionExporter<S,I> exporter = solutionExporter.get();
-        exporter.export(f, s);
+        solutionSerializer.export(f, s);
     }
 
     public void exportError(Algorithm<S,I> alg, I i, Throwable t){

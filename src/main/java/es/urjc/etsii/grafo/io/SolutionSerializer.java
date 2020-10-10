@@ -11,7 +11,7 @@ import java.io.File;
  * @param <I> Instance class
  */
 @InheritedComponent
-public abstract class SolutionExporter<S extends Solution<I>, I extends Instance> {
+public abstract class SolutionSerializer<S extends Solution<I>, I extends Instance> {
     /**
      * Custom export implementation. Exports the given solution to the provided file.
      * @param f Destination file

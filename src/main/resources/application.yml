@@ -17,9 +17,22 @@ errors:
   path: 'errors'
 
 serializers:
-  csv:
-    # Enable CSV serializer, set to false to skip serializing results to CSV
+  sol-json:
+    # Enable default JSON serializer for solutions. Exports best solution of each algorithm to CSV
     enabled: true
+    # If enabled, pretty print JSON (indentation + spaces)
+    pretty: true
+
+  # TODO
+  #json:
+    # Enable JSON results serializer, set to false to skip serializing results to JSON
+    #enabled: false
+    # If enabled, pretty print JSON (indentation + spaces)
+    #pretty: true
+
+  csv:
+    # Enable CSV results serializer, set to false to skip serializing results to CSV
+    enabled: false
 
     # Can use commas, \t (tabs) or any other character to separate columns when exporting the results to CSV
     # USE A SINGLE CHARACTER
@@ -35,7 +48,7 @@ serializers:
     format: "'Results'_yyyy-MM-dd_HH-mm-ss.'csv'"
 
   xlsx:
-    # Enable XLSX serializer, set to false to skip serializing results to Excel 2007+
+    # Enable XLSX results serializer, set to false to skip serializing results to Excel 2007+
     enabled: true
 
     # When generating the pivot table, should algorithms be in rows or columns?
