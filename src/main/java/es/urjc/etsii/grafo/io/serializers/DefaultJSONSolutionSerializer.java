@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.io.serializers;
 
-import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
+import com.fasterxml.jackson.databind.SerializationFeature;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import org.springframework.beans.factory.annotation.Value;
@@ -23,7 +23,7 @@ public class DefaultJSONSolutionSerializer<S extends Solution<I>, I extends Inst
     public DefaultJSONSolutionSerializer() {
         var mapper = new ObjectMapper();
         if(pretty){
-            writer = mapper.writer(new DefaultPrettyPrinter());
+            writer = mapper.enable(SerializationFeature.INDENT_OUTPUT).writerWithDefaultPrettyPrinter();
         } else {
             writer = mapper.writer();
         }

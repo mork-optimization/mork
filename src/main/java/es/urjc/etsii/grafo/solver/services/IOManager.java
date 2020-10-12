@@ -92,6 +92,7 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     }
 
     public synchronized void exportError(Algorithm<S,I> alg, I i, Throwable t){
+        // Directamente desde aqui, si se quiere customizar se puede pisar el DefaultExceptionHandler
         SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss.SSS");
         Date d = new Date();
         String filename = sdf.format(d) + "_error.json";

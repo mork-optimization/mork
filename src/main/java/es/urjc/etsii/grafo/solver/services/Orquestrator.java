@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.Optional;
 import java.util.logging.Logger;
 
 @Service
@@ -22,7 +21,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
 
     private static final Logger log = Logger.getLogger(Orquestrator.class.toString());
 
-    private final IOManager io;
+    private final IOManager<S,I> io;
     private final AlgorithmsManager<S, I> algorithmsManager;
     private final ExceptionHandler<S, I> exceptionHandler;
     private final SolutionBuilder<S, I> solutionBuilder;
@@ -34,7 +33,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
             @Value("${solver.parallelExecutor:false}") boolean useParallelExecutor,
             IOManager<S,I> io,
             AlgorithmsManager<S,I> algorithmsManager,
-            ExceptionHandler<S,I> exceptionHandler,
+            List<ExceptionHandler<S,I>> exceptionHandlers,
             ConcurrentExecutor<S,I> concurrentExecutor,
             SequentialExecutor<S,I> sequentialExecutor,
             List<SolutionBuilder<S,I>> solutionBuilders
@@ -42,7 +41,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         this.repetitions = repetitions;
         this.io = io;
         this.algorithmsManager = algorithmsManager;
-        this.exceptionHandler = exceptionHandler;
+        this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         log.info("Using SolutionBuilder implementation: "+this.solutionBuilder.getClass().getSimpleName());
 
@@ -84,11 +83,15 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
 
     public static <T> T decideImplementation(List<? extends T> list, Class<? extends T> defaultClass){
         //String qualifiedDefaultname = defaultClass.getName();
+        T defaultImpl = null;
         for(var e: list){
             if(!e.getClass().equals(defaultClass)){
                 return e;
+            } else {
+                defaultImpl = e;
             }
         }
-        throw new IllegalStateException("Where is the default implementation???");
+        if(defaultImpl == null) throw new IllegalStateException("Where is the default implementation???");
+        return defaultImpl;
     }
 }
