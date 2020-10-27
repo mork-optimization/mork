@@ -13,7 +13,7 @@ public abstract class Algorithm<S extends Solution<I>, I extends Instance> {
      * @return Should include parameter configuration if same algorithm is used with different parameters
      */
     public String getShortName(){
-        return this.toString().replaceAll("[\\s{}\\[\\]-_=?+&^%$#@!]", "");
+        return this.toString().replaceAll("[\\s{}\\[\\]-_=?+&^%$#'\"@!]", "");
     }
 
     /**

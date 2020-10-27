@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.Objects;
+import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.solution.Solution.MAX_DEBUG_MOVES;
 
@@ -12,6 +13,8 @@ import static es.urjc.etsii.grafo.solution.Solution.MAX_DEBUG_MOVES;
  * As they are in the same package as the Solution, they can efficiently manipulate it
  */
 public abstract class Move<S extends Solution<I>, I extends Instance> {
+
+    private static final Logger logger = Logger.getLogger(Move.class.getName());
 
     protected final long solutionVersion;
 
@@ -38,6 +41,7 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
      * Executes the proposed move
      */
     public final void execute(){
+        logger.finer(this.toString());
         if(this.solutionVersion != s.version){
             throw new AssertionError(String.format("Solution state changed (%s), cannot execute move (%s)", s.version, this.solutionVersion));
         }
