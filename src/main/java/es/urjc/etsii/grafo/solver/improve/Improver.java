@@ -3,20 +3,23 @@ package es.urjc.etsii.grafo.solver.improve;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
-import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
 
-public interface Improver<S extends Solution<I>,I extends Instance> {
+public abstract class Improver<S extends Solution<I>,I extends Instance> {
+    static final Logger log = Logger.getLogger(Improver.class.getName());
+    
     /**
      * Improves a model.Solution
      * Iterates until we run out of time, or we cannot improve the current es.urjc.etsii.grafo.solution any further
      * @param s model.Solution to improve
      * @return Improved s
      */
-    default S improve(S s) {
+    public S improve(S s) {
         int rounds = 0;
         while (!s.stop() && iteration(s)){
             rounds++;
         }
+        log.fine(String.format("LS: %s executed %s iterations", this.getClass().getSimpleName(), rounds));
         return s;
     }
 
@@ -25,5 +28,5 @@ public interface Improver<S extends Solution<I>,I extends Instance> {
      * @param s Solution to improve
      * @return True if the es.urjc.etsii.grafo.solution has been improved, false otherwise
      */
-    boolean iteration(S s);
+    public abstract boolean iteration(S s);
 }
