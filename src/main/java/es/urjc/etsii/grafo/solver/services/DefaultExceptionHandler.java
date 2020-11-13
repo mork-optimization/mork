@@ -13,8 +13,9 @@ public class DefaultExceptionHandler<S extends Solution<I>, I extends Instance> 
 
     public void handleException(Exception e, I i, Algorithm<S,I> algorithm, IOManager<S, I> io){
         logger.severe(String.format("Error while solving instance %s with algorithm %s, skipping. Exception message: %s", i.getName(), algorithm.toString(), e.getMessage()));
-        logger.fine("Stacktrace: " + getStackTrace(e));
-        io.exportError(algorithm, i, e);
+        String stackTrace = getStackTrace(e);
+        logger.fine("Stacktrace: " + stackTrace);
+        io.exportError(algorithm, i, e, stackTrace);
     }
 
     private String getStackTrace(Throwable t){

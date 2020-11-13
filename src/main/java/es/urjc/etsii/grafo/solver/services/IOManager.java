@@ -67,6 +67,7 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
             errorIfNotExists(this.instanceIn);
             createIfNotExists(this.solutionsOut);
             createIfNotExists(this.instanceCache);
+            createIfNotExists(this.errorFolder);
 
             return Files.walk(Path.of(this.instanceIn)).filter(Files::isRegularFile).sorted(Comparator.comparing(f -> f.toFile().getName().toLowerCase())).map(this::tryGetFromCache);
         } catch (IOException e) {
@@ -91,12 +92,12 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         solutionSerializer.export(f, s);
     }
 
-    public synchronized void exportError(Algorithm<S,I> alg, I i, Throwable t){
+    public synchronized void exportError(Algorithm<S,I> alg, I i, Throwable t, String stacktrace){
         // Directamente desde aqui, si se quiere customizar se puede pisar el DefaultExceptionHandler
         SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss.SSS");
         Date d = new Date();
         String filename = sdf.format(d) + "_error.json";
-        var errorData = Map.of("Algorithm", alg, "InstanceName", i.getName(), "Error", t);
+        var errorData = Map.of("Algorithm", alg, "InstanceName", i.getName(), "StackTrace", stacktrace, "Error", t);
         var p = Path.of(errorFolder, filename);
         try (var outputStream = Files.newOutputStream(p)){
             var writer = new ObjectMapper().writer(new DefaultPrettyPrinter());
