@@ -121,7 +121,18 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
             if (best == null) best = m;
             else best = comparator.getBest(best, m);
         }
-        return cl.indexOf(best);
+
+        // Choose a random from all the items with equal best score
+        log.fine(String.format("Best score found: %s", best.getValue()));
+        var besties = new ArrayList<M>(cl.size());
+        for (M m : rcl) {
+            if (DoubleComparator.equals(m.getValue(), best.getValue())) {
+                besties.add(m);
+            }
+        }
+        int chosen = RandomManager.nextInt(0, besties.size());
+        log.fine(String.format("Number of movements with same score: %s, chosen: %s", besties.size(), besties.get(chosen)));
+        return chosen;
     }
 
     @Override

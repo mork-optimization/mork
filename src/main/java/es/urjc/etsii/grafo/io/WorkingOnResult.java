@@ -133,7 +133,7 @@ public class WorkingOnResult {
     /**
      * Let the solutions and the instances get garbage collected, only keep whatever is interesing for us
      */
-    private class SolutionData {
+    private static class SolutionData {
         private final double value;
         private final long executionTimeInNanos;
         private final long timeToTargetInNanos;
