@@ -1,0 +1,110 @@
+seed: 1234
+
+instances:
+  path:
+    #in: 'instancesPreeliminares'
+    #in: 'instancesTestCompareSmall'
+    in: 'instancesValidate'
+    cache: 'instances.cached'
+
+solutions:
+  path:
+    temp: 'solutions.temp'
+    out: 'solutions'
+  dateformat: 'yyyy-MM-dd_HH-mm-ss'
+
+errors:
+  path: 'errors'
+
+serializers:
+  sol-json:
+    # Enable default JSON serializer for solutions. Exports best solution of each algorithm to CSV
+    enabled: true
+    # If enabled, pretty print JSON (indentation + spaces)
+    pretty: true
+
+  # TODO
+  #json:
+    # Enable JSON results serializer, set to false to skip serializing results to JSON
+    #enabled: false
+    # If enabled, pretty print JSON (indentation + spaces)
+    #pretty: true
+
+  csv:
+    # Enable CSV results serializer, set to false to skip serializing results to CSV
+    enabled: false
+
+    # Can use commas, \t (tabs) or any other character to separate columns when exporting the results to CSV
+    # USE A SINGLE CHARACTER
+    separator: ','
+
+    # Results folder
+    folder: 'results'
+
+    # Filename format, replacements are applied as follows
+    # yyyy: replaced with current year, ex 2020
+    # MM, dd, HH, mm, ss: replaced by month, day, hour, minute and seconds
+    # letters [a-zA-Z] can be part of the filename as long as they are between single quotes
+    format: "'Results'_yyyy-MM-dd_HH-mm-ss.'csv'"
+
+  xlsx:
+    # Enable XLSX results serializer, set to false to skip serializing results to Excel 2007+
+    enabled: true
+
+    # When generating the pivot table, should algorithms be in rows or columns?
+    # True: Instances per row, algorithms in columns
+    # False: Algorithms in rows, instances in columns
+    algorithmsInColumns: true
+
+    # Results folder
+    folder: 'results'
+
+    # Filename format, replacements are applied as follows
+    # yyyy: replaced with current year, ex 2020
+    # MM, dd, HH, mm, ss: replaced by month, day, hour, minute and seconds
+    # letters [a-zA-Z] can be part of the filename as long as they are between single quotes
+    format: "'Results'_yyyy-MM-dd_HH-mm-ss.'xlsx'"
+
+solver:
+
+  # Which algorithms should be loaded? * --> All
+  # Accepts a comma separated list, case insensitive
+  # algorithms: '*'
+
+  # Maximize or minimize objective function? Only used in the XLSX exporter right now.
+  maximizing: true
+
+  # How many times should each experiment be repeated, in order to guarantee stability
+  repetitions: 8
+
+  # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALELIZED
+  # Valid Values: true, false
+  parallelExecutor: true
+
+  # Number of workers to use if parallelExecutor is enabled
+  # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
+  nWorkers: -1
+
+  # Cache solutions?
+  #cache:
+    #enabled: true
+    # maximum cache size before old entries get evicted, defaults to one million.
+    #max_size: 1000000
+
+#algorithms:
+#  exchangerils:
+#    nRotateRounds: 2
+#    configs:
+
+
+logging:
+  file:
+    name: 'console.log'
+  level:
+    root: 'info'
+    es:
+      urjc:
+        etsii:
+          #grafo: 'DEBUG'
+          grafo: 'info'
+
