@@ -132,7 +132,7 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
         }
         int chosen = RandomManager.nextInt(0, besties.size());
         log.fine(String.format("Number of movements with same score: %s, chosen: %s", besties.size(), besties.get(chosen)));
-        return chosen;
+        return cl.indexOf(besties.get(chosen));
     }
 
     @Override
