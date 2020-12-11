@@ -21,26 +21,36 @@ public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends A
     /**
      * Number of iterations
      */
-    private int n;
+    private int maxIterations;
+    private int stopIfNotImprovedIn;
+
 
     protected IteratedGreedy(){}
 
     @SafeVarargs
-    public IteratedGreedy(int n, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I>... improvers) {
-        this.n = n;
+    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I>... improvers) {
+        if(stopIfNotImprovedIn<1){
+            throw new IllegalArgumentException("stopIfNotImprovedIn must be greater than 0");
+        }
+        this.maxIterations = maxIterations;
+        this.stopIfNotImprovedIn = stopIfNotImprovedIn;
         this.constructive = constructive;
         this.shake = shake;
         this.improvers = improvers;
     }
 
-    public IteratedGreedy(int n, Constructive<S, I> constructive, Shake<S, I> shake){
-        this.n = n;
+    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> shake){
+        if(stopIfNotImprovedIn<1){
+            throw new IllegalArgumentException("stopIfNotImprovedIn must be greater than 0");
+        }
+        this.maxIterations = maxIterations;
+        this.stopIfNotImprovedIn = stopIfNotImprovedIn;
         this.constructive = constructive;
         this.shake = shake;
     }
 
-    public IteratedGreedy(int n, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
-        this(n, constructive, shake, new Improver[]{improver});
+    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
+        this(maxIterations, stopIfNotImprovedIn, constructive, shake, new Improver[]{improver});
     }
 
     @Override
@@ -49,12 +59,19 @@ public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends A
         s = this.constructive.construct(s);
         s = ls(s);
         logger.fine(String.format("Initial solution: %s - %s", s.getScore(), s));
-        for (int i = 0; i < n; i++) {
+        int iterationsWithoutImprovement = 0;
+        for (int i = 0; i < maxIterations; i++) {
             var temp = this.shake.shake(s, 1, 1, false);
             temp = ls(temp);
             s = s.getBetterSolution(temp);
             if(s == temp){
                 logger.fine(String.format("Improved at iteration %s: %s - %s", i, s.getScore(), s));
+                iterationsWithoutImprovement = 0;
+            } else {
+                iterationsWithoutImprovement++;
+                if(iterationsWithoutImprovement>=this.stopIfNotImprovedIn){
+                    logger.fine(String.format("Not improved after %s iterations, stopping in iteration %s. Current score %s - %s", stopIfNotImprovedIn, i, s.getScore(), s));
+                }
             }
         }
 
