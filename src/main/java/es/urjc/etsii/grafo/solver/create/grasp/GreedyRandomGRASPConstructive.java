@@ -153,8 +153,5 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
                 '}';
     }
 
-    @FunctionalInterface
-    interface AlphaProvider {
-        double getAlpha();
-    }
+
 }
