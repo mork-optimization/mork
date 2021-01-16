@@ -11,6 +11,7 @@ import es.urjc.etsii.grafo.util.RandomManager;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 import java.util.RandomAccess;
 import java.util.logging.Logger;
 
@@ -105,14 +106,16 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
     private int randomGreedy(double alpha, List<M> cl) {
         // TODO can we avoid creating another list?
         var rcl = new ArrayList<M>(cl.size());
+        // Declare another random so we only use a value of the original random per iteration
+        Random r = new Random(RandomManager.getRandom().nextLong());
         for (var element : cl) {
-            if (RandomManager.getRandom().nextDouble() >= alpha) {
+            if (r.nextDouble() >= alpha) {
                 rcl.add(element);
             }
         }
         if (rcl.isEmpty()) {
             // Return a random element and call it a day
-            return RandomManager.nextInt(0, cl.size());
+            return r.nextInt(cl.size());
         }
 
         // get best
