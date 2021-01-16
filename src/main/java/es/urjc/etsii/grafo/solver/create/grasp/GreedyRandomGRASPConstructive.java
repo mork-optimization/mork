@@ -27,6 +27,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
     protected final Comparator<M> comparator;
     protected final GRASPListManager<M, S, I> candidateListManager;
     private final AlphaProvider alphaProvider;
+    private final boolean maximizing;
 
     /**
      * GRASP Constructor, mantains a fixed alpha value
@@ -42,24 +43,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
         this.comparator = new DefaultMoveComparator<>(maximizing);
         randomType = String.format("FIXED{a=%.2f}", alpha);
         alphaProvider = () -> alpha;
-    }
-
-    /**
-     * GRASP Constructor, generates a random alpha in each construction
-     * Alpha Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
-     *
-     * @param minAlpha minimum value for the random alpha
-     * @param maxAlpha maximum value for the random alpha
-     */
-    public GreedyRandomGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, Comparator<M> comparator) {
-        this.candidateListManager = candidateListManager;
-        this.comparator = comparator;
-        assert isGreaterOrEqualsThan(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
-        assert isGreaterOrEqualsThan(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
-        assert isGreaterThan(maxAlpha, minAlpha);
-
-        alphaProvider = () -> RandomManager.getRandom().nextDouble() * (maxAlpha - minAlpha) + minAlpha;
-        randomType = String.format("RANGE{min=%.2f, max=%.2f}", minAlpha, maxAlpha);
+        this.maximizing = maximizing;
     }
 
     /**
@@ -71,7 +55,15 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
      * @param maximizing true if maximizing, false if minimizing
      */
     public GreedyRandomGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, boolean maximizing) {
-        this(candidateListManager, minAlpha, maxAlpha, new DefaultMoveComparator<>(maximizing));
+        this.candidateListManager = candidateListManager;
+        this.comparator = new DefaultMoveComparator<>(maximizing);
+        assert isGreaterOrEqualsThan(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
+        assert isGreaterOrEqualsThan(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
+        assert isGreaterThan(maxAlpha, minAlpha);
+
+        alphaProvider = () -> RandomManager.getRandom().nextDouble() * (maxAlpha - minAlpha) + minAlpha;
+        randomType = String.format("RANGE{min=%.2f, max=%.2f}", minAlpha, maxAlpha);
+        this.maximizing = maximizing;
     }
 
     /**
@@ -79,31 +71,6 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
      */
     public GreedyRandomGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, boolean maximizing) {
         this(candidateListManager, 0, 1, maximizing);
-    }
-
-    private int binarySearchFindLimit(List<M> cl, double v, boolean asc) {
-        // Adapted from the Java Collections Implementation
-        int low = 0;
-        int high = cl.size() - 1;
-
-        while (low <= high) {
-            int mid = low + high >>> 1;
-            var midVal = cl.get(mid);
-            int cmp = Double.compare(midVal.getValue(), v);
-            if (cmp < 0) {
-                if (asc) low = mid + 1;
-                else high = mid - 1;
-            } else {
-                if (cmp == 0) {
-                    // Found exact match --> Return current mid element
-                    return mid;
-                }
-                if (asc) high = mid - 1;
-                else low = mid + 1;
-            }
-        }
-
-        return low; // Not found, but return the insertion point as a positive number
     }
 
     @Override
@@ -135,15 +102,53 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
     }
 
     private int greedyRandom(double alpha, List<M> cl) {
-        double left = cl.get(0).getValue();
-        double right = cl.get(cl.size() - 1).getValue();
-        boolean asc = left < right;
-        double limit = left + (alpha) * (right - left);
 
-        int limitIndex = binarySearchFindLimit(cl, limit, asc);
+        var minMax = getMinMax(cl);
+        double min = minMax[0];
+        double max = minMax[1];
+        int[] validIndexes = new int[cl.size()];
+        int next = 0;
 
-        return RandomManager.nextInt(0, limitIndex + 1);
+        if(maximizing){
+            double limit = max + alpha * (min - max);
+            // Filter which positions contain valid elements
+            for (int i = 0, clSize = cl.size(); i < clSize; i++) {
+                if (isGreaterOrEqualsThan(cl.get(i).getValue(), limit)) {
+                    validIndexes[next++] = i;
+                }
+            }
+        } else {
+            double limit = min + alpha * (max - min);
+
+            // Filter which positions contain valid elements
+            for (int i = 0, clSize = cl.size(); i < clSize; i++) {
+                if (isLessOrEquals(cl.get(i).getValue(), limit)) {
+                    validIndexes[next++] = i;
+                }
+            }
+        }
+        int index = RandomManager.nextInt(0, next);
+        return validIndexes[index];
     }
+
+    private double[] getMinMax(List<M> cl){
+        assert !cl.isEmpty();
+        double min = Double.MAX_VALUE;
+        double max = Double.MIN_VALUE;
+        for (M m : cl) {
+            if (m.getValue() < min){
+                min = m.getValue();
+            }
+            if (m.getValue() > max){
+                max = m.getValue();
+            }
+        }
+        assert min != Double.MAX_VALUE;
+        assert max != Double.MIN_VALUE;
+
+        return new double[]{min, max};
+    }
+
 
     @Override
     public String toString() {
