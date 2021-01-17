@@ -46,7 +46,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
      * @param algorithms Algorithm list
      * @return Experiment results for the given instance
      */
-    public abstract Collection<Result> execute(I ins, int repetitions, List<Algorithm<S,I>> algorithms, SolutionBuilder<S,I> solutionBuilder,  ExceptionHandler<S,I> exceptionHandler);
+    public abstract Collection<Result> execute(String experimentName, I ins, int repetitions, List<Algorithm<S,I>> algorithms, SolutionBuilder<S,I> solutionBuilder,  ExceptionHandler<S,I> exceptionHandler);
 
     /**
      * Finalize and destroy all resources, we have finished and are shutting down now.
@@ -57,7 +57,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
         this.validator.ifPresent(validator -> validator.validate(s));
     }
 
-    protected WorkUnit doWork(I ins, SolutionBuilder<S, I> solutionBuilder, Algorithm<S, I> algorithm, int i, ExceptionHandler<S,I> exceptionHandler) {
+    protected WorkUnit doWork(String experimentName, I ins, SolutionBuilder<S, I> solutionBuilder, Algorithm<S, I> algorithm, int i, ExceptionHandler<S,I> exceptionHandler) {
         try {
             RandomManager.reset(i);
             long starTime = System.nanoTime();
@@ -66,11 +66,11 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long ellapsedTime = endTime - starTime;
             validate(solution);
-            io.exportSolution(algorithm, solution);
+            io.exportSolution(experimentName, algorithm, solution);
             System.out.format("\t%s.\tTime: %.3f (s) \tTTT: %.3f (s) \t%s -- \n", i +1, ellapsedTime / 1000_000_000D, timeToTarget / 1000_000_000D, solution);
             return new WorkUnit(ellapsedTime, timeToTarget, solution);
         } catch (Exception e) {
-            exceptionHandler.handleException(e, ins, algorithm, io);
+            exceptionHandler.handleException(experimentName, e, ins, algorithm, io);
             // todo more fields for WorkUnit, resume operations, failed, etc
             return null;
         }

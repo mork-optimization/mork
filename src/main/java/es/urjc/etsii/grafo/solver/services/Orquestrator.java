@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.solver.services;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.Result;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.executors.ConcurrentExecutor;
 import es.urjc.etsii.grafo.solver.executors.Executor;
@@ -22,7 +23,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
     private static final Logger log = Logger.getLogger(Orquestrator.class.toString());
 
     private final IOManager<S,I> io;
-    private final AlgorithmsManager<S, I> algorithmsManager;
+    private final ExperimentManager<S, I> experimentManager;
     private final ExceptionHandler<S, I> exceptionHandler;
     private final SolutionBuilder<S, I> solutionBuilder;
     private final Executor<S, I> executor;
@@ -32,7 +33,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
             @Value("${solver.repetitions:1}") int repetitions,
             @Value("${solver.parallelExecutor:false}") boolean useParallelExecutor,
             IOManager<S,I> io,
-            AlgorithmsManager<S,I> algorithmsManager,
+            ExperimentManager<S,I> experimentManager,
             List<ExceptionHandler<S,I>> exceptionHandlers,
             ConcurrentExecutor<S,I> concurrentExecutor,
             SequentialExecutor<S,I> sequentialExecutor,
@@ -40,7 +41,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
     ) {
         this.repetitions = repetitions;
         this.io = io;
-        this.algorithmsManager = algorithmsManager;
+        this.experimentManager = experimentManager;
         this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         log.info("Using SolutionBuilder implementation: "+this.solutionBuilder.getClass().getSimpleName());
@@ -57,29 +58,30 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
 
     @Override
     public void run(String... args) {
-        log.info("App started, calculating workload...");
-        log.info("Available algorithms: " + this.algorithmsManager.getAlgorithms());
-        log.info("Ready to start solving!");
+        log.info("App started, ready to start solving!");
+        log.info("Available experiments: " + this.experimentManager.getExperiments().keySet());
         long startTime = System.nanoTime();
         try{
-            List<Result> results = Collections.synchronizedList(new ArrayList<>());
-            io.getInstances().forEach(instance -> runAlgorithmsForInstance(results, (I) instance));
-            // TODO Update results file in disk after each instance is solved, not in the end
-            // Resume functionality: Define work units, each workunit reurns what
-            log.info("Saving all results...");
-            this.io.saveResults(results);
+            this.experimentManager.getExperiments().forEach(this::runExperiment);
         } finally {
             executor.shutdown();
             log.info(String.format("Total execution time: %s (s)", (System.nanoTime() - startTime) / 1_000_000_000));
         }
     }
 
-
-    public void runAlgorithmsForInstance(List<Result> results, I i){
-        log.info("Running algorithms for instance: " + i.getName());
-        var result = executor.execute(i, repetitions, algorithmsManager.getAlgorithms(), solutionBuilder, exceptionHandler);
-        results.addAll(result);
+    private void runExperiment(String experimentName, List<Algorithm<S,I>> algorithms) {
+        List<Result> results = Collections.synchronizedList(new ArrayList<>());
+        io.getInstances(experimentName).forEach(instance -> {
+            log.info("Running algorithms for instance: " + instance.getName());
+            var result = executor.execute(experimentName, (I) instance, repetitions, algorithms, solutionBuilder, exceptionHandler);
+            results.addAll(result);
+        });
+        // TODO Update results file in disk after each instance is solved, not in the end
+        // Resume functionality: Define work units, each workunit reurns what
+        log.info("Saving all results...");
+        this.io.saveResults(experimentName, results);
     }
+
 
     public static <T> T decideImplementation(List<? extends T> list, Class<? extends T> defaultClass){
         //String qualifiedDefaultname = defaultClass.getName();

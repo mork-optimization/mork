@@ -38,7 +38,7 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
     }
 
     @Override
-    public Collection<Result> execute(I ins, int repetitions, List<Algorithm<S, I>> list, SolutionBuilder<S, I> solutionBuilder, ExceptionHandler<S, I> exceptionHandler) {
+    public Collection<Result> execute(String experimentName, I ins, int repetitions, List<Algorithm<S, I>> list, SolutionBuilder<S, I> solutionBuilder, ExceptionHandler<S, I> exceptionHandler) {
 
         Map<Algorithm<S, I>, WorkingOnResult> resultsMap = new ConcurrentHashMap<>();
 
@@ -49,7 +49,7 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
             for (int i = 0; i < repetitions; i++) {
                 int _i = i;
                 futures.add(executor.submit(() -> {
-                    WorkUnit workUnit = doWork(ins, solutionBuilder, algorithm, _i, exceptionHandler);
+                    WorkUnit workUnit = doWork(experimentName, ins, solutionBuilder, algorithm, _i, exceptionHandler);
                     if(workUnit!=null) {
                         resultsMap.get(algorithm).addSolution(workUnit.getSolution(), workUnit.getEllapsedTime(), workUnit.getTimeToTarget());
                     }

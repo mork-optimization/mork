@@ -2,40 +2,36 @@ seed: 1234
 
 instances:
   path:
-    #in: 'instancesPreeliminares'
-    #in: 'instancesTestCompareSmall'
-    in: 'instancesValidate'
-    cache: 'instances.cached'
+    # Default instance path for all experiments, can be overridden.
+    default: 'instances'
+
+    # Override default instance path only for the experiment declared in file IteratedGreedyExperiment.java
+    IteratedGreedyExperiment: './instances/IteratedGreedy'
 
 solutions:
+  # Path where solutions will be exported (Note: Only if a solution serializer is enabled, see below)
   path:
     temp: 'solutions.temp'
     out: 'solutions'
   dateformat: 'yyyy-MM-dd_HH-mm-ss'
 
 errors:
+  # Path where all errors or exceptions during experiment execution will be exported
   path: 'errors'
 
 serializers:
   sol-json:
-    # Enable default JSON serializer for solutions. Exports best solution of each algorithm to CSV
+    # Enable default JSON serializer for solutions. Exports best solution of each algorithm to JSON
     enabled: true
-    # If enabled, pretty print JSON (indentation + spaces)
+    # If enabled, pretty print JSON (indentation + new lines)
     pretty: true
 
-  # TODO
-  #json:
-    # Enable JSON results serializer, set to false to skip serializing results to JSON
-    #enabled: false
-    # If enabled, pretty print JSON (indentation + spaces)
-    #pretty: true
-
   csv:
-    # Enable CSV results serializer, set to false to skip serializing results to CSV
+    # Export results to CSV, set to false to skip serializing results to CSV
     enabled: false
 
-    # Can use commas, \t (tabs) or any other character to separate columns when exporting the results to CSV
-    # USE A SINGLE CHARACTER
+    # Can use commas, semicolons, \t (tabs) or any other character to separate columns when exporting the results to CSV
+    # Note: Use only a single character
     separator: ','
 
     # Results folder
@@ -44,7 +40,7 @@ serializers:
     # Filename format, replacements are applied as follows
     # yyyy: replaced with current year, ex 2020
     # MM, dd, HH, mm, ss: replaced by month, day, hour, minute and seconds
-    # letters [a-zA-Z] can be part of the filename as long as they are between single quotes
+    # any letters [a-zA-Z] can be part of the filename as long as they are between single quotes
     format: "'Results'_yyyy-MM-dd_HH-mm-ss.'csv'"
 
   xlsx:

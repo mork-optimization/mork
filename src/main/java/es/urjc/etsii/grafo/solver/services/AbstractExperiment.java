@@ -8,6 +8,10 @@ import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 import java.util.List;
 
 @InheritedComponent
-public abstract class AbstractExperimentSetup<S extends Solution<I>, I extends Instance> {
+public abstract class AbstractExperiment<S extends Solution<I>, I extends Instance> {
+
     public abstract List<Algorithm<S,I>> getAlgorithms();
+    public String getName(){
+        return this.getClass().getSimpleName();
+    }
 }

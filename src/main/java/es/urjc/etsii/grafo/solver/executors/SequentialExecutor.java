@@ -26,14 +26,14 @@ public class SequentialExecutor<S extends Solution<I>, I extends Instance> exten
     }
 
     @Override
-    public Collection<Result> execute(I ins, int repetitions, List<Algorithm<S,I>> list, SolutionBuilder<S,I> solutionBuilder, ExceptionHandler<S,I> exceptionHandler) {
+    public Collection<Result> execute(String experimentname, I ins, int repetitions, List<Algorithm<S,I>> list, SolutionBuilder<S,I> solutionBuilder, ExceptionHandler<S,I> exceptionHandler) {
         List<Result> results = new ArrayList<>();
 
         for(var algorithm: list){
             logger.info("Algorithm: "+ algorithm);
             var workingOnResult = new WorkingOnResult(repetitions, algorithm.toString(), ins.getName());
             for (int i = 0; i < repetitions; i++) {
-                WorkUnit workUnit = doWork(ins, solutionBuilder, algorithm, i, exceptionHandler);
+                WorkUnit workUnit = doWork(experimentname, ins, solutionBuilder, algorithm, i, exceptionHandler);
                 if(workUnit!=null) {
                     workingOnResult.addSolution(workUnit.getSolution(), workUnit.getEllapsedTime(), workUnit.getTimeToTarget());
                 }
