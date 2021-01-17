@@ -81,26 +81,20 @@ solver:
   # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
   nWorkers: -1
 
-  # Cache solutions?
-  #cache:
-    #enabled: true
-    # maximum cache size before old entries get evicted, defaults to one million.
-    #max_size: 1000000
 
-#algorithms:
-#  exchangerils:
-#    nRotateRounds: 2
-#    configs:
-
-
+# Logging configuration
 logging:
-  file:
-    name: 'console.log'
   level:
+    # Default logging level
     root: 'info'
     es:
       urjc:
         etsii:
+          # Use:
+          # - INFO:  Print only important messages
+          # - DEBUG: Show debug logs for each algorithm
+          # - TRACE: Print all debug messages, and print ALL movements when they are applied to any solution.
+          #          Note: Enabling trace mode has a big performance impact.
           #grafo: 'DEBUG'
           grafo: 'info'
 
