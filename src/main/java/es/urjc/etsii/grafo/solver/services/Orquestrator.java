@@ -53,9 +53,6 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         }
     }
 
-    // TODO TimeProvider starts a new Thread that changes algorithms stopping conditions
-    // DANGER time should only start counting when the algorithm starts executing not when it is enqueued
-
     @Override
     public void run(String... args) {
         log.info("App started, ready to start solving!");
