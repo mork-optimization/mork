@@ -11,6 +11,8 @@ import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
+import es.urjc.etsii.grafo.solver.configuration.InstanceConfiguration;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -34,8 +36,8 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
 
     private static final Logger log = Logger.getLogger(IOManager.class.toString());
 
-    @Value("${instances.path}")
-    Map<String, String> instanceFolders;
+    @Autowired
+    InstanceConfiguration instanceConfiguration;
 
     @Value("${solutions.path.out}")
     String solutionsOut;
@@ -60,7 +62,7 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     }
 
     public Stream<? extends Instance> getInstances(String experimentName){
-        String instancePath = this.instanceFolders.getOrDefault(experimentName, this.instanceFolders.get("default"));
+        String instancePath = this.instanceConfiguration.getPath(experimentName);
         try {
             errorIfNotExists(instancePath);
             createIfNotExists(this.solutionsOut);

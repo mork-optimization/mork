@@ -6,22 +6,25 @@ instances:
     default: 'instances'
 
     # Override default instance path only for the experiment declared in file IteratedGreedyExperiment.java
+    # If an experiment does not have a specific path the default will be used
     IteratedGreedyExperiment: './instances/IteratedGreedy'
 
 solutions:
-  # Path where solutions will be exported (Note: Only if a solution serializer is enabled, see below)
+  # Path where solutions will be exported (Only if a solution serializer is enabled, see below)
   path:
-    temp: 'solutions.temp'
     out: 'solutions'
   dateformat: 'yyyy-MM-dd_HH-mm-ss'
 
 errors:
-  # Path where all errors or exceptions during experiment execution will be exported
+  # Path where all errors or exceptions encountered during experiment execution will be exported
+  # Experiment execution DOES NOT END if an error is produced, the error is logged, and we keep working
   path: 'errors'
 
 serializers:
   sol-json:
-    # Enable default JSON serializer for solutions. Exports best solution of each algorithm to JSON
+    # Enable default JSON serializer for solutions. Exports best solution of each algorithm to JSON.
+    # If you want to export solutions to a custom format, extend SolutionSerializer,
+    # NOTE: the default JSON solution serializer is automatically disabled when the SolutionSerializer class is extended.
     enabled: true
     # If enabled, pretty print JSON (indentation + new lines)
     pretty: true
@@ -73,7 +76,7 @@ solver:
   # How many times should each experiment be repeated, in order to guarantee stability
   repetitions: 8
 
-  # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALELIZED
+  # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALLELIZED
   # Valid Values: true, false
   parallelExecutor: true
 
@@ -82,7 +85,7 @@ solver:
   nWorkers: -1
 
 
-# Logging configuration
+# Logging configuration, do not modify root logger level unless you know what you are doing
 logging:
   level:
     # Default logging level
@@ -96,5 +99,7 @@ logging:
           # - TRACE: Print all debug messages, and print ALL movements when they are applied to any solution.
           #          Note: Enabling trace mode has a big performance impact.
           #grafo: 'DEBUG'
-          grafo: 'info'
+          grafo: 'INFO'
 
+  # Logging messages format
+  pattern.console: '%clr([%d{${LOG_DATEFORMAT_PATTERN:yyyy/MM/dd HH:mm:ss}}]){faint} %clr(${LOG_LEVEL_PATTERN:--%5p}) %clr(--> %-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}'

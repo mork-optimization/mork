@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.io;
 import es.urjc.etsii.grafo.solution.Solution;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 /**
  * The result of the execution of an algorithm
@@ -118,8 +119,11 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
                 + "\n---------------------------------------------------------";
     }
 
-    public Result finish() {
-        return new Result(
+    public Optional<Result> finish() {
+        if(this.best == null){
+            return Optional.empty();
+        }
+        return Optional.of(new Result(
                 this.algorythmName,
                 this.instanceName,
                 Double.toString(this.getAverageFOValue()),
@@ -127,7 +131,7 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
                 Double.toString(this.getStd()),
                 Double.toString(this.getAverageExecTime()),
                 Long.toString(this.getTotalTime())
-        );
+        ));
     }
 
     /**

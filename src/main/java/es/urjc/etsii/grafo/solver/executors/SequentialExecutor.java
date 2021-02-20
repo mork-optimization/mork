@@ -31,14 +31,16 @@ public class SequentialExecutor<S extends Solution<I>, I extends Instance> exten
 
         for(var algorithm: list){
             logger.info("Algorithm: "+ algorithm);
-            var workingOnResult = new WorkingOnResult(repetitions, algorithm.toString(), ins.getName());
+            var workingOnResult = new WorkingOnResult<>(repetitions, algorithm.toString(), ins.getName());
             for (int i = 0; i < repetitions; i++) {
                 WorkUnit workUnit = doWork(experimentname, ins, solutionBuilder, algorithm, i, exceptionHandler);
                 if(workUnit!=null) {
-                    workingOnResult.addSolution(workUnit.getSolution(), workUnit.getEllapsedTime(), workUnit.getTimeToTarget());
+                    // TODO no entiendo porque este casting es necesario
+                    workingOnResult.addSolution((Solution<Instance>) workUnit.getSolution(), workUnit.getEllapsedTime(), workUnit.getTimeToTarget());
                 }
             }
-            results.add(workingOnResult.finish());
+            Optional<Result> finish = workingOnResult.finish();
+            finish.ifPresent(results::add);
         }
         //logger.info("Tasks submited, awaiting termination for instance: "+ins.getName());
         return results;

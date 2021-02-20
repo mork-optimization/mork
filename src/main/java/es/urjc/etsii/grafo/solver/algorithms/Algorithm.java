@@ -9,11 +9,12 @@ import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
 public abstract class Algorithm<S extends Solution<I>, I extends Instance> {
 
     /**
-     * Current algorithm short name, must be unique per execution
+     * Current algorithm short name, must be unique per execution. Truncated to 180 characters
      * @return Should include parameter configuration if same algorithm is used with different parameters
      */
     public String getShortName(){
-        return this.toString().replaceAll("[\\s{}\\[\\]-_=?+&^%$#'\"@!]", "");
+        String s = this.toString().replaceAll("[\\s{}\\[\\]-_\\.=?+&^%,$#'\"@!]", "");
+        return s.substring(0,180);
     }
 
     /**

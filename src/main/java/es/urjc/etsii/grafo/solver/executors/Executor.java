@@ -8,6 +8,7 @@ import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.solver.services.IOManager;
+import es.urjc.etsii.grafo.solver.services.MorkLifecycle;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
 import es.urjc.etsii.grafo.util.RandomManager;
 
@@ -59,6 +60,11 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
 
     protected WorkUnit doWork(String experimentName, I ins, SolutionBuilder<S, I> solutionBuilder, Algorithm<S, I> algorithm, int i, ExceptionHandler<S,I> exceptionHandler) {
         try {
+            // If app is stopping do not run algorithm
+            if(MorkLifecycle.stop()) {
+                return null;
+            }
+
             RandomManager.reset(i);
             long starTime = System.nanoTime();
             var solution = algorithm.algorithm(ins, solutionBuilder);

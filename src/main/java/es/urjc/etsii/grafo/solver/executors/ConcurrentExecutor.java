@@ -40,15 +40,16 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
     @Override
     public Collection<Result> execute(String experimentName, I ins, int repetitions, List<Algorithm<S, I>> list, SolutionBuilder<S, I> solutionBuilder, ExceptionHandler<S, I> exceptionHandler) {
 
-        Map<Algorithm<S, I>, WorkingOnResult> resultsMap = new ConcurrentHashMap<>();
+        Map<Algorithm<S, I>, WorkingOnResult<S,I>> resultsMap = new ConcurrentHashMap<>();
 
         logger.info("Submitting tasks for instance: " + ins.getName());
         for (var algorithm : list) {
             var futures = new ArrayList<Future<Object>>();
-            resultsMap.put(algorithm, new WorkingOnResult(repetitions, algorithm.toString(), ins.getName()));
+            resultsMap.put(algorithm, new WorkingOnResult<>(repetitions, algorithm.toString(), ins.getName()));
             for (int i = 0; i < repetitions; i++) {
                 int _i = i;
                 futures.add(executor.submit(() -> {
+                    // Run algorithm
                     WorkUnit workUnit = doWork(experimentName, ins, solutionBuilder, algorithm, _i, exceptionHandler);
                     if(workUnit!=null) {
                         resultsMap.get(algorithm).addSolution(workUnit.getSolution(), workUnit.getEllapsedTime(), workUnit.getTimeToTarget());
@@ -60,7 +61,7 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
             ConcurrencyUtil.awaitAll(futures);
         }
 
-        return resultsMap.values().stream().map(WorkingOnResult::finish).collect(Collectors.toList());
+        return resultsMap.values().stream().map(WorkingOnResult::finish).filter(Optional::isPresent).map(Optional::get).collect(Collectors.toList());
     }
 
     @Override
