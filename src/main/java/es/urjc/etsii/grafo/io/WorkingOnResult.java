@@ -8,11 +8,11 @@ import java.util.ArrayList;
  * The result of the execution of an algorithm
  * Contains all the generated solutions and some stats about them
  */
-public class WorkingOnResult {
+public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
 
     private final ArrayList<SolutionData> solutions;
     private Instance instance;
-    private Solution best;
+    private S best;
     private final String algorythmName;
     private final String instanceName;
 
@@ -35,7 +35,7 @@ public class WorkingOnResult {
      * @param nanos Time used to calculate the given es.urjc.etsii.grafo.solution
      * @param timeToTarget
      */
-    public synchronized void addSolution(Solution<? extends Instance> s, long nanos, long timeToTarget) {
+    public synchronized void addSolution(S s, long nanos, long timeToTarget) {
         if(this.best == null){
             this.best = s;
         }
@@ -97,7 +97,7 @@ public class WorkingOnResult {
         return Math.sqrt(total / (this.solutions.size() - 1));
     }
 
-    public Solution getBestSolution() {
+    public S getBestSolution() {
         return best;
     }
 

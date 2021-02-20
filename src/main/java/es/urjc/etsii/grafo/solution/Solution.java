@@ -2,8 +2,6 @@ package es.urjc.etsii.grafo.solution;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solution.stopping.DummyStop;
-import es.urjc.etsii.grafo.solution.stopping.StopPoint;
 
 import java.util.ArrayDeque;
 
@@ -18,13 +16,6 @@ public abstract class Solution<I extends Instance> implements Comparable<Solutio
     private final I ins;
 
     /**
-     * Dummy stop by default, can be changed as the user wants
-     */
-    // todo no me gusta demasiado esto, mejor algoritmo que envuelva otro para el limite de tiempo?
-    @JsonIgnore
-    protected StopPoint stopPoint;
-
-    /**
      * Each time a move is executed solution version number must be incremented
      */
     long version = 0;
@@ -36,25 +27,13 @@ public abstract class Solution<I extends Instance> implements Comparable<Solutio
     private long lastModifiedTime;
 
     /**
-     * Create a solution for a given instance using a custom StopPoint
+     * Create a solution for a given instance
      * @param ins
-     * @param stopPoint
      */
-    public Solution(I ins, StopPoint stopPoint) {
+    public Solution(I ins) {
         this.ins = ins;
-        this.stopPoint = stopPoint;
-        if(!stopPoint.isStarted()){
-            this.stopPoint.start();
-        }
     }
 
-    /**
-     * Create a solution for a given instance.
-     * @param ins
-     */
-    public Solution(I ins){
-        this(ins, new DummyStop());
-    }
 
     public void updateLastModifiedTime() {
         this.lastModifiedTime = System.nanoTime();
@@ -114,10 +93,6 @@ public abstract class Solution<I extends Instance> implements Comparable<Solutio
         return executionTimeInNanos;
     }
 
-    public boolean stop(){
-        return this.stopPoint.stop();
-    }
-
     public static <I extends Instance, S extends Solution<I>> S getBest(Iterable<S> solutions) {
         S best = null;
         for (S solution : solutions) {
@@ -136,7 +111,6 @@ public abstract class Solution<I extends Instance> implements Comparable<Solutio
         this.version = s.version;
         this.executionTimeInNanos = s.executionTimeInNanos;
         this.lastModifiedTime = s.lastModifiedTime;
-        this.stopPoint = s.stopPoint;
     }
 
     public long getLastModifiedTime() {
