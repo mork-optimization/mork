@@ -4,7 +4,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.Result;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
-import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
+import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.solver.services.IOManager;

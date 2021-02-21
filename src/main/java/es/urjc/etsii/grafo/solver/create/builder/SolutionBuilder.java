@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.solver.create;
+package es.urjc.etsii.grafo.solver.create.builder;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;

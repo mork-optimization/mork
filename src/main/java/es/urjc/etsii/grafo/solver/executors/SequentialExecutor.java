@@ -5,11 +5,10 @@ import es.urjc.etsii.grafo.io.Result;
 import es.urjc.etsii.grafo.io.WorkingOnResult;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
-import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
+import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.services.IOManager;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
-import es.urjc.etsii.grafo.util.RandomManager;
 
 import java.util.ArrayList;
 import java.util.Collection;

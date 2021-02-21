@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.solver.algorithms;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
+import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 
 //@InheritedComponent
 // TODO Idea: Allow algorithms via config instead of a AbstractExperimentSetup
