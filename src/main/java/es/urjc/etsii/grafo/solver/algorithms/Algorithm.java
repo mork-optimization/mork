@@ -14,7 +14,7 @@ public abstract class Algorithm<S extends Solution<I>, I extends Instance> {
      */
     public String getShortName(){
         String s = this.toString().replaceAll("[\\s{}\\[\\]-_\\.=?+&^%,$#'\"@!]", "");
-        return s.substring(0,180);
+        return s.substring(0, Math.min(s.length(), 180));
     }
 
     /**
