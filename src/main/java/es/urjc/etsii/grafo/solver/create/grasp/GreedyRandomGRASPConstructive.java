@@ -134,7 +134,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
     private double[] getMinMax(List<M> cl){
         assert !cl.isEmpty();
         double min = Double.MAX_VALUE;
-        double max = Double.MIN_VALUE;
+        double max = -Double.MAX_VALUE;
         for (M m : cl) {
             if (m.getValue() < min){
                 min = m.getValue();
@@ -144,7 +144,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
             }
         }
         assert min != Double.MAX_VALUE;
-        assert max != Double.MIN_VALUE;
+        assert max != -Double.MAX_VALUE;
 
         return new double[]{min, max};
     }
