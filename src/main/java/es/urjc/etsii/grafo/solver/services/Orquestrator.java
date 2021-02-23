@@ -68,6 +68,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
     }
 
     private void runExperiment(String experimentName, List<Algorithm<S,I>> algorithms) {
+        log.info("Running experiment: " + experimentName);
         List<Result> results = Collections.synchronizedList(new ArrayList<>());
         io.getInstances(experimentName).forEach(instance -> {
             log.info("Running algorithms for instance: " + instance.getName());
@@ -78,6 +79,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         // Resume functionality: Define work units, each workunit reurns what
         log.info("Saving all results...");
         this.io.saveResults(experimentName, results);
+        log.info("Finished running experiment: " + experimentName);
     }
 
 
