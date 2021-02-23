@@ -15,12 +15,26 @@ public class ExperimentManager<S extends Solution<I>, I extends Instance> {
 
     private final Map<String, List<Algorithm<S,I>>> experiments = new HashMap<>();
 
-    public ExperimentManager(AbstractExperiment<S,I> experimentSetup) {
-        experiments.put(experimentSetup.getName(), experimentSetup.getAlgorithms());
+    public ExperimentManager(List<AbstractExperiment<S,I>> experimentImplementations) {
+        for (var experiment : experimentImplementations) {
+            validateAlgorithmNames(experiment);
+            experiments.put(experiment.getName(), experiment.getAlgorithms());
+        }
     }
 
     public Map<String, List<Algorithm<S, I>>> getExperiments(){
         return Collections.unmodifiableMap(this.experiments);
     }
 
+    private void validateAlgorithmNames(AbstractExperiment<S,I> experiment){
+        var algorithms = experiment.getAlgorithms();
+        Set<String> names = new HashSet<>();
+        for(var algorithm: algorithms){
+            var name = algorithm.toString();
+            if(names.contains(name)){
+                throw new IllegalArgumentException(String.format("Duplicated algorithm name in experiment %s. FIX: All algorithm toString() should be unique per experiment --> %s", experiment.getName(), name));
+            }
+            names.add(name);
+        }
+    }
 }
