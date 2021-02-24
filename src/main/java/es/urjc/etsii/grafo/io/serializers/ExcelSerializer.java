@@ -106,8 +106,8 @@ public class ExcelSerializer extends ResultsSerializer {
             data[i][__.BEST_VALUE.getIndex()] = r.getBestValue();
             data[i][__.AVG_VALUE.getIndex()] = r.getAvgValue();
             data[i][__.STD.getIndex()] = r.getStd();
-            data[i][__.AVG_TIME.getIndex()] = r.getAvgTimeInMs();
-            data[i][__.TOTAL_TIME.getIndex()] = r.getTotalTimeInMs();
+            data[i][__.AVG_TIME.getIndex()] = r.getAvgTimeInSeconds();
+            data[i][__.TOTAL_TIME.getIndex()] = r.getTotalTimeInSeconds();
 
             boolean isBest = DoubleComparator.equals(bestValuesPerInstance.get(r.getInstanceName()).get(), Double.parseDouble(r.getBestValue())); // TODO fix? parsing as double, originally was a double
             data[i][__.IS_BEST.getIndex()] = isBest? "1": "0";
@@ -147,8 +147,8 @@ public class ExcelSerializer extends ResultsSerializer {
         BEST_VALUE(2, "Best Value"),
         AVG_VALUE(3,"Avg. Value"),
         STD(4, "Std"),
-        AVG_TIME(5, "Avg. Time (ms)"),
-        TOTAL_TIME(6, "Total Time (ms)"),
+        AVG_TIME(5, "Avg. Time (s)"),
+        TOTAL_TIME(6, "Total Time (s)"),
         IS_BEST(7, "Is Best Known?");
 
         private final int index;

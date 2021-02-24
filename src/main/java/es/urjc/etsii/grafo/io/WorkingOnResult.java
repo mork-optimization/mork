@@ -50,12 +50,12 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
         }
     }
 
-    public long getAverageExecTime() {
+    public long getAverageExecTimeInSeconds() {
         long totalTime = 0;
         for (var solution : this.solutions) {
             totalTime += solution.getExecutionTimeInNanos();
         }
-        return totalTime / this.solutions.size() / 1_000_000; // 1 millisecond = 10^6 nanos
+        return totalTime / this.solutions.size() / 1_000_000_000; // 1 second = 10^9 seconds
     }
 
     public String getFormattedAverageFO(int nDecimales) {
@@ -71,12 +71,12 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
         return value / solutions.size();
     }
 
-    public long getTotalTime() {
+    public long getTotalTimeInSeconds() {
         long totalTime = 0;
         for (var solution : solutions) {
             totalTime += solution.getExecutionTimeInNanos();
         }
-        return totalTime / 1_000_000;
+        return totalTime / 1_000_000_000; // 1 second = 10^9 seconds
     }
 
     /**
@@ -115,7 +115,7 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
         return "Instance Name: " + this.instanceName
                 + "\nAlgorythm Used: " + this.algorythmName
                 + "\nAverage Obj.Function: " + getFormattedAverageFO(2)
-                + "\nExecution Time (ms): " + this.getAverageExecTime()
+                + "\nExecution Time (ms): " + this.getAverageExecTimeInSeconds()
                 + "\n---------------------------------------------------------";
     }
 
@@ -129,8 +129,8 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
                 Double.toString(this.getAverageFOValue()),
                 Double.toString(this.getBestSolution().getScore()),
                 Double.toString(this.getStd()),
-                Double.toString(this.getAverageExecTime()),
-                Long.toString(this.getTotalTime())
+                Double.toString(this.getAverageExecTimeInSeconds()),
+                Long.toString(this.getTotalTimeInSeconds())
         ));
     }
 
