@@ -9,6 +9,7 @@ import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.services.IOManager;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
+import es.urjc.etsii.grafo.solver.services.events.AbstractSolutionGeneratedHandler;
 import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -27,8 +28,8 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
     private final int nWorkers;
     private final ExecutorService executor;
 
-    public ConcurrentExecutor(@Value("${solver.nWorkers:-1}") int nWorkers, Optional<SolutionValidator<S, I>> validator, IOManager<S,I> io) {
-        super(validator, io);
+    public ConcurrentExecutor(@Value("${solver.nWorkers:-1}") int nWorkers, Optional<SolutionValidator<S, I>> validator, IOManager<S, I> io, List<AbstractSolutionGeneratedHandler<S, I>> solutionGeneratedEventHandlers) {
+        super(validator, solutionGeneratedEventHandlers, io);
         if (nWorkers == -1) {
             this.nWorkers = Runtime.getRuntime().availableProcessors() / 2;
         } else {

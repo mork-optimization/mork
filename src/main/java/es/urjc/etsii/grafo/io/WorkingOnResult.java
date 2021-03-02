@@ -50,8 +50,8 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
         }
     }
 
-    public long getAverageExecTimeInSeconds() {
-        long totalTime = 0;
+    public double getAverageExecTimeInSeconds() {
+        double totalTime = 0;
         for (var solution : this.solutions) {
             totalTime += solution.getExecutionTimeInNanos();
         }
