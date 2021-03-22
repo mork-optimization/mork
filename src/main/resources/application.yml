@@ -66,15 +66,16 @@ serializers:
 
 solver:
 
-  # Which algorithms should be loaded? * --> All
-  # Accepts a comma separated list, case insensitive
-  # algorithms: '*'
+  # Which experiments should be executed? .* --> All.
+  # Experiment names default to the class name in which they are declared unless overridden.
+  # Tip, you may use a Regex, example: Preeliminar.*
+  experiments: '.*'
 
-  # Maximize or minimize objective function? Only used in the XLSX exporter right now.
+  # Maximize or minimize objective function? True --> Maximizing, False --> Minimizing
   maximizing: true
 
-  # How many times should each experiment be repeated, in order to guarantee stability
-  repetitions: 8
+  # How many times should each experiment be repeated. Recommended a minimum of 30
+  repetitions: 100
 
   # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALLELIZED
   # Valid Values: true, false
@@ -85,10 +86,10 @@ solver:
   nWorkers: -1
 
 
-# Logging configuration, do not modify root logger level unless you know what you are doing
+# Logging configuration
 logging:
   level:
-    # Default logging level
+    # Default logging level, do not modify unless you know what you are doing
     root: 'info'
     es:
       urjc:

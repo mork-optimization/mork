@@ -71,12 +71,12 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
         return value / solutions.size();
     }
 
-    public long getTotalTimeInSeconds() {
+    public double getTotalTimeInSeconds() {
         long totalTime = 0;
         for (var solution : solutions) {
             totalTime += solution.getExecutionTimeInNanos();
         }
-        return totalTime / 1_000_000_000; // 1 second = 10^9 seconds
+        return totalTime / (double) 1_000_000_000; // 1 second = 10^9 seconds
     }
 
     /**
@@ -130,7 +130,7 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
                 Double.toString(this.getBestSolution().getScore()),
                 Double.toString(this.getStd()),
                 Double.toString(this.getAverageExecTimeInSeconds()),
-                Long.toString(this.getTotalTimeInSeconds())
+                Double.toString(this.getTotalTimeInSeconds())
         ));
     }
 

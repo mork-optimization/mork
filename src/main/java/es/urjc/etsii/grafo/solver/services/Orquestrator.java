@@ -57,7 +57,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
     @Override
     public void run(String... args) {
         log.info("App started, ready to start solving!");
-        log.info("Available experiments: " + this.experimentManager.getExperiments().keySet());
+        log.info("Experiments to execute: " + this.experimentManager.getExperiments().keySet());
         long startTime = System.nanoTime();
         try{
             this.experimentManager.getExperiments().forEach(this::runExperiment);
