@@ -6,12 +6,14 @@ import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 
 public class SolutionGeneratedEvent<S extends Solution<I>, I extends Instance> {
     private final int iteration;
+    private final double ellapsedTime;
     private final S solution;
     private final String experimentName;
     private final Algorithm<S,I> algorithm;
 
-    public SolutionGeneratedEvent(int iteration, S solution, String experimentName, Algorithm<S, I> algorithm) {
+    public SolutionGeneratedEvent(int iteration, double ellapsedTime, S solution, String experimentName, Algorithm<S, I> algorithm) {
         this.iteration = iteration;
+        this.ellapsedTime = ellapsedTime;
         this.solution = solution;
         this.experimentName = experimentName;
         this.algorithm = algorithm;
