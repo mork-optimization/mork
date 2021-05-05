@@ -14,7 +14,7 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
     private final ArrayList<SolutionData> solutions;
     private Instance instance;
     private S best;
-    private final String algorythmName;
+    private final String algorithmName;
     private final String instanceName;
 
     /**
@@ -26,7 +26,7 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
      */
     public WorkingOnResult(int nSolutions, String algName, String instanceName) {
         this.solutions = new ArrayList<>(nSolutions);
-        this.algorythmName = algName;
+        this.algorithmName = algName;
         this.instanceName = instanceName;
     }
 
@@ -102,8 +102,8 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
         return best;
     }
 
-    public String getAlgorythmName() {
-        return this.algorythmName;
+    public String getAlgorithmName() {
+        return this.algorithmName;
     }
 
     public String getInstanceName() {
@@ -113,7 +113,7 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
     // TODO review result to string
     public String toString() {
         return "Instance Name: " + this.instanceName
-                + "\nAlgorythm Used: " + this.algorythmName
+                + "\nAlgorythm Used: " + this.algorithmName
                 + "\nAverage Obj.Function: " + getFormattedAverageFO(2)
                 + "\nExecution Time (ms): " + this.getAverageExecTimeInSeconds()
                 + "\n---------------------------------------------------------";
@@ -124,7 +124,7 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
             return Optional.empty();
         }
         return Optional.of(new SimplifiedResult(
-                this.algorythmName,
+                this.algorithmName,
                 this.instanceName,
                 Double.toString(this.getAverageFOValue()),
                 Double.toString(this.getBestSolution().getScore()),
@@ -135,7 +135,7 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
     }
 
     /**
-     * Let the solutions and the instances get garbage collected, only keep whatever is interesing for us
+     * Let the solutions and the instances get garbage collected, only keep whatever is interesting for us
      */
     private static class SolutionData {
         private final double value;

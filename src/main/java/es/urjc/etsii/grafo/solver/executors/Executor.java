@@ -78,7 +78,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
             validate(solution);
             io.exportSolution(experimentName, algorithm, solution);
             dispatchEvents(new SolutionGeneratedEvent<>(i, ellapsedTime, solution, experimentName, algorithm));
-            System.out.format("\t%s.\tTime: %.3f (s) \tTTB: %.3f (s) \t%s -- \n", i +1, ellapsedTime / 1000_000_000D, timeToTarget / 1000_000_000D, solution);
+            System.out.format("\t%s.\tTime: %.3f (s) \tTTB: %.3f (s) \t%s -- \n", i +1, ellapsedTime / 1_000_000_000D, timeToTarget / 1000_000_000D, solution);
             return new WorkUnit(ellapsedTime, timeToTarget, solution);
         } catch (Exception e) {
             exceptionHandler.handleException(experimentName, e, ins, algorithm, io);
