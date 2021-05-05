@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.solver.services;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.io.Result;
+import es.urjc.etsii.grafo.io.SimplifiedResult;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
@@ -69,7 +69,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
 
     private void runExperiment(String experimentName, List<Algorithm<S,I>> algorithms) {
         log.info("Running experiment: " + experimentName);
-        List<Result> results = Collections.synchronizedList(new ArrayList<>());
+        List<SimplifiedResult> results = Collections.synchronizedList(new ArrayList<>());
         io.getInstances(experimentName).forEach(instance -> {
             log.info("Running algorithms for instance: " + instance.getName());
             var result = executor.execute(experimentName, (I) instance, repetitions, algorithms, solutionBuilder, exceptionHandler);

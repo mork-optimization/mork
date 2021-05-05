@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceImporter;
-import es.urjc.etsii.grafo.io.Result;
+import es.urjc.etsii.grafo.io.SimplifiedResult;
 import es.urjc.etsii.grafo.io.serializers.DefaultJSONSolutionSerializer;
 import es.urjc.etsii.grafo.io.serializers.JsonSerializer;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
@@ -74,7 +74,7 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         }
     }
 
-    public void saveResults(String experimentName, List<Result> result){
+    public void saveResults(String experimentName, List<SimplifiedResult> result){
         for (ResultsSerializer serializer : resultsSerializers) {
             serializer.serializeResults(experimentName, result);
         }

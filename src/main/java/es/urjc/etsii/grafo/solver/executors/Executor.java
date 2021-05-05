@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.solver.executors;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.io.Result;
+import es.urjc.etsii.grafo.io.SimplifiedResult;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
@@ -51,7 +51,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
      * @param algorithms Algorithm list
      * @return Experiment results for the given instance
      */
-    public abstract Collection<Result> execute(String experimentName, I ins, int repetitions, List<Algorithm<S,I>> algorithms, SolutionBuilder<S,I> solutionBuilder,  ExceptionHandler<S,I> exceptionHandler);
+    public abstract Collection<SimplifiedResult> execute(String experimentName, I ins, int repetitions, List<Algorithm<S,I>> algorithms, SolutionBuilder<S,I> solutionBuilder, ExceptionHandler<S,I> exceptionHandler);
 
     /**
      * Finalize and destroy all resources, we have finished and are shutting down now.

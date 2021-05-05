@@ -119,11 +119,11 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
                 + "\n---------------------------------------------------------";
     }
 
-    public Optional<Result> finish() {
+    public Optional<SimplifiedResult> finish() {
         if(this.best == null){
             return Optional.empty();
         }
-        return Optional.of(new Result(
+        return Optional.of(new SimplifiedResult(
                 this.algorythmName,
                 this.instanceName,
                 Double.toString(this.getAverageFOValue()),

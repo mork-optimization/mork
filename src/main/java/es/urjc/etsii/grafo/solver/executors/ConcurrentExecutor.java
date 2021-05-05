@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.solver.executors;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.io.Result;
+import es.urjc.etsii.grafo.io.SimplifiedResult;
 import es.urjc.etsii.grafo.io.WorkingOnResult;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
@@ -39,7 +39,7 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
     }
 
     @Override
-    public Collection<Result> execute(String experimentName, I ins, int repetitions, List<Algorithm<S, I>> list, SolutionBuilder<S, I> solutionBuilder, ExceptionHandler<S, I> exceptionHandler) {
+    public Collection<SimplifiedResult> execute(String experimentName, I ins, int repetitions, List<Algorithm<S, I>> list, SolutionBuilder<S, I> solutionBuilder, ExceptionHandler<S, I> exceptionHandler) {
 
         Map<Algorithm<S, I>, WorkingOnResult<S,I>> resultsMap = new ConcurrentHashMap<>();
 

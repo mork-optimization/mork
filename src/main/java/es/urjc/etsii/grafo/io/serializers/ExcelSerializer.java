@@ -1,6 +1,6 @@
 package es.urjc.etsii.grafo.io.serializers;
 
-import es.urjc.etsii.grafo.io.Result;
+import es.urjc.etsii.grafo.io.SimplifiedResult;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
@@ -37,7 +37,7 @@ public class ExcelSerializer extends ResultsSerializer {
         super(enabled, folder, format);
     }
 
-    public void _serializeResults(List<Result> results, Path p) {
+    public void _serializeResults(List<SimplifiedResult> results, Path p) {
         log.info("Exporting result data to XLSX...");
 
         File f = p.toFile();
@@ -74,7 +74,7 @@ public class ExcelSerializer extends ResultsSerializer {
     }
 
 
-    private AreaReference fillRawSheet(XSSFSheet rawSheet, List<Result> results) {
+    private AreaReference fillRawSheet(XSSFSheet rawSheet, List<SimplifiedResult> results) {
         // Best values per instance
         Map<String, Optional<Double>> bestValuesPerInstance = bestPerInstance(results);
         if(bestValuesPerInstance.values().stream().anyMatch(Optional::isEmpty)){
@@ -100,9 +100,9 @@ public class ExcelSerializer extends ResultsSerializer {
         data[0] = header;
 
         for (int i = 1; i < nRows; i++) {
-            Result r = results.get(i-1);
+            SimplifiedResult r = results.get(i-1);
             data[i][__.INSTANCE_NAME.getIndex()] = r.getInstanceName();
-            data[i][__.ALG_NAME.getIndex()] = r.getAlgorythmName();
+            data[i][__.ALG_NAME.getIndex()] = r.getAlgorithmName();
             data[i][__.BEST_VALUE.getIndex()] = r.getBestValue();
             data[i][__.AVG_VALUE.getIndex()] = r.getAvgValue();
             data[i][__.STD.getIndex()] = r.getStd();
@@ -132,8 +132,8 @@ public class ExcelSerializer extends ResultsSerializer {
         return new AreaReference(new CellReference(0,0), new CellReference(nRows-1, nColumns-1), SpreadsheetVersion.EXCEL2007);
     }
 
-    private Map<String, Optional<Double>> bestPerInstance(List<Result> results) {                                       // Reduce by last
-        return results.stream().collect(Collectors.groupingBy(Result::getInstanceName,
+    private Map<String, Optional<Double>> bestPerInstance(List<SimplifiedResult> results) {                                       // Reduce by last
+        return results.stream().collect(Collectors.groupingBy(SimplifiedResult::getInstanceName,
                 Collectors.mapping(a -> Double.parseDouble(a.getBestValue()), Collectors.reducing((a, b) -> maximizing ?
                         Math.max(a, b) :
                         Math.min(a, b)

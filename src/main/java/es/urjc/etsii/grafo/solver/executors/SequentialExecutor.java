@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.solver.executors;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.io.Result;
+import es.urjc.etsii.grafo.io.SimplifiedResult;
 import es.urjc.etsii.grafo.io.WorkingOnResult;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
@@ -26,8 +26,8 @@ public class SequentialExecutor<S extends Solution<I>, I extends Instance> exten
     }
 
     @Override
-    public Collection<Result> execute(String experimentname, I ins, int repetitions, List<Algorithm<S,I>> list, SolutionBuilder<S,I> solutionBuilder, ExceptionHandler<S,I> exceptionHandler) {
-        List<Result> results = new ArrayList<>();
+    public Collection<SimplifiedResult> execute(String experimentname, I ins, int repetitions, List<Algorithm<S,I>> list, SolutionBuilder<S,I> solutionBuilder, ExceptionHandler<S,I> exceptionHandler) {
+        List<SimplifiedResult> results = new ArrayList<>();
 
         for(var algorithm: list){
             logger.info("Algorithm: "+ algorithm);
@@ -39,7 +39,7 @@ public class SequentialExecutor<S extends Solution<I>, I extends Instance> exten
                     workingOnResult.addSolution((Solution<Instance>) workUnit.getSolution(), workUnit.getEllapsedTime(), workUnit.getTimeToTarget());
                 }
             }
-            Optional<Result> finish = workingOnResult.finish();
+            Optional<SimplifiedResult> finish = workingOnResult.finish();
             finish.ifPresent(results::add);
         }
         //logger.info("Tasks submited, awaiting termination for instance: "+ins.getName());

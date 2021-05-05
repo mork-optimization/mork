@@ -1,6 +1,6 @@
 package es.urjc.etsii.grafo.io.serializers;
 
-import es.urjc.etsii.grafo.io.Result;
+import es.urjc.etsii.grafo.io.SimplifiedResult;
 import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.util.IOUtil;
 
@@ -24,7 +24,7 @@ public abstract class ResultsSerializer {
         log = Logger.getLogger(this.getClass().getName());
     }
 
-    public void serializeResults(String experimentName, List<Result> results){
+    public void serializeResults(String experimentName, List<SimplifiedResult> results){
         if(!enabled){
             return;
         }
@@ -38,7 +38,7 @@ public abstract class ResultsSerializer {
         _serializeResults(results, p);
     }
 
-    protected abstract void _serializeResults(List<Result> results, Path p);
+    protected abstract void _serializeResults(List<SimplifiedResult> results, Path p);
 
     private String getFilename(String experimentName){
         return experimentName + new SimpleDateFormat(format).format(new Date());

@@ -4,9 +4,9 @@ package es.urjc.etsii.grafo.io;
  * The result of the execution of an algorithm
  * Contains all the generated solutions and some stats about them
  */
-public class Result {
+public class SimplifiedResult {
 
-    private final String algorythmName;
+    private final String algorithmName;
     private final String instanceName;
     private final String avgValue;
     private final String bestValue;
@@ -14,8 +14,8 @@ public class Result {
     private final String avgTimeInSeconds;
     private final String totalTimeInSeconds;
 
-    public Result(String algorythmName, String instanceName, String avgValue, String bestValue, String std, String avgTimeInSeconds, String totalTimeInSeconds) {
-        this.algorythmName = algorythmName;
+    public SimplifiedResult(String algorithmName, String instanceName, String avgValue, String bestValue, String std, String avgTimeInSeconds, String totalTimeInSeconds) {
+        this.algorithmName = algorithmName;
         this.instanceName = instanceName;
         this.avgValue = avgValue;
         this.bestValue = bestValue;
@@ -24,8 +24,8 @@ public class Result {
         this.totalTimeInSeconds = totalTimeInSeconds;
     }
 
-    public String getAlgorythmName() {
-        return algorythmName;
+    public String getAlgorithmName() {
+        return algorithmName;
     }
 
     public String getInstanceName() {
@@ -54,8 +54,8 @@ public class Result {
 
     @Override
     public String toString() {
-        return "Result{" +
-                "algorythmName='" + algorythmName + '\'' +
+        return "SimplifiedResult{" +
+                "algorythmName='" + algorithmName + '\'' +
                 ", instanceName='" + instanceName + '\'' +
                 ", avgValue='" + avgValue + '\'' +
                 ", bestValue='" + bestValue + '\'' +

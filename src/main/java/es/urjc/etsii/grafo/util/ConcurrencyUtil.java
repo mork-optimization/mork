@@ -30,7 +30,7 @@ public class ConcurrencyUtil {
      * Block until the task is completed.
      * Wraps the annoying checked exception.
      * @param f Future we will wait for
-     * @return Result of the task
+     * @return SimplifiedResult of the task
      * @throws RuntimeException in case any error happened during the execution
      */
     public static <T> T await(Future<T> f){
@@ -45,7 +45,7 @@ public class ConcurrencyUtil {
      * Block until the task is completed.
      * Handles the exception with the given handler
      * @param f Future we will wait for
-     * @return Result of the task
+     * @return SimplifiedResult of the task
      * @throws RuntimeException in case any error happened during the execution
      */
     public static <T> Optional<T> await(Future<T> f, Consumer<Exception> exceptionHandler){
