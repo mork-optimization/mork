@@ -89,7 +89,6 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
         var cl = candidateListManager.buildInitialCandidateList(sol);
         assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
         while (!cl.isEmpty()) {
-            // Choose an index from the candidate list following different strategies, GreedyRandom, RandomGreedy...
             int index = randomGreedy(alpha, cl);
             M chosen = cl.get(index);
             chosen.execute();
