@@ -4,13 +4,15 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceImporter;
-import es.urjc.etsii.grafo.io.Result;
+import es.urjc.etsii.grafo.io.SimplifiedResult;
 import es.urjc.etsii.grafo.io.serializers.DefaultJSONSolutionSerializer;
 import es.urjc.etsii.grafo.io.serializers.JsonSerializer;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
+import es.urjc.etsii.grafo.solver.configuration.InstanceConfiguration;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -34,11 +36,8 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
 
     private static final Logger log = Logger.getLogger(IOManager.class.toString());
 
-    @Value("${instances.path.in}")
-    String instanceIn;
-
-    @Value("${instances.path.cache}")
-    String instanceCache;
+    @Autowired
+    InstanceConfiguration instanceConfiguration;
 
     @Value("${solutions.path.out}")
     String solutionsOut;
@@ -62,41 +61,41 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         log.info("Using solution exporter: "+this.solutionSerializer.getClass().getTypeName());
     }
 
-    public Stream<? extends Instance> getInstances(){
+    public Stream<? extends Instance> getInstances(String experimentName){
+        String instancePath = this.instanceConfiguration.getPath(experimentName);
         try {
-            errorIfNotExists(this.instanceIn);
+            errorIfNotExists(instancePath);
             createIfNotExists(this.solutionsOut);
-            createIfNotExists(this.instanceCache);
             createIfNotExists(this.errorFolder);
 
-            return Files.walk(Path.of(this.instanceIn)).filter(Files::isRegularFile).sorted(Comparator.comparing(f -> f.toFile().getName().toLowerCase())).map(this::tryGetFromCache);
+            return Files.walk(Path.of(instancePath)).filter(Files::isRegularFile).sorted(Comparator.comparing(f -> f.toFile().getName().toLowerCase())).map(this::loadInstance);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
 
-    public void saveResults(List<Result> result){
+    public void saveResults(String experimentName, List<SimplifiedResult> result){
         for (ResultsSerializer serializer : resultsSerializers) {
-            serializer.serializeResults(result);
+            serializer.serializeResults(experimentName, result);
         }
     }
 
-    private Instance tryGetFromCache(Path p){
+    private Instance loadInstance(Path p){
         return this.instanceImporter.importInstance(p.toFile());
     }
 
-    public void exportSolution(Algorithm<S,I> alg, S s){
+    public void exportSolution(String experimentName, Algorithm<S,I> alg, S s){
         log.fine(String.format("Exporting solution for algorithm %s using %s", alg.getClass().getSimpleName(), solutionSerializer.getClass().getSimpleName()));
-        String filename = s.getInstance().getName() + "__" + alg.getShortName();
+        String filename = experimentName + "__" + s.getInstance().getName() + "__" + alg.getShortName();
         File f = new File(solutionsOut, filename);
         solutionSerializer.export(f, s);
     }
 
-    public synchronized void exportError(Algorithm<S,I> alg, I i, Throwable t, String stacktrace){
+    public synchronized void exportError(String experimentName, Algorithm<S,I> alg, I i, Throwable t, String stacktrace){
         // Directamente desde aqui, si se quiere customizar se puede pisar el DefaultExceptionHandler
         SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss.SSS");
         Date d = new Date();
-        String filename = sdf.format(d) + "_error.json";
+        String filename = experimentName + "_" + sdf.format(d) + "_.json";
         var errorData = Map.of("Algorithm", alg, "InstanceName", i.getName(), "StackTrace", stacktrace, "Error", t);
         var p = Path.of(errorFolder, filename);
         try (var outputStream = Files.newOutputStream(p)){

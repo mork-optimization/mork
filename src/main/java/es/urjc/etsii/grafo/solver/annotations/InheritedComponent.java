@@ -8,4 +8,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Component
 @Inherited
+/**
+ * Used to detect at runtime implementing classes without forcing users to use annotations
+ */
 public @interface InheritedComponent {}

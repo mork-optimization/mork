@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.io.serializers;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
-import es.urjc.etsii.grafo.io.Result;
+import es.urjc.etsii.grafo.io.SimplifiedResult;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
@@ -31,7 +31,7 @@ public class CSVSerializer extends ResultsSerializer{
                 .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
     }
 
-    public void _serializeResults(List<Result> s, Path p) {
+    public void _serializeResults(List<SimplifiedResult> s, Path p) {
         log.info("Exporting result data to CSV...");
 
         var schema = csvMapper.schemaFor(s.get(0).getClass())

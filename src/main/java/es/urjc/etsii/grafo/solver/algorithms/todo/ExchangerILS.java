@@ -6,7 +6,7 @@
 //import es.urjc.etsii.grafo.solution.Solution;
 //import es.urjc.etsii.grafo.solver.algorithms.config.ExchangerILSConfig;
 //import es.urjc.etsii.grafo.solver.create.Constructive;
-//import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
+//import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 //import es.urjc.etsii.grafo.solver.destructor.Shake;
 //import es.urjc.etsii.grafo.solver.improve.Improver;
 //import org.springframework.stereotype.Component;

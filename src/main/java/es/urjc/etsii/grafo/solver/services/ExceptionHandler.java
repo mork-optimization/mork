@@ -7,5 +7,5 @@ import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 
 @InheritedComponent
 public abstract class ExceptionHandler<S extends Solution<I>, I extends Instance> {
-    public abstract void handleException(Exception e, I i, Algorithm<S,I> algorithm, IOManager<S, I> io);
+    public abstract void handleException(String experimentname, Exception e, I i, Algorithm<S,I> algorithm, IOManager<S, I> io);
 }

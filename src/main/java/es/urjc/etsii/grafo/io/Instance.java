@@ -2,7 +2,8 @@ package es.urjc.etsii.grafo.io;
 
 /**
  * Base instance class. All instance subclasses must be inmutable after construction
- * Order defaults to instance name
+ * Order defaults to instance name, can be changed by user
+ * (for example, to order by instance size or any other instance property)
  */
 public abstract class Instance implements Comparable<Instance>{
     private final String name;

@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.solver.improve;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.services.MorkLifecycle;
 
 import java.util.logging.Logger;
 
@@ -16,7 +17,7 @@ public abstract class Improver<S extends Solution<I>,I extends Instance> {
      */
     public S improve(S s) {
         int rounds = 0;
-        while (!s.stop() && iteration(s)){
+        while (!MorkLifecycle.stop() && iteration(s)){
             rounds++;
         }
         log.fine(String.format("LS: %s executed %s iterations", this.getClass().getSimpleName(), rounds));

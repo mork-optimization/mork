@@ -3,16 +3,17 @@ package es.urjc.etsii.grafo.io;
 import es.urjc.etsii.grafo.solution.Solution;
 
 import java.util.ArrayList;
+import java.util.Optional;
 
 /**
  * The result of the execution of an algorithm
  * Contains all the generated solutions and some stats about them
  */
-public class WorkingOnResult {
+public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
 
     private final ArrayList<SolutionData> solutions;
     private Instance instance;
-    private Solution best;
+    private S best;
     private final String algorythmName;
     private final String instanceName;
 
@@ -35,7 +36,7 @@ public class WorkingOnResult {
      * @param nanos Time used to calculate the given es.urjc.etsii.grafo.solution
      * @param timeToTarget
      */
-    public synchronized void addSolution(Solution<? extends Instance> s, long nanos, long timeToTarget) {
+    public synchronized void addSolution(S s, long nanos, long timeToTarget) {
         if(this.best == null){
             this.best = s;
         }
@@ -49,12 +50,12 @@ public class WorkingOnResult {
         }
     }
 
-    public long getAverageExecTime() {
-        long totalTime = 0;
+    public double getAverageExecTimeInSeconds() {
+        double totalTime = 0;
         for (var solution : this.solutions) {
             totalTime += solution.getExecutionTimeInNanos();
         }
-        return totalTime / this.solutions.size() / 1_000_000; // 1 millisecond = 10^6 nanos
+        return totalTime / this.solutions.size() / 1_000_000_000; // 1 second = 10^9 seconds
     }
 
     public String getFormattedAverageFO(int nDecimales) {
@@ -70,12 +71,12 @@ public class WorkingOnResult {
         return value / solutions.size();
     }
 
-    public long getTotalTime() {
+    public double getTotalTimeInSeconds() {
         long totalTime = 0;
         for (var solution : solutions) {
             totalTime += solution.getExecutionTimeInNanos();
         }
-        return totalTime / 1_000_000;
+        return totalTime / (double) 1_000_000_000; // 1 second = 10^9 seconds
     }
 
     /**
@@ -97,7 +98,7 @@ public class WorkingOnResult {
         return Math.sqrt(total / (this.solutions.size() - 1));
     }
 
-    public Solution getBestSolution() {
+    public S getBestSolution() {
         return best;
     }
 
@@ -114,20 +115,23 @@ public class WorkingOnResult {
         return "Instance Name: " + this.instanceName
                 + "\nAlgorythm Used: " + this.algorythmName
                 + "\nAverage Obj.Function: " + getFormattedAverageFO(2)
-                + "\nExecution Time (ms): " + this.getAverageExecTime()
+                + "\nExecution Time (ms): " + this.getAverageExecTimeInSeconds()
                 + "\n---------------------------------------------------------";
     }
 
-    public Result finish() {
-        return new Result(
+    public Optional<SimplifiedResult> finish() {
+        if(this.best == null){
+            return Optional.empty();
+        }
+        return Optional.of(new SimplifiedResult(
                 this.algorythmName,
                 this.instanceName,
                 Double.toString(this.getAverageFOValue()),
                 Double.toString(this.getBestSolution().getScore()),
                 Double.toString(this.getStd()),
-                Double.toString(this.getAverageExecTime()),
-                Long.toString(this.getTotalTime())
-        );
+                Double.toString(this.getAverageExecTimeInSeconds()),
+                Double.toString(this.getTotalTimeInSeconds())
+        ));
     }
 
     /**

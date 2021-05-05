@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.solution;
 
 import es.urjc.etsii.grafo.io.Instance;
 
-import java.util.Optional;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
@@ -17,6 +17,10 @@ public abstract class Neighborhood<M extends Move<S,I>, S extends Solution<I>, I
      * @return Stream with all the available moves in the neighborhood
      */
     public abstract Stream<M> stream(S s);
+
+    protected Stream<M> buildStream(M move){
+        return Stream.iterate(move, Objects::nonNull, m -> (M) m.next());
+    }
 
     @Override
     public String toString() {

@@ -2,40 +2,39 @@ seed: 1234
 
 instances:
   path:
-    #in: 'instancesPreeliminares'
-    #in: 'instancesTestCompareSmall'
-    in: 'instancesValidate'
-    cache: 'instances.cached'
+    # Default instance path for all experiments, can be overridden.
+    default: 'instances'
+
+    # Override default instance path only for the experiment declared in file IteratedGreedyExperiment.java
+    # If an experiment does not have a specific path the default will be used
+    IteratedGreedyExperiment: './instances/IteratedGreedy'
 
 solutions:
+  # Path where solutions will be exported (Only if a solution serializer is enabled, see below)
   path:
-    temp: 'solutions.temp'
     out: 'solutions'
   dateformat: 'yyyy-MM-dd_HH-mm-ss'
 
 errors:
+  # Path where all errors or exceptions encountered during experiment execution will be exported
+  # Experiment execution DOES NOT END if an error is produced, the error is logged, and we keep working
   path: 'errors'
 
 serializers:
   sol-json:
-    # Enable default JSON serializer for solutions. Exports best solution of each algorithm to CSV
+    # Enable default JSON serializer for solutions. Exports best solution of each algorithm to JSON.
+    # If you want to export solutions to a custom format, extend SolutionSerializer,
+    # NOTE: the default JSON solution serializer is automatically disabled when the SolutionSerializer class is extended.
     enabled: true
-    # If enabled, pretty print JSON (indentation + spaces)
+    # If enabled, pretty print JSON (indentation + new lines)
     pretty: true
 
-  # TODO
-  #json:
-    # Enable JSON results serializer, set to false to skip serializing results to JSON
-    #enabled: false
-    # If enabled, pretty print JSON (indentation + spaces)
-    #pretty: true
-
   csv:
-    # Enable CSV results serializer, set to false to skip serializing results to CSV
+    # Export results to CSV, set to false to skip serializing results to CSV
     enabled: false
 
-    # Can use commas, \t (tabs) or any other character to separate columns when exporting the results to CSV
-    # USE A SINGLE CHARACTER
+    # Can use commas, semicolons, \t (tabs) or any other character to separate columns when exporting the results to CSV
+    # Note: Use only a single character
     separator: ','
 
     # Results folder
@@ -44,7 +43,7 @@ serializers:
     # Filename format, replacements are applied as follows
     # yyyy: replaced with current year, ex 2020
     # MM, dd, HH, mm, ss: replaced by month, day, hour, minute and seconds
-    # letters [a-zA-Z] can be part of the filename as long as they are between single quotes
+    # any letters [a-zA-Z] can be part of the filename as long as they are between single quotes
     format: "'Results'_yyyy-MM-dd_HH-mm-ss.'csv'"
 
   xlsx:
@@ -67,17 +66,18 @@ serializers:
 
 solver:
 
-  # Which algorithms should be loaded? * --> All
-  # Accepts a comma separated list, case insensitive
-  # algorithms: '*'
+  # Which experiments should be executed? .* --> All.
+  # Experiment names default to the class name in which they are declared unless overridden.
+  # Tip, you may use a Regex, example: Preeliminar.*
+  experiments: '.*'
 
-  # Maximize or minimize objective function? Only used in the XLSX exporter right now.
+  # Maximize or minimize objective function? True --> Maximizing, False --> Minimizing
   maximizing: true
 
-  # How many times should each experiment be repeated, in order to guarantee stability
-  repetitions: 8
+  # How many times should each experiment be repeated. Recommended a minimum of 30
+  repetitions: 100
 
-  # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALELIZED
+  # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALLELIZED
   # Valid Values: true, false
   parallelExecutor: true
 
@@ -85,26 +85,26 @@ solver:
   # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
   nWorkers: -1
 
-  # Cache solutions?
-  #cache:
-    #enabled: true
-    # maximum cache size before old entries get evicted, defaults to one million.
-    #max_size: 1000000
 
-#algorithms:
-#  exchangerils:
-#    nRotateRounds: 2
-#    configs:
-
-
+# Logging configuration
 logging:
-  file:
-    name: 'console.log'
   level:
+    # Default logging level, do not modify unless you know what you are doing
     root: 'info'
     es:
       urjc:
         etsii:
+          # Use:
+          # - INFO:  Print only important messages
+          # - DEBUG: Show debug logs for each algorithm
+          # - TRACE: Print all debug messages, and print ALL movements when they are applied to any solution.
+          #          Note: Enabling trace mode has a big performance impact.
           #grafo: 'DEBUG'
-          grafo: 'info'
+          grafo: 'INFO'
 
+  # Save logs to file 'log.txt'
+  file:
+    name: 'log.txt'
+
+  # Logging messages format
+  pattern.console: '%clr([%d{${LOG_DATEFORMAT_PATTERN:yyyy/MM/dd HH:mm:ss}}]){faint} %clr(${LOG_LEVEL_PATTERN:--%5p}) %clr(--> %-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}'

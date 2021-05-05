@@ -4,28 +4,28 @@ package es.urjc.etsii.grafo.io;
  * The result of the execution of an algorithm
  * Contains all the generated solutions and some stats about them
  */
-public class Result {
+public class SimplifiedResult {
 
-    private final String algorythmName;
+    private final String algorithmName;
     private final String instanceName;
     private final String avgValue;
     private final String bestValue;
     private final String std;
-    private final String avgTimeInMs;
-    private final String totalTimeInMs;
+    private final String avgTimeInSeconds;
+    private final String totalTimeInSeconds;
 
-    public Result(String algorythmName, String instanceName, String avgValue, String bestValue, String std, String avgTimeInMs, String totalTimeInMs) {
-        this.algorythmName = algorythmName;
+    public SimplifiedResult(String algorithmName, String instanceName, String avgValue, String bestValue, String std, String avgTimeInSeconds, String totalTimeInSeconds) {
+        this.algorithmName = algorithmName;
         this.instanceName = instanceName;
         this.avgValue = avgValue;
         this.bestValue = bestValue;
         this.std = std;
-        this.avgTimeInMs = avgTimeInMs;
-        this.totalTimeInMs = totalTimeInMs;
+        this.avgTimeInSeconds = avgTimeInSeconds;
+        this.totalTimeInSeconds = totalTimeInSeconds;
     }
 
-    public String getAlgorythmName() {
-        return algorythmName;
+    public String getAlgorithmName() {
+        return algorithmName;
     }
 
     public String getInstanceName() {
@@ -44,24 +44,24 @@ public class Result {
         return std;
     }
 
-    public String getAvgTimeInMs() {
-        return avgTimeInMs;
+    public String getAvgTimeInSeconds() {
+        return avgTimeInSeconds;
     }
 
-    public String getTotalTimeInMs() {
-        return totalTimeInMs;
+    public String getTotalTimeInSeconds() {
+        return totalTimeInSeconds;
     }
 
     @Override
     public String toString() {
-        return "Result{" +
-                "algorythmName='" + algorythmName + '\'' +
+        return "SimplifiedResult{" +
+                "algorythmName='" + algorithmName + '\'' +
                 ", instanceName='" + instanceName + '\'' +
                 ", avgValue='" + avgValue + '\'' +
                 ", bestValue='" + bestValue + '\'' +
                 ", std='" + std + '\'' +
-                ", avgTime='" + avgTimeInMs + '\'' +
-                ", bestTime='" + totalTimeInMs + '\'' +
+                ", avgTime='" + avgTimeInSeconds + '\'' +
+                ", bestTime='" + totalTimeInSeconds + '\'' +
                 '}';
     }
 }

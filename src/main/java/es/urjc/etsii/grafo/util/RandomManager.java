@@ -17,23 +17,31 @@ public final class RandomManager {
     // If the RandomManager is called before Spring starts, static methods will throw a NPE.
     private static ThreadLocal<Random> localRandom;
     private static int initialSeed;
+    private static boolean initialized = false;
 
     public static Random getRandom(){
+        if(!initialized){
+            throw new IllegalStateException("Attempted to use RandomManager before initialization");
+        }
         return localRandom.get();
     }
 
     public static int nextInt(int min, int max){
-        return localRandom.get().nextInt(max - min) + min;
+        return getRandom().nextInt(max - min) + min;
     }
 
     // a bit hacky but uses constructor instead of static initializer for Spring compatibility
     protected RandomManager(@Value("${seed}") int seed){
+        if(initialized){
+            logger.warning(String.format("RandomManager already initialized with seed %s, overwritted with %s", initialSeed, seed));
+        }
         initialSeed = seed;
         logger.info("Using initial seed = " + initialSeed);
         localRandom = ThreadLocal.withInitial(() -> {
             var r = new Random(initialSeed);
             return r;
         });
+        initialized = true;
     }
 
     /**
@@ -41,7 +49,7 @@ public final class RandomManager {
      * each thread is responsible of resetting their random state when appropriate
      */
     public static void reset(){
-        RandomManager.localRandom.get().setSeed(initialSeed);
+        reset(0);
     }
 
     /**
@@ -49,7 +57,8 @@ public final class RandomManager {
      * each thread is responsible of resetting their random state when appropriate
      */
     public static void reset(int iteration){
-        RandomManager.localRandom.get().setSeed(initialSeed+iteration);
+        getRandom().setSeed(initialSeed+iteration);
     }
+
 }
 

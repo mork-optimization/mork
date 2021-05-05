@@ -1,8 +1,7 @@
-package es.urjc.etsii.grafo.solver.services;
+package es.urjc.etsii.grafo.solver.create.builder;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AssignableTypeFilter;
@@ -13,7 +12,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 @SuppressWarnings("unchecked")
-//@ConditionalOnMissingBean(SolutionBuilder.class) // does not work because it gets scanned first
 public class ReflectiveSolutionBuilder<S extends Solution<I>,I extends Instance> extends SolutionBuilder<S, I> {
 
     private final Class<S> solClass;

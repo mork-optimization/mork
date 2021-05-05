@@ -11,11 +11,11 @@ import java.util.logging.Logger;
 public class DefaultExceptionHandler<S extends Solution<I>, I extends Instance> extends ExceptionHandler<S,I>{
     private static final Logger logger = Logger.getLogger(DefaultExceptionHandler.class.getName());
 
-    public void handleException(Exception e, I i, Algorithm<S,I> algorithm, IOManager<S, I> io){
+    public void handleException(String experimentName, Exception e, I i, Algorithm<S,I> algorithm, IOManager<S, I> io){
         logger.severe(String.format("Error while solving instance %s with algorithm %s, skipping. Exception message: %s", i.getName(), algorithm.toString(), e.getMessage()));
         String stackTrace = getStackTrace(e);
-        logger.fine("Stacktrace: " + stackTrace);
-        io.exportError(algorithm, i, e, stackTrace);
+        logger.severe("Stacktrace: " + stackTrace);
+        io.exportError(experimentName, algorithm, i, e, stackTrace);
     }
 
     private String getStackTrace(Throwable t){

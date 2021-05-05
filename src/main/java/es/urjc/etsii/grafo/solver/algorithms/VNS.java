@@ -3,9 +3,10 @@ package es.urjc.etsii.grafo.solver.algorithms;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.Constructive;
-import es.urjc.etsii.grafo.solver.create.SolutionBuilder;
+import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.destructor.Shake;
 import es.urjc.etsii.grafo.solver.improve.Improver;
+import es.urjc.etsii.grafo.solver.services.MorkLifecycle;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -66,7 +67,7 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
             }
             best = best.getBetterSolution(solution);
             //System.out.println(best.getOptimalValue());
-        } while (!best.stop()); // TODO Possible bug, each iteration resets the solution time counter
+        } while (!MorkLifecycle.stop());
         return best;
     }
 
@@ -75,7 +76,7 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
         solution = localSearch(solution);
 
         int currentKIndex = 0;
-        while (currentKIndex < ks.length && !solution.stop()) {
+        while (currentKIndex < ks.length && !MorkLifecycle.stop()) {
             printStatus(String.valueOf(currentKIndex), solution);
             S bestSolution = solution;
 
