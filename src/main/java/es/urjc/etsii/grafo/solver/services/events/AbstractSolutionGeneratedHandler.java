@@ -14,7 +14,7 @@ public abstract class AbstractSolutionGeneratedHandler<S extends Solution<I>, I 
 
     /**
      * This method will be executed each time an algorithm
-     * @param event
+     * @param event Event triggered when a new solution has been generated (no further changes will be made to it)
      */
     public abstract void onSolutionGenerated(SolutionGeneratedEvent<S,I> event);
 }

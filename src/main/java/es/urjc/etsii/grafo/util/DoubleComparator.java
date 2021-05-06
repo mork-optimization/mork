@@ -11,9 +11,10 @@ public class DoubleComparator {
     private static double epsilon = DEFAULT_EPSILON;
 
     /**
-     * BE CAREFUL WITH THIS METHOD!
+     * BE CAREFUL WITH THIS METHOD! AFFECTS ALL THREADS
      * Change default comparator precision. Defaults to DEFAULT_EPSILON
-     * @param epsilon
+     * @param epsilon differences less than epsilon will not be counted as true differences.
+     *                See https://en.wikipedia.org/wiki/Double-precision_floating-point_format for an intro on IEE754
      */
     public static void setPrecision(double epsilon){
         DoubleComparator.epsilon = epsilon;

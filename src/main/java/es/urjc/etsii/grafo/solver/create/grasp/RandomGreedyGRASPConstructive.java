@@ -46,7 +46,9 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
      *
      * @param minAlpha   minimum value for the random alpha
      * @param maxAlpha   maximum value for the random alpha
-     * @param comparator
+     * @param comparator Comparator used when evaluating different moves in the candidate list manager
+     *                   //  TODO move to candidateListManager...
+     * @param candidateListManager Candidate List Manager
      */
     public RandomGreedyGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, MoveComparator<M, S, I> comparator) {
         this.candidateListManager = candidateListManager;
@@ -66,6 +68,7 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
      * @param minAlpha   minimum value for the random alpha
      * @param maxAlpha   maximum value for the random alpha
      * @param maximizing True if maximizing, false if minimizing
+     * @param candidateListManager Candidate List Manager
      */
     public RandomGreedyGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, boolean maximizing) {
         this(candidateListManager, minAlpha, maxAlpha, new DefaultMoveComparator<>(maximizing));
@@ -73,6 +76,8 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     /**
      * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
+     * @param candidateListManager candidate list manager, implemented by the user
+     * @param maximizing True if maximizing, false if minimizing
      */
     public RandomGreedyGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, boolean maximizing) {
         this(candidateListManager, 0, 1, maximizing);

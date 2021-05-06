@@ -14,6 +14,7 @@ public class CollectionUtils {
      * @param list  list to reverse
      * @param start start index, inclusive
      * @param end   end index, inclusive
+     * @param <T> List type
      */
     public static <T> void reverseFragment(List<T> list, int start, int end) {
         assert list instanceof RandomAccess: "Reversing a fragment of a list where access is not O(1) is extremely slow. Think of a better way to do it ;)";

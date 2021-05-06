@@ -15,8 +15,8 @@ public class NoOp {
 
     /**
      * Create no operation constructive method
-     * @param <S>
-     * @param <I>
+     * @param <S> Solution class
+     * @param <I> Instance class
      * @return NoOp constructive
      */
     public static <S extends Solution<I>, I extends Instance> Constructive<S,I> constructive(){
@@ -25,8 +25,8 @@ public class NoOp {
 
     /**
      * Create no operation improve method
-     * @param <S>
-     * @param <I>
+     * @param <S> Solution class
+     * @param <I> Instance class
      * @return NoOp improve method
      */
     public static <S extends Solution<I>, I extends Instance> Improver<S,I> improver(){
@@ -35,8 +35,8 @@ public class NoOp {
 
     /**
      * Create no operation improve method
-     * @param <S>
-     * @param <I>
+     * @param <S> Solution class
+     * @param <I> Instance class
      * @return NoOp improve method
      */
     public static <S extends Solution<I>, I extends Instance> Shake<S,I> shake(){

@@ -24,8 +24,7 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
 
     /**
      * Generate initial candidate list. The list will be sorted by the constructor.
-     *
-     * @param sol Current es.urjc.etsii.grafo.solution
+     * @param sol Current solution
      * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
      */
     public abstract List<M> buildInitialCandidateList(S sol);
@@ -33,9 +32,10 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
     /**
      * Update candidate list after each movement. The list will be sorted by the constructor.
      *
-     * @param s     Current es.urjc.etsii.grafo.solution, move has been already applied
+     * @param s     Current solution, move has been already applied
      * @param t     Chosen move
      * @param index index of the chosen move in the candidate list
+     * @param candidateList original candidate list
      * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
      */
     public abstract List<M> updateCandidateList(S s, M t, List<M> candidateList, int index);

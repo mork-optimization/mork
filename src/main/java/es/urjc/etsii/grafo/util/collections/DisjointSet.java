@@ -67,9 +67,9 @@ public class DisjointSet {
     }
 
     /**
-     *
-     * @param n
-     * @return
+     * Find the set id of a given element
+     * @param n element
+     * @return set id
      */
     public int find(int n){
         n -= offset;

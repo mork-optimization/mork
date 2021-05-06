@@ -11,7 +11,9 @@ import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 @InheritedComponent
 public abstract class SolutionBuilder<S extends Solution<I>, I extends Instance> {
     /**
-     * Generate an empty es.urjc.etsii.grafo.solution with the parameters given by the user
+     * Generate an solution with the parameters given by the user
+     * @param i Instance used to build the empty solution
+     * @return empty solution referencing the given instance
      */
      public abstract S initializeSolution(I i);
 }

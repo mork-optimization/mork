@@ -33,6 +33,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
      * @param alpha      Randomness, adjusts the candidate list size.
      *                   Takes values between [0,1] being 1 → totally random, 0 → full greedy.
      * @param maximizing true if we are maximizing the score, false if minimizing
+     * @param candidateListManager list manager, implemented by the user
      */
     public GreedyRandomGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double alpha, boolean maximizing) {
         this.candidateListManager = candidateListManager;
@@ -49,6 +50,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
      * @param minAlpha   minimum value for the random alpha
      * @param maxAlpha   maximum value for the random alpha
      * @param maximizing true if maximizing, false if minimizing
+     * @param candidateListManager list manager, implemented by the user
      */
     public GreedyRandomGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, boolean maximizing) {
         this.candidateListManager = candidateListManager;
@@ -63,6 +65,8 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     /**
      * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
+     * @param candidateListManager candidate list manager, implemented by the user
+     * @param maximizing True if maximizing, false if minimizing
      */
     public GreedyRandomGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, boolean maximizing) {
         this(candidateListManager, 0, 1, maximizing);
@@ -149,6 +153,4 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
                 ", list=" + candidateListManager +
                 '}';
     }
-
-
 }

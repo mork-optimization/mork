@@ -49,6 +49,9 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
      * @param ins Instance
      * @param repetitions Number of repetitions
      * @param algorithms Algorithm list
+     * @param experimentName Experiment name
+     * @param exceptionHandler Exception handler, determines behaviour if anything fails
+     * @param solutionBuilder Used to build solutions from instances
      * @return Experiment results for the given instance
      */
     public abstract Collection<SimplifiedResult> execute(String experimentName, I ins, int repetitions, List<Algorithm<S,I>> algorithms, SolutionBuilder<S,I> solutionBuilder, ExceptionHandler<S,I> exceptionHandler);

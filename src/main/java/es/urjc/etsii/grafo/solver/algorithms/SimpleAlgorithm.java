@@ -6,6 +6,7 @@ import es.urjc.etsii.grafo.solver.create.Constructive;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.improve.Improver;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.logging.Logger;
@@ -23,13 +24,15 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
     private static Logger log = Logger.getLogger(SimpleAlgorithm.class.getName());
 
     Constructive<S,I> constructive;
-    List<Improver<S,I>> improvers;
+    List<Improver<S, I>> improvers;
 
     @SafeVarargs
     public SimpleAlgorithm(Constructive<S, I> constructive, Improver<S,I>... improvers){
         this.constructive = constructive;
         if(improvers != null && improvers.length >= 1){
             this.improvers = Arrays.asList(improvers);
+        } else {
+            this.improvers = new ArrayList<>();
         }
     }
 

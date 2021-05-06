@@ -18,7 +18,7 @@ public class IntSet extends AbstractSet<Integer> {
 
     /**
      * Create a new IntSet that can hold values between [0, maxValue-1]
-     * @param maxValue
+     * @param maxValue Biggest value that could be possible stored in set, without including it.
      */
     public IntSet(int maxValue) {
         if (maxValue <= 0) {
@@ -30,25 +30,35 @@ public class IntSet extends AbstractSet<Integer> {
 
     /**
      * Copy an Intset
+     * @param set original set
      */
     public IntSet(IntSet set) {
         this.data = Arrays.copyOf(set.data, set.data.length);
         this.size = set.size;
     }
 
+    /**
+     * Copy a set
+     * @param set original set
+     */
     public IntSet(Set<Integer> set){
         if(set instanceof IntSet){
             var _set = (IntSet) set;
             this.data = Arrays.copyOf(_set.data, _set.data.length);
             this.size = _set.size;
         } else {
-
+            int size = set.size();
+            this.data = new boolean[size];
+            for(int i: set){
+                this.fastAdd(i);
+            }
         }
     }
 
     /**
      * {@inheritDoc}
      * @see IntSet#fastAdd(int)
+     * @param integer int to add
      */
     @Override
     public boolean add(Integer integer) {
@@ -57,6 +67,7 @@ public class IntSet extends AbstractSet<Integer> {
 
     /**
      * Adds the given integer to the set without boxing/unboxing overhead.
+     * @param n int to add
      * @return true if collection has been modified, false otherwise
      */
     public boolean fastAdd(int n){
@@ -87,6 +98,7 @@ public class IntSet extends AbstractSet<Integer> {
     /**
      * Removes int from set, accepts Object for Java API compatibility.
      * @see IntSet#fastRemove(int)
+     * @param o object to remove if found
      * @return true if collection has been modified, false otherwise
      */
     @Override
@@ -99,6 +111,7 @@ public class IntSet extends AbstractSet<Integer> {
 
     /**
      * Same as remove(), but without casting and object validation overhead
+     * @param n int to remove
      * @return true if collection has been modified, false otherwise
      */
     public boolean fastRemove(int n){
