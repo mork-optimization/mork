@@ -25,13 +25,14 @@
 hs_err_pid*
 
 # IntelliJ project files, each to their own
+.idea
 .idea/$PRODUCT_WORKSPACE_FILE$
 .idea/.gitignore
 .idea/codeStyles/
 .idea/compiler.xml
 .idea/misc.xml
 .idea/vcs.xml
+.idea/encodings.xml
 mork.iml
 
 target
-.idea
