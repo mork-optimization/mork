@@ -5,6 +5,7 @@ import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
 @Component
+@SuppressWarnings("all")
 public class MorkLifecycle implements SignalHandler {
 
     private static volatile boolean stopping = false;
