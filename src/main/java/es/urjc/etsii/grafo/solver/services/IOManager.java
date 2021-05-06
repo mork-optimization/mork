@@ -45,8 +45,8 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     @Value("${errors.path}")
     String errorFolder;
 
-    // Results CSV --> date to string
-    // Solution file --> instance_algoritm
+    // Results CSV → date to string
+    // Solution file → instance_algoritm
     private final JsonSerializer jsonSerializer;
     private final List<ResultsSerializer> resultsSerializers;
     private final InstanceImporter<?> instanceImporter;

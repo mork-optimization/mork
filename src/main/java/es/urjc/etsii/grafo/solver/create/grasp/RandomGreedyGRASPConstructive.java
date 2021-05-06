@@ -42,7 +42,7 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     /**
      * GRASP Constructor, generates a random alpha in each construction
-     * Alpha Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
+     * Alpha Takes values between [0,1] being 1 → totally random, 0 → full greedy.
      *
      * @param minAlpha   minimum value for the random alpha
      * @param maxAlpha   maximum value for the random alpha
@@ -61,7 +61,7 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     /**
      * GRASP Constructor, generates a random alpha in each construction
-     * Alpha Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
+     * Alpha Takes values between [0,1] being 1 → totally random, 0 → full greedy.
      *
      * @param minAlpha   minimum value for the random alpha
      * @param maxAlpha   maximum value for the random alpha

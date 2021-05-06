@@ -20,6 +20,7 @@ public abstract class Algorithm<S extends Solution<I>, I extends Instance> {
     /**
      * Runs the algorithm over the empty but initialized solution
      * @param instance Instance
+     * @param builder SolutionBuilder
      * @return Built solution
      */
     public abstract S algorithm(I instance, SolutionBuilder<S,I> builder);

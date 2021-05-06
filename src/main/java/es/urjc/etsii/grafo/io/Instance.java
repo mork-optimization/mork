@@ -22,8 +22,8 @@ public abstract class Instance implements Comparable<Instance>{
     /**
      * Sort order will determine in which order the instances will be solved
      * Sort defaults to instance name
-     * @param o
-     * @return
+     * @param o The instance to be compared
+     * @return A negative integer, zero, or a positive integer as this object is less than, equal to, or greater than the specified object.
      */
     @Override
     public int compareTo(Instance o) {

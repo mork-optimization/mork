@@ -55,6 +55,7 @@ public final class RandomManager {
     /**
      * Resets random state ONLY FOR THE CALLING THREAD
      * each thread is responsible of resetting their random state when appropriate
+     * @param iteration Algorithm iteration current thread is going to execute.
      */
     public static void reset(int iteration){
         getRandom().setSeed(initialSeed+iteration);

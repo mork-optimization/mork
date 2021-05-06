@@ -9,7 +9,7 @@ import java.util.Set;
  * Fast integer set implementation compatible with Java Collections API.
  * Should be used when int range is known and not extremely big.
  * Collection is always backed by an static array.
- * TODO Bitmasks
+ * TODO Bitmasks?
  */
 public class IntSet extends AbstractSet<Integer> {
 
@@ -37,17 +37,27 @@ public class IntSet extends AbstractSet<Integer> {
     }
 
     public IntSet(Set<Integer> set){
-        this((IntSet) set); // TODO assumes it is an intset, should be able to accept HashSets
+        if(set instanceof IntSet){
+            var _set = (IntSet) set;
+            this.data = Arrays.copyOf(_set.data, _set.data.length);
+            this.size = _set.size;
+        } else {
+
+        }
     }
 
+    /**
+     * {@inheritDoc}
+     * @see IntSet#fastAdd(int)
+     */
     @Override
     public boolean add(Integer integer) {
         return this.fastAdd(integer);
     }
 
     /**
-     * No casting overhead.
-     * @return
+     * Adds the given integer to the set without boxing/unboxing overhead.
+     * @return true if collection has been modified, false otherwise
      */
     public boolean fastAdd(int n){
         invariant(n);
@@ -74,6 +84,11 @@ public class IntSet extends AbstractSet<Integer> {
     }
 
 
+    /**
+     * Removes int from set, accepts Object for Java API compatibility.
+     * @see IntSet#fastRemove(int)
+     * @return true if collection has been modified, false otherwise
+     */
     @Override
     public boolean remove(Object o) {
         if(!(o instanceof Integer)){
@@ -84,7 +99,7 @@ public class IntSet extends AbstractSet<Integer> {
 
     /**
      * Same as remove(), but without casting and object validation overhead
-     * @return
+     * @return true if collection has been modified, false otherwise
      */
     public boolean fastRemove(int n){
         invariant(n);

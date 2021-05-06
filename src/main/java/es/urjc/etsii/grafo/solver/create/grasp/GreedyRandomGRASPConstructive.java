@@ -31,7 +31,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
      * Stops when the neighborhood does not provide any movement
      *
      * @param alpha      Randomness, adjusts the candidate list size.
-     *                   Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
+     *                   Takes values between [0,1] being 1 → totally random, 0 → full greedy.
      * @param maximizing true if we are maximizing the score, false if minimizing
      */
     public GreedyRandomGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double alpha, boolean maximizing) {
@@ -44,7 +44,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     /**
      * GRASP Constructor, generates a random alpha in each construction
-     * Alpha Takes values between [0,1] being 1 --> totally random, 0 --> full greedy.
+     * Alpha Takes values between [0,1] being 1 → totally random, 0 → full greedy.
      *
      * @param minAlpha   minimum value for the random alpha
      * @param maxAlpha   maximum value for the random alpha

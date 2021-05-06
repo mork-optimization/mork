@@ -40,7 +40,8 @@ public abstract class MoveComparator<M extends Move<S,I>, S extends Solution<I>,
     /**
      * Validate a MoveComparator implementation against a Moves candidate list
      * @param comparator Comparator implementation to test
-     * @param cl Move candidate list to test against. Checks all combinations --> O(N^3) complexity.
+     * @param cl Move candidate list to test against. Checks all combinations: O(N^3) complexity.
+     * @param <M> Move type for the given  comparator
      * @return Always returns true. Throws AssertionError if the validation fails.
      */
     public static <M> boolean validateComparator(Comparator<M> comparator, List<M> cl) {

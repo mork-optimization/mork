@@ -1,9 +1,9 @@
 package es.urjc.etsii.grafo.solution;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solver.Config;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
-import java.util.Objects;
 import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.solution.Solution.MAX_DEBUG_MOVES;
@@ -24,12 +24,6 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
         this.s = s;
         this.solutionVersion = s.version;
     }
-
-    /**
-     * Does the solution improve if the current move is applied?
-     * @return True if solution improves, false otherwise
-     */
-    public abstract boolean improves();
 
     /**
      * Is the solution in a valid state after this movement is applied?
@@ -73,10 +67,22 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
     protected abstract void _execute();
 
     /**
-     * Get the movement value, represents how much does the move affect the es.urjc.etsii.grafo.solution if executed
-     * @return
+     * Get the movement value, represents how much does the move changes the f.o of a solution if executed
+     * @return f.o change
      */
     public abstract double getValue();
+
+    /**
+     * Does the solution improve if the current move is applied?
+     * @return True if solution improves, false otherwise
+     */
+    public boolean improves(){
+        if(Config.isMaximizing()){
+            return DoubleComparator.isPositive(this.getValue());
+        } else {
+            return DoubleComparator.isNegative(this.getValue());
+        }
+    }
 
     /**
      * Get next move in this sequence.
@@ -84,15 +90,18 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
      */
     public abstract Move<S,I> next();
 
+    /**
+     * Returns an String representation of the current movement.
+     * Tip: Default IDEs implementations are usually fine
+     * @return human readable string
+     */
     public abstract String toString();
 
     @Override
     public abstract boolean equals(Object o);
 
     @Override
-    public int hashCode() {
-        return Objects.hash(solutionVersion, s);
-    }
+    public abstract int hashCode();
 
     /**
      * Get the solution this move originated from

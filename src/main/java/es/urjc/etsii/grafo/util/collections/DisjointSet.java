@@ -15,7 +15,7 @@ public class DisjointSet {
     /**
      * Create a Disjoint set where the n elements are initially all disjoint
      * @param n number of elements to hold
-     * @param offset Offset elements by an index ex 1 wil be 0-9 --> 1-10
+     * @param offset Offset elements by an index ex 1 wil be 0-9 → 1-10
      */
     public DisjointSet(int n, int offset) {
         if(n<=0){

@@ -10,7 +10,7 @@ import java.util.logging.Logger;
 
 /**
  * Example multistart algorithm, executes:
- * Constructive --> (Optional, if present) Local Searches
+ * Constructive → (Optional, if present) Local Searches
  *    ^_________________________________________|   repeat until N iterations, return best found.
  * @param <S> Solution class
  * @param <I> Instance class

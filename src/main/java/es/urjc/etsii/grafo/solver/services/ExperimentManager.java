@@ -44,7 +44,7 @@ public class ExperimentManager<S extends Solution<I>, I extends Instance> {
         for(var algorithm: algorithms){
             var name = algorithm.toString();
             if(names.contains(name)){
-                throw new IllegalArgumentException(String.format("Duplicated algorithm name in experiment %s. FIX: All algorithm toString() should be unique per experiment --> %s", experiment.getName(), name));
+                throw new IllegalArgumentException(String.format("Duplicated algorithm name in experiment %s. FIX: All algorithm toString() should be unique per experiment → %s", experiment.getName(), name));
             }
             names.add(name);
         }

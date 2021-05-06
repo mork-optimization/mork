@@ -9,7 +9,7 @@
 //import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 //import es.urjc.etsii.grafo.solver.destructor.Shake;
 //import es.urjc.etsii.grafo.solver.improve.Improver;
-//import es.urjc.etsii.grafo.util.collections.CollectionUtils;
+//import es.urjc.etsii.grafo.util.CollectionUtils;
 //import es.urjc.etsii.grafo.util.DoubleComparator;
 //
 //import java.util.Arrays;
@@ -64,7 +64,7 @@
 //        //     /       \ Shake
 //        //    /         \
 //        //   v           v
-//        // S1 --- PATH --> S2
+//        // S1 --- PATH → S2
 //
 //        var bestIntermediate = analyzeAllSolutionsInPath(s1, s2);
 //

@@ -11,7 +11,7 @@ public class UndirectedEdge {
 
     /**
      * Create a new undirected edge.
-     * A and B are REVERSED if a > b, so the following is always true: UndirectedEdge(a,b).equals(UndirectedEdge(b,a))
+     * A and B are REVERSED if (a greater than b), so the following is always true: UndirectedEdge(a,b).equals(UndirectedEdge(b,a))
      * @param a one of the points. Due to the nature of undirected edges, a and b can be swapped when constructing the Edge.
      * @param b the other point.
      */

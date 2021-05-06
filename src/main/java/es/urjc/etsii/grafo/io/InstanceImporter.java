@@ -29,6 +29,7 @@ public abstract class InstanceImporter<T extends Instance> {
      * After this method finishes executing, the Instance object MUST BE IMMUTABLE.
      * @param reader Input buffer, managed by the framework
      * @param filename Filename on disk
+     * @throws IOException If an error is encountered while the instance is being parsed
      * @return The instance object that represents this object
      */
     public abstract T importInstance(BufferedReader reader, String filename) throws IOException;

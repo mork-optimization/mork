@@ -12,7 +12,7 @@ import java.util.logging.Logger;
 
 /**
  * Example simple algorithm, executes:
- * Constructive --> (Optional, if present) Local Searches --> (Optional, if present) Shake --> If did not improve end
+ * Constructive → (Optional, if present) Local Searches → (Optional, if present) Shake → If did not improve end
  *                                               ^_________________________________________|   else repeat
  * This class can be used to test all the pieces if they are working properly, or as a base for more complex algorithms
  * @param <S> Solution class

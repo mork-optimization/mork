@@ -32,17 +32,17 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
 
     /**
      * Store new result
-     *  @param s     Calculated es.urjc.etsii.grafo.solution
-     * @param nanos Time used to calculate the given es.urjc.etsii.grafo.solution
-     * @param timeToTarget
+     * @param s Calculated solution
+     * @param totalTime Time used to calculate the given solution
+     * @param timeToBest Time until last modification was made, i.e. time to best solution.
      */
-    public synchronized void addSolution(S s, long nanos, long timeToTarget) {
+    public synchronized void addSolution(S s, long totalTime, long timeToBest) {
         if(this.best == null){
             this.best = s;
         }
         this.best = best.getBetterSolution(s);
-        s.setExecutionTimeInNanos(nanos);
-        this.solutions.add(new SolutionData(s.getScore(), nanos, timeToTarget));
+        s.setExecutionTimeInNanos(totalTime);
+        this.solutions.add(new SolutionData(s.getScore(), totalTime, timeToBest));
         if (instance == null) {
             instance = s.getInstance();
         } else if (instance != s.getInstance()) {

@@ -28,7 +28,7 @@ public abstract class Solution<I extends Instance> {
 
     /**
      * Create a solution for a given instance
-     * @param ins
+     * @param ins Instance
      */
     public Solution(I ins) {
         this.ins = ins;
@@ -42,7 +42,7 @@ public abstract class Solution<I extends Instance> {
     /**
      * Clone the current solution.
      * Deep clone mutable data or you will regret it.
-     *
+     * @param <S> Solution class
      * @return A deep clone of the current solution
      */
     public abstract <S extends Solution<I>> S cloneSolution();
@@ -50,7 +50,7 @@ public abstract class Solution<I extends Instance> {
     /**
      * Compare current solution against another. Depending on the problem type (minimiz, max, multiobject)
      * the comparison will be different
-     *
+     * @param <S> Solution class
      * @param o Solution to compare
      * @return Best solution
      */
