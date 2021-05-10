@@ -34,6 +34,15 @@ public abstract class Solution<I extends Instance> {
         this.ins = ins;
     }
 
+    public Solution(Solution<I> s){
+        // Only copy lastMoves when debugging
+        assert (this.lastMoves = new ArrayDeque<>(s.lastMoves)) != null;
+        this.ins = s.ins;
+        this.version = s.version;
+        this.executionTimeInNanos = s.executionTimeInNanos;
+        this.lastModifiedTime = s.lastModifiedTime;
+    }
+
 
     public void updateLastModifiedTime() {
         this.lastModifiedTime = System.nanoTime();
@@ -103,14 +112,6 @@ public abstract class Solution<I extends Instance> {
             }
         }
         return best;
-    }
-
-    protected void copyInternalData(Solution<I> s){
-        // Only copy lastMoves when debugging
-        assert (this.lastMoves = new ArrayDeque<>(s.lastMoves)) != null;
-        this.version = s.version;
-        this.executionTimeInNanos = s.executionTimeInNanos;
-        this.lastModifiedTime = s.lastModifiedTime;
     }
 
     public long getLastModifiedTime() {

@@ -23,21 +23,21 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
 
 
     /**
-     * Generate initial candidate list. The list will be sorted by the constructor.
-     * @param sol Current solution
-     * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
+     * Generate initial candidate list. The list will be sorted if necessary by the constructive method.
+     * @param solution Current solution
+     * @return a candidate list
      */
-    public abstract List<M> buildInitialCandidateList(S sol);
+    public abstract List<M> buildInitialCandidateList(S solution);
 
     /**
      * Update candidate list after each movement. The list will be sorted by the constructor.
      *
-     * @param s     Current solution, move has been already applied
-     * @param t     Chosen move
+     * @param solution Current solution, move has been already applied
+     * @param move     Chosen move
      * @param index index of the chosen move in the candidate list
      * @param candidateList original candidate list
      * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
      */
-    public abstract List<M> updateCandidateList(S s, M t, List<M> candidateList, int index);
+    public abstract List<M> updateCandidateList(S solution, M move, List<M> candidateList, int index);
 
 }
