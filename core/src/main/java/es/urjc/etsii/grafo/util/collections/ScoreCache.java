@@ -38,7 +38,7 @@ public class ScoreCache<S extends Solution<I>,I extends Instance> {
 
     /**
      * Returns solution score if cached, else calculates, puts in cache and returns it.
-     * @param sol solution to calculate optimal value
+     * @param sol solution to calculate score
      * @return Current solution score
      */
     public Double getScore(S sol){

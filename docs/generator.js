@@ -9,7 +9,7 @@ function generateProject(){
 
   var inputElement = document.getElementById('projectname')
   if(inputElement.validity.patternMismatch){
-    log("ERROR: Invalid project name. Check that it starts with an Uppercase letter followed by any alphanumeric characters or underscores");
+    log("ERROR: Invalid project name. Check that it starts with an Uppercase letter followed by any alphanumeric characters or underscores (no spaces please!)");
     return;
   }
   var correctName = inputElement.value;

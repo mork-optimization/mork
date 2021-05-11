@@ -68,10 +68,22 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
             createIfNotExists(this.solutionsOut);
             createIfNotExists(this.errorFolder);
 
-            return Files.walk(Path.of(instancePath)).filter(Files::isRegularFile).sorted(Comparator.comparing(f -> f.toFile().getName().toLowerCase())).map(this::loadInstance);
+            return Files.walk(Path.of(instancePath)).filter(IOManager::filesFilter).sorted(Comparator.comparing(f -> f.toFile().getName().toLowerCase())).map(this::loadInstance);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private static boolean filesFilter(Path p){
+        try {
+            if(Files.isHidden(p)) {
+                return false;
+            }
+        } catch (IOException e) {
+            log.warning("Error while reading file attributes, skipping instance file: " + p.toAbsolutePath().toString());
+            return false;
+        }
+        return Files.isRegularFile(p);
     }
 
     public void saveResults(String experimentName, List<SimplifiedResult> result){
