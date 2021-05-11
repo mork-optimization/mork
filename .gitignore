@@ -33,6 +33,7 @@ hs_err_pid*
 .idea/misc.xml
 .idea/vcs.xml
 .idea/encodings.xml
-mork.iml
+*.iml
 
 target
+.DS_Store
