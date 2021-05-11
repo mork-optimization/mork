@@ -6,7 +6,7 @@
 
     <!-- Project name and current version -->
     <artifactId>__RNAME__</artifactId>
-    <version>__RVERSION__</version>
+    <version>0.1-SNAPSHOT</version>
 
     <!-- Automatic configuration, can be overridden -->
     <parent>
