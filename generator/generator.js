@@ -17,7 +17,7 @@ function generateProject(){
   log("Starting generation for project " + correctName);
 
   // CONFIGURATION
-  var domain = 'https://raw.githubusercontent.com/rmartinsanta/mork/web/template/';
+  var domain = 'https://raw.githubusercontent.com/rmartinsanta/mork/master/template/';
   var urls = [
     {folder: '', name: 'pom.xml'},
     {folder: 'src/main/resources', name: 'application.yml'},
