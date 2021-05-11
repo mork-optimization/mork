@@ -20,6 +20,7 @@ function generateProject(){
   var domain = 'https://raw.githubusercontent.com/rmartinsanta/mork/master/template/';
   var urls = [
     {folder: '', name: 'pom.xml'},
+    {folder: 'instances', name: '.keep'},
     {folder: 'src/main/resources', name: 'application.yml'},
     {folder: 'src/main/java/es/urjc/etsii/grafo/__RNAME__', name: 'Main.java'},
     {folder: 'src/main/java/es/urjc/etsii/grafo/__RNAME__/constructives', name: '__RNAME__RandomConstructive.java'},
