@@ -38,10 +38,11 @@ function generateProject(){
 
   urls.forEach(function(url){
     // loading a file and add it in a zip file
-    var path = domain + url.folder + '/' + url.name;
+    var path = url.folder + '/' + url.name;
     var path = path.replaceAll('//', '/');
+    var fullURL = domain + path;
 
-    JSZipUtils.getBinaryContent(domain + path, function (err, data) {
+    JSZipUtils.getBinaryContent(fullURL, function (err, data) {
       log("Downloading " + fullURL);
        if(err) {
          log("Error found while downloading " + fullURL);
@@ -59,7 +60,6 @@ function generateProject(){
          zip.generateAsync({type:'blob'}).then(function(content) {
             log("ZIP created, saving...");
             saveAs(content, correctName + ".zip");
-            log("Generation done for project " + correctName);
             log("DONE!");
          });
       }
