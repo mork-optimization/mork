@@ -166,4 +166,81 @@ public class ArrayUtils {
         return array;
     }
 
+    /**
+     * Flatten matrix to array
+     * @param data array data
+     * @return flattened array
+     */
+    public static int[] flatten(int[][] data){
+        int size = 0;
+        for(var row: data){
+            size += row.length;
+        }
+        int left = 0;
+        var result = new int[size];
+        for (var row: data) {
+            System.arraycopy(row, 0, result, left, row.length);
+            left += row.length;
+        }
+        return result;
+    }
+
+    /**
+     * Flatten matrix to array
+     * @param data array data
+     * @return flattened array
+     */
+    public static double[] flatten(double[][] data){
+        int size = 0;
+        for(var row: data){
+            size += row.length;
+        }
+        int left = 0;
+        var result = new double[size];
+        for (var row: data) {
+            System.arraycopy(row, 0, result, left, row.length);
+            left += row.length;
+        }
+        return result;
+    }
+
+    /**
+     * Flatten matrix to array
+     * @param data array data
+     * @return flattened array
+     */
+    public static long[] flatten(long[][] data){
+        int size = 0;
+        for(var row: data){
+            size += row.length;
+        }
+        int left = 0;
+        var result = new long[size];
+        for (var row: data) {
+            System.arraycopy(row, 0, result, left, row.length);
+            left += row.length;
+        }
+        return result;
+    }
+
+//    /**
+//     * Flatten matrix to array
+//     * @param data array data
+//     * @return flattened array
+//     */
+//    public static <T> T[] flatten(T[][] data){
+//        int size = 0;
+//        for(var d: data){
+//            size += data.length;
+//        }
+//        int left = 0;
+//        @SuppressWarnings("unchecked")
+//        var result = (T[]) Array.newInstance(data[0][0].getClass(), size);
+//        for (var row: data) {
+//            System.arraycopy(row, 0, result, left, row.length);
+//            left += row.length;
+//        }
+//        return result;
+//    }
+
 }
