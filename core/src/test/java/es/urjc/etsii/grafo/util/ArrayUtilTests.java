@@ -96,4 +96,95 @@ public class ArrayUtilTests {
         ArrayUtils.deleteAndInsert(original, 8, 3);
         Assertions.assertArrayEquals(original, copy);
     }
+
+    @Test
+    public void testIntInsertArray() {
+        int[] orig = {0, 1, 2, 3, 4};
+        ArrayUtils.insert(orig, 0, 9);
+        Assertions.assertArrayEquals(orig, new int[]{9, 0, 1, 2, 3});
+
+        ArrayUtils.insert(orig, 4, 99);
+        Assertions.assertArrayEquals(orig, new int[]{9, 0, 1, 2, 99});
+    }
+
+    @Test
+    public void testLongInsertArray() {
+        long[] orig = {0, 1, 2, 3, 4};
+        ArrayUtils.insert(orig, 0, 9);
+        Assertions.assertArrayEquals(orig, new long[]{9, 0, 1, 2, 3});
+
+        ArrayUtils.insert(orig, 4, 99);
+        Assertions.assertArrayEquals(orig, new long[]{9, 0, 1, 2, 99});
+    }
+
+    @Test
+    public void testDoubleInsertArray() {
+        double[] orig = {0d, 1d, 2d, 3d, 4d};
+        ArrayUtils.insert(orig, 0, 9);
+        Assertions.assertArrayEquals(orig, new double[]{9d, 0d, 1d, 2d, 3d});
+
+        ArrayUtils.insert(orig, 4, 99);
+        Assertions.assertArrayEquals(orig, new double[]{9d, 0d, 1d, 2d, 99d});
+    }
+
+    @Test
+    public void testTInsertArray() {
+        Integer[] orig = {0, 1, 2, 3, 4};
+        ArrayUtils.insert(orig, 0, 9);
+        Assertions.assertArrayEquals(orig, new Integer[]{9, 0, 1, 2, 3});
+
+        ArrayUtils.insert(orig, 4, 99);
+        Assertions.assertArrayEquals(orig, new Integer[]{9, 0, 1, 2, 99});
+    }
+
+    @Test
+    public void testIntDeleteArray() {
+        int[] orig = {0, 1, 2, 3, 4};
+        ArrayUtils.remove(orig, 0);
+        Assertions.assertArrayEquals(orig, new int[]{1, 2, 3, 4, 4});
+
+        ArrayUtils.remove(orig, 4);
+        Assertions.assertArrayEquals(orig, new int[]{1, 2, 3, 4, 4});
+
+        ArrayUtils.remove(orig, 1);
+        Assertions.assertArrayEquals(orig, new int[]{1, 3, 4, 4, 4});
+    }
+
+    @Test
+    public void testLongDeleteArray() {
+        long[] orig = {0, 1, 2, 3, 4};
+        ArrayUtils.remove(orig, 0);
+        Assertions.assertArrayEquals(orig, new long[]{1, 2, 3, 4, 4});
+
+        ArrayUtils.remove(orig, 4);
+        Assertions.assertArrayEquals(orig, new long[]{1, 2, 3, 4, 4});
+
+        ArrayUtils.remove(orig, 1);
+        Assertions.assertArrayEquals(orig, new long[]{1, 3, 4, 4, 4});
+    }
+
+    @Test
+    public void testDoubleDeleteArray() {
+        double[] orig = {0, 1, 2, 3, 4};
+        ArrayUtils.remove(orig, 0);
+        Assertions.assertArrayEquals(orig, new double[]{1, 2, 3, 4, 4});
+
+        ArrayUtils.remove(orig, 4);
+        Assertions.assertArrayEquals(orig, new double[]{1, 2, 3, 4, 4});
+
+        ArrayUtils.remove(orig, 1);
+        Assertions.assertArrayEquals(orig, new double[]{1, 3, 4, 4, 4});
+    }
+    @Test
+    public void testTDeleteArray() {
+        Integer[] orig = {0, 1, 2, 3, 4};
+        ArrayUtils.remove(orig, 0);
+        Assertions.assertArrayEquals(orig, new Integer[]{1, 2, 3, 4, 4});
+
+        ArrayUtils.remove(orig, 4);
+        Assertions.assertArrayEquals(orig, new Integer[]{1, 2, 3, 4, 4});
+
+        ArrayUtils.remove(orig, 1);
+        Assertions.assertArrayEquals(orig, new Integer[]{1, 3, 4, 4, 4});
+    }
 }

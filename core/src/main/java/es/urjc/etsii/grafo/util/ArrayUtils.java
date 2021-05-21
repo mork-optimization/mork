@@ -166,4 +166,106 @@ public class ArrayUtils {
         return array;
     }
 
+    /**
+     * Insert element in given position. Elements to the right are shifted one position to the right.
+     * Rightmost element is dropped.
+     * @param arr Array to modify
+     * @param index Position in which insert the element
+     * @param value Element to insert
+     */
+    public static void insert(int[] arr, int index, int value){
+        System.arraycopy(arr, index, arr, index+1, arr.length - index -1);
+        arr[index] = value;
+    }
+
+    /**
+     * Insert element in given position. Elements to the right are shifted one position to the right.
+     * Rightmost element is dropped.
+     * @param arr Array to modify
+     * @param index Position in which insert the element
+     * @param value Element to insert
+     */
+    public static void insert(long[] arr, int index, long value){
+        System.arraycopy(arr, index, arr, index+1, arr.length - index -1);
+        arr[index] = value;
+    }
+
+    /**
+     * Insert element in given position. Elements to the right are shifted one position to the right.
+     * Rightmost element is dropped.
+     * @param arr Array to modify
+     * @param index Position in which insert the element
+     * @param value Element to insert
+     */
+    public static void insert(double[] arr, int index, double value){
+        System.arraycopy(arr, index, arr, index+1, arr.length - index -1);
+        arr[index] = value;
+    }
+
+    /**
+     * Insert element in given position. Elements to the right are shifted one position to the right.
+     * Rightmost element is dropped.
+     * @param arr Array to modify
+     * @param index Position in which insert the element
+     * @param value Element to insert
+     * @param <T> type
+     */
+    public static <T> void insert(T[] arr, int index, T value){
+        System.arraycopy(arr, index, arr, index+1, arr.length - index -1);
+        arr[index] = value;
+    }
+
+    /**
+     * Remove element at given index and shift elements to the left. Rightmost element is duplicated.
+     * Example: remove([9,10,11,12], 1) → [9,11,12,12]
+     * @param arr array to modify
+     * @param index index of element to delete
+     * @return removed element
+     */
+    public static int remove(int[] arr, int index){
+        int value = arr[index];
+        System.arraycopy(arr, index+1, arr, index, arr.length - index -1);
+        return value;
+    }
+
+    /**
+     * Remove element at given index and shift elements to the left. Rightmost element is duplicated.
+     * Example: remove([9,10,11,12], 1) → [9,11,12,12]
+     * @param arr array to modify
+     * @param index index of element to delete
+     * @return removed element
+     */
+    public static long remove(long[] arr, int index){
+        long value = arr[index];
+        System.arraycopy(arr, index+1, arr, index, arr.length - index -1);
+        return value;
+    }
+
+    /**
+     * Remove element at given index and shift elements to the left. Rightmost element is duplicated.
+     * Example: remove([9,10,11,12], 1) → [9,11,12,12]
+     * @param arr array to modify
+     * @param index index of element to delete
+     * @return removed element
+     */
+    public static double remove(double[] arr, int index){
+        double value = arr[index];
+        System.arraycopy(arr, index+1, arr, index, arr.length - index -1);
+        return value;
+    }
+
+    /**
+     * Remove element at given index and shift elements to the left. Rightmost element is duplicated.
+     * Example: remove([9,10,11,12], 1) → [9,11,12,12]
+     * @param arr array to modify
+     * @param index index of element to delete
+     * @param <T> type
+     * @return removed element
+     */
+    public static <T> T remove(T[] arr, int index){
+        T value = arr[index];
+        System.arraycopy(arr, index+1, arr, index, arr.length - index -1);
+        return value;
+    }
+
 }
