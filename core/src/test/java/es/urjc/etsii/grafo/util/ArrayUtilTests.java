@@ -187,4 +187,55 @@ public class ArrayUtilTests {
         ArrayUtils.remove(orig, 1);
         Assertions.assertArrayEquals(orig, new Integer[]{1, 3, 4, 4, 4});
     }
+
+    @Test
+    public void testFlattenInt() {
+        int[][] original = {
+                {0,1,2},
+                {3},
+                {4},
+                {},
+                {5},
+                {6,7,8,9},
+                {},
+                {10}
+        };
+        int[] expected = {0,1,2,3,4,5,6,7,8,9,10};
+        int[] flatten = ArrayUtils.flatten(original);
+        Assertions.assertArrayEquals(flatten, expected);
+    }
+
+    @Test
+    public void testFlattenLong() {
+        long[][] original = {
+                {0,1,2},
+                {3},
+                {4},
+                {},
+                {5},
+                {6,7,8,9},
+                {},
+                {10}
+        };
+        long[] expected = {0,1,2,3,4,5,6,7,8,9,10};
+        long[] flatten = ArrayUtils.flatten(original);
+        Assertions.assertArrayEquals(flatten, expected);
+    }
+
+    @Test
+    public void testFlattenDouble() {
+        double[][] original = {
+                {0,1,2},
+                {3},
+                {4},
+                {},
+                {5},
+                {6,7,8,9},
+                {},
+                {10}
+        };
+        double[] expected = {0,1,2,3,4,5,6,7,8,9,10};
+        double[] flatten = ArrayUtils.flatten(original);
+        Assertions.assertArrayEquals(flatten, expected);
+    }
 }
