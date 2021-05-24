@@ -4,6 +4,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import es.urjc.etsii.grafo.io.Instance;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.List;
 
 public abstract class Solution<I extends Instance> {
 
@@ -45,6 +47,15 @@ public abstract class Solution<I extends Instance> {
 
     public void updateLastModifiedTime() {
         this.lastModifiedTime = System.nanoTime();
+    }
+
+    /**
+     * Returns ordered list of oldest to recent moves
+     * Note: If assertions are disabled, always returns an empty list
+     * @return ordered list of oldest to recent moves
+     */
+    public List<Move<? extends Solution<I>, I>> lastExecutesMoves(){
+        return new ArrayList<>(this.lastMoves);
     }
 
     /**

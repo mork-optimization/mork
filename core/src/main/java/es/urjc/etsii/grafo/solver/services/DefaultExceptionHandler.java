@@ -6,15 +6,17 @@ import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 
 import java.io.PrintWriter;
 import java.io.StringWriter;
+import java.util.Optional;
 import java.util.logging.Logger;
 
 public class DefaultExceptionHandler<S extends Solution<I>, I extends Instance> extends ExceptionHandler<S,I>{
     private static final Logger logger = Logger.getLogger(DefaultExceptionHandler.class.getName());
 
-    public void handleException(String experimentName, Exception e, I i, Algorithm<S,I> algorithm, IOManager<S, I> io){
+    public void handleException(String experimentName, Exception e, Optional<S> sOptional, I i, Algorithm<S,I> algorithm, IOManager<S, I> io){
         logger.severe(String.format("Error while solving instance %s with algorithm %s, skipping. Exception message: %s", i.getName(), algorithm.toString(), e.getMessage()));
         String stackTrace = getStackTrace(e);
         logger.severe("Stacktrace: " + stackTrace);
+        sOptional.ifPresent(s -> logger.severe("Last executed movements: " + s.lastExecutesMoves()));
         io.exportError(experimentName, algorithm, i, e, stackTrace);
     }
 

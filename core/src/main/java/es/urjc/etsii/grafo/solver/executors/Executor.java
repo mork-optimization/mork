@@ -66,6 +66,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
     }
 
     protected WorkUnit doWork(String experimentName, I ins, SolutionBuilder<S, I> solutionBuilder, Algorithm<S, I> algorithm, int i, ExceptionHandler<S,I> exceptionHandler) {
+        S solution = null;
         try {
             // If app is stopping do not run algorithm
             if(MorkLifecycle.stop()) {
@@ -74,7 +75,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
 
             RandomManager.reset(i);
             long starTime = System.nanoTime();
-            var solution = algorithm.algorithm(ins, solutionBuilder);
+            solution = algorithm.algorithm(ins, solutionBuilder);
             long endTime = System.nanoTime();
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long ellapsedTime = endTime - starTime;
@@ -85,14 +86,14 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
             System.out.format("\t%s.\tTime: %.3f (s) \tTTB: %.3f (s) \t%s -- \n", i +1, ellapsedTime / 1_000_000_000D, timeToTarget / 1000_000_000D, solution);
             return new WorkUnit(ellapsedTime, timeToTarget, solution);
         } catch (Exception e) {
-            exceptionHandler.handleException(experimentName, e, ins, algorithm, io);
+            exceptionHandler.handleException(experimentName, e, Optional.ofNullable(solution), ins, algorithm, io);
             // todo more fields for WorkUnit, resume operations, failed, etc
             return null;
         }
     }
 
     private void dispatchEvents(SolutionGeneratedEvent<S, I> solutionGeneratedEvent) {
-        log.fine("Dispatching solution generated events iteration %s");
+        log.fine(String.format("Dispatching solution generated events iteration %s", solutionGeneratedEvent.getIteration()));
         for (AbstractSolutionGeneratedHandler<S, I> handler : solutionGeneratedEventHandlers) {
             long start = System.nanoTime();
             handler.onSolutionGenerated(solutionGeneratedEvent);
