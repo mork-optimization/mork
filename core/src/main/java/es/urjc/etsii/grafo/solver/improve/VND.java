@@ -23,14 +23,20 @@ public class VND<S extends Solution<I>,I extends Instance> extends Improver<S,I>
             double prev = s.getScore();
             var ls = improvers.get(currentLS);
             s = ls.improve(s);
-            if (this.maximize) {
+            if(currentLS == 0){
+                // Why repeat when improver stops when
+                // it cannot improve the current solution?
+                currentLS++;
+            } else if (this.maximize) {
                 if (DoubleComparator.isGreaterOrEqualsThan(prev, s.getScore())) {
+                    // prev >= current, no improvement
                     currentLS++;
                 } else {
                     currentLS = 0;
                 }
             } else {
                 if (DoubleComparator.isLessOrEquals(prev, s.getScore())) {
+                    // prev <= current, no improvement
                     currentLS++;
                 } else {
                     currentLS = 0;
