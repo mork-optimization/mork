@@ -41,7 +41,6 @@ public class WorkingOnResult<S extends Solution<I>, I extends Instance> {
             this.best = s;
         }
         this.best = best.getBetterSolution(s);
-        s.setExecutionTimeInNanos(totalTime);
         this.solutions.add(new SolutionData(s.getScore(), totalTime, timeToBest));
         if (instance == null) {
             instance = s.getInstance();

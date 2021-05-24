@@ -78,6 +78,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
             long endTime = System.nanoTime();
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long ellapsedTime = endTime - starTime;
+            solution.setExecutionTimeInNanos(ellapsedTime);
             validate(solution);
             io.exportSolution(experimentName, algorithm, solution);
             dispatchEvents(new SolutionGeneratedEvent<>(i, ellapsedTime, solution, experimentName, algorithm));
