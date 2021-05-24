@@ -6,7 +6,7 @@
 
     <groupId>es.urjc.etsii.grafo</groupId>    
     <artifactId>mork-parent</artifactId>
-    <version>0.1.2</version>
+    <version>0.1.3</version>
     <packaging>pom</packaging>
 
 
@@ -64,7 +64,18 @@
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork</artifactId>
-            <version>0.1.2</version>
+            <version>0.1.3</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.junit.vintage</groupId>
+                    <artifactId>junit-vintage-engine</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
     </dependencies>
 
@@ -89,8 +100,6 @@
                     </execution>
                 </executions>
             </plugin>
-            
         </plugins>
     </build>
-
 </project>
