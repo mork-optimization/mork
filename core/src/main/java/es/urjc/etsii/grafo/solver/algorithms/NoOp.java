@@ -52,8 +52,8 @@ public class NoOp {
 
     public static class NoOpImprover<S extends Solution<I>,I extends Instance> extends Improver<S,I> {
         @Override
-        public boolean iteration(S s) {
-            return false;
+        public S improve(S s) {
+            return s;
         }
     }
 

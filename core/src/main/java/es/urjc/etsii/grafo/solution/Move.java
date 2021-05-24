@@ -37,9 +37,9 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
     public final void execute(){
         logger.finer(this.toString());
         if(this.solutionVersion != s.version){
-            throw new AssertionError(String.format("Solution state changed (%s), cannot execute move (%s)", s.version, this.solutionVersion));
+            throw new AssertionError(String.format("Solution state changed to (%s), cannot execute move referencing solution state (%s)", s.version, this.solutionVersion));
         }
-        assert saveLastMoves(this);
+        assert saveLastMove(this);
         double prevScore = s.getScore();
         _execute();
         if (!DoubleComparator.equals(prevScore, s.getScore())) {
@@ -51,8 +51,7 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
                 String.format("Score mismatch, incremental %s, absolute %s. Last move: %s. Review your incremental score calculation.", s.getScore(), s.recalculateScore(), this);
     }
 
-    // todo in case of failure print the last movements in reverse order
-    private boolean saveLastMoves(Move<?,?> move){
+    private boolean saveLastMove(Move<S,I> move){
         if(this.s.lastMoves.size()>=MAX_DEBUG_MOVES){
             this.s.lastMoves.removeFirst();
         }

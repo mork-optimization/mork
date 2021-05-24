@@ -7,12 +7,11 @@ import java.util.ArrayDeque;
 
 public abstract class Solution<I extends Instance> {
 
-    static final int MAX_DEBUG_MOVES = 10;
+    static final int MAX_DEBUG_MOVES = 100;
 
     /**
      * Ignore field when serializing solutions to avoid data duplication
      */
-    @JsonIgnore
     private final I ins;
 
     /**
@@ -20,7 +19,7 @@ public abstract class Solution<I extends Instance> {
      */
     long version = 0;
 
-    protected ArrayDeque<Move<?, ?>> lastMoves = new ArrayDeque<>(MAX_DEBUG_MOVES);
+    protected ArrayDeque<Move<? extends Solution<I>, I>> lastMoves = new ArrayDeque<>(MAX_DEBUG_MOVES);
 
     private long executionTimeInNanos;
 
@@ -92,6 +91,7 @@ public abstract class Solution<I extends Instance> {
      */
     public abstract String toString();
 
+    @JsonIgnore
     public I getInstance() {
         return ins;
     }
