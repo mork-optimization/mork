@@ -9,6 +9,7 @@ import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.executors.ConcurrentExecutor;
 import es.urjc.etsii.grafo.solver.executors.Executor;
 import es.urjc.etsii.grafo.solver.executors.SequentialExecutor;
+import es.urjc.etsii.grafo.util.BenchmarkUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
@@ -56,6 +57,9 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
 
     @Override
     public void run(String... args) {
+        log.info("Running benchmark...");
+        double score = BenchmarkUtil.getBenchmarkScore();
+        log.info("Benchmark score: " + score);
         log.info("App started, ready to start solving!");
         log.info("Experiments to execute: " + this.experimentManager.getExperiments().keySet());
         long startTime = System.nanoTime();
