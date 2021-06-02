@@ -87,6 +87,15 @@ solver:
   nWorkers: -1
 
 
+# Advanced configuration, do not change unless you know what you are doing!
+advanced:
+  # Block Java API methods
+  block:
+    # Collections.shuffle(RandomManager.getRandom()) should be used instead of Collections.shuffle()
+    collections-shuffle: true
+    # Block Math.random(), use RandomManager.getRandom().nextDouble()
+    math-random: true
+
 # Logging configuration
 logging:
   level:

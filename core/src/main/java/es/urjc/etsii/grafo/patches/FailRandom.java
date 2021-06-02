@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.patches.collections;
+package es.urjc.etsii.grafo.patches;
 
 import java.util.Random;
 import java.util.stream.DoubleStream;
