@@ -20,6 +20,7 @@ function generateProject(){
   var domain = 'https://raw.githubusercontent.com/rmartinsanta/mork/master/template/';
   var urls = [
     {folder: '', name: 'pom.xml'},
+    {folder: '', name: '.gitignore'},
     {folder: 'instances', name: '.keep'},
     {folder: 'src/main/resources', name: 'application.yml'},
     {folder: 'src/main/java/es/urjc/etsii/grafo/__RNAME__', name: 'Main.java'},
@@ -28,7 +29,9 @@ function generateProject(){
     {folder: 'src/main/java/es/urjc/etsii/grafo/__RNAME__/experiments', name: 'ConstructiveExperiment.java'},
     {folder: 'src/main/java/es/urjc/etsii/grafo/__RNAME__/model', name: '__RNAME__Instance.java'},
     {folder: 'src/main/java/es/urjc/etsii/grafo/__RNAME__/model', name: '__RNAME__InstanceImporter.java'},
-    {folder: 'src/main/java/es/urjc/etsii/grafo/__RNAME__/model', name: '__RNAME__Solution.java'}
+    {folder: 'src/main/java/es/urjc/etsii/grafo/__RNAME__/model', name: '__RNAME__Solution.java'},
+    {folder: '.run', name: 'Performance.run.xml'},
+    {folder: '.run', name: 'Validation.run.xml'}
   ];
 
   var zip = new JSZip();
