@@ -14,10 +14,6 @@ public class RandomManagerTests {
     @Order(1)
     public void initializationTest(){
         int initialseed = 123456;
-        Assertions.assertThrows(IllegalStateException.class, () -> RandomManager.nextInt(0, 10));
-        Assertions.assertThrows(IllegalStateException.class, RandomManager::reset);
-        Assertions.assertThrows(IllegalStateException.class, RandomManager::getRandom);
-
         RandomManager manager = new RandomManager(initialseed);
         var myRandom = RandomManager.getRandom();
         var random = new Random(initialseed);
