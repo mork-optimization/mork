@@ -24,6 +24,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
 
     private static final Logger log = Logger.getLogger(Orquestrator.class.toString());
 
+    private final boolean doBenchmark;
     private final IOManager<S,I> io;
     private final ExperimentManager<S, I> experimentManager;
     private final ExceptionHandler<S, I> exceptionHandler;
@@ -34,6 +35,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
     public Orquestrator(
             @Value("${solver.repetitions:1}") int repetitions,
             @Value("${solver.parallelExecutor:false}") boolean useParallelExecutor,
+            @Value("${solver.benchmark:false}") boolean doBenchmark,
             IOManager<S,I> io,
             ExperimentManager<S,I> experimentManager,
             List<ExceptionHandler<S,I>> exceptionHandlers,
@@ -42,6 +44,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
             List<SolutionBuilder<S,I>> solutionBuilders
     ) {
         this.repetitions = repetitions;
+        this.doBenchmark = doBenchmark;
         this.io = io;
         this.experimentManager = experimentManager;
         this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
@@ -57,9 +60,14 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
 
     @Override
     public void run(String... args) {
-        log.info("Running benchmark...");
-        double score = BenchmarkUtil.getBenchmarkScore();
-        log.info("Benchmark score: " + score);
+        if(doBenchmark){
+            log.info("Running CPU benchmark...");
+            double score = BenchmarkUtil.getBenchmarkScore();
+            log.info("Benchmark score: " + score);
+        } else {
+            log.info("Skipping CPU benchmark");
+        }
+
         log.info("App started, ready to start solving!");
         log.info("Experiments to execute: " + this.experimentManager.getExperiments().keySet());
         long startTime = System.nanoTime();

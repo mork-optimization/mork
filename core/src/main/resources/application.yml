@@ -86,6 +86,8 @@ solver:
   # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
   nWorkers: -1
 
+  # Execute benchmark before starting solver?
+  benchmark: true
 
 # Advanced configuration, do not change unless you know what you are doing!
 advanced:
