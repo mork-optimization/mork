@@ -42,6 +42,9 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     @Value("${solutions.path.out}")
     String solutionsOut;
 
+    @Value("${errors.errorsToFile:true}")
+    boolean errorExportEnabled;
+
     @Value("${errors.path}")
     String errorFolder;
 
@@ -66,7 +69,6 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         try {
             errorIfNotExists(instancePath);
             createIfNotExists(this.solutionsOut);
-            createIfNotExists(this.errorFolder);
 
             return Files.walk(Path.of(instancePath)).filter(IOManager::filesFilter).sorted(Comparator.comparing(f -> f.toFile().getName().toLowerCase())).map(this::loadInstance);
         } catch (IOException e) {
@@ -104,6 +106,12 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     }
 
     public synchronized void exportError(String experimentName, Algorithm<S,I> alg, I i, Throwable t, String stacktrace){
+        if(!errorExportEnabled){
+            log.fine("Skipping exporting exception or error to disk, disabled in config.");
+            return;
+        }
+        createIfNotExists(this.errorFolder);
+
         // Directamente desde aqui, si se quiere customizar se puede pisar el DefaultExceptionHandler
         SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss.SSS");
         Date d = new Date();

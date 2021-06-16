@@ -15,10 +15,13 @@ solutions:
     out: 'solutions'
   dateformat: 'yyyy-MM-dd_HH-mm-ss'
 
+# Experiment execution DOES NOT (usually) END if
+# an uncontrolled exception is propagated, the error is logged, and we try to keep solving
 errors:
+  # Write exceptions and errors with their context to disk?
+  errorsToFile: true
+
   # Path where all errors or exceptions encountered during experiment execution will be exported
-  # Experiment execution DOES NOT (usually) END if
-  # an uncontrolled exception is propagated, the error is logged, and we try to keep solving
   path: 'errors'
 
 serializers:
@@ -86,6 +89,8 @@ solver:
   # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
   nWorkers: -1
 
+  # Execute benchmark before starting solver?
+  benchmark: true
 
 # Advanced configuration, do not change unless you know what you are doing!
 advanced:

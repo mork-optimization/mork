@@ -15,10 +15,13 @@ solutions:
     out: 'solutions'
   dateformat: 'yyyy-MM-dd_HH-mm-ss'
 
+# Experiment execution DOES NOT (usually) END if
+# an uncontrolled exception is propagated, the error is logged, and we try to keep solving
 errors:
+  # Write exceptions and errors with their context to disk?
+  errorsToFile: true
+
   # Path where all errors or exceptions encountered during experiment execution will be exported
-  # Experiment execution DOES NOT (usually) END if
-  # an uncontrolled exception is propagated, the error is logged, and we try to keep solving
   path: 'errors'
 
 serializers:
