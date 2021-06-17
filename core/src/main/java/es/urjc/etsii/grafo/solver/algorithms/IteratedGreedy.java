@@ -54,37 +54,36 @@ public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends A
     }
 
     @Override
-    public S algorithm(I instance, SolutionBuilder<S, I> builder) {
-        S s = builder.initializeSolution(instance);
-        s = this.constructive.construct(s);
-        s = ls(s);
-        logger.fine(String.format("Initial solution: %s - %s", s.getScore(), s));
+    public S algorithm(S solution) {
+        solution = this.constructive.construct(solution);
+        solution = ls(solution);
+        logger.fine(String.format("Initial solution: %s - %s", solution.getScore(), solution));
         int iterationsWithoutImprovement = 0;
         for (int i = 0; i < maxIterations; i++) {
-            var temp = this.shake.shake(s, 1, 1, false);
+            var temp = this.shake.shake(solution, 1, 1, false);
             temp = ls(temp);
-            s = s.getBetterSolution(temp);
-            if(s == temp){
-                logger.fine(String.format("Improved at iteration %s: %s - %s", i, s.getScore(), s));
+            solution = solution.getBetterSolution(temp);
+            if(solution == temp){
+                logger.fine(String.format("Improved at iteration %s: %s - %s", i, solution.getScore(), solution));
                 iterationsWithoutImprovement = 0;
             } else {
                 iterationsWithoutImprovement++;
                 if(iterationsWithoutImprovement>=this.stopIfNotImprovedIn){
-                    logger.fine(String.format("Not improved after %s iterations, stopping in iteration %s. Current score %s - %s", stopIfNotImprovedIn, i, s.getScore(), s));
+                    logger.fine(String.format("Not improved after %s iterations, stopping in iteration %s. Current score %s - %s", stopIfNotImprovedIn, i, solution.getScore(), solution));
                 }
             }
         }
 
-        return s;
+        return solution;
     }
 
-    private S ls(S s) {
-        if(improvers == null) return s;
+    private S ls(S solution) {
+        if(improvers == null) return solution;
 
         for (Improver<S, I> improver : improvers) {
-            s = improver.improve(s);
+            solution = improver.improve(solution);
         }
-        return s;
+        return solution;
     }
 
     @Override

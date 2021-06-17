@@ -65,7 +65,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
         this.validator.ifPresent(validator -> validator.validate(s));
     }
 
-    protected WorkUnit doWork(String experimentName, I ins, SolutionBuilder<S, I> solutionBuilder, Algorithm<S, I> algorithm, int i, ExceptionHandler<S,I> exceptionHandler) {
+    protected WorkUnit doWork(String experimentName, I instance, SolutionBuilder<S, I> solutionBuilder, Algorithm<S, I> algorithm, int i, ExceptionHandler<S,I> exceptionHandler) {
         S solution = null;
         try {
             // If app is stopping do not run algorithm
@@ -74,8 +74,9 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
             }
 
             RandomManager.reset(i);
+            solution = solutionBuilder.initializeSolution(instance);
             long starTime = System.nanoTime();
-            solution = algorithm.algorithm(ins, solutionBuilder);
+            solution = algorithm.algorithm(solution);
             long endTime = System.nanoTime();
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long ellapsedTime = endTime - starTime;
@@ -86,7 +87,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
             System.out.format("\t%s.\tTime: %.3f (s) \tTTB: %.3f (s) \t%s -- \n", i +1, ellapsedTime / 1_000_000_000D, timeToTarget / 1000_000_000D, solution);
             return new WorkUnit(ellapsedTime, timeToTarget, solution);
         } catch (Exception e) {
-            exceptionHandler.handleException(experimentName, e, Optional.ofNullable(solution), ins, algorithm, io);
+            exceptionHandler.handleException(experimentName, e, Optional.ofNullable(solution), instance, algorithm, io);
             // todo more fields for WorkUnit, resume operations, failed, etc
             return null;
         }

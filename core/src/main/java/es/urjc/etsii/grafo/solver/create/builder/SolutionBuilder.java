@@ -6,7 +6,8 @@ import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 
 /**
  * How to generate empty solutions from a given instance.
- * Problem dependant, implement your own version
+ * If problem dependant, implement your own version.
+ * Time taken by the builder is not counted towards algorithm execution time
  */
 @InheritedComponent
 public abstract class SolutionBuilder<S extends Solution<I>, I extends Instance> {

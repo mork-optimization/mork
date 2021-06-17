@@ -38,12 +38,11 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
 
     /**
      * Algorithm: Execute a single construction and then all the local searchs a single time.
-     * @param instance Instance the algorithm will use
+     * @param solution Empty solution from SolutionBuilder
      * @return Returns a valid solution
      */
     @Override
-    public S algorithm(I instance, SolutionBuilder<S,I> builder) {
-        S solution = builder.initializeSolution(instance);
+    public S algorithm(S solution) {
         solution = constructive.construct(solution);
         printStatus("Constructive", solution);
         solution = localSearch(solution);

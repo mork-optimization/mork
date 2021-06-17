@@ -56,11 +56,9 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
         this.improvers = Arrays.asList(improvers);
     }
 
-    public S algorithm(I ins, SolutionBuilder<S,I> builder) {
-        S solution;
+    public S algorithm(S solution) {
         S best = null;
         do {
-            solution = builder.initializeSolution(ins);
             solution = iteration(solution);
             if(best == null){
                 best = solution;
