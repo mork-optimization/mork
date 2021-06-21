@@ -4,16 +4,15 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 
-public class SolutionGeneratedEvent<S extends Solution<I>, I extends Instance> {
+public class SolutionGeneratedEvent<S extends Solution<I>, I extends Instance> extends MorkEvent {
     private final int iteration;
-    private final double ellapsedTime;
     private final S solution;
     private final String experimentName;
     private final Algorithm<S,I> algorithm;
 
-    public SolutionGeneratedEvent(int iteration, double ellapsedTime, S solution, String experimentName, Algorithm<S, I> algorithm) {
+    public SolutionGeneratedEvent(int iteration, S solution, String experimentName, Algorithm<S, I> algorithm) {
+        super();
         this.iteration = iteration;
-        this.ellapsedTime = ellapsedTime;
         this.solution = solution;
         this.experimentName = experimentName;
         this.algorithm = algorithm;

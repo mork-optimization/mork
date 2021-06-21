@@ -10,7 +10,7 @@ import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.solver.services.IOManager;
 import es.urjc.etsii.grafo.solver.services.MorkLifecycle;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
-import es.urjc.etsii.grafo.solver.services.events.AbstractSolutionGeneratedHandler;
+import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.util.RandomManager;
 
@@ -30,12 +30,10 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
     private static final Logger log = Logger.getLogger(Executor.class.getName());
 
     private final Optional<SolutionValidator<S,I>> validator;
-    private final List<AbstractSolutionGeneratedHandler<S,I>> solutionGeneratedEventHandlers;
     private IOManager<S, I> io;
 
-    protected Executor(Optional<SolutionValidator<S, I>> validator, List<AbstractSolutionGeneratedHandler<S, I>> solutionGeneratedEventHandlers, IOManager<S, I> io) {
+    protected Executor(Optional<SolutionValidator<S, I>> validator, IOManager<S, I> io) {
         this.validator = validator;
-        this.solutionGeneratedEventHandlers = solutionGeneratedEventHandlers;
         this.io = io;
         if(validator.isEmpty()){
             log.warning("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
@@ -83,23 +81,13 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
             solution.setExecutionTimeInNanos(ellapsedTime);
             validate(solution);
             io.exportSolution(experimentName, algorithm, solution);
-            dispatchEvents(new SolutionGeneratedEvent<>(i, ellapsedTime, solution, experimentName, algorithm));
+            EventPublisher.publishEvent(new SolutionGeneratedEvent<>(i, solution, experimentName, algorithm));
             System.out.format("\t%s.\tTime: %.3f (s) \tTTB: %.3f (s) \t%s -- \n", i +1, ellapsedTime / 1_000_000_000D, timeToTarget / 1000_000_000D, solution);
             return new WorkUnit(ellapsedTime, timeToTarget, solution);
         } catch (Exception e) {
             exceptionHandler.handleException(experimentName, e, Optional.ofNullable(solution), instance, algorithm, io);
             // todo more fields for WorkUnit, resume operations, failed, etc
             return null;
-        }
-    }
-
-    private void dispatchEvents(SolutionGeneratedEvent<S, I> solutionGeneratedEvent) {
-        log.fine(String.format("Dispatching solution generated events iteration %s", solutionGeneratedEvent.getIteration()));
-        for (AbstractSolutionGeneratedHandler<S, I> handler : solutionGeneratedEventHandlers) {
-            long start = System.nanoTime();
-            handler.onSolutionGenerated(solutionGeneratedEvent);
-            long end = System.nanoTime();
-            log.fine(String.format("Handler %s took %s milliseconds", handler.getClass().getSimpleName(), (end-start)/1_000_000));
         }
     }
 

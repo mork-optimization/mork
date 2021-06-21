@@ -9,7 +9,6 @@ import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.services.IOManager;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
-import es.urjc.etsii.grafo.solver.services.events.AbstractSolutionGeneratedHandler;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -21,8 +20,8 @@ public class SequentialExecutor<S extends Solution<I>, I extends Instance> exten
 
     private static final Logger logger = Logger.getLogger(SequentialExecutor.class.getName());
 
-    public SequentialExecutor(Optional<SolutionValidator<S, I>> validator, IOManager<S, I> io, List<AbstractSolutionGeneratedHandler<S, I>> solutionGeneratedEventHandlers) {
-        super(validator, solutionGeneratedEventHandlers, io);
+    public SequentialExecutor(Optional<SolutionValidator<S, I>> validator, IOManager<S, I> io) {
+        super(validator, io);
     }
 
     @Override
