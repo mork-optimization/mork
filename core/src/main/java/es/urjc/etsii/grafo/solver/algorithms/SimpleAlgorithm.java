@@ -3,8 +3,8 @@ package es.urjc.etsii.grafo.solver.algorithms;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.Constructive;
-import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.improve.Improver;
+import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -44,9 +44,9 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
     @Override
     public S algorithm(S solution) {
         solution = constructive.construct(solution);
+        ValidationUtil.validSolution(solution);
         printStatus("Constructive", solution);
         solution = localSearch(solution);
-
         return solution;
     }
 
@@ -54,6 +54,7 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
         for (int i = 0; i < improvers.size(); i++) {
             Improver<S, I> ls = improvers.get(i);
             solution = ls.improve(solution);
+            ValidationUtil.validSolution(solution);
             printStatus("Improver " + i, solution);
         }
         return solution;

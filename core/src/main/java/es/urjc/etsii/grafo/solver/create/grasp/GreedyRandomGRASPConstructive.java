@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.Constructive;
 import es.urjc.etsii.grafo.util.RandomManager;
+import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.List;
 import java.util.RandomAccess;
@@ -87,12 +88,8 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
             M chosen = cl.get(index);
             chosen.execute();
             cl = candidateListManager.updateCandidateList(sol, chosen, cl, index);
-            assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
-            //assert validateComparator(comparator, cl);
-
-            // Catch bugs while building the es.urjc.etsii.grafo.solution
-            // no-op if running in performance mode, triggers score recalculation if debugging
-            assert isPositiveOrZero(sol.getScore());
+            ValidationUtil.fastAccessList(cl);
+            ValidationUtil.validSolution(sol);
         }
         return sol;
     }
