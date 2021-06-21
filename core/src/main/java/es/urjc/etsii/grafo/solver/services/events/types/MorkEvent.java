@@ -1,5 +1,6 @@
-package es.urjc.etsii.grafo.solver.services.events;
+package es.urjc.etsii.grafo.solver.services.events.types;
 
+import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import org.springframework.context.ApplicationEvent;
 
 import java.util.Objects;

@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.solver.services.events;
 
+import es.urjc.etsii.grafo.solver.services.events.types.MorkEvent;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
