@@ -9,10 +9,7 @@ import es.urjc.etsii.grafo.solver.executors.ConcurrentExecutor;
 import es.urjc.etsii.grafo.solver.executors.Executor;
 import es.urjc.etsii.grafo.solver.executors.SequentialExecutor;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
-import es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent;
-import es.urjc.etsii.grafo.solver.services.events.types.ExecutionStartedEvent;
-import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
-import es.urjc.etsii.grafo.solver.services.events.types.ExperimentStartedEvent;
+import es.urjc.etsii.grafo.solver.services.events.types.*;
 import es.urjc.etsii.grafo.util.BenchmarkUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
@@ -92,13 +89,19 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         long startTime = System.nanoTime();
         log.info("Running experiment: " + experimentName);
         EventPublisher.publishEvent(new ExperimentStartedEvent(experimentName));
-        io.getInstances(experimentName).forEach(instance -> {
-            log.info("Running algorithms for instance: " + instance.getName());
-            executor.execute(experimentName, (I) instance, repetitions, algorithms, solutionBuilder, exceptionHandler);
-        });
+        io.getInstances(experimentName).forEach(instance -> processInstance(experimentName, algorithms, instance));
         long experimenExecutionTime = System.nanoTime() - startTime;
         EventPublisher.publishEvent(new ExperimentEndedEvent(experimentName, experimenExecutionTime));
         log.info("Finished running experiment: " + experimentName);
+    }
+
+    private void processInstance(String experimentName, List<Algorithm<S, I>> algorithms, Instance instance) {
+        long startTime = System.nanoTime();
+        EventPublisher.publishEvent(new InstanceProcessingStartedEvent(experimentName, instance.getName()));
+        log.info("Running algorithms for instance: " + instance.getName());
+        executor.execute(experimentName, (I) instance, repetitions, algorithms, solutionBuilder, exceptionHandler);
+        long totalTime = System.nanoTime() - startTime;
+        EventPublisher.publishEvent(new InstanceProcessingEndedEvent(experimentName, instance.getName(), totalTime));
     }
 
 
