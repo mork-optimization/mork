@@ -1,11 +1,13 @@
 package es.urjc.etsii.grafo.solver.services.events;
 
 import es.urjc.etsii.grafo.solver.services.events.types.MorkEvent;
+import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.TreeMap;
+import java.util.stream.Stream;
 
 /**
  * Store historical event data
@@ -45,5 +47,12 @@ public class MemoryEventStorage {
             throw new IllegalArgumentException(String.format("Invalid parameters: 'to' is less or equals to 'from', %s <= %s", to, from));
         }
         return new ArrayList<>(eventLog.subMap(from, to).values());
+    }
+
+    public Stream<? extends SolutionGeneratedEvent<?, ?>> getGeneratedSolEventForExp(String experimentName){
+        return this.eventLog.values().stream()
+                .filter(e -> e instanceof SolutionGeneratedEvent)
+                .map(e -> (SolutionGeneratedEvent<?,?>) e)
+                .filter(e -> e.getExperimentName().equals(experimentName));
     }
 }

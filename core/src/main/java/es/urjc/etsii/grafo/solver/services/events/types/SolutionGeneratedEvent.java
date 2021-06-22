@@ -17,11 +17,12 @@ import java.util.Optional;
 public class SolutionGeneratedEvent<S extends Solution<I>, I extends Instance> extends MorkEvent {
     private final String experimentName;
     private final String instanceName;
-    private final Algorithm<S,I> algorithm;
+    private final String algorithmName;
     private final int iteration;
     private final double score;
     private final long executionTime;
     private final long timeToBest;
+    private final Algorithm<S,I> algorithm;
     private final SoftReference<S> solution;
 
     public SolutionGeneratedEvent(int iteration, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest) {
@@ -34,6 +35,7 @@ public class SolutionGeneratedEvent<S extends Solution<I>, I extends Instance> e
         this.algorithm = algorithm;
         this.executionTime = executionTime;
         this.timeToBest = timeToBest;
+        this.algorithmName = algorithm.getShortName();
     }
 
     /**
@@ -90,6 +92,14 @@ public class SolutionGeneratedEvent<S extends Solution<I>, I extends Instance> e
      */
     public long getTimeToBest() {
         return timeToBest;
+    }
+
+    /**
+     * Get short algorithm name that generated this solution
+     * @return Short string representing the algorithm that generated this solution
+     */
+    public String getAlgorithmName() {
+        return algorithmName;
     }
 
     /**

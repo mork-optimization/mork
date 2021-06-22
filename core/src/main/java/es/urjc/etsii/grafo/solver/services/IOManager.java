@@ -4,10 +4,8 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceImporter;
-import es.urjc.etsii.grafo.io.SimplifiedResult;
 import es.urjc.etsii.grafo.io.serializers.DefaultJSONSolutionSerializer;
 import es.urjc.etsii.grafo.io.serializers.JsonSerializer;
-import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
@@ -51,15 +49,13 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     // Results CSV → date to string
     // Solution file → instance_algoritm
     private final JsonSerializer jsonSerializer;
-    private final List<ResultsSerializer> resultsSerializers;
     private final InstanceImporter<?> instanceImporter;
     private SolutionSerializer<S, I> solutionSerializer;
 
-    public IOManager(JsonSerializer jsonSerializer, List<ResultsSerializer> resultsSerializers, InstanceImporter<?> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
+    public IOManager(JsonSerializer jsonSerializer, InstanceImporter<?> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
         this.jsonSerializer = jsonSerializer;
         this.instanceImporter = instanceImporter;
         this.solutionSerializer = Orquestrator.decideImplementation(solutionSerializers, DefaultJSONSolutionSerializer.class);
-        this.resultsSerializers = resultsSerializers;
 
         log.info("Using solution exporter: "+this.solutionSerializer.getClass().getTypeName());
     }
@@ -86,12 +82,6 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
             return false;
         }
         return Files.isRegularFile(p);
-    }
-
-    public void saveResults(String experimentName, List<SimplifiedResult> result){
-        for (ResultsSerializer serializer : resultsSerializers) {
-            serializer.serializeResults(experimentName, result);
-        }
     }
 
     private Instance loadInstance(Path p){

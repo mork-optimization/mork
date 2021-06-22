@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.solver.services;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.io.SimplifiedResult;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
@@ -9,13 +8,16 @@ import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.executors.ConcurrentExecutor;
 import es.urjc.etsii.grafo.solver.executors.Executor;
 import es.urjc.etsii.grafo.solver.executors.SequentialExecutor;
+import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
+import es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent;
+import es.urjc.etsii.grafo.solver.services.events.types.ExecutionStartedEvent;
+import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
+import es.urjc.etsii.grafo.solver.services.events.types.ExperimentStartedEvent;
 import es.urjc.etsii.grafo.util.BenchmarkUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
@@ -58,8 +60,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         }
     }
 
-    @Override
-    public void run(String... args) {
+    private void runBenchmark(){
         if(doBenchmark){
             log.info("Running CPU benchmark...");
             double score = BenchmarkUtil.getBenchmarkScore();
@@ -67,30 +68,36 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         } else {
             log.info("Skipping CPU benchmark");
         }
+    }
 
+    @Override
+    public void run(String... args) {
+        runBenchmark();
         log.info("App started, ready to start solving!");
-        log.info("Experiments to execute: " + this.experimentManager.getExperiments().keySet());
+        var experiments = this.experimentManager.getExperiments();
+        log.info("Experiments to execute: " + experiments.keySet());
+        EventPublisher.publishEvent(new ExecutionStartedEvent());
         long startTime = System.nanoTime();
         try{
-            this.experimentManager.getExperiments().forEach(this::runExperiment);
+            experiments.forEach(this::runExperiment);
         } finally {
             executor.shutdown();
-            log.info(String.format("Total execution time: %s (s)", (System.nanoTime() - startTime) / 1_000_000_000));
+            long totalExecutionTime = System.nanoTime() - startTime;
+            EventPublisher.publishEvent(new ExecutionEndedEvent(totalExecutionTime));
+            log.info(String.format("Total execution time: %s (s)", totalExecutionTime / 1_000_000_000));
         }
     }
 
     private void runExperiment(String experimentName, List<Algorithm<S,I>> algorithms) {
+        long startTime = System.nanoTime();
         log.info("Running experiment: " + experimentName);
-        List<SimplifiedResult> results = Collections.synchronizedList(new ArrayList<>());
+        EventPublisher.publishEvent(new ExperimentStartedEvent(experimentName));
         io.getInstances(experimentName).forEach(instance -> {
             log.info("Running algorithms for instance: " + instance.getName());
-            var result = executor.execute(experimentName, (I) instance, repetitions, algorithms, solutionBuilder, exceptionHandler);
-            results.addAll(result);
+            executor.execute(experimentName, (I) instance, repetitions, algorithms, solutionBuilder, exceptionHandler);
         });
-        // TODO Update results file in disk after each instance is solved, not in the end
-        // Resume functionality: Define work units, each workunit reurns what
-        log.info("Saving all results...");
-        this.io.saveResults(experimentName, results);
+        long experimenExecutionTime = System.nanoTime() - startTime;
+        EventPublisher.publishEvent(new ExperimentEndedEvent(experimentName, experimenExecutionTime));
         log.info("Finished running experiment: " + experimentName);
     }
 

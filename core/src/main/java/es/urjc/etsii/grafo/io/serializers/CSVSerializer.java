@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.io.serializers;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
-import es.urjc.etsii.grafo.io.SimplifiedResult;
+import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
@@ -31,16 +31,16 @@ public class CSVSerializer extends ResultsSerializer{
                 .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
     }
 
-    public void _serializeResults(List<SimplifiedResult> s, Path p) {
+    public void _serializeResults(List<? extends SolutionGeneratedEvent<?,?>> results, Path p) {
         log.info("Exporting result data to CSV...");
 
-        var schema = csvMapper.schemaFor(s.get(0).getClass())
+        var schema = csvMapper.schemaFor(SolutionGeneratedEvent.class)
                 .withColumnSeparator(csvSeparator)
-                .sortedBy("instanceName", "algorithmName")
+                .sortedBy("instanceName", "algorithmName", "iteration")
                 .withHeader();
         try(var br = Files.newBufferedWriter(p)){
            var writer =  csvMapper.writer(schema);
-           writer.writeValue(br, s);
+           writer.writeValue(br, results);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
