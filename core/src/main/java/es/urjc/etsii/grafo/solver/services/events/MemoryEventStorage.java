@@ -6,7 +6,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.TreeMap;
+import java.util.concurrent.ConcurrentSkipListMap;
 import java.util.stream.Stream;
 
 /**
@@ -17,7 +17,7 @@ public class MemoryEventStorage {
     /**
      * Use a tree as events may be processed unordered, but should be retrieved ordered by range query
      */
-    private TreeMap<Integer, MorkEvent> eventLog = new TreeMap();
+    private final ConcurrentSkipListMap<Integer, MorkEvent> eventLog = new ConcurrentSkipListMap<>();
 
     protected MemoryEventStorage(){}
 
@@ -26,9 +26,6 @@ public class MemoryEventStorage {
      * @param event event to save
      */
     public void storeEvent(MorkEvent event){
-        // TODO Storing all generated solutions via events
-        // can get really memory expensive. Free them?
-        // Use this mechanism instead of lists of WorkingOnResults, etc?
         int eventId = event.getEventId();
         if(eventLog.containsKey(eventId)){
             throw new IllegalStateException("Repeated event id + " + eventId);

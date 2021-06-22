@@ -136,8 +136,10 @@ public class ExcelSerializer extends ResultsSerializer {
     }
 
     private void writeCell(XSSFCell cell, Object d) {
-        if(d instanceof Double || d instanceof Integer){
+        if(d instanceof Double){
             cell.setCellValue((double) d);
+        } else if(d instanceof Integer) {
+            cell.setCellValue((int) d);
         } else if (d instanceof String) {
             cell.setCellValue((String) d);
         } else {

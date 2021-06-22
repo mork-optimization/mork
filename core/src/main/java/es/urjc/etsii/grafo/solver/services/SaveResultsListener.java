@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.solver.services.events.MemoryEventStorage;
 import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
 import org.springframework.context.event.EventListener;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -21,6 +22,7 @@ public class SaveResultsListener {
     }
 
     @EventListener
+    @Async
     public void saveResults(ExperimentEndedEvent event){
         String expName = event.getExperimentName();
         var experimentData = eventStorage.getGeneratedSolEventForExp(expName).collect(Collectors.toList());
