@@ -23,11 +23,18 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
 
     private static Logger log = Logger.getLogger(SimpleAlgorithm.class.getName());
 
-    Constructive<S,I> constructive;
-    List<Improver<S, I>> improvers;
+    final Constructive<S,I> constructive;
+    final List<Improver<S, I>> improvers;
+    final String algorithmName;
 
     @SafeVarargs
     public SimpleAlgorithm(Constructive<S, I> constructive, Improver<S,I>... improvers){
+        this("", constructive, improvers);
+    }
+
+    @SafeVarargs
+    public SimpleAlgorithm(String algorithmName, Constructive<S, I> constructive, Improver<S,I>... improvers){
+        this.algorithmName = algorithmName.trim();
         this.constructive = constructive;
         if(improvers != null && improvers.length >= 1){
             this.improvers = Arrays.asList(improvers);
@@ -66,10 +73,14 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
 
     @Override
     public String toString() {
-        return "Simple{" +
-                "cnstr=" + constructive +
-                ", impr=" + improvers +
+        return "S{" +
+                "c=" + constructive +
+                ", i=" + improvers +
                 '}';
     }
 
+    @Override
+    public String getShortName() {
+        return this.algorithmName.isEmpty() ? super.getShortName() : algorithmName;
+    }
 }

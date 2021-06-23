@@ -27,6 +27,12 @@ public class SimpleMultiStartAlgorithm<S extends Solution<I>, I extends Instance
         this.n = n;
     }
 
+    @SafeVarargs
+    public SimpleMultiStartAlgorithm(int n, String algorithmName, Constructive<S, I> constructive, Improver<S,I>... improvers){
+        super(algorithmName, constructive, improvers);
+        this.n = n;
+    }
+
     /**
      * Algorithm: Execute a single construction and then all the local searchs a single time.
      * @param solution Empty solution
@@ -49,10 +55,10 @@ public class SimpleMultiStartAlgorithm<S extends Solution<I>, I extends Instance
 
     @Override
     public String toString() {
-        return "SimpleMS{" +
+        return "MS{" +
                 "n=" + n +
-                ", cnstr=" + constructive +
-                ", impr=" + improvers +
+                ", c=" + constructive +
+                ", i=" + improvers +
                 '}';
     }
 }

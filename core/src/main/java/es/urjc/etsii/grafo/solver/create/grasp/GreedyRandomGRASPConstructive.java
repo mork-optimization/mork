@@ -145,9 +145,9 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     @Override
     public String toString() {
-        return this.getClass().getSimpleName() + "{" +
-                "randomType='" + randomType + '\'' +
-                ", list=" + candidateListManager +
+        return "GRGRASP" + "{" +
+                "a='" + randomType + '\'' +
+                ", l=" + candidateListManager +
                 '}';
     }
 }
