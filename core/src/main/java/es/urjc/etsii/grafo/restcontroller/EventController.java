@@ -1,7 +1,9 @@
 package es.urjc.etsii.grafo.restcontroller;
 
+import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.MemoryEventStorage;
 import es.urjc.etsii.grafo.solver.services.events.types.MorkEvent;
+import es.urjc.etsii.grafo.solver.services.events.types.PingEvent;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,7 +20,14 @@ public class EventController {
     }
 
     @GetMapping("/events")
-    public List<MorkEvent> getEvents(@RequestParam int from, @RequestParam int to){
+    public List<MorkEvent> getEvents(@RequestParam int from, @RequestParam int to) {
         return memoryEventStorage.getEvents(from, to);
+    }
+
+    @GetMapping("/ping")
+    public PingEvent ping(){
+        var ping = new PingEvent();
+        EventPublisher.publishEvent(ping);
+        return ping;
     }
 }
