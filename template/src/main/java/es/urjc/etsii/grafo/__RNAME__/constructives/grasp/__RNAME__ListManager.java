@@ -40,8 +40,8 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
     }
 
     public static class __RNAME__GRASPMove extends Move<__RNAME__Solution, __RNAME__Instance> {
-        public __RNAME__GRASPMove(__RNAME__Solution rname__solution) {
-            super(rname__solution);
+        public __RNAME__GRASPMove(__RNAME__Solution solution) {
+            super(solution);
         }
 
         @Override
