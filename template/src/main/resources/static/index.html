@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-+0n0xVW2eSR5OomGNYDnhzAbDsOXxcvSN1TPprVMTNDbiYZCxYbOOl7+AMvyTG2x" crossorigin="anonymous">
+    <link rel="stylesheet" href="main.css">
+    <title>Mork</title>
+</head>
+<body>
+<noscript>
+    <h2 style="color: red">Seems your browser doesn't support Javascript! Websocket relies on Javascript being enabled. Please enable Javascript and reload this page!</h2>
+</noscript>
+
+<div id="main-content" class="container">
+    <div class="row">
+        <h1 class="text-center">Mission Control Panel</h1>
+    </div>
+    <div class="row">
+        <div class="col-md-6">
+            <h2 class="text-center">Convergence analysis</h2>
+            <div class="convergence-charts">
+            </div>
+        </div>
+        <div class="col-md-6">
+            <h2 class="text-center">Current solution analysis</h2>
+            <div class="current-charts">
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+            <h2 class="text-center">Logs</h2>
+            <label for="log" class="form-label">Triggered events</label>
+            <textarea class="form-control" id="log" rows="20"></textarea>
+        </div>
+    </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.1/dist/js/bootstrap.bundle.min.js" integrity="sha384-gtEjrD/SeCtmISkJkNUaaKMoLD0//ElJ19smozuHV6z3Iehds+3Ulb9Bn9Plx0x4" crossorigin="anonymous"></script>
+<script src="https://code.highcharts.com/highcharts.js"></script>
+<script src="https://code.highcharts.com/modules/boost.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@6.1.0/bundles/stomp.umd.min.js"></script>
+
+<script src="/app.js"></script>
+</body>
+</html>
