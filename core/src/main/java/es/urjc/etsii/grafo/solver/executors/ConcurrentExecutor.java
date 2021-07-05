@@ -55,7 +55,7 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
 
     @Override
     public void shutdown() {
-        logger.info("Shutting down executor");
+        logger.info("Shutdown executor");
         this.executor.shutdown();
     }
 }

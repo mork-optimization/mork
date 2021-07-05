@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.concurrent.Executor;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.logging.Logger;
 
@@ -13,10 +14,15 @@ import java.util.logging.Logger;
 public class EventAsyncConfigurer implements AsyncConfigurer {
 
     private static final Logger log = Logger.getLogger(EventAsyncConfigurer.class.getName());
+    private final ExecutorService asyncExecutor = Executors.newSingleThreadExecutor();
 
     @Override
     public Executor getAsyncExecutor() {
-        return Executors.newSingleThreadExecutor();
+        return asyncExecutor;
+    }
+
+    public void shutdownAsyncExecutor(){
+        this.asyncExecutor.shutdown();
     }
 
     @Override

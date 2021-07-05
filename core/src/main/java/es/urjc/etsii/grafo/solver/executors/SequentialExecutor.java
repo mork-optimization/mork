@@ -33,6 +33,6 @@ public class SequentialExecutor<S extends Solution<I>, I extends Instance> exten
 
     @Override
     public void shutdown() {
-        logger.info("Shutting down executor");
+        logger.info("Shutdown executor");
     }
 }
