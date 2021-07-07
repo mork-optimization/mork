@@ -17,7 +17,7 @@ public class ExperimentManager<S extends Solution<I>, I extends Instance> {
 
     private static final Logger log = Logger.getLogger(Orquestrator.class.toString());
 
-    private final Map<String, List<Algorithm<S,I>>> experiments = new HashMap<>();
+    private final Map<String, List<Algorithm<S,I>>> experiments = new LinkedHashMap<>();
 
     public ExperimentManager(List<AbstractExperiment<S,I>> experimentImplementations, @Value("${solver.experiments}") String experimentFilterString) {
         experimentFilter = Pattern.compile(experimentFilterString);

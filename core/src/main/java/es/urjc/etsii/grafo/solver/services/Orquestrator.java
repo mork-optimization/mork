@@ -15,8 +15,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 @Service
 public class Orquestrator<S extends Solution<I>, I extends Instance> implements CommandLineRunner {
@@ -73,7 +75,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         log.info("App started, ready to start solving!");
         var experiments = this.experimentManager.getExperiments();
         log.info("Experiments to execute: " + experiments.keySet());
-        EventPublisher.publishEvent(new ExecutionStartedEvent());
+        EventPublisher.publishEvent(new ExecutionStartedEvent(new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
         try{
             experiments.forEach(this::runExperiment);
@@ -88,7 +90,8 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
     private void runExperiment(String experimentName, List<Algorithm<S,I>> algorithms) {
         long startTime = System.nanoTime();
         log.info("Running experiment: " + experimentName);
-        EventPublisher.publishEvent(new ExperimentStartedEvent(experimentName));
+        var instanceNames = io.getInstances(experimentName).map(Instance::getName).collect(Collectors.toList());
+        EventPublisher.publishEvent(new ExperimentStartedEvent(experimentName, instanceNames));
         io.getInstances(experimentName).forEach(instance -> processInstance(experimentName, algorithms, instance));
         long experimenExecutionTime = System.nanoTime() - startTime;
         EventPublisher.publishEvent(new ExperimentEndedEvent(experimentName, experimenExecutionTime));
@@ -97,7 +100,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
 
     private void processInstance(String experimentName, List<Algorithm<S, I>> algorithms, Instance instance) {
         long startTime = System.nanoTime();
-        EventPublisher.publishEvent(new InstanceProcessingStartedEvent(experimentName, instance.getName()));
+        EventPublisher.publishEvent(new InstanceProcessingStartedEvent(experimentName, instance.getName(), algorithms, repetitions));
         log.info("Running algorithms for instance: " + instance.getName());
         executor.execute(experimentName, (I) instance, repetitions, algorithms, solutionBuilder, exceptionHandler);
         long totalTime = System.nanoTime() - startTime;
