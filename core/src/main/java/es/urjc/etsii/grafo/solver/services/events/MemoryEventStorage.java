@@ -40,7 +40,7 @@ public class MemoryEventStorage {
      * @return Events in range [from, to).
      */
     public List<MorkEvent> getEvents(int from, int to){
-        if(to <= from){
+        if(to < from){
             throw new IllegalArgumentException(String.format("Invalid parameters: 'to' is less or equals to 'from', %s <= %s", to, from));
         }
         return new ArrayList<>(eventLog.subMap(from, to).values());

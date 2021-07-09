@@ -12,6 +12,7 @@ public abstract class MoveComparator<M extends Move<S,I>, S extends Solution<I>,
     public int compare(M m1, M m2) {
         Optional<M> move = getStrictBestMove(m1, m2);
         if(move.isEmpty()) return 0;
+        // TODO review 1, -1
         if(move.get() == m1) return -1;
         if(move.get() == m2) return 1;
         throw new IllegalStateException("getBestMove() must return one of the argument moves or an empty Optional");
