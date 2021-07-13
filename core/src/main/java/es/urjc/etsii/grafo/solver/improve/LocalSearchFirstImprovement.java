@@ -35,6 +35,6 @@ public class LocalSearchFirstImprovement<M extends Move<S,I>, S extends Solution
 
     @Override
     public String toString() {
-        return "LSFirst{type=" + lsType + "}";
+        return "LSFirst{t=" + lsType + "}";
     }
 }

@@ -41,6 +41,6 @@ public class LocalSearchBestImprovement<M extends Move<S,I>, S extends Solution<
 
     @Override
     public String toString() {
-        return "LSBest{type=" + lsType + "}";
+        return "LSBest{t=" + lsType + "}";
     }
 }
