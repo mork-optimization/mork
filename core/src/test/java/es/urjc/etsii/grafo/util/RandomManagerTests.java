@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.util;
 
 import org.junit.jupiter.api.*;
 
-import java.util.Random;
+import java.util.ArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -13,58 +13,45 @@ public class RandomManagerTests {
     @Test
     @Order(1)
     public void initializationTest(){
-        int initialseed = 123456;
-        RandomManager manager = new RandomManager(initialseed);
-        var myRandom = RandomManager.getRandom();
-        var random = new Random(initialseed);
+        int initialseed = 123456, repetitions = 10;
+        RandomManager manager = new RandomManager(initialseed, repetitions);
 
+        RandomManager.reset();
+        var myRandom = RandomManager.getRandom();
+
+        var list = new ArrayList<>();
         for (int i = 0; i < 100; i++) {
-            Assertions.assertEquals(myRandom.nextInt(), random.nextInt());
+            list.add(myRandom.nextInt());
         }
 
-        random.setSeed(initialseed);
         RandomManager.reset();
-
+        myRandom = RandomManager.getRandom();
         for (int i = 0; i < 100; i++) {
-            Assertions.assertEquals(myRandom.nextInt(), random.nextInt());
+            Assertions.assertEquals(list.get(i), myRandom.nextInt());
         }
     }
 
     @Test
     @Order(2)
-    public void generationTest(){
-        int initialseed = 123456;
-        RandomManager manager = new RandomManager(initialseed);
-        var myRandom = RandomManager.getRandom();
-        var random = new Random(initialseed);
-
-        for (int i = 0; i < 100; i++) {
-            Assertions.assertEquals(myRandom.nextInt(), random.nextInt());
-        }
-
-        random.setSeed(initialseed);
-        RandomManager.reset();
-
-        for (int i = 0; i < 100; i++) {
-            Assertions.assertEquals(myRandom.nextInt(), random.nextInt());
-        }
-    }
-
-    @Test
-    @Order(3)
     public void concurrentGenerationTest(){
-        int initialseed = 123456;
-        RandomManager manager = new RandomManager(initialseed);
+        int initialseed = 123456, repetitions = 8;
+        RandomManager manager = new RandomManager(initialseed, repetitions);
         var executor = Executors.newFixedThreadPool(4);
-        for (int repetitions = 0; repetitions < 8; repetitions++) {
-            var iteration = repetitions;
+        for (int i = 0; i < repetitions; i++) {
+            var iteration = i;
             executor.submit(()->{
                 RandomManager.reset(iteration);
                 var myRandom = RandomManager.getRandom();
-                var random = new Random(initialseed);
 
-                for (int i = 0; i < 1000; i++) {
-                    Assertions.assertEquals(myRandom.nextInt(), random.nextInt());
+                var list = new ArrayList<>();
+                for (int n = 0; n < 1000; n++) {
+                    list.add(myRandom.nextInt());
+                }
+
+                RandomManager.reset(iteration);
+                myRandom = RandomManager.getRandom();
+                for (int n = 0; n < 1000; n++) {
+                    Assertions.assertEquals(list.get(n), myRandom.nextInt());
                 }
             });
         }

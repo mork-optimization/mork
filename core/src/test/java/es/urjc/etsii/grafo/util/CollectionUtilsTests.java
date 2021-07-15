@@ -39,7 +39,7 @@ public class CollectionUtilsTests {
 
     @Test
     public void pickRandomFromSetTest(){
-        var initializeRandom = new RandomManager(0);
+        var initializeRandom = new RandomManager(0, 1);
         var set = new HashSet<>(Arrays.asList(0, 1, 2, 3, 4, 5));
         for (int i = 0; i < 100; i++) {
             int n = CollectionUtils.pickRandom(set);
@@ -49,7 +49,7 @@ public class CollectionUtilsTests {
 
     @Test
     public void pickRandomFromListTest(){
-        var initializeRandom = new RandomManager(0);
+        var initializeRandom = new RandomManager(0, 1);
         var list = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5));
         for (int i = 0; i < 100; i++) {
             int n = CollectionUtils.pickRandom(list);

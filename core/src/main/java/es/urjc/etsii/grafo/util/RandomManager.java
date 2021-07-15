@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.util;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.Random;
 import java.util.logging.Logger;
 
@@ -16,7 +17,7 @@ public final class RandomManager {
 
     // If the RandomManager is called before Spring starts, static methods will throw a NPE.
     private static ThreadLocal<Random> localRandom;
-    private static int initialSeed;
+    private static long[] seeds;
     private static boolean initialized = false;
 
     public static Random getRandom(){
@@ -31,14 +32,18 @@ public final class RandomManager {
     }
 
     // a bit hacky but uses constructor instead of static initializer for Spring compatibility
-    protected RandomManager(@Value("${seed}") int seed){
+    protected RandomManager(@Value("${seed}") int seed,  @Value("${solver.repetitions}") int repetitions){
         if(initialized){
-            logger.warning(String.format("RandomManager already initialized with seed %s, overwritted with %s", initialSeed, seed));
+            logger.warning(String.format("RandomManager already initialized, overwritten with %s", seed));
         }
-        initialSeed = seed;
-        logger.info("Using initial seed = " + initialSeed);
+        Random initRandom = new Random(seed);
+        seeds = new long[repetitions];
+        for (int i = 0; i < seeds.length; i++) {
+            seeds[i] = initRandom.nextLong();
+        }
+        logger.fine("Using seeds = " + Arrays.toString(seeds));
         localRandom = ThreadLocal.withInitial(() -> {
-            var r = new Random(initialSeed);
+            var r = new Random(0);
             return r;
         });
         initialized = true;
@@ -58,7 +63,7 @@ public final class RandomManager {
      * @param iteration Algorithm iteration current thread is going to execute.
      */
     public static void reset(int iteration){
-        getRandom().setSeed(initialSeed+iteration);
+        getRandom().setSeed(seeds[iteration]);
     }
 
 }
