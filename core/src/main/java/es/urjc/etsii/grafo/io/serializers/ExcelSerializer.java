@@ -43,8 +43,10 @@ public class ExcelSerializer extends ResultsSerializer {
         log.info("Exporting result data to XLSX...");
 
         File f = p.toFile();
-        try (var outputStream = new FileOutputStream(f)) {
+        try (
+            var outputStream = new FileOutputStream(f);
             var excelBook = new XSSFWorkbook();
+        ) {
             var rawSheet = excelBook.createSheet(RAW_SHEET);
             var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
 

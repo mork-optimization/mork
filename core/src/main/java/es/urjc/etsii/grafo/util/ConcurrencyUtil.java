@@ -37,7 +37,10 @@ public class ConcurrencyUtil {
     public static <T> T await(Future<T> f){
         try {
             return f.get();
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException(e);
+        } catch (ExecutionException e) {
             throw new RuntimeException(e);
         }
     }
@@ -54,7 +57,11 @@ public class ConcurrencyUtil {
     public static <T> Optional<T> await(Future<T> f, Consumer<Exception> exceptionHandler){
         try {
             return Optional.of(f.get());
-        } catch (InterruptedException | ExecutionException e) {
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            exceptionHandler.accept(e);
+            return Optional.empty();
+        } catch (ExecutionException e) {
             exceptionHandler.accept(e);
             return Optional.empty();
         }
