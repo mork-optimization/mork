@@ -32,6 +32,7 @@ public class ShutdownService {
                 appContext.close();
 
             } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
                 log.warning(e.toString());
             }
         }).start();

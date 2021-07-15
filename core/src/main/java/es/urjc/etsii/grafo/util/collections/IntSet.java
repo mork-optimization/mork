@@ -1,9 +1,6 @@
 package es.urjc.etsii.grafo.util.collections;
 
-import java.util.AbstractSet;
-import java.util.Arrays;
-import java.util.Iterator;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Fast integer set implementation compatible with Java Collections API.
@@ -161,7 +158,7 @@ public class IntSet extends AbstractSet<Integer> {
         @Override
         public Integer next() {
             if(currentUsed){
-                throw new IllegalStateException("Called next() without calling hashNext() first");
+                throw new NoSuchElementException("Called next() without calling hashNext() first");
             }
             currentUsed = true;
             return nextValid;

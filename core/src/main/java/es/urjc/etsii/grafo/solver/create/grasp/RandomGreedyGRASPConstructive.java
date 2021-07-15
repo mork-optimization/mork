@@ -123,6 +123,7 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
         // get best
         M best = null;
         for (M m : rcl) {
+            assert m != null;
             if (best == null) best = m;
             else best = comparator.getBest(best, m);
         }

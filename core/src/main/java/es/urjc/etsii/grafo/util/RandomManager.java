@@ -66,5 +66,11 @@ public final class RandomManager {
         getRandom().setSeed(seeds[iteration]);
     }
 
+    /**
+     * Dereference Random object for current thread, allowing it to be garbage collected.
+     */
+    public static void destroy(){
+        localRandom.remove();
+    }
 }
 
