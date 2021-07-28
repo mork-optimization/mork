@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.io.serializers;
 
+import es.urjc.etsii.grafo.solver.services.ReferenceResultProvider;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import org.apache.poi.ss.SpreadsheetVersion;
@@ -25,18 +26,23 @@ public class ExcelSerializer extends ResultsSerializer {
     public static final String RAW_SHEET = "Raw Results";
     public static final String PIVOT_SHEET = "Pivot Table";
 
-    @Value("${serializers.xlsx.algorithmsInColumns}")
-    private boolean algorithmsInColumns;
+    private final boolean algorithmsInColumns;
+    private final boolean maximizing;
 
-    @Value("${solver.maximizing}")
-    private boolean maximizing;
+    private final Optional<ReferenceResultProvider> referenceResultProvider;
 
     public ExcelSerializer(
             @Value("${serializers.xlsx.enabled}") boolean enabled,
             @Value("${serializers.xlsx.folder}") String folder,
-            @Value("${serializers.xlsx.format}") String format
+            @Value("${serializers.xlsx.format}") String format,
+            @Value("${serializers.xlsx.algorithmsInColumns}") boolean algorithmsInColumns,
+            @Value("${solver.maximizing}") boolean maximizing,
+            Optional<ReferenceResultProvider> referenceResultProvider
     ) {
         super(enabled, folder, format);
+        this.algorithmsInColumns = algorithmsInColumns;
+        this.maximizing = maximizing;
+        this.referenceResultProvider = referenceResultProvider;
     }
 
     public void _serializeResults(List<? extends SolutionGeneratedEvent<?, ?>> results, Path p) {
@@ -55,7 +61,7 @@ public class ExcelSerializer extends ResultsSerializer {
 
             excelBook.write(outputStream);
         } catch (Exception e) {
-            throw new RuntimeException("Exception while trying to save Excel file: " + f.getAbsolutePath(), e);
+            throw new RuntimeException(String.format("Exception while trying to save Excel file: %s, reason: %s", f.getAbsolutePath(), e.getClass().getSimpleName()), e.getCause());
         }
     }
 
@@ -82,15 +88,15 @@ public class ExcelSerializer extends ResultsSerializer {
         pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.TTB.getIndex(), "Avg. TTB(s)");
         pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.TTB.getIndex(), "Sum TTB(s)");
         pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.IS_BEST_KNOWN.getIndex(), "#Best");
+        pivotTable.addColumnLabel(DataConsolidateFunction.MIN, __.DEV_TO_BEST.getIndex(), "Min. %Dev2Best");
+        pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.DEV_TO_BEST.getIndex(), "Avg. %Dev2Best");
     }
 
 
     private AreaReference fillRawSheet(XSSFSheet rawSheet, List<? extends SolutionGeneratedEvent<?, ?>> results) {
         // Best values per instance
-        Map<String, Optional<Double>> bestValuesPerInstance = bestPerInstance(results);
-        if (bestValuesPerInstance.values().stream().anyMatch(Optional::isEmpty)) {
-            throw new RuntimeException("Cannot export instances that have not been solved at least once");
-        }
+        Map<String, Double> bestValuesPerInstance = bestOwnResultPerInstance(results);
+
         // Create headers
         String[] header = new String[]{
                 __.INSTANCE_NAME.getName(),
@@ -99,7 +105,8 @@ public class ExcelSerializer extends ResultsSerializer {
                 __.SCORE.getName(),
                 __.TOTAL_TIME.getName(),
                 __.TTB.getName(),
-                __.IS_BEST_KNOWN.getName()
+                __.IS_BEST_KNOWN.getName(),
+                __.DEV_TO_BEST.getName()
         };
 
         int nColumns = header.length;
@@ -118,9 +125,11 @@ public class ExcelSerializer extends ResultsSerializer {
             data[i][__.TOTAL_TIME.getIndex()] = nanoToSecs(r.getExecutionTime());
             data[i][__.TTB.getIndex()] = nanoToSecs(r.getTimeToBest());
 
-            double bestValueForInstance = bestValuesPerInstance.get(r.getInstanceName()).orElseThrow(); // Nunca va a llegar al throw porque existiria al menos el resultado actual
+            double bestValueForInstance = bestResultForInstance(bestValuesPerInstance, r.getInstanceName());
             boolean isBest = DoubleComparator.equals(bestValueForInstance, r.getScore());
             data[i][__.IS_BEST_KNOWN.getIndex()] = isBest ? 1 : 0;
+            double percentageDevToBest = Math.abs(r.getScore() - bestValueForInstance) / bestValueForInstance;
+            data[i][__.DEV_TO_BEST.getIndex()] = percentageDevToBest;
         }
 
         // Write matrix data to cell Excel sheet
@@ -149,14 +158,28 @@ public class ExcelSerializer extends ResultsSerializer {
         }
     }
 
-    private Map<String, Optional<Double>> bestPerInstance(List<? extends SolutionGeneratedEvent<?, ?>> results) {                                       // Reduce by last
+    private Map<String, Double> bestOwnResultPerInstance(List<? extends SolutionGeneratedEvent<?, ?>> results) {
         return results.stream()
-                .collect(Collectors.groupingBy(SolutionGeneratedEvent::getInstanceName,
-                        Collectors.mapping(SolutionGeneratedEvent::getScore, Collectors.reducing((a, b) -> maximizing ?
-                                Math.max(a, b) :
-                                Math.min(a, b)
-                        ))
+                .collect(Collectors.toMap(
+                        SolutionGeneratedEvent::getInstanceName,
+                        SolutionGeneratedEvent::getScore,
+                        (a, b) -> maximizing ? Math.max(a, b) : Math.min(a, b)
                 ));
+    }
+
+    private double bestResultForInstance(Map<String, Double> ourResults, String instanceName){
+        if(this.referenceResultProvider.isPresent()){
+            var v = this.referenceResultProvider.get().getValueFor(instanceName);
+            if(v.isPresent()){
+                return v.get();
+            } else {
+                double ours = ourResults.get(instanceName);
+                log.warning(String.format("Reference result is implemented (%s), but it does not have a value for instance %s, using best value in current experiment (%s)", this.referenceResultProvider.get().getClass().getSimpleName(), instanceName, ours));
+                return ours;
+            }
+        } else {
+            return ourResults.get(instanceName);
+        }
     }
 
     private enum __ {
@@ -166,7 +189,8 @@ public class ExcelSerializer extends ResultsSerializer {
         SCORE(3, "Score"),
         TOTAL_TIME(4, "Total Time (s)"),
         TTB(5, "Time to Best (s)"),
-        IS_BEST_KNOWN(6, "Is Best Known?");
+        IS_BEST_KNOWN(6, "Is Best Known?"),
+        DEV_TO_BEST(7, "% Dev. to best known");
 
         private final int index;
         private final String name;
