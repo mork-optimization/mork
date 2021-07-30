@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -30,6 +31,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
     private final ExperimentManager<S, I> experimentManager;
     private final ExceptionHandler<S, I> exceptionHandler;
     private final SolutionBuilder<S, I> solutionBuilder;
+    private final Optional<ReferenceResultProvider> referenceResultProvider;
     private final Executor<S, I> executor;
     private final int repetitions;
 
@@ -42,7 +44,8 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
             List<ExceptionHandler<S,I>> exceptionHandlers,
             ConcurrentExecutor<S,I> concurrentExecutor,
             SequentialExecutor<S,I> sequentialExecutor,
-            List<SolutionBuilder<S,I>> solutionBuilders
+            List<SolutionBuilder<S,I>> solutionBuilders,
+            Optional<ReferenceResultProvider> referenceResultProvider
     ) {
         this.repetitions = repetitions;
         this.doBenchmark = doBenchmark;
@@ -50,6 +53,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         this.experimentManager = experimentManager;
         this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
+        this.referenceResultProvider = referenceResultProvider;
         log.info("Using SolutionBuilder implementation: "+this.solutionBuilder.getClass().getSimpleName());
 
         if(useParallelExecutor){
@@ -100,7 +104,8 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
 
     private void processInstance(String experimentName, List<Algorithm<S, I>> algorithms, Instance instance) {
         long startTime = System.nanoTime();
-        EventPublisher.publishEvent(new InstanceProcessingStartedEvent(experimentName, instance.getName(), algorithms, repetitions));
+        Optional<Double> referenceValue = this.referenceResultProvider.isPresent()? this.referenceResultProvider.get().getValueFor(instance.getName()):Optional.empty();
+        EventPublisher.publishEvent(new InstanceProcessingStartedEvent(experimentName, instance.getName(), algorithms, repetitions, referenceValue));
         log.info("Running algorithms for instance: " + instance.getName());
         executor.execute(experimentName, (I) instance, repetitions, algorithms, solutionBuilder, exceptionHandler);
         long totalTime = System.nanoTime() - startTime;
