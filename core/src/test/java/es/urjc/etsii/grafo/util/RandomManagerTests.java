@@ -16,7 +16,7 @@ public class RandomManagerTests {
         int initialseed = 123456, repetitions = 10;
         RandomManager manager = new RandomManager(initialseed, repetitions);
 
-        RandomManager.reset();
+        RandomManager.reset(0);
         var myRandom = RandomManager.getRandom();
 
         var list = new ArrayList<>();
@@ -24,7 +24,7 @@ public class RandomManagerTests {
             list.add(myRandom.nextInt());
         }
 
-        RandomManager.reset();
+        RandomManager.reset(0);
         myRandom = RandomManager.getRandom();
         for (int i = 0; i < 100; i++) {
             Assertions.assertEquals(list.get(i), myRandom.nextInt());
