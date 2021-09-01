@@ -57,4 +57,31 @@ public class CollectionUtilsTests {
         }
         //Assertions.assertThrows(AssertionError.class, () -> CollectionUtils.pickRandom(new LinkedList<>(list)));
     }
+
+    @Test
+    public void intToArray(){
+        var input = Arrays.asList(1,7,4,-9, Integer.MAX_VALUE, Integer.MIN_VALUE);
+        var expectedOutput = new int[]{1,7,4,-9, Integer.MAX_VALUE, Integer.MIN_VALUE};
+
+        var output = CollectionUtils.toIntArray(input);
+        Assertions.assertArrayEquals(expectedOutput, output);
+    }
+
+    @Test
+    public void longToArray(){
+        var input = Arrays.asList(1L, 7L,4L,-9L, Long.MAX_VALUE, Long.MIN_VALUE);
+        var expectedOutput = new long[]{1, 7L,4,-9L, Long.MAX_VALUE, Long.MIN_VALUE};
+
+        var output = CollectionUtils.toLongArray(input);
+        Assertions.assertArrayEquals(expectedOutput, output);
+    }
+
+    @Test
+    public void doubleToArray(){
+        var input = Arrays.asList(1D,7D,4D,-9D, Double.MAX_VALUE, Double.MIN_VALUE);
+        var expectedOutput = new double[]{1D,7D,4D,-9D, Double.MAX_VALUE, Double.MIN_VALUE};
+
+        var output = CollectionUtils.toDoubleArray(input);
+        Assertions.assertArrayEquals(expectedOutput, output);
+    }
 }

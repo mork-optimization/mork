@@ -1,9 +1,6 @@
 package es.urjc.etsii.grafo.util;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.RandomAccess;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Util methods to manipulate collections and arrays that are not part of the standard java API
@@ -62,5 +59,53 @@ public class CollectionUtils {
     public static <T> T pickRandom(List<T> list){
         var random = RandomManager.getRandom();
         return list.get(random.nextInt(list.size()));
+    }
+
+    /**
+     * Return a primitive array with all the numbers of the given collection.
+     * @param c Input collection
+     * @return Primitive array
+     */
+    public static int[] toIntArray(Collection<Integer> c){
+        // From Guava
+        Object[] boxedArray = c.toArray();
+        int len = boxedArray.length;
+        int[] array = new int[len];
+        for (int i = 0; i < len; i++) {
+            array[i] = (int) boxedArray[i];
+        }
+        return array;
+    }
+
+    /**
+     * Return a primitive array with all the numbers of the given collection.
+     * @param c Input collection
+     * @return Primitive array
+     */
+    public static double[] toDoubleArray(Collection<Double> c){
+        // From Guava
+        Object[] boxedArray = c.toArray();
+        int len = boxedArray.length;
+        double[] array = new double[len];
+        for (int i = 0; i < len; i++) {
+            array[i] = (double) boxedArray[i];
+        }
+        return array;
+    }
+
+    /**
+     * Return a primitive array with all the numbers of the given collection.
+     * @param c Input collection
+     * @return Primitive array
+     */
+    public static long[] toLongArray(Collection<Long> c){
+        // From Guava
+        Object[] boxedArray = c.toArray();
+        int len = boxedArray.length;
+        long[] array = new long[len];
+        for (int i = 0; i < len; i++) {
+            array[i] = (long) boxedArray[i];
+        }
+        return array;
     }
 }
