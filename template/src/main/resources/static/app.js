@@ -192,6 +192,31 @@ function onInstanceProcessingStart(event) {
             enabled: true
         }
     });
+
+    
+    // Add reference value plot line
+    // Style of the plot line. Default to solid. See https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-dashstyle-all/
+    convergence_chart.yAxis[0].addPlotLine({
+        color: 'red',
+        dashStyle: 'longdash',
+        value: event.referenceValue,
+        width: 2,
+        label: {
+            align: 'left',
+            y: 16
+        }
+    });
+    current_chart.yAxis[0].addPlotLine({
+        color: 'red',
+        dashStyle: 'longdash',
+        value: event.referenceValue,
+        width: 2,
+        label: {
+            align: 'left',
+            y: 16
+        }
+    });
+
 }
 
 function onInstanceProcessingEnd(event) {
