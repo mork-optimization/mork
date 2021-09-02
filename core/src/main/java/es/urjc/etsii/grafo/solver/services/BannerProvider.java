@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.solver.services;
 
+import es.urjc.etsii.grafo.solver.Mork;
 import org.springframework.boot.Banner;
 import org.springframework.core.env.Environment;
 
@@ -16,7 +17,7 @@ public class BannerProvider implements Banner {
                 " | | |  | |  | | (_) | |  |   <   | | |\n" +
                 " | | |  |_|  |_|\\___/|_|  |_|\\_\\  | | |\n" +
                 "  \\_\\_\\ ________________________ /_/_/\n" +
-                "                        v0.1";
+                "                        Version: " + Mork.class.getPackage().getImplementationVersion();
         out.println(banner);
     }
 }

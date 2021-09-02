@@ -27,7 +27,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
 
     /**
      * Build a new local search
-     *
+     * @param lsName Local Search name. If present, toString works as name{}. If not, Classname{neigh=[neigborhoods],comp=comparator}
      * @param maximizing true if a movement with a bigger score is better
      * @param ps         neighborhood that generates the movements
      */

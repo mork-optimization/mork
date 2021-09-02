@@ -1,4 +1,6 @@
 #!/bin/bash -e
+
+# Deploy artifacts to Maven Central
 cd core
 mvn clean deploy
 cd ../parent
