@@ -9,7 +9,7 @@ import java.util.logging.Logger;
  * Default Event listener responsible for sending framework events
  * via websockets and storing a copy in an EventStorage
  */
-public class DefaultEventListener extends AbstractEventListener{
+public class DefaultEventListener extends AbstractEventListener {
     private static Logger log = Logger.getLogger(DefaultEventListener.class.getName());
 
     private final SimpMessagingTemplate simpMessagingTemplate;

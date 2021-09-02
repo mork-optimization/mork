@@ -12,10 +12,18 @@ public class ExperimentEndedEvent extends MorkEvent {
         this.executionTime = executionTime;
     }
 
+    /**
+     * Experiment name
+     * @return experiment name
+     */
     public String getExperimentName() {
         return experimentName;
     }
 
+    /**
+     * Execution time in nanoseconds
+     * @return execution time in nanoseconds
+     */
     public long getExecutionTime() {
         return executionTime;
     }
