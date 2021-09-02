@@ -6,27 +6,43 @@ import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Neighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 
+import java.util.Arrays;
+
 public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I extends Instance> extends IteratedImprover<S, I> {
     protected final Neighborhood<M, S, I>[] providers;
     protected final MoveComparator<M, S, I> comparator;
-    protected String lsType;
+    protected final String lsName;
 
     @SafeVarargs
-    public LocalSearch(MoveComparator<M, S, I> comparator, String lsType, Neighborhood<M, S, I>... ps) {
+    public LocalSearch(MoveComparator<M, S, I> comparator, String lsName, Neighborhood<M, S, I>... ps) {
         this.comparator = comparator;
-        this.lsType = lsType;
         this.providers = ps;
+        this.lsName = lsName.strip();
+    }
+
+    @SafeVarargs
+    public LocalSearch(MoveComparator<M, S, I> comparator, Neighborhood<M, S, I>... ps) {
+        this(comparator, "", ps);
     }
 
     /**
      * Build a new local search
      *
      * @param maximizing true if a movement with a bigger score is better
-     * @param lsType     name for the local search
      * @param ps         neighborhood that generates the movements
      */
-    public LocalSearch(boolean maximizing, String lsType, Neighborhood<M, S, I>... ps) {
-        this(new DefaultMoveComparator<>(maximizing), lsType, ps);
+    public LocalSearch(boolean maximizing, String lsName, Neighborhood<M, S, I>... ps) {
+        this(new DefaultMoveComparator<>(maximizing), lsName, ps);
+    }
+
+    /**
+     * Build a new local search
+     *
+     * @param maximizing true if a movement with a bigger score is better
+     * @param ps         neighborhood that generates the movements
+     */
+    public LocalSearch(boolean maximizing, Neighborhood<M, S, I>... ps) {
+        this(new DefaultMoveComparator<>(maximizing), "", ps);
     }
 
 
@@ -43,6 +59,18 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
         return true;
     }
 
+    @Override
+    public String toString() {
+        if(this.lsName.isEmpty()){
+            return this.getClass().getSimpleName()+"{" +
+                    "neig=" + Arrays.toString(providers) +
+                    ", comp=" + comparator +
+                    '}';
+        } else {
+            return this.lsName;
+        }
+    }
+
     /**
      * Get move to execute, different strategies are possible
      *
@@ -50,4 +78,5 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
      * @return Proposed move
      */
     protected abstract M getMove(S s);
+
 }

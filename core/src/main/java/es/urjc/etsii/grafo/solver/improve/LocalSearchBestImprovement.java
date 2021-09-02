@@ -11,12 +11,16 @@ import java.util.stream.Stream;
 
 public class LocalSearchBestImprovement<M extends Move<S,I>, S extends Solution<I>,I extends Instance> extends LocalSearch<M,S,I> {
 
-    public LocalSearchBestImprovement(MoveComparator<M,S,I> comparator, String lsType, Neighborhood<M,S,I>... ps){
-        super(comparator, lsType, ps);
+    public LocalSearchBestImprovement(MoveComparator<M,S,I> comparator, Neighborhood<M,S,I>... ps){
+        super(comparator, ps);
     }
 
-    public LocalSearchBestImprovement(boolean maximizing, String lsType, Neighborhood<M,S,I>... ps){
-        super(maximizing, lsType, ps);
+    public LocalSearchBestImprovement(boolean maximizing, Neighborhood<M,S,I>... ps){
+        super(maximizing, ps);
+    }
+
+    public LocalSearchBestImprovement(boolean maximizing, String lsName, Neighborhood<M,S,I>... ps){
+        super(maximizing, lsName, ps);
     }
 
     @Override
@@ -38,9 +42,4 @@ public class LocalSearchBestImprovement<M extends Move<S,I>, S extends Solution<
         return stream.filter(Move::isValid).reduce((a, b) -> comparator.getBest(b,a));
     }
 
-
-    @Override
-    public String toString() {
-        return "LSBest{t=" + lsType + "}";
-    }
 }

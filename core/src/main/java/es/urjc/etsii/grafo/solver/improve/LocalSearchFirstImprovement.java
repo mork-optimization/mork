@@ -8,12 +8,16 @@ import es.urjc.etsii.grafo.solution.Solution;
 
 public class LocalSearchFirstImprovement<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends LocalSearch<M,S,I> {
 
-    public LocalSearchFirstImprovement(MoveComparator<M,S,I> comparator, String lsType, Neighborhood<M,S, I>... ps){
-        super(comparator, lsType, ps);
+    public LocalSearchFirstImprovement(MoveComparator<M,S,I> comparator, Neighborhood<M,S, I>... ps){
+        super(comparator, ps);
     }
 
-    public LocalSearchFirstImprovement(boolean maximizing, String lsType, Neighborhood<M,S, I>... ps){
-        super(maximizing, lsType, ps);
+    public LocalSearchFirstImprovement(boolean maximizing, Neighborhood<M,S, I>... ps){
+        super(maximizing, ps);
+    }
+
+    public LocalSearchFirstImprovement(boolean maximizing, String lsName, Neighborhood<M,S,I>... ps){
+        super(maximizing, lsName, ps);
     }
 
     @Override
@@ -32,9 +36,4 @@ public class LocalSearchFirstImprovement<M extends Move<S,I>, S extends Solution
         return move;
     }
 
-
-    @Override
-    public String toString() {
-        return "LSFirst{t=" + lsType + "}";
-    }
 }
