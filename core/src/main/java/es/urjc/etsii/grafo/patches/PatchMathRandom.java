@@ -43,21 +43,12 @@ public class PatchMathRandom {
         log.info("Math.random() patched successfully");
     }
 
-    private static final VarHandle MODIFIERS;
-
-    static {
-        try {
-            var lookup = MethodHandles.privateLookupIn(Field.class, MethodHandles.lookup());
-            MODIFIERS = lookup.findVarHandle(Field.class, "modifiers", int.class);
-        } catch (IllegalAccessException | NoSuchFieldException ex) {
-            throw new RuntimeException(ex);
-        }
-    }
-
-    public static void makeNonFinal(Field field) {
+    private void makeNonFinal(Field field) throws NoSuchFieldException, IllegalAccessException {
+        var lookup = MethodHandles.privateLookupIn(Field.class, MethodHandles.lookup());
+        VarHandle modifiers = lookup.findVarHandle(Field.class, "modifiers", int.class);
         int mods = field.getModifiers();
         if (Modifier.isFinal(mods)) {
-            MODIFIERS.set(field, mods & ~Modifier.FINAL);
+            modifiers.set(field, mods & ~Modifier.FINAL);
         }
     }
 }
