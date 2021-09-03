@@ -70,6 +70,7 @@ public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends A
                 iterationsWithoutImprovement++;
                 if(iterationsWithoutImprovement>=this.stopIfNotImprovedIn){
                     logger.fine(String.format("Not improved after %s iterations, stopping in iteration %s. Current score %s - %s", stopIfNotImprovedIn, i, solution.getScore(), solution));
+                    break;
                 }
             }
         }
