@@ -94,6 +94,12 @@ solver:
 
 # Event system integrations/configuration
 event:
+  # Stop webserver after all work is done?
+  # If true, app will stop after all experiments finish executing, and front end will stop loading. (DEFAULT)
+  # If false, webserver will keep executing, and front will be available until manually stopped by the user.
+  webserver:
+    stopOnExecutionEnd: true
+
   # Enable message notifications to any given user on experiment end. See
   telegram:
     # If false bot is completely disabled
