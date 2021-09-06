@@ -20,7 +20,7 @@ public class DefaultExceptionHandler<S extends Solution<I>, I extends Instance> 
         io.exportError(experimentName, algorithm, i, e, stackTrace);
     }
 
-    private String getStackTrace(Throwable t){
+    public String getStackTrace(Throwable t){
         StringWriter sw = new StringWriter();
         PrintWriter pw = new PrintWriter(sw);
         t.printStackTrace(pw);

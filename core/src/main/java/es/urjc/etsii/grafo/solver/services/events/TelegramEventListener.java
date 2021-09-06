@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.solver.services.events;
 
+import es.urjc.etsii.grafo.solver.services.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
 import org.springframework.beans.factory.annotation.Value;
@@ -20,6 +21,7 @@ public class TelegramEventListener extends AbstractEventListener {
     private static final int longPollingTimeoutInSeconds = 10;
 
     private final boolean enabled;
+    private volatile boolean errorNotified = false;
 
     private MorkTelegramBot telegramBot;
     private BotSession session;
@@ -54,10 +56,23 @@ public class TelegramEventListener extends AbstractEventListener {
     }
 
     @MorkEventListener
-    public void onExperimentEnd(ExecutionEndedEvent event){
+    public void onError(ErrorEvent event){
+        if(telegramBot != null && telegramBot.ready()){
+            // Only notify first error to prevent spamming
+            if(!errorNotified){
+                errorNotified = true;
+                var t = event.getThrowable();
+                telegramBot.sendMessage(String.format("Execution Error: %s. Further errors will NOT be notified.", t));
+            }
+
+        }
+    }
+
+    @MorkEventListener
+    public void onExecutionEnd(ExecutionEndedEvent event){
         if(!enabled) return;
 
-        log.info("Stopping telegram bot... This can take up to 10 seconds.");
+        log.info("Stopping telegram bot... This can take up to 50 seconds.");
         if(session != null){
             session.stop();
         }
