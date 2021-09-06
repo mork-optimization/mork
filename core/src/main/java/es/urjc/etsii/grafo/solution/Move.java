@@ -10,8 +10,9 @@ import java.util.logging.Logger;
 import static es.urjc.etsii.grafo.solution.Solution.MAX_DEBUG_MOVES;
 
 /**
- * All neighborhood moves should be represented by different instances of this class.
- * As they are in the same package as the Solution, they can efficiently manipulate it
+ * Represents a change for a given solution in a given neighborhood
+ * All neighborhood moves should be represented by implementations of either LazyMove or EagerMove.
+ * Do not directly extend this class.
  */
 public abstract class Move<S extends Solution<I>, I extends Instance> {
 
@@ -87,13 +88,6 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
     }
 
     /**
-     * Get next move in this sequence.
-     *
-     * @return the next move in this generator sequence if there is a next move, null otherwise
-     */
-    public abstract Move<S, I> next();
-
-    /**
      * Returns an String representation of the current movement.
      * Tip: Default IDEs implementations are usually fine
      *
@@ -109,7 +103,6 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
 
     /**
      * Get the solution this move originated from
-     *
      * @return Solution
      */
     public S getSolution() {

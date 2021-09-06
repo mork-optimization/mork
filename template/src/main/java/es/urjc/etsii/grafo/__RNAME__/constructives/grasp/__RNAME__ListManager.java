@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.__RNAME__.constructives.grasp;
 
 import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Instance;
 import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Solution;
-import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.EagerMove;
 import es.urjc.etsii.grafo.solver.create.grasp.GRASPListManager;
 
 import java.util.ArrayList;
@@ -39,7 +39,7 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
         return buildInitialCandidateList(solution);
     }
 
-    public static class __RNAME__GRASPMove extends Move<__RNAME__Solution, __RNAME__Instance> {
+    public static class __RNAME__GRASPMove extends EagerMove<__RNAME__Solution, __RNAME__Instance> {
         public __RNAME__GRASPMove(__RNAME__Solution solution) {
             super(solution);
         }
@@ -72,12 +72,6 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
         public int hashCode() {
             // Use IDE to generate this method
             throw new UnsupportedOperationException("hashCode() in __RNAME__ not implemented yet");
-        }
-
-        @Override
-        public Move<__RNAME__Solution, __RNAME__Instance> next() {
-            // Return null, ignore this method
-            throw new UnsupportedOperationException("Not applicable to GRASP moves");
         }
 
         @Override

@@ -1,12 +1,16 @@
-package es.urjc.etsii.grafo.solution;
+package es.urjc.etsii.grafo.solution.neighborhood;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Solution;
 
 import java.util.Objects;
 import java.util.stream.Stream;
 
 /**
- * Defines a neighbourhood for the local search methods
+ * Defines a neighbourhood.
+ * A neighborhoods represents all potential solutions that can be reached for a given solution applying a given move.
+ * Usually used inside, but not limited to, a local search procedure,
  */
 public abstract class Neighborhood<M extends Move<S,I>, S extends Solution<I>, I extends Instance> {
 
@@ -18,10 +22,6 @@ public abstract class Neighborhood<M extends Move<S,I>, S extends Solution<I>, I
      * @return Stream with all the available moves in the neighborhood
      */
     public abstract Stream<M> stream(S s);
-
-    protected Stream<M> buildStream(M move){
-        return Stream.iterate(move, Objects::nonNull, m -> (M) m.next());
-    }
 
     @Override
     public String toString() {

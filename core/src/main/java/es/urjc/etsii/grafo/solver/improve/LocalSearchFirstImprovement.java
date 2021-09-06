@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.solver.improve;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.MoveComparator;
-import es.urjc.etsii.grafo.solution.Neighborhood;
+import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
 
 public class LocalSearchFirstImprovement<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends LocalSearch<M,S,I> {
