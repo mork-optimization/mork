@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.solver.services.events;
 import es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
 import org.springframework.beans.factory.annotation.Value;
+import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
 import org.telegram.telegrambots.meta.api.methods.send.SendMessage;
@@ -16,6 +17,8 @@ import java.util.logging.Logger;
 public class TelegramEventListener extends AbstractEventListener {
 
     private static final Logger log = Logger.getLogger(MorkTelegramBot.class.getName());
+    private static final int longPollingTimeoutInSeconds = 10;
+
     private final boolean enabled;
 
     private MorkTelegramBot telegramBot;
@@ -29,7 +32,9 @@ public class TelegramEventListener extends AbstractEventListener {
         this.enabled = enabled;
         if (enabled) {
             log.info("Registering Telegram bot...");
-            this.telegramBot = new MorkTelegramBot(chatId, token);
+            var options = new DefaultBotOptions();
+            options.setGetUpdatesTimeout(longPollingTimeoutInSeconds);
+            this.telegramBot = new MorkTelegramBot(chatId, token, options);
             try {
                 var api = new TelegramBotsApi(DefaultBotSession.class);
                 session = api.registerBot(telegramBot);
@@ -66,7 +71,8 @@ public class TelegramEventListener extends AbstractEventListener {
         private final String chatId;
         private final String token;
 
-        private MorkTelegramBot(String chatId, String token) {
+        private MorkTelegramBot(String chatId, String token, DefaultBotOptions options) {
+            super(options);
             this.chatId = chatId;
             this.token = token;
         }

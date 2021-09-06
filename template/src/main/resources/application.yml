@@ -92,6 +92,17 @@ solver:
   # Execute benchmark before starting solver? False to skip benchmark.
   benchmark: false
 
+# Event system integrations/configuration
+event:
+  # Enable message notifications to any given user on experiment end. See
+  telegram:
+    # If false bot is completely disabled
+    enabled: false
+    # Token returned by @BotFather
+    token: ''
+    # Chat where we will send notifications
+    chatId: ''
+
 # Advanced configuration, do not change unless you know what you are doing!
 advanced:
   # Block Java API methods
