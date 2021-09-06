@@ -57,7 +57,7 @@ public class TelegramEventListener extends AbstractEventListener {
     public void onExperimentEnd(ExecutionEndedEvent event){
         if(!enabled) return;
 
-        log.info("Stopping telegram bot... This can take up to 50 seconds.");
+        log.info("Stopping telegram bot... This can take up to 10 seconds.");
         if(session != null){
             session.stop();
         }
