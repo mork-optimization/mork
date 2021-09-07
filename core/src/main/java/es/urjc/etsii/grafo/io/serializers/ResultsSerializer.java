@@ -33,7 +33,7 @@ public abstract class ResultsSerializer {
             throw new IllegalArgumentException("Cannot save empty list of results");
         }
 
-        IOUtil.createIfNotExists(folder);
+        IOUtil.createFolder(folder);
         Path p = Path.of(folder, getFilename(experimentName));
         _serializeResults(results, p);
     }
