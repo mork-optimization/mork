@@ -13,7 +13,7 @@ import java.util.logging.Logger;
  */
 public class MultiStartAlgorithm<S extends Solution<I>, I extends Instance> extends Algorithm<S, I> {
 
-    private static Logger log = Logger.getLogger(SimpleAlgorithm.class.getName());
+    private static Logger log = Logger.getLogger(MultiStartAlgorithm.class.getName());
 
     private final int n;
     final String algorithmName;
