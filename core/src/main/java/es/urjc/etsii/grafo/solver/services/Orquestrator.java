@@ -12,17 +12,16 @@ import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.types.*;
 import es.urjc.etsii.grafo.util.BenchmarkUtil;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.CommandLineRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 @Service
-public class Orquestrator<S extends Solution<I>, I extends Instance> implements CommandLineRunner {
+@ConditionalOnExpression(value = "!'${irace.enabled}' and !'${irace.worker}'")
+public class Orquestrator<S extends Solution<I>, I extends Instance> extends AbstractOrquestrator {
 
     private static final Logger log = Logger.getLogger(Orquestrator.class.toString());
 
@@ -79,6 +78,7 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         log.info("App started, ready to start solving!");
         var experiments = this.experimentManager.getExperiments();
         log.info("Experiments to execute: " + experiments.keySet());
+        fillSolutionBuilder(experiments);
         EventPublisher.publishEvent(new ExecutionStartedEvent(new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
         try{
@@ -89,6 +89,13 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
             EventPublisher.publishEvent(new ExecutionEndedEvent(totalExecutionTime));
             log.info(String.format("Total execution time: %s (s)", totalExecutionTime / 1_000_000_000));
         }
+    }
+
+    private void fillSolutionBuilder(Map<String, List<Algorithm<S,I>>> experiments){
+        // For each algorithm in each experiment, set the solution builder reference.
+        experiments.values().stream().flatMap(Collection::stream).forEach(e ->
+                e.setBuilder(this.solutionBuilder)
+        );
     }
 
     private void runExperiment(String experimentName, List<Algorithm<S,I>> algorithms) {
@@ -111,19 +118,5 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> implements 
         long totalTime = System.nanoTime() - startTime;
         EventPublisher.publishEvent(new InstanceProcessingEndedEvent(experimentName, instance.getName(), totalTime));
     }
-
-
-    public static <T> T decideImplementation(List<? extends T> list, Class<? extends T> defaultClass){
-        //String qualifiedDefaultname = defaultClass.getName();
-        T defaultImpl = null;
-        for(var e: list){
-            if(!e.getClass().equals(defaultClass)){
-                return e;
-            } else {
-                defaultImpl = e;
-            }
-        }
-        if(defaultImpl == null) throw new IllegalStateException("Where is the default implementation???");
-        return defaultImpl;
-    }
+    
 }
