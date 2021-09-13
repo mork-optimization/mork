@@ -40,13 +40,22 @@ public class ExperimentManager<S extends Solution<I>, I extends Instance> {
 
     private void validateAlgorithmNames(AbstractExperiment<S,I> experiment){
         var algorithms = experiment.getAlgorithms();
-        Set<String> names = new HashSet<>();
+        Set<String> toStrings = new HashSet<>();
+        Set<String> shortNames = new HashSet<>();
         for(var algorithm: algorithms){
-            var name = algorithm.toString();
-            if(names.contains(name)){
-                throw new IllegalArgumentException(String.format("Duplicated algorithm name in experiment %s. FIX: All algorithm toString() should be unique per experiment → %s", experiment.getName(), name));
+            // Check Algorithm::toString
+            var toString = algorithm.toString();
+            if(toStrings.contains(toString)){
+                throw new IllegalArgumentException(String.format("Duplicated algorithm toString in experiment %s. FIX: All algorithm toString() should be unique per experiment → %s", experiment.getName(), toString));
             }
-            names.add(name);
+            toStrings.add(toString);
+
+            // Same check for Algorithm::getShortName
+            var shortName = algorithm.getShortName();
+            if(shortNames.contains(shortName)){
+                throw new IllegalArgumentException(String.format("Duplicated algorithm shortName in experiment %s. FIX: All algorithm getShortName() should be unique per experiment → %s", experiment.getName(), shortName));
+            }
+            shortNames.add(shortName);
         }
     }
 }
