@@ -47,10 +47,10 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     // Results CSV → date to string
     // Solution file → instance_algoritm
 //    private final JsonSerializer jsonSerializer;
-    private final InstanceImporter<?> instanceImporter;
+    private final InstanceImporter<I> instanceImporter;
     private SolutionSerializer<S, I> solutionSerializer;
 
-    public IOManager(/*JsonSerializer jsonSerializer, */InstanceImporter<?> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
+    public IOManager(/*JsonSerializer jsonSerializer, */InstanceImporter<I> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
 //        this.jsonSerializer = jsonSerializer;
         this.instanceImporter = instanceImporter;
         this.solutionSerializer = Orquestrator.decideImplementation(solutionSerializers, DefaultJSONSolutionSerializer.class);
@@ -58,7 +58,7 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         log.info("Using solution exporter: "+this.solutionSerializer.getClass().getTypeName());
     }
 
-    public Stream<? extends Instance> getInstances(String experimentName){
+    public Stream<I> getInstances(String experimentName){
         String instancePath = this.instanceConfiguration.getPath(experimentName);
         try {
             checkExists(instancePath);
@@ -82,7 +82,7 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         return Files.isRegularFile(p);
     }
 
-    private Instance loadInstance(Path p){
+    public I loadInstance(Path p){
         return this.instanceImporter.importInstance(p.toFile());
     }
 
