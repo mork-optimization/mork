@@ -1,0 +1,5 @@
+install.packages("irace")
+library("irace")
+scenario <- readScenario(filename = "scenario.txt", scenario = defaultScenario())
+checkIraceScenario(scenario = scenario)
+irace.main(scenario = scenario)

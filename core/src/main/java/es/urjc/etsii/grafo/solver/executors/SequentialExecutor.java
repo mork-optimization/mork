@@ -7,11 +7,13 @@ import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.services.IOManager;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 
 import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
+@ConditionalOnExpression(value = "!'${solver.parallelExecutor}' and !'${irace.enabled}'")
 public class SequentialExecutor<S extends Solution<I>, I extends Instance> extends Executor<S,I>{
 
     private static final Logger logger = Logger.getLogger(SequentialExecutor.class.getName());

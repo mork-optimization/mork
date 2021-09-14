@@ -92,6 +92,16 @@ solver:
   # Execute benchmark before starting solver? False to skip benchmark.
   benchmark: false
 
+# Enable irace integration? Check IRACE Wiki section before enabling
+irace:
+  enabled: false
+
+  # Internal property to modify solver behaviour when launched by irace
+  slave: false
+
+  # Empty tree to be filled by user parameters
+  alg:
+
 # Event system integrations/configuration
 event:
   # Stop webserver after all work is done?

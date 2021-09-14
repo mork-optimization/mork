@@ -9,6 +9,7 @@ import es.urjc.etsii.grafo.solver.services.IOManager;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
 import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -17,6 +18,7 @@ import java.util.concurrent.Future;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+@ConditionalOnExpression(value = "'${solver.parallelExecutor}' and !'${irace.enabled}'")
 public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> extends Executor<S, I> {
 
     private static final Logger logger = Logger.getLogger(ConcurrentExecutor.class.getName());
