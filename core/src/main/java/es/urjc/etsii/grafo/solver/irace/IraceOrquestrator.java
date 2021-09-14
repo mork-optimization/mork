@@ -109,7 +109,7 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
     }
 
     private final Map<String, String> substitutions = Map.of(
-            "__INTEGRATION_KEY__", INTEGRATION_KEY
+            "__INTEGRATION_KEY__", StringUtil.generateSecret()
     );
 
     private void copyWithSubstitutions(InputStream origin, Path target) throws IOException {

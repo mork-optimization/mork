@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.util;
 
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.Base64;
 
 public class StringUtil {
@@ -23,9 +24,28 @@ public class StringUtil {
     }
 
     public static String b64encode(String s, Charset charset){
-        var encoder = Base64.getEncoder();
         byte[] bytes = s.getBytes(charset);
+        return b64encode(bytes, charset);
+    }
+
+    public static String b64encode(byte[] bytes, Charset charset){
+        var encoder = Base64.getEncoder();
         var result = encoder.encode(bytes);
         return new String(result, charset);
+    }
+
+    public static String generateSecret(int size) {
+        SecureRandom sr = new SecureRandom();
+        if(size<=0) {
+            throw new IllegalArgumentException("Secret size must be greater than 0");
+        }
+
+        byte[] arr = new byte[size];
+        sr.nextBytes(arr);
+        return b64encode(arr, Charset.defaultCharset());
+    }
+
+    public static String generateSecret() {
+        return generateSecret(16);
     }
 }
