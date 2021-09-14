@@ -39,7 +39,6 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
 
     private static final Logger log = Logger.getLogger(IraceOrquestrator.class.toString());
     private static final String IRACE_EXPNAME = "irace autoconfig";
-    private static final String INTEGRATION_KEY = "ad7asdasdasd";
 
     private final boolean isMaximizing;
     private final IraceIntegration iraceIntegration;
@@ -108,8 +107,9 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
         }
     }
 
+    private final String integrationKey = StringUtil.generateSecret();
     private final Map<String, String> substitutions = Map.of(
-            "__INTEGRATION_KEY__", StringUtil.generateSecret()
+            "__INTEGRATION_KEY__", integrationKey
     );
 
     private void copyWithSubstitutions(InputStream origin, Path target) throws IOException {
@@ -138,8 +138,8 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
     }
 
     private IraceConfiguration buildConfig(ExecuteRequest request){
-        if(!request.getKey().equals(INTEGRATION_KEY)){
-            throw new IllegalArgumentException("Invalid integration key");
+        if(!request.getKey().equals(integrationKey)){
+            throw new IllegalArgumentException(String.format("Invalid integration key, got %s", request.getKey()));
         }
         String decoded = StringUtil.b64decode(request.getConfig());
         String[] args = decoded.split("\\s+");
