@@ -30,7 +30,8 @@ public abstract class ResultsSerializer {
         }
 
         if(results.isEmpty()){
-            throw new IllegalArgumentException("Cannot save empty list of results");
+            log.warning("Cannot save empty list of results, skipping result serialization.");
+            return;
         }
 
         IOUtil.createFolder(folder);
