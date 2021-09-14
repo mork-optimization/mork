@@ -16,7 +16,10 @@ public class ShellRLangRunner implements RLangRunner {
             pb.redirectError(ProcessBuilder.Redirect.INHERIT);
             Process p = pb.start();
             p.waitFor();
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
     }
