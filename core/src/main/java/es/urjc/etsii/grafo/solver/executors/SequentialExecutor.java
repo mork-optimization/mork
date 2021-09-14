@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-@ConditionalOnExpression(value = "!'${solver.parallelExecutor}' and !'${irace.enabled}'")
+@ConditionalOnExpression(value = "!${solver.parallelExecutor} && !${irace.enabled}")
 public class SequentialExecutor<S extends Solution<I>, I extends Instance> extends Executor<S,I>{
 
     private static final Logger logger = Logger.getLogger(SequentialExecutor.class.getName());

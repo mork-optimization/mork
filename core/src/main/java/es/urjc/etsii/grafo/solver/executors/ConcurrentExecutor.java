@@ -18,7 +18,7 @@ import java.util.concurrent.Future;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-@ConditionalOnExpression(value = "'${solver.parallelExecutor}' and !'${irace.enabled}'")
+@ConditionalOnExpression(value = "${solver.parallelExecutor} && !${irace.enabled}")
 public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> extends Executor<S, I> {
 
     private static final Logger logger = Logger.getLogger(ConcurrentExecutor.class.getName());

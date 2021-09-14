@@ -96,11 +96,10 @@ solver:
 irace:
   enabled: false
 
-  # Internal property to modify solver behaviour when launched by irace
-  slave: false
+  # False: use GraalVM implementation, does not need R installed locally
+  # True: Use shell to execute R scripts, R/Rscript need to be locally installed and in path
+  shell: true
 
-  # Empty tree to be filled by user parameters
-  alg:
 
 # Event system integrations/configuration
 event:

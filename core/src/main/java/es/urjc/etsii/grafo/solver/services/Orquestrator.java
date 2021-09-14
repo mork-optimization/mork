@@ -18,7 +18,7 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 @Service
-@ConditionalOnExpression(value = "!'${irace.enabled}'")
+@ConditionalOnExpression(value = "!${irace.enabled}")
 public class Orquestrator<S extends Solution<I>, I extends Instance> extends AbstractOrquestrator {
 
     private static final Logger log = Logger.getLogger(Orquestrator.class.toString());

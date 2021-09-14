@@ -10,22 +10,31 @@ import es.urjc.etsii.grafo.solver.services.AbstractOrquestrator;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.services.IOManager;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
-import es.urjc.etsii.grafo.solver.services.events.types.*;
+import es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent;
+import es.urjc.etsii.grafo.solver.services.events.types.ExecutionStartedEvent;
+import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
+import es.urjc.etsii.grafo.solver.services.events.types.ExperimentStartedEvent;
+import es.urjc.etsii.grafo.util.IOUtil;
+import es.urjc.etsii.grafo.util.RandomManager;
 import es.urjc.etsii.grafo.util.StringUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
-import org.springframework.util.ResourceUtils;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.logging.Logger;
 
+import static es.urjc.etsii.grafo.util.IOUtil.getInputStreamFor;
+import static es.urjc.etsii.grafo.util.IOUtil.markAsExecutable;
+
 @Service
-@ConditionalOnExpression(value = "'${irace.enabled}'")
+@ConditionalOnExpression(value = "${irace.enabled}")
 public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extends AbstractOrquestrator {
 
     private static final Logger log = Logger.getLogger(IraceOrquestrator.class.toString());
@@ -58,11 +67,6 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
 
     }
 
-    private boolean isJAR(){
-        String className = this.getClass().getName().replace('.', '/');
-        String protocol = this.getClass().getResource("/" + className + ".class").getProtocol();
-        return protocol.equals("jar");
-    }
 
     @Override
     public void run(String... args) {
@@ -82,19 +86,23 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
     private void launchIrace() {
         log.info("Running experiment: IRACE autoconfig" );
         EventPublisher.publishEvent(new ExperimentStartedEvent(IRACE_EXPNAME, new ArrayList<>()));
-        extractIraceFiles();
+        var referenceClass = algorithmGenerator.getClass();
+        var isJAR = IOUtil.isJAR(referenceClass);
+        extractIraceFiles(isJAR);
         long start = System.nanoTime();
-        iraceIntegration.runIrace();
+        iraceIntegration.runIrace(isJAR);
         long end = System.nanoTime();
         log.info("Finished running experiment: IRACE autoconfig");
         EventPublisher.publishEvent(new ExperimentEndedEvent(IRACE_EXPNAME, end - start));
     }
 
-    private void extractIraceFiles() {
+    private void extractIraceFiles(boolean isJar) {
         try {
-            copyWithSubstitutions(getInputPathFor("scenario.txt"), Path.of("scenario.txt"));
-            copyWithSubstitutions(getInputPathFor("parameters.txt"), Path.of("parameters.txt"));
-            copyWithSubstitutions(getInputPathFor("middleware.sh"), Path.of("middleware.sh"));
+            copyWithSubstitutions(getInputStreamFor("scenario.txt", isJar), Path.of("scenario.txt"));
+            copyWithSubstitutions(getInputStreamFor("parameters.txt", isJar), Path.of("parameters.txt"));
+            copyWithSubstitutions(getInputStreamFor("middleware.sh", isJar), Path.of("middleware.sh"));
+            markAsExecutable("middleware.sh");
+
         } catch (IOException e){
             throw new RuntimeException("Failed extracting irace config files", e);
         }
@@ -104,21 +112,12 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
             "__INTEGRATION_KEY__", INTEGRATION_KEY
     );
 
-    private void copyWithSubstitutions(Path origin, Path target) throws IOException {
-        String content = Files.readString(origin);
+    private void copyWithSubstitutions(InputStream origin, Path target) throws IOException {
+        String content = new String(origin.readAllBytes(), StandardCharsets.UTF_8);
         for(var e: substitutions.entrySet()){
             content = content.replace(e.getKey(), e.getValue());
         }
         Files.writeString(target, content);
-    }
-
-
-    private Path getInputPathFor(String s) throws IOException {
-        if(isJAR()){
-            return ResourceUtils.getFile("classpath:irace/" + s).toPath();
-        } else {
-            return Path.of("../../src/main/resources/irace/", s);
-        }
     }
 
     public double iraceCallback(ExecuteRequest request){
@@ -126,6 +125,14 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
         var instancePath = Path.of(config.getInstanceName());
         var instance = io.loadInstance(instancePath);
         var algorithm = this.algorithmGenerator.buildAlgorithm(config);
+        log.fine("Built algorithm: " + algorithm);
+
+        // Configure randoms for reproducible experimentation
+        long seed = Long.parseLong(config.getSeed());
+        RandomManager.reinitialize(seed, 1);
+        RandomManager.reset(0);
+
+        // Execute
         double score = singleExecution(algorithm, instance);
         return score;
     }
@@ -134,19 +141,24 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
         if(!request.getKey().equals(INTEGRATION_KEY)){
             throw new IllegalArgumentException("Invalid integration key");
         }
-        String seed = env.getProperty("seed");
         String decoded = StringUtil.b64decode(request.getConfig());
         String[] args = decoded.split("\\s+");
+
+        String candidateConfiguration = args[0];
+        String instanceId = args[1];
+        String seed = args[2];
+        String instance = args[3];
+
         Map<String, String> config = new HashMap<>();
-        for(String arg: args){
+        for (int i = 4, argsLength = args.length; i < argsLength; i++) {
+            String arg = args[i];
             String[] keyValue = arg.split("=");
-            if(config.containsKey(keyValue[0])){
+            if (config.containsKey(keyValue[0])) {
                 throw new IllegalArgumentException("Duplicated key: " + keyValue[0]);
             }
             config.put(keyValue[0], keyValue[1]);
         }
-        String instanceName = Objects.requireNonNull(config.get("instance"));
-        return new IraceConfiguration(config, instanceName, seed);
+        return new IraceConfiguration(candidateConfiguration, instanceId, seed, instance, config, isMaximizing);
     }
 
 

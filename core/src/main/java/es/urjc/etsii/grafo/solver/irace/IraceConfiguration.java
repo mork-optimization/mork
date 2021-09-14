@@ -6,14 +6,21 @@ import java.util.Optional;
 
 public class IraceConfiguration {
 
-    private final Map<String, String> alg;
-    private final String instanceName;
+    //candidateConfiguration, instanceId, seed, instanceName, config, isMaximizing
+    private final String candidateConfiguration;
+    private final String instanceId;
     private final String seed;
+    private final String instanceName;
+    private final Map<String, String> alg;
+    private final boolean isMaximizing;
 
-    public IraceConfiguration(Map<String, String> alg, String instanceName, String seed) {
+    public IraceConfiguration(String candidateConfiguration, String instanceId, String seed, String instanceName, Map<String, String> alg, boolean isMaximizing) {
+        this.candidateConfiguration = candidateConfiguration;
+        this.instanceId = instanceId;
         this.alg = alg;
         this.instanceName = instanceName;
         this.seed = seed;
+        this.isMaximizing = isMaximizing;
     }
 
     /**
@@ -51,4 +58,15 @@ public class IraceConfiguration {
         return seed;
     }
 
+    public boolean isMaximizing(){
+        return this.isMaximizing;
+    }
+
+    public String getCandidateConfiguration() {
+        return candidateConfiguration;
+    }
+
+    public String getInstanceId() {
+        return instanceId;
+    }
 }

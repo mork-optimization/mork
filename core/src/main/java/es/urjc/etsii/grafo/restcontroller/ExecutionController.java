@@ -12,8 +12,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.logging.Logger;
 
-@RestController("/api/")
-@ConditionalOnExpression("'${irace.enabled}'")
+@RestController()
+@ConditionalOnExpression(value = "${irace.enabled}")
 public class ExecutionController<S extends Solution<I>, I extends Instance> {
 
     private static final Logger log = Logger.getLogger(ExecutionController.class.getName());
@@ -22,6 +22,7 @@ public class ExecutionController<S extends Solution<I>, I extends Instance> {
 
     public ExecutionController(IraceOrquestrator<S, I> orquestrator) {
         this.orquestrator = orquestrator;
+        log.info("Execution controller enabled");
     }
 
     @PostMapping("/execute")
