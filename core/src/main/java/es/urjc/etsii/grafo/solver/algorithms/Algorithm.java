@@ -4,9 +4,13 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 
+import java.util.Objects;
+
 //@InheritedComponent
 // TODO Idea: Allow algorithms via config instead of a AbstractExperimentSetup
 public abstract class Algorithm<S extends Solution<I>, I extends Instance> {
+
+    private SolutionBuilder<S,I> builder;
 
     /**
      * Current algorithm short name, must be unique per execution. Truncated to 180 characters
@@ -24,4 +28,11 @@ public abstract class Algorithm<S extends Solution<I>, I extends Instance> {
      */
     public abstract S algorithm(S solution);
 
+    public SolutionBuilder<S, I> getBuilder() {
+        return builder;
+    }
+
+    public void setBuilder(SolutionBuilder<S, I> builder) {
+        this.builder = Objects.requireNonNull(builder);
+    }
 }

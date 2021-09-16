@@ -8,7 +8,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 
 @InheritedComponent
-public abstract class InstanceImporter<T extends Instance> {
+public abstract class InstanceImporter<I extends Instance> {
 
     /**
      * Create an instance from the format used by the problem.
@@ -16,7 +16,7 @@ public abstract class InstanceImporter<T extends Instance> {
      * @param f File from where we will load the data
      * @return The instance object that represents this object
      */
-    public T importInstance(File f){
+    public I importInstance(File f){
         try (var reader = Files.newBufferedReader(f.toPath())) {
             return importInstance(reader, f.getName());
         } catch (IOException e) {
@@ -32,5 +32,5 @@ public abstract class InstanceImporter<T extends Instance> {
      * @throws IOException If an error is encountered while the instance is being parsed
      * @return The instance object that represents this object
      */
-    public abstract T importInstance(BufferedReader reader, String filename) throws IOException;
+    public abstract I importInstance(BufferedReader reader, String filename) throws IOException;
 }

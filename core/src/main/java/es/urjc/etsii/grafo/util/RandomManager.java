@@ -33,20 +33,7 @@ public final class RandomManager {
 
     // a bit hacky but uses constructor instead of static initializer for Spring compatibility
     protected RandomManager(@Value("${seed}") int seed,  @Value("${solver.repetitions}") int repetitions){
-        if(initialized){
-            logger.warning(String.format("RandomManager already initialized, overwritten with %s", seed));
-        }
-        Random initRandom = new Random(seed);
-        seeds = new long[repetitions];
-        for (int i = 0; i < seeds.length; i++) {
-            seeds[i] = initRandom.nextLong();
-        }
-        logger.fine("Using seeds = " + Arrays.toString(seeds));
-        localRandom = ThreadLocal.withInitial(() -> {
-            var r = new Random(0);
-            return r;
-        });
-        initialized = true;
+        reinitialize(seed, repetitions);
     }
 
     /**
@@ -56,6 +43,17 @@ public final class RandomManager {
      */
     public static void reset(int iteration){
         getRandom().setSeed(seeds[iteration]);
+    }
+
+    public static void reinitialize(long seed, int repetitions){
+        Random initRandom = new Random(seed);
+        seeds = new long[repetitions];
+        for (int i = 0; i < seeds.length; i++) {
+            seeds[i] = initRandom.nextLong();
+        }
+        logger.fine("Using seeds = " + Arrays.toString(seeds));
+        localRandom = ThreadLocal.withInitial(() -> new Random(0));
+        initialized = true;
     }
 
     /**

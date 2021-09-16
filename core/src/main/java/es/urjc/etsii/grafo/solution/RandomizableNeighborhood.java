@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.solution;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 
 import java.util.Optional;
 
@@ -9,7 +10,7 @@ import java.util.Optional;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-public abstract class RandomizableNeighborhood<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Neighborhood<M,S,I>{
+public abstract class RandomizableNeighborhood<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Neighborhood<M,S,I> {
 
     /**
      * Pick a random move within the neighborhood

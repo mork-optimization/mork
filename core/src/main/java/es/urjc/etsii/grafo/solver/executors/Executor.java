@@ -3,13 +3,14 @@ package es.urjc.etsii.grafo.solver.executors;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
+import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
-import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.solver.services.IOManager;
 import es.urjc.etsii.grafo.solver.services.MorkLifecycle;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
+import es.urjc.etsii.grafo.solver.services.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.util.RandomManager;
 
@@ -82,6 +83,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
             System.out.format("\t%s.\tTime: %.3f (s) \tTTB: %.3f (s) \t%s -- \n", i +1, executionTime / 1_000_000_000D, timeToTarget / 1000_000_000D, solution);
         } catch (Exception e) {
             exceptionHandler.handleException(experimentName, e, Optional.ofNullable(solution), instance, algorithm, io);
+            EventPublisher.publishEvent(new ErrorEvent(e));
         }
     }
 }

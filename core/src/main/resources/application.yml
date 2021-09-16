@@ -92,6 +92,15 @@ solver:
   # Execute benchmark before starting solver? False to skip benchmark.
   benchmark: false
 
+# Enable irace integration? Check IRACE Wiki section before enabling
+irace:
+  enabled: false
+
+  # False: use GraalVM implementation, does not need R installed locally
+  # True: Use shell to execute R scripts, R/Rscript need to be locally installed and in path
+  shell: true
+
+
 # Event system integrations/configuration
 event:
   # Stop webserver after all work is done?

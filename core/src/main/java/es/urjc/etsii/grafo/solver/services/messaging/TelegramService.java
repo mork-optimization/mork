@@ -1,7 +1,6 @@
-package es.urjc.etsii.grafo.solver.services.events;
+package es.urjc.etsii.grafo.solver.services.messaging;
 
-import es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent;
-import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
+import es.urjc.etsii.grafo.solver.services.events.AbstractEventListener;
 import org.springframework.beans.factory.annotation.Value;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
@@ -14,49 +13,56 @@ import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
 
 import java.util.logging.Logger;
 
-public class TelegramEventListener extends AbstractEventListener {
+public class TelegramService extends AbstractEventListener {
 
     private static final Logger log = Logger.getLogger(MorkTelegramBot.class.getName());
     private static final int longPollingTimeoutInSeconds = 10;
 
     private final boolean enabled;
+    private volatile boolean errorNotified = false;
 
     private MorkTelegramBot telegramBot;
     private BotSession session;
 
-    public TelegramEventListener(
+    public TelegramService(
             @Value("${event.telegram.enabled:false}") boolean enabled,
             @Value("${event.telegram.chatId:none}") String chatId,
             @Value("${event.telegram.token}") String token
     ) {
         this.enabled = enabled;
         if (enabled) {
-            log.info("Registering Telegram bot...");
-            var options = new DefaultBotOptions();
-            options.setGetUpdatesTimeout(longPollingTimeoutInSeconds);
-            this.telegramBot = new MorkTelegramBot(chatId, token, options);
-            try {
-                var api = new TelegramBotsApi(DefaultBotSession.class);
-                session = api.registerBot(telegramBot);
-                log.info("Telegram integration enabled");
-            } catch (TelegramApiException e) {
-                log.warning("Failed bot registration: " + e);
-                telegramBot = null;
-            }
+            initializeTelegramBot(chatId, token);
         }
     }
 
-    @MorkEventListener
-    public void onExperimentEnd(ExperimentEndedEvent event){
-        if(telegramBot != null && telegramBot.ready()){
-            telegramBot.sendMessage(String.format("Experiment %s ended. Execution time: %s seconds", event.getExperimentName(), event.getExecutionTime() / 1_000_000_000));
+    private void initializeTelegramBot(String chatId, String token) {
+        log.info("Registering Telegram bot...");
+        var options = new DefaultBotOptions();
+        options.setGetUpdatesTimeout(longPollingTimeoutInSeconds);
+        this.telegramBot = new MorkTelegramBot(chatId, token, options);
+        try {
+            var api = new TelegramBotsApi(DefaultBotSession.class);
+            session = api.registerBot(telegramBot);
+            log.info("Telegram integration enabled");
+        } catch (TelegramApiException e) {
+            log.warning("Failed bot registration: " + e);
+            telegramBot = null;
         }
     }
 
-    @MorkEventListener
-    public void onExperimentEnd(ExecutionEndedEvent event){
+    public boolean ready(){
+        return this.telegramBot != null && this.telegramBot.ready();
+    }
+
+    public void sendMessage(String message){
+        if(!ready()){
+            throw new IllegalStateException("Tried to send a message while bot is not ready");
+        }
+        telegramBot.sendMessage(message);
+    }
+
+    public void stop(){
         if(!enabled) return;
-
         log.info("Stopping telegram bot... This can take up to 10 seconds.");
         if(session != null){
             session.stop();

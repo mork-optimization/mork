@@ -25,8 +25,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 import java.util.stream.Stream;
 
-import static es.urjc.etsii.grafo.util.IOUtil.createIfNotExists;
-import static es.urjc.etsii.grafo.util.IOUtil.errorIfNotExists;
+import static es.urjc.etsii.grafo.util.IOUtil.*;
 
 @Service
 public class IOManager<S extends Solution<I>, I extends Instance> {
@@ -48,10 +47,10 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     // Results CSV → date to string
     // Solution file → instance_algoritm
 //    private final JsonSerializer jsonSerializer;
-    private final InstanceImporter<?> instanceImporter;
+    private final InstanceImporter<I> instanceImporter;
     private SolutionSerializer<S, I> solutionSerializer;
 
-    public IOManager(/*JsonSerializer jsonSerializer, */InstanceImporter<?> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
+    public IOManager(/*JsonSerializer jsonSerializer, */InstanceImporter<I> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
 //        this.jsonSerializer = jsonSerializer;
         this.instanceImporter = instanceImporter;
         this.solutionSerializer = Orquestrator.decideImplementation(solutionSerializers, DefaultJSONSolutionSerializer.class);
@@ -59,11 +58,11 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         log.info("Using solution exporter: "+this.solutionSerializer.getClass().getTypeName());
     }
 
-    public Stream<? extends Instance> getInstances(String experimentName){
+    public Stream<I> getInstances(String experimentName){
         String instancePath = this.instanceConfiguration.getPath(experimentName);
         try {
-            errorIfNotExists(instancePath);
-            createIfNotExists(this.solutionsOut);
+            checkExists(instancePath);
+            createFolder(this.solutionsOut);
 
             return Files.walk(Path.of(instancePath)).filter(IOManager::filesFilter).sorted(Comparator.comparing(f -> f.toFile().getName().toLowerCase())).map(this::loadInstance);
         } catch (IOException e) {
@@ -77,13 +76,13 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
                 return false;
             }
         } catch (IOException e) {
-            log.warning("Error while reading file attributes, skipping instance file: " + p.toAbsolutePath().toString());
+            log.warning("Error while reading file attributes, skipping instance file: " + p.toAbsolutePath());
             return false;
         }
         return Files.isRegularFile(p);
     }
 
-    private Instance loadInstance(Path p){
+    public I loadInstance(Path p){
         return this.instanceImporter.importInstance(p.toFile());
     }
 
@@ -99,7 +98,7 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
             log.fine("Skipping exporting exception or error to disk, disabled in config.");
             return;
         }
-        createIfNotExists(this.errorFolder);
+        createFolder(this.errorFolder);
 
         // Directamente desde aqui, si se quiere customizar se puede pisar el DefaultExceptionHandler
         SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss.SSS");

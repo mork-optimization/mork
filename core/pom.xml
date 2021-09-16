@@ -6,13 +6,14 @@
 
     <groupId>es.urjc.etsii.grafo</groupId>
     <artifactId>mork</artifactId>
-    <version>0.6-SNAPSHOT</version>
+    <version>0.7-SNAPSHOT</version>
     <packaging>jar</packaging>
     <properties>
         <java.version>11</java.version>
         <maven.compiler.source>11</maven.compiler.source>
         <maven.compiler.target>11</maven.compiler.target>
         <jackson.version>2.12.5</jackson.version>
+        <graalvm.version>21.2.0</graalvm.version>
         <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>
         <sonar.organization>rmartinsanta</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
@@ -154,6 +155,13 @@
             <groupId>org.telegram</groupId>
             <artifactId>telegrambots</artifactId>
             <version>5.3.0</version>
+        </dependency>
+
+        <!-- Call other languages from Java -->
+        <dependency>
+            <groupId>org.graalvm.sdk</groupId>
+            <artifactId>graal-sdk</artifactId>
+            <version>${graalvm.version}</version>
         </dependency>
 
     </dependencies>
