@@ -1,3 +1,6 @@
+# v0.7
+- Fixed several bugs
+
 # v0.6
 - Irace integration, see Wiki for more details.
 - Algorithm::getBuilder: get current SolutionBuilder.

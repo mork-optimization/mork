@@ -30,8 +30,7 @@ import java.nio.file.Path;
 import java.util.*;
 import java.util.logging.Logger;
 
-import static es.urjc.etsii.grafo.util.IOUtil.getInputStreamFor;
-import static es.urjc.etsii.grafo.util.IOUtil.markAsExecutable;
+import static es.urjc.etsii.grafo.util.IOUtil.*;
 
 @Service
 @ConditionalOnExpression(value = "${irace.enabled}")
@@ -97,9 +96,9 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
 
     private void extractIraceFiles(boolean isJar) {
         try {
-            copyWithSubstitutions(getInputStreamFor("scenario.txt", isJar), Path.of("scenario.txt"));
-            copyWithSubstitutions(getInputStreamFor("parameters.txt", isJar), Path.of("parameters.txt"));
-            copyWithSubstitutions(getInputStreamFor("middleware.sh", isJar), Path.of("middleware.sh"));
+            copyWithSubstitutions(getInputStreamFor("scenario.txt", isJar), Path.of("scenario.txt"), substitutions);
+            copyWithSubstitutions(getInputStreamFor("parameters.txt", isJar), Path.of("parameters.txt"), substitutions);
+            copyWithSubstitutions(getInputStreamFor("middleware.sh", isJar), Path.of("middleware.sh"), substitutions);
             markAsExecutable("middleware.sh");
 
         } catch (IOException e){
@@ -112,13 +111,6 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
             "__INTEGRATION_KEY__", integrationKey
     );
 
-    private void copyWithSubstitutions(InputStream origin, Path target) throws IOException {
-        String content = new String(origin.readAllBytes(), StandardCharsets.UTF_8);
-        for(var e: substitutions.entrySet()){
-            content = content.replace(e.getKey(), e.getValue());
-        }
-        Files.writeString(target, content);
-    }
 
     public double iraceCallback(ExecuteRequest request){
         var config = buildConfig(request);

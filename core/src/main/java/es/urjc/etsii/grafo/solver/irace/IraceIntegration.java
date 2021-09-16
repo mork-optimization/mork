@@ -23,8 +23,7 @@ public class IraceIntegration {
     public void runIrace(boolean isJAR){
         try {
             var inputStream = getInputStreamFor("runner.R", isJAR);
-            String script = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-            runner.execute(script);
+            runner.execute(inputStream);
         } catch (IOException e) {
             throw new IllegalStateException("Cannot load R runner", e);
         }

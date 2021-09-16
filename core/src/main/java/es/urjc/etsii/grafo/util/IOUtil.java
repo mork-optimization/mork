@@ -5,6 +5,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.Map;
 import java.util.logging.Logger;
 
 public class IOUtil {
@@ -51,5 +55,13 @@ public class IOUtil {
         if(!success){
             log.warning("Failed marking file as executable: "+s);
         }
+    }
+
+    public static void copyWithSubstitutions(InputStream origin, Path target, Map<String, String> substitutions) throws IOException {
+        String content = new String(origin.readAllBytes(), StandardCharsets.UTF_8);
+        for(var e: substitutions.entrySet()){
+            content = content.replace(e.getKey(), e.getValue());
+        }
+        Files.writeString(target, content);
     }
 }

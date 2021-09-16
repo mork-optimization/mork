@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.solver.irace.runners;
 
+import java.io.InputStream;
+
 public interface RLangRunner {
-    void execute(String rCode);
+    void execute(InputStream rCode);
 }
