@@ -117,6 +117,7 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
         var instancePath = Path.of(config.getInstanceName());
         var instance = io.loadInstance(instancePath);
         var algorithm = this.algorithmGenerator.buildAlgorithm(config);
+        algorithm.setBuilder(this.solutionBuilder);
         log.fine("Built algorithm: " + algorithm);
 
         // Configure randoms for reproducible experimentation
