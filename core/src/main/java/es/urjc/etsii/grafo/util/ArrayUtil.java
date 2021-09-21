@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.util;
 /**
  * Util methods to manipulate collections and arrays that are not part of the standard java API
  */
-public class ArrayUtils {
+public class ArrayUtil {
 
     /**
      * Reverse an array
@@ -323,5 +323,29 @@ public class ArrayUtils {
             left += row.length;
         }
         return result;
+    }
+
+    /**
+     * Count how many elements are not null in given array
+     * @param data array
+     * @return number of non null elements
+     */
+    public static int countNonNull(Object[] data){
+        return data.length - countNull(data);
+    }
+
+    /**
+     * Count how many elements are null in given array
+     * @param data array
+     * @return number of null elements
+     */
+    public static int countNull(Object[] data){
+        int count = 0;
+        for(var d: data){
+            if(d == null){
+                count++;
+            }
+        }
+        return count;
     }
 }

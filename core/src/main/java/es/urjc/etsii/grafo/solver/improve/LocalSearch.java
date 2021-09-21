@@ -62,10 +62,10 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
     @Override
     public String toString() {
         if(this.lsName.isEmpty()){
-            return this.getClass().getSimpleName()+"{" +
+            return (this.getClass().getSimpleName()+"{" +
                     "neig=" + Arrays.toString(providers) +
                     ", comp=" + comparator +
-                    '}';
+                    '}').replace("LocalSearch", "LS").replace("Improvement", "");
         } else {
             return this.lsName;
         }
