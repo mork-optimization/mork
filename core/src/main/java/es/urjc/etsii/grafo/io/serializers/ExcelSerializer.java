@@ -15,9 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Path;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 
@@ -45,13 +43,17 @@ public class ExcelSerializer extends ResultsSerializer {
         this.referenceResultProvider = referenceResultProvider;
     }
 
+    private static double nanoToSecs(long nanos) {
+        return nanos / (double) 1_000_000_000;
+    }
+
     public void _serializeResults(List<? extends SolutionGeneratedEvent<?, ?>> results, Path p) {
         log.info("Exporting result data to XLSX...");
 
         File f = p.toFile();
         try (
-            var outputStream = new FileOutputStream(f);
-            var excelBook = new XSSFWorkbook();
+                var outputStream = new FileOutputStream(f);
+                var excelBook = new XSSFWorkbook();
         ) {
             var rawSheet = excelBook.createSheet(RAW_SHEET);
             var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
@@ -75,7 +77,7 @@ public class ExcelSerializer extends ResultsSerializer {
             pivotTable.addRowLabel(__.ALG_NAME.getIndex());      // Algorithm labels in rows
         }
 
-        if(maximizing){
+        if (maximizing) {
             pivotTable.addColumnLabel(DataConsolidateFunction.MAX, __.SCORE.getIndex(), "Max. score");
         } else {
             pivotTable.addColumnLabel(DataConsolidateFunction.MIN, __.SCORE.getIndex(), "Min. score");
@@ -92,10 +94,9 @@ public class ExcelSerializer extends ResultsSerializer {
         pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.DEV_TO_BEST.getIndex(), "Avg. %Dev2Best");
     }
 
-
     private AreaReference fillRawSheet(XSSFSheet rawSheet, List<? extends SolutionGeneratedEvent<?, ?>> results) {
         // Best values per instance
-        Map<String, Double> bestValuesPerInstance = bestOwnResultPerInstance(results);
+        Map<String, Double> bestValuesPerInstance = bestResultPerInstance(results);
 
         // Create headers
         String[] header = new String[]{
@@ -125,7 +126,8 @@ public class ExcelSerializer extends ResultsSerializer {
             data[i][__.TOTAL_TIME.getIndex()] = nanoToSecs(r.getExecutionTime());
             data[i][__.TTB.getIndex()] = nanoToSecs(r.getTimeToBest());
 
-            double bestValueForInstance = bestResultForInstance(bestValuesPerInstance, r.getInstanceName());
+            //double bestValueForInstance = bestResultForInstance(bestValuesPerInstance, r.getInstanceName());
+            double bestValueForInstance = bestValuesPerInstance.get(r.getInstanceName());
             boolean isBest = DoubleComparator.equals(bestValueForInstance, r.getScore());
             data[i][__.IS_BEST_KNOWN.getIndex()] = isBest ? 1 : 0;
             double percentageDevToBest = Math.abs(r.getScore() - bestValueForInstance) / bestValueForInstance;
@@ -147,9 +149,9 @@ public class ExcelSerializer extends ResultsSerializer {
     }
 
     private void writeCell(XSSFCell cell, Object d) {
-        if(d instanceof Double){
+        if (d instanceof Double) {
             cell.setCellValue((double) d);
-        } else if(d instanceof Integer) {
+        } else if (d instanceof Integer) {
             cell.setCellValue((int) d);
         } else if (d instanceof String) {
             cell.setCellValue((String) d);
@@ -158,27 +160,38 @@ public class ExcelSerializer extends ResultsSerializer {
         }
     }
 
-    private Map<String, Double> bestOwnResultPerInstance(List<? extends SolutionGeneratedEvent<?, ?>> results) {
-        return results.stream()
+    private Map<String, Double> bestResultPerInstance(List<? extends SolutionGeneratedEvent<?, ?>> results) {
+        Map<String, Double> bestValuePerInstance = results
+                .stream()
                 .collect(Collectors.toMap(
                         SolutionGeneratedEvent::getInstanceName,
                         SolutionGeneratedEvent::getScore,
                         (a, b) -> maximizing ? Math.max(a, b) : Math.min(a, b)
                 ));
+
+        fillReferenceResults(bestValuePerInstance, results);
+
+        return bestValuePerInstance;
     }
 
-    private double bestResultForInstance(Map<String, Double> ourResults, String instanceName){
-        if(this.referenceResultProvider.isPresent()){
-            var v = this.referenceResultProvider.get().getValueFor(instanceName);
-            if(v.isPresent()){
-                return v.get();
-            } else {
-                double ours = ourResults.get(instanceName);
-                log.warning(String.format("Reference result is implemented (%s), but it does not have a value for instance %s, using best value in current experiment (%s)", this.referenceResultProvider.get().getClass().getSimpleName(), instanceName, ours));
-                return ours;
+    private void fillReferenceResults(Map<String, Double> bestValuePerInstance, List<? extends SolutionGeneratedEvent<?, ?>> results) {
+        if (this.referenceResultProvider.isEmpty()) {
+            return;
+        }
+
+        Set<String> instanceNames = new HashSet<>();
+        for (var r : results) {
+            var instanceName = r.getInstanceName();
+            if (!instanceNames.contains(instanceName)) {
+                instanceNames.add(instanceName);
+                var v = this.referenceResultProvider.get().getValueFor(instanceName);
+                if (v.isPresent()) {
+                    bestValuePerInstance.put(instanceName, v.get());
+                } else {
+                    double ours = bestValuePerInstance.get(instanceName);
+                    log.warning(String.format("Reference result is implemented (%s), but it does not have a value for instance %s, using best value in current experiment (%s)", this.referenceResultProvider.get().getClass().getSimpleName(), instanceName, ours));
+                }
             }
-        } else {
-            return ourResults.get(instanceName);
         }
     }
 
@@ -207,10 +220,6 @@ public class ExcelSerializer extends ResultsSerializer {
         public String getName() {
             return name;
         }
-    }
-
-    private static double nanoToSecs(long nanos){
-        return nanos / (double) 1_000_000_000;
     }
 
 }
