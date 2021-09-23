@@ -40,4 +40,13 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
      */
     public abstract List<M> updateCandidateList(S solution, M move, List<M> candidateList, int index);
 
+    /**
+     * Return string representation of the current list manager.
+     * Defaults to "classname{}", override if custom parameters should appear in the string.
+     * @return string representation of current list manager
+     */
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "{}";
+    }
 }
