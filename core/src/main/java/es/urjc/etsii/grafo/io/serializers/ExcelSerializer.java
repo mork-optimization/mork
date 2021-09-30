@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.io.serializers;
 
+import es.urjc.etsii.grafo.solver.configuration.ExcelSerializerConfiguration;
 import es.urjc.etsii.grafo.solver.services.ReferenceResultProvider;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.util.DoubleComparator;
@@ -23,24 +24,24 @@ public class ExcelSerializer extends ResultsSerializer {
 
     public static final String RAW_SHEET = "Raw Results";
     public static final String PIVOT_SHEET = "Pivot Table";
+    public static final String SUMMARY_SHEET = "Summary";
 
-    private final boolean algorithmsInColumns;
+    public static final double POSITIVE_INFINITY = 1e99;
+    public static final double NEGATIVE_INFINITY = -1e99;
+
     private final boolean maximizing;
-
-    private final Optional<ReferenceResultProvider> referenceResultProvider;
+    private final List<ReferenceResultProvider> referenceResultProviders;
+    private final ExcelSerializerConfiguration config;
 
     public ExcelSerializer(
-            @Value("${serializers.xlsx.enabled}") boolean enabled,
-            @Value("${serializers.xlsx.folder}") String folder,
-            @Value("${serializers.xlsx.format}") String format,
-            @Value("${serializers.xlsx.algorithmsInColumns}") boolean algorithmsInColumns,
+            ExcelSerializerConfiguration config,
             @Value("${solver.maximizing}") boolean maximizing,
-            Optional<ReferenceResultProvider> referenceResultProvider
+            List<ReferenceResultProvider> referenceResultProviders
     ) {
-        super(enabled, folder, format);
-        this.algorithmsInColumns = algorithmsInColumns;
+        super(config.isEnabled(), config.getFolder(), config.getFormat());
+        this.config = config;
         this.maximizing = maximizing;
-        this.referenceResultProvider = referenceResultProvider;
+        this.referenceResultProviders = referenceResultProviders;
     }
 
     private static double nanoToSecs(long nanos) {
@@ -55,8 +56,8 @@ public class ExcelSerializer extends ResultsSerializer {
                 var outputStream = new FileOutputStream(f);
                 var excelBook = new XSSFWorkbook();
         ) {
-            var rawSheet = excelBook.createSheet(RAW_SHEET);
             var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
+            var rawSheet = excelBook.createSheet(RAW_SHEET);
 
             var area = fillRawSheet(rawSheet, results);
             fillPivotSheet(pivotSheet, area, rawSheet);
@@ -68,8 +69,18 @@ public class ExcelSerializer extends ResultsSerializer {
     }
 
     private void fillPivotSheet(XSSFSheet pivotSheet, AreaReference area, XSSFSheet source) {
+        // Generate tables like
+        /*                  ____________________________________________________________________________________
+         *  ______________ |                Algorithm 1              |                Algorithm 2              |
+         * | Instance name | Best Value | isBest | %Dev | Total t(s) | Best Value | isBest | %Dev | Total t(s) |
+         * | Instance1     |            |        |      |            |            |        |      |            |
+         * | Instance1     |            |        |      |            |            |        |      |            |
+           .....................................................................................................
+         *  etc
+         */
+
         var pivotTable = pivotSheet.createPivotTable(area, new CellReference(0, 0), source);
-        if (algorithmsInColumns) {
+        if (config.isAlgorithmsInColumns()) {
             pivotTable.addRowLabel(__.INSTANCE_NAME.getIndex()); // Instances label in rows
             pivotTable.addColLabel(__.ALG_NAME.getIndex());      // Algorithm labels in columns
         } else {
@@ -82,21 +93,55 @@ public class ExcelSerializer extends ResultsSerializer {
         } else {
             pivotTable.addColumnLabel(DataConsolidateFunction.MIN, __.SCORE.getIndex(), "Min. score");
         }
-        pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.SCORE.getIndex(), "Avg. score");
-        pivotTable.addColumnLabel(DataConsolidateFunction.STD_DEVP, __.SCORE.getIndex(), "STDDEVP score");
-        pivotTable.addColumnLabel(DataConsolidateFunction.VARP, __.SCORE.getIndex(), "VARP Score");
-        pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.TOTAL_TIME.getIndex(), "Avg. Total T(s)");
-        pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.TOTAL_TIME.getIndex(), "Sum Total T(s)");
-        pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.TTB.getIndex(), "Avg. TTB(s)");
-        pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.TTB.getIndex(), "Sum TTB(s)");
-        pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.IS_BEST_KNOWN.getIndex(), "#Best");
-        pivotTable.addColumnLabel(DataConsolidateFunction.MIN, __.DEV_TO_BEST.getIndex(), "Min. %Dev2Best");
-        pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.DEV_TO_BEST.getIndex(), "Avg. %Dev2Best");
+
+        // Optional fields
+        if(config.isAvgScoreEnabled()){
+            pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.SCORE.getIndex(), "Avg. score");
+        }
+        if(config.isStdScoreEnabled()){
+            pivotTable.addColumnLabel(DataConsolidateFunction.STD_DEVP, __.SCORE.getIndex(), "STDDEVP score");
+        }
+
+        if(config.isVarScoreEnabled()){
+            pivotTable.addColumnLabel(DataConsolidateFunction.VARP, __.SCORE.getIndex(), "VARP Score");
+        }
+
+        if(config.isAvgTimeEnabled()){
+            pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.TOTAL_TIME.getIndex(), "Avg. Total T(s)");
+        }
+
+        if(config.isTotalTimeEnabled()){
+            pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.TOTAL_TIME.getIndex(), "Sum Total T(s)");
+        }
+
+        if(config.isAvgTTBEnabled()){
+            pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.TTB.getIndex(), "Avg. TTB(s)");
+        }
+
+        if(config.isTotalTTBEnabled()){
+            pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.TTB.getIndex(), "Sum TTB(s)");
+        }
+
+        if(config.isSumBestKnownEnabled()){
+            pivotTable.addColumnLabel(DataConsolidateFunction.SUM, __.IS_BEST_KNOWN.getIndex(), "#Best");
+        }
+
+        if(config.isHasBestKnownEnabled()){
+            pivotTable.addColumnLabel(DataConsolidateFunction.MAX, __.IS_BEST_KNOWN.getIndex(), "hasBest");
+        }
+
+        if(config.isMinDevToBestKnownEnabled()){
+            pivotTable.addColumnLabel(DataConsolidateFunction.MIN, __.DEV_TO_BEST.getIndex(), "Min. %Dev2Best");
+        }
+
+        if(config.isAvgDevToBestKnownEnabled()){
+            pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, __.DEV_TO_BEST.getIndex(), "Avg. %Dev2Best");
+        }
     }
 
     private AreaReference fillRawSheet(XSSFSheet rawSheet, List<? extends SolutionGeneratedEvent<?, ?>> results) {
         // Best values per instance
-        Map<String, Double> bestValuesPerInstance = bestResultPerInstance(results);
+        Map<String, Double> bestValuesPerInstance = bestResultPerInstance(results, referenceResultProviders, maximizing);
 
         // Create headers
         String[] header = new String[]{
@@ -160,8 +205,8 @@ public class ExcelSerializer extends ResultsSerializer {
         }
     }
 
-    private Map<String, Double> bestResultPerInstance(List<? extends SolutionGeneratedEvent<?, ?>> results) {
-        Map<String, Double> bestValuePerInstance = results
+    private static Map<String, Double> bestResultPerInstance(List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> providers, boolean maximizing) {
+        Map<String, Double> ourBestValuePerInstance = results
                 .stream()
                 .collect(Collectors.toMap(
                         SolutionGeneratedEvent::getInstanceName,
@@ -169,30 +214,22 @@ public class ExcelSerializer extends ResultsSerializer {
                         (a, b) -> maximizing ? Math.max(a, b) : Math.min(a, b)
                 ));
 
-        fillReferenceResults(bestValuePerInstance, results);
+        Map<String, Double> bestValuePerInstance = new HashMap<>();
 
-        return bestValuePerInstance;
-    }
-
-    private void fillReferenceResults(Map<String, Double> bestValuePerInstance, List<? extends SolutionGeneratedEvent<?, ?>> results) {
-        if (this.referenceResultProvider.isEmpty()) {
-            return;
-        }
-
-        Set<String> instanceNames = new HashSet<>();
-        for (var r : results) {
-            var instanceName = r.getInstanceName();
-            if (!instanceNames.contains(instanceName)) {
-                instanceNames.add(instanceName);
-                var v = this.referenceResultProvider.get().getValueFor(instanceName);
-                if (v.isPresent()) {
-                    bestValuePerInstance.put(instanceName, v.get());
+        for(var instance: ourBestValuePerInstance.keySet()){
+            double best = maximizing? NEGATIVE_INFINITY: POSITIVE_INFINITY;
+            for(var reference: providers){
+                var optionalValue = reference.getValueFor(instance);
+                if(maximizing){
+                    best = Math.max(best, optionalValue.orElse(NEGATIVE_INFINITY));
                 } else {
-                    double ours = bestValuePerInstance.get(instanceName);
-                    log.warning(String.format("Reference result is implemented (%s), but it does not have a value for instance %s, using best value in current experiment (%s)", this.referenceResultProvider.get().getClass().getSimpleName(), instanceName, ours));
+                    best = Math.min(best, optionalValue.orElse(POSITIVE_INFINITY));
                 }
             }
+            bestValuePerInstance.put(instance, best);
         }
+
+        return bestValuePerInstance;
     }
 
     private enum __ {
