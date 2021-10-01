@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.io.serializers;
 
 import es.urjc.etsii.grafo.solver.configuration.ExcelSerializerConfiguration;
-import es.urjc.etsii.grafo.solver.services.ReferenceResultProvider;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
@@ -16,7 +16,9 @@ import org.springframework.beans.factory.annotation.Value;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 
@@ -24,7 +26,6 @@ public class ExcelSerializer extends ResultsSerializer {
 
     public static final String RAW_SHEET = "Raw Results";
     public static final String PIVOT_SHEET = "Pivot Table";
-    public static final String SUMMARY_SHEET = "Summary";
 
     public static final double POSITIVE_INFINITY = 1e99;
     public static final double NEGATIVE_INFINITY = -1e99;
@@ -80,6 +81,11 @@ public class ExcelSerializer extends ResultsSerializer {
          */
 
         var pivotTable = pivotSheet.createPivotTable(area, new CellReference(0, 0), source);
+
+        var ctptd = pivotTable.getCTPivotTableDefinition();
+        ctptd.setColGrandTotals(config.isColumnGrandTotal());
+        ctptd.setRowGrandTotals(config.isRowGrandTotal());
+
         if (config.isAlgorithmsInColumns()) {
             pivotTable.addRowLabel(__.INSTANCE_NAME.getIndex()); // Instances label in rows
             pivotTable.addColLabel(__.ALG_NAME.getIndex());      // Algorithm labels in columns
@@ -139,6 +145,13 @@ public class ExcelSerializer extends ResultsSerializer {
         }
     }
 
+    private static double nanInfiniteFilter(boolean maximizing, double value){
+        if(Double.isFinite(value)){
+            return value;
+        }
+        return maximizing ? NEGATIVE_INFINITY : POSITIVE_INFINITY;
+    }
+
     private AreaReference fillRawSheet(XSSFSheet rawSheet, List<? extends SolutionGeneratedEvent<?, ?>> results) {
         // Best values per instance
         Map<String, Double> bestValuesPerInstance = bestResultPerInstance(results, referenceResultProviders, maximizing);
@@ -156,27 +169,48 @@ public class ExcelSerializer extends ResultsSerializer {
         };
 
         int nColumns = header.length;
-        int nRows = results.size() + 1;
+        int cutOff = results.size() + 1;
+        int rowsForProvider = this.referenceResultProviders.size() * bestValuesPerInstance.keySet().size();
+        int nRows = cutOff + rowsForProvider;
+
 
         // Create matrix data
         Object[][] data = new Object[nRows][nColumns];
         data[0] = header;
 
-        for (int i = 1; i < nRows; i++) {
+        for (int i = 1; i < cutOff; i++) {
             var r = results.get(i - 1);
+            double bestValueForInstance = bestValuesPerInstance.get(r.getInstanceName());
+            boolean isBest = DoubleComparator.equals(bestValueForInstance, r.getScore());
+
             data[i][__.INSTANCE_NAME.getIndex()] = r.getInstanceName();
             data[i][__.ALG_NAME.getIndex()] = r.getAlgorithmName();
             data[i][__.ITERATION.getIndex()] = r.getIteration();
             data[i][__.SCORE.getIndex()] = r.getScore();
             data[i][__.TOTAL_TIME.getIndex()] = nanoToSecs(r.getExecutionTime());
             data[i][__.TTB.getIndex()] = nanoToSecs(r.getTimeToBest());
-
-            //double bestValueForInstance = bestResultForInstance(bestValuesPerInstance, r.getInstanceName());
-            double bestValueForInstance = bestValuesPerInstance.get(r.getInstanceName());
-            boolean isBest = DoubleComparator.equals(bestValueForInstance, r.getScore());
             data[i][__.IS_BEST_KNOWN.getIndex()] = isBest ? 1 : 0;
-            double percentageDevToBest = Math.abs(r.getScore() - bestValueForInstance) / bestValueForInstance;
-            data[i][__.DEV_TO_BEST.getIndex()] = percentageDevToBest;
+            data[i][__.DEV_TO_BEST.getIndex()] = getPercentageDevToBest(r.getScore(), bestValueForInstance);
+        }
+
+        int currentRow = cutOff;
+        for(String instaceName: bestValuesPerInstance.keySet()){
+            for(var provider: referenceResultProviders){
+                double bestValueForInstance = bestValuesPerInstance.get(instaceName);
+                var result = provider.getValueFor(instaceName);
+                double score = result.getScoreOrNan();
+                boolean isBest = Double.isFinite(score) && DoubleComparator.equals(bestValueForInstance, score);
+
+                data[currentRow][__.INSTANCE_NAME.getIndex()] = instaceName;
+                data[currentRow][__.ALG_NAME.getIndex()] = provider.getProviderName();
+                data[currentRow][__.ITERATION.getIndex()] = 0;
+                data[currentRow][__.SCORE.getIndex()] = nanInfiniteFilter(maximizing, score);
+                data[currentRow][__.TOTAL_TIME.getIndex()] = nanInfiniteFilter(false, result.getTimeInSeconds());
+                data[currentRow][__.TTB.getIndex()] = nanInfiniteFilter(false, result.getTimeToBestInSeconds());
+                data[currentRow][__.IS_BEST_KNOWN.getIndex()] = isBest ? 1 : 0;
+                data[currentRow][__.DEV_TO_BEST.getIndex()] = getPercentageDevToBest(nanInfiniteFilter(maximizing, score), bestValueForInstance);
+                currentRow++;
+            }
         }
 
         // Write matrix data to cell Excel sheet
@@ -191,6 +225,10 @@ public class ExcelSerializer extends ResultsSerializer {
 
         // Return total area used
         return new AreaReference(new CellReference(0, 0), new CellReference(nRows - 1, nColumns - 1), SpreadsheetVersion.EXCEL2007);
+    }
+
+    private static double getPercentageDevToBest(double score, double bestValueForInstance) {
+        return Math.abs(score - bestValueForInstance) / bestValueForInstance;
     }
 
     private void writeCell(XSSFCell cell, Object d) {
@@ -217,9 +255,9 @@ public class ExcelSerializer extends ResultsSerializer {
         Map<String, Double> bestValuePerInstance = new HashMap<>();
 
         for(var instance: ourBestValuePerInstance.keySet()){
-            double best = maximizing? NEGATIVE_INFINITY: POSITIVE_INFINITY;
+            double best = ourBestValuePerInstance.get(instance);
             for(var reference: providers){
-                var optionalValue = reference.getValueFor(instance);
+                var optionalValue = reference.getValueFor(instance).getScore();
                 if(maximizing){
                     best = Math.max(best, optionalValue.orElse(NEGATIVE_INFINITY));
                 } else {

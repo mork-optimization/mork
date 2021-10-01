@@ -79,6 +79,18 @@ public class ExcelSerializerConfiguration {
      * Show minimum percentage deviation to best known solution in pivot table.
      */
     private boolean minDevToBestKnownEnabled = true;
+
+    /**
+     * Show generated grand total for rows in pivot table
+     */
+
+    private boolean rowGrandTotal = false;
+
+    /**
+     * Show generated grand total for rows in pivot table
+     */
+    private boolean columnGrandTotal = false;
+
     // END PIVOT TABLE PROPERTIES
 
 
@@ -210,38 +222,19 @@ public class ExcelSerializerConfiguration {
         this.minDevToBestKnownEnabled = minDevToBestKnownEnabled;
     }
 
-    @Override
-    public String toString() {
-        return "ExcelSerializerConfiguration{" +
-                "enabled=" + enabled +
-                ", algorithmsInColumns=" + algorithmsInColumns +
-                ", folder='" + folder + '\'' +
-                ", format='" + format + '\'' +
-                ", bestScoreEnabled=" + bestScoreEnabled +
-                ", avgScoreEnabled=" + avgScoreEnabled +
-                ", stdScoreEnabled=" + stdScoreEnabled +
-                ", varScoreEnabled=" + varScoreEnabled +
-                ", avgTimeEnabled=" + avgTimeEnabled +
-                ", totalTimeEnabled=" + totalTimeEnabled +
-                ", avgTTBEnabled=" + avgTTBEnabled +
-                ", totalTTBEnabled=" + totalTTBEnabled +
-                ", sumBestKnownEnabled=" + sumBestKnownEnabled +
-                ", hasBestKnownEnabled=" + hasBestKnownEnabled +
-                ", avgDevToBestKnownEnabled=" + avgDevToBestKnownEnabled +
-                ", minDevToBestKnownEnabled=" + minDevToBestKnownEnabled +
-                '}';
+    public boolean isRowGrandTotal() {
+        return rowGrandTotal;
     }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        ExcelSerializerConfiguration that = (ExcelSerializerConfiguration) o;
-        return enabled == that.enabled && algorithmsInColumns == that.algorithmsInColumns && bestScoreEnabled == that.bestScoreEnabled && avgScoreEnabled == that.avgScoreEnabled && stdScoreEnabled == that.stdScoreEnabled && varScoreEnabled == that.varScoreEnabled && avgTimeEnabled == that.avgTimeEnabled && totalTimeEnabled == that.totalTimeEnabled && avgTTBEnabled == that.avgTTBEnabled && totalTTBEnabled == that.totalTTBEnabled && sumBestKnownEnabled == that.sumBestKnownEnabled && hasBestKnownEnabled == that.hasBestKnownEnabled && avgDevToBestKnownEnabled == that.avgDevToBestKnownEnabled && minDevToBestKnownEnabled == that.minDevToBestKnownEnabled && Objects.equals(folder, that.folder) && Objects.equals(format, that.format);
+    public void setRowGrandTotal(boolean rowGrandTotal) {
+        this.rowGrandTotal = rowGrandTotal;
     }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(enabled, algorithmsInColumns, folder, format, bestScoreEnabled, avgScoreEnabled, stdScoreEnabled, varScoreEnabled, avgTimeEnabled, totalTimeEnabled, avgTTBEnabled, totalTTBEnabled, sumBestKnownEnabled, hasBestKnownEnabled, avgDevToBestKnownEnabled, minDevToBestKnownEnabled);
+    public boolean isColumnGrandTotal() {
+        return columnGrandTotal;
+    }
+
+    public void setColumnGrandTotal(boolean columnGrandTotal) {
+        this.columnGrandTotal = columnGrandTotal;
     }
 }

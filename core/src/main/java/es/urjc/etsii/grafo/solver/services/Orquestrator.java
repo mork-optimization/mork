@@ -8,6 +8,7 @@ import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.executors.Executor;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.types.*;
+import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.util.BenchmarkUtil;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -24,31 +25,34 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> extends Abs
     private static final Logger log = Logger.getLogger(Orquestrator.class.toString());
 
     private final boolean doBenchmark;
+    private final boolean maximizing;
     private final IOManager<S,I> io;
     private final ExperimentManager<S, I> experimentManager;
     private final ExceptionHandler<S, I> exceptionHandler;
     private final SolutionBuilder<S, I> solutionBuilder;
-    private final Optional<ReferenceResultProvider> referenceResultProvider;
+    private final List<ReferenceResultProvider> referenceResultProviders;
     private final Executor<S, I> executor;
     private final int repetitions;
 
     public Orquestrator(
             @Value("${solver.repetitions:1}") int repetitions,
             @Value("${solver.benchmark:false}") boolean doBenchmark,
+            @Value("${solver.maximizing}") boolean maximizing,
             IOManager<S,I> io,
             ExperimentManager<S,I> experimentManager,
             List<ExceptionHandler<S,I>> exceptionHandlers,
             Executor<S,I> executor,
             List<SolutionBuilder<S,I>> solutionBuilders,
-            Optional<ReferenceResultProvider> referenceResultProvider
+            List<ReferenceResultProvider> referenceResultProvider
     ) {
         this.repetitions = repetitions;
         this.doBenchmark = doBenchmark;
+        this.maximizing = maximizing;
         this.io = io;
         this.experimentManager = experimentManager;
         this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
-        this.referenceResultProvider = referenceResultProvider;
+        this.referenceResultProviders = referenceResultProvider;
         this.executor = executor;
         log.info("Using SolutionBuilder implementation: "+this.solutionBuilder.getClass().getSimpleName());
     }
@@ -109,12 +113,32 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> extends Abs
 
     private void processInstance(String experimentName, List<Algorithm<S, I>> algorithms, Instance instance) {
         long startTime = System.nanoTime();
-        Optional<Double> referenceValue = this.referenceResultProvider.isPresent()? this.referenceResultProvider.get().getValueFor(instance.getName()):Optional.empty();
+        var referenceValue = getOptionalReferenceValue(this.referenceResultProviders, instance);
         EventPublisher.publishEvent(new InstanceProcessingStartedEvent(experimentName, instance.getName(), algorithms, repetitions, referenceValue));
         log.info("Running algorithms for instance: " + instance.getName());
         executor.execute(experimentName, (I) instance, repetitions, algorithms, solutionBuilder, exceptionHandler);
         long totalTime = System.nanoTime() - startTime;
         EventPublisher.publishEvent(new InstanceProcessingEndedEvent(experimentName, instance.getName(), totalTime));
+    }
+
+    private Optional<Double> getOptionalReferenceValue(List<ReferenceResultProvider> provider, Instance instance){
+        double best = this.maximizing? Double.MIN_VALUE: Double.MAX_VALUE;
+        for(var r: referenceResultProviders){
+            double score = r.getValueFor(instance.getName()).getScoreOrNan();
+            // Ignore if not valid value
+            if (Double.isFinite(score)) {
+                if(this.maximizing){
+                    best = Math.max(best, score);
+                } else {
+                    best = Math.min(best, score);
+                }
+            }
+        }
+        if(best == Double.MAX_VALUE || best == Double.MIN_VALUE){
+            return Optional.empty();
+        } else {
+            return Optional.of(best);
+        }
     }
     
 }

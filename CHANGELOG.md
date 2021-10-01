@@ -1,10 +1,12 @@
 # v0.7
+- Changed ReferenceResultProvider, now multiple instances can be provided in order to automatically compare against several approaches.
+- Configurable metrics in Excel pivot table
 - Fixed several bugs
 
 # v0.6
 - Irace integration, see Wiki for more details.
 - Algorithm::getBuilder: get current SolutionBuilder.
-- (BREAKING) Two types of neighborhoods, normal and lazy. Lazy generated movements under demand, while eager returns a collection of movements.
+- Two types of neighborhoods, normal and lazy. Lazy generated movements under demand, while eager returns a collection of movements.
 - New event type: ErrorEvent, when an unhandled exception is propagated inside an Executor.
 - Telegram bot, if enabled, sends message onErrorEvent.
 

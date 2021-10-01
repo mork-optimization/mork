@@ -68,6 +68,46 @@ serializers:
     # letters [a-zA-Z] can be part of the filename as long as they are between single quotes
     format: "'Results'_yyyy-MM-dd_HH-mm-ss.'xlsx'"
 
+    # Show best (min or max) score in pivot table
+    bestScoreEnabled: true
+
+    # Show average score in pivot table
+    avgScoreEnabled: false
+
+    # Show standard deviation of solution score in pivot table. Uses Excel STD_DEVP function
+    stdScoreEnabled: false
+
+    # Show variance of score in pivot table. Uses Excel VARP function
+    varScoreEnabled: false
+
+    # Show average time in seconds per iteracion in pivot table.
+    avgTimeEnabled: false
+
+    # Show total time in seconds for a given (algorithm, instance) in pivot table.
+    totalTimeEnabled: true
+
+    # Show average time to best solution in seconds in pivot table.
+    avgTTBEnabled: false
+
+    # Show total time to best solution in seconds in pivot table.
+    totalTTBEnabled: false
+
+    # Show number of times a given algorithm reaches the best known solution.
+    sumBestKnownEnabled: false
+
+    # Show 1 if a given algorithm reaches the best solution for an instance, 0 otherwise.
+    hasBestKnownEnabled: true
+
+    # Show average percentage deviation to best known solution in pivot table.
+    avgDevToBestKnownEnabled: false
+
+    # Show minimum percentage deviation to best known solution in pivot table.
+    minDevToBestKnownEnabled: true
+
+    # Show generated grand total in pivot table
+    rowGrandTotal: false
+    columnGrandTotal: false
+
 solver:
 
   # Which experiments should be executed? .* --> All.
