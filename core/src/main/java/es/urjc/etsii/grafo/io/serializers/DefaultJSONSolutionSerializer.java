@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import org.springframework.beans.factory.annotation.Value;
 
+import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 
@@ -27,6 +28,11 @@ public class DefaultJSONSolutionSerializer<S extends Solution<I>, I extends Inst
         } else {
             writer = mapper.writer();
         }
+    }
+
+    @Override
+    public void export(BufferedWriter writer, S s) {
+        throw new UnsupportedOperationException();
     }
 
     @Override
