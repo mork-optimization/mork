@@ -16,6 +16,7 @@ import java.util.logging.Logger;
 public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S, I> {
 
     private static final Logger log = Logger.getLogger(VNS.class.getName());
+    private final String algorithmName;
 
     List<Improver<S, I>> improvers;
     Constructive<S, I> constructive;
@@ -31,8 +32,8 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
      * @param improvers List of improvers/local searches
      */
     @SafeVarargs
-    public VNS(int[] ks, Shake<S, I> shake, Constructive<S, I> constructive, Improver<S, I>... improvers) {
-        this(ks, Collections.singletonList(shake), constructive, improvers);
+    public VNS(String algorithmName, int[] ks, Shake<S, I> shake, Constructive<S, I> constructive, Improver<S, I>... improvers) {
+        this(algorithmName, ks, Collections.singletonList(shake), constructive, improvers);
     }
 
     /**
@@ -43,7 +44,8 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
      * @param improvers List of improvers/local searches
      */
     @SafeVarargs
-    public VNS(int[] ks, List<Shake<S, I>> shakes, Constructive<S, I> constructive, Improver<S, I>... improvers) {
+    public VNS(String algorithmName, int[] ks, List<Shake<S, I>> shakes, Constructive<S, I> constructive, Improver<S, I>... improvers) {
+        this.algorithmName = algorithmName;
         if (ks == null || ks.length == 0) {
             throw new IllegalArgumentException("Invalid Ks array, must have at least one element");
         }
@@ -57,20 +59,7 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
     }
 
     public S algorithm(S solution) {
-        S best = null;
-        do {
-            solution = iteration(solution);
-            if(best == null){
-                best = solution;
-            }
-            best = best.getBetterSolution(solution);
-            //System.out.println(best.getOptimalValue());
-        } while (!MorkLifecycle.stop());
-        return best;
-    }
-
-    private S iteration(S s) {
-        S solution = constructive.construct(s);
+        solution = constructive.construct(solution);
         solution = localSearch(solution);
 
         int currentKIndex = 0;
@@ -80,7 +69,7 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
 
             for(var shake: shakes){
                 S copy = bestSolution.cloneSolution();
-                copy = shake.shake(copy, this.ks[currentKIndex], maxK, true);
+                copy = shake.shake(copy, this.ks[currentKIndex], maxK);
                 copy = localSearch(copy);
                 //System.out.print(copy.getOptimalValue()+",");
                 bestSolution = bestSolution.getBetterSolution(copy);
@@ -114,5 +103,10 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
                 ", shakes=" + shakes +
                 ", ks=" + Arrays.toString(ks) +
                 '}';
+    }
+
+    @Override
+    public String getShortName() {
+        return this.algorithmName;
     }
 }

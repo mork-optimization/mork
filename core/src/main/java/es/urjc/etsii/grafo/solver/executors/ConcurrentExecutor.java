@@ -39,7 +39,7 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
     @Override
     public void execute(String experimentName, I ins, int repetitions, List<Algorithm<S, I>> list, SolutionBuilder<S, I> solutionBuilder, ExceptionHandler<S, I> exceptionHandler) {
 
-        logger.info("Submitting tasks for instance: " + ins.getName());
+        logger.info("Starting solve of instance: " + ins.getName());
         for (var algorithm : list) {
             var futures = new ArrayList<Future<Object>>();
             for (int i = 0; i < repetitions; i++) {
@@ -50,9 +50,10 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
                     return null;
                 }));
             }
-            logger.info(String.format("Waiting for combo instance %s, algorithm %s ", ins.getName(), algorithm.toString()));
+            logger.info(String.format("Enqueued instance %s, algorithm %s ", ins.getName(), algorithm.toString()));
             ConcurrencyUtil.awaitAll(futures);
         }
+        logger.info("Done processing instance: " + ins.getName());
     }
 
     @Override

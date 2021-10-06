@@ -60,7 +60,8 @@ public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends A
         logger.fine(String.format("Initial solution: %s - %s", solution.getScore(), solution));
         int iterationsWithoutImprovement = 0;
         for (int i = 0; i < maxIterations; i++) {
-            var temp = this.shake.shake(solution, 1, 1, false);
+            S temp = solution.cloneSolution();
+            temp = this.shake.shake(temp, 1, 1);
             temp = ls(temp);
             solution = solution.getBetterSolution(temp);
             if(solution == temp){

@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.logging.Logger;
 
-public abstract class RandomMoveShake<S extends Solution<I>, I extends Instance> extends Shake<S,I> {
+public class RandomMoveShake<S extends Solution<I>, I extends Instance> extends Shake<S,I> {
 
     private static final Logger log = Logger.getLogger(RandomMoveShake.class.getName());
 
@@ -38,10 +38,7 @@ public abstract class RandomMoveShake<S extends Solution<I>, I extends Instance>
      * @param s Solution to shake
      * @param k Number of movements to apply, maxK is not used in this implementation
      */
-    public S shake(S s, int k, int maxK, boolean inPlace) {
-        if(!inPlace){
-            s = s.cloneSolution();
-        }
+    public S shake(S s, int k, int maxK) {
         Random random = RandomManager.getRandom();
 
         // Execute k*RATIO random moves in different neighbourhoods
@@ -80,5 +77,7 @@ public abstract class RandomMoveShake<S extends Solution<I>, I extends Instance>
      * If the solution does not need to be repaired, this method should be empty
      * @param s Solution to repair
      */
-    protected abstract void repairSolution(S s);
+    protected void repairSolution(S s){
+
+    }
 }

@@ -10,13 +10,13 @@ import java.util.Optional;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-public abstract class RandomizableNeighborhood<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Neighborhood<M,S,I> {
+public interface RandomizableNeighborhood<M extends Move<S,I>, S extends Solution<I>, I extends Instance> {
 
     /**
      * Pick a random move within the neighborhood
      * @param s Solution used  to generate the neighborhood
      * @return a random move, if there is at least one valid move
      */
-    public abstract Optional<? extends Move<S,I>> getRandomMove(S s);
+    Optional<M> getRandomMove(S s);
 
 }

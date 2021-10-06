@@ -80,7 +80,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
             validate(solution);
             io.exportSolution(experimentName, algorithm, solution);
             EventPublisher.publishEvent(new SolutionGeneratedEvent<>(i, solution, experimentName, algorithm, executionTime, timeToTarget));
-            System.out.format("\t%s.\tTime: %.3f (s) \tTTB: %.3f (s) \t%s -- \n", i +1, executionTime / 1_000_000_000D, timeToTarget / 1000_000_000D, solution);
+            log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", i +1, executionTime / 1_000_000_000D, timeToTarget / 1000_000_000D, solution));
         } catch (Exception e) {
             exceptionHandler.handleException(experimentName, e, Optional.ofNullable(solution), instance, algorithm, io);
             EventPublisher.publishEvent(new ErrorEvent(e));
