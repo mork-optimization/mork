@@ -50,7 +50,7 @@ public class ConcurrentExecutor<S extends Solution<I>, I extends Instance> exten
                     return null;
                 }));
             }
-            logger.info(String.format("Enqueued instance %s, algorithm %s ", ins.getName(), algorithm.toString()));
+            logger.info(String.format("Enqueued instance %s, algorithm %s ", ins.getName(), algorithm.getShortName()));
             ConcurrencyUtil.awaitAll(futures);
         }
         logger.info("Done processing instance: " + ins.getName());

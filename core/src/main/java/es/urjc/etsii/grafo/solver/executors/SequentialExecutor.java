@@ -26,7 +26,7 @@ public class SequentialExecutor<S extends Solution<I>, I extends Instance> exten
     public void execute(String experimentname, I ins, int repetitions, List<Algorithm<S,I>> list, SolutionBuilder<S,I> solutionBuilder, ExceptionHandler<S,I> exceptionHandler) {
 
         for(var algorithm: list){
-            logger.info("Algorithm: "+ algorithm);
+            logger.info("Algorithm: "+ algorithm.getShortName());
             for (int i = 0; i < repetitions; i++) {
                 doWork(experimentname, ins, solutionBuilder, algorithm, i, exceptionHandler);
             }
