@@ -36,6 +36,14 @@ public abstract class Algorithm<S extends Solution<I>, I extends Instance> {
         return this.builder.initializeSolution(instance);
     }
 
+    /**
+     * Get solution builder
+     * @return solution builder
+     */
+    protected SolutionBuilder<S, I> getBuilder() {
+        return builder;
+    }
+
     public void setBuilder(SolutionBuilder<S, I> builder) {
         this.builder = Objects.requireNonNull(builder);
     }
