@@ -156,9 +156,8 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
 
 
     private double singleExecution(Algorithm<S,I> algorithm, I instance) {
-        var solution = solutionBuilder.initializeSolution(instance);
         long startTime = System.nanoTime();
-        var result = algorithm.algorithm(solution);
+        var result = algorithm.algorithm(instance);
         long endTime = System.nanoTime();
         double score = result.getScore();
         if(isMaximizing){

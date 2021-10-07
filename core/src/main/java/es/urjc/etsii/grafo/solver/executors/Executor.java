@@ -70,9 +70,8 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
             }
 
             RandomManager.reset(i);
-            solution = solutionBuilder.initializeSolution(instance);
             long starTime = System.nanoTime();
-            solution = algorithm.algorithm(solution);
+            solution = algorithm.algorithm(instance);
             long endTime = System.nanoTime();
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long executionTime = endTime - starTime;

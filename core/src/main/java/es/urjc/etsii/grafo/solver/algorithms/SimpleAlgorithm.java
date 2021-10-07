@@ -45,11 +45,12 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
 
     /**
      * Algorithm: Execute a single construction and then all the local searchs a single time.
-     * @param solution Empty solution from SolutionBuilder
+     * @param instance Instance
      * @return Returns a valid solution
      */
     @Override
-    public S algorithm(S solution) {
+    public S algorithm(I instance) {
+        var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
         ValidationUtil.validSolution(solution);
         printStatus("Constructive", solution);

@@ -58,7 +58,8 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
         this.improvers = Arrays.asList(improvers);
     }
 
-    public S algorithm(S solution) {
+    public S algorithm(I instance) {
+        var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
         solution = localSearch(solution);
 

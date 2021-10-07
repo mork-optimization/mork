@@ -54,7 +54,8 @@ public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends A
     }
 
     @Override
-    public S algorithm(S solution) {
+    public S algorithm(I instance) {
+        S solution = this.newSolution(instance);
         solution = this.constructive.construct(solution);
         solution = ls(solution);
         logger.fine(String.format("Initial solution: %s - %s", solution.getScore(), solution));

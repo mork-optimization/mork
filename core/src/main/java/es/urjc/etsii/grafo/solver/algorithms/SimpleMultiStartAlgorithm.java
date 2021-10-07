@@ -34,18 +34,15 @@ public class SimpleMultiStartAlgorithm<S extends Solution<I>, I extends Instance
     }
 
     /**
-     * Algorithm: Execute a single construction and then all the local searchs a single time.
-     * @param initialSolution Empty solution
+     * Algorithm: Execute a single construction and then all the local searchs N times, returning best solution of all iterations.
+     * @param instance Instance
      * @return Returns a valid solution
      */
     @Override
-    public S algorithm(S initialSolution) {
+    public S algorithm(I instance) {
         S best = null;
-        var builder = getBuilder();
-        var instance = initialSolution.getInstance();
         for (int i = 0; i < n; i++) {
-            var solution = builder.initializeSolution(instance);
-            solution = super.algorithm(solution);
+            var solution = super.algorithm(instance);
             if(best == null){
                 best = solution;
             } else {
