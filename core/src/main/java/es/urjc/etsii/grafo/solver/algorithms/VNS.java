@@ -16,13 +16,13 @@ import java.util.logging.Logger;
 public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S, I> {
 
     private static final Logger log = Logger.getLogger(VNS.class.getName());
-    private final String algorithmName;
+    protected final String algorithmName;
 
-    List<Improver<S, I>> improvers;
-    Constructive<S, I> constructive;
-    private List<Shake<S, I>> shakes;
-    private int[] ks;
-    private int maxK;
+    protected List<Improver<S, I>> improvers;
+    protected Constructive<S, I> constructive;
+    protected List<Shake<S, I>> shakes;
+    protected int[] ks;
+    protected int maxK;
 
     /**
      * Execute VNS until finished

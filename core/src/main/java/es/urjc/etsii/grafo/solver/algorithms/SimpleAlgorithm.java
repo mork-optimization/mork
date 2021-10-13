@@ -23,9 +23,9 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
 
     private static Logger log = Logger.getLogger(SimpleAlgorithm.class.getName());
 
-    final Constructive<S,I> constructive;
-    final List<Improver<S, I>> improvers;
-    final String algorithmName;
+    protected final Constructive<S,I> constructive;
+    protected final List<Improver<S, I>> improvers;
+    protected final String algorithmName;
 
     @SafeVarargs
     public SimpleAlgorithm(Constructive<S, I> constructive, Improver<S,I>... improvers){
