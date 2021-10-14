@@ -13,11 +13,11 @@ import es.urjc.etsii.grafo.solution.Solution;
 public abstract class Shake<S extends Solution<I>, I extends Instance> {
 
     /**
-     * Shake the solution. Use currentK and maxK to calculate how powerful the shake should be in your implementation.
+     * Shake the solution. Use k to calculate how powerful the shake should be in your implementation.
+     * Can be as simple as number of elements to remove, or to swap. Whatever you want.
      * @param s Solution to shake
-     * @param currentK Current shake strength
-     * @param maxK Max strength
-     * @return shook solution
+     * @param k shake strength
+     * @return shaken solution. Shaken, not stirred.
      */
-    public abstract S shake(S s, int currentK, int maxK);
+    public abstract S shake(S s, int k);
 }

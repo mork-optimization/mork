@@ -38,7 +38,7 @@ public class RandomMoveShake<S extends Solution<I>, I extends Instance> extends 
      * @param s Solution to shake
      * @param k Number of movements to apply, maxK is not used in this implementation
      */
-    public S shake(S s, int k, int maxK) {
+    public S shake(S s, int k) {
         Random random = RandomManager.getRandom();
 
         // Execute k*RATIO random moves in different neighbourhoods

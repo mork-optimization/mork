@@ -21,38 +21,33 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
     protected List<Improver<S, I>> improvers;
     protected Constructive<S, I> constructive;
     protected List<Shake<S, I>> shakes;
-    protected int[] ks;
-    protected int maxK;
+    protected KProvider<I> kProvider;
 
     /**
      * Execute VNS until finished
-     * @param ks Integer array that will be used for the shake/perturbation
+     * @param kProvider k value provider, @see VNS.KProvider
      * @param shake Perturbation method
      * @param constructive Constructive method
      * @param improvers List of improvers/local searches
      */
     @SafeVarargs
-    public VNS(String algorithmName, int[] ks, Shake<S, I> shake, Constructive<S, I> constructive, Improver<S, I>... improvers) {
-        this(algorithmName, ks, Collections.singletonList(shake), constructive, improvers);
+    public VNS(String algorithmName, KProvider<I> kProvider, Shake<S, I> shake, Constructive<S, I> constructive, Improver<S, I>... improvers) {
+        this(algorithmName, kProvider, Collections.singletonList(shake), constructive, improvers);
     }
 
     /**
      * Execute VNS until finished
-     * @param ks Integer array that will be used for the shake/perturbation
+     * @param kProvider k value provider, @see VNS.KProvider
      * @param shakes Perturbation method
      * @param constructive Constructive method
      * @param improvers List of improvers/local searches
      */
     @SafeVarargs
-    public VNS(String algorithmName, int[] ks, List<Shake<S, I>> shakes, Constructive<S, I> constructive, Improver<S, I>... improvers) {
+    public VNS(String algorithmName, KProvider<I> kProvider, List<Shake<S, I>> shakes, Constructive<S, I> constructive, Improver<S, I>... improvers) {
         this.algorithmName = algorithmName;
-        if (ks == null || ks.length == 0) {
-            throw new IllegalArgumentException("Invalid Ks array, must have at least one element");
-        }
-        this.ks = ks;
+        this.kProvider = kProvider;
+
         // Ensure Ks are sorted, maxK is the last element
-        Arrays.sort(ks);
-        this.maxK = ks[ks.length - 1];
         this.shakes = shakes;
         this.constructive = constructive;
         this.improvers = Arrays.asList(improvers);
@@ -64,13 +59,19 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
         solution = localSearch(solution);
 
         int currentKIndex = 0;
-        while (currentKIndex < ks.length && !MorkLifecycle.stop()) {
-            printStatus(String.valueOf(currentKIndex), solution);
+        // While stop not request OR k in range. k check is done and breaks inside loop
+        while (!MorkLifecycle.stop()) {
+            int currentK = kProvider.getK(instance, currentKIndex);
+            if(currentK == KProvider.STOPNOW){
+                printStatus(currentKIndex + ":STOPNOW", solution);
+                break;
+            }
+            printStatus(currentKIndex + ":" + currentK, solution);
             S bestSolution = solution;
 
             for(var shake: shakes){
                 S copy = bestSolution.cloneSolution();
-                copy = shake.shake(copy, this.ks[currentKIndex], maxK);
+                copy = shake.shake(copy, currentK);
                 copy = localSearch(copy);
                 //System.out.print(copy.getOptimalValue()+",");
                 bestSolution = bestSolution.getBetterSolution(copy);
@@ -102,12 +103,27 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
                 "improvers=" + improvers +
                 ", constructive=" + constructive +
                 ", shakes=" + shakes +
-                ", ks=" + Arrays.toString(ks) +
+                ", kprov=" + kProvider +
                 '}';
     }
 
     @Override
     public String getShortName() {
         return this.algorithmName;
+    }
+
+    /**
+     * Calculates K value for each VNS step.
+     */
+    public interface KProvider<I extends Instance> {
+        int STOPNOW = -1;
+
+        /**
+         * Calculate K value during VNS execution.
+         * @param instance Current instance, provided as a parameter so K can be adapted or scaled to instance size.
+         * @param kIndex Current k strength. Starts in 0 and increments by 1 each time the solution does not improve.
+         * @return K value. Return KProvider.STOPNOW to stop when calculated K is greater than max K, and the VNS should terminate
+         */
+        int getK(I instance, int kIndex);
     }
 }

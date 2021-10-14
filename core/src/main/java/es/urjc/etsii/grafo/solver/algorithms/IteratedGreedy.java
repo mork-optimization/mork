@@ -62,7 +62,7 @@ public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends A
         int iterationsWithoutImprovement = 0;
         for (int i = 0; i < maxIterations; i++) {
             S temp = solution.cloneSolution();
-            temp = this.shake.shake(temp, 1, 1);
+            temp = this.shake.shake(temp, 1);
             temp = ls(temp);
             solution = solution.getBetterSolution(temp);
             if(solution == temp){
