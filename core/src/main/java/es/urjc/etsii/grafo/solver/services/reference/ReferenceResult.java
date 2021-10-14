@@ -38,9 +38,17 @@ public class ReferenceResult {
         return this;
     }
 
+    public ReferenceResult setTimeInSeconds(String timeInSeconds) {
+        return this.setTimeInSeconds(Double.parseDouble(timeInSeconds));
+    }
+
     public ReferenceResult setTimeToBestInSeconds(double timeToBestInSeconds) {
         this.timeToBestInSeconds = timeToBestInSeconds;
         return this;
+    }
+
+    public ReferenceResult setTimeToBestInSeconds(String timeToBestInSeconds) {
+        return this.setTimeToBestInSeconds(Double.parseDouble(timeToBestInSeconds));
     }
 }
 
