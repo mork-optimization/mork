@@ -79,7 +79,6 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> extends Abs
         log.info("App started, ready to start solving!");
         var experiments = this.experimentManager.getExperiments();
         log.info("Experiments to execute: " + experiments.keySet());
-        fillSolutionBuilder(experiments);
         EventPublisher.publishEvent(new ExecutionStartedEvent(new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
         try{
@@ -90,13 +89,6 @@ public class Orquestrator<S extends Solution<I>, I extends Instance> extends Abs
             EventPublisher.publishEvent(new ExecutionEndedEvent(totalExecutionTime));
             log.info(String.format("Total execution time: %s (s)", totalExecutionTime / 1_000_000_000));
         }
-    }
-
-    private void fillSolutionBuilder(Map<String, List<Algorithm<S,I>>> experiments){
-        // For each algorithm in each experiment, set the solution builder reference.
-        experiments.values().stream().flatMap(Collection::stream).forEach(e ->
-                e.setBuilder(this.solutionBuilder)
-        );
     }
 
     private void runExperiment(String experimentName, List<Algorithm<S,I>> algorithms) {
