@@ -1,7 +1,7 @@
 # v0.7
 - Changed ReferenceResultProvider, now multiple instances can be provided in order to automatically compare against several approaches.
 - Configurable metrics in Excel pivot table
-- Fixed several bugs
+- Fixed several bugs and other minor improvements
 
 # v0.6
 - Irace integration, see Wiki for more details.

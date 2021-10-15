@@ -2,10 +2,10 @@
 
 # Install artifacts in local repository
 cd core
-mvn clean install
+mvn clean install -Dgpg.skip=true
 cd ../parent
-mvn clean install
+mvn clean install -Dgpg.skip=true
 cd ../template
-mvn clean install
+mvn clean install -Dgpg.skip=true
 
 
