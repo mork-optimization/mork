@@ -46,9 +46,9 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
     }
 
 
-
     public abstract boolean iteration(S s);
 
+  
     @Override
     public String toString() {
         if(this.lsName.isEmpty()){
