@@ -3,10 +3,10 @@ package es.urjc.etsii.grafo.io.serializers;
 import es.urjc.etsii.grafo.solver.configuration.ExcelSerializerConfiguration;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
 import org.apache.poi.ss.util.AreaReference;
+import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -20,6 +20,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static org.apache.poi.ss.util.CellReference.convertNumToColString;
 
 
 public class ExcelSerializer extends ResultsSerializer {
@@ -62,14 +64,16 @@ public class ExcelSerializer extends ResultsSerializer {
 
             var area = fillRawSheetWithFormula(rawSheet, results);
             fillPivotSheet(pivotSheet, area, rawSheet);
-
+            log.info("Calculating formulas...");
+            excelBook.getCreationHelper().createFormulaEvaluator().evaluateAll();
+            log.info("Writing to disk...");
             excelBook.write(outputStream);
         } catch (Exception e) {
             throw new RuntimeException(String.format("Exception while trying to save Excel file: %s, reason: %s", f.getAbsolutePath(), e.getClass().getSimpleName()), e.getCause());
         }
     }
 
-    private void fillPivotSheet(XSSFSheet pivotSheet, AreaReference area, XSSFSheet source) {
+    private void fillPivotSheet(XSSFSheet pivotSheet, AreaReference sourceDataArea, XSSFSheet source) {
         // Generate tables like
         /*                  ____________________________________________________________________________________
          *  ______________ |                Algorithm 1              |                Algorithm 2              |
@@ -80,7 +84,7 @@ public class ExcelSerializer extends ResultsSerializer {
          *  etc
          */
 
-        var pivotTable = pivotSheet.createPivotTable(area, new CellReference(0, 0), source);
+        var pivotTable = pivotSheet.createPivotTable(sourceDataArea, new CellReference(0, 0), source);
 
         var ctptd = pivotTable.getCTPivotTableDefinition();
         ctptd.setColGrandTotals(config.isColumnGrandTotal());
@@ -181,8 +185,6 @@ public class ExcelSerializer extends ResultsSerializer {
 
         for (int i = 1; i < cutOff; i++) {
             var r = results.get(i - 1);
-            double bestValueForInstance = bestValuesPerInstance.get(r.getInstanceName());
-            boolean isBest = DoubleComparator.equals(bestValueForInstance, r.getScore());
 
             data[i][__.INSTANCE_NAME.getIndex()] = r.getInstanceName();
             data[i][__.ALG_NAME.getIndex()] = r.getAlgorithmName();
@@ -190,9 +192,17 @@ public class ExcelSerializer extends ResultsSerializer {
             data[i][__.SCORE.getIndex()] = r.getScore();
             data[i][__.TOTAL_TIME.getIndex()] = nanoToSecs(r.getExecutionTime());
             data[i][__.TTB.getIndex()] = nanoToSecs(r.getTimeToBest());
-            data[i][__.IS_BEST_KNOWN.getIndex()] = isBest ? 1 : 0;
-            data[i][__.DEV_TO_BEST.getIndex()] = getPercentageDevToBest(r.getScore(), bestValueForInstance);
-            data[i][__.BEST_KNOWN_FOR_INSTANCE.getIndex()] = getPercentageDevToBest(r.getScore(), bestValueForInstance);
+            // Example: =MIN(FILTER(D:D, A:A=A2))
+            int excelRowIndex = i + 1; // Current row +1 because Excel starts indexing rows on 1.
+//            data[i][__.BEST_KNOWN_FOR_INSTANCE.getIndex()] = String.format("%s(FILTER(%2$s:%2$s, %3$s:%3$s=%3$s%4$s))", maximizing ? "MAX" : "MIN", __.SCORE.getExcelColIndex(),  __.INSTANCE_NAME.getExcelColIndex(), excelRowIndex);
+//            // Example: =IF(D2=L2,1,0) with L2 best known for instance and D2 current score
+//            data[i][__.IS_BEST_KNOWN.getIndex()] = String.format("IF(%s%s=%s%s,1,0)", __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex, __.SCORE.getExcelColIndex(), excelRowIndex);
+//            data[i][__.DEV_TO_BEST.getIndex()] = String.format("ABS(%s%s-%s%s)/%s%s", __.SCORE.getExcelColIndex(), excelRowIndex, __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex, __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex);
+
+            data[i][__.BEST_KNOWN_FOR_INSTANCE.getIndex()] = String.format("%s(IF(%3$s:%3$s=%3$s%4$s,%2$s:%2$s))·%5$s%4$s", maximizing ? "MAX" : "MIN", __.SCORE.getExcelColIndex(),  __.INSTANCE_NAME.getExcelColIndex(), excelRowIndex, __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex());
+            // Example: =IF(D2=L2,1,0) with L2 best known for instance and D2 current score
+            data[i][__.IS_BEST_KNOWN.getIndex()] = String.format("IF(%s%s=%s%s,1,0)", __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex, __.SCORE.getExcelColIndex(), excelRowIndex);
+            data[i][__.DEV_TO_BEST.getIndex()] = String.format("ABS(%s%s-%s%s)/%s%s", __.SCORE.getExcelColIndex(), excelRowIndex, __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex, __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex);
         }
 
         int currentRow = cutOff;
@@ -210,10 +220,14 @@ public class ExcelSerializer extends ResultsSerializer {
 
                 // Example: =MIN(FILTER(D:D, A:A=A2))
                 int excelRowIndex = currentRow + 1; // Current row +1 because Excel starts indexing rows on 1.
-                data[currentRow][__.BEST_KNOWN_FOR_INSTANCE.getIndex()] = String.format("=%s(FILTER(%2$s:%2$s, %3$s:%3$s=%3$s%4$s))", maximizing ? "MAX" : "MIN", __.SCORE.getExcelColIndex(),  __.INSTANCE_NAME.getExcelColIndex(), excelRowIndex);
+                data[currentRow][__.BEST_KNOWN_FOR_INSTANCE.getIndex()] = String.format("%s(IF(%3$s:%3$s=%3$s%4$s,%2$s:%2$s))·%5$s%4$s", maximizing ? "MAX" : "MIN", __.SCORE.getExcelColIndex(),  __.INSTANCE_NAME.getExcelColIndex(), excelRowIndex, __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex());
                 // Example: =IF(D2=L2,1,0) with L2 best known for instance and D2 current score
-                data[currentRow][__.IS_BEST_KNOWN.getIndex()] = String.format("=IF(%s%s=%s%s,1,0)", __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex, __.SCORE.getExcelColIndex(), excelRowIndex);
-                data[currentRow][__.DEV_TO_BEST.getIndex()] = String.format("=ABS(%s%s-%s%s)/%s%s", __.SCORE.getExcelColIndex(), excelRowIndex, __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex, __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex);
+                data[currentRow][__.IS_BEST_KNOWN.getIndex()] = String.format("IF(%s%s=%s%s,1,0)", __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex, __.SCORE.getExcelColIndex(), excelRowIndex);
+                data[currentRow][__.DEV_TO_BEST.getIndex()] = String.format("ABS(%s%s-%s%s)/%s%s", __.SCORE.getExcelColIndex(), excelRowIndex, __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex, __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex);
+//                data[currentRow][__.BEST_KNOWN_FOR_INSTANCE.getIndex()] = String.format("%s(FILTER(%2$s:%2$s, %3$s:%3$s=%3$s%4$s))", maximizing ? "MAX" : "MIN", __.SCORE.getExcelColIndex(),  __.INSTANCE_NAME.getExcelColIndex(), excelRowIndex);
+//                // Example: =IF(D2=L2,1,0) with L2 best known for instance and D2 current score
+//                data[currentRow][__.IS_BEST_KNOWN.getIndex()] = String.format("IF(%s%s=%s%s,1,0)", __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex, __.SCORE.getExcelColIndex(), excelRowIndex);
+//                data[currentRow][__.DEV_TO_BEST.getIndex()] = String.format("ABS(%s%s-%s%s)/%s%s", __.SCORE.getExcelColIndex(), excelRowIndex, __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex, __.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex);
                 currentRow++;
             }
         }
@@ -223,12 +237,14 @@ public class ExcelSerializer extends ResultsSerializer {
             var row = rawSheet.createRow(i);
             for (int j = 0; j < data[0].length; j++) {
                 var cell = row.createCell(j);
-                writeCell(cell, data[i][j], __.getForIndex(j).isFormula());
+                // Header is NEVER a formula
+                CType type = i == 0? CType.VALUE: __.getForIndex(j).getCType();
+                writeCell(cell, data[i][j], type);
             }
         }
 
         // Return total area used
-        return new AreaReference(new CellReference(0, 0), new CellReference(nRows - 1, nColumns - 1), SpreadsheetVersion.EXCEL2007);
+        return new AreaReference(convertNumToColString(0) + ":" + convertNumToColString(nColumns-1), SpreadsheetVersion.EXCEL2007);
     }
 
 
@@ -236,20 +252,35 @@ public class ExcelSerializer extends ResultsSerializer {
         return Math.abs(score - bestValueForInstance) / bestValueForInstance;
     }
 
-    private void writeCell(XSSFCell cell, Object d, boolean isFormula) {
-        if(isFormula){
-            if(! (d instanceof String)){
-                throw new IllegalArgumentException("Trying to set cell as formula but not a String: " + d);
-            }
-            cell.setCellFormula((String) d);
-        } else if (d instanceof Double) {
-            cell.setCellValue((double) d);
-        } else if (d instanceof Integer) {
-            cell.setCellValue((int) d);
-        } else if (d instanceof String) {
-            cell.setCellValue((String) d);
-        } else {
-            throw new IllegalArgumentException("Invalid datatype");
+    private void writeCell(XSSFCell cell, Object d, CType type) {
+        switch (type){
+            case FORMULA:
+                if(! (d instanceof String)){
+                    throw new IllegalArgumentException("Trying to set cell as formula but not a String: " + d);
+                }
+                cell.setCellFormula((String) d);
+                break;
+            case ARRAY_FORMULA:
+                if(! (d instanceof String)){
+                    throw new IllegalArgumentException("Trying to set cell as formula but not a String: " + d);
+                }
+                String[] parts = ((String) d).split("·");
+                if(parts.length != 2){
+                    throw new IllegalArgumentException("Invalid setArrayFormula: " + d);
+                }
+                cell.getSheet().setArrayFormula(parts[0], CellRangeAddress.valueOf(parts[1]));
+                break;
+            case VALUE:
+                if (d instanceof Double) {
+                    cell.setCellValue((double) d);
+                } else if (d instanceof Integer) {
+                    cell.setCellValue((int) d);
+                } else if (d instanceof String) {
+                    cell.setCellValue((String) d);
+                } else {
+                    throw new IllegalArgumentException("Invalid datatype");
+                }
+                break;
         }
     }
 
@@ -280,25 +311,31 @@ public class ExcelSerializer extends ResultsSerializer {
         return bestValuePerInstance;
     }
 
+    private enum CType {
+        VALUE,
+        FORMULA,
+        ARRAY_FORMULA
+    }
+
     private enum __ {
-        INSTANCE_NAME(0, "Instance Name", false),
-        ALG_NAME(1, "Algorithm Name", false),
-        ITERATION(2, "Iteration", false),
-        SCORE(3, "Score", false),
-        TOTAL_TIME(4, "Total Time (s)", false),
-        TTB(5, "Time to Best (s)", false),
-        IS_BEST_KNOWN(6, "Is Best Known?", true),
-        DEV_TO_BEST(7, "% Dev. to best known", true),
-        BEST_KNOWN_FOR_INSTANCE(8, "Best value known", true);
+        INSTANCE_NAME(0, "Instance Name", CType.VALUE),
+        ALG_NAME(1, "Algorithm Name", CType.VALUE),
+        ITERATION(2, "Iteration", CType.VALUE),
+        SCORE(3, "Score", CType.VALUE),
+        TOTAL_TIME(4, "Total Time (s)", CType.VALUE),
+        TTB(5, "Time to Best (s)", CType.VALUE),
+        IS_BEST_KNOWN(6, "Is Best Known?", CType.FORMULA),
+        DEV_TO_BEST(7, "% Dev. to best known", CType.FORMULA),
+        BEST_KNOWN_FOR_INSTANCE(8, "Best value known", CType.ARRAY_FORMULA);
 
         private final int index;
         private final String name;
-        private final boolean formula;
+        private final CType type;
 
-        __(int index, String name, boolean formula) {
+        __(int index, String name, CType type) {
             this.index = index;
             this.name = name;
-            this.formula = formula;
+            this.type = type;
         }
 
         public int getIndex() {
@@ -306,15 +343,15 @@ public class ExcelSerializer extends ResultsSerializer {
         }
 
         public String getExcelColIndex(){
-            return CellReference.convertNumToColString(this.getIndex());
+            return convertNumToColString(this.getIndex());
         }
 
         public String getName() {
             return name;
         }
 
-        public boolean isFormula(){
-            return formula;
+        public CType getCType(){
+            return type;
         }
 
         public static __ getForIndex(int index){
