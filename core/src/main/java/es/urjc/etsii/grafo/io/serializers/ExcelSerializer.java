@@ -64,8 +64,8 @@ public class ExcelSerializer extends ResultsSerializer {
 
             var area = fillRawSheetWithFormula(rawSheet, results);
             fillPivotSheet(pivotSheet, area, rawSheet);
-            log.info("Calculating formulas...");
-            excelBook.getCreationHelper().createFormulaEvaluator().evaluateAll();
+            // Let Excel handle recalculation on open, tests show that it is much faster than using POI
+            excelBook.setForceFormulaRecalculation(true);
             log.info("Writing to disk...");
             excelBook.write(outputStream);
         } catch (Exception e) {
