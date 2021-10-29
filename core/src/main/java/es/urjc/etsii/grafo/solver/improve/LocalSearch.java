@@ -46,19 +46,9 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
     }
 
 
-    public boolean iteration(S s) {
-        // Buscar el move a ejecutar
-        var move = getMove(s);
+    public abstract boolean iteration(S s);
 
-        if (move == null || !move.improves()) {
-            return false; // No existen movimientos válidos, finalizar
-        }
-
-        // Ejecutamos el move y pedimos otra iteracion
-        move.execute();
-        return true;
-    }
-
+  
     @Override
     public String toString() {
         if(this.lsName.isEmpty()){

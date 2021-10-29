@@ -19,6 +19,19 @@ public class LocalSearchBestImprovement<M extends Move<S,I>, S extends Solution<
         super(maximizing, ps);
     }
 
+    @Override
+    public boolean iteration(S s) {
+        // Buscar el move a ejecutar
+        var move = getMove(s);
+        // Comprobamos si el movimiento mejora la solucuon
+        if (move == null || !move.improves()) {
+            return false; // No existen movimientos válidos, finalizar
+        }
+        // Ejecutamos el move y pedimos otra iteracion
+        move.execute();
+        return true;
+    }
+
     public LocalSearchBestImprovement(boolean maximizing, String lsName, Neighborhood<M,S,I>... ps){
         super(maximizing, lsName, ps);
     }
@@ -26,7 +39,7 @@ public class LocalSearchBestImprovement<M extends Move<S,I>, S extends Solution<
     @Override
     protected M getMove(S s){
         M move = null;
-        for (var provider : providers) {
+        for (var provider : this.providers) {
             var _move = getBest(provider.stream(s));
             if(_move.isEmpty()) continue;
             if (move == null) {

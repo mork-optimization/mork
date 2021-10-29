@@ -16,6 +16,20 @@ public class LocalSearchFirstImprovement<M extends Move<S,I>, S extends Solution
         super(maximizing, ps);
     }
 
+    @Override
+    public boolean iteration(S s) {
+        // Buscar el move a ejecutar
+        var move = getMove(s);
+
+        if (move == null) {
+            return false; // No existen movimientos válidos, finalizar
+        }
+        assert move.improves();
+        // Ejecutamos el move y pedimos otra iteracion
+        move.execute();
+        return true;
+    }
+
     public LocalSearchFirstImprovement(boolean maximizing, String lsName, Neighborhood<M,S,I>... ps){
         super(maximizing, lsName, ps);
     }
