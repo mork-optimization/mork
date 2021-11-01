@@ -8,12 +8,12 @@ import org.junit.jupiter.api.Test;
 public class ValidationUtilTests {
 
     @Test
-    public void testPositiveTimes(){
+    public void testPositiveTTB(){
         TestInstance testInstance = new TestInstance("TestInstance");
         TestSolution solution = new TestSolution(testInstance);
 
-        Assertions.assertThrows(AssertionError.class,() -> ValidationUtil.positiveTimes(solution));
+        Assertions.assertThrows(AssertionError.class,() -> ValidationUtil.positiveTTB(solution));
         solution.updateLastModifiedTime();
-        Assertions.assertDoesNotThrow(() -> ValidationUtil.positiveTimes(solution));
+        Assertions.assertDoesNotThrow(() -> ValidationUtil.positiveTTB(solution));
     }
 }

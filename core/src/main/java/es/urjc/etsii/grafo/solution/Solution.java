@@ -23,8 +23,6 @@ public abstract class Solution<I extends Instance> {
 
     protected ArrayDeque<Move<? extends Solution<I>, I>> lastMoves = new ArrayDeque<>(MAX_DEBUG_MOVES);
 
-    private long executionTimeInNanos;
-
     private long lastModifiedTime = Integer.MIN_VALUE;
 
     /**
@@ -40,7 +38,6 @@ public abstract class Solution<I extends Instance> {
         assert (this.lastMoves = new ArrayDeque<>(s.lastMoves)) != null;
         this.ins = s.ins;
         this.version = s.version;
-        this.executionTimeInNanos = s.executionTimeInNanos;
         this.lastModifiedTime = s.lastModifiedTime;
     }
 
@@ -105,14 +102,6 @@ public abstract class Solution<I extends Instance> {
     @JsonIgnore
     public I getInstance() {
         return ins;
-    }
-
-    public void setExecutionTimeInNanos(long executionTimeInNanos) {
-        this.executionTimeInNanos = executionTimeInNanos;
-    }
-
-    public long getExecutionTimeInNanos() {
-        return executionTimeInNanos;
     }
 
     public static <I extends Instance, S extends Solution<I>> S getBest(Iterable<S> solutions) {

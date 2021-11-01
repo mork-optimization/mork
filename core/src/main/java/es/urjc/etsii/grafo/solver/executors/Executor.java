@@ -30,16 +30,17 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
     private static final Logger log = Logger.getLogger(Executor.class.getName());
 
     private final Optional<SolutionValidator<S,I>> validator;
-    private IOManager<S, I> io;
+    private final IOManager<S, I> io;
 
     protected Executor(Optional<SolutionValidator<S, I>> validator, IOManager<S, I> io) {
-        this.validator = validator;
-        this.io = io;
         if(validator.isEmpty()){
             log.warning("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
         } else {
-            log.info("SolutionValidator implementation found: " + this.validator.get().getClass().getSimpleName());
+            log.info("SolutionValidator implementation found: " + validator.get().getClass().getSimpleName());
         }
+
+        this.validator = validator;
+        this.io = io;
     }
 
     /**
@@ -63,7 +64,7 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
      * @param solution Solution to check.
      */
     public void validate(S solution){
-        ValidationUtil.positiveTimes(solution);
+        ValidationUtil.positiveTTB(solution);
         this.validator.ifPresent(validator -> validator.validate(solution));
     }
 
@@ -81,7 +82,6 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
             long endTime = System.nanoTime();
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long executionTime = endTime - starTime;
-            solution.setExecutionTimeInNanos(executionTime);
             validate(solution);
             io.exportSolution(experimentName, algorithm, solution);
             EventPublisher.publishEvent(new SolutionGeneratedEvent<>(i, solution, experimentName, algorithm, executionTime, timeToTarget));
