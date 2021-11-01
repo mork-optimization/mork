@@ -94,6 +94,8 @@ public class ExcelSerializerConfiguration {
     // END PIVOT TABLE PROPERTIES
 
 
+
+
     public boolean isEnabled() {
         return enabled;
     }
