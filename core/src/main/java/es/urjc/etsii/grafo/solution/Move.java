@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.solution;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solver.Config;
+import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
@@ -79,13 +79,14 @@ public abstract class Move<S extends Solution<I>, I extends Instance> {
      *
      * @return True if solution improves, false otherwise
      */
-    public boolean improves() {
-        if (Config.isMaximizing()) {
-            return DoubleComparator.isPositive(this.getValue());
-        } else {
-            return DoubleComparator.isNegative(this.getValue());
-        }
-    }
+    public abstract boolean improves();
+//    {
+//        if (SolverConfig.isMaximizing()) {
+//            return DoubleComparator.isPositive(this.getValue());
+//        } else {
+//            return DoubleComparator.isNegative(this.getValue());
+//        }
+//    }
 
     /**
      * Returns an String representation of the current movement.

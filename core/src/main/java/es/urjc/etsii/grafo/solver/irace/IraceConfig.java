@@ -1,14 +1,13 @@
-package es.urjc.etsii.grafo.io.serializers.json;
+package es.urjc.etsii.grafo.solver.irace;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
-@ConfigurationProperties(prefix = "serializers.solution-json")
-public class JSONSerializerConfig {
-
+@ConfigurationProperties(prefix = "irace")
+public class IraceConfig {
     private boolean enabled;
-    private boolean pretty;
+    private boolean shell;
 
     public boolean isEnabled() {
         return enabled;
@@ -18,11 +17,11 @@ public class JSONSerializerConfig {
         this.enabled = enabled;
     }
 
-    public boolean isPretty() {
-        return pretty;
+    public boolean isShell() {
+        return shell;
     }
 
-    public void setPretty(boolean pretty) {
-        this.pretty = pretty;
+    public void setShell(boolean shell) {
+        this.shell = shell;
     }
 }

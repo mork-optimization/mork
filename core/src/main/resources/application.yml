@@ -1,5 +1,3 @@
-seed: 1234
-
 instances:
   path:
     # Default instance path for all experiments, can be overridden.
@@ -7,13 +5,7 @@ instances:
 
     # Override default instance path only for the experiment declared in file PreliminarExperiment.java
     # If an experiment does not have a specific path the default will be used. Example:
-    PreliminarExperiment: './instances/preliminar'
-
-solutions:
-  # Path where solutions will be exported (Only if a solution serializer is enabled, see below)
-  path:
-    out: 'solutions'
-  dateformat: 'yyyy-MM-dd_HH-mm-ss'
+    # PreliminarExperiment: './instances/preliminar'
 
 # Experiment execution DOES NOT (usually) END if
 # an uncontrolled exception is propagated, the error is logged, and we try to keep solving
@@ -25,7 +17,13 @@ errors:
   path: 'errors'
 
 serializers:
-  sol-json:
+  solution-common:
+    # Path where solutions will be exported (Only if a solution serializer is enabled, see below)
+    folder: 'solutions'
+    # String formatter for current date using in solution filename
+    dateformat: 'yyyy-MM-dd_HH-mm-ss'
+
+  solution-json:
     # Enable default JSON serializer for solutions. Exports best solution of each algorithm to JSON.
     # If you want to export solutions to a custom format, extend SolutionSerializer,
     # NOTE: the default JSON solution serializer is automatically disabled when the SolutionSerializer class is extended.
@@ -113,6 +111,8 @@ serializers:
     columnGrandTotal: false
 
 solver:
+  # Global random seed to ensure reproducibility
+  seed: 1234
 
   # Which experiments should be executed? .* --> All.
   # Experiment names default to the class name in which they are declared unless overridden.
@@ -167,9 +167,9 @@ advanced:
   # Block Java API methods
   block:
     # Collections.shuffle(RandomManager.getRandom()) should be used instead of Collections.shuffle()
-    collections-shuffle: true
+    blockCollectionsShuffle: true
     # Block Math.random(), use RandomManager.getRandom().nextDouble()
-    math-random: true
+    blockMathRandom: true
 
 # Logging configuration
 logging:

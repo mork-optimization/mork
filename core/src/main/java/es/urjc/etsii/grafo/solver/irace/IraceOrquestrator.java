@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.solver.irace;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.restcontroller.dto.ExecuteRequest;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
@@ -17,15 +18,11 @@ import es.urjc.etsii.grafo.solver.services.events.types.ExperimentStartedEvent;
 import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.RandomManager;
 import es.urjc.etsii.grafo.util.StringUtil;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.logging.Logger;
@@ -47,13 +44,13 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
     private final Environment env;
 
     public IraceOrquestrator(
-            @Value("${solver.maximizing}") boolean isMaximizing,
+            SolverConfig config,
             IraceIntegration iraceIntegration,
             IOManager<S, I> io,
             List<ExceptionHandler<S, I>> exceptionHandlers,
             List<SolutionBuilder<S, I>> solutionBuilders,
             Optional<IraceAlgorithmGenerator<S, I>> algorithmGenerator, Environment env) {
-        this.isMaximizing = isMaximizing;
+        this.isMaximizing = config.isMaximizing();
         this.iraceIntegration = iraceIntegration;
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         this.io = io;
@@ -130,7 +127,7 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
         return score;
     }
 
-    private IraceConfiguration buildConfig(ExecuteRequest request){
+    private IraceRuntimeConfiguration buildConfig(ExecuteRequest request){
         if(!request.getKey().equals(integrationKey)){
             throw new IllegalArgumentException(String.format("Invalid integration key, got %s", request.getKey()));
         }
@@ -151,7 +148,7 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
             }
             config.put(keyValue[0], keyValue[1]);
         }
-        return new IraceConfiguration(candidateConfiguration, instanceId, seed, instance, config, isMaximizing);
+        return new IraceRuntimeConfiguration(candidateConfiguration, instanceId, seed, instance, config, isMaximizing);
     }
 
 

@@ -32,7 +32,7 @@ public final class RandomManager {
     }
 
     // a bit hacky but uses constructor instead of static initializer for Spring compatibility
-    protected RandomManager(@Value("${seed}") int seed,  @Value("${solver.repetitions}") int repetitions){
+    protected RandomManager(@Value("${solver.seed}") int seed,  @Value("${solver.repetitions}") int repetitions){
         reinitialize(seed, repetitions);
     }
 

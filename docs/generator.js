@@ -30,6 +30,7 @@ function generateProject(){
     {folder: 'src/main/resources/irace', name: 'parameters.txt'},
     {folder: 'src/main/resources/irace', name: 'runner.R'},
     {folder: 'src/main/resources/irace', name: 'scenario.txt'},
+    {folder: 'src/main/resources/META-INF', name: 'additional-spring-configuration-metadata.json'},
     {folder: 'src/main/java/es/urjc/etsii/grafo/__RNAME__', name: 'Main.java'},
     {folder: 'src/main/java/es/urjc/etsii/grafo/__RNAME__/constructives', name: '__RNAME__RandomConstructive.java'},
     {folder: 'src/main/java/es/urjc/etsii/grafo/__RNAME__/constructives/grasp', name: '__RNAME__ListManager.java'},
