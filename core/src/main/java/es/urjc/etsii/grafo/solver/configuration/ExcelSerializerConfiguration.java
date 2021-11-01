@@ -3,8 +3,6 @@ package es.urjc.etsii.grafo.solver.configuration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.Objects;
-
 @Configuration
 @ConfigurationProperties(prefix = "serializers.xlsx")
 public class ExcelSerializerConfiguration {
@@ -15,10 +13,6 @@ public class ExcelSerializerConfiguration {
     private String folder;
 
     private String format;
-
-    // START PIVOT TABLE PROPERTIES
-    // Al options are calculated aggregating all the iterations
-    // for a given pair of (instance, algorithm)
 
     /**
      * Show best (min or max) score in pivot table
@@ -91,10 +85,41 @@ public class ExcelSerializerConfiguration {
      */
     private boolean columnGrandTotal = false;
 
-    // END PIVOT TABLE PROPERTIES
+    private CalculationMode calculationMode;
 
+    private final int rowThreshold = 2000;
 
+    /**
+     * Defines how to handle calculated values when serializing to Excel 2007+
+     */
+    public enum CalculationMode {
+        /**
+         * Calculate data before serializing to Excel, extremely fast but extending Excel files will not update calculated data such as best value per instance or %Dev.
+         */
+        JAVA,
 
+        /**
+         * Calculate data when user opens Excel file for the first time. Much slower, but allows users to extend and easily modify Excel files.
+         */
+        EXCEL,
+
+        /**
+         * Decide strategy at runtime depending on the number of rows to serialize.
+         */
+        AUTO
+    }
+
+    public CalculationMode getCalculationMode() {
+        return calculationMode;
+    }
+
+    public int getRowThreshold() {
+        return rowThreshold;
+    }
+
+    public void setCalculationMode(CalculationMode calculationMode) {
+        this.calculationMode = calculationMode;
+    }
 
     public boolean isEnabled() {
         return enabled;
