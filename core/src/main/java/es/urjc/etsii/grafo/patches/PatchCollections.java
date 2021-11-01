@@ -14,8 +14,8 @@ public class PatchCollections {
 
     private final boolean isEnabled;
 
-    public PatchCollections(@Value("${advanced.block.collections-shuffle}") boolean isEnabled) {
-        this.isEnabled = isEnabled;
+    public PatchCollections(BlockConfig config) {
+        this.isEnabled = config.isBlockCollectionsShuffle();
     }
 
     @PostConstruct

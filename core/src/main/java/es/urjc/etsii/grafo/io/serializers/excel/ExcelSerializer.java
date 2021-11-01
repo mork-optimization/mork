@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
+import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
@@ -8,7 +9,6 @@ import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -29,13 +29,13 @@ public class ExcelSerializer extends ResultsSerializer {
     private final ExcelSerializerConfig config;
 
     public ExcelSerializer(
-            ExcelSerializerConfig config,
-            @Value("${solver.maximizing}") boolean maximizing,
+            ExcelSerializerConfig serializerConfig,
+            SolverConfig solverConfig,
             List<ReferenceResultProvider> referenceResultProviders
     ) {
-        super(config);
-        this.config = config;
-        this.maximizing = maximizing;
+        super(serializerConfig);
+        this.config = serializerConfig;
+        this.maximizing = solverConfig.isMaximizing();
         this.referenceResultProviders = referenceResultProviders;
     }
 

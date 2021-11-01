@@ -1,15 +1,29 @@
 package es.urjc.etsii.grafo.patches;
 
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DisableMathRandomPatch {
 
+    @Order(1)
     @Test
-    public void testMathRandomPatch(){
-        var patch = new PatchMathRandom(true);
-        Assertions.assertDoesNotThrow(() -> Math.random());
+    public void testMathRandomPatchDisabled(){
+        BlockConfig config = new BlockConfig();
+        config.setBlockMathRandom(false);
+        var patch = new PatchMathRandom(config);
+        Assertions.assertDoesNotThrow(Math::random);
         patch.patch();
-        Assertions.assertThrows(UnsupportedOperationException.class, () -> Math.random());
+        Assertions.assertDoesNotThrow(Math::random);
+    }
+
+    @Order(2)
+    @Test
+    public void testMathRandomPatchEnabled(){
+        BlockConfig config = new BlockConfig();
+        config.setBlockMathRandom(true);
+        var patch = new PatchMathRandom(config);
+        Assertions.assertDoesNotThrow(Math::random);
+        patch.patch();
+        Assertions.assertThrows(UnsupportedOperationException.class, Math::random);
     }
 }

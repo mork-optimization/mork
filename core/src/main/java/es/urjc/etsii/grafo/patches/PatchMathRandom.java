@@ -19,8 +19,8 @@ public class PatchMathRandom {
 
     private final boolean isEnabled;
 
-    public PatchMathRandom(@Value("${advanced.block.math-random}") boolean isEnabled){
-        this.isEnabled = isEnabled;
+    public PatchMathRandom(BlockConfig config){
+        this.isEnabled = config.isBlockMathRandom();
     }
 
     @PostConstruct
