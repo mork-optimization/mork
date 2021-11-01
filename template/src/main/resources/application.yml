@@ -55,9 +55,8 @@ serializers:
     enabled: true
 
     # Defines how to handle calculated values when serializing to Excel 2007+
-    # Possible values: JAVA, EXCEL, AUTO.
-    # See ExcelSerializerConfiguration.CalculationMode javadocs for more information on each mode
-    calculationMode: AUTO
+    # Possible values: java, excel, auto.
+    calculationMode: auto
     
     # When generating the pivot table, should algorithms be in rows or columns?
     # True: Instances per row, algorithms in columns
