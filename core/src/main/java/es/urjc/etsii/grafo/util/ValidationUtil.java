@@ -15,4 +15,13 @@ public class ValidationUtil {
     public static void fastAccessList(List<?> list){
         assert list instanceof RandomAccess : "List should have O(1) access time";
     }
+
+    public static <S extends Solution<I>, I extends Instance> void positiveTimes(S solution){
+        if(solution.getExecutionTimeInNanos() < 0){
+            throw new AssertionError("Execution Time cannot be negative.");
+        }
+        if(solution.getLastModifiedTime() < 0){
+            throw new AssertionError(String.format("Last modified time cannot be negative, current value: %s. Remember to call Solution::updateLastModifiedTime if you have modified the solution without using a Move!", solution.getLastModifiedTime()));
+        }
+    }
 }

@@ -13,6 +13,7 @@ import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.util.RandomManager;
+import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.List;
 import java.util.Optional;
@@ -57,8 +58,13 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
      */
     public abstract void shutdown();
 
-    public void validate(S s){
-        this.validator.ifPresent(validator -> validator.validate(s));
+    /**
+     * Run both user specific validations and our own.
+     * @param solution Solution to check.
+     */
+    public void validate(S solution){
+        ValidationUtil.positiveTimes(solution);
+        this.validator.ifPresent(validator -> validator.validate(solution));
     }
 
     protected void doWork(String experimentName, I instance, SolutionBuilder<S, I> solutionBuilder, Algorithm<S, I> algorithm, int i, ExceptionHandler<S,I> exceptionHandler) {

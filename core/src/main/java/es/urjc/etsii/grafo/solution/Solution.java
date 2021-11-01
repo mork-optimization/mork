@@ -25,7 +25,7 @@ public abstract class Solution<I extends Instance> {
 
     private long executionTimeInNanos;
 
-    private long lastModifiedTime;
+    private long lastModifiedTime = Integer.MIN_VALUE;
 
     /**
      * Create a solution for a given instance
