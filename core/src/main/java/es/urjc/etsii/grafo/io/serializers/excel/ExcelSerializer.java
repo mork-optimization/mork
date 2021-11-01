@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
-import es.urjc.etsii.grafo.solver.configuration.ExcelSerializerConfiguration;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
@@ -27,19 +26,18 @@ public class ExcelSerializer extends ResultsSerializer {
 
     private final boolean maximizing;
     private final List<ReferenceResultProvider> referenceResultProviders;
-    private final ExcelSerializerConfiguration config;
+    private final ExcelSerializerConfig config;
 
     public ExcelSerializer(
-            ExcelSerializerConfiguration config,
+            ExcelSerializerConfig config,
             @Value("${solver.maximizing}") boolean maximizing,
             List<ReferenceResultProvider> referenceResultProviders
     ) {
-        super(config.isEnabled(), config.getFolder(), config.getFormat());
+        super(config);
         this.config = config;
         this.maximizing = maximizing;
         this.referenceResultProviders = referenceResultProviders;
     }
-
 
     public void _serializeResults(List<? extends SolutionGeneratedEvent<?, ?>> results, Path p) {
         log.info("Exporting result data to XLSX...");

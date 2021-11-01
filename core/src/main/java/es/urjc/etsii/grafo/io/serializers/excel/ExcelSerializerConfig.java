@@ -1,18 +1,14 @@
-package es.urjc.etsii.grafo.solver.configuration;
+package es.urjc.etsii.grafo.io.serializers.excel;
 
+import es.urjc.etsii.grafo.io.serializers.AbstractSerializerConfig;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @ConfigurationProperties(prefix = "serializers.xlsx")
-public class ExcelSerializerConfiguration {
-    private boolean enabled;
+public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     private boolean algorithmsInColumns;
-
-    private String folder;
-
-    private String format;
 
     /**
      * Show best (min or max) score in pivot table
@@ -121,36 +117,12 @@ public class ExcelSerializerConfiguration {
         this.calculationMode = calculationMode;
     }
 
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-    }
-
     public boolean isAlgorithmsInColumns() {
         return algorithmsInColumns;
     }
 
     public void setAlgorithmsInColumns(boolean algorithmsInColumns) {
         this.algorithmsInColumns = algorithmsInColumns;
-    }
-
-    public String getFolder() {
-        return folder;
-    }
-
-    public void setFolder(String folder) {
-        this.folder = folder;
-    }
-
-    public String getFormat() {
-        return format;
-    }
-
-    public void setFormat(String format) {
-        this.format = format;
     }
 
     public boolean isBestScoreEnabled() {
