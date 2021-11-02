@@ -52,4 +52,8 @@ public class MemoryEventStorage {
                 .map(e -> (SolutionGeneratedEvent<?,?>) e)
                 .filter(e -> e.getExperimentName().equals(experimentName));
     }
+
+    public MorkEvent getLastEvent(){
+        return eventLog.lastEntry().getValue();
+    }
 }

@@ -379,7 +379,16 @@ function connectAndSubscribe(callback) {
             callback(payload);
         });
         $('#running-status').text('WAITING');
-        console.log("STOMP connected. Waiting for an event to synchronize state...");
+        console.log("STOMP connected. Waiting for the latest event to synchronize state...");
+        $.getJSON( "/lastevent", function(event) {
+            if (!event_queue) {
+                event_queue = [];
+                console.log("Recieved first event with id: " + event.eventId);
+                downloadOldEventData(0, event.eventId);
+            } else {
+                console.log("ERROR: Event queue already created, impossible?")
+            }
+        });
     }
 
     stompClient.onStompError = function (frame) {
@@ -421,7 +430,7 @@ function downloadOldEventData(from, to) {
             };
             setTimeout(() => catchUp(0), 0);
         } else {
-            setTimeout(() => downloadOldEventData(from + 1000, to), 0);
+            setTimeout(() => downloadOldEventData(from + event_batch_size, to), 0);
         }
     });
 }
@@ -431,11 +440,6 @@ function interceptor(event) {
     if (isUpToDate) {
         onMessage(event);
     } else {
-        if (!event_queue) {
-            event_queue = [];
-            console.log("Recieved first event with id: " + event.eventId);
-            downloadOldEventData(0, event.eventId);
-        }
         event_queue.push(event);
     }
 }
