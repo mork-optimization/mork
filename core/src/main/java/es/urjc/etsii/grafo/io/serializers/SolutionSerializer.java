@@ -35,6 +35,7 @@ public abstract class SolutionSerializer<S extends Solution<I>, I extends Instan
      * the given solution export is skipped.
      * @param writer Output, write data here
      * @param s Solution to export
+     * @throws IOException exception thrown in case something goes wrong
      */
     public abstract void export(BufferedWriter writer, S s) throws IOException;
 }

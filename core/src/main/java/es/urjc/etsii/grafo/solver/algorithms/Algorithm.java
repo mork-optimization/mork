@@ -23,6 +23,7 @@ public abstract class Algorithm<S extends Solution<I>, I extends Instance> {
 
     /**
      * Runs the algorithm
+     * @param instance Instance to solve
      * @return Built solution
      */
     public abstract S algorithm(I instance);

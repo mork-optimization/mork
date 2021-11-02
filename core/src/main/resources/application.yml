@@ -7,14 +7,40 @@ instances:
     # If an experiment does not have a specific path the default will be used. Example:
     # PreliminarExperiment: './instances/preliminar'
 
-# Experiment execution DOES NOT (usually) END if
-# an uncontrolled exception is propagated, the error is logged, and we try to keep solving
-errors:
-  # Write exceptions and errors with their context to disk?
-  errorsToFile: true
 
-  # Path where all errors or exceptions encountered during experiment execution will be exported
-  folder: 'errors'
+solver:
+  # Global random seed to ensure reproducibility
+  seed: 1234
+
+  # Which experiments should be executed? .* --> All.
+  # Experiment names default to the class name in which they are declared unless overridden.
+  # Tip, you may use a Regex, example: Preeliminar.*
+  experiments: '.*'
+
+  # Maximize or minimize objective function? True --> Maximizing, False --> Minimizing
+  maximizing: true
+
+  # How many times should each experiment be repeated. Recommended a minimum of 30
+  repetitions: 100
+
+  # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALLELIZED
+  # Valid Values: true, false
+  parallelExecutor: true
+
+  # Number of workers to use if parallelExecutor is enabled
+  # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
+  nWorkers: -1
+
+  # Execute benchmark before starting solver? False to skip benchmark.
+  benchmark: false
+
+# Enable irace integration? Check IRACE Wiki section before enabling
+irace:
+  enabled: false
+
+  # False: use GraalVM implementation, does not need R installed locally
+  # True: Use shell to execute R scripts, R/Rscript need to be locally installed and in path
+  shell: true
 
 serializers:
   solution-common:
@@ -110,40 +136,6 @@ serializers:
     rowGrandTotal: false
     columnGrandTotal: false
 
-solver:
-  # Global random seed to ensure reproducibility
-  seed: 1234
-
-  # Which experiments should be executed? .* --> All.
-  # Experiment names default to the class name in which they are declared unless overridden.
-  # Tip, you may use a Regex, example: Preeliminar.*
-  experiments: '.*'
-
-  # Maximize or minimize objective function? True --> Maximizing, False --> Minimizing
-  maximizing: true
-
-  # How many times should each experiment be repeated. Recommended a minimum of 30
-  repetitions: 100
-
-  # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALLELIZED
-  # Valid Values: true, false
-  parallelExecutor: true
-
-  # Number of workers to use if parallelExecutor is enabled
-  # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
-  nWorkers: -1
-
-  # Execute benchmark before starting solver? False to skip benchmark.
-  benchmark: false
-
-# Enable irace integration? Check IRACE Wiki section before enabling
-irace:
-  enabled: false
-
-  # False: use GraalVM implementation, does not need R installed locally
-  # True: Use shell to execute R scripts, R/Rscript need to be locally installed and in path
-  shell: true
-
 
 # Event system integrations/configuration
 event:
@@ -161,6 +153,15 @@ event:
     token: ''
     # Chat where we will send notifications
     chatId: ''
+
+# Experiment execution DOES NOT (usually) END if
+# an uncontrolled exception is propagated, the error is logged, and we try to keep solving
+errors:
+  # Write exceptions and errors with their context to disk?
+  errorsToFile: true
+
+  # Path where all errors or exceptions encountered during experiment execution will be exported
+  folder: 'errors'
 
 # Advanced configuration, do not change unless you know what you are doing!
 advanced:
@@ -191,5 +192,5 @@ logging:
   file:
     name: 'log.txt'
 
-  # Logging messages format
+  # Logging format for console
   pattern.console: '%clr([%d{${LOG_DATEFORMAT_PATTERN:HH:mm:ss}}]){faint} %clr(${LOG_LEVEL_PATTERN:%3p}) %clr(%-26.26logger{25}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}'

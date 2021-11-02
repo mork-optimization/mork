@@ -24,6 +24,7 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
 
     /**
      * Execute VNS until finished
+     * @param algorithmName Algorithm name, example: "VNSWithRandomConstructive"
      * @param kProvider k value provider, @see VNS.KProvider
      * @param shake Perturbation method
      * @param constructive Constructive method
@@ -36,6 +37,7 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
 
     /**
      * Execute VNS until finished
+     * @param algorithmName Algorithm name, example: "VNSWithRandomConstructive"
      * @param kProvider k value provider, @see VNS.KProvider
      * @param shakes Perturbation method
      * @param constructive Constructive method
