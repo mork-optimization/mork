@@ -19,7 +19,8 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
     public List<__RNAME__GRASPMove> buildInitialCandidateList(__RNAME__Solution solution) {
         var list = new ArrayList<__RNAME__GRASPMove>();
 
-        // Generate a list with all valid movements for current solution
+        // TODO Generate a list with all valid movements for current solution
+        // GRASP ends when CL is empty
 
         return list;
     }
@@ -35,7 +36,7 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
     @Override
     public List<__RNAME__GRASPMove> updateCandidateList(__RNAME__Solution solution, __RNAME__GRASPMove move, List<__RNAME__GRASPMove> candidateList, int index) {
         // List can be partially updated / modified
-        // recalculating from scratch is an ok start and can be optimized latter if necessary
+        // recalculating from scratch is an ok start and can be optimized later if necessary
         return buildInitialCandidateList(solution);
     }
 
@@ -46,39 +47,48 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
 
         @Override
         protected void _execute() {
-            // Apply changes to solution if movement is executed
+            // TODO Apply changes to solution if movement is executed
             // this.s --> reference to current solution
+            throw new UnsupportedOperationException("_execute() in __RNAME__ListManager not implemented yet");
+
         }
 
         @Override
         public double getValue() {
-            // How much does o.f. value change if we apply this movement?
+            // TODO How much does o.f. value change if we apply this movement?
             throw new UnsupportedOperationException("getValue() in __RNAME__ListManager not implemented yet");
         }
 
         @Override
+        public boolean improves() {
+            // TODO: Choose implementation
+            // If maximizing: return DoubleComparator.isPositive(this.score)
+            // If minimizing: return DoubleComparator.isNegative(this.score)
+            throw new UnsupportedOperationException("improves() in __RNAME__ListManager not implemented yet");
+        }
+
+        @Override
         public String toString() {
-            // Use IDE to generate this method
+            // TODO Use IDE to generate this method after all properties are defined
             throw new UnsupportedOperationException("toString() in __RNAME__ not implemented yet");
         }
 
         @Override
         public boolean equals(Object o) {
-            // Use IDE to generate this method
+            // TODO Use IDE to generate this method after all properties are defined
             throw new UnsupportedOperationException("equals() in __RNAME__ not implemented yet");
         }
 
         @Override
         public int hashCode() {
-            // Use IDE to generate this method
+            // TODO Use IDE to generate this method after all properties are defined
             throw new UnsupportedOperationException("hashCode() in __RNAME__ not implemented yet");
         }
 
         @Override
         public boolean isValid() {
-            // Ignore this method
-            // If the movement is not valid, it should not be in the candidate list.
-            // Moves in candidate list are always valid
+            // A move is not valid if it leaves the solution in an unfeasible state
+            // If the movement is not valid, it should probably not be in the candidate list.
             return true;
         }
     }

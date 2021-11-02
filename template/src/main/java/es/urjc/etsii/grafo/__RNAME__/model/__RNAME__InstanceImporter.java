@@ -10,7 +10,9 @@ public class __RNAME__InstanceImporter extends InstanceImporter<__RNAME__Instanc
     @Override
     public __RNAME__Instance importInstance(BufferedReader reader, String filename) throws IOException {
         // Create and return instance object from file data
-
+        // TODO parse all data from the given reader however I want
+        // TIP You may use a Scanner if you prefer it to a Buffered Reader:
+        // Scanner sc = new Scanner(reader);
 
         var instance = new __RNAME__Instance(filename);
 

@@ -141,6 +141,8 @@ function onInstanceProcessingStart(event) {
     // Draw best solution found
     $('.best-solutions').prepend("<div id='best-solution-" + instanceName + "'></div>");
     bestValue = NaN;
+
+    // TODO Define current solution chart configuration. Example for DRFLP
     current_solution_chart = new Highcharts.Chart('best-solution-' + instanceName, {
         chart: {
             type: 'xrange',
@@ -192,7 +194,7 @@ function onInstanceProcessingStart(event) {
             enabled: true
         }
     });
-
+    // END Define how the current solution should be drawn.
     
     // Add reference value plot line
     // Style of the plot line. Default to solid. See https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-dashstyle-all/
@@ -292,7 +294,8 @@ function onSolutionGenerated(event) {
     }
     current_chart_series[event.algorithmName].addPoint([event.iteration, event.score], redraw);
 
-    // Change to > if maximizing
+    // TODO Specify how to draw or set data to our custom solution chart when a solution is generated.
+    //  Check if the generated solution improves best. Change to > if maximizing
     if (isNaN(bestValue) || event.score < bestValue) {
         bestValue = event.score;
         const newData = [];
@@ -316,6 +319,7 @@ function onSolutionGenerated(event) {
 
         current_solution_chart_data.setData(newData);
     }
+    // END Specify how to draw or set data to our custom solution chart when a solution is generated.
 
 
 }

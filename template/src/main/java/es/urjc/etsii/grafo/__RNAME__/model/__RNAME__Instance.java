@@ -10,5 +10,5 @@ public class __RNAME__Instance extends Instance {
     }
 
 
-    // Override compareTo if the default ordering (by instance file name) is not correct
+    // compareTo may be overriden to specify a custom instance solving order (default ordering by instance file name)
 }

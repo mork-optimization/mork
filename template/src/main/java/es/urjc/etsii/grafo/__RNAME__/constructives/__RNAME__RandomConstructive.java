@@ -10,7 +10,12 @@ public class __RNAME__RandomConstructive extends Constructive<__RNAME__Solution,
     public __RNAME__Solution construct(__RNAME__Solution solution) {
         // IN --> Empty solution from solution(instance) constructor
         // OUT --> Feasible solution with an assigned score
-        // Remember to call solution.updateLastModifiedTime() before returning the solution!!
+        // TODO: Implement random constructive
+
+
+        // Remember to call solution.updateLastModifiedTime() if the solution is modified without using moves!!
+        solution.updateLastModifiedTime();
+        //return solution;
         throw new UnsupportedOperationException("RandomConstructive not implemented yet");
     }
 }
