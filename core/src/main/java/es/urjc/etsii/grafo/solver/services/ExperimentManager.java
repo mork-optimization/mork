@@ -2,9 +2,9 @@ package es.urjc.etsii.grafo.solver.services;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -20,8 +20,9 @@ public class ExperimentManager<S extends Solution<I>, I extends Instance> {
 
     private final Map<String, List<Algorithm<S,I>>> experiments = new LinkedHashMap<>();
 
-    public ExperimentManager(List<AbstractExperiment<S, I>> experimentImplementations, @Value("${solver.experiments}") String experimentFilterString, SolutionBuilder<S, I> solutionBuilder) {
-        experimentFilter = Pattern.compile(experimentFilterString);
+    public ExperimentManager(List<AbstractExperiment<S, I>> experimentImplementations, SolverConfig solverConfig, SolutionBuilder<S, I> solutionBuilder) {
+        var experimentPattern = solverConfig.getExperiments();
+        experimentFilter = Pattern.compile(experimentPattern);
 
         for (var experiment : experimentImplementations) {
             var algorithms = experiment.getAlgorithms();
@@ -30,10 +31,10 @@ public class ExperimentManager<S extends Solution<I>, I extends Instance> {
             String experimentName = experiment.getName();
             var matcher = experimentFilter.matcher(experimentName);
             if(matcher.matches()){
-                experiments.put(experimentName, algorithms);
-                log.fine(String.format("Experiment %s matches against %s", experimentName, experimentFilterString));
+                this.experiments.put(experimentName, algorithms);
+                log.fine(String.format("Experiment %s matches against %s", experimentName, experimentPattern));
             } else {
-                log.fine(String.format("Experiment %s does not match against %s, ignoring", experimentName, experimentFilterString));
+                log.fine(String.format("Experiment %s does not match against %s, ignoring", experimentName, experimentPattern));
             }
         }
     }

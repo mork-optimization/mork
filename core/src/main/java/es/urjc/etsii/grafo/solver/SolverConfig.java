@@ -10,13 +10,13 @@ import java.util.logging.Logger;
 public class SolverConfig {
     private static final Logger log = Logger.getLogger(SolverConfig.class.getName());
 
-    private int seed;
+    private int seed = 1234;
     private String experiments;
     private boolean maximizing;
-    private int repetitions;
-    private boolean parallelExecutor;
-    private int nWorkers;
-    private boolean benchmark;
+    private int repetitions = 1;
+    private boolean parallelExecutor = false;
+    private int nWorkers = -1;
+    private boolean benchmark = false;
 
     public int getSeed() {
         return seed;

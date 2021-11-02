@@ -4,7 +4,6 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 
-import java.util.Objects;
 import java.util.stream.Stream;
 
 /**

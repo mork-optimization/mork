@@ -6,9 +6,9 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ConfigurationProperties(prefix = "event.telegram")
 public class TelegramConfig {
-    private boolean enabled;
+    private boolean enabled = false;
     private String token;
-    private String chatId;
+    private String chatId = "none";
 
     public boolean isEnabled() {
         return enabled;

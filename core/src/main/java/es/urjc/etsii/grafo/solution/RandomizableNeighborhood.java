@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.solution;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 
 import java.util.Optional;
 

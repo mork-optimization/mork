@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.patches;
 
 import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Value;
 
 import javax.annotation.PostConstruct;
 import java.util.Collections;

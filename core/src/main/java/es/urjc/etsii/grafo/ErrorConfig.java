@@ -7,7 +7,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "errors")
 public class ErrorConfig {
     private boolean errorsToFile;
-    private String path;
+    private String folder;
 
     public boolean isErrorsToFile() {
         return errorsToFile;
@@ -17,11 +17,11 @@ public class ErrorConfig {
         this.errorsToFile = errorsToFile;
     }
 
-    public String getPath() {
-        return path;
+    public String getFolder() {
+        return folder;
     }
 
-    public void setPath(String path) {
-        this.path = path;
+    public void setFolder(String folder) {
+        this.folder = folder;
     }
 }

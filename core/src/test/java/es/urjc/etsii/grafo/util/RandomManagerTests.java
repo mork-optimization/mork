@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.util;
 
 
+import es.urjc.etsii.grafo.testutil.HelperFactory;
 import org.junit.jupiter.api.*;
 
 import java.util.ArrayList;
@@ -14,7 +15,7 @@ public class RandomManagerTests {
     @Order(1)
     public void initializationTest(){
         int initialseed = 123456, repetitions = 10;
-        RandomManager manager = new RandomManager(initialseed, repetitions);
+        RandomManager manager = HelperFactory.getRandomManager(initialseed, repetitions);
 
         RandomManager.reset(0);
         var myRandom = RandomManager.getRandom();
@@ -35,7 +36,7 @@ public class RandomManagerTests {
     @Order(2)
     public void concurrentGenerationTest(){
         int initialseed = 123456, repetitions = 8;
-        RandomManager manager = new RandomManager(initialseed, repetitions);
+        RandomManager manager = HelperFactory.getRandomManager(initialseed, repetitions);
         var executor = Executors.newFixedThreadPool(4);
         for (int i = 0; i < repetitions; i++) {
             var iteration = i;

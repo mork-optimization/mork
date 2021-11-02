@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.solver.SolverConfig;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -32,8 +33,8 @@ public final class RandomManager {
     }
 
     // a bit hacky but uses constructor instead of static initializer for Spring compatibility
-    protected RandomManager(@Value("${solver.seed}") int seed,  @Value("${solver.repetitions}") int repetitions){
-        reinitialize(seed, repetitions);
+    public RandomManager(SolverConfig solverConfig){
+        reinitialize(solverConfig.getSeed(), solverConfig.getRepetitions());
     }
 
     /**

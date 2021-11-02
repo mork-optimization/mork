@@ -14,7 +14,7 @@ errors:
   errorsToFile: true
 
   # Path where all errors or exceptions encountered during experiment execution will be exported
-  path: 'errors'
+  folder: 'errors'
 
 serializers:
   solution-common:

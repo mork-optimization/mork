@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ConfigurationProperties(prefix = "event.webserver")
 public class EventWebserverConfig {
-    private boolean stopOnExecutionEnd;
+    private boolean stopOnExecutionEnd = true;
 
     public boolean isStopOnExecutionEnd() {
         return stopOnExecutionEnd;

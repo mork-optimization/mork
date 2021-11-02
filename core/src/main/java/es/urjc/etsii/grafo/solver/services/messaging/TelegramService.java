@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.solver.services.messaging;
 
 import es.urjc.etsii.grafo.solver.services.events.AbstractEventListener;
-import org.springframework.beans.factory.annotation.Value;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
@@ -17,21 +16,17 @@ public class TelegramService extends AbstractEventListener {
 
     private static final Logger log = Logger.getLogger(MorkTelegramBot.class.getName());
     private static final int longPollingTimeoutInSeconds = 10;
+    private final TelegramConfig telegramConfig;
 
-    private final boolean enabled;
     private volatile boolean errorNotified = false;
 
     private MorkTelegramBot telegramBot;
     private BotSession session;
 
-    public TelegramService(
-            @Value("${event.telegram.enabled:false}") boolean enabled,
-            @Value("${event.telegram.chatId:none}") String chatId,
-            @Value("${event.telegram.token}") String token
-    ) {
-        this.enabled = enabled;
-        if (enabled) {
-            initializeTelegramBot(chatId, token);
+    public TelegramService(TelegramConfig telegramConfig) {
+        this.telegramConfig = telegramConfig;
+        if (telegramConfig.isEnabled()) {
+            initializeTelegramBot(telegramConfig.getChatId(), telegramConfig.getToken());
         }
     }
 
@@ -62,7 +57,7 @@ public class TelegramService extends AbstractEventListener {
     }
 
     public void stop(){
-        if(!enabled) return;
+        if(!this.telegramConfig.isEnabled()) return;
         log.info("Stopping telegram bot... This can take up to 10 seconds.");
         if(session != null){
             session.stop();
