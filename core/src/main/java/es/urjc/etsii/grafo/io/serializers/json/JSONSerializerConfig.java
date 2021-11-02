@@ -7,8 +7,8 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "serializers.solution-json")
 public class JSONSerializerConfig {
 
-    private boolean enabled;
-    private boolean pretty;
+    private boolean enabled = true;
+    private boolean pretty = true;
 
     public boolean isEnabled() {
         return enabled;
