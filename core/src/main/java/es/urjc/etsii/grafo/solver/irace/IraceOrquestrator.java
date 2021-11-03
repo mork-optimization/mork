@@ -95,6 +95,7 @@ public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extend
         try {
             copyWithSubstitutions(getInputStreamFor("scenario.txt", isJar), Path.of("scenario.txt"), substitutions);
             copyWithSubstitutions(getInputStreamFor("parameters.txt", isJar), Path.of("parameters.txt"), substitutions);
+            copyWithSubstitutions(getInputStreamFor("forbidden.txt", isJar), Path.of("forbidden.txt"), substitutions);
             copyWithSubstitutions(getInputStreamFor("middleware.sh", isJar), Path.of("middleware.sh"), substitutions);
             markAsExecutable("middleware.sh");
 
