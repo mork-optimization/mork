@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.io.serializers.excel;
 
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.solver.SolverConfig;
+import es.urjc.etsii.grafo.solver.services.events.MemoryEventStorage;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
@@ -14,6 +15,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Optional;
 
 
 public class ExcelSerializer extends ResultsSerializer {
@@ -26,17 +28,23 @@ public class ExcelSerializer extends ResultsSerializer {
 
     private final boolean maximizing;
     private final List<ReferenceResultProvider> referenceResultProviders;
+    private final Optional<ExcelCustomizer> excelCustomizer;
+    private final MemoryEventStorage eventStorage;
     private final ExcelSerializerConfig config;
 
     public ExcelSerializer(
             ExcelSerializerConfig serializerConfig,
             SolverConfig solverConfig,
-            List<ReferenceResultProvider> referenceResultProviders
+            List<ReferenceResultProvider> referenceResultProviders,
+            Optional<ExcelCustomizer> excelCustomizer,
+            MemoryEventStorage eventStorage
     ) {
         super(serializerConfig);
         this.config = serializerConfig;
         this.maximizing = solverConfig.isMaximizing();
         this.referenceResultProviders = referenceResultProviders;
+        this.excelCustomizer = excelCustomizer;
+        this.eventStorage = eventStorage;
     }
 
     public void _serializeResults(List<? extends SolutionGeneratedEvent<?, ?>> results, Path p) {
@@ -54,7 +62,13 @@ public class ExcelSerializer extends ResultsSerializer {
             var area = writer.fillRawSheet(rawSheet, maximizing, results, referenceResultProviders);
             
             fillPivotSheet(pivotSheet, area, rawSheet);
-
+            if(this.excelCustomizer.isPresent()){
+                var realExcelCustomizer = excelCustomizer.get();
+                log.info("Calling Excel customizer: " + realExcelCustomizer.getClass().getSimpleName());
+                realExcelCustomizer.customize(excelBook, this.eventStorage);
+            } else {
+                log.fine("ExcelCustomizer implementation not found");
+            }
             // Excel should recalculate on open always
             excelBook.setForceFormulaRecalculation(true);
             log.info("Writing to disk...");

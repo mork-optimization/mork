@@ -13,7 +13,7 @@ import java.util.stream.Stream;
  * Store historical event data
  */
 @Service
-public class MemoryEventStorage {
+public class MemoryEventStorage extends AbstractEventStorage {
     /**
      * Use a tree as events may be processed unordered, but should be retrieved ordered by range query
      */
