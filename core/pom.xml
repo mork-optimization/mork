@@ -41,7 +41,7 @@
 
     <scm>
         <connection>scm:git:git://github.com/rmartinsanta/mork.git</connection>
-        <developerConnection>scm:git:ssh://github.com:rmartinsanta/mork.git</developerConnection>
+        <developerConnection>scm:git:https://github.com/rmartinsanta/mork</developerConnection>
         <url>https://github.com/rmartinsanta/mork/tree/master</url>
     </scm>
 
