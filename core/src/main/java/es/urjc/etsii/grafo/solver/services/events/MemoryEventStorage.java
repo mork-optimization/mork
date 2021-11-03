@@ -53,6 +53,16 @@ public class MemoryEventStorage {
                 .filter(e -> e.getExperimentName().equals(experimentName));
     }
 
+    @SuppressWarnings("unchecked")
+    public <T extends MorkEvent> Stream<T> getEventsByType(Class<T> type){
+        return (Stream<T>) this.eventLog.values().stream()
+                .filter(type::isInstance);
+    }
+
+    public Stream<MorkEvent> getAllEvents(){
+        return this.eventLog.values().stream();
+    }
+
     public MorkEvent getLastEvent(){
         return eventLog.lastEntry().getValue();
     }
