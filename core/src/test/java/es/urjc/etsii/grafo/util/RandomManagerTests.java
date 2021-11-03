@@ -67,4 +67,13 @@ public class RandomManagerTests {
         }
     }
 
+    @Test
+    @Order(3)
+    public void testExceptions(){
+        int initialseed = 123456, repetitions = 8;
+        RandomManager manager = HelperFactory.getRandomManager(initialseed, repetitions);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> RandomManager.nextInt(0, 0));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> RandomManager.nextInt(1, 0));
+        Assertions.assertDoesNotThrow(() -> RandomManager.nextInt(0, 1));
+    }
 }
