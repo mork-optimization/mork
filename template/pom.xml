@@ -13,6 +13,7 @@
         <groupId>es.urjc.etsii.grafo</groupId>
         <artifactId>mork-parent</artifactId>
         <version>0.7-SNAPSHOT</version>
+        <relativePath/>
     </parent>
 
 </project>
