@@ -31,6 +31,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
      * @param maximizing true if a movement with a bigger score is better
      * @param ps         neighborhood that generates the movements
      */
+    @SafeVarargs
     public LocalSearch(boolean maximizing, String lsName, Neighborhood<M, S, I>... ps) {
         this(new DefaultMoveComparator<>(maximizing), lsName, ps);
     }
@@ -41,6 +42,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
      * @param maximizing true if a movement with a bigger score is better
      * @param ps         neighborhood that generates the movements
      */
+    @SafeVarargs
     public LocalSearch(boolean maximizing, Neighborhood<M, S, I>... ps) {
         this(new DefaultMoveComparator<>(maximizing), "", ps);
     }
