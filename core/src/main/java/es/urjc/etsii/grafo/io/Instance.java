@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.io;
 
 /**
- * Base instance class. All instance subclasses must be inmutable after construction
+ * Base instance class. All instance subclasses must be immutable after construction
  * Order defaults to instance name, can be changed by user
  * (for example, to order by instance size or any other instance property)
  */
