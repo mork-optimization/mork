@@ -4,7 +4,7 @@
 
     <groupId>es.urjc.etsii.grafo</groupId>
     <artifactId>mork</artifactId>
-    <version>0.8-SNAPSHOT</version>
+    <version>0.8</version>
     <packaging>jar</packaging>
     <properties>
         <java.version>11</java.version>
@@ -41,7 +41,7 @@
         <connection>scm:git:git://github.com/rmartinsanta/mork.git</connection>
         <developerConnection>scm:git:https://github.com/rmartinsanta/mork</developerConnection>
         <url>https://github.com/rmartinsanta/mork/tree/master</url>
-    <tag>HEAD</tag>
+    <tag>mork-parent-0.8</tag>
   </scm>
 
     <distributionManagement>
