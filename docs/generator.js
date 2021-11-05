@@ -26,13 +26,19 @@ function setTags(){
   getJSON('https://api.github.com/repos/rmartinsanta/mork/tags', function(status, data){
     console.log("Github tags API response:")
     console.log(data);
+    const filtered_data = [];
     for(var i = 0; i < data.length; i++){
       const name = data[i].name;
       if(name.indexOf("parent") != -1){
-        continue;
+        filtered_data.push(data[i]);
       }
-      const displayName = name.replaceAll("mork-", "");
-      const selected = i == data.length - 1;
+    }
+    console.log(filtered_data)
+    for(var i = 0; i < filtered_data.length; i++){
+      const name = filtered_data[i].name;
+
+      const displayName = name.replaceAll("mork-parent-", "");
+      const selected = i == 0;
       selector.add(new Option(displayName, name, selected, selected));
     }
   });
