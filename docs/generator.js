@@ -5,6 +5,39 @@ function log(message){
   textarea.scrollTop = textarea.scrollHeight;
 }
 
+// Copy pasted from https://stackoverflow.com/questions/12460378/how-to-get-json-from-url-in-javascript
+var getJSON = function(url, callback) {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.responseType = 'json';
+    xhr.onload = function() {
+      var status = xhr.status;
+      if (status === 200) {
+        callback(null, xhr.response);
+      } else {
+        callback(status, xhr.response);
+      }
+    };
+    xhr.send();
+};
+
+function setTags(){
+  var selector = document.getElementById('morktag')
+  getJSON('https://api.github.com/repos/rmartinsanta/mork/tags', function(status, data){
+    console.log("Github tags API response:")
+    console.log(data);
+    for(var i = 0; i < data.length; i++){
+      const name = data[i].name;
+      if(name.indexOf("parent") != -1){
+        continue;
+      }
+      const displayName = name.replaceAll("mork-", "");
+      const selected = i == data.length - 1;
+      selector.add(new Option(displayName, name, selected, selected));
+    }
+  });
+}
+
 function generateProject(){
 
   var inputElement = document.getElementById('projectname')
@@ -12,12 +45,13 @@ function generateProject(){
     log("ERROR: Invalid project name. Check that it starts with an Uppercase letter followed by any alphanumeric characters or underscores (no spaces please!)");
     return;
   }
+  var tag = document.getElementById('morktag').value;
   var correctName = inputElement.value;
 
   log("Starting generation for project " + correctName);
 
   // CONFIGURATION
-  var domain = 'https://raw.githubusercontent.com/rmartinsanta/mork/master/template/';
+  var domain = 'https://raw.githubusercontent.com/rmartinsanta/mork/'+tag+'/template/';
   var urls = [
     {folder: '', name: 'pom.xml'},
     {folder: '', name: '.gitignore'},
@@ -78,3 +112,5 @@ function generateProject(){
     });
   });
 }
+
+setTags();
