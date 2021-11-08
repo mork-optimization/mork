@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.solver.algorithms;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
 /**
@@ -15,19 +16,26 @@ public class MultiStartAlgorithm<S extends Solution<I>, I extends Instance> exte
 
     private static Logger log = Logger.getLogger(MultiStartAlgorithm.class.getName());
 
-    private final int n;
+
     final String algorithmName;
     final Algorithm<S, I> algorithm;
+    private final int maxIterations;
+    private final int minIterations;
+    private final int maxIterationsWithoutImproving;
+    private final long maxTime;
 
-
-    public MultiStartAlgorithm(int n, Algorithm<S, I> algorithm) {
-        this(n, "", algorithm);
-    }
-
-    public MultiStartAlgorithm(int n, String algorithmName, Algorithm<S, I> algorithm) {
-        this.n = n;
+    public MultiStartAlgorithm(String algorithmName, Algorithm<S, I> algorithm, int maxIterations, int minIterations, int maxIterationsWithoutImproving, long maxTime) {
         this.algorithmName = algorithmName;
         this.algorithm = algorithm;
+        this.maxIterations = maxIterations;
+        this.minIterations = minIterations;
+        this.maxIterationsWithoutImproving = maxIterationsWithoutImproving;
+        this.maxTime = maxTime;
+    }
+
+
+    public MultiStartAlgorithm(String algorithmName, Algorithm<S, I> algorithm, int maxIterations) {
+        this(algorithmName, algorithm, maxIterations, 0, Integer.MAX_VALUE, Long.MAX_VALUE);
     }
 
     /**
@@ -39,25 +47,42 @@ public class MultiStartAlgorithm<S extends Solution<I>, I extends Instance> exte
     @Override
     public S algorithm(S solution) {
         S best = null;
-        for (int i = 0; i < n; i++) {
+        int iter = 0;
+        int iterWI = 0;
+        long startT = System.nanoTime();
+        while (terminationCriteriaIsMet(iter, iterWI, startT)) {
+            iter++;
+            iterWI++;
             solution = this.algorithm.algorithm(solution);
             if (best == null) {
                 best = solution;
             } else {
                 best = best.getBetterSolution(solution);
+                iterWI = 0;
             }
-            printStatus(i, best);
+            printStatus(iter, best);
         }
 
         return best;
     }
 
+    private boolean terminationCriteriaIsMet(int iter, int iterWI, long startT) {
+        if (iter > this.maxIterations) return true;
+        if (iter > this.minIterations) {
+            if (iterWI > this.maxIterationsWithoutImproving) return true;
+            return TimeUnit.SECONDS.convert(System.nanoTime() - startT, TimeUnit.NANOSECONDS) > this.maxTime;
+        }
+        return false;
+    }
+
     @Override
     public String toString() {
         return "MA{" +
-                "n=" + n +
-                ", algorithm='" + (algorithmName.equals("") ? algorithm.toString() : algorithmName) +
-                '}';
+                "alg=" + (algorithmName.equals("") ? algorithm : algorithmName) +
+                ", mxIter=" + maxIterations +
+                ", mnIter=" + minIterations +
+                ", mxIterWI=" + maxIterationsWithoutImproving +
+                ", mxT=" + maxTime;
     }
 
     protected void printStatus(int iteration, S s) {
