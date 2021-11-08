@@ -22,44 +22,52 @@ public class MultiStartAlgorithm<S extends Solution<I>, I extends Instance> exte
     private final int maxIterations;
     private final int minIterations;
     private final int maxIterationsWithoutImproving;
-    private final long maxTime;
+    private final long nanotime;
 
-    public MultiStartAlgorithm(String algorithmName, Algorithm<S, I> algorithm, int maxIterations, int minIterations, int maxIterationsWithoutImproving, long maxTime) {
+    public MultiStartAlgorithm(String algorithmName, Algorithm<S, I> algorithm, int maxIterations, int minIterations, int maxIterationsWithoutImproving, int maxTime, TimeUnit timeUnit) {
+        if(maxIterationsWithoutImproving <= 0){
+            throw new IllegalArgumentException("Explica cavero");
+        }
         this.algorithmName = algorithmName;
         this.algorithm = algorithm;
         this.maxIterations = maxIterations;
         this.minIterations = minIterations;
         this.maxIterationsWithoutImproving = maxIterationsWithoutImproving;
-        this.maxTime = maxTime;
+        this.nanotime = timeUnit.toNanos(maxTime);
     }
 
 
     public MultiStartAlgorithm(String algorithmName, Algorithm<S, I> algorithm, int maxIterations) {
-        this(algorithmName, algorithm, maxIterations, 0, Integer.MAX_VALUE, Long.MAX_VALUE);
+        this(algorithmName, algorithm, maxIterations, 0, Integer.MAX_VALUE, 1_000, TimeUnit.DAYS);
     }
 
     /**
      * Algorithm: Execute a single construction and then all the local searchs a single time.
      *
-     * @param solution Empty solution
+     * @param instance Empty solution
      * @return Returns a valid solution
      */
     @Override
-    public S algorithm(S solution) {
+    public S algorithm(I instance) {
         S best = null;
         int iter = 0;
         int iterWI = 0;
         long startT = System.nanoTime();
-        while (terminationCriteriaIsMet(iter, iterWI, startT)) {
+        while (!terminationCriteriaIsMet(iter, iterWI, startT)) {
             iter++;
             iterWI++;
-            solution = this.algorithm.algorithm(solution);
+            S solution = this.algorithm.algorithm(instance);
+            S oldBest = best;
             if (best == null) {
                 best = solution;
+                iterWI = 0;
             } else {
                 best = best.getBetterSolution(solution);
-                iterWI = 0;
+                if(oldBest != best){
+                    iterWI = 0;
+                }
             }
+
             printStatus(iter, best);
         }
 
@@ -67,10 +75,16 @@ public class MultiStartAlgorithm<S extends Solution<I>, I extends Instance> exte
     }
 
     private boolean terminationCriteriaIsMet(int iter, int iterWI, long startT) {
-        if (iter > this.maxIterations) return true;
-        if (iter > this.minIterations) {
-            if (iterWI > this.maxIterationsWithoutImproving) return true;
-            return TimeUnit.SECONDS.convert(System.nanoTime() - startT, TimeUnit.NANOSECONDS) > this.maxTime;
+        if (iter >= this.maxIterations) {
+            return true;
+        }
+        if (iter >= this.minIterations) {
+            if (iterWI >= this.maxIterationsWithoutImproving){
+                return true;
+            }
+            if(System.nanoTime() - startT > this.nanotime){
+                return true;
+            }
         }
         return false;
     }
@@ -82,7 +96,7 @@ public class MultiStartAlgorithm<S extends Solution<I>, I extends Instance> exte
                 ", mxIter=" + maxIterations +
                 ", mnIter=" + minIterations +
                 ", mxIterWI=" + maxIterationsWithoutImproving +
-                ", mxT=" + maxTime;
+                ", mxT=" + nanotime;
     }
 
     protected void printStatus(int iteration, S s) {

@@ -19,7 +19,7 @@ public class TestSolution extends Solution<TestInstance> {
 
     @Override
     public <S extends Solution<TestInstance>> S getBetterSolution(S o) {
-        return null;
+        return o;
     }
 
     @Override
