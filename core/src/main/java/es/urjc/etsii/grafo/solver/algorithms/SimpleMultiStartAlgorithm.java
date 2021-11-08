@@ -14,6 +14,7 @@ import java.util.logging.Logger;
  * @param <S> Solution class
  * @param <I> Instance class
  */
+@Deprecated(forRemoval = true)
 public class SimpleMultiStartAlgorithm<S extends Solution<I>, I extends Instance> extends SimpleAlgorithm<S,I>{
 
     private static Logger log = Logger.getLogger(SimpleAlgorithm.class.getName());

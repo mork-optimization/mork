@@ -17,7 +17,7 @@ public class VND<S extends Solution<I>,I extends Instance> extends Improver<S,I>
     }
 
     @Override
-    public S improve(S s) {
+    public S _improve(S s) {
         int currentLS = 0;
         while(currentLS < improvers.size()){
             double prev = s.getScore();
