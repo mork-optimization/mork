@@ -78,9 +78,11 @@ public class MultiStartAlgorithm<S extends Solution<I>, I extends Instance> exte
     @Override
     public String toString() {
         return "MA{" +
-                "n=" + maxIterations +
-                ", algorithm='" + (algorithmName.equals("") ? algorithm.toString() : algorithmName) +
-                '}';
+                "alg=" + (algorithmName.equals("") ? algorithm : algorithmName) +
+                ", mxIter=" + maxIterations +
+                ", mnIter=" + minIterations +
+                ", mxIterWI=" + maxIterationsWithoutImproving +
+                ", mxT=" + maxTime;
     }
 
     protected void printStatus(int iteration, S s) {
