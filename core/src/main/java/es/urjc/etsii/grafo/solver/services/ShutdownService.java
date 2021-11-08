@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.solver.services;
 
 import es.urjc.etsii.grafo.solver.services.events.EventAsyncConfigurer;
+import es.urjc.etsii.grafo.solver.services.events.EventWebserverConfig;
 import es.urjc.etsii.grafo.solver.services.events.MorkEventListener;
 import es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent;
 import org.springframework.beans.factory.annotation.Value;
@@ -19,10 +20,10 @@ public class ShutdownService {
     private final EventAsyncConfigurer eventAsyncConfigurer;
     private final boolean stopOnExperimentEnd;
 
-    public ShutdownService(ApplicationContext appContext, EventAsyncConfigurer eventAsyncConfigurer, @Value("${event.webserver.stopOnExecutionEnd:true}") boolean stopOnExperimentEnd) {
+    public ShutdownService(ApplicationContext appContext, EventAsyncConfigurer eventAsyncConfigurer, EventWebserverConfig eventWebserverConfig) {
         this.appContext = (ConfigurableApplicationContext) appContext;
         this.eventAsyncConfigurer = eventAsyncConfigurer;
-        this.stopOnExperimentEnd = stopOnExperimentEnd;
+        this.stopOnExperimentEnd = eventWebserverConfig.isStopOnExecutionEnd();
     }
 
     @MorkEventListener

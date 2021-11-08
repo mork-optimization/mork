@@ -23,9 +23,9 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
 
     private static Logger log = Logger.getLogger(SimpleAlgorithm.class.getName());
 
-    final Constructive<S,I> constructive;
-    final List<Improver<S, I>> improvers;
-    final String algorithmName;
+    protected final Constructive<S,I> constructive;
+    protected final List<Improver<S, I>> improvers;
+    protected final String algorithmName;
 
     @SafeVarargs
     public SimpleAlgorithm(Constructive<S, I> constructive, Improver<S,I>... improvers){
@@ -45,11 +45,12 @@ public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends 
 
     /**
      * Algorithm: Execute a single construction and then all the local searchs a single time.
-     * @param solution Empty solution from SolutionBuilder
+     * @param instance Instance
      * @return Returns a valid solution
      */
     @Override
-    public S algorithm(S solution) {
+    public S algorithm(I instance) {
+        var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
         ValidationUtil.validSolution(solution);
         printStatus("Constructive", solution);

@@ -24,6 +24,11 @@ public class EventController {
         return memoryEventStorage.getEvents(from, to);
     }
 
+    @GetMapping("/lastevent")
+    public MorkEvent getLastEvent(){
+        return memoryEventStorage.getLastEvent();
+    }
+
     @GetMapping("/ping")
     public PingEvent ping(){
         var ping = new PingEvent();

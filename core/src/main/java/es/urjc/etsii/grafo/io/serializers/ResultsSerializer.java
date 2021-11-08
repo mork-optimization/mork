@@ -13,19 +13,16 @@ import java.util.logging.Logger;
 @InheritedComponent
 public abstract class ResultsSerializer {
     protected final Logger log;
-    protected final boolean enabled;
-    protected final String folder;
-    protected final String format;
+    protected final AbstractSerializerConfig config;
 
-    public ResultsSerializer(boolean enabled, String folder, String format) {
-        this.enabled = enabled;
-        this.folder = folder;
-        this.format = format;
+
+    public ResultsSerializer(AbstractSerializerConfig config) {
+        this.config = config;
         log = Logger.getLogger(this.getClass().getName());
     }
 
     public void serializeResults(String experimentName, List<? extends SolutionGeneratedEvent<?,?>> results){
-        if(!enabled){
+        if(!config.isEnabled()){
             return;
         }
 
@@ -34,14 +31,14 @@ public abstract class ResultsSerializer {
             return;
         }
 
-        IOUtil.createFolder(folder);
-        Path p = Path.of(folder, getFilename(experimentName));
+        IOUtil.createFolder(config.getFolder());
+        Path p = Path.of(config.getFolder(), getFilename(experimentName));
         _serializeResults(results, p);
     }
 
     protected abstract void _serializeResults(List<? extends SolutionGeneratedEvent<?,?>> results, Path p);
 
     private String getFilename(String experimentName){
-        return experimentName + new SimpleDateFormat(format).format(new Date());
+        return experimentName + new SimpleDateFormat(config.getFormat()).format(new Date());
     }
 }

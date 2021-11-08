@@ -1,6 +1,6 @@
 package es.urjc.etsii.grafo.util;
 
-import org.springframework.beans.factory.annotation.Value;
+import es.urjc.etsii.grafo.solver.SolverConfig;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -28,12 +28,15 @@ public final class RandomManager {
     }
 
     public static int nextInt(int min, int max){
+        if(max <= min){
+            throw new IllegalArgumentException(String.format("Max (%s) must be strictly greater than min (%s)", max, min));
+        }
         return getRandom().nextInt(max - min) + min;
     }
 
     // a bit hacky but uses constructor instead of static initializer for Spring compatibility
-    protected RandomManager(@Value("${seed}") int seed,  @Value("${solver.repetitions}") int repetitions){
-        reinitialize(seed, repetitions);
+    public RandomManager(SolverConfig solverConfig){
+        reinitialize(solverConfig.getSeed(), solverConfig.getRepetitions());
     }
 
     /**

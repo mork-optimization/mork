@@ -2,15 +2,15 @@ package es.urjc.etsii.grafo.solver.services;
 
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import es.urjc.etsii.grafo.ErrorConfig;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceImporter;
-import es.urjc.etsii.grafo.io.serializers.DefaultJSONSolutionSerializer;
+import es.urjc.etsii.grafo.io.SerializerSolutionCommonConfig;
+import es.urjc.etsii.grafo.io.serializers.json.DefaultJSONSolutionSerializer;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.configuration.InstanceConfiguration;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.io.File;
@@ -32,26 +32,17 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
 
     private static final Logger log = Logger.getLogger(IOManager.class.toString());
 
-    @Autowired
-    InstanceConfiguration instanceConfiguration;
+    private final InstanceConfiguration instanceConfiguration;
+    private final ErrorConfig errorConfig;
+    private final SerializerSolutionCommonConfig solCommonConfig;
 
-    @Value("${solutions.path.out}")
-    String solutionsOut;
-
-    @Value("${errors.errorsToFile:true}")
-    boolean errorExportEnabled;
-
-    @Value("${errors.path}")
-    String errorFolder;
-
-    // Results CSV → date to string
-    // Solution file → instance_algoritm
-//    private final JsonSerializer jsonSerializer;
     private final InstanceImporter<I> instanceImporter;
     private SolutionSerializer<S, I> solutionSerializer;
 
-    public IOManager(/*JsonSerializer jsonSerializer, */InstanceImporter<I> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
-//        this.jsonSerializer = jsonSerializer;
+    public IOManager(InstanceConfiguration instanceConfiguration, ErrorConfig errorConfig, SerializerSolutionCommonConfig serializerSolutionCommonConfig, InstanceImporter<I> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
+        this.instanceConfiguration = instanceConfiguration;
+        this.errorConfig = errorConfig;
+        this.solCommonConfig = serializerSolutionCommonConfig;
         this.instanceImporter = instanceImporter;
         this.solutionSerializer = Orquestrator.decideImplementation(solutionSerializers, DefaultJSONSolutionSerializer.class);
 
@@ -62,7 +53,7 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         String instancePath = this.instanceConfiguration.getPath(experimentName);
         try {
             checkExists(instancePath);
-            createFolder(this.solutionsOut);
+            createFolder(this.solCommonConfig.getFolder());
 
             return Files.walk(Path.of(instancePath)).filter(IOManager::filesFilter).sorted(Comparator.comparing(f -> f.toFile().getName().toLowerCase())).map(this::loadInstance);
         } catch (IOException e) {
@@ -89,23 +80,23 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     public void exportSolution(String experimentName, Algorithm<S,I> alg, S s){
         log.fine(String.format("Exporting solution for algorithm %s using %s", alg.getClass().getSimpleName(), solutionSerializer.getClass().getSimpleName()));
         String filename = experimentName + "__" + s.getInstance().getName() + "__" + alg.getShortName();
-        File f = new File(solutionsOut, filename);
+        File f = new File(this.solCommonConfig.getFolder(), filename);
         solutionSerializer.export(f, s);
     }
 
     public synchronized void exportError(String experimentName, Algorithm<S,I> alg, I i, Throwable t, String stacktrace){
-        if(!errorExportEnabled){
+        if(!errorConfig.isErrorsToFile()){
             log.fine("Skipping exporting exception or error to disk, disabled in config.");
             return;
         }
-        createFolder(this.errorFolder);
+        createFolder(this.errorConfig.getFolder());
 
         // Directamente desde aqui, si se quiere customizar se puede pisar el DefaultExceptionHandler
         SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss.SSS");
         Date d = new Date();
         String filename = experimentName + "_" + sdf.format(d) + "_.json";
         var errorData = Map.of("Algorithm", alg, "InstanceName", i.getName(), "StackTrace", stacktrace, "Error", t);
-        var p = Path.of(errorFolder, filename);
+        var p = Path.of(this.errorConfig.getFolder(), filename);
         try (var outputStream = Files.newOutputStream(p)){
             var writer = new ObjectMapper().writer(new DefaultPrettyPrinter());
             writer.writeValue(outputStream, errorData);

@@ -141,6 +141,8 @@ function onInstanceProcessingStart(event) {
     // Draw best solution found
     $('.best-solutions').prepend("<div id='best-solution-" + instanceName + "'></div>");
     bestValue = NaN;
+
+    // TODO Define current solution chart configuration. Example for DRFLP
     current_solution_chart = new Highcharts.Chart('best-solution-' + instanceName, {
         chart: {
             type: 'xrange',
@@ -159,7 +161,7 @@ function onInstanceProcessingStart(event) {
                     category = point.yCategory,
                     from = point.x,
                     to = point.x2;
-                return `ID: ${point.fid}, Width: ${to - from}`;
+                return `ID: ${point.fid < 0 ? "FAKE" : point.fid}, Width: ${to - from}`;
             }
         },
         xAxis: {
@@ -192,8 +194,8 @@ function onInstanceProcessingStart(event) {
             enabled: true
         }
     });
+    // END Define how the current solution should be drawn.
 
-    
     // Add reference value plot line
     // Style of the plot line. Default to solid. See https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-dashstyle-all/
     convergence_chart.yAxis[0].addPlotLine({
@@ -216,7 +218,6 @@ function onInstanceProcessingStart(event) {
             y: 16
         }
     });
-
 }
 
 function onInstanceProcessingEnd(event) {
@@ -292,24 +293,27 @@ function onSolutionGenerated(event) {
     }
     current_chart_series[event.algorithmName].addPoint([event.iteration, event.score], redraw);
 
-    // Change to > if maximizing
+    // TODO Specify how to draw or set data to our custom solution chart when a solution is generated.
+    //  Check if the generated solution improves best. Change to > if maximizing
     if (isNaN(bestValue) || event.score < bestValue) {
         bestValue = event.score;
         const newData = [];
-        for (let i = 0; i < event.solution.rawSolutionData.length; i++) {
-            const row = event.solution.rawSolutionData[i];
+        for (let i = 0; i < event.solution.solutionData.length; i++) {
+            const row = event.solution.solutionData[i];
+            const rowSize = event.solution.rowSizes[i];
             let acc = 0;
-            for (let j = 0; j < row.length; j++) {
+            for (let j = 0; j < rowSize; j++) {
                 const start = acc;
-                acc += row[j].box.width;
+                const f = row[j].facility;
+                acc += f.width;
                 const end = acc;
-                const fid = row[j].box.id;
+                const fid = f.id;
                 newData.push({
                     x: start,       // Start pos
                     x2: end,        // end pos
                     y: i,           // Row
                     fid: fid,       // K-PROP Facility id
-                    color: getRandomColor(fid)     // Color generated from id
+                    color: f.fake ? "rgba(255,255,255,0)" : getRandomColor(fid)     // Color generated from id
                 })
             }
         }
@@ -364,6 +368,7 @@ function onMessage(event) {
 }
 
 var stompClient = null;
+
 function connectAndSubscribe(callback) {
     const brokerURL = "ws://" + window.location.host + "/websocket";
     stompClient = new StompJs.Client({brokerURL: brokerURL});
@@ -375,7 +380,16 @@ function connectAndSubscribe(callback) {
             callback(payload);
         });
         $('#running-status').text('WAITING');
-        console.log("STOMP connected. Waiting for an event to synchronize state...");
+        console.log("STOMP connected. Waiting for the latest event to synchronize state...");
+        $.getJSON( "/lastevent", function(event) {
+            if (!event_queue) {
+                event_queue = [];
+                console.log("Recieved first event with id: " + event.eventId);
+                downloadOldEventData(0, event.eventId + 1); // [0, eventId]
+            } else {
+                console.log("ERROR: Event queue already created, impossible?")
+            }
+        });
     }
 
     stompClient.onStompError = function (frame) {
@@ -398,13 +412,19 @@ function downloadOldEventData(from, to) {
     $('#running-status').text('RUNNING, SYNCING');
     const limit = Math.min(to, from + event_batch_size);
     $.get(`/events?from=${from}&to=${limit}`, (old_events) => {
-        console.log(`API /events returned from ${from} to ${limit}: ` + old_events.length);
+        console.log(`API /events returned  [${from}, ${limit}): ` + old_events.length);
         downloaded_events = downloaded_events.concat(old_events);
         if (old_events.length < event_batch_size) {
             event_queue = downloaded_events.concat(event_queue);
             downloaded_events = [];
             const catchUp = (i) => {
                 if (i === event_queue.length) {
+                    // force redraw
+                    // Each time an instance finishes executing redraw its charts one last time and delete oldest ones
+                    convergence_chart.redraw();
+                    current_chart.redraw();
+                    current_solution_chart?.redraw();
+
                     event_queue = [];
                     isUpToDate = true;
                     $('#running-status').text('RUNNING, REAL TIME');
@@ -417,7 +437,7 @@ function downloadOldEventData(from, to) {
             };
             setTimeout(() => catchUp(0), 0);
         } else {
-            setTimeout(() => downloadOldEventData(from + 1000, to), 0);
+            setTimeout(() => downloadOldEventData(from + event_batch_size, to), 0);
         }
     });
 }
@@ -427,11 +447,6 @@ function interceptor(event) {
     if (isUpToDate) {
         onMessage(event);
     } else {
-        if (!event_queue) {
-            event_queue = [];
-            console.log("Recieved first event with id: " + event.eventId);
-            downloadOldEventData(0, event.eventId);
-        }
         event_queue.push(event);
     }
 }

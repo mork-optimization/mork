@@ -22,13 +22,26 @@ public abstract class Algorithm<S extends Solution<I>, I extends Instance> {
     }
 
     /**
-     * Runs the algorithm over the empty but initialized solution
-     * @param solution Solution
+     * Runs the algorithm
+     * @param instance Instance to solve
      * @return Built solution
      */
-    public abstract S algorithm(S solution);
+    public abstract S algorithm(I instance);
 
-    public SolutionBuilder<S, I> getBuilder() {
+    /**
+     * Create a new solution for the given instance. Solution is empty by default.
+     * @param instance Instance
+     * @return Empty solution, by default created calling the constructor Solution(Instance i)
+     */
+    public S newSolution(I instance){
+        return this.builder.initializeSolution(instance);
+    }
+
+    /**
+     * Get solution builder
+     * @return solution builder
+     */
+    protected SolutionBuilder<S, I> getBuilder() {
         return builder;
     }
 

@@ -20,6 +20,6 @@ public abstract class IraceAlgorithmGenerator<S extends Solution<I>, I extends I
      * @param config Subset of config parameters, only those required for algorithm configuration
      * @return Algorithm generated according to Irace chosen parameters
      */
-    public abstract Algorithm<S,I> buildAlgorithm(IraceConfiguration config);
+    public abstract Algorithm<S,I> buildAlgorithm(IraceRuntimeConfiguration config);
 
 }

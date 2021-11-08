@@ -3,7 +3,6 @@ package es.urjc.etsii.grafo.solver.algorithms;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.Constructive;
-import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.destructor.Shake;
 import es.urjc.etsii.grafo.solver.improve.Improver;
 
@@ -54,13 +53,15 @@ public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends A
     }
 
     @Override
-    public S algorithm(S solution) {
+    public S algorithm(I instance) {
+        S solution = this.newSolution(instance);
         solution = this.constructive.construct(solution);
         solution = ls(solution);
         logger.fine(String.format("Initial solution: %s - %s", solution.getScore(), solution));
         int iterationsWithoutImprovement = 0;
         for (int i = 0; i < maxIterations; i++) {
-            var temp = this.shake.shake(solution, 1, 1, false);
+            S temp = solution.cloneSolution();
+            temp = this.shake.shake(temp, 1);
             temp = ls(temp);
             solution = solution.getBetterSolution(temp);
             if(solution == temp){

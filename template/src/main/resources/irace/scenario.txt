@@ -18,7 +18,7 @@ execDir = "./"
 
 ## Directory where tuning instances are located, either absolute path or
 ## relative to current directory.
-trainInstancesDir = "./instances/amaral/small/"
+trainInstancesDir = "./instances/regular/"
 
 ## File with a list of instances and (optionally) parameters.
 ## If empty or NULL, do not use a file.
@@ -56,7 +56,7 @@ targetRunner = "./middleware.sh"
 
 ## The maximum number of runs (invocations of targetRunner) that will
 ## performed. It determines the (maximum) budget of experiments for the tuning.
-maxExperiments = 1000
+maxExperiments = 10000
 
 ## Directory where testing instances are located, either absolute or relative
 ## to current directory.
@@ -164,7 +164,7 @@ firstTest = 7
 
 ## File containing a list of logical expressions that cannot be true
 ## for any evaluated configuration. If empty or NULL, do not use a file.
-# forbiddenFile = ""
+forbiddenFile = "./forbidden.txt"
 
 ## Enable/disable elitist irace.
 # elitist = 1

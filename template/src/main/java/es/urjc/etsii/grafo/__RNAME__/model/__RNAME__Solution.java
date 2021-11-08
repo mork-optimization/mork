@@ -10,7 +10,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Instance> {
      */
     public __RNAME__Solution(__RNAME__Instance ins) {
         super(ins);
-        // Initialization of data structures if necessary
+        // TODO Initialize data structures if necessary
     }
 
     /**
@@ -19,15 +19,17 @@ public class __RNAME__Solution extends Solution<__RNAME__Instance> {
      */
     public __RNAME__Solution(__RNAME__Solution s) {
         super(s);
-        // Copy solution data
+        // TODO Copy ALL solution data, we are cloning a solution
         throw new UnsupportedOperationException("__RNAME__Solution() in __RNAME__ not implemented yet");
     }
 
 
     @Override
-    public <S extends Solution<__RNAME__Instance>> S cloneSolution() {
+    @SuppressWarnings("unchecked")
+    public __RNAME__Solution cloneSolution() {
+        // You do not need to modify this method
         // Call clone constructor
-        return (S) new __RNAME__Solution(this);
+        return new __RNAME__Solution(this);
     }
 
 
@@ -39,6 +41,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Instance> {
      */
     @Override
     public <S extends Solution<__RNAME__Instance>> S getBetterSolution(S o) {
+        // TODO given two solutions, which one is better?
         throw new UnsupportedOperationException("getBetterSolution() in __RNAME__ not implemented yet");
         // Example:
         // Minimize total cost, better solution has lower cost
@@ -54,8 +57,10 @@ public class __RNAME__Solution extends Solution<__RNAME__Instance> {
      */
     @Override
     public double getScore() {
-        // An ok start implementation can be:
-        // return recalculateScore();
+        // TODO: Implement efficient score calculation.
+        // Can be as simple as a score property that gets updated when the solution changes
+        // Example: return this.score;
+        // Another ok start implementation can be: return recalculateScore();
         throw new UnsupportedOperationException("getScore() in __RNAME__ not implemented yet");
     }
 
@@ -69,6 +74,8 @@ public class __RNAME__Solution extends Solution<__RNAME__Instance> {
      */
     @Override
     public double recalculateScore() {
+        // TODO calculate solution score from scratch, without using caches
+        //  and without modifying the current solution. Careful with side effects.
         throw new UnsupportedOperationException("recalculateScore() in __RNAME__ not implemented yet");
     }
 
@@ -79,7 +86,9 @@ public class __RNAME__Solution extends Solution<__RNAME__Instance> {
      */
     @Override
     public String toString() {
-        // When all fields are implemented use your IDE to autogenerate this method using only certain fields
+        // TODO: When all fields are implemented use your IDE to autogenerate this method
+        //  using only the most important fields.
+        // This method will be called to print best solutions in console while solving.
         throw new UnsupportedOperationException("toString() in __RNAME__Solution not implemented yet");
     }
 }

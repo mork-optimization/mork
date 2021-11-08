@@ -1,14 +1,16 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>es.urjc.etsii.grafo</groupId>
     <artifactId>mork-parent</artifactId>
-    <version>0.7-SNAPSHOT</version>
+    <version>0.9-SNAPSHOT</version>
     <packaging>pom</packaging>
 
+    <modules>
+        <module>core</module>
+        <module>template</module>
+    </modules>
 
     <licenses>
         <license>
@@ -28,9 +30,10 @@
 
     <scm>
         <connection>scm:git:git://github.com/rmartinsanta/mork.git</connection>
-        <developerConnection>scm:git:ssh://github.com:rmartinsanta/mork.git</developerConnection>
-        <url>http://github.com/rmartinsanta/mork/tree/master</url>
-    </scm>
+        <developerConnection>scm:git:https://github.com/rmartinsanta/mork</developerConnection>
+        <url>https://github.com/rmartinsanta/mork/tree/master</url>
+      <tag>HEAD</tag>
+  </scm>
 
     <properties>
         <java.version>11</java.version>
@@ -56,16 +59,11 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.5.4</version>
+        <version>2.5.5</version>
     </parent>
 
 
     <dependencies>
-        <dependency>
-            <groupId>es.urjc.etsii.grafo</groupId>
-            <artifactId>mork</artifactId>
-            <version>0.7-SNAPSHOT</version>
-        </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

@@ -13,7 +13,7 @@ import java.util.stream.Stream;
  * Store historical event data
  */
 @Service
-public class MemoryEventStorage {
+public class MemoryEventStorage extends AbstractEventStorage {
     /**
      * Use a tree as events may be processed unordered, but should be retrieved ordered by range query
      */
@@ -51,5 +51,19 @@ public class MemoryEventStorage {
                 .filter(e -> e instanceof SolutionGeneratedEvent)
                 .map(e -> (SolutionGeneratedEvent<?,?>) e)
                 .filter(e -> e.getExperimentName().equals(experimentName));
+    }
+
+    @SuppressWarnings("unchecked")
+    public <T extends MorkEvent> Stream<T> getEventsByType(Class<T> type){
+        return (Stream<T>) this.eventLog.values().stream()
+                .filter(type::isInstance);
+    }
+
+    public Stream<MorkEvent> getAllEvents(){
+        return this.eventLog.values().stream();
+    }
+
+    public MorkEvent getLastEvent(){
+        return eventLog.lastEntry().getValue();
     }
 }

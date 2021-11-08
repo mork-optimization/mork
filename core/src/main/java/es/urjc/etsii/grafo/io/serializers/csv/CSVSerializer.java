@@ -1,28 +1,24 @@
-package es.urjc.etsii.grafo.io.serializers;
+package es.urjc.etsii.grafo.io.serializers.csv;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
+import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
-public class CSVSerializer extends ResultsSerializer{
+public class CSVSerializer extends ResultsSerializer {
 
-    @Value("${serializers.csv.separator}")
-    private char csvSeparator;
+    private final CSVSerializerConfig config;
 
     private final CsvMapper csvMapper;
 
-    public CSVSerializer(
-            @Value("${serializers.csv.enabled}") boolean enabled,
-            @Value("${serializers.csv.folder}") String folder,
-            @Value("${serializers.csv.format}") String format
-    ) {
-        super(enabled, folder, format);
+    public CSVSerializer(CSVSerializerConfig config) {
+        super(config);
+        this.config = config;
         this.csvMapper = new CsvMapper();
         csvMapper.setVisibility(csvMapper.getSerializationConfig().getDefaultVisibilityChecker()
                 .withFieldVisibility(JsonAutoDetect.Visibility.ANY)
@@ -35,7 +31,7 @@ public class CSVSerializer extends ResultsSerializer{
         log.info("Exporting result data to CSV...");
 
         var schema = csvMapper.schemaFor(SolutionGeneratedEvent.class)
-                .withColumnSeparator(csvSeparator)
+                .withColumnSeparator(config.getSeparator())
                 .sortedBy("instanceName", "algorithmName", "iteration")
                 .withHeader();
         try(var br = Files.newBufferedWriter(p)){

@@ -59,7 +59,7 @@ public class NoOp {
 
     public static class NoOpShake<S extends Solution<I>,I extends Instance> extends Shake<S,I> {
         @Override
-        public S shake(S s, int currentK, int maxK, boolean inPlace) {
+        public S shake(S s, int k) {
             return s;
         }
     }

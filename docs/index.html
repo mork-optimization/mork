@@ -39,8 +39,19 @@
     <h1>Generate your project in one minute</h1>
     <p class="lead">Instructions: Choose a good name <span class="code">([a-zA-Z0-9_]*)</span> and click on "Generate Project". That's it. </p>
     <div class="mb-3">
-      <label for="projectname" class="form-label">Project Name</label>
-      <input pattern="[A-Z][A-Za-z0-9_]*" class="form-control" id="projectname" placeholder="TSP, VRP, FLP, ...">
+      <div class="row">
+        <div class="col-9">
+          <label for="projectname" class="form-label">Project Name</label>
+          <input pattern="[A-Z][A-Za-z0-9_]*" class="form-control" id="projectname" placeholder="TSP, VRP, FLP, ...">
+        </div>
+        <div class="col-3">
+          <label for="morktag" class="form-label">Mork Version</label>
+          <select class="form-select" id="morktag" name="morktag">
+            <option value="master">Developing</option>
+          </select>
+        </div>
+
+      </div>
     </div>
 
     <p class="lead">

@@ -4,7 +4,7 @@ import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
 
-public class IraceConfiguration {
+public class IraceRuntimeConfiguration {
 
     //candidateConfiguration, instanceId, seed, instanceName, config, isMaximizing
     private final String candidateConfiguration;
@@ -14,7 +14,7 @@ public class IraceConfiguration {
     private final Map<String, String> alg;
     private final boolean isMaximizing;
 
-    public IraceConfiguration(String candidateConfiguration, String instanceId, String seed, String instanceName, Map<String, String> alg, boolean isMaximizing) {
+    public IraceRuntimeConfiguration(String candidateConfiguration, String instanceId, String seed, String instanceName, Map<String, String> alg, boolean isMaximizing) {
         this.candidateConfiguration = candidateConfiguration;
         this.instanceId = instanceId;
         this.alg = alg;

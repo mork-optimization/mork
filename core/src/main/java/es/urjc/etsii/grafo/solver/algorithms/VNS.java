@@ -3,7 +3,6 @@ package es.urjc.etsii.grafo.solver.algorithms;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.Constructive;
-import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.destructor.Shake;
 import es.urjc.etsii.grafo.solver.improve.Improver;
 import es.urjc.etsii.grafo.solver.services.MorkLifecycle;
@@ -16,71 +15,64 @@ import java.util.logging.Logger;
 public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S, I> {
 
     private static final Logger log = Logger.getLogger(VNS.class.getName());
+    protected final String algorithmName;
 
-    List<Improver<S, I>> improvers;
-    Constructive<S, I> constructive;
-    private List<Shake<S, I>> shakes;
-    private int[] ks;
-    private int maxK;
+    protected List<Improver<S, I>> improvers;
+    protected Constructive<S, I> constructive;
+    protected List<Shake<S, I>> shakes;
+    protected KProvider<I> kProvider;
 
     /**
      * Execute VNS until finished
-     * @param ks Integer array that will be used for the shake/perturbation
+     * @param algorithmName Algorithm name, example: "VNSWithRandomConstructive"
+     * @param kProvider k value provider, @see VNS.KProvider
      * @param shake Perturbation method
      * @param constructive Constructive method
      * @param improvers List of improvers/local searches
      */
     @SafeVarargs
-    public VNS(int[] ks, Shake<S, I> shake, Constructive<S, I> constructive, Improver<S, I>... improvers) {
-        this(ks, Collections.singletonList(shake), constructive, improvers);
+    public VNS(String algorithmName, KProvider<I> kProvider, Shake<S, I> shake, Constructive<S, I> constructive, Improver<S, I>... improvers) {
+        this(algorithmName, kProvider, Collections.singletonList(shake), constructive, improvers);
     }
 
     /**
      * Execute VNS until finished
-     * @param ks Integer array that will be used for the shake/perturbation
+     * @param algorithmName Algorithm name, example: "VNSWithRandomConstructive"
+     * @param kProvider k value provider, @see VNS.KProvider
      * @param shakes Perturbation method
      * @param constructive Constructive method
      * @param improvers List of improvers/local searches
      */
     @SafeVarargs
-    public VNS(int[] ks, List<Shake<S, I>> shakes, Constructive<S, I> constructive, Improver<S, I>... improvers) {
-        if (ks == null || ks.length == 0) {
-            throw new IllegalArgumentException("Invalid Ks array, must have at least one element");
-        }
-        this.ks = ks;
+    public VNS(String algorithmName, KProvider<I> kProvider, List<Shake<S, I>> shakes, Constructive<S, I> constructive, Improver<S, I>... improvers) {
+        this.algorithmName = algorithmName;
+        this.kProvider = kProvider;
+
         // Ensure Ks are sorted, maxK is the last element
-        Arrays.sort(ks);
-        this.maxK = ks[ks.length - 1];
         this.shakes = shakes;
         this.constructive = constructive;
         this.improvers = Arrays.asList(improvers);
     }
 
-    public S algorithm(S solution) {
-        S best = null;
-        do {
-            solution = iteration(solution);
-            if(best == null){
-                best = solution;
-            }
-            best = best.getBetterSolution(solution);
-            //System.out.println(best.getOptimalValue());
-        } while (!MorkLifecycle.stop());
-        return best;
-    }
-
-    private S iteration(S s) {
-        S solution = constructive.construct(s);
+    public S algorithm(I instance) {
+        var solution = this.newSolution(instance);
+        solution = constructive.construct(solution);
         solution = localSearch(solution);
 
         int currentKIndex = 0;
-        while (currentKIndex < ks.length && !MorkLifecycle.stop()) {
-            printStatus(String.valueOf(currentKIndex), solution);
+        // While stop not request OR k in range. k check is done and breaks inside loop
+        while (!MorkLifecycle.stop()) {
+            int currentK = kProvider.getK(instance, currentKIndex);
+            if(currentK == KProvider.STOPNOW){
+                printStatus(currentKIndex + ":STOPNOW", solution);
+                break;
+            }
+            printStatus(currentKIndex + ":" + currentK, solution);
             S bestSolution = solution;
 
             for(var shake: shakes){
                 S copy = bestSolution.cloneSolution();
-                copy = shake.shake(copy, this.ks[currentKIndex], maxK, true);
+                copy = shake.shake(copy, currentK);
                 copy = localSearch(copy);
                 //System.out.print(copy.getOptimalValue()+",");
                 bestSolution = bestSolution.getBetterSolution(copy);
@@ -112,7 +104,27 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
                 "improvers=" + improvers +
                 ", constructive=" + constructive +
                 ", shakes=" + shakes +
-                ", ks=" + Arrays.toString(ks) +
+                ", kprov=" + kProvider +
                 '}';
+    }
+
+    @Override
+    public String getShortName() {
+        return this.algorithmName;
+    }
+
+    /**
+     * Calculates K value for each VNS step.
+     */
+    public interface KProvider<I extends Instance> {
+        int STOPNOW = -1;
+
+        /**
+         * Calculate K value during VNS execution.
+         * @param instance Current instance, provided as a parameter so K can be adapted or scaled to instance size.
+         * @param kIndex Current k strength. Starts in 0 and increments by 1 each time the solution does not improve.
+         * @return K value. Return KProvider.STOPNOW to stop when calculated K is greater than max K, and the VNS should terminate
+         */
+        int getK(I instance, int kIndex);
     }
 }

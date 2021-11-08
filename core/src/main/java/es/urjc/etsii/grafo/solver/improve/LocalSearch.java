@@ -31,6 +31,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
      * @param maximizing true if a movement with a bigger score is better
      * @param ps         neighborhood that generates the movements
      */
+    @SafeVarargs
     public LocalSearch(boolean maximizing, String lsName, Neighborhood<M, S, I>... ps) {
         this(new DefaultMoveComparator<>(maximizing), lsName, ps);
     }
@@ -41,31 +42,22 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
      * @param maximizing true if a movement with a bigger score is better
      * @param ps         neighborhood that generates the movements
      */
+    @SafeVarargs
     public LocalSearch(boolean maximizing, Neighborhood<M, S, I>... ps) {
         this(new DefaultMoveComparator<>(maximizing), "", ps);
     }
 
 
-    public boolean iteration(S s) {
-        // Buscar el move a ejecutar
-        var move = getMove(s);
+    public abstract boolean iteration(S s);
 
-        if (move == null || !move.improves()) {
-            return false; // No existen movimientos válidos, finalizar
-        }
-
-        // Ejecutamos el move y pedimos otra iteracion
-        move.execute();
-        return true;
-    }
-
+  
     @Override
     public String toString() {
         if(this.lsName.isEmpty()){
-            return this.getClass().getSimpleName()+"{" +
+            return (this.getClass().getSimpleName()+"{" +
                     "neig=" + Arrays.toString(providers) +
                     ", comp=" + comparator +
-                    '}';
+                    '}').replace("LocalSearch", "LS").replace("Improvement", "");
         } else {
             return this.lsName;
         }

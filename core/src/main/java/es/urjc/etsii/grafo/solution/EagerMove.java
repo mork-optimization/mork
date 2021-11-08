@@ -1,13 +1,8 @@
 package es.urjc.etsii.grafo.solution;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solver.Config;
-import es.urjc.etsii.grafo.util.DoubleComparator;
-import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.logging.Logger;
-
-import static es.urjc.etsii.grafo.solution.Solution.MAX_DEBUG_MOVES;
 
 /**
  * All neighborhood moves should be represented by implementations of either EagerMove or LazyMove.

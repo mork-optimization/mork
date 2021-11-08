@@ -13,6 +13,7 @@ import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.util.RandomManager;
+import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.List;
 import java.util.Optional;
@@ -29,16 +30,17 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
     private static final Logger log = Logger.getLogger(Executor.class.getName());
 
     private final Optional<SolutionValidator<S,I>> validator;
-    private IOManager<S, I> io;
+    private final IOManager<S, I> io;
 
     protected Executor(Optional<SolutionValidator<S, I>> validator, IOManager<S, I> io) {
-        this.validator = validator;
-        this.io = io;
         if(validator.isEmpty()){
             log.warning("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
         } else {
-            log.info("SolutionValidator implementation found: " + this.validator.get().getClass().getSimpleName());
+            log.info("SolutionValidator implementation found: " + validator.get().getClass().getSimpleName());
         }
+
+        this.validator = validator;
+        this.io = io;
     }
 
     /**
@@ -57,8 +59,13 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
      */
     public abstract void shutdown();
 
-    public void validate(S s){
-        this.validator.ifPresent(validator -> validator.validate(s));
+    /**
+     * Run both user specific validations and our own.
+     * @param solution Solution to check.
+     */
+    public void validate(S solution){
+        ValidationUtil.positiveTTB(solution);
+        this.validator.ifPresent(validator -> validator.validate(solution));
     }
 
     protected void doWork(String experimentName, I instance, SolutionBuilder<S, I> solutionBuilder, Algorithm<S, I> algorithm, int i, ExceptionHandler<S,I> exceptionHandler) {
@@ -70,17 +77,15 @@ public abstract class Executor<S extends Solution<I>, I extends Instance> {
             }
 
             RandomManager.reset(i);
-            solution = solutionBuilder.initializeSolution(instance);
             long starTime = System.nanoTime();
-            solution = algorithm.algorithm(solution);
+            solution = algorithm.algorithm(instance);
             long endTime = System.nanoTime();
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long executionTime = endTime - starTime;
-            solution.setExecutionTimeInNanos(executionTime);
             validate(solution);
             io.exportSolution(experimentName, algorithm, solution);
             EventPublisher.publishEvent(new SolutionGeneratedEvent<>(i, solution, experimentName, algorithm, executionTime, timeToTarget));
-            System.out.format("\t%s.\tTime: %.3f (s) \tTTB: %.3f (s) \t%s -- \n", i +1, executionTime / 1_000_000_000D, timeToTarget / 1000_000_000D, solution);
+            log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", i +1, executionTime / 1_000_000_000D, timeToTarget / 1000_000_000D, solution));
         } catch (Exception e) {
             exceptionHandler.handleException(experimentName, e, Optional.ofNullable(solution), instance, algorithm, io);
             EventPublisher.publishEvent(new ErrorEvent(e));

@@ -5,7 +5,7 @@ import java.util.*;
 /**
  * Util methods to manipulate collections and arrays that are not part of the standard java API
  */
-public class CollectionUtils {
+public class CollectionUtil {
     /**
      * Reverse a fragment in a list, from start to end (inclusive)
      * @param list  list to reverse

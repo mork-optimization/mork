@@ -3,13 +3,11 @@ package es.urjc.etsii.grafo.patches;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-import org.springframework.beans.factory.annotation.Value;
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
-import java.util.Collections;
 import java.util.logging.Logger;
 
 @Service
@@ -19,8 +17,8 @@ public class PatchMathRandom {
 
     private final boolean isEnabled;
 
-    public PatchMathRandom(@Value("${advanced.block.math-random}") boolean isEnabled){
-        this.isEnabled = isEnabled;
+    public PatchMathRandom(BlockConfig config){
+        this.isEnabled = config.isBlockMathRandom();
     }
 
     @PostConstruct
