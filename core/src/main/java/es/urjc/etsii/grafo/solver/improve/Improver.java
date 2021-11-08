@@ -3,7 +3,11 @@ package es.urjc.etsii.grafo.solver.improve;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
+import java.util.logging.Logger;
+
 public abstract class Improver<S extends Solution<I>,I extends Instance> {
+
+    private static final Logger log = Logger.getLogger(Improver.class.getName());
 
     /**
      * Improves a model.Solution
@@ -11,5 +15,22 @@ public abstract class Improver<S extends Solution<I>,I extends Instance> {
      * @param s model.Solution to improve
      * @return Improved s
      */
-    public abstract S improve(S s);
+    public S improve(S s){
+        long startTime = System.nanoTime();
+        double initialScore = s.getScore();
+        S improvedSolution = this._improve(s);
+        long endTime = System.nanoTime();
+        long ellapedMillis = (endTime - startTime) / 1_000_000;
+        double endScore = improvedSolution.getScore();
+        log.fine(String.format("Done in %s: %s --> %s", ellapedMillis, initialScore, endScore));
+        return improvedSolution;
+    }
+
+    /**
+     * Improves a model.Solution
+     * Iterates until we run out of time, or we cannot improve the current es.urjc.etsii.grafo.solution any further
+     * @param s model.Solution to improve
+     * @return Improved s
+     */
+    public abstract S _improve(S s);
 }

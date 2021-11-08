@@ -7,9 +7,9 @@
     <version>0.9-SNAPSHOT</version>
     <packaging>jar</packaging>
     <properties>
-        <java.version>11</java.version>
-        <maven.compiler.source>11</maven.compiler.source>
-        <maven.compiler.target>11</maven.compiler.target>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
         <jackson.version>2.12.5</jackson.version>
         <graalvm.version>21.2.0</graalvm.version>
         <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>

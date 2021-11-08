@@ -4,7 +4,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.EagerMove;
 import es.urjc.etsii.grafo.solution.Solution;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -29,5 +29,5 @@ public abstract class EagerNeighborhood<M extends EagerMove<S,I>, S extends Solu
      * @param s Solution
      * @return Collection of movements
      */
-    protected abstract Collection<M> getMovements(S s);
+    public abstract List<M> getMovements(S s);
 }
