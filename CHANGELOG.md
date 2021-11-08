@@ -1,5 +1,9 @@
 # v0.9
-- Fix PatchMathRandom and PatchCollections for Java 11 and newer.
+- (Fix) PatchMathRandom and PatchCollections for Java 11 and newer.
+- (New) MultiStartAlgorithm
+- (New) Simulated Annealing
+- (Deprecated) SimpleMultiStartAlgorithm
+- Java 17 as minimum required version
 
 # v0.8
 - Internal Maven changes
