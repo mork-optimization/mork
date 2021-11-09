@@ -78,11 +78,10 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
     }
 
     /**
-     * Get move to execute, different strategies are possible
-     *
+     * Get next move to execute, different strategies are possible
      * @param s Solution
      * @return Proposed move
      */
-    protected abstract Optional<M> getMove(S s);
+    public abstract Optional<M> getMove(S s);
 
 }

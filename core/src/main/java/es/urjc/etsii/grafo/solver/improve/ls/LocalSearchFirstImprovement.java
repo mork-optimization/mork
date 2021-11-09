@@ -27,7 +27,7 @@ public class LocalSearchFirstImprovement<M extends Move<S, I>, S extends Solutio
     }
 
     @Override
-    protected Optional<M> getMove(S s) {
+    public Optional<M> getMove(S s) {
         M move = null;
         for (var provider : providers) {
             var optionalMove = provider.stream(s).filter(Move::isValid).filter(Move::improves).findAny();

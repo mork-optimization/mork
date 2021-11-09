@@ -4,6 +4,8 @@ import es.urjc.etsii.grafo.solution.Solution;
 
 public class TestSolution extends Solution<TestInstance> {
 
+    protected double score;
+
     public TestSolution(TestInstance ins) {
         super(ins);
     }

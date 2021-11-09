@@ -27,7 +27,7 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
     }
 
     @Override
-    protected Optional<M> getMove(S s) {
+    public Optional<M> getMove(S s) {
         M move = null;
         for (var provider : this.providers) {
             var _move = getBest(provider.stream(s));
