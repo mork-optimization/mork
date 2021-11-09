@@ -16,7 +16,7 @@ public abstract class IteratedImprover<S extends Solution<I>,I extends Instance>
      * @return Improved s
      */
     @Override
-    public S _improve(S s) {
+    protected S _improve(S s) {
         int rounds = 0;
         while (!MorkLifecycle.stop() && iteration(s)){
             log.fine(String.format("Executing iteration %s for %s", rounds, this.getClass().getSimpleName()));

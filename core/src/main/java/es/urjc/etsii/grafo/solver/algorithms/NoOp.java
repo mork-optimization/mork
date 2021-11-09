@@ -52,7 +52,7 @@ public class NoOp {
 
     public static class NoOpImprover<S extends Solution<I>,I extends Instance> extends Improver<S,I> {
         @Override
-        public S _improve(S s) {
+        protected S _improve(S s) {
             return s;
         }
     }

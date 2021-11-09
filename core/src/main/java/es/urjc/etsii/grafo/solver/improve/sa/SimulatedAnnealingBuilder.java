@@ -17,6 +17,11 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     private CoolDownControl<M, S, I> coolDownControl;
 
     /**
+     * Use SimulatedAnnealing::builder static method instead
+     */
+    protected SimulatedAnnealingBuilder(){}
+
+    /**
      * Neighborhood for the SA
      * @param neighborhood neighborhood
      * @return builder

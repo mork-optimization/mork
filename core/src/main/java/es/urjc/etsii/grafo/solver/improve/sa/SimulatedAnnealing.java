@@ -37,7 +37,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<I>, I ex
     }
 
     @Override
-    public S _improve(S s) {
+    protected S _improve(S s) {
         S best = s.cloneSolution();
         double currentTemperature = this.initialTemperatureCalculator.initial(best, neighborhood);
         log.fine("Initial temperature: " + currentTemperature);

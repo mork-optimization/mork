@@ -32,5 +32,5 @@ public abstract class Improver<S extends Solution<I>,I extends Instance> {
      * @param s model.Solution to improve
      * @return Improved s
      */
-    public abstract S _improve(S s);
+    protected abstract S _improve(S s);
 }
