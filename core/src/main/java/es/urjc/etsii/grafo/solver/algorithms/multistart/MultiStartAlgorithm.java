@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.solver.algorithms.multistart;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
+import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
@@ -141,4 +142,9 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
         log.fine(() -> String.format("\t\t%s: %s", iteration, s));
     }
 
+    @Override
+    public void setBuilder(SolutionBuilder<S, I> builder) {
+        super.setBuilder(builder);
+        this.algorithm.setBuilder(builder);
+    }
 }

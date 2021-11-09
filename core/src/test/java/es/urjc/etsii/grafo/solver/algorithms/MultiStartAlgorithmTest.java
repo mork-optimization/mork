@@ -1,6 +1,8 @@
 package es.urjc.etsii.grafo.solver.algorithms;
 
 import es.urjc.etsii.grafo.solver.algorithms.multistart.MultiStartAlgorithm;
+import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
+import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;
@@ -169,5 +171,15 @@ public class MultiStartAlgorithmTest {
         verify(algorithm, times(2)).algorithm(testInstance);
     }
 
+    @Test
+    public void checkSetsBuilder(){
+        var multistart = MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+                .withMaxIterationsWithoutImproving(100)
+                .build(algorithm);
+        var builder = new ReflectiveSolutionBuilder<TestSolution, TestInstance>();
+        verify(algorithm, times(0)).setBuilder(any());
+        multistart.setBuilder(builder);
+        verify(algorithm, times(1)).setBuilder(any());
+    }
 
 }
