@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.solver.improve;
 
 
-import es.urjc.etsii.grafo.solver.improve.ls.LocalSearchFirstImprovement;
+import es.urjc.etsii.grafo.solver.improve.ls.LocalSearchBestImprovement;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;
@@ -18,7 +18,7 @@ public class BestImprovementLSTest extends BaseLSTest {
         };
         var solution = new TestSolution(new TestInstance("Fake Instance"));
         var mockNeighborhod = getNeighborhoodMock(maximizing, values, solution);
-        var firstImprovementLS = new LocalSearchFirstImprovement<>(maximizing, mockNeighborhod);
+        var firstImprovementLS = new LocalSearchBestImprovement<>(maximizing, mockNeighborhod);
         var chosenMove = firstImprovementLS.getMove(solution);
         Assertions.assertTrue(chosenMove.isPresent());
         double value = chosenMove.get().getValue();
