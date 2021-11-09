@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.solver.improve;
+package es.urjc.etsii.grafo.solver.improve.ls;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
@@ -9,7 +9,7 @@ import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution<I>, I extends Instance> extends LocalSearch<M, S, I> {
+public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> extends LocalSearch<M, S, I> {
 
     @SafeVarargs
     public LocalSearchBestImprovement(MoveComparator<M, S, I> comparator, Neighborhood<M, S, I>... ps) {
@@ -26,23 +26,8 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
         super(maximizing, lsName, ps);
     }
 
-
     @Override
-    public boolean iteration(S s) {
-        // Buscar el move a ejecutar
-        var move = getMove(s);
-        // Comprobamos si el movimiento mejora la solucuon
-        if (move == null || !move.improves()) {
-            return false; // No existen movimientos válidos, finalizar
-        }
-        // Ejecutamos el move y pedimos otra iteracion
-        move.execute();
-        return true;
-    }
-
-
-    @Override
-    protected M getMove(S s) {
+    public Optional<M> getMove(S s) {
         M move = null;
         for (var provider : this.providers) {
             var _move = getBest(provider.stream(s));
@@ -53,7 +38,7 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
                 move = this.comparator.getBest(move, _move.get());
             }
         }
-        return move;
+        return move != null && move.improves() ? Optional.of(move) : Optional.empty();
     }
 
     private Optional<M> getBest(Stream<M> stream) {

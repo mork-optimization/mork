@@ -14,7 +14,7 @@ import java.util.logging.Logger;
 
 @RestController()
 @ConditionalOnExpression(value = "${irace.enabled}")
-public class ExecutionController<S extends Solution<I>, I extends Instance> {
+public class ExecutionController<S extends Solution<S,I>, I extends Instance> {
 
     private static final Logger log = Logger.getLogger(ExecutionController.class.getName());
 

@@ -12,7 +12,7 @@ import java.util.Optional;
  * @param <S> Solution type
  * @param <I> Instance type
  */
-public class RandomConstructive<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends Constructive<S, I> {
+public class RandomConstructive<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> extends Constructive<S, I> {
 
     private RandomizableNeighborhood<M,S,I> neighborhood;
 

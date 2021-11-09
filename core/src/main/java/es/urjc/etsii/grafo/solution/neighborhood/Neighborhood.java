@@ -11,7 +11,7 @@ import java.util.stream.Stream;
  * A neighborhoods represents all potential solutions that can be reached for a given solution applying a given move.
  * Usually used inside, but not limited to, a local search procedure,
  */
-public abstract class Neighborhood<M extends Move<S,I>, S extends Solution<I>, I extends Instance> {
+public abstract class Neighborhood<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Build an exhaustive stream that allows iterating the whole neighborhood

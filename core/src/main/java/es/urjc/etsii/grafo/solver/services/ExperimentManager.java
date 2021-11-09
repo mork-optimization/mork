@@ -12,7 +12,7 @@ import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 @Service
-public class ExperimentManager<S extends Solution<I>, I extends Instance> {
+public class ExperimentManager<S extends Solution<S,I>, I extends Instance> {
 
     private Pattern experimentFilter;
 

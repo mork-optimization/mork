@@ -19,7 +19,7 @@ public class NoOp {
      * @param <I> Instance class
      * @return NoOp constructive
      */
-    public static <S extends Solution<I>, I extends Instance> Constructive<S,I> constructive(){
+    public static <S extends Solution<S,I>, I extends Instance> Constructive<S,I> constructive(){
         return new NoOPConstructive<>();
     }
 
@@ -29,7 +29,7 @@ public class NoOp {
      * @param <I> Instance class
      * @return NoOp improve method
      */
-    public static <S extends Solution<I>, I extends Instance> Improver<S,I> improver(){
+    public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> improver(){
         return new NoOpImprover<>();
     }
 
@@ -39,25 +39,25 @@ public class NoOp {
      * @param <I> Instance class
      * @return NoOp improve method
      */
-    public static <S extends Solution<I>, I extends Instance> Shake<S,I> shake(){
+    public static <S extends Solution<S,I>, I extends Instance> Shake<S,I> shake(){
         return new NoOpShake<>();
     }
 
-    public static class NoOpConstructive<S extends Solution<I>,I extends Instance> extends Constructive<S,I> {
+    public static class NoOpConstructive<S extends Solution<S,I>,I extends Instance> extends Constructive<S,I> {
         @Override
         public S construct(S s) {
             return s;
         }
     }
 
-    public static class NoOpImprover<S extends Solution<I>,I extends Instance> extends Improver<S,I> {
+    public static class NoOpImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {
         @Override
-        public S improve(S s) {
+        protected S _improve(S s) {
             return s;
         }
     }
 
-    public static class NoOpShake<S extends Solution<I>,I extends Instance> extends Shake<S,I> {
+    public static class NoOpShake<S extends Solution<S,I>,I extends Instance> extends Shake<S,I> {
         @Override
         public S shake(S s, int k) {
             return s;

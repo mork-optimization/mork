@@ -8,7 +8,7 @@ import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 import java.util.List;
 
 @InheritedComponent
-public abstract class AbstractExperiment<S extends Solution<I>, I extends Instance> {
+public abstract class AbstractExperiment<S extends Solution<S,I>, I extends Instance> {
 
     private final boolean maximizing;
 

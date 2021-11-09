@@ -14,7 +14,8 @@ import java.util.logging.Logger;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-public class SimpleMultiStartAlgorithm<S extends Solution<I>, I extends Instance> extends SimpleAlgorithm<S,I>{
+@Deprecated(forRemoval = true)
+public class SimpleMultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> extends SimpleAlgorithm<S,I>{
 
     private static Logger log = Logger.getLogger(SimpleAlgorithm.class.getName());
 
@@ -42,10 +43,8 @@ public class SimpleMultiStartAlgorithm<S extends Solution<I>, I extends Instance
         S best = null;
         for (int i = 0; i < n; i++) {
             var solution = super.algorithm(instance);
-            if(best == null){
+            if(solution.isBetterThan(best)){
                 best = solution;
-            } else {
-                best = best.getBetterSolution(solution);
             }
         }
 

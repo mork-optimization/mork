@@ -12,7 +12,7 @@ import java.util.HashSet;
 import java.util.Set;
 
 @SuppressWarnings("unchecked")
-public class ReflectiveSolutionBuilder<S extends Solution<I>,I extends Instance> extends SolutionBuilder<S, I> {
+public class ReflectiveSolutionBuilder<S extends Solution<S,I>,I extends Instance> extends SolutionBuilder<S, I> {
 
     private final Class<S> solClass;
     private  Constructor<S> constructor;
@@ -23,7 +23,7 @@ public class ReflectiveSolutionBuilder<S extends Solution<I>,I extends Instance>
             throw new RuntimeException("Cannot find any Solution implementation");
         }
         if(set.size() > 1){
-            throw new RuntimeException("Found multiple Solution<I> implementations, provide only one or implement your own SolutionBuilder");
+            throw new RuntimeException("Found multiple Solution<S,I> implementations, provide only one or implement your own SolutionBuilder");
         }
 
         solClass = (Class<S>) set.toArray()[0];

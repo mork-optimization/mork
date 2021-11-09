@@ -4,7 +4,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.EagerMove;
 import es.urjc.etsii.grafo.solution.Solution;
 
-import java.util.Collection;
+import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -13,7 +13,7 @@ import java.util.stream.Stream;
  * Usually used inside, but not limited to, a local search procedure.
  * Movements in this neighborhood are generated at once, returning a Collection of EagerMove.
  */
-public abstract class EagerNeighborhood<M extends EagerMove<S,I>, S extends Solution<I>, I extends Instance> extends Neighborhood<M,S,I>{
+public abstract class EagerNeighborhood<M extends EagerMove<S,I>, S extends Solution<S,I>, I extends Instance> extends Neighborhood<M,S,I>{
 
     /**
      * Build an exhaustive stream that allows iterating the whole neighborhood
@@ -29,5 +29,5 @@ public abstract class EagerNeighborhood<M extends EagerMove<S,I>, S extends Solu
      * @param s Solution
      * @return Collection of movements
      */
-    protected abstract Collection<M> getMovements(S s);
+    public abstract List<M> getMovements(S s);
 }

@@ -28,7 +28,7 @@ import java.util.stream.Stream;
 import static es.urjc.etsii.grafo.util.IOUtil.*;
 
 @Service
-public class IOManager<S extends Solution<I>, I extends Instance> {
+public class IOManager<S extends Solution<S,I>, I extends Instance> {
 
     private static final Logger log = Logger.getLogger(IOManager.class.toString());
 

@@ -1,14 +1,17 @@
-package es.urjc.etsii.grafo.solver.improve;
+package es.urjc.etsii.grafo.solver.improve.ls;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.improve.DefaultMoveComparator;
+import es.urjc.etsii.grafo.solver.improve.IteratedImprover;
 
 import java.util.Arrays;
+import java.util.Optional;
 
-public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I extends Instance> extends IteratedImprover<S, I> {
+public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> extends IteratedImprover<S, I> {
     protected final Neighborhood<M, S, I>[] providers;
     protected final MoveComparator<M, S, I> comparator;
     protected final String lsName;
@@ -47,8 +50,19 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
         this(new DefaultMoveComparator<>(maximizing), "", ps);
     }
 
+    @Override
+    public boolean iteration(S s) {
+        // Buscar el move a ejecutar
+        var move = getMove(s);
 
-    public abstract boolean iteration(S s);
+        if (move.isEmpty()) {
+            return false; // No existen movimientos válidos, finalizar
+        }
+
+        // Ejecutamos el move y pedimos otra iteracion
+        move.get().execute();
+        return true;
+    }
 
   
     @Override
@@ -64,11 +78,10 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I
     }
 
     /**
-     * Get move to execute, different strategies are possible
-     *
+     * Get next move to execute, different strategies are possible
      * @param s Solution
      * @return Proposed move
      */
-    protected abstract M getMove(S s);
+    public abstract Optional<M> getMove(S s);
 
 }

@@ -8,7 +8,7 @@ import es.urjc.etsii.grafo.solution.Solution;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-public class NoOPConstructive<S extends Solution<I>, I extends Instance> extends Constructive<S,I>{
+public class NoOPConstructive<S extends Solution<S,I>, I extends Instance> extends Constructive<S,I>{
 
     /**
      * Return the solution exactly as is

@@ -13,7 +13,7 @@ import java.util.stream.Stream;
  * Usually used inside, but not limited to, a local search procedure.
  * Movements in this neighborhood are generated lazily under demand using Streams with LazyMoves.
  */
-public abstract class LazyNeighborhood<M extends LazyMove<S,I>, S extends Solution<I>, I extends Instance> extends Neighborhood<M,S,I>{
+public abstract class LazyNeighborhood<M extends LazyMove<S,I>, S extends Solution<S,I>, I extends Instance> extends Neighborhood<M,S,I>{
 
     /**
      * Build an exhaustive stream that allows iterating the whole neighborhood

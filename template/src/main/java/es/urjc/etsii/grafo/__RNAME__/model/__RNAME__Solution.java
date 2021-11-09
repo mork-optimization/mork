@@ -2,10 +2,11 @@ package es.urjc.etsii.grafo.__RNAME__.model;
 
 import es.urjc.etsii.grafo.solution.Solution;
 
-public class __RNAME__Solution extends Solution<__RNAME__Instance> {
+public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Instance> {
 
     /**
      * Initialize solution from instance
+     *
      * @param ins
      */
     public __RNAME__Solution(__RNAME__Instance ins) {
@@ -15,6 +16,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Instance> {
 
     /**
      * Clone constructor
+     *
      * @param s Solution to clone
      */
     public __RNAME__Solution(__RNAME__Solution s) {
@@ -25,27 +27,16 @@ public class __RNAME__Solution extends Solution<__RNAME__Instance> {
 
 
     @Override
-    @SuppressWarnings("unchecked")
     public __RNAME__Solution cloneSolution() {
         // You do not need to modify this method
         // Call clone constructor
         return new __RNAME__Solution(this);
     }
 
-
-    /**
-     * Compare current solution against another. Return best one.
-     * @param <S> Solution class
-     * @param o Solution to compare
-     * @return Best solution
-     */
     @Override
-    public <S extends Solution<__RNAME__Instance>> S getBetterSolution(S o) {
-        // TODO given two solutions, which one is better?
-        throw new UnsupportedOperationException("getBetterSolution() in __RNAME__ not implemented yet");
-        // Example:
-        // Minimize total cost, better solution has lower cost
-        // return this.getScore() <= o.getScore() ? (S) this : o;
+    protected boolean _isBetterThan(__RNAME__Solution other) {
+        // TODO given two solutions, is the current solution STRICTLY better than the other?
+        throw new UnsupportedOperationException("isBetterThan() in __RNAME__ not implemented yet");
     }
 
     /**
@@ -53,6 +44,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Instance> {
      * The difference between this method and recalculateScore is that
      * this result can be a property of the solution, or cached,
      * it does not have to be calculated each time this method is called
+     *
      * @return current solution score as double
      */
     @Override
@@ -70,6 +62,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Instance> {
      * The difference between this method and getScore is that we must recalculate the score from scratch,
      * without using any cache/shortcuts.
      * DO NOT UPDATE CACHES / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
+     *
      * @return current solution score as double
      */
     @Override
@@ -82,6 +75,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Instance> {
     /**
      * Generate a string representation of this solution. Used when printing progress to console,
      * show as minimal info as possible
+     *
      * @return Small string representing the current solution (Example: id + score)
      */
     @Override

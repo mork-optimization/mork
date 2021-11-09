@@ -10,7 +10,7 @@ import es.urjc.etsii.grafo.solution.Solution;
  * @param <I> Instance class
  * @see RandomMoveShake
  */
-public abstract class Shake<S extends Solution<I>, I extends Instance> {
+public abstract class Shake<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Shake the solution. Use k to calculate how powerful the shake should be in your implementation.

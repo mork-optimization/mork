@@ -14,7 +14,7 @@ import java.util.Optional;
  * @param <I> Instance class
  */
 @InheritedComponent
-public abstract class ExceptionHandler<S extends Solution<I>, I extends Instance> {
+public abstract class ExceptionHandler<S extends Solution<S,I>, I extends Instance> {
     /**
      * What should be done when there is an unhandled exception in the user algorithm implementation?
      * @param experimentName Experiment name

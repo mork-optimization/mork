@@ -11,7 +11,7 @@ import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
  * @param <I> Instance class
  */
 @InheritedComponent
-public abstract class SolutionValidator<S extends Solution<I>, I extends Instance> {
+public abstract class SolutionValidator<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Validate the current solution, check that no constraint is broken and everything is fine

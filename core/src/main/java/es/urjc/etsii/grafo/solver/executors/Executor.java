@@ -25,7 +25,7 @@ import java.util.logging.Logger;
  * @param <I> Instance class
  */
 @InheritedComponent
-public abstract class Executor<S extends Solution<I>, I extends Instance> {
+public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
 
     private static final Logger log = Logger.getLogger(Executor.class.getName());
 

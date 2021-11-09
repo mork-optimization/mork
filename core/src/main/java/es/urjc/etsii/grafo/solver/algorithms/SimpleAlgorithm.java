@@ -19,7 +19,7 @@ import java.util.logging.Logger;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-public class SimpleAlgorithm<S extends Solution<I>, I extends Instance> extends Algorithm<S,I>{
+public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extends Algorithm<S,I>{
 
     private static Logger log = Logger.getLogger(SimpleAlgorithm.class.getName());
 

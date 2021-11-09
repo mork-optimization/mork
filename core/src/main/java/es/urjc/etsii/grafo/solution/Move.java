@@ -13,7 +13,7 @@ import static es.urjc.etsii.grafo.solution.Solution.MAX_DEBUG_MOVES;
  * All neighborhood moves should be represented by implementations of either LazyMove or EagerMove.
  * Do not directly extend this class.
  */
-public abstract class Move<S extends Solution<I>, I extends Instance> {
+public abstract class Move<S extends Solution<S,I>, I extends Instance> {
 
     private static final Logger logger = Logger.getLogger(Move.class.getName());
 

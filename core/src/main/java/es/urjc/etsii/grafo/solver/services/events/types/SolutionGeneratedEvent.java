@@ -14,7 +14,7 @@ import java.util.Optional;
  * @param <S> Solution type
  * @param <I> Instance type
  */
-public class SolutionGeneratedEvent<S extends Solution<I>, I extends Instance> extends MorkEvent {
+public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance> extends MorkEvent {
     private final String experimentName;
     private final String instanceName;
     private final String algorithmName;
