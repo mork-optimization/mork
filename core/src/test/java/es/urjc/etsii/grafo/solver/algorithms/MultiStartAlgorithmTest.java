@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.solver.algorithms;
 
+import es.urjc.etsii.grafo.solver.algorithms.multistart.MultiStartAlgorithm;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;
