@@ -9,7 +9,7 @@ import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
  * Determines initial simulated annealing temperature
  */
 @FunctionalInterface
-public interface InitialTemperatureCalculator<M extends Move<S,I>, S extends Solution<I>, I extends Instance> {
+public interface InitialTemperatureCalculator<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> {
     /**
      * Determines initial simulated annealing temperature
      * @param solution Solution being solved

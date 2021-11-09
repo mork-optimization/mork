@@ -10,11 +10,12 @@ import es.urjc.etsii.grafo.solver.improve.sa.initialt.ConstantInitialTemperature
 import es.urjc.etsii.grafo.solver.improve.sa.initialt.InitialTemperatureCalculator;
 import es.urjc.etsii.grafo.solver.improve.sa.initialt.MaxDifferenceInitialTemperature;
 
-public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<I>, I extends Instance> {
+public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> {
     private Neighborhood<M, S, I> neighborhood;
     private InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator;
     private TerminationCriteria<M, S, I> terminationCriteria;
     private CoolDownControl<M, S, I> coolDownControl;
+    private int cycleLength = 1;
 
     /**
      * Use SimulatedAnnealing::builder static method instead
@@ -126,7 +127,16 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
         return this;
     }
 
-
+    /**
+     * Configure cycle length, defaults to 1 if not called.
+     * @param cycleLength How many moves should be executed for each temperature level.
+     *                    Defaults to 1.
+     * @return builder
+     */
+    public SimulatedAnnealingBuilder<M,S,I> withCycleLength(int cycleLength) {
+        this.cycleLength = cycleLength;
+        return this;
+    }
 
     /**
      * Build a SimulatedAnnealing using the provided config values. Default values are as follows:
@@ -145,6 +155,9 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
         if(this.terminationCriteria == null){
             throw new IllegalArgumentException("Cannot create simulated annealing without a termination criteria, use withTerminationCriteria functions to configure. If you want to execute until the solution converges, use withConvergeTerminationCriteria");
         }
-        return new SimulatedAnnealing<>(neighborhood, initialTemperatureCalculator, terminationCriteria, coolDownControl);
+        if(cycleLength <= 0){
+            throw new IllegalArgumentException("Cycle length must be > 0");
+        }
+        return new SimulatedAnnealing<>(neighborhood, initialTemperatureCalculator, terminationCriteria, coolDownControl, this.cycleLength);
     }
 }

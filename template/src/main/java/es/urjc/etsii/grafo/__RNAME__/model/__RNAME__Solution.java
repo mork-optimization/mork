@@ -6,6 +6,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
 
     /**
      * Initialize solution from instance
+     *
      * @param ins
      */
     public __RNAME__Solution(__RNAME__Instance ins) {
@@ -15,6 +16,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
 
     /**
      * Clone constructor
+     *
      * @param s Solution to clone
      */
     public __RNAME__Solution(__RNAME__Solution s) {
@@ -42,6 +44,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
      * The difference between this method and recalculateScore is that
      * this result can be a property of the solution, or cached,
      * it does not have to be calculated each time this method is called
+     *
      * @return current solution score as double
      */
     @Override
@@ -59,6 +62,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
      * The difference between this method and getScore is that we must recalculate the score from scratch,
      * without using any cache/shortcuts.
      * DO NOT UPDATE CACHES / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
+     *
      * @return current solution score as double
      */
     @Override
@@ -71,6 +75,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
     /**
      * Generate a string representation of this solution. Used when printing progress to console,
      * show as minimal info as possible
+     *
      * @return Small string representing the current solution (Example: id + score)
      */
     @Override

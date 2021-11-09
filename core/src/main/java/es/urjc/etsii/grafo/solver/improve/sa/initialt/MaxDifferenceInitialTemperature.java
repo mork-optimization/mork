@@ -11,7 +11,7 @@ import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
  * @param <S>
  * @param <I>
  */
-public class MaxDifferenceInitialTemperature<M extends Move<S,I>, S extends Solution<I>, I extends Instance> implements InitialTemperatureCalculator<M,S,I>{
+public class MaxDifferenceInitialTemperature<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> implements InitialTemperatureCalculator<M,S,I>{
 
     private final double ratio;
 
