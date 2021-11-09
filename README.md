@@ -28,6 +28,3 @@ Import in your favourite IDE and start working!
 
 See Getting started page in the Wiki for more details.
 
-## Contributing
-
-Download current project, make some changes, write
