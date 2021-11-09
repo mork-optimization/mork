@@ -31,7 +31,7 @@ import static es.urjc.etsii.grafo.util.IOUtil.*;
 
 @Service
 @ConditionalOnExpression(value = "${irace.enabled}")
-public class IraceOrquestrator<S extends Solution<I>, I extends Instance> extends AbstractOrquestrator {
+public class IraceOrquestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrquestrator {
 
     private static final Logger log = Logger.getLogger(IraceOrquestrator.class.toString());
     private static final String IRACE_EXPNAME = "irace autoconfig";

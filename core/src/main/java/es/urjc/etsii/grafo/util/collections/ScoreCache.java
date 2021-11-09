@@ -11,7 +11,7 @@ import es.urjc.etsii.grafo.solution.Solution;
  * @param <S> Solution type
  * @param <I> Instance type
  */
-public class ScoreCache<S extends Solution<I>,I extends Instance> {
+public class ScoreCache<S extends Solution<S,I>,I extends Instance> {
 
     /**
      * Maximum cache size

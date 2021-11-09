@@ -10,9 +10,9 @@ import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
  * Time taken by the builder is not counted towards algorithm execution time
  */
 @InheritedComponent
-public abstract class SolutionBuilder<S extends Solution<I>, I extends Instance> {
+public abstract class SolutionBuilder<S extends Solution<S,I>, I extends Instance> {
     /**
-     * Generate an solution with the parameters given by the user
+     * Generate a solution with the parameters given by the user
      * @param i Instance used to build the empty solution
      * @return empty solution referencing the given instance
      */

@@ -9,7 +9,7 @@ import es.urjc.etsii.grafo.solver.improve.Improver;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
-public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends Algorithm<S, I> {
+public class IteratedGreedy<S extends Solution<S,I>, I extends Instance> extends Algorithm<S, I> {
 
     private static final Logger logger = Logger.getLogger(IteratedGreedy.class.getName());
 
@@ -60,11 +60,11 @@ public class IteratedGreedy<S extends Solution<I>, I extends Instance> extends A
         logger.fine(String.format("Initial solution: %s - %s", solution.getScore(), solution));
         int iterationsWithoutImprovement = 0;
         for (int i = 0; i < maxIterations; i++) {
-            S temp = solution.cloneSolution();
-            temp = this.shake.shake(temp, 1);
-            temp = ls(temp);
-            solution = solution.getBetterSolution(temp);
-            if(solution == temp){
+            S copy = solution.cloneSolution();
+            copy = this.shake.shake(copy, 1);
+            copy = ls(copy);
+            if(copy.isBetterThan(solution)){
+                solution = copy;
                 logger.fine(String.format("Improved at iteration %s: %s - %s", i, solution.getScore(), solution));
                 iterationsWithoutImprovement = 0;
             } else {

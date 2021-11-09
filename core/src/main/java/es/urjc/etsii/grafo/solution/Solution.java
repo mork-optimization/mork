@@ -7,7 +7,7 @@ import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class Solution<I extends Instance> {
+public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instance> {
 
     static final int MAX_DEBUG_MOVES = 100;
 
@@ -21,7 +21,7 @@ public abstract class Solution<I extends Instance> {
      */
     long version = 0;
 
-    protected ArrayDeque<Move<? extends Solution<I>, I>> lastMoves = new ArrayDeque<>(MAX_DEBUG_MOVES);
+    protected ArrayDeque<Move<? extends Solution<SELF, I>, I>> lastMoves = new ArrayDeque<>(MAX_DEBUG_MOVES);
 
     private long lastModifiedTime = Integer.MIN_VALUE;
 
@@ -33,7 +33,7 @@ public abstract class Solution<I extends Instance> {
         this.ins = ins;
     }
 
-    public Solution(Solution<I> s){
+    public Solution(Solution<SELF, I> s){
         // Only copy lastMoves when debugging
         assert (this.lastMoves = new ArrayDeque<>(s.lastMoves)) != null;
         this.ins = s.ins;
@@ -51,26 +51,41 @@ public abstract class Solution<I extends Instance> {
      * Note: If assertions are disabled, always returns an empty list
      * @return ordered list of oldest to recent moves
      */
-    public List<Move<? extends Solution<I>, I>> lastExecutesMoves(){
+    public List<Move<? extends Solution<SELF, I>, I>> lastExecutesMoves(){
         return new ArrayList<>(this.lastMoves);
     }
 
     /**
      * Clone the current solution.
      * Deep clone mutable data or you will regret it.
-     * @param <S> Solution class
      * @return A deep clone of the current solution
      */
-    public abstract <S extends Solution<I>> S cloneSolution();
+    public abstract SELF cloneSolution();
 
     /**
-     * Compare current solution against another. Depending on the problem type (minimiz, max, multiobject)
-     * the comparison will be different
-     * @param <S> Solution class
-     * @param o Solution to compare
-     * @return Best solution
+     * Check if this solution is STRICTLY better than the given solution.
+     * If they are equivalent this method must return false.
+     * @param other a different solution to compare
+     * @return true if and only if the current solution is strictly better than the given solution
      */
-    public abstract <S extends Solution<I>> S getBetterSolution(S o);
+    public boolean isBetterThan(SELF other){
+        if(other == null){
+            return true;
+        }
+        if(this == other){
+            return false;
+        }
+        return _isBetterThan(other);
+    }
+
+    /**
+     * Check if this solution is STRICTLY better than the given solution.
+     * If they are equivalent this method must return false.
+     * This method must be implemented by all subclasses
+     * @param other a different solution to compare
+     * @return true if and only if the current solution is strictly better than the given solution
+     */
+    protected abstract boolean _isBetterThan(SELF other);
 
     /**
      * Get the current solution score.
@@ -104,13 +119,11 @@ public abstract class Solution<I extends Instance> {
         return ins;
     }
 
-    public static <I extends Instance, S extends Solution<I>> S getBest(Iterable<S> solutions) {
+    public static <I extends Instance, S extends Solution<S, I>> S getBest(Iterable<S> solutions) {
         S best = null;
         for (S solution : solutions) {
-            if (best == null) {
+            if(solution.isBetterThan(best)){
                 best = solution;
-            } else {
-                best = best.getBetterSolution(solution);
             }
         }
         return best;

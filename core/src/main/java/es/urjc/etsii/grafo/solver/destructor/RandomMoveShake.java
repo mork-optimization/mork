@@ -12,7 +12,7 @@ import java.util.Optional;
 import java.util.Random;
 import java.util.logging.Logger;
 
-public class RandomMoveShake<S extends Solution<I>, I extends Instance> extends Shake<S,I> {
+public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extends Shake<S,I> {
 
     private static final Logger log = Logger.getLogger(RandomMoveShake.class.getName());
 

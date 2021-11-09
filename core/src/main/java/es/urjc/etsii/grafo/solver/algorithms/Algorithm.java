@@ -8,7 +8,7 @@ import java.util.Objects;
 
 //@InheritedComponent
 // TODO Idea: Allow algorithms via config instead of a AbstractExperimentSetup
-public abstract class Algorithm<S extends Solution<I>, I extends Instance> {
+public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
 
     private SolutionBuilder<S,I> builder;
 

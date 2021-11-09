@@ -11,7 +11,7 @@ import java.util.logging.Logger;
  * @see es.urjc.etsii.grafo.solution.neighborhood.LazyNeighborhood
  * @see es.urjc.etsii.grafo.solution.neighborhood.EagerNeighborhood
  */
-public abstract class LazyMove<S extends Solution<I>, I extends Instance> extends Move<S,I>{
+public abstract class LazyMove<S extends Solution<S,I>, I extends Instance> extends Move<S,I>{
 
     private static final Logger logger = Logger.getLogger(LazyMove.class.getName());
 

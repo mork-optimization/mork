@@ -12,7 +12,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.logging.Logger;
 
-public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S, I> {
+public class VNS<S extends Solution<S,I>, I extends Instance> extends Algorithm<S, I> {
 
     private static final Logger log = Logger.getLogger(VNS.class.getName());
     protected final String algorithmName;
@@ -75,7 +75,9 @@ public class VNS<S extends Solution<I>, I extends Instance> extends Algorithm<S,
                 copy = shake.shake(copy, currentK);
                 copy = localSearch(copy);
                 //System.out.print(copy.getOptimalValue()+",");
-                bestSolution = bestSolution.getBetterSolution(copy);
+                if(copy.isBetterThan(bestSolution)){
+                    bestSolution = copy;
+                }
             }
             if (bestSolution == solution) {
                 currentKIndex++;

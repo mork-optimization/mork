@@ -5,7 +5,7 @@ import es.urjc.etsii.grafo.solution.Solution;
 
 import java.util.logging.Logger;
 
-public abstract class Improver<S extends Solution<I>,I extends Instance> {
+public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
     private static final Logger log = Logger.getLogger(Improver.class.getName());
 

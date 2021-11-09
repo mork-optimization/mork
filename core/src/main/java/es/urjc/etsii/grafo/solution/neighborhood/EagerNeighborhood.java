@@ -13,7 +13,7 @@ import java.util.stream.Stream;
  * Usually used inside, but not limited to, a local search procedure.
  * Movements in this neighborhood are generated at once, returning a Collection of EagerMove.
  */
-public abstract class EagerNeighborhood<M extends EagerMove<S,I>, S extends Solution<I>, I extends Instance> extends Neighborhood<M,S,I>{
+public abstract class EagerNeighborhood<M extends EagerMove<S,I>, S extends Solution<S,I>, I extends Instance> extends Neighborhood<M,S,I>{
 
     /**
      * Build an exhaustive stream that allows iterating the whole neighborhood

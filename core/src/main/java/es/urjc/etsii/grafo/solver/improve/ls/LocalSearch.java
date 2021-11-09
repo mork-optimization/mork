@@ -11,7 +11,7 @@ import es.urjc.etsii.grafo.solver.improve.IteratedImprover;
 import java.util.Arrays;
 import java.util.Optional;
 
-public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<I>, I extends Instance> extends IteratedImprover<S, I> {
+public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> extends IteratedImprover<S, I> {
     protected final Neighborhood<M, S, I>[] providers;
     protected final MoveComparator<M, S, I> comparator;
     protected final String lsName;

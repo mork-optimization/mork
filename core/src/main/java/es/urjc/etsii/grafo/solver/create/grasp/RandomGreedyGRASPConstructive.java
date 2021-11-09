@@ -25,7 +25,7 @@ import static es.urjc.etsii.grafo.util.DoubleComparator.*;
  * @param <S> Solution type
  * @param <I> Instance type
  */
-public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solution<I>, I extends Instance> extends Constructive<S, I> {
+public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> extends Constructive<S, I> {
     private static final Logger log = Logger.getLogger(RandomGreedyGRASPConstructive.class.getName());
     protected final String randomType;
     protected final GRASPListManager<M, S, I> candidateListManager;

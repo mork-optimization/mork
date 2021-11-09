@@ -12,7 +12,7 @@ import java.util.logging.Logger;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-public class MultiStartAlgorithm<S extends Solution<I>, I extends Instance> extends Algorithm<S, I> {
+public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> extends Algorithm<S, I> {
 
     private static final Logger log = Logger.getLogger(MultiStartAlgorithm.class.getName());
 
@@ -46,7 +46,7 @@ public class MultiStartAlgorithm<S extends Solution<I>, I extends Instance> exte
     }
 
 
-    public static <S extends Solution<I>, I extends Instance> MultiStartAlgorithmBuilder<S, I> builder() {
+    public static <S extends Solution<S,I>, I extends Instance> MultiStartAlgorithmBuilder<S, I> builder() {
         return new MultiStartAlgorithmBuilder<>();
     }
 
@@ -94,15 +94,9 @@ public class MultiStartAlgorithm<S extends Solution<I>, I extends Instance> exte
             iter++;
             iterWI++;
             S solution = this.algorithm.algorithm(instance);
-            S oldBest = best;
-            if (best == null) {
+            if(solution.isBetterThan(best)){
                 best = solution;
                 iterWI = 0;
-            } else {
-                best = best.getBetterSolution(solution);
-                if (oldBest != best) {
-                    iterWI = 0;
-                }
             }
 
             printStatus(iter, best);
@@ -146,7 +140,7 @@ public class MultiStartAlgorithm<S extends Solution<I>, I extends Instance> exte
         log.fine(() -> String.format("\t\t%s: %s", iteration, s));
     }
 
-    public static final class MultiStartAlgorithmBuilder<S extends Solution<I>, I extends Instance> {
+    public static final class MultiStartAlgorithmBuilder<S extends Solution<S,I>, I extends Instance> {
 
         private String name = "";
         private int maxIterations = Integer.MAX_VALUE / 2;

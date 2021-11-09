@@ -11,7 +11,7 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.IOException;
 
-public class DefaultJSONSolutionSerializer<S extends Solution<I>, I extends Instance> extends SolutionSerializer<S,I> {
+public class DefaultJSONSolutionSerializer<S extends Solution<S,I>, I extends Instance> extends SolutionSerializer<S,I> {
 
     ObjectWriter writer;
 

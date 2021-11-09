@@ -8,7 +8,7 @@ import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.Optional;
 
-public class DefaultMoveComparator<M extends Move<S,I>, S extends Solution<I>, I extends Instance> extends MoveComparator<M, S, I> {
+public class DefaultMoveComparator<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> extends MoveComparator<M, S, I> {
     private boolean maximizing;
 
     public DefaultMoveComparator(boolean maximizing) {

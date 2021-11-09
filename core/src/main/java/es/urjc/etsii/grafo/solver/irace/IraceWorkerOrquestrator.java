@@ -22,7 +22,7 @@
 //
 //@Service
 //@ConditionalOnExpression(value = "!'${irace.enabled}' and '${irace.worker}'")
-//public class IraceWorkerOrquestrator<S extends Solution<I>, I extends Instance> extends AbstractOrquestrator {
+//public class IraceWorkerOrquestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrquestrator {
 //
 //    private static final Logger log = Logger.getLogger(IraceWorkerOrquestrator.class.toString());
 //

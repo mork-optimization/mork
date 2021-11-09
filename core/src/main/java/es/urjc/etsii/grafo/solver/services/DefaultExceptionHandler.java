@@ -9,7 +9,7 @@ import java.io.StringWriter;
 import java.util.Optional;
 import java.util.logging.Logger;
 
-public class DefaultExceptionHandler<S extends Solution<I>, I extends Instance> extends ExceptionHandler<S,I>{
+public class DefaultExceptionHandler<S extends Solution<S,I>, I extends Instance> extends ExceptionHandler<S,I>{
     private static final Logger logger = Logger.getLogger(DefaultExceptionHandler.class.getName());
 
     public void handleException(String experimentName, Exception e, Optional<S> sOptional, I i, Algorithm<S,I> algorithm, IOManager<S, I> io){

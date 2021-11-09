@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.__RNAME__.model;
 
 import es.urjc.etsii.grafo.solution.Solution;
 
-public class __RNAME__Solution extends Solution<__RNAME__Instance> {
+public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Instance> {
 
     /**
      * Initialize solution from instance
@@ -25,27 +25,16 @@ public class __RNAME__Solution extends Solution<__RNAME__Instance> {
 
 
     @Override
-    @SuppressWarnings("unchecked")
     public __RNAME__Solution cloneSolution() {
         // You do not need to modify this method
         // Call clone constructor
         return new __RNAME__Solution(this);
     }
 
-
-    /**
-     * Compare current solution against another. Return best one.
-     * @param <S> Solution class
-     * @param o Solution to compare
-     * @return Best solution
-     */
     @Override
-    public <S extends Solution<__RNAME__Instance>> S getBetterSolution(S o) {
-        // TODO given two solutions, which one is better?
-        throw new UnsupportedOperationException("getBetterSolution() in __RNAME__ not implemented yet");
-        // Example:
-        // Minimize total cost, better solution has lower cost
-        // return this.getScore() <= o.getScore() ? (S) this : o;
+    protected boolean _isBetterThan(__RNAME__Solution other) {
+        // TODO given two solutions, is the current solution STRICTLY better than the other?
+        throw new UnsupportedOperationException("isBetterThan() in __RNAME__ not implemented yet");
     }
 
     /**

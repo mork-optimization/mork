@@ -6,7 +6,7 @@ import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.List;
 
-public class VND<S extends Solution<I>,I extends Instance> extends Improver<S,I>{
+public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,I>{
 
     private final List<Improver<S,I>> improvers;
     private final boolean maximize;

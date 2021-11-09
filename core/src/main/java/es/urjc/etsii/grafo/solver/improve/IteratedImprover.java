@@ -6,7 +6,7 @@ import es.urjc.etsii.grafo.solver.services.MorkLifecycle;
 
 import java.util.logging.Logger;
 
-public abstract class IteratedImprover<S extends Solution<I>,I extends Instance> extends Improver<S,I>{
+public abstract class IteratedImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I>{
     static final Logger log = Logger.getLogger(IteratedImprover.class.getName());
     
     /**

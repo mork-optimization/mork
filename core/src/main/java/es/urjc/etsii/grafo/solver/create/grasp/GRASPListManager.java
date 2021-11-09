@@ -9,7 +9,7 @@ import java.util.List;
 /**
  * Creates and updates the candidate list when a movement is performed
  */
-public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<I>, I extends Instance> {
+public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> {
     /**
      * Initialize solution before GRASP algorithm is run
      * F.e: In the case of clustering algorithms, usually each cluster needs to have at least one point,

@@ -12,7 +12,7 @@ import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
  * @param <I> Instance class
  */
 @InheritedComponent
-public abstract class IraceAlgorithmGenerator<S extends Solution<I>, I extends Instance> {
+public abstract class IraceAlgorithmGenerator<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Generates an algorithm from a given Irace config.

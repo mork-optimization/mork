@@ -9,7 +9,7 @@ import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import java.util.Optional;
 import java.util.stream.Stream;
 
-public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution<I>, I extends Instance> extends LocalSearch<M, S, I> {
+public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> extends LocalSearch<M, S, I> {
 
     @SafeVarargs
     public LocalSearchBestImprovement(MoveComparator<M, S, I> comparator, Neighborhood<M, S, I>... ps) {
