@@ -6,7 +6,7 @@ import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 
 import java.util.concurrent.TimeUnit;
 
-public class MultiStartAlgorithmBuilder<S extends Solution<I>, I extends Instance> {
+public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Instance> {
 
     private String name = "";
     private int maxIterations = Integer.MAX_VALUE / 2;
