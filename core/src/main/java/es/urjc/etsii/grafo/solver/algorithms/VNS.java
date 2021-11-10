@@ -97,7 +97,7 @@ public class VNS<S extends Solution<S,I>, I extends Instance> extends Algorithm<
     }
 
     private void printStatus(String phase, S s) {
-        log.fine(String.format("\t\t\t%s: %s\n", phase, s));
+        log.fine(String.format("%s: \t%s", phase, s));
     }
 
     @Override

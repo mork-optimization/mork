@@ -9,6 +9,7 @@ import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solver.improve.Improver;
 import es.urjc.etsii.grafo.solver.improve.sa.cd.CoolDownControl;
 import es.urjc.etsii.grafo.solver.improve.sa.initialt.InitialTemperatureCalculator;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.RandomManager;
 
 import java.util.*;
@@ -57,7 +58,9 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
                 break;
             }
 
-            currentTemperature = coolDownControl.coolDown(best, neighborhood, currentTemperature, currentIteration);
+            double newTemperature = coolDownControl.coolDown(best, neighborhood, currentTemperature, currentIteration);
+            assert DoubleComparator.isLessThan(newTemperature, currentTemperature) : String.format("Next Temp %s should be < than prev %s", newTemperature, currentTemperature);
+            currentTemperature = newTemperature;
             currentIteration++;
             log.fine(String.format("Next iter %s with t: %s", currentIteration, currentTemperature));
         }

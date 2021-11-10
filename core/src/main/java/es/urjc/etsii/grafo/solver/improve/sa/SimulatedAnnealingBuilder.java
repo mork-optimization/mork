@@ -9,6 +9,7 @@ import es.urjc.etsii.grafo.solver.improve.sa.cd.ExponentialCoolDown;
 import es.urjc.etsii.grafo.solver.improve.sa.initialt.ConstantInitialTemperature;
 import es.urjc.etsii.grafo.solver.improve.sa.initialt.InitialTemperatureCalculator;
 import es.urjc.etsii.grafo.solver.improve.sa.initialt.MaxDifferenceInitialTemperature;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 
 public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> {
     private Neighborhood<M, S, I> neighborhood;
@@ -96,11 +97,11 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     }
 
     /**
-     * End when we cannot apply any move.
+     * End when temperature reaches 0.
      * @return builder
      */
     public SimulatedAnnealingBuilder<M,S,I> withConvergeTerminationCriteria() {
-        this.terminationCriteria = ((sol, neighborhood, currentTemp, iteration) -> false);
+        this.terminationCriteria = ((sol, neighborhood, currentTemp, iteration) -> DoubleComparator.isLessOrEquals(currentTemp, 0.01));
         return this;
     }
 
