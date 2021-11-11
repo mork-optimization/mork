@@ -1,7 +1,6 @@
 # How to contribute
 
-Third party contributions are essential to improve the project. Not every contribution has to be a code changes to the core framework, other contributions can be documentation improvements, project examples, use cases, etc.
-
+Third party contributions are essential to improve the project. Not every contribution has to be a code change to the core framework, other contributions can be: documentation improvements, project examples, use cases, etc.
 
 ## Before contributing
 
@@ -39,4 +38,4 @@ Third party contributions are essential to improve the project. Not every contri
 * [General GitHub documentation](https://help.github.com/)
 * [GitHub pull request documentation](https://help.github.com/articles/creating-a-pull-request/)
 
-Contributing guidelines based on Puppet project.
+Contributing guidelines inspired by [the Puppet project](https://github.com/puppetlabs/puppet).
