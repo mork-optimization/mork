@@ -1,11 +1,20 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.util.random.RandomManager;
+
 import java.util.*;
+import java.util.random.RandomGenerator;
 
 /**
  * Util methods to manipulate collections and arrays that are not part of the standard java API
  */
 public class CollectionUtil {
+
+    /**
+     * Magic value calculated empirically for performance, taken from the reference Collections implementation
+     */
+    private static final int SHUFFLE_THRESHOLD        =    5;
+
     /**
      * Reverse a fragment in a list, from start to end (inclusive)
      * @param list  list to reverse
@@ -40,7 +49,7 @@ public class CollectionUtil {
      * @return Chosen element
      */
     public static <T> T pickRandom(Set<T> set){
-        int index = RandomManager.nextInt(0, set.size());
+        int index = RandomManager.getRandom().nextInt(0, set.size());
         int i = 0;
         for(T t : set) {
             if (i++ == index)
@@ -107,5 +116,53 @@ public class CollectionUtil {
             array[i] = (long) boxedArray[i];
         }
         return array;
+    }
+
+
+    /**
+     * From the official javadocs
+     * Swaps the elements at the specified positions in the specified list.
+     * (If the specified positions are equal, invoking this method leaves
+     * the list unchanged.)
+     *
+     * @param list The list in which to swap elements.
+     * @param i the index of one element to be swapped.
+     * @param j the index of the other element to be swapped.
+     * @throws IndexOutOfBoundsException if either {@code i} or {@code j}
+     *         is out of range (i &lt; 0 || i &gt;= list.size()
+     *         || j &lt; 0 || j &gt;= list.size()).
+     * @since 1.4
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
+    public static void swap(List<?> list, int i, int j) {
+        // instead of using a raw type here, it's possible to capture
+        // the wildcard but it will require a call to a supplementary
+        // private method
+        final List l = list;
+        l.set(i, l.set(j, l.get(i)));
+    }
+
+    public static void shuffle(List<?> list, RandomGenerator rnd) {
+        int size = list.size();
+        if (size < SHUFFLE_THRESHOLD || list instanceof RandomAccess) {
+            for (int i=size; i>1; i--)
+                swap(list, i-1, rnd.nextInt(i));
+        } else {
+            Object[] arr = list.toArray();
+
+            // Shuffle array
+            for (int i=size; i>1; i--)
+                ArrayUtil.swap(arr, i-1, rnd.nextInt(i));
+
+            // Dump array back into list
+            // instead of using a raw type here, it's possible to capture
+            // the wildcard but it will require a call to a supplementary
+            // private method
+            ListIterator it = list.listIterator();
+            for (Object e : arr) {
+                it.next();
+                it.set(e);
+            }
+        }
     }
 }

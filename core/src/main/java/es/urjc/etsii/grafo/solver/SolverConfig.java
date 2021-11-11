@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.solver;
 
+import es.urjc.etsii.grafo.util.random.RandomType;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -11,6 +12,7 @@ public class SolverConfig {
     private static final Logger log = Logger.getLogger(SolverConfig.class.getName());
 
     private int seed = 1234;
+    private RandomType randomType;
     private String experiments;
     private boolean maximizing;
     private int repetitions = 1;
@@ -72,5 +74,13 @@ public class SolverConfig {
 
     public void setBenchmark(boolean benchmark) {
         this.benchmark = benchmark;
+    }
+
+    public RandomType getRandomType() {
+        return randomType;
+    }
+
+    public void setRandomType(RandomType randomType) {
+        this.randomType = randomType;
     }
 }

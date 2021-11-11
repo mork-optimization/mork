@@ -4,7 +4,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.Constructive;
-import es.urjc.etsii.grafo.util.RandomManager;
+import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.List;
@@ -120,7 +120,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
                 }
             }
         }
-        int index = RandomManager.nextInt(0, next);
+        int index = RandomManager.getRandom().nextInt(0, next);
         return validIndexes[index];
     }
 
