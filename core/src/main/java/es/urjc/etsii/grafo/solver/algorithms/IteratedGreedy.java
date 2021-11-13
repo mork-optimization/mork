@@ -15,7 +15,7 @@ import java.util.logging.Logger;
  * destruction of a complete candidate solution and a subsequent reconstruction of
  * a complete candidate solution.
  * <p>
- * Algorithmic outline of simples version of Iterated Greedy (IG)
+ * Algorithmic outline of the simplest version of Iterated Greedy (IG)
  * <p>
  * s = GenerateInitialSolution
  * do {
@@ -71,6 +71,15 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
     protected IteratedGreedy() {
     }
 
+    /**
+     *  Iterated Greedy Algorithm constructor
+     *
+     * @param maxIterations  maximum number of iterations the algorithm could be executed.
+     * @param stopIfNotImprovedIn maximum number of iterations without improving the algorithm could be executed.
+     * @param constructive constructive procedure to generate the initial solution of the algorithm
+     * @param destructionReconstruction destruction and reconstruction procedures
+     * @param improvers improving procedures. Could be 0 or more.
+     */
     @SafeVarargs
     public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> destructionReconstruction, Improver<S, I>... improvers) {
         if (stopIfNotImprovedIn < 1) {
@@ -83,6 +92,14 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
         this.improvers = improvers;
     }
 
+    /**
+     *  Iterated Greedy Algorithm constructor
+     *
+     * @param maxIterations  maximum number of iterations the algorithm could be executed.
+     * @param stopIfNotImprovedIn maximum number of iterations without improving the algorithm could be executed.
+     * @param constructive constructive procedure to generate the initial solution of the algorithm
+     * @param destructionReconstruction destruction and reconstruction procedures
+     */
     public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> destructionReconstruction) {
         if (stopIfNotImprovedIn < 1) {
             throw new IllegalArgumentException("stopIfNotImprovedIn must be greater than 0");
@@ -93,10 +110,25 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
         this.destructionReconstruction = destructionReconstruction;
     }
 
+    /**
+     *  Iterated Greedy Algorithm constructor
+     *
+     * @param maxIterations  maximum number of iterations the algorithm could be executed.
+     * @param stopIfNotImprovedIn maximum number of iterations without improving the algorithm could be executed.
+     * @param constructive constructive procedure to generate the initial solution of the algorithm
+     * @param destructionReconstruction destruction and reconstruction procedures
+     * @param improver improving procedure.
+     */
     public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> destructionReconstruction, Improver<S, I> improver) {
         this(maxIterations, stopIfNotImprovedIn, constructive, destructionReconstruction, new Improver[]{improver});
     }
 
+
+    /**
+     * Iterated greedy algorithm procedure
+     * @param instance Instance to solve
+     * @return the best solution found
+     */
     @Override
     public S algorithm(I instance) {
         S solution = this.newSolution(instance);
