@@ -9,47 +9,92 @@ import es.urjc.etsii.grafo.solver.improve.Improver;
 import java.util.Arrays;
 import java.util.logging.Logger;
 
-public class IteratedGreedy<S extends Solution<S,I>, I extends Instance> extends Algorithm<S, I> {
+/**
+ * Iterated greedy is a search method that iterates through applications of construction
+ * heuristics using the repeated execution of two main phases, the partial
+ * destruction of a complete candidate solution and a subsequent reconstruction of
+ * a complete candidate solution.
+ * <p>
+ * Algorithmic outline of simples version of Iterated Greedy (IG)
+ * <p>
+ * s = GenerateInitialSolution
+ * do {
+ * s' = Destruction(s)
+ * s'' = Reconstruction (s'')
+ * s = AcceptanceCriterion(s,s'')
+ * } while (Termination criteria is not met)
+ * return s
+ * <p>
+ * Iterated greedy algorithms  natural extension is to improve the generated solutions by
+ * the application of a improvement algorithm, such as local search procedures.
+ * <p>
+ * Algorithmic outline of an IG with an additional local search step
+ * <p>
+ * For further information about Iterated Greedy Algorithms see:
+ * Stützle T., Ruiz R. (2018) Iterated Greedy. In: Martí R., Pardalos P., Resende M. (eds) Handbook of Heuristics.
+ * Springer, Cham. https://doi.org/10.1007/978-3-319-07124-4_10
+ *
+ * @param <S> the type of the problem solution
+ * @param <I> the type of problem instances
+ */
+public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extends Algorithm<S, I> {
 
     private static final Logger logger = Logger.getLogger(IteratedGreedy.class.getName());
 
+    /**
+     * Constructive procedure
+     */
     private Constructive<S, I> constructive;
-    private Shake<S, I> shake;
+
+
+    /**
+     * Destructive an reconstructive procedure
+     */
+    private Shake<S, I> destructionReconstruction;
+
+    /**
+     * Improving procedures
+     */
     private Improver<S, I>[] improvers;
 
     /**
-     * Number of iterations
+     * Maximum number of iterations the algorithm could be executed.
      */
     private int maxIterations;
+
+    /**
+     * Maximum number of iterations without improving the algorithm could be executed.
+     */
     private int stopIfNotImprovedIn;
 
 
-    protected IteratedGreedy(){}
+    protected IteratedGreedy() {
+    }
 
     @SafeVarargs
-    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I>... improvers) {
-        if(stopIfNotImprovedIn<1){
+    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> destructionReconstruction, Improver<S, I>... improvers) {
+        if (stopIfNotImprovedIn < 1) {
             throw new IllegalArgumentException("stopIfNotImprovedIn must be greater than 0");
         }
         this.maxIterations = maxIterations;
         this.stopIfNotImprovedIn = stopIfNotImprovedIn;
         this.constructive = constructive;
-        this.shake = shake;
+        this.destructionReconstruction = destructionReconstruction;
         this.improvers = improvers;
     }
 
-    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> shake){
-        if(stopIfNotImprovedIn<1){
+    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> destructionReconstruction) {
+        if (stopIfNotImprovedIn < 1) {
             throw new IllegalArgumentException("stopIfNotImprovedIn must be greater than 0");
         }
         this.maxIterations = maxIterations;
         this.stopIfNotImprovedIn = stopIfNotImprovedIn;
         this.constructive = constructive;
-        this.shake = shake;
+        this.destructionReconstruction = destructionReconstruction;
     }
 
-    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
-        this(maxIterations, stopIfNotImprovedIn, constructive, shake, new Improver[]{improver});
+    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> destructionReconstruction, Improver<S, I> improver) {
+        this(maxIterations, stopIfNotImprovedIn, constructive, destructionReconstruction, new Improver[]{improver});
     }
 
     @Override
@@ -61,15 +106,15 @@ public class IteratedGreedy<S extends Solution<S,I>, I extends Instance> extends
         int iterationsWithoutImprovement = 0;
         for (int i = 0; i < maxIterations; i++) {
             S copy = solution.cloneSolution();
-            copy = this.shake.shake(copy, 1);
+            copy = this.destructionReconstruction.shake(copy, 1);
             copy = ls(copy);
-            if(copy.isBetterThan(solution)){
+            if (copy.isBetterThan(solution)) {
                 solution = copy;
                 logger.fine(String.format("Improved at iteration %s: %s - %s", i, solution.getScore(), solution));
                 iterationsWithoutImprovement = 0;
             } else {
                 iterationsWithoutImprovement++;
-                if(iterationsWithoutImprovement>=this.stopIfNotImprovedIn){
+                if (iterationsWithoutImprovement >= this.stopIfNotImprovedIn) {
                     logger.fine(String.format("Not improved after %s iterations, stopping in iteration %s. Current score %s - %s", stopIfNotImprovedIn, i, solution.getScore(), solution));
                     break;
                 }
@@ -79,8 +124,15 @@ public class IteratedGreedy<S extends Solution<S,I>, I extends Instance> extends
         return solution;
     }
 
+    /**
+     * Improving method. Given a solution, this method execute sequentially the improvement procedures.
+     * If no improvement procedure is defined, the solution returned is the same as the one given as a parameter of the method.
+     *
+     * @param solution initial solution  of the procedure
+     * @return the improved solution
+     */
     private S ls(S solution) {
-        if(improvers == null) return solution;
+        if (improvers == null) return solution;
 
         for (Improver<S, I> improver : improvers) {
             solution = improver.improve(solution);
@@ -92,7 +144,7 @@ public class IteratedGreedy<S extends Solution<S,I>, I extends Instance> extends
     public String toString() {
         return "IteratedGreedy{" +
                 "constructive=" + constructive +
-                ", shake=" + shake +
+                ", shake=" + destructionReconstruction +
                 ", improvers=" + Arrays.toString(improvers) +
                 '}';
     }
