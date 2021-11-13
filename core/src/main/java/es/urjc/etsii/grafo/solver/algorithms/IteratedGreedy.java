@@ -31,7 +31,8 @@ import java.util.logging.Logger;
  * Algorithmic outline of an IG with an additional local search step
  * <p>
  * For further information about Iterated Greedy Algorithms see:
- * Stützle T., Ruiz R. (2018) Iterated Greedy. In: Martí R., Pardalos P., Resende M. (eds) Handbook of Heuristics.
+ * Stützle T., Ruiz R. (2018) Iterated Greedy.
+ * In: Martí R., Pardalos P., Resende M. (eds) Handbook of Heuristics.
  * Springer, Cham. https://doi.org/10.1007/978-3-319-07124-4_10
  *
  * @param <S> the type of the problem solution
