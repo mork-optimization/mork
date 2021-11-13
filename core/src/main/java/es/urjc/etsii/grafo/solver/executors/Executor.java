@@ -12,7 +12,7 @@ import es.urjc.etsii.grafo.solver.services.SolutionValidator;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
-import es.urjc.etsii.grafo.util.RandomManager;
+import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.List;

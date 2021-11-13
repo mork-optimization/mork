@@ -4,12 +4,11 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.util.RandomManager;
+import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.Arrays;
 import java.util.Optional;
-import java.util.Random;
 import java.util.logging.Logger;
 
 public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extends Shake<S,I> {
@@ -39,7 +38,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
      * @param k Number of movements to apply, maxK is not used in this implementation
      */
     public S shake(S s, int k) {
-        Random random = RandomManager.getRandom();
+        var random = RandomManager.getRandom();
 
         // Execute k*RATIO random moves in different neighbourhoods
         for (int i = 0; i < k*ratio; i++) {

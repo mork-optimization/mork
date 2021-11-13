@@ -9,8 +9,9 @@ import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solver.improve.Improver;
 import es.urjc.etsii.grafo.solver.improve.sa.cd.CoolDownControl;
 import es.urjc.etsii.grafo.solver.improve.sa.initialt.InitialTemperatureCalculator;
+import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
-import es.urjc.etsii.grafo.util.RandomManager;
+import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.*;
 import java.util.logging.Logger;
@@ -154,7 +155,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
         } else {
             moves = neighborhood.stream(s).collect(Collectors.toList());
         }
-        Collections.shuffle(moves, RandomManager.getRandom());
+        CollectionUtil.shuffle(moves, RandomManager.getRandom());
         return moves;
     }
 

@@ -12,6 +12,9 @@ solver:
   # Global random seed to ensure reproducibility
   seed: 1234
 
+  # Random generator provider, see RandomType enum for a full list of available implementations
+  random-type: default
+
   # Which experiments should be executed? .* --> All.
   # Experiment names default to the class name in which they are declared unless overridden.
   # Tip, you may use a Regex, example: Preeliminar.*
@@ -162,7 +165,7 @@ errors:
 
   # Path where all errors or exceptions encountered during experiment execution will be exported
   folder: 'errors'
-  
+
 # Advanced configuration, do not change unless you know what you are doing!
 advanced:
   # Block Java API methods

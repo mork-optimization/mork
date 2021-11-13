@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.util;
 
 
 import es.urjc.etsii.grafo.testutil.HelperFactory;
+import es.urjc.etsii.grafo.util.random.RandomManager;
+import es.urjc.etsii.grafo.util.random.RandomType;
 import org.junit.jupiter.api.*;
 
 import java.util.ArrayList;
@@ -14,8 +16,9 @@ public class RandomManagerTests {
     @Test
     @Order(1)
     public void initializationTest(){
+        RandomType type = RandomType.LEGACY;
         int initialseed = 123456, repetitions = 10;
-        RandomManager manager = HelperFactory.getRandomManager(initialseed, repetitions);
+        RandomManager manager = HelperFactory.getRandomManager(type, initialseed, repetitions);
 
         RandomManager.reset(0);
         var myRandom = RandomManager.getRandom();
@@ -35,8 +38,9 @@ public class RandomManagerTests {
     @Test
     @Order(2)
     public void concurrentGenerationTest(){
+        RandomType type = RandomType.LEGACY;
         int initialseed = 123456, repetitions = 8;
-        RandomManager manager = HelperFactory.getRandomManager(initialseed, repetitions);
+        RandomManager manager = HelperFactory.getRandomManager(type, initialseed, repetitions);
         var executor = Executors.newFixedThreadPool(4);
         for (int i = 0; i < repetitions; i++) {
             var iteration = i;
@@ -70,10 +74,26 @@ public class RandomManagerTests {
     @Test
     @Order(3)
     public void testExceptions(){
+        RandomType type = RandomType.LEGACY;
         int initialseed = 123456, repetitions = 8;
-        RandomManager manager = HelperFactory.getRandomManager(initialseed, repetitions);
-        Assertions.assertThrows(IllegalArgumentException.class, () -> RandomManager.nextInt(0, 0));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> RandomManager.nextInt(1, 0));
-        Assertions.assertDoesNotThrow(() -> RandomManager.nextInt(0, 1));
+        RandomManager manager = HelperFactory.getRandomManager(type, initialseed, repetitions);
+        Assertions.assertThrows(IllegalArgumentException.class, () -> RandomManager.getRandom().nextInt(0, 0));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> RandomManager.getRandom().nextInt(1, 0));
+        Assertions.assertDoesNotThrow(() -> RandomManager.getRandom().nextInt(0, 1));
+    }
+
+    /**
+     * All RandomType providers must be available
+     */
+    @Test
+    @Order(4)
+    public void allAvailable(){
+        for(var type: RandomType.values()){
+            Assertions.assertDoesNotThrow(() -> {
+                RandomManager.reinitialize(type, 1234, 100);
+                RandomManager.reset(0);
+                RandomManager.getRandom().nextInt(0, 100);
+            });
+        }
     }
 }

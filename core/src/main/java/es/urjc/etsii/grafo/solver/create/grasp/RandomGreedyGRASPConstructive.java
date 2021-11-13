@@ -7,7 +7,7 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.Constructive;
 import es.urjc.etsii.grafo.solver.improve.DefaultMoveComparator;
 import es.urjc.etsii.grafo.util.DoubleComparator;
-import es.urjc.etsii.grafo.util.RandomManager;
+import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.ArrayList;
@@ -136,7 +136,7 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
                 besties.add(m);
             }
         }
-        int chosen = RandomManager.nextInt(0, besties.size());
+        int chosen = RandomManager.getRandom().nextInt(0, besties.size());
         log.fine(String.format("Number of movements with same score: %s, chosen: %s", besties.size(), besties.get(chosen)));
         return cl.indexOf(besties.get(chosen));
     }
