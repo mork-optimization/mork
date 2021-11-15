@@ -142,7 +142,8 @@ public class CollectionUtil {
         l.set(i, l.set(j, l.get(i)));
     }
 
-    public static void shuffle(List<?> list, RandomGenerator rnd) {
+    public static void shuffle(List<?> list) {
+        RandomGenerator rnd = RandomManager.getRandom();
         int size = list.size();
         if (size < SHUFFLE_THRESHOLD || list instanceof RandomAccess) {
             for (int i=size; i>1; i--)
