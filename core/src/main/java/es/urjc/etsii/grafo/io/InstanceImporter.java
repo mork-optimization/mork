@@ -7,6 +7,11 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 
+
+/**
+ * This class is used to generate an instance for the problem.
+ * @param <I> type of the problem instance
+ */
 @InheritedComponent
 public abstract class InstanceImporter<I extends Instance> {
 

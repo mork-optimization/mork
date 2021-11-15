@@ -10,6 +10,9 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 
+/**
+ * CSV serializer
+ */
 public class CSVSerializer extends ResultsSerializer {
 
     private final CSVSerializerConfig config;

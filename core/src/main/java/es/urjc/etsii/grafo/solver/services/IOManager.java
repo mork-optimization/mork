@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.urjc.etsii.grafo.ErrorConfig;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceImporter;
-import es.urjc.etsii.grafo.io.SerializerSolutionCommonConfig;
+import es.urjc.etsii.grafo.io.serializers.SerializerSolutionCommonConfig;
 import es.urjc.etsii.grafo.io.serializers.json.DefaultJSONSolutionSerializer;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
