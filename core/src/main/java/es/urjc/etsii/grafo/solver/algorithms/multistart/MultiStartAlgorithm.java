@@ -18,11 +18,34 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
 
     private static final Logger log = Logger.getLogger(MultiStartAlgorithm.class.getName());
 
+    /**
+     * Algorithm name
+     */
     final String algorithmName;
+    /**
+     * Algorithm
+     */
     final Algorithm<S, I> algorithm;
+
+    /**
+     * Maximum number of iterations
+     */
     private final int maxIterations;
+
+    /**
+     * Minimum number of iterations
+     */
     private final int minIterations;
+
+    /**
+     * Maximum number of iteration without improving. When the algorithm has been executed this number of time
+     * without finding a new best solution, the multistart procedure ends.
+     */
     private final int maxIterationsWithoutImproving;
+
+    /**
+     * Cut off time in nanotime
+     */
     private final long nanoTime;
 
 
@@ -48,6 +71,12 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
     }
 
 
+    /**
+     * Build a multistart algorithm
+     * @param <S> solution type of the problem
+     * @param <I> instance type of the problem
+     * @return the multistart algorithm
+     */
     public static <S extends Solution<S,I>, I extends Instance> MultiStartAlgorithmBuilder<S, I> builder() {
         return new MultiStartAlgorithmBuilder<>();
     }
@@ -138,10 +167,20 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
                 ", mxT=" + nanoTime;
     }
 
+    /**
+     * Print the current status of the VNS procedure, i.e., the current iteration the best solution.
+     * @param iteration current iteration of the procedure
+     * @param s solution
+     */
     protected void printStatus(int iteration, S s) {
         log.fine(() -> String.format("\t\t%s: %s", iteration, s));
     }
 
+
+    /**
+     * This method propagates the builder so that it can be used by other algorithms.
+     * @param builder solution builder object
+     */
     @Override
     public void setBuilder(SolutionBuilder<S, I> builder) {
         super.setBuilder(builder);
