@@ -8,10 +8,18 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.scheduling.annotation.EnableAsync;
 
 
+/**
+ *  This class is in charge of launching Mork.
+ */
 @SpringBootApplication
 @EnableAsync
 @ComponentScan(basePackages = "es.urjc.etsii", includeFilters = @ComponentScan.Filter(InheritedComponent.class))
 public class Mork {
+
+    /**
+     * Procedure to launch the application.
+     * @param args program arguments
+     */
     public static void start(String[] args) {
         SpringApplication application = new SpringApplication(Mork.class);
         application.setBanner(new BannerProvider());
