@@ -357,4 +357,45 @@ public class ArrayUtil {
         }
         return count;
     }
+
+    /**
+     * Sum all elements in array
+     * @throws ArithmeticException if there is an overflow
+     * @param data numbers to sum
+     * @return sum of all numbers
+     */
+    public static int sum(int[] data){
+        int sum = 0;
+        for(int i: data){
+            sum = Math.addExact(sum, i);
+        }
+        return sum;
+    }
+
+    /**
+     * Sum all elements in array
+     * @param data numbers to sum
+     * @return sum of all numbers
+     */
+    public static double sum(double[] data){
+        int sum = 0;
+        for(double i: data){
+            sum += i;
+        }
+        return sum;
+    }
+
+    /**
+     * Sum all elements in array
+     * @throws ArithmeticException if there is an overflow
+     * @param data numbers to sum
+     * @return sum of all numbers
+     */
+    public static long sum(long[] data){
+        long sum = 0;
+        for(long i: data){
+            sum = Math.addExact(sum, i);
+        }
+        return sum;
+    }
 }
