@@ -4,10 +4,20 @@ import es.urjc.etsii.grafo.io.serializers.AbstractSerializerConfig;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+
+/**
+ * This class is used to configure the Excel serializer by the properties specified in the application.yml
+ * Exports the results of each experiment.
+ * {@see application.yml}
+ */
 @Configuration
 @ConfigurationProperties(prefix = "serializers.xlsx")
 public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
+    /**
+     * If True, instances in rows, algorithms in columns
+     * If False, instances in columns, algorithms in rows
+     */
     private boolean algorithmsInColumns;
 
     /**

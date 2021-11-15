@@ -5,17 +5,48 @@ import org.springframework.context.annotation.Configuration;
 
 import java.util.logging.Logger;
 
+/**
+ * Configuration file based on application.yml file.
+ * {@see application.yml}
+ */
 @Configuration
 @ConfigurationProperties(prefix = "solver")
 public class SolverConfig {
     private static final Logger log = Logger.getLogger(SolverConfig.class.getName());
 
+    /**
+     * Global random seed to ensure reproducibility
+     */
     private int seed = 1234;
+
+    /**
+     * Experiment names
+     */
     private String experiments;
+
+    /**
+     * Maximize or minimize objective function. True if Maximizing, False if Minimizing
+     */
     private boolean maximizing;
+
+    /**
+     * How many times should each experiment be repeated.
+     */
     private int repetitions = 1;
+
+    /**
+     *
+     */
     private boolean parallelExecutor = false;
+
+    /**
+     * Number of workers to use if parallelExecutor is enabled
+     */
     private int nWorkers = -1;
+
+    /**
+     * Execute benchmark before starting solver
+     */
     private boolean benchmark = false;
 
     public int getSeed() {
