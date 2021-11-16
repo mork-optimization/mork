@@ -7,6 +7,7 @@
 - Java 17 as minimum required version
 - Replaced Solution::getBetterSolution with Solution::isBetterThan
 - Better generic usage in Solution --> Solution<Self,Instance>
+- (NEW) Easily create Docker containers
 
 # v0.8
 - Internal Maven changes
