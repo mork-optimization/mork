@@ -16,7 +16,7 @@ import es.urjc.etsii.grafo.solver.services.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExperimentStartedEvent;
 import es.urjc.etsii.grafo.util.IOUtil;
-import es.urjc.etsii.grafo.util.RandomManager;
+import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.StringUtil;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.core.env.Environment;
@@ -36,7 +36,7 @@ public class IraceOrquestrator<S extends Solution<S,I>, I extends Instance> exte
     private static final Logger log = Logger.getLogger(IraceOrquestrator.class.toString());
     private static final String IRACE_EXPNAME = "irace autoconfig";
 
-    private final boolean isMaximizing;
+    private final SolverConfig solverConfig;
     private final IraceIntegration iraceIntegration;
     private final SolutionBuilder<S, I> solutionBuilder;
     private final IraceAlgorithmGenerator<S,I> algorithmGenerator;
@@ -44,13 +44,13 @@ public class IraceOrquestrator<S extends Solution<S,I>, I extends Instance> exte
     private final Environment env;
 
     public IraceOrquestrator(
-            SolverConfig config,
+            SolverConfig solverConfig,
             IraceIntegration iraceIntegration,
             IOManager<S, I> io,
             List<ExceptionHandler<S, I>> exceptionHandlers,
             List<SolutionBuilder<S, I>> solutionBuilders,
             Optional<IraceAlgorithmGenerator<S, I>> algorithmGenerator, Environment env) {
-        this.isMaximizing = config.isMaximizing();
+        this.solverConfig = solverConfig;
         this.iraceIntegration = iraceIntegration;
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         this.io = io;
@@ -120,7 +120,7 @@ public class IraceOrquestrator<S extends Solution<S,I>, I extends Instance> exte
 
         // Configure randoms for reproducible experimentation
         long seed = Long.parseLong(config.getSeed());
-        RandomManager.reinitialize(seed, 1);
+        RandomManager.reinitialize(this.solverConfig.getRandomType(), seed, 1);
         RandomManager.reset(0);
 
         // Execute
@@ -149,7 +149,7 @@ public class IraceOrquestrator<S extends Solution<S,I>, I extends Instance> exte
             }
             config.put(keyValue[0], keyValue[1]);
         }
-        return new IraceRuntimeConfiguration(candidateConfiguration, instanceId, seed, instance, config, isMaximizing);
+        return new IraceRuntimeConfiguration(candidateConfiguration, instanceId, seed, instance, config, this.solverConfig.isMaximizing());
     }
 
 
@@ -158,7 +158,7 @@ public class IraceOrquestrator<S extends Solution<S,I>, I extends Instance> exte
         var result = algorithm.algorithm(instance);
         long endTime = System.nanoTime();
         double score = result.getScore();
-        if(isMaximizing){
+        if(this.solverConfig.isMaximizing()){
             score *= -1; // Irace only minimizes
         }
         log.fine(String.format("IRACE Iteration: %s %.2g%n", score, (endTime - startTime) / 1e9));

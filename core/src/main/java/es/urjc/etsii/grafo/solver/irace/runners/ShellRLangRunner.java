@@ -12,9 +12,9 @@ import java.util.logging.Logger;
 
 @Service
 @ConditionalOnExpression("${irace.shell}")
-public class ShellRLangRunner implements RLangRunner {
+public class ShellRLangRunner extends RLangRunner {
 
-    private static final Logger log = Logger.getLogger(ShellRLangRunner.class.getName());
+    private static final Logger log = Logger.getLogger(RLangRunner.class.getName());
 
     public void execute(InputStream rCode){
         try {
@@ -32,15 +32,6 @@ public class ShellRLangRunner implements RLangRunner {
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
-        }
-    }
-
-    private void drainStream(Level level, InputStream stream) throws IOException {
-        try (var br = new BufferedReader(new InputStreamReader(stream))) {
-            String line;
-            while((line = br.readLine()) != null){
-                log.log(level, line);
-            }
         }
     }
 }

@@ -2,10 +2,12 @@
 - (Fix) PatchMathRandom and PatchCollections for Java 11 and newer.
 - (New) MultiStartAlgorithm
 - (New) Simulated Annealing
+- (New) Customizable random implementations. RandomManager::getRandom now returns an instance of RandomGenerator.
 - (Deprecated) SimpleMultiStartAlgorithm
 - Java 17 as minimum required version
 - Replaced Solution::getBetterSolution with Solution::isBetterThan
 - Better generic usage in Solution --> Solution<Self,Instance>
+- (NEW) Easily create Docker containers
 
 # v0.8
 - Internal Maven changes

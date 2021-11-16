@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.util.random.RandomManager;
+
 /**
  * Util methods to manipulate collections and arrays that are not part of the standard java API
  */
@@ -64,6 +66,15 @@ public class ArrayUtil {
     }
 
     /**
+     * Swaps the two specified elements in the specified array.
+     */
+    public static void swap(Object[] arr, int i, int j) {
+        Object tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+    }
+
+    /**
      * Copy and shuffle an array without modifying the original array.
      * Uses Fisher–Yates shuffle
      * @param array Array to shuffle
@@ -85,9 +96,7 @@ public class ArrayUtil {
         {
             int index = rnd.nextInt(i + 1);
             // Simple swap
-            Object a = array[index];
-            array[index] = array[i];
-            array[i] = a;
+            swap(array, index, i);
         }
     }
 
@@ -347,5 +356,46 @@ public class ArrayUtil {
             }
         }
         return count;
+    }
+
+    /**
+     * Sum all elements in array
+     * @throws ArithmeticException if there is an overflow
+     * @param data numbers to sum
+     * @return sum of all numbers
+     */
+    public static int sum(int[] data){
+        int sum = 0;
+        for(int i: data){
+            sum = Math.addExact(sum, i);
+        }
+        return sum;
+    }
+
+    /**
+     * Sum all elements in array
+     * @param data numbers to sum
+     * @return sum of all numbers
+     */
+    public static double sum(double[] data){
+        int sum = 0;
+        for(double i: data){
+            sum += i;
+        }
+        return sum;
+    }
+
+    /**
+     * Sum all elements in array
+     * @throws ArithmeticException if there is an overflow
+     * @param data numbers to sum
+     * @return sum of all numbers
+     */
+    public static long sum(long[] data){
+        long sum = 0;
+        for(long i: data){
+            sum = Math.addExact(sum, i);
+        }
+        return sum;
     }
 }

@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.solver;
 
+import es.urjc.etsii.grafo.util.random.RandomType;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -18,6 +19,11 @@ public class SolverConfig {
      * Global random seed to ensure reproducibility
      */
     private int seed = 1234;
+
+    /**
+     * Random generator to use
+     */
+    private RandomType randomType;
 
     /**
      * Experiment names
@@ -103,5 +109,13 @@ public class SolverConfig {
 
     public void setBenchmark(boolean benchmark) {
         this.benchmark = benchmark;
+    }
+
+    public RandomType getRandomType() {
+        return randomType;
+    }
+
+    public void setRandomType(RandomType randomType) {
+        this.randomType = randomType;
     }
 }
