@@ -16,13 +16,14 @@ Inside the `docker` folder, there are several scripts to help with the container
 ### Building the container
 
 Execute `docker/build.sh username/projectname` to build and tag a Docker container with your name and the project name.
-Both the projectname and the username should be in lowercase.
-The build process is consists of two steps: first, a [fat jar](https://dzone.com/articles/the-skinny-on-fat-thin-hollow-and-uber) is created using `maven`, and then a container is built using the steps in `docker/Dockerfile`.
+Both the `projectname` and the `username` should be in lowercase.
+
+The build process consists of two steps: first, a [fat jar](https://dzone.com/articles/the-skinny-on-fat-thin-hollow-and-uber) is created using `maven`, and then a container is built using the steps in `docker/Dockerfile`.
 The container build steps can be changed to include additional files, dependencies, directories or custom Java VM parameters.
 
 ### Testing the container
 Once the container is built, and before publishing it, you should test that it correctly works and generates the expected results.
-Use `docker/run.sh username/projectname` to run the container and verify that the results inside the `results` folder are correct.
+Use `docker/run.sh username/projectname` to run the container and verify that the results inside the `results` folder are indeed correct.
 
 ### Publishing your container
 
