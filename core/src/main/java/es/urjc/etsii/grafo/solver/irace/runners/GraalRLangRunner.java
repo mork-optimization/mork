@@ -5,22 +5,44 @@ import org.graalvm.polyglot.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.nio.charset.StandardCharsets;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 @Service
 @ConditionalOnExpression("!${irace.shell}")
-public class GraalRLangRunner implements RLangRunner {
+public class GraalRLangRunner extends RLangRunner {
     private static final String R_LANG = "R";
+    private static final Logger log = Logger.getLogger(GraalRLangRunner.class.getName());
+
     public void execute(InputStream inputStream){
         try {
+            // Load R script
             String script = new String(inputStream.readAllBytes(), StandardCharsets.UTF_8);
-            Context polyglot = Context.newBuilder(R_LANG).option("R.PrintErrorStacktracesToFile", "true").allowAllAccess(true).build();
-            Value v = polyglot.eval(R_LANG, script);
+
+            // Map R outputs to input streams to use them later
+            var out = new PipedOutputStream();
+            var err = new PipedOutputStream();
+            var out_in = new PipedInputStream(out);
+            var err_in = new PipedInputStream(err);
+
+            // Build and launch
+            Context polyglot = Context.newBuilder(R_LANG)
+                    .option("R.PrintErrorStacktracesToFile", "true")
+                    .allowAllAccess(true)
+                    .out(out)
+                    .err(err)
+                    .build();
+            new Thread(() -> polyglot.eval(R_LANG, script)).start();
+
+            // Send irace output to our logs
+            drainStream(Level.INFO, out_in);
+            log.info("IRACE Error Stream: ");
+            drainStream(Level.WARNING, err_in);
+
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
-
     }
 }
