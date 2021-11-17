@@ -155,7 +155,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
         } else {
             moves = neighborhood.stream(s).collect(Collectors.toList());
         }
-        CollectionUtil.shuffle(moves, RandomManager.getRandom());
+        CollectionUtil.shuffle(moves);
         return moves;
     }
 

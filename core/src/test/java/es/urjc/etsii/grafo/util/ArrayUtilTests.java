@@ -249,4 +249,24 @@ public class ArrayUtilTests {
         Assertions.assertEquals(3, ArrayUtil.countNull(data));
         Assertions.assertEquals(2, ArrayUtil.countNonNull(data));
     }
+
+    @Test
+    public void testSumInts(){
+        Assertions.assertThrows(ArithmeticException.class, () -> ArrayUtil.sum(new int[]{Integer.MAX_VALUE, 1}));
+        Assertions.assertEquals(5, ArrayUtil.sum(new int[]{2, 3}));
+        Assertions.assertEquals(-1, ArrayUtil.sum(new int[]{-2, 1}));
+    }
+
+    @Test
+    public void testSumLongs(){
+        Assertions.assertThrows(ArithmeticException.class, () -> ArrayUtil.sum(new long[]{Long.MAX_VALUE, 1}));
+        Assertions.assertEquals(5, ArrayUtil.sum(new long[]{2, 3}));
+        Assertions.assertEquals(-1, ArrayUtil.sum(new long[]{-2, 1}));
+    }
+
+    @Test
+    public void testSumDouble(){
+        Assertions.assertEquals(5D, ArrayUtil.sum(new double[]{2, 3}), 0.001);
+        Assertions.assertEquals(-1D, ArrayUtil.sum(new double[]{-2, 1}), 0.001);
+    }
 }
