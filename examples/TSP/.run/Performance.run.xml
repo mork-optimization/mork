@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Performance" type="Application" factoryName="Application">
+    <option name="MAIN_CLASS_NAME" value="es.urjc.etsii.grafo.TSP.Main" />
+    <module name="TSP" />
+    <option name="PROGRAM_PARAMETERS" value="--add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED" />
+    <extension name="coverage">
+      <pattern>
+        <option name="PATTERN" value="es.urjc.etsii.grafo.TSP.*" />
+        <option name="ENABLED" value="true" />
+      </pattern>
+    </extension>
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>
