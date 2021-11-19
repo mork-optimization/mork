@@ -1,81 +1,97 @@
 # Step-by-step example for the Travelling Salesman Problem (TSP) with MorK
 
-
 ## What is the Travelling Salesman Problem?
-The traveling salesman problem (commonly denoted as TSP) asks the following question: "Given a list of cities and the 
-distances between each pair of cities, what is the shortest possible route that visits each city exactly once and returns 
-to the origin city?" It is an NP-hard problem in combinatorial optimization, important in theoretical computer science
-and operations research.
+
+The traveling salesman problem (commonly denoted as TSP) asks the following question: "Given a list of cities and the
+distances between each pair of cities, what is the shortest possible route that visits each city exactly once and
+returns to the origin city?" It is an NP-hard problem in combinatorial optimization, important in theoretical computer
+science and operations research.
 
 <p align="center">
     <img src="https://miro.medium.com/max/1838/1*by3MgdkmamEAxlCaIH68Xg.jpeg"  width="500"  alt="Example of the TSP problem"/>
 </p>
 
-Obtained from *[The Trials And Tribulations Of The Traveling Salesman](https://medium.com/basecs/the-trials-and-tribulations-of-the-traveling-salesman-56048d6709d)*.
+Obtained
+from *[The Trials And Tribulations Of The Traveling Salesman](https://medium.com/basecs/the-trials-and-tribulations-of-the-traveling-salesman-56048d6709d)*
+.
+
+## 1. Environment set up
+
+### 1.1 Prerequisites
+
+- Java 11 or more recent is required to run. Please download and install a recent JDK.
+- [Maven](https://maven.apache.org/)
+- This is not really a prerequisite, but we recommend using an IDE, such as [IntelliJ](https://www.jetbrains.com/idea/)
+  😉. (It's the IDE used in the development of Mork)
+
+> 💡 *Tip:* Have you ever use SDKMAN to easily manage your JDKs and SDKs?. Have a look to the official *[web page](https://sdkman.io/)*.
+
+### 1.2 Download problem  instances
+
+In order to test the proposed algorithms for the TSP we will use the standard instances for the problem, that can be
+easily obtained from *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)*.
+*[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)* is a library of sample instances for the TSP
+(and related problems) from various sources and of various types. Particularly, we will use
+the *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*
+. For the moment, you will only need to download those files ending in *.tsp.
+
+### 1.3 Using the quick start project generator
+
+Go to the *[https://rmartinsanta.github.io/mork/](https://rmartinsanta.github.io/mork/)*, set "TSP" as the Project Name
+and generate your project. After less than a minute you will be able to download your project.  
+Then, extract the zip file and import it your favorite IDE.
+
+
+> 💡 *Tip:* Some IDEs, allow you to select the `pom.xml` file when you select the option to import an existing project. If such a possibility exists, we highly recommend **importing the project as a maven project**. Indeed, most of them have it. Some examples of how to import a [Maven](https://maven.apache.org/) project in the most important editors can be found in: [Eclipse](https://www.eclipse.org/m2e/), [IntelliJ](https://www.jetbrains.com/help/idea/maven-importing.html), or [NetBeans](https://netbeans.apache.org/wiki/MavenBestPractices.asciidoc).
 
 
 
+For your future project, remember to choose a good name, i.e., check that it starts with an Uppercase letter followed by
+any alphanumeric characters or underscores, without spaces.
 
-## 0. Environment set up
+### 1.4 A quick look
 
+The project is organized in the following folders
 
-### Prerequisites
+- **.run**
 
+If you are using  [IntelliJ](https://www.jetbrains.com/idea/), you might have noticed that there are two default
+configuration files (located in  `.run` folder): `Performance.run.xml` and `Validation.run.xml`. On the one hand, the
+performance run configuration corresponds to a normal execution of the framework. On the other hand, the validation run
+configuration has the assertion enables (don't you know what assertion is? Have a look to [Testing in MorK section]()).
+In this case, as soon as an assertion is not true, an exception will be thrown. Anyway, to configure your own run
+configuration, the main class of Mork is located at `es.urjc.etsii.grafo.TSP.Main`.
 
-### Problem  instances
-To test the algorithm the instance from *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)* will be used.
-*[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)* is a library of sample instances for the TSP 
-(and related problems) from various sources and of various types. Particularly, we will use the *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*. 
+- **docker**
+- **instances**
 
+This folder should everything related with the instance of the problem. In this case, since we are tackling the TSP,
+this folder might contain TSP instances. Therefore, locate the download instances (*.tsp files) at
+*[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*
+in this folder.
 
+- **src/main**: main folders of the procedure 
+    - **java/es.urjc.etsii.grafo.TSP**
+      - constructives
+      - experiments
+      - model
+    - **resources**
 
+### Testing in MorK
 
-## 1. Using the quick start project generator
+#### Asserts
 
-Visit the following website, fill the gaps and click Download project.
-https://rmartinsanta.github.io/mork/
+I'm sure you've spent hours in front of your code trying to find that 🤬 bug. For that reason, we consider that it is
+important that any operation must be validated, and check that the implemented procedures perform the desired behavior.
+And how can this be done in MorK? There are many ways, testing is one way (go to section XXX for an example of Test
+implementation in Mork), but in this case, we are talking about **asserts**.
 
-Extract the zip and import in your favorite IDE.
+The keyword or reserved word **assert** is used to state that at a certain point in the code a certain condition must be
+true. For example, if you write a method that calculates the speed of a particle, you might assert that the calculated
+speed is less than the speed of light. Not using it yet? Take a look at
+the [official documentation](https://docs.oracle.com/javase/7/docs/technotes/guides/language/assert.html) and start
+using it right now. Experience has shown that writing assertions while programming is one of the quickest and most
+effective ways to detect and correct bugs. As an added benefit, assertions serve to document the inner workings of your
+program, enhancing maintainability. By default, assertions are disabled at runtime. To enable assertions use
+the `-enableassertions`, or `-ea`, as a program argument.
 
-## Manual
-
-1. Create a new empty Maven project
-2. Configure pom.xml, use the following as a template:
-```XML
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <!-- Project name and current version, replace -->
-    <artifactId>projectname</artifactId>
-    <version>1.0-SNAPSHOT</version>
-
-    <!-- Automatic configuration, individual properties can be overridden -->
-    <parent>
-        <groupId>es.urjc.etsii.grafo</groupId>
-        <artifactId>mork-parent</artifactId>
-        <version>0.1</version> <!-- Use latest available release if possible! -->
-    </parent>
-</project>
-```
-
-3. Create your Instance and Solution classes, implement mandatory methods.
-> Tip: IDE code generation features can be used to create toString(), equals() and hashcode() methods when required.
-
-4. Create an Instance importer or use one of the existing ones. Example:
-```java
-
-```
-
-5. Create and run your first experiment!
-
-Check algorithms documentation on the following wiki page: TODO.
-
-
-(OPTIONAL) Implement a solution validator: A solution validator will be used to verify that all solutions are valid after the algorithm finishes executing. Can be really useful to catch invalid solutions due to bugs / implementation mistakes.
-
-(OPTIONAL) Implement a solution exporter: If enabled in the configuration file, the custom solution exporter will be used to write best solutions to disk using a custom format. Check exporting solution data wiki page: TODO.
-
-(OPTIONAL) Implement a ReferenceResultsProvider: If there are known previous values for instances, you may provide them, no matter if they are optimal values or not. Values, if provided, are used when calculating several metrics (%dev to best result, number of best results, etc.) The frontend may use it too for several graphs as a reference point to compare different approaches.
