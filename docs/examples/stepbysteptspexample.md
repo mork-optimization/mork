@@ -33,7 +33,8 @@ easily obtained from *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp
 *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)* is a library of sample instances for the TSP
 (and related problems) from various sources and of various types. Particularly, we will use
 the *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*
-. For the moment, you will only need to download those files ending in *.tsp.
+. For the moment, you will only need to download the following files: [berlin52.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp), [att48.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/att48.tsp), [ali535.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ali535.tsp) and [ulysses16.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ulysses16.tsp).
+Have a quick look at the structure of the files.
 
 ### 1.3 Using the quick start project generator
 
@@ -56,31 +57,35 @@ The project is organized in the following folders
 - 📁 **.run**
 
 If you are using  [IntelliJ](https://www.jetbrains.com/idea/), you might have noticed that there are two default
-configuration files (located in  `.run` folder): `Performance.run.xml` and `Validation.run.xml`. On the one hand, the
+configuration files: `Performance.run.xml` and `Validation.run.xml`. On the one hand, the
 performance run configuration corresponds to a normal execution of the framework. On the other hand, the validation run
-configuration has the assertion enables (don't you know what assertion is? Have a look to [Testing in MorK section]()).
+configuration has the assertion enables (don't you know what assertion or assert is? Have a look to [Testing in MorK section]()).
 In this case, as soon as an assertion is not true, an exception will be thrown. Anyway, to configure your own run
-configuration, the main class of Mork is located at `es.urjc.etsii.grafo.TSP.Main`.
+configuration, the main class of MorK is located at `es.urjc.etsii.grafo.TSP.Main`.
 
-- 📁 **docker**
+- 📁 **docker** :
 - 📁 **instances**
 
-This folder should contain everything related with the instances of the problem. In this case, since we are tackling the TSP,
-this folder might contain TSP instances. Therefore, you should locate the download instances (*.tsp files) at
+This folder should contain everything related with the instances of the problem. In this case, since we are tackling the
+TSP, this folder might contain TSP instances. Therefore, you should locate the download instances (*.tsp files) at
 *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*
 in this folder.
 
-- 📁 **src/main**: 
+- 📁 **src/main**:
     - 📁 **java/es.urjc.etsii.grafo.TSP**
-      - 📁 **algorithms**: contains constructive, local search, metaheuristic, among other procedures.  
-      - 📁 **experiments**: contains the experiments carried out to test the proposed algorithms and strategies.
-      - 📁 **model**: contains the basic elements of the studied problem: solution, instance, etc.
+        - 📁 **algorithms**: contains constructive, local search, metaheuristic, among other procedures.
+        - 📁 **experiments**: contains the experiments carried out to test the proposed algorithms and strategies.
+        - 📁 **model**: contains the basic elements of the studied problem: solution, instance, etc.
     - 📁 **resources**
-      - 📁 **irace**: irace is a software package that implements a number of automatic configuration procedures.
-      - 📁 **static**
-      - 📝 application.yml
-- 📝 .gitignore: this file tells Git which files to ignore when committing your project to the [GitHub](https://github.com/) repository. 
-- 📝 pom.xml: The `pom.xml` file contains information of project and configuration information for the maven to build the project such as dependencies, build directory, source directory... 
+        - 📁 **irace**: irace is a software package that implements a number of automatic configuration procedures.
+        - 📁 **static**: contains files to generate a localhost web page which allow the researcher to see the
+          solution-quality convergence or the best solution found.
+        - 📝 application.yml: this file contains the global configuration of the project, such as which experiment
+          should be executed, which instances should be used, among others.
+- 📝 .gitignore: this file tells Git which files to ignore when committing your project to
+  the [GitHub](https://github.com/) repository.
+- 📝 pom.xml: contains information of project and configuration information for the maven to build the project such as
+  dependencies, build directory, source directory...
 
 ### Testing in MorK
 
