@@ -53,7 +53,7 @@ any alphanumeric characters or underscores, without spaces.
 
 The project is organized in the following folders
 
-- **.run**
+- 📁 **.run**
 
 If you are using  [IntelliJ](https://www.jetbrains.com/idea/), you might have noticed that there are two default
 configuration files (located in  `.run` folder): `Performance.run.xml` and `Validation.run.xml`. On the one hand, the
@@ -62,20 +62,25 @@ configuration has the assertion enables (don't you know what assertion is? Have 
 In this case, as soon as an assertion is not true, an exception will be thrown. Anyway, to configure your own run
 configuration, the main class of Mork is located at `es.urjc.etsii.grafo.TSP.Main`.
 
-- **docker**
-- **instances**
+- 📁 **docker**
+- 📁 **instances**
 
-This folder should everything related with the instance of the problem. In this case, since we are tackling the TSP,
-this folder might contain TSP instances. Therefore, locate the download instances (*.tsp files) at
+This folder should contain everything related with the instances of the problem. In this case, since we are tackling the TSP,
+this folder might contain TSP instances. Therefore, you should locate the download instances (*.tsp files) at
 *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*
 in this folder.
 
-- **src/main**: main folders of the procedure 
-    - **java/es.urjc.etsii.grafo.TSP**
-      - constructives
-      - experiments
-      - model
-    - **resources**
+- 📁 **src/main**: 
+    - 📁 **java/es.urjc.etsii.grafo.TSP**
+      - 📁 **algorithms**: contains constructive, local search, metaheuristic, among other procedures.  
+      - 📁 **experiments**: contains the experiments carried out to test the proposed algorithms and strategies.
+      - 📁 **model**: contains the basic elements of the studied problem: solution, instance, etc.
+    - 📁 **resources**
+      - 📁 **irace**: irace is a software package that implements a number of automatic configuration procedures.
+      - 📁 **static**
+      - 📝 application.yml
+- 📝 .gitignore: this file tells Git which files to ignore when committing your project to the [GitHub](https://github.com/) repository. 
+- 📝 pom.xml: The `pom.xml` file contains information of project and configuration information for the maven to build the project such as dependencies, build directory, source directory... 
 
 ### Testing in MorK
 
