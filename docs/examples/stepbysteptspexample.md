@@ -34,11 +34,11 @@ easily obtained from *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp
 (and related problems) from various sources and of various types. Particularly, we will use
 the *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*
 . For the moment, you will only need to download the following
-files: [berlin52.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp)
-, [att48.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/att48.tsp)
-, [ali535.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ali535.tsp)
-and [ulysses16.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ulysses16.tsp). Have a quick look at the structure
-of the files.
+files: ([berlin52](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp)
+, [eil101](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/eil101.tsp),
+[ch130](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ch130.tsp),
+[st70](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp),
+and [a280](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/a280.tsp). Have a quick look at the structure of the files.
 
 ### 1.3 Using the quick start project generator
 
@@ -104,10 +104,11 @@ particular problem, all locations are defined by x/y cooridnates.
 
 At this point, you should have downloaded the instance
 files ([berlin52.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp)
-, [att48.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/att48.tsp)
-, [ali535.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ali535.tsp)
-and [ulysses16.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ulysses16.tsp)) and place it at the instance
-folder of the project.
+, [eil101](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/eil101.tsp),
+[ch130](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ch130.tsp),
+[st70](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp),
+and [a280](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/a280.tsp)
+and place it at the instance folder of the project.
 
 Have a look to any of those four files. The structure is the same for each of them. Particularly, this files have the
 following` <keyword>:<value>` structure. where `<keyword>` denotes an alphanumerical keyword and `<value>` denotes
@@ -120,8 +121,11 @@ alphanumerical or numerical data:
 - EDGE WEIGHT TYPE : `<string>` // Specifies how the edge weights (or distances) are given.
 - NODE COORD SECTION :   `<integer> <real> <real>` // Node coordinates are given in this section.
 
-If you are interested in a deep description of the instances, have a look to
-the [TSPLIB documentation](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp95.pdf).
+Notice that the five instances selected have EDGE WEIGHT TYPE = EUC_2D, which means that the distance between two points
+_i_ and _j_ is computed as follows: [_√[(ix – jx)2 + (iy – jy)2]_](https://en.wikipedia.org/wiki/Euclidean_distance).
+
+If you are interested in a deep description of the instances to test the proposed algorithm with other type of instance,
+have a look to the [TSPLIB documentation](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp95.pdf).
 
 Then, open file `TSPInstance.java` located in `src/main/java/es/urjc/etsii/grafo/TSP/model`. This class will represent
 an instance of the problem, i.e., a list of x/y coordinates. Therefore, we will carry out the following task:
@@ -148,7 +152,10 @@ public class TSPInstance extends Instance {
     * @param name name of the instance
     * @param locations list of coordiantes
     */ 
-  protected TSPInstance(String name, Coordinate[] locations) { super(name); this.locations = locations; }
+  protected TSPInstance(String name, Coordinate[] locations) { 
+    super(name); 
+    this.locations = locations; 
+  }
 
   /**
     * Get the list of locations
@@ -159,12 +166,27 @@ public class TSPInstance extends Instance {
 
   /**
     * 2D coordinate
-      */ public record Coordinate(double x, double y) { }
+    */ 
+  public record Coordinate(double x, double y) { }
+  
 }
 ```
 
+> 💡 _Tip_: is this the first time you have come across record? You don't know what you're missing!! Record classes, which are a special kind of class, help to model plain data aggregates with less ceremony than normal classes. Have a look to the [Java documentation](https://docs.oracle.com/en/java/javase/16/language/records.html) abut record classes.
 
-> 💡 Tip: is this the first time you have come across record? You don't know what you're missing!! Record classes, which are a special kind of class, help to model plain data aggregates with less ceremony than normal classes. Have a look to the[Java documentation](https://docs.oracle.com/en/java/javase/16/language/records.html) abut record classes.
+---
+
+**⚠️IMPORTANT : after calling the constructor of the instance, i.e., the instance is defined and generated, it MUST BE
+IMMUTABLE.**
+
+---
+
+
+Next, lets move on to the `TSPInstanceImporter.java` file. This class aims to generate an instance of the problem given
+a text file. To this end, we will need to implement the method: `importInstance(BufferedReader reader, String filename)`
+. This method receives as input parameters the buffer reader, managed by the framework and filename. Moreover, it
+returns the constructed instance. Considering the file instance structure, we will need to read line by line the file,
+storing the list of coordinates, and finally, construct the instance.
 
 ### Testing in MorK
 
