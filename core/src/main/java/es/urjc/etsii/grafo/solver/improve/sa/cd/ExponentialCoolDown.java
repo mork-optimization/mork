@@ -7,9 +7,9 @@ import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 
 /**
  * Exponential coolDown strategy
- * @param <M>
- * @param <S>
- * @param <I>
+ * @param <M> Move type
+ * @param <S> Your solution class
+ * @param <I> Your instance class
  */
 public class ExponentialCoolDown<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> implements CoolDownControl<M,S,I>{
 

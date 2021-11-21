@@ -8,6 +8,12 @@ import java.util.Objects;
 
 //@InheritedComponent
 // TODO Idea: Allow algorithms via config instead of a AbstractExperimentSetup
+
+/**
+ * Base algorithm class, all algorithms should extend this class or any of its subclasses.
+ * @param <S> Solution class
+ * @param <I> Instance class
+ */
 public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
 
     private SolutionBuilder<S,I> builder;
@@ -45,6 +51,18 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
         return builder;
     }
 
+    /**
+     * Set solution builder, used by the framework.
+     * In case an algorithms contains another algorithms, this method should be overridden as follows:
+     * <pre>
+     *     &#64;Override
+     *     public void setBuilder(SolutionBuilder&#60;S, I&#62; builder) {
+     *         super.setBuilder(builder);
+     *         this.algorithm.setBuilder(builder);
+     *     }
+     * </pre>
+     * @param builder solution builder
+     */
     public void setBuilder(SolutionBuilder<S, I> builder) {
         this.builder = Objects.requireNonNull(builder);
     }

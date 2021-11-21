@@ -7,7 +7,7 @@ import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
-import es.urjc.etsii.grafo.solver.services.AbstractOrquestrator;
+import es.urjc.etsii.grafo.solver.services.AbstractOrchestrator;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.services.IOManager;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
@@ -31,9 +31,9 @@ import static es.urjc.etsii.grafo.util.IOUtil.*;
 
 @Service
 @ConditionalOnExpression(value = "${irace.enabled}")
-public class IraceOrquestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrquestrator {
+public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrchestrator {
 
-    private static final Logger log = Logger.getLogger(IraceOrquestrator.class.toString());
+    private static final Logger log = Logger.getLogger(IraceOrchestrator.class.toString());
     private static final String IRACE_EXPNAME = "irace autoconfig";
 
     private final SolverConfig solverConfig;
@@ -43,7 +43,7 @@ public class IraceOrquestrator<S extends Solution<S,I>, I extends Instance> exte
     private final IOManager<S,I> io;
     private final Environment env;
 
-    public IraceOrquestrator(
+    public IraceOrchestrator(
             SolverConfig solverConfig,
             IraceIntegration iraceIntegration,
             IOManager<S, I> io,

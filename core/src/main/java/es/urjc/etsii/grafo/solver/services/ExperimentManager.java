@@ -16,7 +16,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
 
     private Pattern experimentFilter;
 
-    private static final Logger log = Logger.getLogger(Orquestrator.class.toString());
+    private static final Logger log = Logger.getLogger(Orchestrator.class.toString());
 
     /**
      * List of experiments

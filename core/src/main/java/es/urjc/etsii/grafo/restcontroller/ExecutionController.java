@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.restcontroller;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.restcontroller.dto.ExecuteRequest;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solver.irace.IraceOrquestrator;
+import es.urjc.etsii.grafo.solver.irace.IraceOrchestrator;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -18,9 +18,9 @@ public class ExecutionController<S extends Solution<S,I>, I extends Instance> {
 
     private static final Logger log = Logger.getLogger(ExecutionController.class.getName());
 
-    private final IraceOrquestrator<S,I> orquestrator;
+    private final IraceOrchestrator<S,I> orquestrator;
 
-    public ExecutionController(IraceOrquestrator<S, I> orquestrator) {
+    public ExecutionController(IraceOrchestrator<S, I> orquestrator) {
         this.orquestrator = orquestrator;
         log.info("Execution controller enabled");
     }

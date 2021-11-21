@@ -44,7 +44,7 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
         this.errorConfig = errorConfig;
         this.solCommonConfig = serializerSolutionCommonConfig;
         this.instanceImporter = instanceImporter;
-        this.solutionSerializer = Orquestrator.decideImplementation(solutionSerializers, DefaultJSONSolutionSerializer.class);
+        this.solutionSerializer = Orchestrator.decideImplementation(solutionSerializers, DefaultJSONSolutionSerializer.class);
 
         log.info("Using solution exporter: "+this.solutionSerializer.getClass().getTypeName());
     }

@@ -66,7 +66,11 @@ public class ArrayUtil {
     }
 
     /**
+     *
      * Swaps the two specified elements in the specified array.
+     * @param arr array
+     * @param i origin destination index
+     * @param j destination index
      */
     public static void swap(Object[] arr, int i, int j) {
         Object tmp = arr[i];

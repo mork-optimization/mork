@@ -15,8 +15,7 @@ import java.util.logging.Logger;
 /**
  * This class create a Bot for Mork framework.
  * Particularly, this bot will be generally used to send the following message when the experiment ends:
- *
- *     Experiment <<experiment name >> ended. Execution time: <<time>> seconds
+ *     Experiment {{experimentName}} ended. Execution time: {{time}} seconds
  */
 public class TelegramService extends AbstractEventListener {
 

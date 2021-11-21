@@ -6,7 +6,17 @@ import org.springframework.core.env.Environment;
 
 import java.io.PrintStream;
 
+/**
+ * Banner generator on startup
+ */
 public class BannerProvider implements Banner {
+
+    /**
+     * Get aplication banner
+     * @param environment Current environment
+     * @param sourceClass Current class
+     * @param out where to print the banner
+     */
     @Override
     public void printBanner(Environment environment, Class<?> sourceClass, PrintStream out) {
 

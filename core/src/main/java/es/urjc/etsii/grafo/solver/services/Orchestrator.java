@@ -20,9 +20,9 @@ import java.util.stream.Collectors;
 
 @Service
 @ConditionalOnExpression(value = "!${irace.enabled}")
-public class Orquestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrquestrator {
+public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrchestrator {
 
-    private static final Logger log = Logger.getLogger(Orquestrator.class.toString());
+    private static final Logger log = Logger.getLogger(Orchestrator.class.toString());
 
     private final IOManager<S,I> io;
     private final ExperimentManager<S, I> experimentManager;
@@ -32,7 +32,7 @@ public class Orquestrator<S extends Solution<S,I>, I extends Instance> extends A
     private final Executor<S, I> executor;
     private final SolverConfig solverConfig;
 
-    public Orquestrator(
+    public Orchestrator(
             SolverConfig solverConfig,
             IOManager<S,I> io,
             ExperimentManager<S,I> experimentManager,
