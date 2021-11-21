@@ -33,8 +33,12 @@ easily obtained from *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp
 *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)* is a library of sample instances for the TSP
 (and related problems) from various sources and of various types. Particularly, we will use
 the *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*
-. For the moment, you will only need to download the following files: [berlin52.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp), [att48.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/att48.tsp), [ali535.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ali535.tsp) and [ulysses16.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ulysses16.tsp).
-Have a quick look at the structure of the files.
+. For the moment, you will only need to download the following
+files: [berlin52.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp)
+, [att48.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/att48.tsp)
+, [ali535.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ali535.tsp)
+and [ulysses16.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ulysses16.tsp). Have a quick look at the structure
+of the files.
 
 ### 1.3 Using the quick start project generator
 
@@ -57,11 +61,11 @@ The project is organized in the following folders
 - 📁 **.run**
 
 If you are using  [IntelliJ](https://www.jetbrains.com/idea/), you might have noticed that there are two default
-configuration files: `Performance.run.xml` and `Validation.run.xml`. On the one hand, the
-performance run configuration corresponds to a normal execution of the framework. On the other hand, the validation run
-configuration has the assertion enables (don't you know what assertion or assert is? Have a look to [Testing in MorK section]()).
-In this case, as soon as an assertion is not true, an exception will be thrown. Anyway, to configure your own run
-configuration, the main class of MorK is located at `es.urjc.etsii.grafo.TSP.Main`.
+configuration files: `Performance.run.xml` and `Validation.run.xml`. On the one hand, the performance run configuration
+corresponds to a normal execution of the framework. On the other hand, the validation run configuration has the
+assertion enables (don't you know what assertion or assert is? Have a look to [Testing in MorK section]()). In this
+case, as soon as an assertion is not true, an exception will be thrown. Anyway, to configure your own run configuration,
+the main class of MorK is located at `es.urjc.etsii.grafo.TSP.Main`.
 
 - 📁 **docker** :
 - 📁 **instances**
@@ -87,6 +91,81 @@ in this folder.
 - 📝 pom.xml: contains information of project and configuration information for the maven to build the project such as
   dependencies, build directory, source directory...
 
+## 2. Our first step: reading instances
+
+This MorK project aims to approach the Traveling Salesman Problem (TSP). Given a set of points, (that can be considered
+as locations or cities), the TSP consist of find a roundtrip of minimal total length visiting each node exactly once. In
+this section you will learn, what an instance is, how to define an instance of the problem, and how to read an instance
+from a file.
+
+An instance of a problem is all the inputs needed to compute a solution to the problem. Focusing on the problem at hand,
+what is an instance? An instance represents a map of cities or locations, all of them connected to each other. In this
+particular problem, all locations are defined by x/y cooridnates.
+
+At this point, you should have downloaded the instance
+files ([berlin52.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp)
+, [att48.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/att48.tsp)
+, [ali535.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ali535.tsp)
+and [ulysses16.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ulysses16.tsp)) and place it at the instance
+folder of the project.
+
+Have a look to any of those four files. The structure is the same for each of them. Particularly, this files have the
+following` <keyword>:<value>` structure. where `<keyword>` denotes an alphanumerical keyword and `<value>` denotes
+alphanumerical or numerical data:
+
+- NAME : `<string>` // Identifies the data file.
+- TYPE : `<string>` // Specifies the type of the data. In this case will be TSP.
+- COMMENT :` <string>` // Additional comments.
+- DIMENSION : `<integer>` // Number of its nodes (cities, locations, etc.)
+- EDGE WEIGHT TYPE : `<string>` // Specifies how the edge weights (or distances) are given.
+- NODE COORD SECTION :   `<integer> <real> <real>` // Node coordinates are given in this section.
+
+If you are interested in a deep description of the instances, have a look to
+the [TSPLIB documentation](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp95.pdf).
+
+Then, open file `TSPInstance.java` located in `src/main/java/es/urjc/etsii/grafo/TSP/model`. This class will represent
+an instance of the problem, i.e., a list of x/y coordinates. Therefore, we will carry out the following task:
+
+1. Define an structure represent a 2D coordinate.
+2. Define a parameter  (in `TSPInstance` class) that represent list of locations.
+3. Update the constructive to `TSPInstance(String name, Coordinate[] locations)`.
+
+Try yourself, and compare with our code (obviously more than one implementation is possible, everyone thinks different).
+
+The resultant class will be the following:
+
+```
+public class TSPInstance extends Instance {
+
+  /**
+    * List of coordinates
+    */ 
+  private final Coordinate[] locations;
+
+  /**
+    * Constructor
+    *
+    * @param name name of the instance
+    * @param locations list of coordiantes
+    */ 
+  protected TSPInstance(String name, Coordinate[] locations) { super(name); this.locations = locations; }
+
+  /**
+    * Get the list of locations
+    *
+    * @return list of locations
+    */ 
+  public Coordinate[] getLocations() { return locations; }
+
+  /**
+    * 2D coordinate
+      */ public record Coordinate(double x, double y) { }
+}
+```
+
+
+> 💡 Tip: is this the first time you have come across record? You don't know what you're missing!! Record classes, which are a special kind of class, help to model plain data aggregates with less ceremony than normal classes. Have a look to the[Java documentation](https://docs.oracle.com/en/java/javase/16/language/records.html) abut record classes.
+
 ### Testing in MorK
 
 #### Asserts
@@ -94,7 +173,7 @@ in this folder.
 I'm sure you've spent hours in front of your code trying to find that 🤬 bug. For that reason, we consider that it is
 important that any operation must be validated, and check that the implemented procedures perform the desired behavior.
 And how can this be done in MorK? There are many ways, testing is one way (go to section XXX for an example of Test
-implementation in Mork), but in this case, we are talking about **asserts**.
+implementation in MorK), but in this case, we are talking about **asserts**.
 
 The keyword or reserved word **assert** is used to state that at a certain point in the code a certain condition must be
 true. For example, if you write a method that calculates the speed of a particle, you might assert that the calculated
