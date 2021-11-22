@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
+import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import org.springframework.stereotype.Service;
 
@@ -27,11 +28,13 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
      * Constructor
      * @param experimentImplementations list of experiments
      * @param solverConfig solver configuration
-     * @param solutionBuilder solution builder
+     * @param solutionBuilders solution builder
      */
-    public ExperimentManager(List<AbstractExperiment<S, I>> experimentImplementations, SolverConfig solverConfig, SolutionBuilder<S, I> solutionBuilder) {
+    public ExperimentManager(List<AbstractExperiment<S, I>> experimentImplementations, SolverConfig solverConfig, List<SolutionBuilder<S, I>> solutionBuilders) {
         var experimentPattern = solverConfig.getExperiments();
         experimentFilter = Pattern.compile(experimentPattern);
+        var solutionBuilder = Orchestrator.decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
+        log.info("Using SolutionBuilder implementation: "+solutionBuilder.getClass().getSimpleName());
 
         for (var experiment : experimentImplementations) {
             var algorithms = experiment.getAlgorithms();

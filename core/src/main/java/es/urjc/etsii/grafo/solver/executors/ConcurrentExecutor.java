@@ -47,7 +47,7 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
     }
 
     @Override
-    public void execute(String experimentName, I ins, int repetitions, List<Algorithm<S, I>> list, SolutionBuilder<S, I> solutionBuilder, ExceptionHandler<S, I> exceptionHandler) {
+    public void execute(String experimentName, I ins, int repetitions, List<Algorithm<S, I>> list, ExceptionHandler<S, I> exceptionHandler) {
 
         logger.info("Starting solve of instance: " + ins.getName());
         for (var algorithm : list) {
@@ -56,7 +56,7 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
                 int _i = i;
                 futures.add(executor.submit(() -> {
                     // Run algorithm
-                    doWork(experimentName, ins, solutionBuilder, algorithm, _i, exceptionHandler);
+                    doWork(experimentName, ins, algorithm, _i, exceptionHandler);
                     return null;
                 }));
             }

@@ -20,7 +20,7 @@ import java.util.Optional;
 import java.util.logging.Logger;
 
 /**
- * Processes work units and returns results
+ * Processes work units
  * @param <S> Solution class
  * @param <I> Instance class
  */
@@ -32,6 +32,11 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     private final Optional<SolutionValidator<S,I>> validator;
     private final IOManager<S, I> io;
 
+    /**
+     * Fill common values used by all executors
+     * @param validator solution validator if available
+     * @param io IO manager
+     */
     protected Executor(Optional<SolutionValidator<S, I>> validator, IOManager<S, I> io) {
         if(validator.isEmpty()){
             log.warning("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
@@ -50,9 +55,8 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
      * @param algorithms Algorithm list
      * @param experimentName Experiment name
      * @param exceptionHandler Exception handler, determines behaviour if anything fails
-     * @param solutionBuilder Used to build solutions from instances
      */
-    public abstract void execute(String experimentName, I ins, int repetitions, List<Algorithm<S,I>> algorithms, SolutionBuilder<S,I> solutionBuilder, ExceptionHandler<S,I> exceptionHandler);
+    public abstract void execute(String experimentName, I ins, int repetitions, List<Algorithm<S,I>> algorithms, ExceptionHandler<S,I> exceptionHandler);
 
     /**
      * Finalize and destroy all resources, we have finished and are shutting down now.
@@ -68,7 +72,15 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
         this.validator.ifPresent(validator -> validator.validate(solution));
     }
 
-    protected void doWork(String experimentName, I instance, SolutionBuilder<S, I> solutionBuilder, Algorithm<S, I> algorithm, int i, ExceptionHandler<S,I> exceptionHandler) {
+    /**
+     * Execute a single iteration for the given (experiment, intance, algorithm, iterationId)
+     * @param experimentName experiment name
+     * @param instance instance
+     * @param algorithm current algorithm
+     * @param i iteration id
+     * @param exceptionHandler exception handler
+     */
+    protected void doWork(String experimentName, I instance, Algorithm<S, I> algorithm, int i, ExceptionHandler<S,I> exceptionHandler) {
         S solution = null;
         try {
             // If app is stopping do not run algorithm

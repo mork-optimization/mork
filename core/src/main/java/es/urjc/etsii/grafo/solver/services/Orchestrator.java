@@ -27,7 +27,6 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
     private final IOManager<S,I> io;
     private final ExperimentManager<S, I> experimentManager;
     private final ExceptionHandler<S, I> exceptionHandler;
-    private final SolutionBuilder<S, I> solutionBuilder;
     private final List<ReferenceResultProvider> referenceResultProviders;
     private final Executor<S, I> executor;
     private final SolverConfig solverConfig;
@@ -45,16 +44,8 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
         this.io = io;
         this.experimentManager = experimentManager;
         this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
-        this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         this.referenceResultProviders = referenceResultProvider;
         this.executor = executor;
-        log.info("Using SolutionBuilder implementation: "+this.solutionBuilder.getClass().getSimpleName());
-    }
-
-    private boolean isJAR(){
-        String className = this.getClass().getName().replace('.', '/');
-        String protocol = this.getClass().getResource("/" + className + ".class").getProtocol();
-        return protocol.equals("jar");
     }
 
     private void runBenchmark(){
@@ -102,7 +93,7 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
         var referenceValue = getOptionalReferenceValue(this.referenceResultProviders, instance);
         EventPublisher.publishEvent(new InstanceProcessingStartedEvent(experimentName, instance.getName(), algorithms, solverConfig.getRepetitions(), referenceValue));
         log.info("Running algorithms for instance: " + instance.getName());
-        executor.execute(experimentName, (I) instance, solverConfig.getRepetitions(), algorithms, solutionBuilder, exceptionHandler);
+        executor.execute(experimentName, (I) instance, solverConfig.getRepetitions(), algorithms, exceptionHandler);
         long totalTime = System.nanoTime() - startTime;
         EventPublisher.publishEvent(new InstanceProcessingEndedEvent(experimentName, instance.getName(), totalTime));
     }
