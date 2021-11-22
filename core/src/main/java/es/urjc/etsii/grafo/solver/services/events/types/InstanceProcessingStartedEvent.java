@@ -17,6 +17,7 @@ public class InstanceProcessingStartedEvent extends MorkEvent{
 
     /**
      * Create a new InstanceProcessingStartedEvent
+     *
      * @param experimentName experiment name
      * @param instanceName instance name
      * @param algorithms list of algorithms to execute in the current experiment
@@ -33,6 +34,7 @@ public class InstanceProcessingStartedEvent extends MorkEvent{
 
     /**
      * Get current experiment name
+     *
      * @return current experiment name
      */
     public String getExperimentName() {
@@ -41,6 +43,7 @@ public class InstanceProcessingStartedEvent extends MorkEvent{
 
     /**
      * Get current instance name
+     *
      * @return instance name
      */
     public String getInstanceName() {
@@ -49,6 +52,7 @@ public class InstanceProcessingStartedEvent extends MorkEvent{
 
     /**
      * Get reference value for instance if available
+     *
      * @return reference value, or empty if not configured via a ReferenceResultProvider
      */
     public Optional<Double> getReferenceValue() {
@@ -57,6 +61,7 @@ public class InstanceProcessingStartedEvent extends MorkEvent{
 
     /**
      * Get list of algorithms to execute in the current experiment
+     *
      * @return list of algorithms
      */
     public List<? extends Algorithm<?,?>> getAlgorithms() {
@@ -65,6 +70,7 @@ public class InstanceProcessingStartedEvent extends MorkEvent{
 
     /**
      * Get number of repetitions for each (instance, algorithm) pair.
+     *
      * @return number of repetitions for each (instance, algorithm) pair.
      */
     public int getRepetitions() {

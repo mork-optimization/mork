@@ -6,16 +6,27 @@ import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.List;
 
+/**
+ * <p>VND class.</p>
+ *
+ */
 public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,I>{
 
     private final List<Improver<S,I>> improvers;
     private final boolean maximize;
 
+    /**
+     * <p>Constructor for VND.</p>
+     *
+     * @param improvers a {@link java.util.List} object.
+     * @param maximize a boolean.
+     */
     public VND(List<Improver<S, I>> improvers, boolean maximize) {
         this.improvers = improvers;
         this.maximize = maximize;
     }
 
+    /** {@inheritDoc} */
     @Override
     protected S _improve(S s) {
         int currentLS = 0;
@@ -47,6 +58,7 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
     }
 
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         return "VND{" +

@@ -65,6 +65,7 @@ public enum RandomType {
      */
     XOSHIRO256PP("Xoshiro256PlusPlus");
 
+    XOSHIRO256PP("Xoshiro256PlusPlus");
     private final String javaName;
 
     /**
@@ -77,6 +78,7 @@ public enum RandomType {
 
     /**
      * Get Java name
+     *
      * @return Java reference name as string
      */
     public String getJavaName() {

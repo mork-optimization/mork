@@ -11,6 +11,7 @@ import java.util.Optional;
 
 /**
  * Default move comparator, used if the user does not provide a custom implementation for the problem.
+ *
  * @param <M> Move class
  * @param <S> Solution class
  * @param <I> Instance class
@@ -20,12 +21,14 @@ public class DefaultMoveComparator<M extends Move<S,I>, S extends Solution<S,I>,
 
     /**
      * Create a new default move comparator that orders movements taking into account if this is a maximization or minimization problem
+     *
      * @param maximizing True if maximizing, false if minimizing
      */
     public DefaultMoveComparator(boolean maximizing) {
         this.maximizing = maximizing;
     }
 
+    /** {@inheritDoc} */
     @Override
     public Optional<M> getStrictBestMove(M m1, M m2) {
         if(DoubleComparator.equals(m1.getValue(), m2.getValue())){

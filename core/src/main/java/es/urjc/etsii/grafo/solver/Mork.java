@@ -18,6 +18,7 @@ public class Mork {
 
     /**
      * Procedure to launch the application.
+     *
      * @param args program arguments
      */
     public static void start(String[] args) {

@@ -29,6 +29,7 @@ public class Dinic {
 
     /**
      * New Dinic algorithm or graph of size N
+     *
      * @param N graph size
      */
     public Dinic(int N) {
@@ -49,6 +50,7 @@ public class Dinic {
     /**
      * Just adds an edge and ALSO adds it going backwards.
      * EDGES ARE IGNORED IF ALREADY EXISTS FROM V1 TO V2
+     *
      * @param v1 Origin
      * @param v2 Destination
      * @param cap Capacity
@@ -62,6 +64,7 @@ public class Dinic {
 
     /**
      * BFS
+     *
      * @param source start point
      * @param sink end point
      * @return true if path exists, false otherwise
@@ -94,6 +97,7 @@ public class Dinic {
 
     /**
      * Runs inner DFS in Dinic's, from node pos with a flow of min.
+     *
      * @param source start point
      * @param sink end point
      * @param min flow
@@ -139,6 +143,7 @@ public class Dinic {
 
     /**
      * Calculate flow from a source to a destination
+     *
      * @param source start point
      * @param sink end point
      * @return flow

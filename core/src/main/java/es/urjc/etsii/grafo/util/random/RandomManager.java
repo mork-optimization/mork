@@ -26,6 +26,7 @@ public final class RandomManager {
     /**
      * Get RandomGenerator for the current thread. The returned RandomGenerator is not guaranteed to be thread safe, and
      * should only be used in the calling thread.
+     *
      * @return RandomGenerator for the current thread
      */
     public static RandomGenerator getRandom(){
@@ -38,6 +39,7 @@ public final class RandomManager {
     /**
      * Initialize RandomManager with te given solver config
      * a bit hacky but uses constructor instead of static initializer for Spring compatibility
+     *
      * @param solverConfig solver configuration
      */
     public RandomManager(SolverConfig solverConfig){
@@ -47,6 +49,7 @@ public final class RandomManager {
     /**
      * Resets random state ONLY FOR THE CALLING THREAD
      * each thread/worker is responsible for resetting their random state when appropriate
+     *
      * @param iteration Algorithm iteration current thread is going to execute.
      */
     public static void reset(int iteration){
@@ -55,6 +58,7 @@ public final class RandomManager {
 
     /**
      * Reset all random generators with the given initial seed
+     *
      * @param randomType random type
      * @param seed random seed
      * @param repetitions (instance, algorithm) iteration

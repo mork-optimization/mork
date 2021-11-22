@@ -8,6 +8,7 @@ public class ErrorEvent extends MorkEvent {
 
     /**
      * Create a new error event from a throwable
+     *
      * @param t Throwable
      */
     public ErrorEvent(Throwable t) {
@@ -16,6 +17,7 @@ public class ErrorEvent extends MorkEvent {
 
     /**
      * Get error event cause
+     *
      * @return error cause
      */
     public Throwable getThrowable() {

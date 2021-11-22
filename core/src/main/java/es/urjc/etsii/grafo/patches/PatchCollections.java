@@ -19,6 +19,7 @@ public class PatchCollections {
 
     /**
      * Initialize patch with config
+     *
      * @param config configuration
      */
     public PatchCollections(BlockConfig config) {

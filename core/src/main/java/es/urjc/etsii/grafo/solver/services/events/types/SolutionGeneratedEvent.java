@@ -11,6 +11,7 @@ import java.util.Optional;
  * Event triggered each time an algorithm finishes creating a solution.
  * Contains information about the different solution characteristics.
  * This event is created and dispatched automatically.
+ *
  * @param <S> Solution type
  * @param <I> Instance type
  */
@@ -25,6 +26,16 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
     private final Algorithm<S,I> algorithm;
     private final SoftReference<S> solution;
 
+    /**
+     * <p>Constructor for SolutionGeneratedEvent.</p>
+     *
+     * @param iteration a int.
+     * @param solution a S object.
+     * @param experimentName a {@link java.lang.String} object.
+     * @param algorithm a {@link es.urjc.etsii.grafo.solver.algorithms.Algorithm} object.
+     * @param executionTime a long.
+     * @param timeToBest a long.
+     */
     public SolutionGeneratedEvent(int iteration, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest) {
         super();
         this.iteration = iteration;
@@ -40,6 +51,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
 
     /**
      * Which iteration this solution corresponds to
+     *
      * @return int
      */
     public int getIteration() {
@@ -48,6 +60,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
 
     /**
      * Experiment name
+     *
      * @return String representing the experiment name
      */
     public String getExperimentName() {
@@ -56,6 +69,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
 
     /**
      * Algorithm that created this solution
+     *
      * @return Algorithm configuration
      */
     public Algorithm<S, I> getAlgorithm() {
@@ -64,6 +78,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
 
     /**
      * Instance used to create this solution
+     *
      * @return Instance name
      */
     public String getInstanceName() {
@@ -72,6 +87,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
 
     /**
      * Solution score when finished processing a solution.
+     *
      * @return solution score
      */
     public double getScore() {
@@ -80,6 +96,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
 
     /**
      * Total execution time in nanoseconds used by the algorithm to create the solution.
+     *
      * @return time in nanos
      */
     public long getExecutionTime() {
@@ -88,6 +105,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
 
     /**
      * Execution time until last modification in nanoseconds
+     *
      * @return time in nanos
      */
     public long getTimeToBest() {
@@ -96,6 +114,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
 
     /**
      * Get short algorithm name that generated this solution
+     *
      * @return Short string representing the algorithm that generated this solution
      */
     public String getAlgorithmName() {
@@ -105,6 +124,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
     /**
      * Get solution instance IF AVAILABLE
      * Storing all generated solutions is too memory expensive.
+     *
      * @return Empty optional if solution has been garbage collected, solution data if not.
      */
     public Optional<S> getSolution() {

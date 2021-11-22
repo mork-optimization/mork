@@ -15,6 +15,7 @@ public class ErrorConfig {
 
     /**
      * Export errors to file?
+     *
      * @return True to export, false to skip
      */
     public boolean isErrorsToFile() {
@@ -23,6 +24,7 @@ public class ErrorConfig {
 
     /**
      * Export errors to file?
+     *
      * @param errorsToFile  True to export, false to skip
      */
     public void setErrorsToFile(boolean errorsToFile) {
@@ -31,6 +33,7 @@ public class ErrorConfig {
 
     /**
      * Where should serialized errors be stored?
+     *
      * @return path as string
      */
     public String getFolder() {
@@ -39,6 +42,7 @@ public class ErrorConfig {
 
     /**
      * Where should serialized errors be stored?
+     *
      * @param folder  path as string
      */
     public void setFolder(String folder) {

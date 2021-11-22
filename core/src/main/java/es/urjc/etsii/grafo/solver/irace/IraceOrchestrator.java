@@ -29,6 +29,10 @@ import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.util.IOUtil.*;
 
+/**
+ * <p>IraceOrchestrator class.</p>
+ *
+ */
 @Service
 @ConditionalOnExpression(value = "${irace.enabled}")
 public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrchestrator {
@@ -43,6 +47,17 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     private final IOManager<S,I> io;
     private final Environment env;
 
+    /**
+     * <p>Constructor for IraceOrchestrator.</p>
+     *
+     * @param solverConfig a {@link es.urjc.etsii.grafo.solver.SolverConfig} object.
+     * @param iraceIntegration a {@link es.urjc.etsii.grafo.solver.irace.IraceIntegration} object.
+     * @param io a {@link es.urjc.etsii.grafo.solver.services.IOManager} object.
+     * @param exceptionHandlers a {@link java.util.List} object.
+     * @param solutionBuilders a {@link java.util.List} object.
+     * @param algorithmGenerator a {@link java.util.Optional} object.
+     * @param env a {@link org.springframework.core.env.Environment} object.
+     */
     public IraceOrchestrator(
             SolverConfig solverConfig,
             IraceIntegration iraceIntegration,
@@ -63,6 +78,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     }
 
 
+    /** {@inheritDoc} */
     @Override
     public void run(String... args) {
         log.info("App started in IRACE mode, ready to start solving!");
@@ -110,6 +126,12 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     );
 
 
+    /**
+     * <p>iraceCallback.</p>
+     *
+     * @param request a {@link es.urjc.etsii.grafo.restcontroller.dto.ExecuteRequest} object.
+     * @return a double.
+     */
     public double iraceCallback(ExecuteRequest request){
         var config = buildConfig(request);
         var instancePath = Path.of(config.getInstanceName());

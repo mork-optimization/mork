@@ -15,6 +15,7 @@ public class InstanceConfiguration {
 
     /**
      * Set instances folder for each experiment
+     *
      * @param paths instance paths for each experiment
      */
     public void setPath(Map<String, String> paths) {
@@ -23,6 +24,7 @@ public class InstanceConfiguration {
 
     /**
      * Get instances path for a given experiment
+     *
      * @param experimentName experiment name
      * @return Instance path as a string
      */

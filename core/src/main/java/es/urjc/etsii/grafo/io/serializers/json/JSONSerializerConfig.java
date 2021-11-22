@@ -22,18 +22,38 @@ public class JSONSerializerConfig {
      */
     private boolean pretty = true;
 
+    /**
+     * <p>isEnabled.</p>
+     *
+     * @return a boolean.
+     */
     public boolean isEnabled() {
         return enabled;
     }
 
+    /**
+     * <p>Setter for the field <code>enabled</code>.</p>
+     *
+     * @param enabled a boolean.
+     */
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
 
+    /**
+     * <p>isPretty.</p>
+     *
+     * @return a boolean.
+     */
     public boolean isPretty() {
         return pretty;
     }
 
+    /**
+     * <p>Setter for the field <code>pretty</code>.</p>
+     *
+     * @param pretty a boolean.
+     */
     public void setPretty(boolean pretty) {
         this.pretty = pretty;
     }

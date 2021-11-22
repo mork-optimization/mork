@@ -15,6 +15,7 @@ public class IntSet extends AbstractSet<Integer> {
 
     /**
      * Create a new IntSet that can hold values between [0, maxValue-1]
+     *
      * @param maxValue Biggest value that could be possible stored in set, without including it.
      */
     public IntSet(int maxValue) {
@@ -27,6 +28,7 @@ public class IntSet extends AbstractSet<Integer> {
 
     /**
      * Copy an Intset
+     *
      * @param set original set
      */
     public IntSet(IntSet set) {
@@ -36,6 +38,7 @@ public class IntSet extends AbstractSet<Integer> {
 
     /**
      * Copy a set
+     *
      * @param set original set
      */
     public IntSet(Set<Integer> set){
@@ -55,7 +58,6 @@ public class IntSet extends AbstractSet<Integer> {
     /**
      * {@inheritDoc}
      * @see IntSet#fastAdd(int)
-     * @param integer int to add
      */
     @Override
     public boolean add(Integer integer) {
@@ -64,6 +66,7 @@ public class IntSet extends AbstractSet<Integer> {
 
     /**
      * Adds the given integer to the set without boxing/unboxing overhead.
+     *
      * @param n int to add
      * @return true if collection has been modified, false otherwise
      */
@@ -93,10 +96,10 @@ public class IntSet extends AbstractSet<Integer> {
 
 
     /**
+     * {@inheritDoc}
+     *
      * Removes int from set, accepts Object for Java API compatibility.
      * @see IntSet#fastRemove(int)
-     * @param o object to remove if found
-     * @return true if collection has been modified, false otherwise
      */
     @Override
     public boolean remove(Object o) {
@@ -108,6 +111,7 @@ public class IntSet extends AbstractSet<Integer> {
 
     /**
      * Same as remove(), but without casting and object validation overhead
+     *
      * @param n int to remove
      * @return true if collection has been modified, false otherwise
      */
@@ -123,11 +127,13 @@ public class IntSet extends AbstractSet<Integer> {
         return true; // Collection modified
     }
 
+    /** {@inheritDoc} */
     @Override
     public Iterator<Integer> iterator() {
         return new IntSetIterator();
     }
 
+    /** {@inheritDoc} */
     @Override
     public int size() {
         return this.size;

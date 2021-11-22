@@ -8,6 +8,7 @@ public class ExecutionEndedEvent extends MorkEvent {
 
     /**
      * Create a new ExecutionEndedEvent providing the accumulated execution time.
+     *
      * @param executionTime total execution time in nanoseconds
      */
     public ExecutionEndedEvent(long executionTime) {
@@ -16,6 +17,7 @@ public class ExecutionEndedEvent extends MorkEvent {
 
     /**
      * Get accumulated execution time
+     *
      * @return execution time in nanoseconds
      */
     public long getExecutionTime() {

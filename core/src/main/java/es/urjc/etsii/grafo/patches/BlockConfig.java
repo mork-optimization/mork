@@ -23,6 +23,7 @@ public class BlockConfig {
     /**
      * Return true if method Collections.shuffle(LIST) should be blocked.
      * Use CollectionUtil.shuffle() instead.
+     *
      * @return true if method should be blocked, false otherwise
      */
     public boolean isBlockCollectionsShuffle() {
@@ -31,6 +32,7 @@ public class BlockConfig {
 
     /**
      * NOOP after method has been blocked. Only used as a setter when deserializing the configuration file.
+     *
      * @param blockCollectionsShuffle true if method should be blocked, false otherwise
      */
     public void setBlockCollectionsShuffle(boolean blockCollectionsShuffle) {
@@ -41,6 +43,7 @@ public class BlockConfig {
     /**
      * Return true if method Math.random() should be blocked.
      * Use RandomManager instead.
+     *
      * @return true if method should be blocked, false otherwise
      */
     public boolean isBlockMathRandom() {
@@ -49,6 +52,7 @@ public class BlockConfig {
 
     /**
      * NOOP after method has been blocked. Only used as a setter when deserializing the configuration file.
+     *
      * @param blockMathRandom true if method should be blocked, false otherwise
      */
     public void setBlockMathRandom(boolean blockMathRandom) {

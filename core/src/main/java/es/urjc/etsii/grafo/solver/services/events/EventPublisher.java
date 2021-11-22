@@ -21,6 +21,7 @@ public class EventPublisher {
 
     /**
      * Spring integration constructor
+     *
      * @param publisher Spring ApplicationEventPublisher
      */
     protected EventPublisher(ApplicationEventPublisher publisher) {
@@ -29,6 +30,7 @@ public class EventPublisher {
 
     /**
      * Asynchronously send and process an event
+     *
      * @param event Event to propagate
      */
     public static void publishEvent(MorkEvent event){

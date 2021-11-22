@@ -8,6 +8,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * Mutistart algorithm builder based on Java Builder Pattern
+ *
  * @param <S> type of the solution of the problem
  * @param <I>  type of the instance of the problem
  */
@@ -48,6 +49,8 @@ public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Inst
 
 
     /**
+     * <p>withAlgorithmName.</p>
+     *
      * @param name name of the algorithm
      * @return MultiStartAlgorithmBuilder
      */
@@ -58,6 +61,8 @@ public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Inst
 
 
     /**
+     * <p>withMaxIterations.</p>
+     *
      * @param maxIterations maximum number of iteration of the algorithm
      * @return MultiStartAlgorithmBuilder
      */
@@ -67,6 +72,8 @@ public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Inst
     }
 
     /**
+     * <p>withMinIterations.</p>
+     *
      * @param minIterations minimum number of iterations of the algorithm
      * @return MultiStartAlgorithmBuilder
      */
@@ -76,6 +83,8 @@ public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Inst
     }
 
     /**
+     * <p>withMaxIterationsWithoutImproving.</p>
+     *
      * @param maxIterationsWithoutImproving maximum number of iterations without improving
      * @return MultiStartAlgorithmBuilder
      */
@@ -86,6 +95,8 @@ public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Inst
 
 
     /**
+     * <p>withTime.</p>
+     *
      * @param time     number of a spcefic time unit measure
      * @param timeUnit time unit measure: SECOND, DAY, etc.
      * @return MultiStartAlgorithmBuilder

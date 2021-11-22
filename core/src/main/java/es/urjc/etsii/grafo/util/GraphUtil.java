@@ -8,6 +8,7 @@ public class GraphUtil {
 
     /**
      * Returns the maximum number of edges for a complete graph with n nodes
+     *
      * @param n number of nodes
      * @return maximum number of edges
      */

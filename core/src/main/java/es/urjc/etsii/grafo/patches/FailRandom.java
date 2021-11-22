@@ -13,9 +13,9 @@ public class FailRandom extends Random {
     private static final String FAIL_MESSAGE = "Invalid Random() usage, use RandomManager!";
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @param bits Fail always
-     * @return Fail always
      */
     @Override
     protected int next(int bits) {
@@ -23,8 +23,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @param bytes Fail always
      */
     @Override
     public void nextBytes(byte[] bytes) {
@@ -32,8 +33,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @return Fail always
      */
     @Override
     public int nextInt() {
@@ -41,9 +43,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @param bound Fail always
-     * @return Fail always
      */
     @Override
     public int nextInt(int bound) {
@@ -51,8 +53,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @return Fail always
      */
     @Override
     public long nextLong() {
@@ -60,8 +63,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @return Fail always
      */
     @Override
     public boolean nextBoolean() {
@@ -69,8 +73,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @return Fail always
      */
     @Override
     public float nextFloat() {
@@ -78,8 +83,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @return Fail always
      */
     @Override
     public double nextDouble() {
@@ -87,8 +93,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @return Fail always
      */
     @Override
     public synchronized double nextGaussian() {
@@ -96,9 +103,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @param streamSize Fail always
-     * @return Fail always
      */
     @Override
     public IntStream ints(long streamSize) {
@@ -106,8 +113,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @return Fail always
      */
     @Override
     public IntStream ints() {
@@ -115,11 +123,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @param streamSize Fail always
-     * @param randomNumberOrigin Fail always
-     * @param randomNumberBound Fail always
-     * @return Fail always
      */
     @Override
     public IntStream ints(long streamSize, int randomNumberOrigin, int randomNumberBound) {
@@ -127,10 +133,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @param randomNumberOrigin Fail always
-     * @param randomNumberBound Fail always
-     * @return Fail always
      */
     @Override
     public IntStream ints(int randomNumberOrigin, int randomNumberBound) {
@@ -138,9 +143,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @param streamSize Fail always
-     * @return Fail always
      */
     @Override
     public LongStream longs(long streamSize) {
@@ -148,8 +153,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @return Fail always
      */
     @Override
     public LongStream longs() {
@@ -157,11 +163,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @param streamSize Fail always
-     * @param randomNumberOrigin Fail always
-     * @param randomNumberBound Fail always
-     * @return Fail always
      */
     @Override
     public LongStream longs(long streamSize, long randomNumberOrigin, long randomNumberBound) {
@@ -169,10 +173,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @param randomNumberOrigin Fail always
-     * @param randomNumberBound Fail always
-     * @return Fail always
      */
     @Override
     public LongStream longs(long randomNumberOrigin, long randomNumberBound) {
@@ -180,9 +183,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @param streamSize Fail always
-     * @return Fail always
      */
     @Override
     public DoubleStream doubles(long streamSize) {
@@ -190,8 +193,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @return Fail always
      */
     @Override
     public DoubleStream doubles() {
@@ -199,11 +203,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @param streamSize Fail always
-     * @param randomNumberOrigin Fail always
-     * @param randomNumberBound Fail always
-     * @return Fail always
      */
     @Override
     public DoubleStream doubles(long streamSize, double randomNumberOrigin, double randomNumberBound) {
@@ -211,10 +213,9 @@ public class FailRandom extends Random {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Fail always
-     * @param randomNumberOrigin Fail always
-     * @param randomNumberBound Fail always
-     * @return Fail always
      */
     @Override
     public DoubleStream doubles(double randomNumberOrigin, double randomNumberBound) {

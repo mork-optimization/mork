@@ -27,6 +27,7 @@ public class MorkEvent extends ApplicationEvent {
         this.workerName = Thread.currentThread().getName();
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -35,19 +36,35 @@ public class MorkEvent extends ApplicationEvent {
         return eventId == morkEvent.eventId;
     }
 
+    /** {@inheritDoc} */
     @Override
     public int hashCode() {
         return Objects.hash(eventId);
     }
 
+    /**
+     * <p>Getter for the field <code>eventId</code>.</p>
+     *
+     * @return a int.
+     */
     public int getEventId() {
         return eventId;
     }
 
+    /**
+     * <p>getType.</p>
+     *
+     * @return a {@link java.lang.String} object.
+     */
     public String getType(){
         return this.getClass().getSimpleName();
     }
 
+    /**
+     * <p>Getter for the field <code>workerName</code>.</p>
+     *
+     * @return a {@link java.lang.String} object.
+     */
     public String getWorkerName() {
         return workerName;
     }

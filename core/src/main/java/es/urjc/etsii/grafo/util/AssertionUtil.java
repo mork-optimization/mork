@@ -9,6 +9,7 @@ public class AssertionUtil {
     /**
      * Does the supposition "if and only if" hold?
      * {@code P <--> Q = (P & Q) | (!P & !Q)}
+     *
      * @param p P
      * @param q Q
      * @return true if valid supposition, false otherwise
@@ -19,6 +20,7 @@ public class AssertionUtil {
     /**
      * Does the supposition "if then" hold?
      * {@code P --> Q = !P || Q}
+     *
      * @param p P
      * @param q Q
      * @return true if valid supposition, false otherwise

@@ -15,9 +15,10 @@ public abstract class RLangRunner {
 
     /**
      * Drain a given stream to logs
+     *
      * @param level LogLevel
      * @param stream stream to drain
-     * @throws IOException if something goes wrong
+     * @throws java.io.IOException if something goes wrong
      */
     protected void drainStream(Level level, InputStream stream) throws IOException {
         try (var br = new BufferedReader(new InputStreamReader(stream))) {
@@ -30,6 +31,7 @@ public abstract class RLangRunner {
 
     /**
      * Execute the given R code
+     *
      * @param rCode R code to execute
      */
     public abstract void execute(InputStream rCode);

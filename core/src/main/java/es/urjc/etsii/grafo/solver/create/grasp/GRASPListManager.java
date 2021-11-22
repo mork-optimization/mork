@@ -24,6 +24,7 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
 
     /**
      * Generate initial candidate list. The list will be sorted if necessary by the constructive method.
+     *
      * @param solution Current solution
      * @return a candidate list
      */
@@ -41,9 +42,10 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
     public abstract List<M> updateCandidateList(S solution, M move, List<M> candidateList, int index);
 
     /**
+     * {@inheritDoc}
+     *
      * Return string representation of the current list manager.
      * Defaults to "classname{}", override if custom parameters should appear in the string.
-     * @return string representation of current list manager
      */
     @Override
     public String toString() {

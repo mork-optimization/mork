@@ -20,6 +20,7 @@ public abstract class RawSheetWriter {
 
     /**
      * Write data to raw sheet
+     *
      * @param rawSheet sheet reference where data should be written to
      * @param maximizing true if this is a maximizing problem, false otherwise
      * @param results list of results to serialize
@@ -30,6 +31,7 @@ public abstract class RawSheetWriter {
 
     /**
      * Convert nanoseconds to seconds
+     *
      * @param nanos nanoseconds
      * @return seconds as a double value
      */
@@ -39,6 +41,7 @@ public abstract class RawSheetWriter {
 
     /**
      * Transform NaNs and other special double values to valid values in Excel
+     *
      * @param maximizing true if this is a maximizing problem, false otherwise
      * @param value value to transform
      * @return transformed value
@@ -52,6 +55,7 @@ public abstract class RawSheetWriter {
 
     /**
      * Calculate %Dev to reference value
+     *
      * @param score value to check
      * @param bestValueForInstance reference valu
      * @return %Dev as a doube
@@ -62,6 +66,7 @@ public abstract class RawSheetWriter {
 
     /**
      * Write value to sheet cell
+     *
      * @param cell cell where value will be written
      * @param d value to write
      * @param type hints how the value should be interpreted. May or may not be honored.
@@ -101,6 +106,7 @@ public abstract class RawSheetWriter {
 
     /**
      * Get best result for a given instance
+     *
      * @param results our results
      * @param providers reference values
      * @param maximizing true if this is a maximizing problem, false otherwise

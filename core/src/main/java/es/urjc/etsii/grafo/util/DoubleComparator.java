@@ -3,7 +3,6 @@ package es.urjc.etsii.grafo.util;
 /**
  * Helper methods to perform comparisons between doubles (or floats)
  * DANGER: DoubleComparator VIOLATES COMPARISON CONTRACT, DO NOT USE IN SORTS
-
  */
 public class DoubleComparator {
 
@@ -16,6 +15,7 @@ public class DoubleComparator {
     /**
      * BE CAREFUL WITH THIS METHOD! AFFECTS ALL THREADS
      * Change default comparator precision. Defaults to DEFAULT_EPSILON
+     *
      * @param epsilon differences less than epsilon will not be counted as true differences.
      *                See https://en.wikipedia.org/wiki/Double-precision_floating-point_format for an intro on IEE754
      */
@@ -25,6 +25,7 @@ public class DoubleComparator {
 
     /**
      * Test two doubles for equality, uses default error margin
+     *
      * @param d1 first double to test
      * @param d2 second double to test
      * @return True, if the difference between them is less than 0.001%, false otherwise
@@ -35,6 +36,7 @@ public class DoubleComparator {
 
     /**
      * Test two doubles for equality
+     *
      * @param d1 first double to test
      * @param d2 second double to test
      * @param eps Error margin
@@ -96,6 +98,7 @@ public class DoubleComparator {
 
     /**
      * Check if a given double has a negative value.
+     *
      * @param d1 double to check
      * @return true if d1 is strictly less than 0, false otherwise.
      */
@@ -105,6 +108,7 @@ public class DoubleComparator {
 
     /**
      * Check if a given double has a negative value or equals zero.
+     *
      * @param d1 double to check
      * @return true if d1 is less than or equal to 0, false otherwise.
      */
@@ -114,6 +118,7 @@ public class DoubleComparator {
 
     /**
      * Check if a given double equals zero.
+     *
      * @param d1 double to check
      * @return true if d1 equals 0, false otherwise.
      */
@@ -123,6 +128,7 @@ public class DoubleComparator {
 
     /**
      * Check if a given double has a positive value.
+     *
      * @param d1 double to check
      * @return true if d1 is strictly greater than 0, false otherwise.
      */
@@ -132,6 +138,7 @@ public class DoubleComparator {
 
     /**
      * Check if a given double has a positive value or equals to zero.
+     *
      * @param d1 double to check
      * @return true if d1 is greater than or equals to 0, false otherwise.
      */
@@ -141,6 +148,7 @@ public class DoubleComparator {
 
     /**
      * Check if the first double is stricly greater than the second
+     *
      * @param d1 first double
      * @param d2 second double
      * @return true if d1 &gt; d2, false otherwise
@@ -151,6 +159,7 @@ public class DoubleComparator {
 
     /**
      * Check if the first double is greater than or equals the second
+     *
      * @param d1 first double
      * @param d2 second double
      * @return true if d1 &gt;= d2, false otherwise
@@ -161,6 +170,7 @@ public class DoubleComparator {
 
     /**
      * Check if the first double is strictly smaller than the second
+     *
      * @param d1 first double
      * @param d2 second double
      * @return true if d1 &gt; d2, false otherwise
@@ -171,6 +181,7 @@ public class DoubleComparator {
 
     /**
      * Check if the first double is smaller than or equals the second
+     *
      * @param d1 first double
      * @param d2 second double
      * @return true if d1 &lt;= d2, false otherwise

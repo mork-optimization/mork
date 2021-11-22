@@ -75,6 +75,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     /**
      * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
+     *
      * @param candidateListManager candidate list manager, implemented by the user
      * @param maximizing True if maximizing, false if minimizing
      */
@@ -82,6 +83,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
         this(candidateListManager, 0, 1, maximizing);
     }
 
+    /** {@inheritDoc} */
     @Override
     public S construct(S sol) {
         candidateListManager.beforeGRASP(sol);
@@ -93,6 +95,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
      * This method ends when the candidate list is empty.
      * The difference between this method and construct is that this method does not call beforeGRASP().
      * This method can be used in algorithms such as iterated greedy during the reconstruction phase.
+     *
      * @param sol Solution to complete
      * @return Completed solution.
      */
@@ -160,6 +163,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
     }
 
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         return "GRGRASP" + "{" +

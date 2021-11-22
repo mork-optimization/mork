@@ -21,6 +21,7 @@ public class CSVSerializer extends ResultsSerializer {
 
     /**
      * Create a new CSV serializer with a given configuration.
+     *
      * @param config CSV Serializer configuration
      */
     public CSVSerializer(CSVSerializerConfig config) {
@@ -34,6 +35,7 @@ public class CSVSerializer extends ResultsSerializer {
                 .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
     }
 
+    /** {@inheritDoc} */
     public void _serializeResults(List<? extends SolutionGeneratedEvent<?,?>> results, Path p) {
         log.info("Exporting result data to CSV...");
 

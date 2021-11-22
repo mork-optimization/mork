@@ -20,6 +20,7 @@ public class CSVSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Get configured column separator. In TSV, separator is '\t', in CSV ','.
+     *
      * @return column separator
      */
     public char getSeparator() {
@@ -28,6 +29,7 @@ public class CSVSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Change column separatr
+     *
      * @param separator Examples: in TSV, separator is '\t', in CSV ','. Other separators can be used.
      */
     public void setSeparator(char separator) {

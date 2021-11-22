@@ -19,6 +19,7 @@ import java.util.logging.Logger;
 
 /**
  * Concurrent executor, execute multiple runs in parallel for a given instance-algorithm pair
+ *
  * @param <S> Solution class
  * @param <I> Instance class
  */
@@ -32,6 +33,7 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
 
     /**
      * Create a new ConcurrentExecutor. Do not create executors manually, inject them.
+     *
      * @param solverConfig Solver configuration instance
      * @param validator Solution validator
      * @param io IOManager
@@ -46,6 +48,7 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
         this.executor = Executors.newFixedThreadPool(this.nWorkers);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void execute(String experimentName, I ins, int repetitions, List<Algorithm<S, I>> list, ExceptionHandler<S, I> exceptionHandler) {
 
@@ -66,6 +69,7 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
         logger.info("Done processing instance: " + ins.getName());
     }
 
+    /** {@inheritDoc} */
     @Override
     public void shutdown() {
         logger.info("Shutdown executor");

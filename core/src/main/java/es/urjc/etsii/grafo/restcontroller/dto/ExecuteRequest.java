@@ -12,6 +12,7 @@ public class ExecuteRequest {
 
     /**
      * Create a new
+     *
      * @param key integration key, used to validate requests and reject unauthorized ones.
      * @param config execution configuration
      */
@@ -22,6 +23,7 @@ public class ExecuteRequest {
 
     /**
      * Get integration key, used to validate requests and reject unauthorized ones.
+     *
      * @return integration key
      */
     public String getKey() {
@@ -30,6 +32,7 @@ public class ExecuteRequest {
 
     /**
      * Get serialized run configuration
+     *
      * @return run configuration serialized as string
      */
     public String getConfig() {
@@ -38,6 +41,7 @@ public class ExecuteRequest {
 
     /**
      * Check that the DTO is valid
+     *
      * @return boolean if valid, false otherwise
      */
     public boolean isValid(){
@@ -47,6 +51,7 @@ public class ExecuteRequest {
                 && !config.isBlank();
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         return "ExecuteRequest{" +

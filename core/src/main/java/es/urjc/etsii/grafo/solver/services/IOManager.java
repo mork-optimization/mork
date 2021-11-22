@@ -29,6 +29,7 @@ import static es.urjc.etsii.grafo.util.IOUtil.*;
 
 /**
  * IO Service to export solutions, errors and load instances
+ *
  * @param <S> Solution class
  * @param <I> Instance class
  */
@@ -46,6 +47,7 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Initialize IOManager
+     *
      * @param instanceConfiguration instance configuration
      * @param errorConfig error configuration
      * @param serializerSolutionCommonConfig solution serializer configuration
@@ -64,6 +66,7 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Get instances for a given experiment name
+     *
      * @param experimentName experiment name as string
      * @return Stream of instances to solve in given experiment
      */
@@ -93,6 +96,7 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Load an instance given a path
+     *
      * @param p Path of instance to load
      * @return Loaded instance
      */
@@ -102,6 +106,7 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Write a solution to disk.
+     *
      * @param experimentName current experiment name
      * @param alg algorithm that generated this solution
      * @param s solution to serialize to disk
@@ -115,6 +120,7 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Export an error to disk
+     *
      * @param experimentName current experiment name
      * @param alg algorithm where this error generated from
      * @param i instance being solved when the error was thrown

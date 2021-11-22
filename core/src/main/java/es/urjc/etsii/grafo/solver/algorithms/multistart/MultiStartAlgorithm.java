@@ -50,7 +50,7 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
 
 
     /**
-     * Use the {@link MultiStartAlgorithmBuilder} class to generate a MultiStart Algorithm
+     * Use the {@link es.urjc.etsii.grafo.solver.algorithms.multistart.MultiStartAlgorithmBuilder} class to generate a MultiStart Algorithm
      *
      * @param algorithmName                 algorithm name
      * @param algorithm                     algorithm
@@ -73,8 +73,7 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
 
     /**
      * Build a multistart algorithm
-     * @param <S> solution type of the problem
-     * @param <I> instance type of the problem
+     *
      * @return the multistart algorithm
      */
     public static <S extends Solution<S,I>, I extends Instance> MultiStartAlgorithmBuilder<S, I> builder() {
@@ -110,10 +109,9 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
 
 
     /**
-     * Algorithm: Execute a single construction and then all the local searchs a single time.
+     * {@inheritDoc}
      *
-     * @param instance Empty solution
-     * @return Returns a valid solution
+     * Algorithm: Execute a single construction and then all the local searchs a single time.
      */
     @Override
     public S algorithm(I instance) {
@@ -157,6 +155,7 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
         return false;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         return "MA{" +
@@ -169,6 +168,7 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
 
     /**
      * Print the current status of the VNS procedure, i.e., the current iteration the best solution.
+     *
      * @param iteration current iteration of the procedure
      * @param s solution
      */
@@ -178,8 +178,9 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
 
 
     /**
+     * {@inheritDoc}
+     *
      * This method propagates the builder so that it can be used by other algorithms.
-     * @param builder solution builder object
      */
     @Override
     public void setBuilder(SolutionBuilder<S, I> builder) {

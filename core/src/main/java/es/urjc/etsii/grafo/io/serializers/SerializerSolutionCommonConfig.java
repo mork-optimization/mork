@@ -21,18 +21,38 @@ public class SerializerSolutionCommonConfig {
      */
     private String dateformat;
 
+    /**
+     * <p>Getter for the field <code>folder</code>.</p>
+     *
+     * @return a {@link java.lang.String} object.
+     */
     public String getFolder() {
         return folder;
     }
 
+    /**
+     * <p>Setter for the field <code>folder</code>.</p>
+     *
+     * @param folder a {@link java.lang.String} object.
+     */
     public void setFolder(String folder) {
         this.folder = folder;
     }
 
+    /**
+     * <p>Getter for the field <code>dateformat</code>.</p>
+     *
+     * @return a {@link java.lang.String} object.
+     */
     public String getDateformat() {
         return dateformat;
     }
 
+    /**
+     * <p>Setter for the field <code>dateformat</code>.</p>
+     *
+     * @param dateformat a {@link java.lang.String} object.
+     */
     public void setDateformat(String dateformat) {
         this.dateformat = dateformat;
     }

@@ -20,6 +20,7 @@ public class EventController {
 
     /**
      * Create controller, done by Spring
+     *
      * @param memoryEventStorage event storage
      */
     public EventController(MemoryEventStorage memoryEventStorage) {
@@ -28,6 +29,7 @@ public class EventController {
 
     /**
      * Get events in range [from, to)
+     *
      * @param from Inclusive, range start
      * @param to Not inclusive, range end
      * @return Events in range [from, to).
@@ -39,6 +41,7 @@ public class EventController {
 
     /**
      * Get latest generated event
+     *
      * @return last event
      */
     @GetMapping("/lastevent")
@@ -48,6 +51,7 @@ public class EventController {
 
     /**
      * Force the creation of an event, useful for debugging purposes
+     *
      * @return created event
      */
     @GetMapping("/ping")

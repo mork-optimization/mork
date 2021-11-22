@@ -11,6 +11,10 @@ import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ * <p>SaveResultsListener class.</p>
+ *
+ */
 @Service
 public class SaveResultsListener {
 
@@ -18,11 +22,22 @@ public class SaveResultsListener {
     private final List<ResultsSerializer> resultsSerializers;
     private final MemoryEventStorage eventStorage;
 
+    /**
+     * <p>Constructor for SaveResultsListener.</p>
+     *
+     * @param resultsSerializers a {@link java.util.List} object.
+     * @param eventStorage a {@link es.urjc.etsii.grafo.solver.services.events.MemoryEventStorage} object.
+     */
     public SaveResultsListener(List<ResultsSerializer> resultsSerializers, MemoryEventStorage eventStorage) {
         this.resultsSerializers = resultsSerializers;
         this.eventStorage = eventStorage;
     }
 
+    /**
+     * <p>saveResults.</p>
+     *
+     * @param event a {@link es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent} object.
+     */
     @EventListener
     @Async
     public void saveResults(ExperimentEndedEvent event){

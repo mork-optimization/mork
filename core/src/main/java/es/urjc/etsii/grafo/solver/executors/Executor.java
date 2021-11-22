@@ -21,6 +21,7 @@ import java.util.logging.Logger;
 
 /**
  * Processes work units
+ *
  * @param <S> Solution class
  * @param <I> Instance class
  */
@@ -34,6 +35,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Fill common values used by all executors
+     *
      * @param validator solution validator if available
      * @param io IO manager
      */
@@ -50,6 +52,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Execute all the available algorithms for the given instance, repeated N times
+     *
      * @param ins Instance
      * @param repetitions Number of repetitions
      * @param algorithms Algorithm list
@@ -65,6 +68,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Run both user specific validations and our own.
+     *
      * @param solution Solution to check.
      */
     public void validate(S solution){
@@ -74,6 +78,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Execute a single iteration for the given (experiment, intance, algorithm, iterationId)
+     *
      * @param experimentName experiment name
      * @param instance instance
      * @param algorithm current algorithm

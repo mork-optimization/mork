@@ -15,6 +15,7 @@ import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 public interface CoolDownControl<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> {
     /**
      * Set temperature for the next iteration of simulated annealing
+     *
      * @param solution current best solution
      * @param neighborhood neighborhood used in the SA
      * @param currentTemperature current temperature (before cooldown)

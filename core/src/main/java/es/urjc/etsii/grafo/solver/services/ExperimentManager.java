@@ -14,6 +14,7 @@ import java.util.regex.Pattern;
 
 /**
  * Manages and configures all experiments to execute
+ *
  * @param <S> Solution class
  * @param <I> Instance class
  */
@@ -31,6 +32,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
 
     /**
      * Constructor
+     *
      * @param experimentImplementations list of experiments
      * @param solverConfig solver configuration
      * @param solutionBuilders solution builder

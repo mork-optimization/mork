@@ -7,6 +7,7 @@ public @FunctionalInterface
 interface AlphaProvider {
     /**
      * Calculate alpha value to use for a given GRASP construction
+     *
      * @return Next alpha value to use
      */
     double getAlpha();

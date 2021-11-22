@@ -11,6 +11,7 @@ public class InstanceProcessingEndedEvent extends MorkEvent {
     /**
      * Create a new instance processing ended event.
      * The event is triggered by the framework when an instance has been solved by all the algorithms.
+     *
      * @param experimentName Current experiment name
      * @param instanceName Instance name
      * @param executionTime Accumulated execution time in nanoseconds for this instance
@@ -23,6 +24,7 @@ public class InstanceProcessingEndedEvent extends MorkEvent {
 
     /**
      * Get current experiment name
+     *
      * @return experiment name
      */
     public String getExperimentName() {
@@ -31,6 +33,7 @@ public class InstanceProcessingEndedEvent extends MorkEvent {
 
     /**
      * Get execution time in nanos
+     *
      * @return execution time in nanos
      */
     public long getExecutionTime() {
@@ -39,6 +42,7 @@ public class InstanceProcessingEndedEvent extends MorkEvent {
 
     /**
      * Get instance name
+     *
      * @return instance name
      */
     public String getInstanceName() {

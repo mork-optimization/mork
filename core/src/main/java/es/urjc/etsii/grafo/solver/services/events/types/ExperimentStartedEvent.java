@@ -11,6 +11,7 @@ public class ExperimentStartedEvent extends MorkEvent{
 
     /**
      * Create a new ExperimentStartedEvent
+     *
      * @param experimentName experiment name
      * @param instanceNames instance names
      */
@@ -21,6 +22,7 @@ public class ExperimentStartedEvent extends MorkEvent{
 
     /**
      * Get experiment name
+     *
      * @return experiment name
      */
     public String getExperimentName() {
@@ -29,6 +31,7 @@ public class ExperimentStartedEvent extends MorkEvent{
 
     /**
      * Get instance names
+     *
      * @return list of instance names
      */
     public List<String> getInstanceNames() {

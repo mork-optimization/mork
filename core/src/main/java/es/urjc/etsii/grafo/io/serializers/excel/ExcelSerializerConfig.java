@@ -117,6 +117,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Defines how to handle calculated values when serializing to Excel 2007+
+     *
      * @return a value from CalculationMode enum
      */
     public CalculationMode getCalculationMode() {
@@ -127,6 +128,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
      * When calculationMode is AUTO,
      * less than the threshold will use Excel mode,
      * more than threshold will use Java mode (much faster).
+     *
      * @return row threshold to change mode automatically
      */
     public int getRowThreshold() {
@@ -135,6 +137,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Defines how to handle calculated values when serializing to Excel 2007+
+     *
      * @param calculationMode new calculation mode
      */
     public void setCalculationMode(CalculationMode calculationMode) {
@@ -143,6 +146,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * When generating the pivot table, should algorithms be in rows or columns?
+     *
      * @return True: Instances per row, algorithms in columns
      *         False: Algorithms in rows, instances in columns
      */
@@ -152,6 +156,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * When generating the pivot table, should algorithms be in rows or columns?
+     *
      * @param algorithmsInColumns  True: Instances per row, algorithms in columns
      *         False: Algorithms in rows, instances in columns
      */
@@ -161,6 +166,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show best (min or max) score column in pivot table
+     *
      * @return true to show, false to hide
      */
     public boolean isBestScoreEnabled() {
@@ -169,6 +175,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show best (min or max) score column in pivot table
+     *
      * @param bestScoreEnabled  true to show, false to hide
      */
     public void setBestScoreEnabled(boolean bestScoreEnabled) {
@@ -177,6 +184,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show average score column in pivot table
+     *
      * @return true to show, false to hide
      */
     public boolean isAvgScoreEnabled() {
@@ -185,6 +193,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show average score column in pivot table
+     *
      * @param avgScoreEnabled  true to show, false to hide
      */
     public void setAvgScoreEnabled(boolean avgScoreEnabled) {
@@ -193,6 +202,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show standard deviation of solution score column in pivot table
+     *
      * @return true to show, false to hide
      */
     public boolean isStdScoreEnabled() {
@@ -201,6 +211,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show standard deviation of solution score column in pivot table
+     *
      * @param stdScoreEnabled  true to show, false to hide
      */
     public void setStdScoreEnabled(boolean stdScoreEnabled) {
@@ -209,6 +220,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show variance of solution score column in pivot table
+     *
      * @return true to show, false to hide
      */
     public boolean isVarScoreEnabled() {
@@ -217,6 +229,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show variance of solution score column in pivot table
+     *
      * @param varScoreEnabled  true to show, false to hide
      */
     public void setVarScoreEnabled(boolean varScoreEnabled) {
@@ -225,6 +238,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show average time in seconds per iteration in pivot table
+     *
      * @return true to show, false to hide
      */
     public boolean isAvgTimeEnabled() {
@@ -233,6 +247,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show average time in seconds per iteration in pivot table
+     *
      * @param avgTimeEnabled  true to show, false to hide
      */
     public void setAvgTimeEnabled(boolean avgTimeEnabled) {
@@ -241,6 +256,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show total time in seconds for a given (algorithm, instance) in pivot table.
+     *
      * @return true to show, false to hide
      */
     public boolean isTotalTimeEnabled() {
@@ -249,6 +265,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show total time in seconds for a given (algorithm, instance) in pivot table.
+     *
      * @param totalTimeEnabled true to show, false to hide
      */
     public void setTotalTimeEnabled(boolean totalTimeEnabled) {
@@ -257,6 +274,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show average time to the best solution in seconds in pivot table.
+     *
      * @return true to show, false to hide
      */
     public boolean isAvgTTBEnabled() {
@@ -265,6 +283,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show average time to the best solution in seconds in pivot table.
+     *
      * @param avgTTBEnabled true to show, false to hide
      */
     public void setAvgTTBEnabled(boolean avgTTBEnabled) {
@@ -273,6 +292,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show total time to the best solution in seconds in pivot table.
+     *
      * @return true to show, false to hide
      */
     public boolean isTotalTTBEnabled() {
@@ -281,6 +301,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show total time to the best solution in seconds in pivot table.
+     *
      * @param totalTTBEnabled true to show, false to hide
      */
     public void setTotalTTBEnabled(boolean totalTTBEnabled) {
@@ -289,6 +310,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show number of times a given algorithm reaches the best known solution.
+     *
      * @return true to show, false to hide
      */
     public boolean isSumBestKnownEnabled() {
@@ -297,6 +319,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show 1 if a given algorithm reaches the best solution for an instance, 0 otherwise.
+     *
      * @param sumBestKnownEnabled true to show, false to hide
      */
     public void setSumBestKnownEnabled(boolean sumBestKnownEnabled) {
@@ -305,6 +328,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show 1 if a given algorithm reaches the best solution for an instance, 0 otherwise.
+     *
      * @return true to show, false to hide
      */
     public boolean isHasBestKnownEnabled() {
@@ -312,6 +336,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
     }
 
     /**
+     * <p>Setter for the field <code>hasBestKnownEnabled</code>.</p>
      *
      * @param hasBestKnownEnabled true to show, false to hide
      */
@@ -321,6 +346,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show average percentage deviation to best known solution in pivot table.
+     *
      * @return true to show, false to hide
      */
     public boolean isAvgDevToBestKnownEnabled() {
@@ -329,6 +355,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show average percentage deviation to best known solution in pivot table.
+     *
      * @param avgDevToBestKnownEnabled true to show, false to hide
      */
     public void setAvgDevToBestKnownEnabled(boolean avgDevToBestKnownEnabled) {
@@ -337,6 +364,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show minimum percentage deviation to best known solution in pivot table.
+     *
      * @return true to show, false to hide
      */
     public boolean isMinDevToBestKnownEnabled() {
@@ -345,6 +373,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show minimum percentage deviation to best known solution in pivot table.
+     *
      * @param minDevToBestKnownEnabled true to show, false to hide
      */
     public void setMinDevToBestKnownEnabled(boolean minDevToBestKnownEnabled) {
@@ -353,6 +382,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show generated grand total for rows in pivot table
+     *
      * @return true to show, false to hide
      */
     public boolean isRowGrandTotal() {
@@ -361,6 +391,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show generated grand total for rows in pivot table
+     *
      * @param rowGrandTotal true to show, false to hide
      */
     public void setRowGrandTotal(boolean rowGrandTotal) {
@@ -369,6 +400,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show generated grand total for columns in pivot table
+     *
      * @return true to show, false to hide
      */
     public boolean isColumnGrandTotal() {
@@ -377,6 +409,7 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * Show generated grand total for columns in pivot table
+     *
      * @param columnGrandTotal true to show, false to hide
      */
     public void setColumnGrandTotal(boolean columnGrandTotal) {

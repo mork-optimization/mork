@@ -17,6 +17,7 @@ public class CollectionUtil {
 
     /**
      * Reverse a fragment in a list, from start to end (inclusive)
+     *
      * @param list  list to reverse
      * @param start start index, inclusive
      * @param end   end index, inclusive
@@ -36,6 +37,7 @@ public class CollectionUtil {
 
     /**
      * Reverse a list
+     *
      * @param list list to reverse
      */
     public static void reverse(List<Integer> list) {
@@ -44,6 +46,7 @@ public class CollectionUtil {
 
     /**
      * Picks a random element from the given set. Each element has the same probability of being chosen.
+     *
      * @param set Set where random element will be chosen from
      * @param <T> Set type
      * @return Chosen element
@@ -61,6 +64,7 @@ public class CollectionUtil {
 
     /**
      * Picks a random element from the given list. Each element has the same probability of being chosen.
+     *
      * @param list List where random element will be chosen from
      * @param <T> List type
      * @return Chosen element
@@ -72,6 +76,7 @@ public class CollectionUtil {
 
     /**
      * Return a primitive array with all the numbers of the given collection.
+     *
      * @param c Input collection
      * @return Primitive array
      */
@@ -88,6 +93,7 @@ public class CollectionUtil {
 
     /**
      * Return a primitive array with all the numbers of the given collection.
+     *
      * @param c Input collection
      * @return Primitive array
      */
@@ -104,6 +110,7 @@ public class CollectionUtil {
 
     /**
      * Return a primitive array with all the numbers of the given collection.
+     *
      * @param c Input collection
      * @return Primitive array
      */
@@ -128,7 +135,7 @@ public class CollectionUtil {
      * @param list The list in which to swap elements.
      * @param i the index of one element to be swapped.
      * @param j the index of the other element to be swapped.
-     * @throws IndexOutOfBoundsException if either {@code i} or {@code j}
+     * @throws java.lang.IndexOutOfBoundsException if either {@code i} or {@code j}
      *         is out of range (i &lt; 0 || i &gt;= list.size()
      *         || j &lt; 0 || j &gt;= list.size()).
      * @since 1.4
@@ -154,14 +161,14 @@ public class CollectionUtil {
      * position, inclusive.<p>
      *
      * This method runs in linear time.  If the specified list does not
-     * implement the {@link RandomAccess} interface and is large, this
+     * implement the {@link java.util.RandomAccess} interface and is large, this
      * implementation dumps the specified list into an array before shuffling
      * it, and dumps the shuffled array back into the list.  This avoids the
      * quadratic behavior that would result from shuffling a "sequential
      * access" list in place.
      *
      * @param  list the list to be shuffled.
-     * @throws UnsupportedOperationException if the specified list or its
+     * @throws java.lang.UnsupportedOperationException if the specified list or its
      *         list-iterator does not support the {@code set} operation.
      */
     @SuppressWarnings({"rawtypes", "unchecked"})

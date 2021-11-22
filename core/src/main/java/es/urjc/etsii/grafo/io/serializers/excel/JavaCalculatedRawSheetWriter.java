@@ -18,6 +18,7 @@ import java.util.Map;
  * the raw sheet (%Dev to best, isBest value, etc).
  */
 public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
+    /** {@inheritDoc} */
     @Override
     public AreaReference fillRawSheet(XSSFSheet rawSheet, boolean maximizing, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders) {
         // Best values per instance

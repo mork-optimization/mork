@@ -12,6 +12,7 @@ import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 public interface InitialTemperatureCalculator<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> {
     /**
      * Determines initial simulated annealing temperature
+     *
      * @param solution Solution being solved
      * @param neighborhood Current neighborhood
      * @return temperature as a double

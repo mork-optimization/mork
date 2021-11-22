@@ -22,6 +22,7 @@ public class LocalSearchFirstImprovement<M extends Move<S, I>, S extends Solutio
 
     /**
      * Build a new local search
+     *
      * @param comparator comparator to determine between two solutions which one is better
      * @param ps neighborhood that generates the movements
      */
@@ -55,10 +56,9 @@ public class LocalSearchFirstImprovement<M extends Move<S, I>, S extends Solutio
     }
 
     /**
-     * Get next move to execute.
+     * {@inheritDoc}
      *
-     * @param s Solution
-     * @return Proposed move
+     * Get next move to execute.
      */
     @Override
     public Optional<M> getMove(S s) {

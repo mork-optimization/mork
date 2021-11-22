@@ -15,6 +15,7 @@ import java.util.logging.Logger;
 
 /**
  * Processes work units sequentially
+ *
  * @param <S> Solution class
  * @param <I> Instance class
  */
@@ -25,6 +26,7 @@ public class SequentialExecutor<S extends Solution<S,I>, I extends Instance> ext
 
     /**
      * Create new sequential executor
+     *
      * @param validator solution validator if present
      * @param io IO manager
      */
@@ -32,6 +34,7 @@ public class SequentialExecutor<S extends Solution<S,I>, I extends Instance> ext
         super(validator, io);
     }
 
+    /** {@inheritDoc} */
     @Override
     public void execute(String experimentname, I ins, int repetitions, List<Algorithm<S,I>> list, ExceptionHandler<S,I> exceptionHandler) {
 
@@ -43,6 +46,7 @@ public class SequentialExecutor<S extends Solution<S,I>, I extends Instance> ext
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void shutdown() {
         logger.info("Shutdown executor");

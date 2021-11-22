@@ -10,6 +10,7 @@ public class ExecutionStartedEvent extends MorkEvent{
 
     /**
      * Create a new ExecutionStartedEvent, triggered by the framework when the solver is ready to start.
+     *
      * @param experimentNames experiment names
      */
     public ExecutionStartedEvent(List<String> experimentNames) {
@@ -18,6 +19,7 @@ public class ExecutionStartedEvent extends MorkEvent{
 
     /**
      * List of all experiments to execute
+     *
      * @return names of the experiments to execute as a list
      */
     public List<String> getExperimentNames() {

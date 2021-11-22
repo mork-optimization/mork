@@ -17,6 +17,7 @@ import static org.apache.poi.ss.util.CellReference.convertNumToColString;
  */
 public class ExcelCalculatedRawSheetWriter extends RawSheetWriter {
     
+    /** {@inheritDoc} */
     @Override
     public AreaReference fillRawSheet(XSSFSheet rawSheet, boolean maximizing, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders) {
         // Best values per instance

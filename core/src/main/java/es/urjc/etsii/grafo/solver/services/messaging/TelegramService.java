@@ -31,7 +31,9 @@ public class TelegramService extends AbstractEventListener {
     /**
      * Creates a TelegramLongPollingCommandBot using default options
      * Use ICommandRegistry's methods on this bot to register commands
-     **/
+     *
+     * @param telegramConfig a {@link es.urjc.etsii.grafo.solver.services.messaging.TelegramConfig} object.
+     */
     public TelegramService(TelegramConfig telegramConfig) {
         this.telegramConfig = telegramConfig;
         if (telegramConfig.isEnabled()) {
@@ -62,6 +64,7 @@ public class TelegramService extends AbstractEventListener {
 
     /**
      * Check if the telegram bot is working
+     *
      * @return true if the bot is working, false in other case
      */
     public boolean ready() {

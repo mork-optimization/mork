@@ -15,6 +15,7 @@ import java.util.logging.Logger;
 /**
  * API endpoints related to experiment and run execution.
  * Currently, used for IRACE integration using the middleware.sh
+ *
  * @param <S> Solution class
  * @param <I> Instance class
  */
@@ -28,6 +29,7 @@ public class ExecutionController<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Create a new execution controller
+     *
      * @param orquestrator Irace orquestrator
      */
     public ExecutionController(IraceOrchestrator<S, I> orquestrator) {
@@ -37,6 +39,7 @@ public class ExecutionController<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Execute and return the results for the given IRACE configuration
+     *
      * @param request integration key and run configuration
      * @return run result
      */

@@ -112,9 +112,11 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
      */
     public abstract String toString();
 
+    /** {@inheritDoc} */
     @Override
     public abstract boolean equals(Object o);
 
+    /** {@inheritDoc} */
     @Override
     public abstract int hashCode();
 

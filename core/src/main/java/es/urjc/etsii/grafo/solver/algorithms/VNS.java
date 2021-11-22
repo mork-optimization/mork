@@ -166,6 +166,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
         log.fine(String.format("%s: \t%s", phase, s));
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         return "VNS{" +
@@ -176,6 +177,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
                 '}';
     }
 
+    /** {@inheritDoc} */
     @Override
     public String getShortName() {
         return this.algorithmName;

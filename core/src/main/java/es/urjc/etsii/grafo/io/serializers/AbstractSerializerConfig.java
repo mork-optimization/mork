@@ -25,6 +25,7 @@ public abstract class AbstractSerializerConfig {
     /**
      * Is the current serializer enabled?
      * If the serializer is not enabled it should not do any operation.
+     *
      * @return true if enabled, false otherwise
      */
     public boolean isEnabled() {
@@ -33,6 +34,7 @@ public abstract class AbstractSerializerConfig {
 
     /**
      * Change serializer enabled status
+     *
      * @param enabled true to enable, false to disable
      */
     public void setEnabled(boolean enabled) {
@@ -41,6 +43,7 @@ public abstract class AbstractSerializerConfig {
 
     /**
      * Get folder where this serializer should write its results
+     *
      * @return Path to folder as string
      */
     public String getFolder() {
@@ -49,6 +52,7 @@ public abstract class AbstractSerializerConfig {
 
     /**
      * Set the folder where the serializer should write
+     *
      * @param folder Path to folder as string
      */
     public void setFolder(String folder) {
@@ -57,6 +61,7 @@ public abstract class AbstractSerializerConfig {
 
     /**
      * Get filename format. The serializer will use this pattern to decide the filename.
+     *
      * @return filename format as a string
      */
     public String getFormat() {
@@ -65,6 +70,7 @@ public abstract class AbstractSerializerConfig {
 
     /**
      * Change filename format
+     *
      * @param format filename format as a string
      */
     public void setFormat(String format) {

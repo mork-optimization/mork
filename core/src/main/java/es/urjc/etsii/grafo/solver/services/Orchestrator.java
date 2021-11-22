@@ -18,6 +18,10 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ * <p>Orchestrator class.</p>
+ *
+ */
 @Service
 @ConditionalOnExpression(value = "!${irace.enabled}")
 public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrchestrator {
@@ -31,6 +35,17 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
     private final Executor<S, I> executor;
     private final SolverConfig solverConfig;
 
+    /**
+     * <p>Constructor for Orchestrator.</p>
+     *
+     * @param solverConfig a {@link es.urjc.etsii.grafo.solver.SolverConfig} object.
+     * @param io a {@link es.urjc.etsii.grafo.solver.services.IOManager} object.
+     * @param experimentManager a {@link es.urjc.etsii.grafo.solver.services.ExperimentManager} object.
+     * @param exceptionHandlers a {@link java.util.List} object.
+     * @param executor a {@link es.urjc.etsii.grafo.solver.executors.Executor} object.
+     * @param solutionBuilders a {@link java.util.List} object.
+     * @param referenceResultProvider a {@link java.util.List} object.
+     */
     public Orchestrator(
             SolverConfig solverConfig,
             IOManager<S,I> io,
@@ -58,6 +73,7 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public void run(String... args) {
         runBenchmark();

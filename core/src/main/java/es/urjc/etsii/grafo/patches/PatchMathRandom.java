@@ -23,6 +23,7 @@ public class PatchMathRandom {
 
     /**
      * Initialize patch with config
+     *
      * @param config configuration
      */
     public PatchMathRandom(BlockConfig config){

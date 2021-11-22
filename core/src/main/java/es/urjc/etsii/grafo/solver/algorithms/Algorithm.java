@@ -11,6 +11,7 @@ import java.util.Objects;
 
 /**
  * Base algorithm class, all algorithms should extend this class or any of its subclasses.
+ *
  * @param <S> Solution class
  * @param <I> Instance class
  */
@@ -20,6 +21,7 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Current algorithm short name, must be unique per execution. Truncated to 180 characters
+     *
      * @return Should include parameter configuration if same algorithm is used with different parameters
      */
     public String getShortName(){
@@ -29,6 +31,7 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Runs the algorithm
+     *
      * @param instance Instance to solve
      * @return Built solution
      */
@@ -36,6 +39,7 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Create a new solution for the given instance. Solution is empty by default.
+     *
      * @param instance Instance
      * @return Empty solution, by default created calling the constructor Solution(Instance i)
      */
@@ -45,6 +49,7 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Get solution builder
+     *
      * @return solution builder
      */
     protected SolutionBuilder<S, I> getBuilder() {
@@ -61,6 +66,7 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
      *         this.algorithm.setBuilder(builder);
      *     }
      * </pre>
+     *
      * @param builder solution builder
      */
     public void setBuilder(SolutionBuilder<S, I> builder) {

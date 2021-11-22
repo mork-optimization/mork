@@ -13,6 +13,7 @@ import java.util.logging.Logger;
 
 /**
  * Shake a solution by executing a sequence of random moves
+ *
  * @param <S> Solution class
  * @param <I> Instance class
  */
@@ -29,6 +30,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
 
     /**
      * Create a new RandomMoveShake
+     *
      * @param ratio number of moves to execute = ratio * K
      * @param neighborhoods neighborhoods to use
      */
@@ -43,6 +45,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
 
     /**
      * Create a new RandomMoveShake. Equivalent to RandomMoveShake(1, neighborhoods)
+     *
      * @param neighborhoods neighborhoods to use
      */
     @SafeVarargs
@@ -51,9 +54,9 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Shake the solution applying random movements from the configured neighborhood
-     * @param s Solution to shake
-     * @param k Number of movements to apply, maxK is not used in this implementation
      */
     public S shake(S s, int k) {
         var random = RandomManager.getRandom();
@@ -82,6 +85,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
         return s;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "{" +
@@ -92,6 +96,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
     /**
      * Repairs a solution after applying a set of random movements
      * If the solution does not need to be repaired, this method should be empty
+     *
      * @param s Solution to repair
      */
     protected void repairSolution(S s){

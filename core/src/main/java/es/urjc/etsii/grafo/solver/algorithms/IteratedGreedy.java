@@ -69,6 +69,9 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
     private int stopIfNotImprovedIn;
 
 
+    /**
+     * <p>Constructor for IteratedGreedy.</p>
+     */
     protected IteratedGreedy() {
     }
 
@@ -126,9 +129,9 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
 
 
     /**
+     * {@inheritDoc}
+     *
      * Iterated greedy algorithm procedure
-     * @param instance Instance to solve
-     * @return the best solution found
      */
     @Override
     public S algorithm(I instance) {
@@ -173,6 +176,7 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
         return solution;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         return "IteratedGreedy{" +

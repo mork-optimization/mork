@@ -17,11 +17,9 @@ public abstract class MoveComparator<M extends Move<S, I>, S extends Solution<S,
 
 
     /**
-     * Compares its two arguments for order. Particularly, its compare two moves through {@link #getStrictBestMove(Move, Move)} method, that must be defined by the user.
+     * {@inheritDoc}
      *
-     * @param m1 the first move to be compared.
-     * @param m2 the second object to be compared.
-     * @return a negative integer, zero, or a positive integer as the move m1 is better than, equal to, or worst than the second respectively.
+     * Compares its two arguments for order. Particularly, its compare two moves through {@link #getStrictBestMove(Move, Move)} method, that must be defined by the user.
      */
     @Override
     public int compare(M m1, M m2) {
@@ -93,6 +91,7 @@ public abstract class MoveComparator<M extends Move<S, I>, S extends Solution<S,
         return true;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         return this.getClass().getSimpleName();

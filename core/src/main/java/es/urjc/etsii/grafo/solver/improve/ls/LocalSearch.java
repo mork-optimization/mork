@@ -32,6 +32,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
 
     /**
      * Build a new local search
+     *
      * @param comparator comparator to determine between two solutions which one is better
      * @param lsName user defined name for the local search procedure
      * @param ps neighborhood that generates the movements
@@ -45,6 +46,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
 
     /**
      * Build a new local search
+     *
      * @param comparator comparator to determine between two solutions which one is better
      * @param ps neighborhood that generates the movements
      */
@@ -77,11 +79,10 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
     }
 
     /**
+     * {@inheritDoc}
+     *
      * This procedure check if there are valid moves to neighbors solutions.
      * In that case, the move is executed. Otherwise, the procedure ends.
-     *
-     * @param s Solution to improve
-     * @return true if a move could be executed, false otherwise.
      */
     @Override
     public boolean iteration(S s) {
@@ -98,6 +99,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
     }
 
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         if (this.lsName.isEmpty()) {

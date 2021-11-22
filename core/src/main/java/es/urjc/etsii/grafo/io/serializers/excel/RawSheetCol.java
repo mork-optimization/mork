@@ -51,6 +51,7 @@ public enum RawSheetCol {
      */
     BEST_KNOWN_FOR_INSTANCE(8, "Best value known", RawSheetWriter.CType.ARRAY_FORMULA);
 
+    BEST_KNOWN_FOR_INSTANCE(8, "Best value known", RawSheetWriter.CType.ARRAY_FORMULA);
     private final int index;
     private final String name;
     private final RawSheetWriter.CType type;
@@ -69,6 +70,7 @@ public enum RawSheetCol {
 
     /**
      * Get column index for ordering
+     *
      * @return column index as int
      */
     public int getIndex() {
@@ -77,6 +79,7 @@ public enum RawSheetCol {
 
     /**
      * Get column index as Excel letters
+     *
      * @return column index as string (i.e AB)
      */
     public String getExcelColIndex(){
@@ -85,6 +88,7 @@ public enum RawSheetCol {
 
     /**
      * Get column name
+     *
      * @return column name
      */
     public String getName() {
@@ -93,6 +97,7 @@ public enum RawSheetCol {
 
     /**
      * Get column type hint
+     *
      * @return column type hint
      */
     public RawSheetWriter.CType getCType(){
@@ -101,6 +106,7 @@ public enum RawSheetCol {
 
     /**
      * Get enum value for a given column index
+     *
      * @param index index to search
      * @return enum value for given index
      */

@@ -14,6 +14,7 @@ public class EventWebserverConfig {
 
     /**
      * Stop webserver when all experiments finish executing?
+     *
      * @return true to stop after all experiments end, false to keep backend running
      */
     public boolean isStopOnExecutionEnd() {
@@ -22,6 +23,7 @@ public class EventWebserverConfig {
 
     /**
      * Stop webserver when all experiments finish executing?
+     *
      * @param stopOnExecutionEnd  true to stop after all experiments end, false to keep backend running
      */
     public void setStopOnExecutionEnd(boolean stopOnExecutionEnd) {

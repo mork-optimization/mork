@@ -20,8 +20,9 @@ public class EventAsyncConfigurer implements AsyncConfigurer {
     private final ExecutorService asyncExecutor = Executors.newSingleThreadExecutor();
 
     /**
+     * {@inheritDoc}
+     *
      * Get async executor
-     * @return Executor
      */
     @Override
     public Executor getAsyncExecutor() {
@@ -37,8 +38,9 @@ public class EventAsyncConfigurer implements AsyncConfigurer {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Defines the behaviour when there is an unhandled exception inside the async executor.
-     * @return AsyncUncaughtExceptionHandler
      */
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {

@@ -9,6 +9,7 @@ public class ExperimentEndedEvent extends MorkEvent {
 
     /**
      * Create a new experiment ended event
+     *
      * @param experimentName current experiment name
      * @param executionTime execution time in nanos
      */
@@ -19,6 +20,7 @@ public class ExperimentEndedEvent extends MorkEvent {
 
     /**
      * Experiment name
+     *
      * @return experiment name
      */
     public String getExperimentName() {
@@ -27,6 +29,7 @@ public class ExperimentEndedEvent extends MorkEvent {
 
     /**
      * Execution time in nanoseconds
+     *
      * @return execution time in nanoseconds
      */
     public long getExecutionTime() {

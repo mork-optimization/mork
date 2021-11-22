@@ -12,10 +12,9 @@ import java.io.PrintStream;
 public class BannerProvider implements Banner {
 
     /**
+     * {@inheritDoc}
+     *
      * Get aplication banner
-     * @param environment Current environment
-     * @param sourceClass Current class
-     * @param out where to print the banner
      */
     @Override
     public void printBanner(Environment environment, Class<?> sourceClass, PrintStream out) {

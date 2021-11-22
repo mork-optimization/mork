@@ -13,6 +13,7 @@ public abstract class AbstractOrchestrator implements CommandLineRunner {
     /**
      * Given a list of implementations for a given class, which one should be used if we can only use one?
      * If the user has implemented a component, always prefer the user component to default or mork ones.
+     *
      * @param list List of implementations for a given base class
      * @param defaultClass MORK implementation, or a default implementation
      * @param <T> Class type

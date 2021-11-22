@@ -19,6 +19,7 @@ public class DefaultEventListener extends AbstractEventListener {
 
     /**
      * Create DefaultEventListener
+     *
      * @param simpMessagingTemplate websocket messaging template
      * @param memoryEventStorage memory event storage
      */
@@ -29,6 +30,7 @@ public class DefaultEventListener extends AbstractEventListener {
 
     /**
      * Store event in memory and send to websocket
+     *
      * @param morkEvent Mork event
      */
     @MorkEventListener

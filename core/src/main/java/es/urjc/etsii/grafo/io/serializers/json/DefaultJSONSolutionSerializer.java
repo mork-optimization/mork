@@ -13,6 +13,7 @@ import java.io.IOException;
 
 /**
  * This class converts solution objects into their JSON equivalent by mapping the solution object variable names and value to JSON properties
+ *
  * @param <S> type of the problem solution
  * @param <I> type of the problem instance
  */
@@ -38,9 +39,9 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S,I>, I extends In
     }
 
     /**
+     * {@inheritDoc}
+     *
      * JSON export method. Exports the given solution to the provided file in JSON format.
-     * @param writer BufferedWriter
-     * @param s Solution to export
      */
     @Override
     public void export(BufferedWriter writer, S s) {
@@ -48,9 +49,9 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S,I>, I extends In
     }
 
     /**
+     * {@inheritDoc}
+     *
      * JSON export method. Exports the given solution to the provided file in JSON format.
-     * @param f Destination file
-     * @param s Solution to export
      */
     @Override
     public void export(File f, S s) {

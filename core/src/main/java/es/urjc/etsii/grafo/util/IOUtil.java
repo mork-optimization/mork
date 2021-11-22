@@ -19,7 +19,8 @@ public class IOUtil {
 
     /**
      * Create folder if not exists
-     * @param path
+     *
+     * @param path a {@link java.lang.String} object.
      */
     public static void createFolder(String path) {
         File dir = new File(path);
@@ -29,6 +30,7 @@ public class IOUtil {
 
     /**
      * Verify that the given path exists
+     *
      * @param path path to check
      */
     public static void checkExists(String path){
@@ -40,6 +42,7 @@ public class IOUtil {
 
     /**
      * Check that the given path is a folder
+     *
      * @param path path to check
      */
     public static void checkIsFolder(String path){
@@ -51,6 +54,7 @@ public class IOUtil {
 
     /**
      * Check if the given class is in a JAR file
+     *
      * @param c class to check
      * @return true if inside a JAR, false otherwise
      */
@@ -62,10 +66,11 @@ public class IOUtil {
 
     /**
      * Get input stream for the given path
+     *
      * @param s path to resource
      * @param isJar true if the resource is inside a JAR file, false otherwise
      * @return InputStream to the resource given as a parameter
-     * @throws IOException if anything goes wrong
+     * @throws java.io.IOException if anything goes wrong
      */
     public static InputStream getInputStreamFor(String s, boolean isJar) throws IOException {
         if(isJar){
@@ -78,6 +83,7 @@ public class IOUtil {
 
     /**
      * Mark a file as executable
+     *
      * @param s path to file as string
      */
     public static void markAsExecutable(String s){
@@ -90,10 +96,11 @@ public class IOUtil {
 
     /**
      * Replace substitutions in the given input stream
+     *
      * @param origin input stream where the data is read from
      * @param target where should data be written to
      * @param substitutions list of substitutions to do while copying the adta
-     * @throws IOException if anything goes wrong
+     * @throws java.io.IOException if anything goes wrong
      */
     public static void copyWithSubstitutions(InputStream origin, Path target, Map<String, String> substitutions) throws IOException {
         String content = new String(origin.readAllBytes(), StandardCharsets.UTF_8);

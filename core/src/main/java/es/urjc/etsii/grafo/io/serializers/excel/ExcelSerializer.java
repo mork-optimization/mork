@@ -51,6 +51,7 @@ public class ExcelSerializer extends ResultsSerializer {
 
     /**
      * Create an Excel serializer
+     *
      * @param serializerConfig excel serializer configuration
      * @param solverConfig solver configuration
      * @param referenceResultProviders reference result providers if available
@@ -72,6 +73,7 @@ public class ExcelSerializer extends ResultsSerializer {
         this.eventStorage = eventStorage;
     }
 
+    /** {@inheritDoc} */
     public void _serializeResults(List<? extends SolutionGeneratedEvent<?, ?>> results, Path p) {
         log.info("Exporting result data to XLSX...");
 

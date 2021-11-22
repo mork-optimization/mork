@@ -10,6 +10,7 @@ public abstract class Instance implements Comparable<Instance>{
 
     /**
      * Creates a new instance
+     *
      * @param name instance name
      */
     protected Instance(String name) {
@@ -17,10 +18,10 @@ public abstract class Instance implements Comparable<Instance>{
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Sort order will determine in which order the instances will be solved
      * Sort defaults to instance name
-     * @param o The instance to be compared
-     * @return A negative integer, zero, or a positive integer as this object is less than, equal to, or greater than the specified object.
      */
     @Override
     public int compareTo(Instance o) {
@@ -29,6 +30,7 @@ public abstract class Instance implements Comparable<Instance>{
 
     /**
      * Returns the Instance name
+     *
      * @return instance name
      */
     public String getName() {
