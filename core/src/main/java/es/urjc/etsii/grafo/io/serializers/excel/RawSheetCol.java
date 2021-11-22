@@ -51,7 +51,6 @@ public enum RawSheetCol {
      */
     BEST_KNOWN_FOR_INSTANCE(8, "Best value known", RawSheetWriter.CType.ARRAY_FORMULA);
 
-    BEST_KNOWN_FOR_INSTANCE(8, "Best value known", RawSheetWriter.CType.ARRAY_FORMULA);
     private final int index;
     private final String name;
     private final RawSheetWriter.CType type;

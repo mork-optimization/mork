@@ -65,7 +65,6 @@ public enum RandomType {
      */
     XOSHIRO256PP("Xoshiro256PlusPlus");
 
-    XOSHIRO256PP("Xoshiro256PlusPlus");
     private final String javaName;
 
     /**
