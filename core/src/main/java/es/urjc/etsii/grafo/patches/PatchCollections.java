@@ -6,6 +6,10 @@ import javax.annotation.PostConstruct;
 import java.util.Collections;
 import java.util.logging.Logger;
 
+/**
+ * Block calls to Collections.shuffle() as it uses an internal random that breaks experiment reproducibility
+ * Use CollectionUtil.shuffle() instead
+ */
 @Service
 public class PatchCollections {
 
@@ -13,10 +17,17 @@ public class PatchCollections {
 
     private final boolean isEnabled;
 
+    /**
+     * Initialize patch with config
+     * @param config configuration
+     */
     public PatchCollections(BlockConfig config) {
         this.isEnabled = config.isBlockCollectionsShuffle();
     }
 
+    /**
+     * Execute patch
+     */
     @PostConstruct
     public void patch(){
         if(!isEnabled){

@@ -10,6 +10,9 @@ import java.util.Map;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Runs R code outside the JVM using the R executable. Only works if R is installed and available in the path.
+ */
 @Service
 @ConditionalOnExpression("${irace.shell}")
 public class ShellRLangRunner extends RLangRunner {

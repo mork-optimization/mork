@@ -1,7 +1,10 @@
 package es.urjc.etsii.grafo.util;
 
-public class GraphUtil {
 
+/**
+ * Util methods to manipulate graphs
+ */
+public class GraphUtil {
 
     /**
      * Returns the maximum number of edges for a complete graph with n nodes
@@ -10,6 +13,6 @@ public class GraphUtil {
      */
     public static long maxNEdges(int n){
         // https://en.wikipedia.org/wiki/Complete_graph#Properties
-        return (n - 1) * n / 2;
+        return (long) (n - 1) * n / 2;
     }
 }

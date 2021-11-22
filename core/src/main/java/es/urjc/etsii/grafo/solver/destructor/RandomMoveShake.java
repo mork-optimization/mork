@@ -11,13 +11,27 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.logging.Logger;
 
+/**
+ * Shake a solution by executing a sequence of random moves
+ * @param <S> Solution class
+ * @param <I> Instance class
+ */
 public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extends Shake<S,I> {
 
     private static final Logger log = Logger.getLogger(RandomMoveShake.class.getName());
 
+    /**
+     * Set of randomizable neighborhoods available for the shake.
+     * A move will be randomly selected from any neighborhood
+     */
     RandomizableNeighborhood<?,S,I>[] neighborhoods;
     private int ratio;
 
+    /**
+     * Create a new RandomMoveShake
+     * @param ratio number of moves to execute = ratio * K
+     * @param neighborhoods neighborhoods to use
+     */
     @SafeVarargs
     public RandomMoveShake(int ratio, RandomizableNeighborhood<?,S,I>... neighborhoods) {
         this.ratio = ratio;
@@ -27,6 +41,10 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
         this.neighborhoods = neighborhoods;
     }
 
+    /**
+     * Create a new RandomMoveShake. Equivalent to RandomMoveShake(1, neighborhoods)
+     * @param neighborhoods neighborhoods to use
+     */
     @SafeVarargs
     public RandomMoveShake(RandomizableNeighborhood<?,S,I>... neighborhoods) {
         this(1, neighborhoods);

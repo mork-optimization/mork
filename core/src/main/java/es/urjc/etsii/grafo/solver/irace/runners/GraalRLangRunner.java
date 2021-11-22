@@ -10,6 +10,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ * Runs R code inside the JVM. Only works if using GraalVM, fails otherwise.
+ */
 @Service
 @ConditionalOnExpression("!${irace.shell}")
 public class GraalRLangRunner extends RLangRunner {

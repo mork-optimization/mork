@@ -10,6 +10,10 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Modifier;
 import java.util.logging.Logger;
 
+/**
+ * Block calls to Math.random() as it uses an internal random that breaks experiment reproducibility
+ * Use RandomManager.getRandom().nextDouble() instead.
+ */
 @Service
 public class PatchMathRandom {
 
@@ -17,10 +21,17 @@ public class PatchMathRandom {
 
     private final boolean isEnabled;
 
+    /**
+     * Initialize patch with config
+     * @param config configuration
+     */
     public PatchMathRandom(BlockConfig config){
         this.isEnabled = config.isBlockMathRandom();
     }
 
+    /**
+     * Execute patch
+     */
     @PostConstruct
     public void patch(){
         if(!isEnabled){

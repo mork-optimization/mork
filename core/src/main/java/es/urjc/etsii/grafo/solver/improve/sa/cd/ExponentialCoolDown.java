@@ -15,6 +15,10 @@ public class ExponentialCoolDown<M extends Move<S,I>, S extends Solution<S,I>, I
 
     private final double ratio;
 
+    /**
+     * Create a new ExponentialCoolDown with the provided cooldown ratio. NewTemperature = OldTemperature * ratio
+     * @param ratio cooldown ratio.
+     */
     public ExponentialCoolDown(double ratio){
         this.ratio = ratio;
     }

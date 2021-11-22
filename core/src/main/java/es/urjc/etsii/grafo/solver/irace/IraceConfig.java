@@ -14,21 +14,33 @@ public class IraceConfig {
     private boolean shell;
 
     /**
-     *
-     * @return
+     * Is irace enabled?
+     * @return true if irace is enabled, false otherwise
      */
     public boolean isEnabled() {
         return enabled;
     }
 
+    /**
+     * Is irace enabled?
+     * @param enabled true to enable irace, false to disable
+     */
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
 
+    /**
+     * Execute Irace in shell or using GraalVM?
+     * @return true if irace should be executed using ShellRLangRunner, false to use GraalRLangRunner
+     */
     public boolean isShell() {
         return shell;
     }
 
+    /**
+     * Execute Irace in shell or using GraalVM?
+     * @param shell true to execute irace using ShellRLangRunner, false to use GraalRLangRunner
+     */
     public void setShell(boolean shell) {
         this.shell = shell;
     }

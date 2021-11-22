@@ -139,8 +139,19 @@ public abstract class RawSheetWriter {
      * an array formula or should be interpreted as a literal
      */
     protected enum CType {
+        /**
+         * Serialize as value
+         */
         VALUE,
+
+        /**
+         * Serialize as a normal formula
+         */
         FORMULA,
+
+        /**
+         * Serialize as an array formula
+         */
         ARRAY_FORMULA
     }
 }
