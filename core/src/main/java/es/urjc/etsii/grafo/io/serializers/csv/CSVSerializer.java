@@ -11,7 +11,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 /**
- * CSV serializer
+ * CSV serializer. By changing the separator in the configuration from ',' to '\t', can serialize to other formats such as TSV.
  */
 public class CSVSerializer extends ResultsSerializer {
 
@@ -19,6 +19,10 @@ public class CSVSerializer extends ResultsSerializer {
 
     private final CsvMapper csvMapper;
 
+    /**
+     * Create a new CSV serializer with a given configuration.
+     * @param config CSV Serializer configuration
+     */
     public CSVSerializer(CSVSerializerConfig config) {
         super(config);
         this.config = config;

@@ -18,10 +18,18 @@ public class CSVSerializerConfig extends AbstractSerializerConfig {
      */
     private char separator;
 
+    /**
+     * Get configured column separator. In TSV, separator is '\t', in CSV ','.
+     * @return column separator
+     */
     public char getSeparator() {
         return separator;
     }
 
+    /**
+     * Change column separatr
+     * @param separator Examples: in TSV, separator is '\t', in CSV ','. Other separators can be used.
+     */
     public void setSeparator(char separator) {
         this.separator = separator;
     }

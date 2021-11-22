@@ -12,6 +12,11 @@ import java.util.List;
 import java.util.Map;
 
 
+/**
+ * Serialize raw sheet calculating all relevant data before hand. This method is extremely fast,
+ * but because the data is serialized after being calculated, some columns are not automatically updated if the user manually modifies
+ * the raw sheet (%Dev to best, isBest value, etc).
+ */
 public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
     @Override
     public AreaReference fillRawSheet(XSSFSheet rawSheet, boolean maximizing, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders) {

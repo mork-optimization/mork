@@ -22,7 +22,16 @@ import static es.urjc.etsii.grafo.util.DoubleComparator.*;
  */
 public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> extends Constructive<S, I> {
     private static final Logger log = Logger.getLogger(GreedyRandomGRASPConstructive.class.getName());
+
+    /**
+     * String explaining how alpha provider is generating alpha values.
+     * Example: FIXED{a=0.25}
+     */
     protected final String randomType;
+
+    /**
+     * GRASP candidate list manager
+     */
     protected final GRASPListManager<M, S, I> candidateListManager;
     private final AlphaProvider alphaProvider;
     private final boolean maximizing;
@@ -79,6 +88,14 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
         return assignMissing(sol);
     }
 
+    /**
+     * Assign missing elements to solution.
+     * This method ends when the candidate list is empty.
+     * The difference between this method and construct is that this method does not call beforeGRASP().
+     * This method can be used in algorithms such as iterated greedy during the reconstruction phase.
+     * @param sol Solution to complete
+     * @return Completed solution.
+     */
     public S assignMissing(S sol) {
         double alpha = alphaProvider.getAlpha();
         var cl = candidateListManager.buildInitialCandidateList(sol);

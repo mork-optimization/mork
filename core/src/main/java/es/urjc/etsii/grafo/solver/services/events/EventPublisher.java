@@ -15,11 +15,14 @@ public class EventPublisher {
     private static ApplicationEventPublisher publisher;
 
     /**
-     * Disable event propagation when executing in irace mode
+     * Disable event propagation
      */
-
     private static boolean blockEvents = false;
 
+    /**
+     * Spring integration constructor
+     * @param publisher Spring ApplicationEventPublisher
+     */
     protected EventPublisher(ApplicationEventPublisher publisher) {
         EventPublisher.publisher = publisher;
     }
@@ -36,10 +39,16 @@ public class EventPublisher {
         publisher.publishEvent(event);
     }
 
+    /**
+     * Block dispatch of all future events. All calls to publishEvent() will be ignored.
+     */
     public static void block(){
         EventPublisher.blockEvents = true;
     }
 
+    /**
+     * Enable event dispatching.
+     */
     public static void unblock(){
         EventPublisher.blockEvents = false;
     }

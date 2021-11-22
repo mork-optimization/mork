@@ -11,6 +11,10 @@ import java.util.Map;
 
 import static org.apache.poi.ss.util.CellReference.convertNumToColString;
 
+/**
+ * Serialize raw sheet using Excel formulas. This method is extremely slow for big quantities of data,
+ * but allows to seamlessly add or modify the raw data and recalculate all relevant fields without user intervention.
+ */
 public class ExcelCalculatedRawSheetWriter extends RawSheetWriter {
     
     @Override

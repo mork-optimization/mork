@@ -115,134 +115,270 @@ public class ExcelSerializerConfig extends AbstractSerializerConfig {
         AUTO
     }
 
+    /**
+     * Defines how to handle calculated values when serializing to Excel 2007+
+     * @return a value from CalculationMode enum
+     */
     public CalculationMode getCalculationMode() {
         return calculationMode;
     }
 
+    /**
+     * When calculationMode is AUTO,
+     * less than the threshold will use Excel mode,
+     * more than threshold will use Java mode (much faster).
+     * @return row threshold to change mode automatically
+     */
     public int getRowThreshold() {
         return rowThreshold;
     }
 
+    /**
+     * Defines how to handle calculated values when serializing to Excel 2007+
+     * @param calculationMode new calculation mode
+     */
     public void setCalculationMode(CalculationMode calculationMode) {
         this.calculationMode = calculationMode;
     }
 
+    /**
+     * When generating the pivot table, should algorithms be in rows or columns?
+     * @return True: Instances per row, algorithms in columns
+     *         False: Algorithms in rows, instances in columns
+     */
     public boolean isAlgorithmsInColumns() {
         return algorithmsInColumns;
     }
 
+    /**
+     * When generating the pivot table, should algorithms be in rows or columns?
+     * @param algorithmsInColumns  True: Instances per row, algorithms in columns
+     *         False: Algorithms in rows, instances in columns
+     */
     public void setAlgorithmsInColumns(boolean algorithmsInColumns) {
         this.algorithmsInColumns = algorithmsInColumns;
     }
 
+    /**
+     * Show best (min or max) score column in pivot table
+     * @return true to show, false to hide
+     */
     public boolean isBestScoreEnabled() {
         return bestScoreEnabled;
     }
 
+    /**
+     * Show best (min or max) score column in pivot table
+     * @param bestScoreEnabled  true to show, false to hide
+     */
     public void setBestScoreEnabled(boolean bestScoreEnabled) {
         this.bestScoreEnabled = bestScoreEnabled;
     }
 
+    /**
+     * Show average score column in pivot table
+     * @return true to show, false to hide
+     */
     public boolean isAvgScoreEnabled() {
         return avgScoreEnabled;
     }
 
+    /**
+     * Show average score column in pivot table
+     * @param avgScoreEnabled  true to show, false to hide
+     */
     public void setAvgScoreEnabled(boolean avgScoreEnabled) {
         this.avgScoreEnabled = avgScoreEnabled;
     }
 
+    /**
+     * Show standard deviation of solution score column in pivot table
+     * @return true to show, false to hide
+     */
     public boolean isStdScoreEnabled() {
         return stdScoreEnabled;
     }
 
+    /**
+     * Show standard deviation of solution score column in pivot table
+     * @param stdScoreEnabled  true to show, false to hide
+     */
     public void setStdScoreEnabled(boolean stdScoreEnabled) {
         this.stdScoreEnabled = stdScoreEnabled;
     }
 
+    /**
+     * Show variance of solution score column in pivot table
+     * @return true to show, false to hide
+     */
     public boolean isVarScoreEnabled() {
         return varScoreEnabled;
     }
 
+    /**
+     * Show variance of solution score column in pivot table
+     * @param varScoreEnabled  true to show, false to hide
+     */
     public void setVarScoreEnabled(boolean varScoreEnabled) {
         this.varScoreEnabled = varScoreEnabled;
     }
 
+    /**
+     * Show average time in seconds per iteration in pivot table
+     * @return true to show, false to hide
+     */
     public boolean isAvgTimeEnabled() {
         return avgTimeEnabled;
     }
 
+    /**
+     * Show average time in seconds per iteration in pivot table
+     * @param avgTimeEnabled  true to show, false to hide
+     */
     public void setAvgTimeEnabled(boolean avgTimeEnabled) {
         this.avgTimeEnabled = avgTimeEnabled;
     }
 
+    /**
+     * Show total time in seconds for a given (algorithm, instance) in pivot table.
+     * @return true to show, false to hide
+     */
     public boolean isTotalTimeEnabled() {
         return totalTimeEnabled;
     }
 
+    /**
+     * Show total time in seconds for a given (algorithm, instance) in pivot table.
+     * @param totalTimeEnabled true to show, false to hide
+     */
     public void setTotalTimeEnabled(boolean totalTimeEnabled) {
         this.totalTimeEnabled = totalTimeEnabled;
     }
 
+    /**
+     * Show average time to the best solution in seconds in pivot table.
+     * @return true to show, false to hide
+     */
     public boolean isAvgTTBEnabled() {
         return avgTTBEnabled;
     }
 
+    /**
+     * Show average time to the best solution in seconds in pivot table.
+     * @param avgTTBEnabled true to show, false to hide
+     */
     public void setAvgTTBEnabled(boolean avgTTBEnabled) {
         this.avgTTBEnabled = avgTTBEnabled;
     }
 
+    /**
+     * Show total time to the best solution in seconds in pivot table.
+     * @return true to show, false to hide
+     */
     public boolean isTotalTTBEnabled() {
         return totalTTBEnabled;
     }
 
+    /**
+     * Show total time to the best solution in seconds in pivot table.
+     * @param totalTTBEnabled true to show, false to hide
+     */
     public void setTotalTTBEnabled(boolean totalTTBEnabled) {
         this.totalTTBEnabled = totalTTBEnabled;
     }
 
+    /**
+     * Show number of times a given algorithm reaches the best known solution.
+     * @return true to show, false to hide
+     */
     public boolean isSumBestKnownEnabled() {
         return sumBestKnownEnabled;
     }
 
+    /**
+     * Show 1 if a given algorithm reaches the best solution for an instance, 0 otherwise.
+     * @param sumBestKnownEnabled true to show, false to hide
+     */
     public void setSumBestKnownEnabled(boolean sumBestKnownEnabled) {
         this.sumBestKnownEnabled = sumBestKnownEnabled;
     }
 
+    /**
+     * Show 1 if a given algorithm reaches the best solution for an instance, 0 otherwise.
+     * @return true to show, false to hide
+     */
     public boolean isHasBestKnownEnabled() {
         return hasBestKnownEnabled;
     }
 
+    /**
+     *
+     * @param hasBestKnownEnabled true to show, false to hide
+     */
     public void setHasBestKnownEnabled(boolean hasBestKnownEnabled) {
         this.hasBestKnownEnabled = hasBestKnownEnabled;
     }
 
+    /**
+     * Show average percentage deviation to best known solution in pivot table.
+     * @return true to show, false to hide
+     */
     public boolean isAvgDevToBestKnownEnabled() {
         return avgDevToBestKnownEnabled;
     }
 
+    /**
+     * Show average percentage deviation to best known solution in pivot table.
+     * @param avgDevToBestKnownEnabled true to show, false to hide
+     */
     public void setAvgDevToBestKnownEnabled(boolean avgDevToBestKnownEnabled) {
         this.avgDevToBestKnownEnabled = avgDevToBestKnownEnabled;
     }
 
+    /**
+     * Show minimum percentage deviation to best known solution in pivot table.
+     * @return true to show, false to hide
+     */
     public boolean isMinDevToBestKnownEnabled() {
         return minDevToBestKnownEnabled;
     }
 
+    /**
+     * Show minimum percentage deviation to best known solution in pivot table.
+     * @param minDevToBestKnownEnabled true to show, false to hide
+     */
     public void setMinDevToBestKnownEnabled(boolean minDevToBestKnownEnabled) {
         this.minDevToBestKnownEnabled = minDevToBestKnownEnabled;
     }
 
+    /**
+     * Show generated grand total for rows in pivot table
+     * @return true to show, false to hide
+     */
     public boolean isRowGrandTotal() {
         return rowGrandTotal;
     }
 
+    /**
+     * Show generated grand total for rows in pivot table
+     * @param rowGrandTotal true to show, false to hide
+     */
     public void setRowGrandTotal(boolean rowGrandTotal) {
         this.rowGrandTotal = rowGrandTotal;
     }
 
+    /**
+     * Show generated grand total for columns in pivot table
+     * @return true to show, false to hide
+     */
     public boolean isColumnGrandTotal() {
         return columnGrandTotal;
     }
 
+    /**
+     * Show generated grand total for columns in pivot table
+     * @param columnGrandTotal true to show, false to hide
+     */
     public void setColumnGrandTotal(boolean columnGrandTotal) {
         this.columnGrandTotal = columnGrandTotal;
     }

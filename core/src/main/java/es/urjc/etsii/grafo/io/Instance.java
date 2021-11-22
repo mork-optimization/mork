@@ -8,6 +8,10 @@ package es.urjc.etsii.grafo.io;
 public abstract class Instance implements Comparable<Instance>{
     private final String name;
 
+    /**
+     * Creates a new instance
+     * @param name instance name
+     */
     protected Instance(String name) {
         this.name = name;
     }

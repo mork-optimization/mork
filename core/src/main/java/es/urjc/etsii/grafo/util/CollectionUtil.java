@@ -142,6 +142,29 @@ public class CollectionUtil {
         l.set(i, l.set(j, l.get(i)));
     }
 
+    /**
+     * Randomly permute the specified list using the specified source of
+     * randomness.  All permutations occur with equal likelihood
+     * assuming that the source of randomness is fair.<p>
+     *
+     * This implementation traverses the list backwards, from the last element
+     * up to the second, repeatedly swapping a randomly selected element into
+     * the "current position".  Elements are randomly selected from the
+     * portion of the list that runs from the first element to the current
+     * position, inclusive.<p>
+     *
+     * This method runs in linear time.  If the specified list does not
+     * implement the {@link RandomAccess} interface and is large, this
+     * implementation dumps the specified list into an array before shuffling
+     * it, and dumps the shuffled array back into the list.  This avoids the
+     * quadratic behavior that would result from shuffling a "sequential
+     * access" list in place.
+     *
+     * @param  list the list to be shuffled.
+     * @throws UnsupportedOperationException if the specified list or its
+     *         list-iterator does not support the {@code set} operation.
+     */
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public static void shuffle(List<?> list) {
         RandomGenerator rnd = RandomManager.getRandom();
         int size = list.size();
@@ -152,8 +175,9 @@ public class CollectionUtil {
             Object[] arr = list.toArray();
 
             // Shuffle array
-            for (int i=size; i>1; i--)
+            for (int i=size; i>1; i--) {
                 ArrayUtil.swap(arr, i-1, rnd.nextInt(i));
+            }
 
             // Dump array back into list
             // instead of using a raw type here, it's possible to capture

@@ -18,12 +18,29 @@ import java.util.List;
 import java.util.Optional;
 
 
+/**
+ * Serialize results to Excel XML format
+ */
 public class ExcelSerializer extends ResultsSerializer {
 
+    /**
+     * Raw sheet name
+     */
     public static final String RAW_SHEET = "Raw Results";
+
+    /**
+     * Pivot table sheet name
+     */
     public static final String PIVOT_SHEET = "Pivot Table";
 
+    /**
+     * Positive infinity value to use in Excel
+     */
     public static final double POSITIVE_INFINITY = 1e99;
+
+    /**
+     * Negative infinity value to use in Excel
+     */
     public static final double NEGATIVE_INFINITY = -1e99;
 
     private final boolean maximizing;
@@ -32,6 +49,14 @@ public class ExcelSerializer extends ResultsSerializer {
     private final MemoryEventStorage eventStorage;
     private final ExcelSerializerConfig config;
 
+    /**
+     * Create an Excel serializer
+     * @param serializerConfig excel serializer configuration
+     * @param solverConfig solver configuration
+     * @param referenceResultProviders reference result providers if available
+     * @param excelCustomizer customizer if available
+     * @param eventStorage event storage
+     */
     public ExcelSerializer(
             ExcelSerializerConfig serializerConfig,
             SolverConfig solverConfig,
