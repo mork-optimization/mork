@@ -2,16 +2,31 @@ package es.urjc.etsii.grafo.TSP.model;
 
 import es.urjc.etsii.grafo.solution.Solution;
 
+import java.util.Arrays;
+
 public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
+
+    /**
+     * Total length of the route
+     */
+    private double distance;
+
+    /**
+     * Circular route represented by an integer array:
+     * I
+     */
+    private final int[] route;
 
     /**
      * Initialize solution from instance
      *
-     * @param ins
+     * @param ins instance of the problem
      */
     public TSPSolution(TSPInstance ins) {
         super(ins);
-        // TODO Initialize data structures if necessary
+        this.route = new int[ins.numberOfLocations()];
+        Arrays.fill(route, -1);
+        distance = -1;
     }
 
     /**
@@ -21,22 +36,19 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
      */
     public TSPSolution(TSPSolution s) {
         super(s);
-        // TODO Copy ALL solution data, we are cloning a solution
-        throw new UnsupportedOperationException("TSPSolution() in TSP not implemented yet");
+        this.route = s.route.clone();
+        this.distance = s.distance;
     }
 
 
     @Override
     public TSPSolution cloneSolution() {
-        // You do not need to modify this method
-        // Call clone constructor
         return new TSPSolution(this);
     }
 
     @Override
     protected boolean _isBetterThan(TSPSolution other) {
-        // TODO given two solutions, is the current solution STRICTLY better than the other?
-        throw new UnsupportedOperationException("isBetterThan() in TSP not implemented yet");
+        return this.distance < other.distance;
     }
 
     /**
@@ -49,11 +61,11 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
      */
     @Override
     public double getScore() {
-        // TODO: Implement efficient score calculation.
-        // Can be as simple as a score property that gets updated when the solution changes
-        // Example: return this.score;
-        // Another ok start implementation can be: return recalculateScore();
-        throw new UnsupportedOperationException("getScore() in TSP not implemented yet");
+        if (distance == -1) {
+            return recalculateScore();
+        } else {
+            return this.distance;
+        }
     }
 
     /**
@@ -67,22 +79,23 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
      */
     @Override
     public double recalculateScore() {
-        // TODO calculate solution score from scratch, without using caches
-        //  and without modifying the current solution. Careful with side effects.
-        throw new UnsupportedOperationException("recalculateScore() in TSP not implemented yet");
+        var distance = 0;
+        for (int i = 0; i < this.route.length; i++) {
+            var j = (i + 1) % this.route.length;
+            distance += this.getInstance().getDistance(i, j);
+        }
+        this.distance = distance;
+        return this.distance;
     }
 
     /**
      * Generate a string representation of this solution. Used when printing progress to console,
      * show as minimal info as possible
      *
-     * @return Small string representing the current solution (Example: id + score)
+     * @return Small string representing the current solution
      */
     @Override
     public String toString() {
-        // TODO: When all fields are implemented use your IDE to autogenerate this method
-        //  using only the most important fields.
-        // This method will be called to print best solutions in console while solving.
-        throw new UnsupportedOperationException("toString() in TSPSolution not implemented yet");
+        return Arrays.toString(this.route) + "\n" + "Score: " + this.distance;
     }
 }

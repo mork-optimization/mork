@@ -26,6 +26,40 @@ public class TSPInstanceImporter extends InstanceImporter<TSPInstance> {
             double y = sc.nextDouble();
             locations[id] = new TSPInstance.Coordinate(x, y);
         }
-        return new TSPInstance(name, locations);
+        double[][] distances = getMatrixOfDistances(locations);
+        return new TSPInstance(name, locations, distances);
+    }
+
+
+    /**
+     * Calculate all euclidean distances between all locations
+     *
+     * @param locations list of locations
+     * @return a matrix of distances
+     */
+    private double[][] getMatrixOfDistances(TSPInstance.Coordinate[] locations) {
+        var dimension = locations.length;
+        double[][] distances = new double[dimension][dimension];
+        for (int i = 0; i < dimension; i++) {
+            var j = (i + 1) % dimension;
+            var distance = this.calculateEuclideanDistance(locations[i], locations[j]);
+            distances[i][j] = distance;
+            distances[j][i] = distance;
+        }
+        return distances;
+    }
+
+
+    /**
+     * Calculate the Euclidian distance of two given coordinates
+     *
+     * @param i first coordinate
+     * @param j second coordinate
+     * @return the euclidean distance between two coordiantes
+     */
+    public double calculateEuclideanDistance(TSPInstance.Coordinate i, TSPInstance.Coordinate j) {
+        var di = i.x() - j.x();
+        var dj = i.y() - j.y();
+        return Math.sqrt((di * di) + (dj * dj));
     }
 }
