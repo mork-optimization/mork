@@ -63,7 +63,7 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
             s.updateLastModifiedTime();
         }
         s.version++;
-        ValidationUtil.validSolution(s);
+        ValidationUtil.assertValidScore(s);
     }
 
     /**

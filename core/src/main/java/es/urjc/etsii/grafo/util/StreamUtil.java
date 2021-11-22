@@ -4,8 +4,7 @@ import java.util.Arrays;
 import java.util.stream.Stream;
 
 /**
- * <p>StreamUtil class.</p>
- *
+ * Stream Utils
  */
 public class StreamUtil {
 

@@ -31,9 +31,10 @@ public abstract class AbstractEventStorage {
      * Returns an event stream for the given event type, ordered by creation date.
      *
      * @param type Filter by type
+     * @param <T> Event type
      * @return Event stream
      */
-    public abstract  <T extends MorkEvent> Stream<T> getEventsByType(Class<T> type);
+    public abstract <T extends MorkEvent> Stream<T> getEventsByType(Class<T> type);
 
     /**
      * Returns all MorkEvents

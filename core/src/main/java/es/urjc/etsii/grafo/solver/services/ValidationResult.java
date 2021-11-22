@@ -1,26 +1,25 @@
 package es.urjc.etsii.grafo.solver.services;
 
 /**
- * <p>ValidationResult class.</p>
- *
+ * Result of validating a solution
  */
 public class ValidationResult {
     private final boolean isValid;
     private final String reasonFailed;
 
     /**
-     * <p>isValid.</p>
+     * Is the solution valid?
      *
-     * @return a boolean.
+     * @return true if the solution passed all validations, false if any failed
      */
     public boolean isValid() {
         return isValid;
     }
 
     /**
-     * <p>Getter for the field <code>reasonFailed</code>.</p>
+     * If the validation failed, returns the cause.
      *
-     * @return a {@link java.lang.String} object.
+     * @return cause if validation failure
      */
     public String getReasonFailed() {
         return reasonFailed;
@@ -32,19 +31,19 @@ public class ValidationResult {
     }
 
     /**
-     * <p>ok.</p>
+     * Validation passed
      *
-     * @return a {@link es.urjc.etsii.grafo.solver.services.ValidationResult} object.
+     * @return ValidationResult
      */
     public static ValidationResult ok(){
         return new ValidationResult(true, "");
     }
 
     /**
-     * <p>fail.</p>
+     * Validation failed
      *
-     * @param reason a {@link java.lang.String} object.
-     * @return a {@link es.urjc.etsii.grafo.solver.services.ValidationResult} object.
+     * @param reason reason why the validation failed
+     * @return ValidationResult
      */
     public static ValidationResult fail(String reason){
         return new ValidationResult(false, reason);

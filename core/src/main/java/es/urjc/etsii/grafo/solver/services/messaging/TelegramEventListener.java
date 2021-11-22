@@ -7,8 +7,7 @@ import es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
 
 /**
- * <p>TelegramEventListener class.</p>
- *
+ * Sends telegram messages on certain MorkEvents
  */
 public class TelegramEventListener extends AbstractEventListener {
 
@@ -25,9 +24,9 @@ public class TelegramEventListener extends AbstractEventListener {
     }
 
     /**
-     * <p>onExperimentEnd.</p>
+     * Send message when experiment ends
      *
-     * @param event a {@link es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent} object.
+     * @param event experiment ended event
      */
     @MorkEventListener
     public void onExperimentEnd(ExperimentEndedEvent event) {
@@ -36,9 +35,9 @@ public class TelegramEventListener extends AbstractEventListener {
     }
 
     /**
-     * <p>onError.</p>
+     * Send message on first error
      *
-     * @param event a {@link es.urjc.etsii.grafo.solver.services.events.types.ErrorEvent} object.
+     * @param event error event
      */
     @MorkEventListener
     public void onError(ErrorEvent event) {
@@ -52,9 +51,9 @@ public class TelegramEventListener extends AbstractEventListener {
     }
 
     /**
-     * <p>onExecutionEnd.</p>
+     * Stop Telegram service on execution end
      *
-     * @param event a {@link es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent} object.
+     * @param event execution ended event
      */
     @MorkEventListener
     public void onExecutionEnd(ExecutionEndedEvent event) {

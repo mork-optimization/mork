@@ -4,8 +4,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 /**
- * <p>TelegramConfig class.</p>
- *
+ * Telegram configuration, see event.telegram section inside the application.yml file.
+ * {@see application.yml}
  */
 @Configuration
 @ConfigurationProperties(prefix = "event.telegram")
@@ -15,54 +15,54 @@ public class TelegramConfig {
     private String chatId = "none";
 
     /**
-     * <p>isEnabled.</p>
+     * Is the Telegram integration enabled?
      *
-     * @return a boolean.
+     * @return true if enabled, false otherwise
      */
     public boolean isEnabled() {
         return enabled;
     }
 
     /**
-     * <p>Setter for the field <code>enabled</code>.</p>
+     * Is the Telegram integration enabled?
      *
-     * @param enabled a boolean.
+     * @param enabled true to enablee, false otherwise
      */
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
     }
 
     /**
-     * <p>Getter for the field <code>token</code>.</p>
+     * Telegram API token, as returned by BotFather
      *
-     * @return a {@link java.lang.String} object.
+     * @return Telegram API token
      */
     public String getToken() {
         return token;
     }
 
     /**
-     * <p>Setter for the field <code>token</code>.</p>
+     * Telegram API token, as returned by BotFather
      *
-     * @param token a {@link java.lang.String} object.
+     * @param token Telegram API token
      */
     public void setToken(String token) {
         this.token = token;
     }
 
     /**
-     * <p>Getter for the field <code>chatId</code>.</p>
+     * Destination Chat ID, where we will send the messages
      *
-     * @return a {@link java.lang.String} object.
+     * @return destination chat ID.
      */
     public String getChatId() {
         return chatId;
     }
 
     /**
-     * <p>Setter for the field <code>chatId</code>.</p>
+     * Destination Chat ID, where we will send the messages
      *
-     * @param chatId a {@link java.lang.String} object.
+     * @param chatId  destination chat ID.
      */
     public void setChatId(String chatId) {
         this.chatId = chatId;

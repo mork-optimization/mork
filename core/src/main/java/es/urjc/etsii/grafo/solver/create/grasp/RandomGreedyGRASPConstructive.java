@@ -128,8 +128,8 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
             M chosen = cl.get(index);
             chosen.execute();
             cl = candidateListManager.updateCandidateList(sol, chosen, cl, index);
-            ValidationUtil.fastAccessList(cl);
-            ValidationUtil.validSolution(sol);
+            ValidationUtil.assertFastAccess(cl);
+            ValidationUtil.assertValidScore(sol);
         }
         return sol;
     }

@@ -15,7 +15,10 @@ import java.util.logging.Logger;
  */
 @InheritedComponent
 public abstract class ResultsSerializer {
-    protected final Logger log;
+    private final Logger log;
+    /**
+     * Serializer config
+     */
     protected final AbstractSerializerConfig config;
 
 

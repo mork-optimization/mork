@@ -74,6 +74,8 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
     /**
      * Build a multistart algorithm
      *
+     * @param <S> Solution class
+     * @param <I> Instance class
      * @return the multistart algorithm
      */
     public static <S extends Solution<S,I>, I extends Instance> MultiStartAlgorithmBuilder<S, I> builder() {

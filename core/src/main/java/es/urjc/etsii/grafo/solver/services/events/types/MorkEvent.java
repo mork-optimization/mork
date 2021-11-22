@@ -15,8 +15,8 @@ public class MorkEvent extends ApplicationEvent {
 
     private static AtomicInteger nextEventId = new AtomicInteger(0);
 
-    protected final int eventId;
-    protected final String workerName;
+    private final int eventId;
+    private final String workerName;
 
     /**
      * Create a new {@code ApplicationEvent}.
@@ -43,27 +43,26 @@ public class MorkEvent extends ApplicationEvent {
     }
 
     /**
-     * <p>Getter for the field <code>eventId</code>.</p>
+     * Get event id
      *
-     * @return a int.
+     * @return unique int that identifies this event
      */
     public int getEventId() {
         return eventId;
     }
 
     /**
-     * <p>getType.</p>
+     * Get event type
      *
-     * @return a {@link java.lang.String} object.
+     * @return event type or class as string
      */
     public String getType(){
         return this.getClass().getSimpleName();
     }
 
     /**
-     * <p>Getter for the field <code>workerName</code>.</p>
-     *
-     * @return a {@link java.lang.String} object.
+     * Get worker name, or in other words, who generated this event
+     * @return worker name
      */
     public String getWorkerName() {
         return workerName;

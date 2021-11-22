@@ -75,7 +75,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
             } while (chosenNeigh % neighborhoods.length != copy);
             if(move.isPresent()){
                 move.get().execute();
-                ValidationUtil.validSolution(s);
+                ValidationUtil.assertValidScore(s);
             } else {
                 log.warning("No move available in any of the given providers, ending Destruction phase now");
                 break;

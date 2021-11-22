@@ -177,6 +177,10 @@ public class TelegramService extends AbstractEventListener {
             }
         }
 
+        /**
+         * Check if we are ready
+         * @return true if ready, false otherwise.
+         */
         public boolean ready() {
             return !this.chatId.equals("none");
         }

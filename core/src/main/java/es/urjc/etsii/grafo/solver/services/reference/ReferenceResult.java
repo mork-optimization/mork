@@ -3,8 +3,7 @@ package es.urjc.etsii.grafo.solver.services.reference;
 import java.util.Optional;
 
 /**
- * <p>ReferenceResult class.</p>
- *
+ * Reference result for an instance
  */
 public class ReferenceResult {
     private double score = Double.NaN;
@@ -12,46 +11,46 @@ public class ReferenceResult {
     private double timeToBestInSeconds = Double.NaN;
 
     /**
-     * <p>getScoreOrNan.</p>
+     * get score for this instance, or NaN if not defined
      *
-     * @return a double.
+     * @return score, NaN if not defined
      */
     public double getScoreOrNan() {
         return score;
     }
 
     /**
-     * <p>Getter for the field <code>score</code>.</p>
+     * Get score if present, never NaN.
      *
-     * @return a {@link java.util.Optional} object.
+     * @return optional score
      */
     public Optional<Double> getScore(){
         return Double.isNaN(this.score) ? Optional.empty() : Optional.of(this.score);
     }
 
     /**
-     * <p>Getter for the field <code>timeInSeconds</code>.</p>
+     * get time in seconds needed to generate this reference value
      *
-     * @return a double.
+     * @return time in seconds
      */
     public double getTimeInSeconds() {
         return timeInSeconds;
     }
 
     /**
-     * <p>Getter for the field <code>timeToBestInSeconds</code>.</p>
+     * get time in seconds needed to generate this reference value
      *
-     * @return a double.
+     * @return time to best in seconds
      */
     public double getTimeToBestInSeconds() {
         return timeToBestInSeconds;
     }
 
     /**
-     * <p>Setter for the field <code>score</code>.</p>
+     * Set score
      *
-     * @param score a double.
-     * @return a {@link es.urjc.etsii.grafo.solver.services.reference.ReferenceResult} object.
+     * @param score score
+     * @return ReferenceResult
      */
     public ReferenceResult setScore(double score) {
         this.score = score;
@@ -59,10 +58,10 @@ public class ReferenceResult {
     }
 
     /**
-     * <p>Setter for the field <code>score</code>.</p>
+     * Set score parsing double from the given string
      *
-     * @param score a {@link java.lang.String} object.
-     * @return a {@link es.urjc.etsii.grafo.solver.services.reference.ReferenceResult} object.
+     * @param score as a string
+     * @return ReferenceResult
      */
     public ReferenceResult setScore(String score) {
         this.setScore(Double.parseDouble(score));
@@ -73,7 +72,7 @@ public class ReferenceResult {
      * <p>Setter for the field <code>timeInSeconds</code>.</p>
      *
      * @param timeInSeconds a double.
-     * @return a {@link es.urjc.etsii.grafo.solver.services.reference.ReferenceResult} object.
+     * @return ReferenceResult
      */
     public ReferenceResult setTimeInSeconds(double timeInSeconds) {
         this.timeInSeconds = timeInSeconds;
@@ -84,7 +83,7 @@ public class ReferenceResult {
      * <p>Setter for the field <code>timeInSeconds</code>.</p>
      *
      * @param timeInSeconds a {@link java.lang.String} object.
-     * @return a {@link es.urjc.etsii.grafo.solver.services.reference.ReferenceResult} object.
+     * @return ReferenceResult
      */
     public ReferenceResult setTimeInSeconds(String timeInSeconds) {
         return this.setTimeInSeconds(Double.parseDouble(timeInSeconds));
@@ -94,7 +93,7 @@ public class ReferenceResult {
      * <p>Setter for the field <code>timeToBestInSeconds</code>.</p>
      *
      * @param timeToBestInSeconds a double.
-     * @return a {@link es.urjc.etsii.grafo.solver.services.reference.ReferenceResult} object.
+     * @return ReferenceResult
      */
     public ReferenceResult setTimeToBestInSeconds(double timeToBestInSeconds) {
         this.timeToBestInSeconds = timeToBestInSeconds;
@@ -105,7 +104,7 @@ public class ReferenceResult {
      * <p>Setter for the field <code>timeToBestInSeconds</code>.</p>
      *
      * @param timeToBestInSeconds a {@link java.lang.String} object.
-     * @return a {@link es.urjc.etsii.grafo.solver.services.reference.ReferenceResult} object.
+     * @return ReferenceResult
      */
     public ReferenceResult setTimeToBestInSeconds(String timeToBestInSeconds) {
         return this.setTimeToBestInSeconds(Double.parseDouble(timeToBestInSeconds));

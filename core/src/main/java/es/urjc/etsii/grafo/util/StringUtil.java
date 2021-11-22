@@ -6,28 +6,28 @@ import java.security.SecureRandom;
 import java.util.Base64;
 
 /**
- * <p>StringUtil class.</p>
+ * String Utils
  *
  */
 public class StringUtil {
     private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
 
     /**
-     * <p>b64decode.</p>
+     * Base 64 decode a string. Uses UTF-8
      *
-     * @param s a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
+     * @param s String to decode
+     * @return decoded string
      */
     public static String b64decode(String s){
         return b64decode(s, DEFAULT_CHARSET);
     }
 
     /**
-     * <p>b64decode.</p>
+     * Base 64 decode a string
      *
-     * @param s a {@link java.lang.String} object.
-     * @param charset a {@link java.nio.charset.Charset} object.
-     * @return a {@link java.lang.String} object.
+     * @param s String to decode
+     * @param charset Charset to use
+     * @return decoded string
      */
     public static String b64decode(String s, Charset charset){
         var decoder = Base64.getDecoder();
@@ -37,45 +37,44 @@ public class StringUtil {
     }
 
     /**
-     * <p>b64encode.</p>
+     * Base 64 encode a string. Uses UTF-8
      *
-     * @param s a {@link java.lang.String} object.
-     * @return a {@link java.lang.String} object.
+     * @param s String to encode
+     * @return encoded string
      */
     public static String b64encode(String s){
         return b64encode(s, DEFAULT_CHARSET);
     }
 
     /**
-     * <p>b64encode.</p>
+     * Base 64 encode a string
      *
-     * @param s a {@link java.lang.String} object.
-     * @param charset a {@link java.nio.charset.Charset} object.
-     * @return a {@link java.lang.String} object.
+     * @param s String to encode
+     * @param charset Charset to use
+     * @return encoded string
      */
     public static String b64encode(String s, Charset charset){
         byte[] bytes = s.getBytes(charset);
-        return b64encode(bytes, charset);
+        return b64encode(bytes);
     }
 
     /**
-     * <p>b64encode.</p>
+     * Base 64 encode a byte array
      *
-     * @param bytes an array of {@link byte} objects.
-     * @param charset a {@link java.nio.charset.Charset} object.
-     * @return a {@link java.lang.String} object.
+     * @param bytes bytes to encode
+     * @return encoded string
      */
-    public static String b64encode(byte[] bytes, Charset charset){
+    public static String b64encode(byte[] bytes){
         var encoder = Base64.getEncoder();
         var result = encoder.encode(bytes);
-        return new String(result, charset);
+        return new String(result);
     }
 
     /**
-     * <p>generateSecret.</p>
+     * Generate secret using a SecureRandom
      *
-     * @param size a int.
-     * @return a {@link java.lang.String} object.
+     * @param size size in bytes.
+     * @return Base64 encoded secret.
      */
     public static String generateSecret(int size) {
         SecureRandom sr = new SecureRandom();
@@ -85,13 +84,13 @@ public class StringUtil {
 
         byte[] arr = new byte[size];
         sr.nextBytes(arr);
-        return b64encode(arr, Charset.defaultCharset());
+        return b64encode(arr);
     }
 
     /**
-     * <p>generateSecret.</p>
+     * Generate secret using a SecureRandom. Size defaults to 16 bytes.
      *
-     * @return a {@link java.lang.String} object.
+     * @return Base64 encoded secret.
      */
     public static String generateSecret() {
         return generateSecret(16);

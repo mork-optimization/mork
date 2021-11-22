@@ -27,14 +27,14 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
     private final SoftReference<S> solution;
 
     /**
-     * <p>Constructor for SolutionGeneratedEvent.</p>
+     * Create a new SolutionGeneratedEvent
      *
-     * @param iteration a int.
-     * @param solution a S object.
-     * @param experimentName a {@link java.lang.String} object.
-     * @param algorithm a {@link es.urjc.etsii.grafo.solver.algorithms.Algorithm} object.
-     * @param executionTime a long.
-     * @param timeToBest a long.
+     * @param iteration solution iteration
+     * @param solution generated solution
+     * @param experimentName experiment name
+     * @param algorithm algorithm that generated this solution
+     * @param executionTime time used to generate this solution
+     * @param timeToBest time needed ot reach the best solution. timeToBest = totalTime - timeSinceLastModification
      */
     public SolutionGeneratedEvent(int iteration, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest) {
         super();
@@ -52,7 +52,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
     /**
      * Which iteration this solution corresponds to
      *
-     * @return int
+     * @return iteration
      */
     public int getIteration() {
         return iteration;

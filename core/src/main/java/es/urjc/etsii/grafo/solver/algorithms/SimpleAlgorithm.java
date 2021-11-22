@@ -66,7 +66,7 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
     public S algorithm(I instance) {
         var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
-        ValidationUtil.validSolution(solution);
+        ValidationUtil.assertValidScore(solution);
         printStatus("Constructive", solution);
         solution = localSearch(solution);
         return solution;
@@ -82,7 +82,7 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
         for (int i = 0; i < improvers.size(); i++) {
             Improver<S, I> ls = improvers.get(i);
             solution = ls.improve(solution);
-            ValidationUtil.validSolution(solution);
+            ValidationUtil.assertValidScore(solution);
             printStatus("Improver " + i, solution);
         }
         return solution;

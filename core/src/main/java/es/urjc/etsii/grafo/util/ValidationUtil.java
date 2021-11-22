@@ -7,37 +7,37 @@ import java.util.List;
 import java.util.RandomAccess;
 
 /**
- * <p>ValidationUtil class.</p>
- *
+ * Validation Util methods.
+ * Implement different assertions to check solution validity
  */
 public class ValidationUtil {
     /**
-     * <p>validSolution.</p>
+     * Check if the cached score of a solution matches the recalculated score
      *
-     * @param solution a S object.
-     * @param <S> a S object.
-     * @param <I> a I object.
+     * @param solution solution to check
+     * @param <S> Solution class
+     * @param <I> Instance class
      */
-    public static <S extends Solution<S,I>, I extends Instance> void validSolution(S solution){
+    public static <S extends Solution<S,I>, I extends Instance> void assertValidScore(S solution){
         assert DoubleComparator.equals(solution.getScore(), solution.recalculateScore()) :
                 String.format("Score mismatch, getScore() %s, recalculateScore() %s. Review your incremental score calculation.", solution.getScore(), solution.recalculateScore());
     }
 
     /**
-     * <p>fastAccessList.</p>
+     * Check that the given list implements the RandomAccess interface
      *
-     * @param list a {@link java.util.List} object.
+     * @param list to check
      */
-    public static void fastAccessList(List<?> list){
+    public static void assertFastAccess(List<?> list){
         assert list instanceof RandomAccess : "List should have O(1) access time";
     }
 
     /**
-     * <p>positiveTTB.</p>
+     * Check that the Time To Best is positive (so it has been updated by the user at least once)
      *
-     * @param solution a S object.
-     * @param <S> a S object.
-     * @param <I> a I object.
+     * @param solution Solution to check
+     * @param <S> Solution class
+     * @param <I> Instance class
      */
     public static <S extends Solution<S,I>, I extends Instance> void positiveTTB(S solution){
         if(solution.getLastModifiedTime() < 0){
