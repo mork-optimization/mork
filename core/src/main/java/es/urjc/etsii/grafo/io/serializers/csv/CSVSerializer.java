@@ -9,11 +9,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.logging.Logger;
 
 /**
  * CSV serializer. By changing the separator in the configuration from ',' to '\t', can serialize to other formats such as TSV.
  */
 public class CSVSerializer extends ResultsSerializer {
+
+    private static final Logger log = Logger.getLogger(CSVSerializer.class.getName());
 
     private final CSVSerializerConfig config;
 

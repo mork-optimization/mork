@@ -16,12 +16,15 @@ import java.io.FileOutputStream;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Optional;
+import java.util.logging.Logger;
 
 
 /**
  * Serialize results to Excel XML format
  */
 public class ExcelSerializer extends ResultsSerializer {
+
+    private static final Logger log = Logger.getLogger(ExcelSerializer.class.getName());
 
     /**
      * Raw sheet name
