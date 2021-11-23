@@ -31,17 +31,19 @@ public class DefaultMoveComparator<M extends Move<S,I>, S extends Solution<S,I>,
     /** {@inheritDoc} */
     @Override
     public Optional<M> getStrictBestMove(M m1, M m2) {
-        if(DoubleComparator.equals(m1.getValue(), m2.getValue())){
+        double m1Value = m1.getValue();
+        double m2Value = m2.getValue();
+        if(DoubleComparator.equals(m1Value, m2Value)){
             return Optional.empty();
         }
         if(maximizing){
-            if (DoubleComparator.isGreaterThan(m1.getValue(), m2.getValue())) {
+            if (DoubleComparator.isGreaterThan(m1Value, m2Value)) {
                 return Optional.of(m1);
             } else {
                 return Optional.of(m2);
             }
         } else {
-            if (DoubleComparator.isGreaterThan(m1.getValue(), m2.getValue())) {
+            if (DoubleComparator.isGreaterThan(m1Value, m2Value)) {
                 return Optional.of(m2);
             } else {
                 return Optional.of(m1);
