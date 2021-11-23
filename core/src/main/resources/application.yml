@@ -53,7 +53,7 @@ serializers:
     dateformat: 'yyyy-MM-dd_HH-mm-ss'
 
   solution-json:
-    # Enable default JSON serializer for solutions. Exports best solution of each algorithm to JSON.
+    # Enable default JSON serializer for solutions. Exports the best solution of each algorithm to JSON.
     # If you want to export solutions to a custom format, extend SolutionSerializer,
     # NOTE: the default JSON solution serializer is automatically disabled when the SolutionSerializer class is extended.
     enabled: false
@@ -111,16 +111,16 @@ serializers:
     # Show variance of score in pivot table. Uses Excel VARP function
     varScoreEnabled: false
 
-    # Show average time in seconds per iteracion in pivot table.
+    # Show average time in seconds per iteration in pivot table.
     avgTimeEnabled: false
 
     # Show total time in seconds for a given (algorithm, instance) in pivot table.
     totalTimeEnabled: true
 
-    # Show average time to best solution in seconds in pivot table.
+    # Show average time to the best solution in seconds in pivot table.
     avgTTBEnabled: false
 
-    # Show total time to best solution in seconds in pivot table.
+    # Show total time to the best solution in seconds in pivot table.
     totalTTBEnabled: false
 
     # Show number of times a given algorithm reaches the best known solution.

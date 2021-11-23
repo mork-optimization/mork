@@ -9,6 +9,7 @@ public class PermutationGenerator {
 
     /**
      * Generate all the possible permutations for the given set
+     *
      * @param elements collection of elements to permute
      * @param <T> Generic Type
      * @return returns a list with all the possible permutations

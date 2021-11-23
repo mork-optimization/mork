@@ -18,16 +18,39 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
 
     private static final Logger log = Logger.getLogger(MultiStartAlgorithm.class.getName());
 
+    /**
+     * Algorithm name
+     */
     final String algorithmName;
+    /**
+     * Algorithm
+     */
     final Algorithm<S, I> algorithm;
+
+    /**
+     * Maximum number of iterations
+     */
     private final int maxIterations;
+
+    /**
+     * Minimum number of iterations
+     */
     private final int minIterations;
+
+    /**
+     * Maximum number of iteration without improving. When the algorithm has been executed this number of time
+     * without finding a new best solution, the multistart procedure ends.
+     */
     private final int maxIterationsWithoutImproving;
+
+    /**
+     * Cut off time in nanotime
+     */
     private final long nanoTime;
 
 
     /**
-     * Use the {@link MultiStartAlgorithmBuilder} class to generate a MultiStart Algorithm
+     * Use the {@link es.urjc.etsii.grafo.solver.algorithms.multistart.MultiStartAlgorithmBuilder} class to generate a MultiStart Algorithm
      *
      * @param algorithmName                 algorithm name
      * @param algorithm                     algorithm
@@ -48,6 +71,13 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
     }
 
 
+    /**
+     * Build a multistart algorithm
+     *
+     * @param <S> Solution class
+     * @param <I> Instance class
+     * @return the multistart algorithm
+     */
     public static <S extends Solution<S,I>, I extends Instance> MultiStartAlgorithmBuilder<S, I> builder() {
         return new MultiStartAlgorithmBuilder<>();
     }
@@ -81,10 +111,9 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
 
 
     /**
-     * Algorithm: Execute a single construction and then all the local searchs a single time.
+     * {@inheritDoc}
      *
-     * @param instance Empty solution
-     * @return Returns a valid solution
+     * Algorithm: Execute a single construction and then all the local searchs a single time.
      */
     @Override
     public S algorithm(I instance) {
@@ -128,6 +157,7 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
         return false;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         return "MA{" +
@@ -138,10 +168,22 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
                 ", mxT=" + nanoTime;
     }
 
+    /**
+     * Print the current status of the VNS procedure, i.e., the current iteration the best solution.
+     *
+     * @param iteration current iteration of the procedure
+     * @param s solution
+     */
     protected void printStatus(int iteration, S s) {
         log.fine(() -> String.format("\t\t%s: %s", iteration, s));
     }
 
+
+    /**
+     * {@inheritDoc}
+     *
+     * This method propagates the builder so that it can be used by other algorithms.
+     */
     @Override
     public void setBuilder(SolutionBuilder<S, I> builder) {
         super.setBuilder(builder);

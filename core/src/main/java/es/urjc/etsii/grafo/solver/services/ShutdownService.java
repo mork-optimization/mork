@@ -12,6 +12,10 @@ import org.springframework.stereotype.Service;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Logger;
 
+/**
+ * <p>ShutdownService class.</p>
+ *
+ */
 @Service
 public class ShutdownService {
     private static final Logger log = Logger.getLogger(ShutdownService.class.getName());
@@ -20,12 +24,24 @@ public class ShutdownService {
     private final EventAsyncConfigurer eventAsyncConfigurer;
     private final boolean stopOnExperimentEnd;
 
+    /**
+     * <p>Constructor for ShutdownService.</p>
+     *
+     * @param appContext a {@link org.springframework.context.ApplicationContext} object.
+     * @param eventAsyncConfigurer a {@link es.urjc.etsii.grafo.solver.services.events.EventAsyncConfigurer} object.
+     * @param eventWebserverConfig a {@link es.urjc.etsii.grafo.solver.services.events.EventWebserverConfig} object.
+     */
     public ShutdownService(ApplicationContext appContext, EventAsyncConfigurer eventAsyncConfigurer, EventWebserverConfig eventWebserverConfig) {
         this.appContext = (ConfigurableApplicationContext) appContext;
         this.eventAsyncConfigurer = eventAsyncConfigurer;
         this.stopOnExperimentEnd = eventWebserverConfig.isStopOnExecutionEnd();
     }
 
+    /**
+     * <p>onExperimentationEnd.</p>
+     *
+     * @param event a {@link es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent} object.
+     */
     @MorkEventListener
     public void onExperimentationEnd(ExecutionEndedEvent event){
         if(stopOnExperimentEnd){
@@ -36,6 +52,12 @@ public class ShutdownService {
         }
     }
 
+    /**
+     * <p>delayedStop.</p>
+     *
+     * @param time a long.
+     * @param unit a {@link java.util.concurrent.TimeUnit} object.
+     */
     public void delayedStop(long time, TimeUnit unit){
         new Thread(() ->{
             try {

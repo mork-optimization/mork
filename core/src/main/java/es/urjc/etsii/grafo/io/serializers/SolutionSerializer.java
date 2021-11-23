@@ -9,6 +9,7 @@ import java.util.logging.Logger;
 
 /**
  * Subclass to provide a custom implementation to export solutions to file.
+ *
  * @param <S> Solution class
  * @param <I> Instance class
  */
@@ -18,6 +19,7 @@ public abstract class SolutionSerializer<S extends Solution<S,I>, I extends Inst
 
     /**
      * Custom export implementation. Exports the given solution to the provided file.
+     *
      * @param f Destination file
      * @param s Solution to export
      */
@@ -33,9 +35,10 @@ public abstract class SolutionSerializer<S extends Solution<S,I>, I extends Inst
      * Custom export implementation. Exports the given solution to disk.
      * You do not need to handle IOExceptions. If an IOException occurs,
      * the given solution export is skipped.
+     *
      * @param writer Output, write data here
      * @param s Solution to export
-     * @throws IOException exception thrown in case something goes wrong
+     * @throws java.io.IOException exception thrown in case something goes wrong
      */
     public abstract void export(BufferedWriter writer, S s) throws IOException;
 }

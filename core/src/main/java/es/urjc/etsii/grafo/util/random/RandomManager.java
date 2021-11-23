@@ -23,6 +23,12 @@ public final class RandomManager {
     private static boolean initialized = false;
     private static RandomType randomType;
 
+    /**
+     * Get RandomGenerator for the current thread. The returned RandomGenerator is not guaranteed to be thread safe, and
+     * should only be used in the calling thread.
+     *
+     * @return RandomGenerator for the current thread
+     */
     public static RandomGenerator getRandom(){
         if(!initialized){
             throw new IllegalStateException("Attempted to use RandomManager before initialization");
@@ -30,7 +36,12 @@ public final class RandomManager {
         return localRandom.get();
     }
 
-    // a bit hacky but uses constructor instead of static initializer for Spring compatibility
+    /**
+     * Initialize RandomManager with te given solver config
+     * a bit hacky but uses constructor instead of static initializer for Spring compatibility
+     *
+     * @param solverConfig solver configuration
+     */
     public RandomManager(SolverConfig solverConfig){
         reinitialize(solverConfig.getRandomType(), solverConfig.getSeed(), solverConfig.getRepetitions());
     }
@@ -38,12 +49,20 @@ public final class RandomManager {
     /**
      * Resets random state ONLY FOR THE CALLING THREAD
      * each thread/worker is responsible for resetting their random state when appropriate
+     *
      * @param iteration Algorithm iteration current thread is going to execute.
      */
     public static void reset(int iteration){
         localRandom.set(RandomGeneratorFactory.of(RandomManager.randomType.getJavaName()).create(seeds[iteration]));
     }
 
+    /**
+     * Reset all random generators with the given initial seed
+     *
+     * @param randomType random type
+     * @param seed random seed
+     * @param repetitions (instance, algorithm) iteration
+     */
     public static void reinitialize(RandomType randomType, long seed, int repetitions){
         RandomManager.randomType = randomType;
         Random initRandom = new Random(seed);
@@ -57,7 +76,7 @@ public final class RandomManager {
     }
 
     /**
-     * Dereference Random object for current thread, allowing it to be garbage collected.
+     * Remove Random object for current thread, allowing it to be garbage collected.
      */
     public static void destroy(){
         localRandom.remove();

@@ -9,13 +9,24 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.logging.Logger;
 
+/**
+ * CSV serializer. By changing the separator in the configuration from ',' to '\t', can serialize to other formats such as TSV.
+ */
 public class CSVSerializer extends ResultsSerializer {
+
+    private static final Logger log = Logger.getLogger(CSVSerializer.class.getName());
 
     private final CSVSerializerConfig config;
 
     private final CsvMapper csvMapper;
 
+    /**
+     * Create a new CSV serializer with a given configuration.
+     *
+     * @param config CSV Serializer configuration
+     */
     public CSVSerializer(CSVSerializerConfig config) {
         super(config);
         this.config = config;
@@ -27,6 +38,7 @@ public class CSVSerializer extends ResultsSerializer {
                 .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
     }
 
+    /** {@inheritDoc} */
     public void _serializeResults(List<? extends SolutionGeneratedEvent<?,?>> results, Path p) {
         log.info("Exporting result data to CSV...");
 

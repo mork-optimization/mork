@@ -14,6 +14,7 @@ public abstract class ExcelCustomizer {
     /**
      * Customize the Excel Workbook. This method is called after the sheets "Raw Results" and "Pivot Table" are calculated,
      * but before the workbook is closed and saved to disk.
+     *
      * @param excelBook Excel book
      * @param eventStorage event storage, all generated events can be retrieved in order to calculate custom metrics.
      */

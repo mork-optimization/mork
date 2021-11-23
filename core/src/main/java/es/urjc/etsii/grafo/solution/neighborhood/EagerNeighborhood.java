@@ -17,6 +17,7 @@ public abstract class EagerNeighborhood<M extends EagerMove<S,I>, S extends Solu
 
     /**
      * Build an exhaustive stream that allows iterating the whole neighborhood
+     *
      * @param s Solution used to generate the neighborhood
      * @return Stream with all the available moves in the neighborhood
      */
@@ -26,6 +27,7 @@ public abstract class EagerNeighborhood<M extends EagerMove<S,I>, S extends Solu
 
     /**
      * Return a collection with all possible movements for the given solution in this neighborhood.
+     *
      * @param s Solution
      * @return Collection of movements
      */

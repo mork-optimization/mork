@@ -14,6 +14,7 @@ public class DisjointSet {
 
     /**
      * Create a Disjoint set where the n elements are initially all disjoint
+     *
      * @param n number of elements to hold
      * @param offset Offset elements by an index ex 1 wil be 0-9 → 1-10
      */
@@ -33,6 +34,7 @@ public class DisjointSet {
 
     /**
      * Clone a DisjointSet
+     *
      * @param original original disjointSet
      */
     public DisjointSet(DisjointSet original){
@@ -43,6 +45,7 @@ public class DisjointSet {
 
     /**
      * Create a Disjoint set where the n elements are initially all disjoint
+     *
      * @param n number of elements to hold
      */
     public DisjointSet(int n) {
@@ -51,6 +54,7 @@ public class DisjointSet {
 
     /**
      * Returns the size of set/cluster the given points is part of
+     *
      * @param n node to check
      * @return size of the cluster n is part of
      */
@@ -68,6 +72,7 @@ public class DisjointSet {
 
     /**
      * Find the set id of a given element
+     *
      * @param n element
      * @return set id
      */
@@ -81,6 +86,7 @@ public class DisjointSet {
 
     /**
      * Check if two nodes are in the same set
+     *
      * @param a first node to check
      * @param b second node to check
      * @return true if the two nodes are in the same set/cluster, false otherwise
@@ -99,6 +105,7 @@ public class DisjointSet {
 
     /**
      * Join the sets a and b are members of
+     *
      * @param a any element from set A
      * @param b any element from set B
      * @return true if the sets have been joined, false if they were already part of the same set

@@ -60,9 +60,18 @@ package es.urjc.etsii.grafo.solver.services;
 //    }
 //}
 
+/**
+ * <p>MorkLifecycle class.</p>
+ *
+ */
 public class MorkLifecycle {
     private static volatile boolean stopping = false;
 
+    /**
+     * <p>stop.</p>
+     *
+     * @return a boolean.
+     */
     public static boolean stop() {
         return stopping;
     }

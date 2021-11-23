@@ -12,6 +12,7 @@ public class UndirectedEdge {
     /**
      * Create a new undirected edge.
      * A and B are REVERSED if (a greater than b), so the following is always true: UndirectedEdge(a,b).equals(UndirectedEdge(b,a))
+     *
      * @param a one of the points. Due to the nature of undirected edges, a and b can be swapped when constructing the Edge.
      * @param b the other point.
      */
@@ -25,6 +26,7 @@ public class UndirectedEdge {
         }
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -34,15 +36,26 @@ public class UndirectedEdge {
                 b == that.b;
     }
 
+    /** {@inheritDoc} */
     @Override
     public int hashCode() {
         return Objects.hash(a, b);
     }
 
+    /**
+     * <p>Getter for the field <code>a</code>.</p>
+     *
+     * @return a int.
+     */
     public int getA() {
         return a;
     }
 
+    /**
+     * <p>Getter for the field <code>b</code>.</p>
+     *
+     * @return a int.
+     */
     public int getB() {
         return b;
     }
