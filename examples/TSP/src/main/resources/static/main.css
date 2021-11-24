@@ -19,3 +19,12 @@ header {
     width: 200px;
     margin-top: -20px;
 }
+
+.rendered-solution{
+    width: 90%;
+    height: 90%;
+}
+
+.box-rendered-solution{
+    height: 400px;
+}

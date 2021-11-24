@@ -21,8 +21,6 @@ let minimum_algorithm;
 let current_chart_series;
 let current_chart;
 
-let current_solution_chart;
-let current_solution_chart_data;
 let bestValue = NaN;
 
 let last_redraw = new Date() - 1000;
@@ -139,62 +137,9 @@ function onInstanceProcessingStart(event) {
     });
 
     // Draw best solution found
-    $('.best-solutions').prepend("<div id='best-solution-" + instanceName + "'></div>");
+    $('.best-solutions').prepend("<div id='best-solution-" + instanceName + "' class='text-center box-rendered-solution'></div>");
     bestValue = NaN;
-
-    // TODO Define current solution chart configuration. Example for DRFLP
-    current_solution_chart = new Highcharts.Chart('best-solution-' + instanceName, {
-        chart: {
-            type: 'xrange',
-            zoomType: 'x'
-        },
-        title: {
-            text: 'Best solution'
-        },
-        subtitle: {
-            text: 'For Instance: ' + instanceName
-        },
-        tooltip: {
-            pointFormatter: function (def) {
-                const point = this;
-                const ix = point.index + 1,
-                    category = point.yCategory,
-                    from = point.x,
-                    to = point.x2;
-                return `ID: ${point.fid < 0 ? "FAKE" : point.fid}, Width: ${to - from}`;
-            }
-        },
-        xAxis: {
-            type: 'linear'
-        },
-        yAxis: {
-            type: 'category',
-            title: {
-                text: 'Rows'
-            },
-            //categories: ['Row 0', 'Row 1', 'Row 2'],
-            reversed: true
-        },
-        legend: {
-            maxHeight: 60
-        },
-        series: [],
-        credits: {
-            enabled: false
-        }
-    });
-    current_solution_chart_data = current_solution_chart.addSeries({
-        name: 'Best Solution',
-        // pointPadding: 0,
-        // groupPadding: 0,
-        borderColor: 'gray',
-        pointWidth: 20,
-        data: [],
-        dataLabels: {
-            enabled: true
-        }
-    });
-    // END Define how the current solution should be drawn.
+    current_best_sol = $('#best-solution-' + instanceName);
 
     // Add reference value plot line
     // Style of the plot line. Default to solid. See https://jsfiddle.net/gh/get/library/pure/highcharts/highcharts/tree/master/samples/highcharts/plotoptions/series-dashstyle-all/
@@ -228,8 +173,8 @@ function onInstanceProcessingEnd(event) {
     current_chart.redraw();
     removeExtraCharts('.current-charts');
 
-    current_solution_chart.redraw();
-    removeExtraCharts('.best-solutions');
+    // current_solution_chart.redraw();
+    // removeExtraCharts('.best-solutions');
 
     currentInstances++;
     currentAlgorithms = nAlgorithms;
@@ -248,7 +193,7 @@ function onSolutionGenerated(event) {
     currentRepetitions++;
     updateStatusChart();
 
-    if (!convergence_chart || !current_chart || !current_solution_chart) {
+    if (!convergence_chart || !current_chart) {
         console.log("Skipping onSolutionGenerated due to missing charts, probably a bug!!");
         return;
     }
@@ -293,32 +238,17 @@ function onSolutionGenerated(event) {
     }
     current_chart_series[event.algorithmName].addPoint([event.iteration, event.score], redraw);
 
-    // TODO Specify how to draw or set data to our custom solution chart when a solution is generated.
-    //  Check if the generated solution improves best. Change to > if maximizing
+    // Change to > if maximizing
     if (isNaN(bestValue) || event.score < bestValue) {
+        const chart_to_update = current_best_sol;
         bestValue = event.score;
-        const newData = [];
-        for (let i = 0; i < event.solution.solutionData.length; i++) {
-            const row = event.solution.solutionData[i];
-            const rowSize = event.solution.rowSizes[i];
-            let acc = 0;
-            for (let j = 0; j < rowSize; j++) {
-                const start = acc;
-                const f = row[j].facility;
-                acc += f.width;
-                const end = acc;
-                const fid = f.id;
-                newData.push({
-                    x: start,       // Start pos
-                    x2: end,        // end pos
-                    y: i,           // Row
-                    fid: fid,       // K-PROP Facility id
-                    color: f.fake ? "rgba(255,255,255,0)" : getRandomColor(fid)     // Color generated from id
-                })
-            }
-        }
+        $.get("/api/generategraph/" + event.eventId, (response) => {
+            chart_to_update.html(` <p class="text-center"> best solution is ${event.score}</p>` +
+                `<img class="rendered-solution" src="data:image/png;base64,${response}" />`
+            );
+        });
 
-        current_solution_chart_data.setData(newData);
+
     }
 
 
@@ -423,7 +353,6 @@ function downloadOldEventData(from, to) {
                     // Each time an instance finishes executing redraw its charts one last time and delete oldest ones
                     convergence_chart.redraw();
                     current_chart.redraw();
-                    current_solution_chart?.redraw();
 
                     event_queue = [];
                     isUpToDate = true;
