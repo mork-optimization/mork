@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.TSP.model;
 
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ArrayUtil;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.Arrays;
 
@@ -60,7 +61,7 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
 
     @Override
     protected boolean _isBetterThan(TSPSolution other) {
-        return this.distance < other.distance;
+        return DoubleComparator.isLessThan(this.distance, other.distance);
     }
 
     /**
@@ -164,17 +165,8 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
      * @param pj desired position
      */
     public void insertLocationAtPiInPj(int pi, int pj) {
-        if (pi < pj) {
-            this.distance = this.distance - getDistanceContribution(pi) - getDistanceContributionToNextLocation(pj);
-            ArrayUtil.deleteAndInsert(this.route, pi, pj);
-            this.distance = this.distance + getDistanceContribution(pj) + getDistanceContributionToPreviousLocation(pi);
-
-        } else {
-            this.distance = this.distance - getDistanceContribution(pi) - getDistanceContributionToNextLocation(pj-1);
-            ArrayUtil.deleteAndInsert(this.route, pi, pj);
-            this.distance = this.distance + getDistanceContribution(pj) + getDistanceContributionToNextLocation(pi);
-
-        }
+        ArrayUtil.deleteAndInsert(this.route, pi, pj);
+       this.distance = this.recalculateScore();
     }
 
 
@@ -260,5 +252,4 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
         var next = (pos + 1) % this.getInstance().numberOfLocations();
         return this.getInstance().getDistance(loc, route[next]);
     }
-
 }

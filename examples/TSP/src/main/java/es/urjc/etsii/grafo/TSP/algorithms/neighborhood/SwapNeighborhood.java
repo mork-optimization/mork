@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.solution.LazyMove;
 import es.urjc.etsii.grafo.solution.neighborhood.LazyNeighborhood;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.text.MessageFormat;
@@ -29,7 +30,7 @@ public class SwapNeighborhood extends LazyNeighborhood<SwapNeighborhood.SwapMove
             this.initialPi = initialPi;
             this.pi = pi;
             this.pj = pj;
-//            System.out.println(this);
+//            System.out.println(initialPi + "-" +this);
         }
 
 
@@ -39,7 +40,7 @@ public class SwapNeighborhood extends LazyNeighborhood<SwapNeighborhood.SwapMove
             var nextPi = pi;
             if (nextPj == initialPi) {
                 nextPi = (nextPi + 1) % s.getInstance().numberOfLocations();
-                if (nextPi == initialPi -1) {
+                if (nextPi == (initialPi -1 + s.getInstance().numberOfLocations())/ + s.getInstance().numberOfLocations()) {
                     return null;
                 }
                 nextPj = (nextPi + 1) % s.getInstance().numberOfLocations();
@@ -59,34 +60,15 @@ public class SwapNeighborhood extends LazyNeighborhood<SwapNeighborhood.SwapMove
 
         @Override
         public double getValue() {
-            if (pj == (pi + 1) % this.getSolution().getInstance().numberOfLocations()) {
-                return getValueConsecutiveSwap(pi, pj);
-            } else if (pi == (pj + 1) % this.getSolution().getInstance().numberOfLocations()) {
-                return getValueConsecutiveSwap(pj, pi);
-            } else {
-                var contributionOfPi = this.getSolution().getDistanceContribution(pi);
-                var contributionOfPj = this.getSolution().getDistanceContribution(pj);
-
-                var newContributionOfPi = this.getSolution().getDistanceContribution(pj, this.getSolution().getLocation(pi));
-                var newContributionOfPj = this.getSolution().getDistanceContribution(pi, this.getSolution().getLocation(pj));
-
-                return newContributionOfPi + newContributionOfPj - contributionOfPi - contributionOfPj;
-            }
-        }
-
-        private double getValueConsecutiveSwap(int pi, int pj) {
-            var contributionOfPi = this.getSolution().getDistanceContributionToPreviousLocation(pi);
-            var contributionOfPj = this.getSolution().getDistanceContributionToNextLocation(pj);
-
-            var newContributionOfPi = this.getSolution().getDistanceContributionToNextLocation(pj, this.getSolution().getLocation(pi));
-            var newContributionOfPj = this.getSolution().getDistanceContributionToPreviousLocation(pi, this.getSolution().getLocation(pj));
-
-            return newContributionOfPi + newContributionOfPj - contributionOfPi - contributionOfPj;
+            var s = this.getSolution().cloneSolution();
+            s.swapLocationOrder(pi, pj);
+            var result = s.getScore() - this.getSolution().getScore();
+            return result;
         }
 
         @Override
         public boolean improves() {
-            return this.getValue() < 0;
+            return DoubleComparator.isLessThan(this.getValue(), 0);
         }
 
         @Override

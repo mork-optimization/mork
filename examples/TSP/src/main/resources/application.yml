@@ -28,7 +28,7 @@ solver:
 
   # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALLELIZED
   # Valid Values: true, false
-  parallelExecutor: true
+  parallelExecutor: false
 
   # Number of workers to use if parallelExecutor is enabled
   # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
