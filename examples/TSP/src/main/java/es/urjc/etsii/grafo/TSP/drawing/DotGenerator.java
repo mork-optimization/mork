@@ -55,7 +55,7 @@ public class DotGenerator {
         StringBuilder edges = new StringBuilder();
         for (int i = 0; i < instance.numberOfLocations(); i++) {
             edges.append(solution.getLocation(i))
-                    .append("->")
+                    .append("->") // TODO: fix the size of the generated image
                     .append(solution.getLocation((i + 1) % instance.numberOfLocations()))
                     .append("\n");
         }
@@ -75,9 +75,9 @@ public class DotGenerator {
         for (int i = 0; i < instance.numberOfLocations(); i++) {
             locations.append(i)
                     .append("[pos=\"")
-                    .append(10 * instance.getCoordinate(i).x() / instance.numberOfLocations())
+                    .append(instance.getCoordinate(i).x() / instance.numberOfLocations())
                     .append(",")
-                    .append(10 * instance.getCoordinate(i).y() / instance.numberOfLocations())
+                    .append(instance.getCoordinate(i).y() / instance.numberOfLocations())
                     .append("!\", shape = \"circle\"];\n");
         }
         return locations.toString();

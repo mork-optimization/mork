@@ -1,7 +1,7 @@
 instances:
   path:
     # Default instance path for all experiments, can be overridden.
-    default: 'examples/TSP/instances/TSPLIB/instances/st70.tsp'
+    default: 'examples/TSP/instances/TSPLIB/instances/berlin52.tsp'
 
     # Override default instance path only for the experiment declared in file PreliminarExperiment.java
     # If an experiment does not have a specific path the default will be used. Example:
@@ -28,7 +28,7 @@ solver:
 
   # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALLELIZED
   # Valid Values: true, false
-  parallelExecutor: false
+  parallelExecutor: true
 
   # Number of workers to use if parallelExecutor is enabled
   # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
