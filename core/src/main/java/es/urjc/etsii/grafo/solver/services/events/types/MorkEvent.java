@@ -15,8 +15,8 @@ public class MorkEvent extends ApplicationEvent {
 
     private static AtomicInteger nextEventId = new AtomicInteger(0);
 
-    protected final int eventId;
-    protected final String workerName;
+    private final int eventId;
+    private final String workerName;
 
     /**
      * Create a new {@code ApplicationEvent}.
@@ -27,6 +27,7 @@ public class MorkEvent extends ApplicationEvent {
         this.workerName = Thread.currentThread().getName();
     }
 
+    /** {@inheritDoc} */
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
@@ -35,19 +36,34 @@ public class MorkEvent extends ApplicationEvent {
         return eventId == morkEvent.eventId;
     }
 
+    /** {@inheritDoc} */
     @Override
     public int hashCode() {
         return Objects.hash(eventId);
     }
 
+    /**
+     * Get event id
+     *
+     * @return unique int that identifies this event
+     */
     public int getEventId() {
         return eventId;
     }
 
+    /**
+     * Get event type
+     *
+     * @return event type or class as string
+     */
     public String getType(){
         return this.getClass().getSimpleName();
     }
 
+    /**
+     * Get worker name, or in other words, who generated this event
+     * @return worker name
+     */
     public String getWorkerName() {
         return workerName;
     }

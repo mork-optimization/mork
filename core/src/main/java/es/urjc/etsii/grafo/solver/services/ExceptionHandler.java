@@ -9,14 +9,16 @@ import java.util.Optional;
 
 /**
  * Abstract class to provide behaviour when an uncontrolled exception reaches executor code.
+ *
  * @see DefaultExceptionHandler for an example implementation
  * @param <S> Solution class
  * @param <I> Instance class
  */
 @InheritedComponent
-public abstract class ExceptionHandler<S extends Solution<I>, I extends Instance> {
+public abstract class ExceptionHandler<S extends Solution<S,I>, I extends Instance> {
     /**
      * What should be done when there is an unhandled exception in the user algorithm implementation?
+     *
      * @param experimentName Experiment name
      * @param e Thrown exception
      * @param s Current solution, if available

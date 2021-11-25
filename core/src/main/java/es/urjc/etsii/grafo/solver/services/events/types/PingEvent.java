@@ -6,6 +6,9 @@ package es.urjc.etsii.grafo.solver.services.events.types;
 public class PingEvent extends MorkEvent {
     String message = "Ping!";
 
+    /**
+     * Create a PingEvent
+     */
     public PingEvent() {
         super();
     }

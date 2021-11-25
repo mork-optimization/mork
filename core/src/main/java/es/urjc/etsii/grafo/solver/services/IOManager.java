@@ -5,7 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.urjc.etsii.grafo.ErrorConfig;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceImporter;
-import es.urjc.etsii.grafo.io.SerializerSolutionCommonConfig;
+import es.urjc.etsii.grafo.io.serializers.SerializerSolutionCommonConfig;
 import es.urjc.etsii.grafo.io.serializers.json.DefaultJSONSolutionSerializer;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -27,8 +27,14 @@ import java.util.stream.Stream;
 
 import static es.urjc.etsii.grafo.util.IOUtil.*;
 
+/**
+ * IO Service to export solutions, errors and load instances
+ *
+ * @param <S> Solution class
+ * @param <I> Instance class
+ */
 @Service
-public class IOManager<S extends Solution<I>, I extends Instance> {
+public class IOManager<S extends Solution<S,I>, I extends Instance> {
 
     private static final Logger log = Logger.getLogger(IOManager.class.toString());
 
@@ -39,16 +45,31 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
     private final InstanceImporter<I> instanceImporter;
     private SolutionSerializer<S, I> solutionSerializer;
 
+    /**
+     * Initialize IOManager
+     *
+     * @param instanceConfiguration instance configuration
+     * @param errorConfig error configuration
+     * @param serializerSolutionCommonConfig solution serializer configuration
+     * @param instanceImporter instance importer
+     * @param solutionSerializers solution serializers
+     */
     public IOManager(InstanceConfiguration instanceConfiguration, ErrorConfig errorConfig, SerializerSolutionCommonConfig serializerSolutionCommonConfig, InstanceImporter<I> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
         this.instanceConfiguration = instanceConfiguration;
         this.errorConfig = errorConfig;
         this.solCommonConfig = serializerSolutionCommonConfig;
         this.instanceImporter = instanceImporter;
-        this.solutionSerializer = Orquestrator.decideImplementation(solutionSerializers, DefaultJSONSolutionSerializer.class);
+        this.solutionSerializer = Orchestrator.decideImplementation(solutionSerializers, DefaultJSONSolutionSerializer.class);
 
         log.info("Using solution exporter: "+this.solutionSerializer.getClass().getTypeName());
     }
 
+    /**
+     * Get instances for a given experiment name
+     *
+     * @param experimentName experiment name as string
+     * @return Stream of instances to solve in given experiment
+     */
     public Stream<I> getInstances(String experimentName){
         String instancePath = this.instanceConfiguration.getPath(experimentName);
         try {
@@ -73,10 +94,23 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         return Files.isRegularFile(p);
     }
 
+    /**
+     * Load an instance given a path
+     *
+     * @param p Path of instance to load
+     * @return Loaded instance
+     */
     public I loadInstance(Path p){
         return this.instanceImporter.importInstance(p.toFile());
     }
 
+    /**
+     * Write a solution to disk.
+     *
+     * @param experimentName current experiment name
+     * @param alg algorithm that generated this solution
+     * @param s solution to serialize to disk
+     */
     public void exportSolution(String experimentName, Algorithm<S,I> alg, S s){
         log.fine(String.format("Exporting solution for algorithm %s using %s", alg.getClass().getSimpleName(), solutionSerializer.getClass().getSimpleName()));
         String filename = experimentName + "__" + s.getInstance().getName() + "__" + alg.getShortName();
@@ -84,6 +118,15 @@ public class IOManager<S extends Solution<I>, I extends Instance> {
         solutionSerializer.export(f, s);
     }
 
+    /**
+     * Export an error to disk
+     *
+     * @param experimentName current experiment name
+     * @param alg algorithm where this error generated from
+     * @param i instance being solved when the error was thrown
+     * @param t Error thrown
+     * @param stacktrace Error stacktrace as string
+     */
     public synchronized void exportError(String experimentName, Algorithm<S,I> alg, I i, Throwable t, String stacktrace){
         if(!errorConfig.isErrorsToFile()){
             log.fine("Skipping exporting exception or error to disk, disabled in config.");

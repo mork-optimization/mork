@@ -19,10 +19,14 @@ public class MemoryEventStorage extends AbstractEventStorage {
      */
     private final ConcurrentSkipListMap<Integer, MorkEvent> eventLog = new ConcurrentSkipListMap<>();
 
+    /**
+     * <p>Constructor for MemoryEventStorage.</p>
+     */
     protected MemoryEventStorage(){}
 
     /**
      * Store in memory the given event
+     *
      * @param event event to save
      */
     public void storeEvent(MorkEvent event){
@@ -34,10 +38,9 @@ public class MemoryEventStorage extends AbstractEventStorage {
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Retrieve events by range [from, to).
-     * @param from Inclusive, range start
-     * @param to Not inclusive, range end
-     * @return Events in range [from, to).
      */
     public List<MorkEvent> getEvents(int from, int to){
         if(to < from){
@@ -46,6 +49,7 @@ public class MemoryEventStorage extends AbstractEventStorage {
         return new ArrayList<>(eventLog.subMap(from, to).values());
     }
 
+    /** {@inheritDoc} */
     public Stream<? extends SolutionGeneratedEvent<?, ?>> getGeneratedSolEventForExp(String experimentName){
         return this.eventLog.values().stream()
                 .filter(e -> e instanceof SolutionGeneratedEvent)
@@ -53,16 +57,27 @@ public class MemoryEventStorage extends AbstractEventStorage {
                 .filter(e -> e.getExperimentName().equals(experimentName));
     }
 
+    /** {@inheritDoc} */
     @SuppressWarnings("unchecked")
     public <T extends MorkEvent> Stream<T> getEventsByType(Class<T> type){
         return (Stream<T>) this.eventLog.values().stream()
                 .filter(type::isInstance);
     }
 
+    /**
+     * <p>getAllEvents.</p>
+     *
+     * @return a {@link java.util.stream.Stream} object.
+     */
     public Stream<MorkEvent> getAllEvents(){
         return this.eventLog.values().stream();
     }
 
+    /**
+     * <p>getLastEvent.</p>
+     *
+     * @return a {@link es.urjc.etsii.grafo.solver.services.events.types.MorkEvent} object.
+     */
     public MorkEvent getLastEvent(){
         return eventLog.lastEntry().getValue();
     }

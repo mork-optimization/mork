@@ -17,15 +17,26 @@ public class DefaultEventListener extends AbstractEventListener {
 
     private final MemoryEventStorage memoryEventStorage;
 
+    /**
+     * Create DefaultEventListener
+     *
+     * @param simpMessagingTemplate websocket messaging template
+     * @param memoryEventStorage memory event storage
+     */
     protected DefaultEventListener(SimpMessagingTemplate simpMessagingTemplate, MemoryEventStorage memoryEventStorage) {
         this.simpMessagingTemplate = simpMessagingTemplate;
         this.memoryEventStorage = memoryEventStorage;
     }
 
+    /**
+     * Store event in memory and send to websocket
+     *
+     * @param morkEvent Mork event
+     */
     @MorkEventListener
-    public void sendToWebsocket(MorkEvent applicationEvent){
-        log.fine(String.format("Sending event to websocket path %s: %s", eventPath, applicationEvent));
-        memoryEventStorage.storeEvent(applicationEvent);
-        simpMessagingTemplate.convertAndSend(eventPath, applicationEvent);
+    public void processEvent(MorkEvent morkEvent){
+        log.fine(String.format("Sending event to websocket path %s: %s", eventPath, morkEvent));
+        memoryEventStorage.storeEvent(morkEvent);
+        simpMessagingTemplate.convertAndSend(eventPath, morkEvent);
     }
 }

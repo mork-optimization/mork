@@ -8,10 +8,11 @@ import es.urjc.etsii.grafo.solution.Solution;
 /**
  * ScoreCache, ejects unused objects and completely destroys the cache
  * if the VM has low free memory. GIV ME RAMMMM nomnomnom
+ *
  * @param <S> Solution type
  * @param <I> Instance type
  */
-public class ScoreCache<S extends Solution<I>,I extends Instance> {
+public class ScoreCache<S extends Solution<S,I>,I extends Instance> {
 
     /**
      * Maximum cache size
@@ -38,6 +39,7 @@ public class ScoreCache<S extends Solution<I>,I extends Instance> {
 
     /**
      * Returns solution score if cached, else calculates, puts in cache and returns it.
+     *
      * @param sol solution to calculate score
      * @return Current solution score
      */

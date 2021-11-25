@@ -19,7 +19,7 @@
 //import static es.urjc.etsii.grafo.util.ConcurrencyUtil.awaitAll;
 //
 //@Component
-//public class ExchangerILS<S extends Solution<I>, I extends Instance> implements Algorithm<S,I> {
+//public class ExchangerILS<S extends Solution<S,I>, I extends Instance> implements Algorithm<S,I> {
 //
 //    private final int nRotateRounds;
 //    private final ILSConfig[] configs;
@@ -96,7 +96,7 @@
 //        return best;
 //    }
 //
-//    public static class ILSConfig<S extends Solution<I>, I extends Instance> {
+//    public static class ILSConfig<S extends Solution<S,I>, I extends Instance> {
 //        final Constructive<S, I> constructive;
 //        final ConstructiveNeighborhood<S,I> constructiveNeighborhood;
 //        final SolutionBuilder<S,I> solutionBuilder;

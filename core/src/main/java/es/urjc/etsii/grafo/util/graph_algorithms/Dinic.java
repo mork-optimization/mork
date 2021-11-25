@@ -15,19 +15,23 @@ import java.util.*;
 public class Dinic {
 
     // Queue for the top level BFS.
-    public ArrayDeque<Integer> q;
+    private ArrayDeque<Integer> q;
 
     // Stores the graph.
-    public HashSet<Edge>[] adj;
-    public int n;
+    private HashSet<Edge>[] adj;
+    private int n;
 
     // For BFS.
-    public boolean[] blocked;
-    public int[] dist;
+    private boolean[] blocked;
+    private int[] dist;
 
-    final public static int oo = (int)1E9;
+    private static final int oo = (int)1E9;
 
-    // Constructor.
+    /**
+     * New Dinic algorithm or graph of size N
+     *
+     * @param N graph size
+     */
     public Dinic(int N) {
 
         // s is the source, t is the sink, add these as last two nodes.
@@ -43,9 +47,14 @@ public class Dinic {
     }
 
 
-
-    // Just adds an edge and ALSO adds it going backwards.
-    // EDGES ARE IGNORED IF ALREADY EXISTS FROM V1 TO V2
+    /**
+     * Just adds an edge and ALSO adds it going backwards.
+     * EDGES ARE IGNORED IF ALREADY EXISTS FROM V1 TO V2
+     *
+     * @param v1 Origin
+     * @param v2 Destination
+     * @param cap Capacity
+     */
     public void add(int v1, int v2, int cap) {
         Edge e = new Edge(v1, v2, cap, 0);
         Edge rev = new Edge(v2, v1, 0, 0);
@@ -53,7 +62,13 @@ public class Dinic {
         adj[v2].add(e.rev = rev);
     }
 
-    // Runs other level BFS.
+    /**
+     * BFS
+     *
+     * @param source start point
+     * @param sink end point
+     * @return true if path exists, false otherwise
+     */
     public boolean bfs(int source, int sink) {
 
         // Set up BFS
@@ -80,7 +95,14 @@ public class Dinic {
         return dist[source] != -1;
     }
 
-    // Runs inner DFS in Dinic's, from node pos with a flow of min.
+    /**
+     * Runs inner DFS in Dinic's, from node pos with a flow of min.
+     *
+     * @param source start point
+     * @param sink end point
+     * @param min flow
+     * @return flow
+     */
     public int dfs(int source, int sink, int min) {
 
         // Made it to the sink, we're good, return this as our max flow for the augmenting path.
@@ -119,6 +141,13 @@ public class Dinic {
         return flow;
     }
 
+    /**
+     * Calculate flow from a source to a destination
+     *
+     * @param source start point
+     * @param sink end point
+     * @return flow
+     */
     public int flow(int source, int sink) {
         int ret = 0;
 
@@ -134,30 +163,30 @@ public class Dinic {
         return ret;
     }
 
-}
 
-// An edge connects v1 to v2 with a capacity of cap, flow of flow.
-class Edge {
-    int v1, v2, cap, flow;
-    Edge rev;
-    Edge(int V1, int V2, int Cap, int Flow) {
-        v1 = V1;
-        v2 = V2;
-        cap = Cap;
-        flow = Flow;
-    }
+    // An edge connects v1 to v2 with a capacity of cap, flow of flow.
+    private static class Edge {
+        int v1, v2, cap, flow;
+        Edge rev;
+        Edge(int V1, int V2, int Cap, int Flow) {
+            v1 = V1;
+            v2 = V2;
+            cap = Cap;
+            flow = Flow;
+        }
 
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
-        Edge edge = (Edge) o;
-        return v1 == edge.v1 &&
-                v2 == edge.v2;
-    }
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Edge edge = (Edge) o;
+            return v1 == edge.v1 &&
+                    v2 == edge.v2;
+        }
 
-    @Override
-    public int hashCode() {
-        return Objects.hash(v1, v2);
+        @Override
+        public int hashCode() {
+            return Objects.hash(v1, v2);
+        }
     }
 }

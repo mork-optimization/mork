@@ -2,15 +2,19 @@ package es.urjc.etsii.grafo.testutil;
 
 import es.urjc.etsii.grafo.solution.Solution;
 
-public class TestSolution extends Solution<TestInstance> {
+public class TestSolution extends Solution<TestSolution, TestInstance> {
+
+    protected double score;
 
     public TestSolution(TestInstance ins) {
         super(ins);
     }
 
-    public TestSolution(Solution<TestInstance> s) {
-        super(s);
+    public TestSolution(TestSolution sol) {
+        super(sol);
+        this.score = sol.score;
     }
+
 
     @Override
     public TestSolution cloneSolution() {
@@ -18,9 +22,10 @@ public class TestSolution extends Solution<TestInstance> {
     }
 
     @Override
-    public <S extends Solution<TestInstance>> S getBetterSolution(S o) {
-        return null;
+    protected boolean _isBetterThan(TestSolution other) {
+        return false;
     }
+
 
     @Override
     public double getScore() {
