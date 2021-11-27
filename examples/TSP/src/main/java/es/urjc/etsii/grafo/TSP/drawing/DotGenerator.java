@@ -55,7 +55,7 @@ public class DotGenerator {
         StringBuilder edges = new StringBuilder();
         for (int i = 0; i < instance.numberOfLocations(); i++) {
             edges.append(solution.getLocation(i))
-                    .append("->") // TODO: fix the size of the generated image
+                    .append("->")
                     .append(solution.getLocation((i + 1) % instance.numberOfLocations()))
                     .append("\n");
         }
@@ -74,7 +74,7 @@ public class DotGenerator {
         var instance = solution.getInstance();
         for (int i = 0; i < instance.numberOfLocations(); i++) {
             locations.append(i)
-                    .append("[pos=\"")
+                    .append("[pos=\"")// TODO: fix the size of the generated image
                     .append(instance.getCoordinate(i).x() / instance.numberOfLocations())
                     .append(",")
                     .append(instance.getCoordinate(i).y() / instance.numberOfLocations())
