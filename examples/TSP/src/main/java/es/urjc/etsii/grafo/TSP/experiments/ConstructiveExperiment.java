@@ -24,8 +24,6 @@ public class ConstructiveExperiment extends AbstractExperiment<TSPSolution, TSPI
 
         algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive()));
 
-
-
         return algorithms;
     }
 }

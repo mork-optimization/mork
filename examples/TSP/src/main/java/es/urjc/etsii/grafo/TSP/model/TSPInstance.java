@@ -50,6 +50,10 @@ public class TSPInstance extends Instance {
      * 2D coordinate
      */
     public record Coordinate(double x, double y) {
+
+        public double[] toList() {
+            return new double[]{x, y};
+        }
     }
 
     /**

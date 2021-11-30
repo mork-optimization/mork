@@ -14,6 +14,7 @@ import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.Base64;
 
 @RestController
@@ -37,6 +38,7 @@ public class DotGenerator {
 
     /**
      * Generate a dot diagram of the solution found
+     *
      * @param solution solution found
      * @return
      */
@@ -72,12 +74,16 @@ public class DotGenerator {
     private static String generateDotLocation(TSPSolution solution) {
         StringBuilder locations = new StringBuilder();
         var instance = solution.getInstance();
+        var stream = Arrays.stream(instance.getLocations()).flatMapToDouble(coordinate -> Arrays.stream(coordinate.toList()).boxed().mapToDouble(Double::doubleValue));
+        var a = stream.toArray();
+        double min = Arrays.stream(a).min().orElseThrow();
+        double max = Arrays.stream(a).max().orElseThrow();
         for (int i = 0; i < instance.numberOfLocations(); i++) {
             locations.append(i)
                     .append("[pos=\"")// TODO: fix the size of the generated image
-                    .append(instance.getCoordinate(i).x() / instance.numberOfLocations())
+                    .append(normalize(50 * instance.getCoordinate(i).x(), min, max))
                     .append(",")
-                    .append(instance.getCoordinate(i).y() / instance.numberOfLocations())
+                    .append(normalize(50 * instance.getCoordinate(i).y(), min, max))
                     .append("!\", shape = \"circle\"];\n");
         }
         return locations.toString();
@@ -97,5 +103,11 @@ public class DotGenerator {
         byte[] bytes = baos.toByteArray();
         return new String(Base64.getEncoder().encode(bytes));
     }
+
+
+    private static double normalize(double value, double min, double max) {
+        return 1 - ((value - min) / (max - min));
+    }
+
 
 }
