@@ -416,22 +416,45 @@ The simplest implementation of a randomized construct is shown below:
 
 ### Define an experiment
 
-Once the construct has been defined, let's define an experiment. Each of the experiments to be executed for the TSP
-must be located in the 'experiments' folder and must extend the `AbstractExperiment<TSPSolution, TSPInstance>` class. To define an experiment it is necessary to
-implement the method `getAlgorithms()`; which returns a list of algorithms. In this case we are only interested in testing a simple
-algorithm, a constructive procedure. Therefore, the resulting experiment would look like this:
-
+Once the construct has been defined, let's define an experiment. Each of the experiments to be executed for the TSP must
+be located in the 'experiments' folder and must extend the `AbstractExperiment<TSPSolution, TSPInstance>` class. To
+define an experiment it is necessary to implement the method `getAlgorithms()`; which returns a list of algorithms. In
+this case we are only interested in testing a simple algorithm, a constructive procedure. Therefore, the resulting
+experiment would look like this:
 
 ### Run MorK
-To run MorK it is necessary to configure previously the run parameters. To do so, go to application.yml file, located at src/main/resources/. This file contains a list of well-documented properties. In this case we are going to focus just on some of them:
- - instances: in this property the path of instances should be indicated. It is possible to indicate a path for each experiment. In this case we set `default: 'instances'`.
- - maximizing: since the TSP is a minimization optimization problem, maximizing is set to false:  ` maximizing: false`. 
- - experiments: this property determines which experiment or experiments should be executed. To do so, you should define a regex expression. However, for a single experiment execution, just specify the class name:   `experiments: 'ConstructiveExperiment'`.
- Have a look to the rest of configuration parameters and feel free to change whatever you want.
 
-Then, you are now able to run MorK.
+To run MorK it is necessary to configure previously the run parameters. To do so, go to application.yml file, located at
+src/main/resources/. This file contains a list of well-documented properties. In this case we are going to focus just on
+some of them:
 
+- instances: in this property the path of instances should be indicated. It is possible to indicate a path for each
+  experiment. In this case we set `default: 'instances'`.
+- maximizing: since the TSP is a minimization optimization problem, maximizing is set to false:  ` maximizing: false`.
+- experiments: this property determines which experiment or experiments should be executed. To do so, you should define
+  a regex expression. However, for a single experiment execution, just specify the class
+  name:   `experiments: 'ConstructiveExperiment'`. Have a look to the rest of configuration parameters and feel free to
+  change whatever you want.
 
+Then, you are able to run MorK. You will see a lot of text and numbers in the console, don't worry, you can analyze them
+carefully when the program finishes, it is not difficult to understand. While the algorithm is running, go
+to: *[http://localhost:8080/](http://localhost:8080/)*. In that website, you will be able to visualize the convergence
+chart and the actual value chart for each of the instance executed. In addition, you will be able to visualize the best
+solution found (as soon as you learn how to do it).
+
+> 💡 _Tip_: when all experiments finish, the web server stops. Therefore, to maintain the server alive, set: `event->webserver-> stopOnExecutionEnd: false ` in the application.yml file.
+
+When the execution ends, go to the result folder and check that an excel file (*.xlxs) has been correctly generated. The excel file contains two sheets: a summary of the results and raw results. 
+Particularly, the summary file should report the following data (exactly the same, MorKs' experiments are fully reproducible)
+
+|                     | ScTSPRandomConstructivei |                |         |                |
+|---------------------|--------------------------|----------------|---------|----------------|
+| Etiquetas   de fila | Min. score               | Sum Total T(s) | hasBest | Min. %Dev2Best |
+| a280                | 31810.10976              | 0.0286772      | 1       | 0              |
+| berlin52            | 25944.86163              | 0.002271       | 1       | 0              |
+| ch130               | 42393.82045              | 0.0022626      | 1       | 0              |
+| eil101              | 3094.175908              | 0.0024924      | 1       | 0              |
+| st70                | 3285.619063              | 0.0015071      | 1       | 0              |
 
 
 ### Testing in MorK
