@@ -222,8 +222,67 @@ Next, lets move on to the `TSPInstanceImporter.java` file. This class aims to ge
 a text file. To this end, we will need to implement the method: `importInstance(BufferedReader reader, String filename)`
 . This method receives as input parameters the buffer reader, managed by the framework and filename. Moreover, it
 returns the constructed instance. Considering the file instance structure, we will need to read line by line the file,
-storing the list of coordinates, and distance between each pair of coordinates, and finally, construct the
-instance. The resultant class will be the following:
+storing the list of coordinates, and distance between each pair of coordinates, and finally, construct the instance. The
+resultant class will be the following:
+
+```
+public class TSPInstanceImporter extends InstanceImporter<TSPInstance> {
+
+    @Override
+    public TSPInstance importInstance(BufferedReader reader, String filename) throws IOException {
+        Scanner sc = new Scanner(reader).useLocale(Locale.US);
+        String name = sc.nextLine().split(":")[1].trim();
+        String type = sc.nextLine().split(":")[1];
+        String comment = sc.nextLine().split(":")[1];
+        int dimension = Integer.parseInt(sc.nextLine().split(":")[1].trim());
+        String edgeWeightType = sc.nextLine().split(":")[1];
+        String nodeCoordSection = sc.nextLine();
+        TSPInstance.Coordinate[] locations = new TSPInstance.Coordinate[dimension];
+        while (!sc.hasNext("EOF")) {
+            int id = sc.nextInt() - 1;
+            double x = sc.nextDouble();
+            double y = sc.nextDouble();
+            locations[id] = new TSPInstance.Coordinate(x, y);
+        }
+        double[][] distances = getMatrixOfDistances(locations);
+        return new TSPInstance(name, locations, distances);
+    }
+
+
+    /**
+     * Calculate all euclidean distances between all locations
+     *
+     * @param locations list of locations
+     * @return a matrix of distances
+     */
+    private double[][] getMatrixOfDistances(TSPInstance.Coordinate[] locations) {
+        var dimension = locations.length;
+        double[][] distances = new double[dimension][dimension];
+        for (int i = 0; i < dimension; i++) {
+            for (int j = i+1; j < dimension; j++) {
+                var distance = this.calculateEuclideanDistance(locations[i], locations[j]);
+                distances[i][j] = distance;
+                distances[j][i] = distance;
+            }
+        }
+       return distances;
+    }
+
+
+    /**
+     * Calculate the Euclidian distance of two given coordinates
+     *
+     * @param i first coordinate
+     * @param j second coordinate
+     * @return the euclidean distance between two coordiantes
+     */
+    public double calculateEuclideanDistance(TSPInstance.Coordinate i, TSPInstance.Coordinate j) {
+        var di = i.x() - j.x();
+        var dj = i.y() - j.y();
+        return Math.sqrt((di * di) + (dj * dj));
+    }
+}
+```
 
 ## 3. Defining a solution of the problem
 
@@ -244,7 +303,7 @@ The main methods of the `TSPSolution` class are the following:
 
 ### Constructors
 
-By default two constructors must be implemented. The first one, initialize a solution given an instance. The second one
+By default, two constructors must be implemented. The first one, initialize a solution given an instance. The second one
 initialize a solution given another solution. For example:
 
 ```
@@ -338,6 +397,42 @@ position (classic interchange movement), or even to randomize a path make sense 
 
 When working with arrays we strongly recommend having a look at the class `ArrayUtil` that contains a wide variety of
 efficient procedures.
+
+## 4. Our first algorithms and experiments
+
+In this section we will generate our first solutions for the TSP. To do so, we will perform the following tasks:
+
+1. Implement a constructive that generates random solutions.
+2. Define an experiment.
+3. Run MorK: understanding the application.yml, the web interface and results.
+
+### Constructive procedures
+
+Constructive procedures are methods that generate solutions to a problem. To implement a constructive we are going to
+use as an example the constructive procedure located in the 'constructives' folder. Every constructive proposed for the
+TSP must extend the `Constructive<TSPSolution, TSPInstance>`.
+
+The simplest implementation of a randomized construct is shown below:
+
+### Define an experiment
+
+Once the construct has been defined, let's define an experiment. Each of the experiments to be executed for the TSP
+must be located in the 'experiments' folder and must extend the `AbstractExperiment<TSPSolution, TSPInstance>` class. To define an experiment it is necessary to
+implement the method `getAlgorithms()`; which returns a list of algorithms. In this case we are only interested in testing a simple
+algorithm, a constructive procedure. Therefore, the resulting experiment would look like this:
+
+
+### Run MorK
+To run MorK it is necessary to configure previously the run parameters. To do so, go to application.yml file, located at src/main/resources/. This file contains a list of well-documented properties. In this case we are going to focus just on some of them:
+ - instances: in this property the path of instances should be indicated. It is possible to indicate a path for each experiment. In this case we set `default: 'instances'`.
+ - maximizing: since the TSP is a minimization optimization problem, maximizing is set to false:  ` maximizing: false`. 
+ - experiments: this property determines which experiment or experiments should be executed. To do so, you should define a regex expression. However, for a single experiment execution, just specify the class name:   `experiments: 'ConstructiveExperiment'`.
+ Have a look to the rest of configuration parameters and feel free to change whatever you want.
+
+Then, you are now able to run MorK.
+
+
+
 
 ### Testing in MorK
 
