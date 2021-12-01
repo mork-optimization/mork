@@ -29,6 +29,14 @@ public class InsertNeighborhood extends EagerNeighborhood<InsertNeighborhood.Ins
         final int pi;
         final int pj;
 
+        /**
+         * Constructor on an insert move. Given a solution, an insert move consist in inserting the the location of a position pi, into a position pj.
+         *
+         *
+         * @param solution current solution
+         * @param pi position of the location is going to be inserted into pj
+         * @param pj position where the location of pi is going to be inserted
+         */
         public InsertMove(TSPSolution solution, int pi, int pj) {
             super(solution);
             this.pi = pi;

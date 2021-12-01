@@ -2,11 +2,13 @@ package es.urjc.etsii.grafo.TSP.experiments;
 
 import es.urjc.etsii.grafo.TSP.algorithms.constructives.TSPRandomConstructive;
 import es.urjc.etsii.grafo.TSP.algorithms.neighborhood.InsertNeighborhood;
+import es.urjc.etsii.grafo.TSP.algorithms.neighborhood.SwapNeighborhood;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.algorithms.SimpleAlgorithm;
+import es.urjc.etsii.grafo.solver.improve.ls.LocalSearchBestImprovement;
 import es.urjc.etsii.grafo.solver.improve.ls.LocalSearchFirstImprovement;
 import es.urjc.etsii.grafo.solver.services.AbstractExperiment;
 
@@ -25,9 +27,15 @@ public class LocalSearchExperiment extends AbstractExperiment<TSPSolution, TSPIn
         var algorithms = new ArrayList<Algorithm<TSPSolution, TSPInstance>>();
 
 
-        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(), new LocalSearchFirstImprovement<>(super.isMaximizing(), new InsertNeighborhood())));
-
-
+        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive()));
+        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),
+                new LocalSearchFirstImprovement<>(super.isMaximizing(), new InsertNeighborhood())));
+        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),
+                new LocalSearchBestImprovement<>(super.isMaximizing(), new InsertNeighborhood())));
+        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),
+                new LocalSearchFirstImprovement<>(super.isMaximizing(), new SwapNeighborhood())));
+        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),
+                new LocalSearchBestImprovement<>(super.isMaximizing(), new SwapNeighborhood())));
 
         return algorithms;
     }
