@@ -456,7 +456,134 @@ Particularly, the summary file should report the following data (exactly the sam
 | eil101              | 3094.175908              | 0.0024924      | 1       | 0              |
 | st70                | 3285.619063              | 0.0015071      | 1       | 0              |
 
+###  Local Searches
+In this section you will be able to implement local search procedures and define more complex experiments.
+A local search algorithm starts from a candidate solution and then iteratively moves to a neighbor solution.  As an example, we will define to classical neighborhood based on the swap and insert movement. To this end, we will perform the following tasks:
 
+1. Implement a neighborhood structure.
+2. Implement the insert/swap operator.
+3. Define a Local Search experiment.
+
+
+####  Implement a neighborhood structure.
+A neighborhoods represents all potential solutions that can be reached for a given solution applying a movement.
+In MorK there are two types of neighborhoods:
+1. Eager Neighborhood: Movements in this neighborhood are generated at once, using List<> of EagerMoves.
+2. Lazy Neighborhood:  Movements in this neighborhood are generated lazily under demand using Streams with LazyMoves.
+
+
+**Eager Neighborhood**
+To explain  Eager Neighborhoods we are going to use the Insert classical move as an example. The insert operator consist in removing a location from the route and insert it between other two locations (i.e., insert it at a specific position).
+
+Have a look to the example depicted in the figure above. The location with ID=7 has been removed from the route, and it is wanted to insert it between locations 2 and 3. The resultant route after the insertion is shown in the second array.
+![insert](https://images.saymedia-content.com/.image/c_limit,cs_srgb,q_auto:eco,w_609/MTc0NDYxNTczNzExMDEzMjI0/c-standard-list-insert-examples.webp)
+
+Given the insert operator, the neighborhood is defined as all possible insertions of all locations in any position of the route. To this end, we first create a class named: `InsertNeighborhood` that must extend `EagerNeighborhood<InsertNeighborhood.InsertMove, TSPSolution, TSPInstance>`, and where `InsertNeighborhood.InsertMove`is the insert move operator we also have to define.
+Once the header of the class has been defined, next task will be to implement the method `public List<InsertMove> getMovements(TSPSolution solution)`, This procedure will generate all possible insert moves given a solution (i.e., insert all location in each of the positions of the route).  A straightforward implementation is shown below:
+
+    public List<InsertMove> getMovements(TSPSolution solution) {  
+      List<InsertMove> list = new ArrayList<>();  
+     for (int i = 0; i < solution.getInstance().numberOfLocations(); i++) {  
+      for (int j = 0; j < solution.getInstance().numberOfLocations(); j++) {  
+      list.add(new InsertMove(solution, i, j));  
+      }  
+     }  return list;  
+    }
+
+Next task is to implement the Insert move: `public static class InsertMove extends EagerMove<TSPSolution, TSPInstance>`. Notice that this class has been nested in `InsertNeighborhood` class. As you may have noticed, the constructor of an insert move receive tree parameters: the solution and two integers: the position in the route of the location to insert in a desired position.
+Regardless of the type of movement intended (Eager or Lazy), the following methods have to be implemented:
+- `boolean isValid()`: true if the solution obtained after the move is feasible
+- `void execute()`: execute the move, the procedure changes the solution
+-  `double getValue()`: this procedure calculates the difference between the value of the solution that would be obtained if the movement were carried out, and the value of the current target solution. This method does NOT perform the movement, the solution (and its structures) do not change.
+-  `boolean improves()` : returns true if applying the move results in a better solution than the current one.
+
+The easiest implementation of this class is depicted below.
+
+    public InsertMove(TSPSolution solution, int pi, int pj) {  
+      super(solution);  
+     this.pi = pi;  
+     this.pj = pj;  
+    }  
+      
+    public boolean isValid() {  
+      return true;  
+    }  
+      
+    protected void _execute() {  
+      this.getSolution().insertLocationAtPiInPj(pi, pj);  
+    }  
+      
+    public double getValue() {  
+      var s = this.getSolution().cloneSolution();  
+      s.insertLocationAtPiInPj(pi, pj);  
+     return s.getScore() - this.getSolution().getScore();  
+    }
+    
+    public boolean improves() {  
+      return DoubleComparator.isLessThan(this.getValue(), 0);  
+    }
+
+In this example, `getValue()` performed the insert move in a cloned solution of the current one. Then it returns the difference in the objective function value between the cloned one (the neighbor solution) and the current one. This procedure is extremely inefficient. An efficient way to perform this calculation will evaluate just the part of the solution that has changed after the move. We depict a more efficient approach in the swap move example.
+
+**Lazy Neighborhood**
+Movements in this neighborhood are generated lazily under demand using [`Streams`](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html) with `LazyMoves`. In this neighborhood we will need to build an exhaustive stream to iterate over it.
+We will use the classical swap move operator to define a Lazy Neighborhood. This move, exchange the position in the route of two locations, and can be easily explained thru the following picture.
+
+![enter image description here](https://raw.githubusercontent.com/nickbalestra/nickbalestra.github.io/master/assets/images/swap-in-place.png)
+
+The main difference between this neighborhood and the previous one is the way in which the movements are defined. In this case, instead of being a list of movements, it is a Stream. The idea of this neighborhood is that given a movement a next movement can be generated (if it exists). In this way, movements are only generated if they are needed. How to do it?
+First, we generate the Swap Neighborhood class (`SwapNeighborhood extends LazyNeighborhood<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance>`) and implement the stream method. This  method generate an initial `SwapMove` object.
+
+    public Stream<SwapMove> stream(TSPSolution solution) {  
+      int initialVertex = RandomManager.getRandom().nextInt(solution.getInstance().numberOfLocations());  
+     return buildStream(new SwapMove(solution, initialVertex, initialVertex, (initialVertex + 1) % solution.getInstance().numberOfLocations()));  
+    }
+
+Again, the `SwapMove` class is a nested class in `LazyNeighborhood` class. The main difference between Lazy moves and Eager moves is that in Lazy Moves the method `LazyMove<TSPSolution, TSPInstance> next()` must be implemented (in addition to all previous detailed methods). This method is in charge of generate next move in the stream sequence. Given a move, it generates the next move if exists, or null otherwise.
+In this particular example we would like to swap pair of locations of the instance. Notice that the swap between a location A and B is equal to the swap between B and A. Therefore, this procedure should avoid generating already visited moves.  Our proposed procedure is depicted next:
+
+    public LazyMove<TSPSolution, TSPInstance> next() {  
+      var nextPj = (pj + 1) % s.getInstance().numberOfLocations();  
+     var nextPi = pi;  
+     if (nextPj == initialPi) {  
+      nextPi = (nextPi + 1) % s.getInstance().numberOfLocations();  
+     if (nextPi == (initialPi -1 + s.getInstance().numberOfLocations())/ + s.getInstance().numberOfLocations()) {  
+      return null;  
+      }  
+      nextPj = (nextPi + 1) % s.getInstance().numberOfLocations();  
+      }  
+      return new SwapMove(s, initialPi, nextPi, nextPj);  
+    }
+
+An example of the stream generated by this procedure, given an instance with locations A, B, C, D and E, starting with the swap A <->B, will be the following: A <-> B, A <-> C, A <-> D, A <-> E, B <-> C, B <-> D, B <-> E, C <-> D, C <-> E, D <-> E, and finally, `null`.
+
+#### Define a Local Search experiment
+Define a local search experiment is as easy as define a constructive experiment. Copy the `ConstructiveExperiment` class in the same folder and rename it to `LocalSearchExperiment`.  In Mork, you could use to defined Local Searches: `LocalSearchFirstImprovement` and `LocalSearchBestImprovement`. The first one follows a first improvement strategy, i.e., as soon as it finds a move that results on an improve, it is executed. The second one follows a best improvement strategy, it explores all solutions of a neighborhood and execute the best possible move, the move that results in the best solution of the neighborhood.
+In this experiment we are going to define 5 algorithms:
+- Random constructive:
+- Insert Neighborhood following a first and best improvement strategy
+- Swap Neighborhood following a first and best improvement strategy
+
+        public List<Algorithm<TSPSolution, TSPInstance>> getAlgorithms() {  
+          
+          var algorithms = new ArrayList<Algorithm<TSPSolution, TSPInstance>>();  
+          
+          
+          algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive()));  
+          algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),  
+         new LocalSearchFirstImprovement<>(super.isMaximizing(), new InsertNeighborhood())));  
+          algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),  
+         new LocalSearchBestImprovement<>(super.isMaximizing(), new InsertNeighborhood())));  
+          algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),  
+         new LocalSearchFirstImprovement<>(super.isMaximizing(), new SwapNeighborhood())));  
+          algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),  
+         new LocalSearchBestImprovement<>(super.isMaximizing(), new SwapNeighborhood())));  
+          
+         return algorithms;  
+
+  }
+
+Now is the moment to run this new experiment. Change the experiment property in the `application.yml` file and run it! Remember to look to the interactive dashboard run in [localhost](http://localhost:8080/). Which is the best algorithm?
 ### Testing in MorK
 
 #### Asserts
