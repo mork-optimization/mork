@@ -4,14 +4,21 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
-import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
+import es.urjc.etsii.grafo.solver.experiment.Experiment;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.services.IOManager;
+import es.urjc.etsii.grafo.solver.services.InstanceManager;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
+import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
+import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingEndedEvent;
+import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingStartedEvent;
+import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -38,8 +45,8 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
      * @param validator Solution validator
      * @param io IOManager
      */
-    public ConcurrentExecutor(SolverConfig solverConfig, Optional<SolutionValidator<S, I>> validator, IOManager<S, I> io) {
-        super(validator, io);
+    public ConcurrentExecutor(SolverConfig solverConfig, Optional<SolutionValidator<S, I>> validator, IOManager<S, I> io, InstanceManager<I> instanceManager, List<ReferenceResultProvider> referenceResultProviders) {
+        super(validator, io, instanceManager, referenceResultProviders, solverConfig);
         if (solverConfig.getnWorkers() == -1) {
             this.nWorkers = Runtime.getRuntime().availableProcessors() / 2;
         } else {
@@ -48,12 +55,18 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
         this.executor = Executors.newFixedThreadPool(this.nWorkers);
     }
 
-    /** {@inheritDoc} */
-    @Override
-    public void execute(String experimentName, I ins, int repetitions, List<Algorithm<S, I>> list, ExceptionHandler<S, I> exceptionHandler) {
+    /**
+     * Execute all the available algorithms for the given instance, repeated N times
+     *
+     * @param ins Instance
+     * @param repetitions Number of repetitions
+     * @param algorithms Algorithm list
+     * @param exceptionHandler Exception handler, determines behaviour if anything fails
+     */
+    public void execute(String experimentName, I ins, int repetitions, List<Algorithm<S, I>> algorithms, ExceptionHandler<S, I> exceptionHandler) {
 
         logger.info("Starting solve of instance: " + ins.getName());
-        for (var algorithm : list) {
+        for (var algorithm : algorithms) {
             var futures = new ArrayList<Future<Object>>();
             for (int i = 0; i < repetitions; i++) {
                 int _i = i;
@@ -67,6 +80,23 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
             ConcurrencyUtil.awaitAll(futures);
         }
         logger.info("Done processing instance: " + ins.getName());
+    }
+
+    /** {@inheritDoc} */
+    @Override
+    public void executeExperiment(Experiment<S,I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, long startTimestamp) {
+        var algorithms = experiment.algorithms();
+        var experimentName = experiment.name();
+        for(var instanceName: instanceNames){
+            I instance = this.instanceManager.getInstance(instanceName);
+            long instanceStartTime = System.nanoTime();
+            var referenceValue = getOptionalReferenceValue(this.referenceResultProviders, instance);
+            EventPublisher.publishEvent(new InstanceProcessingStartedEvent(experimentName, instance.getName(), algorithms, solverConfig.getRepetitions(), referenceValue));
+            logger.info("Running algorithms for instance: " + instance.getName());
+            this.execute(experimentName, instance, solverConfig.getRepetitions(), algorithms, exceptionHandler);
+            long totalInstanceTime = System.nanoTime() - instanceStartTime;
+            EventPublisher.publishEvent(new InstanceProcessingEndedEvent(experimentName, instance.getName(), totalInstanceTime, startTimestamp));
+        }
     }
 
     /** {@inheritDoc} */

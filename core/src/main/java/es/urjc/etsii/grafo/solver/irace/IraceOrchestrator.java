@@ -8,16 +8,15 @@ import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.AbstractOrchestrator;
-import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
-import es.urjc.etsii.grafo.solver.services.IOManager;
+import es.urjc.etsii.grafo.solver.services.InstanceManager;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExperimentStartedEvent;
 import es.urjc.etsii.grafo.util.IOUtil;
-import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.StringUtil;
+import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
@@ -44,7 +43,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     private final IraceIntegration iraceIntegration;
     private final SolutionBuilder<S, I> solutionBuilder;
     private final IraceAlgorithmGenerator<S,I> algorithmGenerator;
-    private final IOManager<S,I> io;
+    private final InstanceManager<I> instanceManager;
     private final Environment env;
 
     /**
@@ -52,8 +51,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
      *
      * @param solverConfig a {@link es.urjc.etsii.grafo.solver.SolverConfig} object.
      * @param iraceIntegration a {@link es.urjc.etsii.grafo.solver.irace.IraceIntegration} object.
-     * @param io a {@link es.urjc.etsii.grafo.solver.services.IOManager} object.
-     * @param exceptionHandlers a {@link java.util.List} object.
+     * @param instanceManager a {@link es.urjc.etsii.grafo.solver.services.InstanceManager} object.
      * @param solutionBuilders a {@link java.util.List} object.
      * @param algorithmGenerator a {@link java.util.Optional} object.
      * @param env a {@link org.springframework.core.env.Environment} object.
@@ -61,14 +59,14 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     public IraceOrchestrator(
             SolverConfig solverConfig,
             IraceIntegration iraceIntegration,
-            IOManager<S, I> io,
-            List<ExceptionHandler<S, I>> exceptionHandlers,
+            InstanceManager<I> instanceManager,
             List<SolutionBuilder<S, I>> solutionBuilders,
-            Optional<IraceAlgorithmGenerator<S, I>> algorithmGenerator, Environment env) {
+            Optional<IraceAlgorithmGenerator<S, I>> algorithmGenerator,
+            Environment env) {
         this.solverConfig = solverConfig;
         this.iraceIntegration = iraceIntegration;
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
-        this.io = io;
+        this.instanceManager = instanceManager;
         this.env = env;
         log.info("Using SolutionBuilder implementation: " + this.solutionBuilder.getClass().getSimpleName());
 
@@ -136,7 +134,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     public double iraceCallback(ExecuteRequest request){
         var config = buildConfig(request);
         var instancePath = Path.of(config.getInstanceName());
-        var instance = io.loadInstance(instancePath);
+        var instance = instanceManager.getInstance(instancePath);
         var algorithm = this.algorithmGenerator.buildAlgorithm(config);
         algorithm.setBuilder(this.solutionBuilder);
         log.fine("Built algorithm: " + algorithm);
