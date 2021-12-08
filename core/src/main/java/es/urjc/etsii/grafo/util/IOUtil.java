@@ -139,8 +139,8 @@ public class IOUtil {
      * @return list of paths to normal files
      */
     public static List<Path> iterate(Path path) {
-        try {
-            return Files.walk(path)
+        try(var stream = Files.walk(path)) {
+            return stream
                     .filter(IOUtil::isNormalFile)
                     .collect(Collectors.toList());
         } catch (IOException e){

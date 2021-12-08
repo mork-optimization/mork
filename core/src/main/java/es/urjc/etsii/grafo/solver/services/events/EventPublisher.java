@@ -90,6 +90,7 @@ public class EventPublisher {
                     }
                 } catch (InterruptedException e) {
                     log.warning("Event interceptor interrupted, exiting thread. Events will stop being propagated");
+                    Thread.currentThread().interrupt();
                     return;
                 }
             }
