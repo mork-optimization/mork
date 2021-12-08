@@ -38,70 +38,24 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
 
     private static final Logger log = Logger.getLogger(IOManager.class.toString());
 
-    private final InstanceConfiguration instanceConfiguration;
     private final ErrorConfig errorConfig;
     private final SerializerSolutionCommonConfig solCommonConfig;
 
-    private final InstanceImporter<I> instanceImporter;
     private SolutionSerializer<S, I> solutionSerializer;
 
     /**
      * Initialize IOManager
      *
-     * @param instanceConfiguration instance configuration
      * @param errorConfig error configuration
      * @param serializerSolutionCommonConfig solution serializer configuration
-     * @param instanceImporter instance importer
      * @param solutionSerializers solution serializers
      */
-    public IOManager(InstanceConfiguration instanceConfiguration, ErrorConfig errorConfig, SerializerSolutionCommonConfig serializerSolutionCommonConfig, InstanceImporter<I> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
-        this.instanceConfiguration = instanceConfiguration;
+    public IOManager(ErrorConfig errorConfig, SerializerSolutionCommonConfig serializerSolutionCommonConfig, InstanceImporter<I> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
         this.errorConfig = errorConfig;
         this.solCommonConfig = serializerSolutionCommonConfig;
-        this.instanceImporter = instanceImporter;
         this.solutionSerializer = Orchestrator.decideImplementation(solutionSerializers, DefaultJSONSolutionSerializer.class);
 
         log.info("Using solution exporter: "+this.solutionSerializer.getClass().getTypeName());
-    }
-
-    /**
-     * Get instances for a given experiment name
-     *
-     * @param experimentName experiment name as string
-     * @return Stream of instances to solve in given experiment
-     */
-    public Stream<I> getInstances(String experimentName){
-        String instancePath = this.instanceConfiguration.getPath(experimentName);
-        try {
-            checkExists(instancePath);
-            createFolder(this.solCommonConfig.getFolder());
-
-            return Files.walk(Path.of(instancePath)).filter(IOManager::filesFilter).sorted(Comparator.comparing(f -> f.toFile().getName().toLowerCase())).map(this::loadInstance);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static boolean filesFilter(Path p){
-        try {
-            if(Files.isHidden(p)) {
-                return false;
-            }
-        } catch (IOException e) {
-            log.warning("Error while reading file attributes, skipping instance file: " + p.toAbsolutePath());
-            return false;
-        }
-        return Files.isRegularFile(p);
-    }
-
-    /**
-     * Load an instance given a path
-     *
-     * @param p Path of instance to load
-     * @return Loaded instance
-     */
-    public I loadInstance(Path p){
-        return this.instanceImporter.importInstance(p.toFile());
     }
 
     /**
@@ -114,7 +68,9 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
     public void exportSolution(String experimentName, Algorithm<S,I> alg, S s){
         log.fine(String.format("Exporting solution for algorithm %s using %s", alg.getClass().getSimpleName(), solutionSerializer.getClass().getSimpleName()));
         String filename = experimentName + "__" + s.getInstance().getName() + "__" + alg.getShortName();
-        File f = new File(this.solCommonConfig.getFolder(), filename);
+        var solutionFolder = this.solCommonConfig.getFolder();
+        createFolder(solutionFolder);
+        File f = new File(solutionFolder, filename);
         solutionSerializer.export(f, s);
     }
 
