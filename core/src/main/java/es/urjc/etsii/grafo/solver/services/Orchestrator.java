@@ -4,7 +4,6 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
-import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.executors.Executor;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
@@ -93,6 +92,7 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
     }
 
     private void runExperiment(String experimentName, List<Algorithm<S,I>> algorithms) {
+        long startTimestamp = System.currentTimeMillis();
         long startTime = System.nanoTime();
         log.info("Running experiment: " + experimentName);
         // TODO review this, instances are loaded twice, needed to validate them all before executing but careful.
@@ -100,18 +100,19 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
         EventPublisher.publishEvent(new ExperimentStartedEvent(experimentName, instanceNames));
         io.getInstances(experimentName).forEach(instance -> processInstance(experimentName, algorithms, instance));
         long experimenExecutionTime = System.nanoTime() - startTime;
-        EventPublisher.publishEvent(new ExperimentEndedEvent(experimentName, experimenExecutionTime));
+        EventPublisher.publishEvent(new ExperimentEndedEvent(experimentName, experimenExecutionTime, startTimestamp));
         log.info("Finished running experiment: " + experimentName);
     }
 
     private void processInstance(String experimentName, List<Algorithm<S, I>> algorithms, Instance instance) {
+        long startTimestamp = System.currentTimeMillis();
         long startTime = System.nanoTime();
         var referenceValue = getOptionalReferenceValue(this.referenceResultProviders, instance);
         EventPublisher.publishEvent(new InstanceProcessingStartedEvent(experimentName, instance.getName(), algorithms, solverConfig.getRepetitions(), referenceValue));
         log.info("Running algorithms for instance: " + instance.getName());
         executor.execute(experimentName, (I) instance, solverConfig.getRepetitions(), algorithms, exceptionHandler);
         long totalTime = System.nanoTime() - startTime;
-        EventPublisher.publishEvent(new InstanceProcessingEndedEvent(experimentName, instance.getName(), totalTime));
+        EventPublisher.publishEvent(new InstanceProcessingEndedEvent(experimentName, instance.getName(), totalTime, startTimestamp));
     }
 
     private Optional<Double> getOptionalReferenceValue(List<ReferenceResultProvider> provider, Instance instance){

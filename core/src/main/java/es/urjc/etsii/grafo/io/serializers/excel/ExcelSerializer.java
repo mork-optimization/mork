@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.io.serializers.excel;
 
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.solver.SolverConfig;
-import es.urjc.etsii.grafo.solver.services.events.MemoryEventStorage;
+import es.urjc.etsii.grafo.solver.services.events.AbstractEventStorage;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
@@ -49,7 +49,6 @@ public class ExcelSerializer extends ResultsSerializer {
     private final boolean maximizing;
     private final List<ReferenceResultProvider> referenceResultProviders;
     private final Optional<ExcelCustomizer> excelCustomizer;
-    private final MemoryEventStorage eventStorage;
     private final ExcelSerializerConfig config;
 
     /**
@@ -62,18 +61,17 @@ public class ExcelSerializer extends ResultsSerializer {
      * @param eventStorage event storage
      */
     public ExcelSerializer(
+            AbstractEventStorage eventStorage,
             ExcelSerializerConfig serializerConfig,
             SolverConfig solverConfig,
             List<ReferenceResultProvider> referenceResultProviders,
-            Optional<ExcelCustomizer> excelCustomizer,
-            MemoryEventStorage eventStorage
+            Optional<ExcelCustomizer> excelCustomizer
     ) {
-        super(serializerConfig);
+        super(eventStorage, serializerConfig);
         this.config = serializerConfig;
         this.maximizing = solverConfig.isMaximizing();
         this.referenceResultProviders = referenceResultProviders;
         this.excelCustomizer = excelCustomizer;
-        this.eventStorage = eventStorage;
     }
 
     /** {@inheritDoc} */

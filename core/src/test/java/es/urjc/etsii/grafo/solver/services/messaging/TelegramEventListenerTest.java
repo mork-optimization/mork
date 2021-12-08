@@ -42,7 +42,7 @@ public class TelegramEventListenerTest {
     @Test
     public void readyCheckOnExperimentEnd(){
         given(telegramService.ready()).willReturn(false);
-        telegramEventListener.onExperimentEnd(new ExperimentEndedEvent("name", 1000));
+        telegramEventListener.onExperimentEnd(new ExperimentEndedEvent("name", 1000, System.currentTimeMillis()));
 
         verify(telegramService).ready();
         verifyNoMoreInteractions(telegramService);
@@ -51,7 +51,7 @@ public class TelegramEventListenerTest {
     @Test
     public void onExperimentEnd(){
         given(telegramService.ready()).willReturn(true);
-        telegramEventListener.onExperimentEnd(new ExperimentEndedEvent("name", 1000));
+        telegramEventListener.onExperimentEnd(new ExperimentEndedEvent("name", 1000, System.currentTimeMillis()));
         verify(telegramService).sendMessage(anyString());
     }
 

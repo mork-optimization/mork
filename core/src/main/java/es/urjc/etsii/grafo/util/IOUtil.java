@@ -18,13 +18,13 @@ public class IOUtil {
     private static final Logger log = Logger.getLogger(IOUtil.class.getName());
 
     /**
-     * Create folder if not exists
+     * Create folder if not exists, recursively
      *
      * @param path a {@link java.lang.String} object.
      */
     public static void createFolder(String path) {
         File dir = new File(path);
-        dir.mkdir();
+        boolean created = dir.mkdirs();
         checkIsFolder(path);
     }
 

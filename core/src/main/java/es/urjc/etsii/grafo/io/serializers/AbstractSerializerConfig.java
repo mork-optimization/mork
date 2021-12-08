@@ -6,7 +6,6 @@ package es.urjc.etsii.grafo.io.serializers;
  */
 public abstract class AbstractSerializerConfig {
 
-
     /**
      * The serializer is enabled
      */
@@ -21,6 +20,11 @@ public abstract class AbstractSerializerConfig {
      *  String formatter for current date using in solution filename
      */
     private String format;
+
+    /**
+     * When should result data be exported?
+     */
+    private Frequency frequency;
 
     /**
      * Is the current serializer enabled?
@@ -75,5 +79,36 @@ public abstract class AbstractSerializerConfig {
      */
     public void setFormat(String format) {
         this.format = format;
+    }
+
+    /**
+     * How frequently should data be exported?
+     * @return export frequency
+     */
+    public Frequency getFrequency() {
+        return frequency;
+    }
+
+    /**
+     * How frequently should data be exported?
+     * @param frequency export frequency
+     */
+    public void setFrequency(Frequency frequency) {
+        this.frequency = frequency;
+    }
+
+    /**
+     * Defines export frequency.
+     */
+    public enum Frequency {
+        /**
+         * Try to export results using this serializer each time an instance completes executing.
+         */
+        PER_INSTANCE,
+
+        /**
+         * Try to export results only after the experiment completes.
+         */
+        EXPERIMENT_END
     }
 }

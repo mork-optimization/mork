@@ -101,10 +101,11 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         var isJAR = IOUtil.isJAR(referenceClass);
         extractIraceFiles(isJAR);
         long start = System.nanoTime();
+        long startTimestamp = System.currentTimeMillis();
         iraceIntegration.runIrace(isJAR);
         long end = System.nanoTime();
         log.info("Finished running experiment: IRACE autoconfig");
-        EventPublisher.publishEvent(new ExperimentEndedEvent(IRACE_EXPNAME, end - start));
+        EventPublisher.publishEvent(new ExperimentEndedEvent(IRACE_EXPNAME, end - start, startTimestamp));
     }
 
     private void extractIraceFiles(boolean isJar) {
