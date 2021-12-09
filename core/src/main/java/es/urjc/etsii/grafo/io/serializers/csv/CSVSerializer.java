@@ -51,7 +51,7 @@ public class CSVSerializer extends ResultsSerializer {
                 .withHeader();
 
         // Problema: Reusar el path si existe, refactorizar el serializer comun, metodo helper a IOManager o donde sea, oo como ejemplo
-        try(var br = Files.newBufferedWriter(p, StandardCharsets.UTF_8, StandardOpenOption.TRUNCATE_EXISTING)){
+        try(var br = Files.newBufferedWriter(p, StandardCharsets.UTF_8)){
            var writer =  csvMapper.writer(schema);
            writer.writeValue(br, results);
         } catch (IOException e) {
