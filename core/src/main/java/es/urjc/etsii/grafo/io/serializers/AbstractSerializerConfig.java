@@ -24,7 +24,7 @@ public abstract class AbstractSerializerConfig {
     /**
      * When should result data be exported?
      */
-    private Frequency frequency;
+    private Frequency frequency = Frequency.EXPERIMENT_END;
 
     /**
      * Is the current serializer enabled?
