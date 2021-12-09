@@ -15,8 +15,7 @@ import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingStarte
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -52,33 +51,23 @@ public class SequentialExecutor<S extends Solution<S,I>, I extends Instance> ext
     public void executeExperiment(Experiment<S,I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, long startTimestamp) {
         var algorithms = experiment.algorithms();
         var experimentName = experiment.name();
-        for(var instanceName: instanceNames){
-            I instance = this.instanceManager.getInstance(instanceName);
-            long instanceStartTime = System.nanoTime();
-            var referenceValue = getOptionalReferenceValue(this.referenceResultProviders, instance);
-            EventPublisher.publishEvent(new InstanceProcessingStartedEvent(experimentName, instance.getName(), algorithms, solverConfig.getRepetitions(), referenceValue));
-            logger.info("Running algorithms for instance: " + instance.getName());
-            this.execute(experimentName, instance, solverConfig.getRepetitions(), algorithms, exceptionHandler);
-            long totalInstanceTime = System.nanoTime() - instanceStartTime;
-            EventPublisher.publishEvent(new InstanceProcessingEndedEvent(experimentName, instance.getName(), totalInstanceTime, startTimestamp));
-        }
-    }
+        var workUnits = getOrderedWorkUnits(experiment, instanceNames, exceptionHandler, solverConfig.getRepetitions());
 
-    /**
-     * Execute all the available algorithms for the given instance, repeated N times
-     *
-     * @param ins Instance
-     * @param repetitions Number of repetitions
-     * @param algorithms Algorithm list
-     * @param experimentName Experiment name
-     * @param exceptionHandler Exception handler, determines behaviour if anything fails
-     */
-    public void execute(String experimentName, I ins, int repetitions, List<Algorithm<S,I>> algorithms, ExceptionHandler<S,I> exceptionHandler) {
-        for(var algorithm: algorithms){
-            logger.info("Algorithm: "+ algorithm.getShortName());
-            for (int i = 0; i < repetitions; i++) {
-                doWork(experimentName, ins, algorithm, i, exceptionHandler);
+        // K: Instance name --> V: List of WorkUnits
+        for(var e: workUnits.entrySet()){
+            var instanceName = e.getKey();
+            long instanceStartTime = System.nanoTime();
+            var referenceValue = getOptionalReferenceValue(this.referenceResultProviders, instanceName);
+            EventPublisher.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
+            logger.info("Running algorithms for instance: " + instanceName);
+
+            for(var workUnit: e.getValue()){
+                var workUnitResult = doWork(workUnit);
+                this.processWorkUnitResult(workUnitResult);
             }
+
+            long totalInstanceTime = System.nanoTime() - instanceStartTime;
+            EventPublisher.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
         }
     }
 

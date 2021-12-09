@@ -14,8 +14,7 @@ import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
-import java.util.List;
-import java.util.Optional;
+import java.util.*;
 import java.util.logging.Logger;
 
 /**
@@ -80,42 +79,44 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     }
 
     /**
-     * Execute a single iteration for the given (experiment, intance, algorithm, iterationId)
+     * Execute a single iteration for the given (experiment, instance, algorithm, iterationId)
      *
-     * @param experimentName experiment name
-     * @param instance instance
-     * @param algorithm current algorithm
-     * @param i iteration id
-     * @param exceptionHandler exception handler
+     * @param workUnit Minimum unit of work, cannot be divided further.
      */
-    protected void doWork(String experimentName, I instance, Algorithm<S, I> algorithm, int i, ExceptionHandler<S,I> exceptionHandler) {
+    protected WorkUnitResult<S,I> doWork(WorkUnit<S,I> workUnit) {
         S solution = null;
+        I instance = this.instanceManager.getInstance(workUnit.instanceName());
+
         try {
             // If app is stopping do not run algorithm
             if(MorkLifecycle.stop()) {
-                return;
+                return null;
             }
-
-            RandomManager.reset(i);
+            RandomManager.reset(workUnit.i());
             long starTime = System.nanoTime();
-            solution = algorithm.algorithm(instance);
+            solution = workUnit.algorithm().algorithm(instance);
             long endTime = System.nanoTime();
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long executionTime = endTime - starTime;
             validate(solution);
-            io.exportSolution(experimentName, algorithm, solution);
-            EventPublisher.publishEvent(new SolutionGeneratedEvent<>(i, solution, experimentName, algorithm, executionTime, timeToTarget));
-            log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", i +1, executionTime / 1_000_000_000D, timeToTarget / 1000_000_000D, solution));
+            return new WorkUnitResult<>(workUnit, solution, executionTime, timeToTarget);
         } catch (Exception e) {
-            exceptionHandler.handleException(experimentName, e, Optional.ofNullable(solution), instance, algorithm, io);
+            workUnit.exceptionHandler().handleException(workUnit.experimentName(), e, Optional.ofNullable(solution), instance, workUnit.algorithm(), io);
             EventPublisher.publishEvent(new ErrorEvent(e));
+            return null;
         }
     }
 
-    protected Optional<Double> getOptionalReferenceValue(List<ReferenceResultProvider> provider, Instance instance){
+    protected void processWorkUnitResult(WorkUnitResult<S,I> r){
+        io.exportSolution(r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution());
+        EventPublisher.publishEvent(new SolutionGeneratedEvent<>(r.workUnit().i(), r.solution(), r.workUnit().experimentName(), r.workUnit().algorithm(), r.executionTime(), r.timeToTarget()));
+        log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() +1, r.executionTime() / 1_000_000_000D, r.timeToTarget() / 1000_000_000D, r.solution()));
+    }
+
+    protected Optional<Double> getOptionalReferenceValue(List<ReferenceResultProvider> provider, String instanceName){
         double best = this.solverConfig.isMaximizing()? Double.MIN_VALUE: Double.MAX_VALUE;
         for(var r: referenceResultProviders){
-            double score = r.getValueFor(instance.getName()).getScoreOrNan();
+            double score = r.getValueFor(instanceName).getScoreOrNan();
             // Ignore if not valid value
             if (Double.isFinite(score)) {
                 if(this.solverConfig.isMaximizing()){
@@ -130,5 +131,28 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
         } else {
             return Optional.of(best);
         }
+    }
+
+    /**
+     * Create workunits with solve order
+     * @param experiment experiment definition
+     * @param instanceNames instance name list
+     * @param exceptionHandler what to do if something fails inside the workunit
+     * @param repetitions how many times should we repeat the (instance, algorithm) pair
+     * @return Map of workunits per instance
+     */
+    protected Map<String, List<WorkUnit<S,I>>> getOrderedWorkUnits(Experiment<S,I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, int repetitions){
+        var workUnits = new LinkedHashMap<String, List<WorkUnit<S,I>>>();
+        for(String instanceName: instanceNames){
+            var list = new ArrayList<WorkUnit<S,I>>();
+            for(var alg: experiment.algorithms()){
+                for (int i = 0; i < repetitions; i++) {
+                    var workUnit = new WorkUnit<>(experiment.name(), instanceName, alg, i, exceptionHandler);
+                    list.add(workUnit);
+                }
+            }
+            workUnits.put(instanceName, list);
+        }
+        return workUnits;
     }
 }
