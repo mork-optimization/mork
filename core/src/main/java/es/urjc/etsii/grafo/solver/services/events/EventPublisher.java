@@ -83,7 +83,6 @@ public class EventPublisher {
                     var event = eventQueue.take();
                     log.fine("Publishing event: " + event);
                     this.destination.publishEvent(event);
-                    destination.publishEvent(event);
                     if(event instanceof ExecutionEndedEvent){
                         log.info("Stopping event interceptor thread");
                         return;
