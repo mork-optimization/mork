@@ -40,7 +40,7 @@ public class DotGenerator {
      * Generate a dot diagram of the solution found
      *
      * @param solution solution found
-     * @return
+     * @return string of the graphviz dot diagram of the solution
      */
     protected static String generateDotDiagram(TSPSolution solution) {
         return String.join("\n", header, generateDotLocation(solution), generateDotRoute(solution), footer);
