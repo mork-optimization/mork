@@ -646,6 +646,7 @@ figure. Additionally, the source code that generates that figure can be found [h
 
 <img src="route.png" alt="Possible route for Berlin52 instance" style="float: left; margin-right: 10px;" />
 
+
 Next task is to generate that figure each time a new best solution is found. Obviously, we want to show that figure in
 the dashboard launched in *[http://localhost:8080/](http://localhost:8080/)*. To do so, you will need to have just a bit
 of knowledge of javascript. Therefore, go to `resources/static/app.js` and complete two
@@ -679,6 +680,9 @@ function onSolutionGenerated(event) {
 
 Now it is time to execute again or Local Search experiment and analyse how the solution and the solution quality
 evolves. The result should be similar than the following image:
+
+<img src="dashboard.png" alt="dashboard example" style="float: left; margin-right: 10px;" />
+
 
 ## 6. _irace_
 
