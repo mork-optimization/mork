@@ -26,7 +26,6 @@ public class IraceExperiment extends IraceAlgorithmGenerator<TSPSolution, TSPIns
         return new SimpleAlgorithm<>(constructive, localSearch);
     }
 
-
     private LocalSearch<? extends Move<TSPSolution, TSPInstance>, TSPSolution, TSPInstance> buildLocalSearch(String localSearchName, String localSearchStrategy) {
 
         var neighborhood = switch (localSearchName) {
