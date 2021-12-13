@@ -638,10 +638,47 @@ libraries you could use to visualize graphs such as [Highcharts](https://www.hig
 ,[Chart.js](https://www.chartjs.org/) or [D3.js](https://d3js.org/), among others. For the
 moment, [Graphviz](https://graphviz.org/) is enough.
 
-All methods needed to draw a solution are located in `/drawing/DotGenerator.java`.
+All methods needed to draw a solution are located in `/drawing/DotGenerator.java`. We are not going to focus on how the
+graph is generated. We recommend the interested reader to have a look to [Graphviz documentation](https://graphviz.org/)
+. An example Graphviz diagram of a solution for the
+instance [berlin52](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp) is illustrated in the following
+figure. Additionally, the source code that generates that figure can be found [here](berlin52.dot.txt).
 
-We are not going to focus on how the graph is generated. We recommend the interested reader to have a look
-to [Graphviz documentation](https://graphviz.org/).
+<img src="route.png" alt="Possible route for Berlin52 instance" style="float: left; margin-right: 10px;" />
+
+Next task is to generate that figure each time a new best solution is found. Obviously, we want to show that figure in
+the dashboard launched in *[http://localhost:8080/](http://localhost:8080/)*. To do so, you will need to have just a bit
+of knowledge of javascript. Therefore, go to `resources/static/app.js` and complete two
+methods: `function onSolutionGenerated(event)` and  `function onInstanceProcessingStart(event)`.
+
+````
+function onInstanceProcessingStart(event) {
+    [...]
+    // Draw best solution found
+    $('.best-solutions').prepend("<div id='best-solution-" + instanceName + "' class='text-center box-rendered-solution'></div>");
+    bestValue = NaN;
+    current_best_sol = $('#best-solution-' + instanceName);
+     [...]
+}   
+    
+function onSolutionGenerated(event) {
+    [...]    
+    // Change to > if maximizing
+    if (isNaN(bestValue) || event.score < bestValue) {
+        const chart_to_update = current_best_sol;
+        bestValue = event.score;
+        $.get("/api/generategraph/" + event.eventId, (response) => {
+            chart_to_update.html(` <p class="text-center"> best solution is ${event.score}</p>` +
+                `<img class="rendered-solution" src="data:image/png;base64,${response}" />`
+            );
+        });
+    }
+    [...]
+}
+````
+
+Now it is time to execute again or Local Search experiment and analyse how the solution and the solution quality
+evolves. The result should be similar than the following image:
 
 ## 6. _irace_
 
@@ -746,6 +783,18 @@ shell: true
 
 Now, it's the moment when you wait a few hours until it ends. The time it takes to find the best configuration depends
 on the number of instances specified, as well as it sizes and the number of experiments that will be carried out.
+
+A few hours later...
+
+````
+# Best configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+ localsearch localSearchStrategy
+ 2       insert               first
+ [...]
+````
+
+Great! Irace has determined that the best neighborhood strategy was 'First improvement', exploring the neighborhood of
+the inserts. These results are consistent with our experimentation.
 
 ### Did you use irace?.
 
