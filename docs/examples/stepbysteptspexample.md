@@ -19,7 +19,7 @@ from *[The Trials And Tribulations Of The Traveling Salesman](https://medium.com
 
 ### 1.1 Prerequisites
 
-- Java 11 or more recent is required to run. Please download and install a recent JDK.
+- Java 17 is required to run. Please download and install a recent JDK.
 - [Maven](https://maven.apache.org/)
 - This is not really a prerequisite, but we recommend using an IDE, such as [IntelliJ](https://www.jetbrains.com/idea/)
   😉. (It's the IDE used in the development of Mork)
@@ -37,8 +37,7 @@ the *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/
 files: [berlin52](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp)
 , [eil101](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/eil101.tsp)
 ,  [ch130](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ch130.tsp)
-, [st70](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp),
-and [a280](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/a280.tsp). Have a quick look at the structure of the files.
+and [st70](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp). Have a quick look at the structure of the files.
 
 ### 1.3 Using the quick start project generator
 
@@ -125,8 +124,7 @@ Notice that the five instances selected have EDGE WEIGHT TYPE = EUC_2D, which me
 points  
 _i_ and _j_ is computed as follows: [_√[(ix – jx)2 + (iy – jy)2]_](https://en.wikipedia.org/wiki/Euclidean_distance).
 
-If you are interested in a deep description of the instances to test the proposed algorithm with other type of
-instance,  
+If you are interested in a deep description of the instances to test the proposed algorithm with other type of instance,
 have a look to the [TSPLIB documentation](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp95.pdf).
 
 Then, open file `TSPInstance.java` located in `src/main/java/es/urjc/etsii/grafo/TSP/model`. This class will represent  
@@ -209,12 +207,10 @@ public class TSPInstance extends Instance {
 ```  
 
 > 💡 _Tip_: is this the first time you have come across record? You don't know what you're missing!! Record classes, which are a special kind of class, help to model plain data aggregates with less ceremony than normal classes. Have a look to the [Java documentation](https://docs.oracle.com/en/java/javase/16/language/records.html) abut record classes.
-  
 ---  
 
 **⚠️IMPORTANT : after calling the constructor of the instance, i.e., the instance is defined and generated, it MUST BE
 IMMUTABLE.**
-  
 ---  
 
 
@@ -444,8 +440,9 @@ solution found (as soon as you learn how to do it).
 
 > 💡 _Tip_: when all experiments finish, the web server stops. Therefore, to maintain the server alive, set: `event->webserver-> stopOnExecutionEnd: false ` in the application.yml file.
 
-When the execution ends, go to the result folder and check that an excel file (*.xlxs) has been correctly generated. The excel file contains two sheets: a summary of the results and raw results. 
-Particularly, the summary file should report the following data (exactly the same, MorKs' experiments are fully reproducible)
+When the execution ends, go to the result folder and check that an excel file (*.xlxs) has been correctly generated. The
+excel file contains two sheets: a summary of the results and raw results. Particularly, the summary file should report
+the following data (exactly the same, MorKs' experiments are fully reproducible)
 
 |                     | ScTSPRandomConstructivei |                |         |                |
 |---------------------|--------------------------|----------------|---------|----------------|
@@ -456,30 +453,41 @@ Particularly, the summary file should report the following data (exactly the sam
 | eil101              | 3094.175908              | 0.0024924      | 1       | 0              |
 | st70                | 3285.619063              | 0.0015071      | 1       | 0              |
 
-###  Local Searches
-In this section you will be able to implement local search procedures and define more complex experiments.
-A local search algorithm starts from a candidate solution and then iteratively moves to a neighbor solution.  As an example, we will define to classical neighborhood based on the swap and insert movement. To this end, we will perform the following tasks:
+### Local Searches
+
+In this section you will be able to implement local search procedures and define more complex experiments. A local
+search algorithm starts from a candidate solution and then iteratively moves to a neighbor solution. As an example, we
+will define to classical neighborhood based on the swap and insert movement. To this end, we will perform the following
+tasks:
 
 1. Implement a neighborhood structure.
 2. Implement the insert/swap operator.
 3. Define a Local Search experiment.
 
+#### Implement a neighborhood structure.
 
-####  Implement a neighborhood structure.
-A neighborhoods represents all potential solutions that can be reached for a given solution applying a movement.
-In MorK there are two types of neighborhoods:
+A neighborhoods represents all potential solutions that can be reached for a given solution applying a movement. In MorK
+there are two types of neighborhoods:
+
 1. Eager Neighborhood: Movements in this neighborhood are generated at once, using List<> of EagerMoves.
 2. Lazy Neighborhood:  Movements in this neighborhood are generated lazily under demand using Streams with LazyMoves.
 
-
 **Eager Neighborhood**
-To explain  Eager Neighborhoods we are going to use the Insert classical move as an example. The insert operator consist in removing a location from the route and insert it between other two locations (i.e., insert it at a specific position).
+To explain Eager Neighborhoods we are going to use the Insert classical move as an example. The insert operator consist
+in removing a location from the route and insert it between other two locations (i.e., insert it at a specific position)
+.
 
-Have a look to the example depicted in the figure above. The location with ID=7 has been removed from the route, and it is wanted to insert it between locations 2 and 3. The resultant route after the insertion is shown in the second array.
+Have a look to the example depicted in the figure above. The location with ID=7 has been removed from the route, and it
+is wanted to insert it between locations 2 and 3. The resultant route after the insertion is shown in the second array.
 ![insert](https://images.saymedia-content.com/.image/c_limit,cs_srgb,q_auto:eco,w_609/MTc0NDYxNTczNzExMDEzMjI0/c-standard-list-insert-examples.webp)
 
-Given the insert operator, the neighborhood is defined as all possible insertions of all locations in any position of the route. To this end, we first create a class named: `InsertNeighborhood` that must extend `EagerNeighborhood<InsertNeighborhood.InsertMove, TSPSolution, TSPInstance>`, and where `InsertNeighborhood.InsertMove`is the insert move operator we also have to define.
-Once the header of the class has been defined, next task will be to implement the method `public List<InsertMove> getMovements(TSPSolution solution)`, This procedure will generate all possible insert moves given a solution (i.e., insert all location in each of the positions of the route).  A straightforward implementation is shown below:
+Given the insert operator, the neighborhood is defined as all possible insertions of all locations in any position of
+the route. To this end, we first create a class named: `InsertNeighborhood` that must
+extend `EagerNeighborhood<InsertNeighborhood.InsertMove, TSPSolution, TSPInstance>`, and
+where `InsertNeighborhood.InsertMove`is the insert move operator we also have to define. Once the header of the class
+has been defined, next task will be to implement the method `public List<InsertMove> getMovements(TSPSolution solution)`
+, This procedure will generate all possible insert moves given a solution (i.e., insert all location in each of the
+positions of the route). A straightforward implementation is shown below:
 
     public List<InsertMove> getMovements(TSPSolution solution) {  
       List<InsertMove> list = new ArrayList<>();  
@@ -490,12 +498,18 @@ Once the header of the class has been defined, next task will be to implement th
      }  return list;  
     }
 
-Next task is to implement the Insert move: `public static class InsertMove extends EagerMove<TSPSolution, TSPInstance>`. Notice that this class has been nested in `InsertNeighborhood` class. As you may have noticed, the constructor of an insert move receive tree parameters: the solution and two integers: the position in the route of the location to insert in a desired position.
-Regardless of the type of movement intended (Eager or Lazy), the following methods have to be implemented:
+Next task is to implement the Insert move: `public static class InsertMove extends EagerMove<TSPSolution, TSPInstance>`.
+Notice that this class has been nested in `InsertNeighborhood` class. As you may have noticed, the constructor of an
+insert move receive tree parameters: the solution and two integers: the position in the route of the location to insert
+in a desired position. Regardless of the type of movement intended (Eager or Lazy), the following methods have to be
+implemented:
+
 - `boolean isValid()`: true if the solution obtained after the move is feasible
 - `void execute()`: execute the move, the procedure changes the solution
--  `double getValue()`: this procedure calculates the difference between the value of the solution that would be obtained if the movement were carried out, and the value of the current target solution. This method does NOT perform the movement, the solution (and its structures) do not change.
--  `boolean improves()` : returns true if applying the move results in a better solution than the current one.
+- `double getValue()`: this procedure calculates the difference between the value of the solution that would be obtained
+  if the movement were carried out, and the value of the current target solution. This method does NOT perform the
+  movement, the solution (and its structures) do not change.
+- `boolean improves()` : returns true if applying the move results in a better solution than the current one.
 
 The easiest implementation of this class is depicted below.
 
@@ -523,24 +537,38 @@ The easiest implementation of this class is depicted below.
       return DoubleComparator.isLessThan(this.getValue(), 0);  
     }
 
-In this example, `getValue()` performed the insert move in a cloned solution of the current one. Then it returns the difference in the objective function value between the cloned one (the neighbor solution) and the current one. This procedure is extremely inefficient. An efficient way to perform this calculation will evaluate just the part of the solution that has changed after the move. We depict a more efficient approach in the swap move example.
+In this example, `getValue()` performed the insert move in a cloned solution of the current one. Then it returns the
+difference in the objective function value between the cloned one (the neighbor solution) and the current one. This
+procedure is extremely inefficient. An efficient way to perform this calculation will evaluate just the part of the
+solution that has changed after the move. We depict a more efficient approach in the swap move example.
 
 **Lazy Neighborhood**
-Movements in this neighborhood are generated lazily under demand using [`Streams`](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html) with `LazyMoves`. In this neighborhood we will need to build an exhaustive stream to iterate over it.
-We will use the classical swap move operator to define a Lazy Neighborhood. This move, exchange the position in the route of two locations, and can be easily explained thru the following picture.
+Movements in this neighborhood are generated lazily under demand
+using [`Streams`](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html) with `LazyMoves`. In this
+neighborhood we will need to build an exhaustive stream to iterate over it. We will use the classical swap move operator
+to define a Lazy Neighborhood. This move, exchange the position in the route of two locations, and can be easily
+explained thru the following picture.
 
 ![enter image description here](https://raw.githubusercontent.com/nickbalestra/nickbalestra.github.io/master/assets/images/swap-in-place.png)
 
-The main difference between this neighborhood and the previous one is the way in which the movements are defined. In this case, instead of being a list of movements, it is a Stream. The idea of this neighborhood is that given a movement a next movement can be generated (if it exists). In this way, movements are only generated if they are needed. How to do it?
-First, we generate the Swap Neighborhood class (`SwapNeighborhood extends LazyNeighborhood<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance>`) and implement the stream method. This  method generate an initial `SwapMove` object.
+The main difference between this neighborhood and the previous one is the way in which the movements are defined. In
+this case, instead of being a list of movements, it is a Stream. The idea of this neighborhood is that given a movement
+a next movement can be generated (if it exists). In this way, movements are only generated if they are needed. How to do
+it? First, we generate the Swap Neighborhood
+class (`SwapNeighborhood extends LazyNeighborhood<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance>`) and implement
+the stream method. This method generate an initial `SwapMove` object.
 
     public Stream<SwapMove> stream(TSPSolution solution) {  
       int initialVertex = RandomManager.getRandom().nextInt(solution.getInstance().numberOfLocations());  
      return buildStream(new SwapMove(solution, initialVertex, initialVertex, (initialVertex + 1) % solution.getInstance().numberOfLocations()));  
     }
 
-Again, the `SwapMove` class is a nested class in `LazyNeighborhood` class. The main difference between Lazy moves and Eager moves is that in Lazy Moves the method `LazyMove<TSPSolution, TSPInstance> next()` must be implemented (in addition to all previous detailed methods). This method is in charge of generate next move in the stream sequence. Given a move, it generates the next move if exists, or null otherwise.
-In this particular example we would like to swap pair of locations of the instance. Notice that the swap between a location A and B is equal to the swap between B and A. Therefore, this procedure should avoid generating already visited moves.  Our proposed procedure is depicted next:
+Again, the `SwapMove` class is a nested class in `LazyNeighborhood` class. The main difference between Lazy moves and
+Eager moves is that in Lazy Moves the method `LazyMove<TSPSolution, TSPInstance> next()` must be implemented (in
+addition to all previous detailed methods). This method is in charge of generate next move in the stream sequence. Given
+a move, it generates the next move if exists, or null otherwise. In this particular example we would like to swap pair
+of locations of the instance. Notice that the swap between a location A and B is equal to the swap between B and A.
+Therefore, this procedure should avoid generating already visited moves. Our proposed procedure is depicted next:
 
     public LazyMove<TSPSolution, TSPInstance> next() {  
       var nextPj = (pj + 1) % s.getInstance().numberOfLocations();  
@@ -555,11 +583,19 @@ In this particular example we would like to swap pair of locations of the instan
       return new SwapMove(s, initialPi, nextPi, nextPj);  
     }
 
-An example of the stream generated by this procedure, given an instance with locations A, B, C, D and E, starting with the swap A <->B, will be the following: A <-> B, A <-> C, A <-> D, A <-> E, B <-> C, B <-> D, B <-> E, C <-> D, C <-> E, D <-> E, and finally, `null`.
+An example of the stream generated by this procedure, given an instance with locations A, B, C, D and E, starting with
+the swap A <->B, will be the following: A <-> B, A <-> C, A <-> D, A <-> E, B <-> C, B <-> D, B <-> E, C <-> D, C <-> E,
+D <-> E, and finally, `null`.
 
 #### Define a Local Search experiment
-Define a local search experiment is as easy as define a constructive experiment. Copy the `ConstructiveExperiment` class in the same folder and rename it to `LocalSearchExperiment`.  In Mork, you could use to defined Local Searches: `LocalSearchFirstImprovement` and `LocalSearchBestImprovement`. The first one follows a first improvement strategy, i.e., as soon as it finds a move that results on an improve, it is executed. The second one follows a best improvement strategy, it explores all solutions of a neighborhood and execute the best possible move, the move that results in the best solution of the neighborhood.
-In this experiment we are going to define 5 algorithms:
+
+Define a local search experiment is as easy as define a constructive experiment. Copy the `ConstructiveExperiment` class
+in the same folder and rename it to `LocalSearchExperiment`. In Mork, you could use to defined Local
+Searches: `LocalSearchFirstImprovement` and `LocalSearchBestImprovement`. The first one follows a first improvement
+strategy, i.e., as soon as it finds a move that results on an improve, it is executed. The second one follows a best
+improvement strategy, it explores all solutions of a neighborhood and execute the best possible move, the move that
+results in the best solution of the neighborhood. In this experiment we are going to define 5 algorithms:
+
 - Random constructive:
 - Insert Neighborhood following a first and best improvement strategy
 - Swap Neighborhood following a first and best improvement strategy
@@ -583,8 +619,116 @@ In this experiment we are going to define 5 algorithms:
 
   }
 
-Now is the moment to run this new experiment. Change the experiment property in the `application.yml` file and run it! Remember to look to the interactive dashboard run in [localhost](http://localhost:8080/). Which is the best algorithm?
-### Testing in MorK
+Now is the moment to run this new experiment. Change the experiment property in the `application.yml` file and run it!
+Remember to look to the interactive dashboard run in [localhost](http://localhost:8080/). Which is the best algorithm?
+
+## 5. Visualizing solutions
+
+## 6. _irace_
+
+In short, irace is a software package that implements a number of automatic configuration procedures, that allows us to
+easily tune our algorithms when manually testing each possible configuration is not viable. Irace is integrated in Mork,
+so tuning your algorithms is extremely easy. More information in the guidelines provided in the published
+article: ["The irace package: Iterated racing for automatic algorithm configuration"](https://doi.org/10.1016/j.orp.2016.09.002)
+, or in the *irace* package
+documentation: ["The irace Package: User Guide"](https://cran.r-project.org/web/packages/irace/vignettes/irace-package.pdf)
+.
+
+To implement irace, please, have a look to [the documentation](docs/features/irace.md) for further details. Anyway, in
+this section, we will explain how to implement irace for the TSP. Particularly, we will generate an experiment to
+determine which is the best local search for the TSP:
+First or Best improvement local search, and Insert or Swap Neighborhood.
+
+1. Configure an irace experiment.
+2. Define the parameters to test.
+3. Adjusting scenario options.
+
+### Configure an irace experiment.
+
+To configure an irace experiment it is needed to create a class that
+extends `IraceAlgorithmGenerator<TSPSolution, TSPInstance>`. In a MorK project, just one class, and only one, can
+extend `IraceAlgorithmGenerator`.
+
+This class must implement the
+method `public Algorithm<TSPSolution, TSPInstance> buildAlgorithm(IraceRuntimeConfiguration config)`, in charge of
+generate an Algorithm based on `IraceRuntimeConfiguration` object. This object contains the configuration of the
+experiment and will be defined in the next section. To obtain the configuration parameter, the method `String getValue(String s)` have to be called. 
+In this case, two parameters has to be defined: the strategy of the local search (first or best); and the neighborhood (insert or swap).
+
+```
+public class IraceExperiment extends IraceAlgorithmGenerator<TSPSolution, TSPInstance> {
+
+    @Override
+    public Algorithm<TSPSolution, TSPInstance> buildAlgorithm(IraceRuntimeConfiguration config) {
+
+        var localSearchName = config.getValue("localsearch").orElseThrow();
+        var localSearchStrategy = config.getValue("localSearchStrategy").orElseThrow();
+        var localSearch = buildLocalSearch(localSearchName, localSearchStrategy);
+        var constructive = new TSPRandomConstructive();
+        return new SimpleAlgorithm<>(constructive, localSearch);
+    }
+
+
+    private LocalSearch<? extends Move<TSPSolution, TSPInstance>, TSPSolution, TSPInstance> buildLocalSearch(String localSearchName, String localSearchStrategy) {
+
+        var neighborhood = switch (localSearchName) {
+            case "insert" -> new InsertNeighborhood();
+            case "swap" -> new SwapNeighborhood();
+            default -> throw new IllegalArgumentException("Not implemented: " + localSearchName);
+        };
+
+        return switch (localSearchStrategy) {
+            case "first" -> new LocalSearchFirstImprovement<>(false, neighborhood);
+            case "best" -> new LocalSearchBestImprovement<>(false, neighborhood);
+            default -> throw new IllegalArgumentException("Not implemented: " + localSearchStrategy);
+        };
+    }
+}
+```
+
+### Define the parameters to test.
+Go to file `/resources/irace/parameters.txt`  and include at the end the two following lines: 
+
+```
+## Configuration of the local searches
+localsearch "localsearch=" c (swap, insert)
+localSearchStrategy "localSearchStrategy=" c (first, best)
+```
+
+As you might have noticed, "localsearch" and "localSearchStrategy" matches with the lines:
+
+```
+var localSearchName = config.getValue("localsearch").orElseThrow();
+var localSearchStrategy = config.getValue("localSearchStrategy").orElseThrow();
+```
+
+Be sure that you leave some empty lines at the end of the file (we don't why it crashes if there are no lines)
+
+### Adjusting scenario options.
+Next, go to `/resources/irace/scenario.txt` and read carefully all configuration parameters.
+Some parameters you could modify are: `trainInstancesDir`, `maxExperiments`, `targetRunnerParallel`, among others. 
+
+### Execute irace
+To execute irace, first, go to `application.yml` and enable irace:
+
+````
+# Enable irace integration? Check IRACE Wiki section before enabling
+irace:
+enabled: false
+
+# False: use GraalVM implementation, does not need R installed locally
+# True: Use shell to execute R scripts, R/Rscript need to be locally installed and in path
+shell: true
+````
+
+
+### Did you use irace?.
+Please, do not forget to cite the original paper where Manuel López-Ibañez _et al._ published it:
+_López-Ibáñez, M., Dubois-Lacoste, J., Cáceres, L. P., Birattari, M., & Stützle, T. (2016). The irace package: Iterated
+racing for automatic algorithm configuration. Operations Research Perspectives, 3, 43-58._
+
+
+## 6. Testing in MorK
 
 #### Asserts
 
