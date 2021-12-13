@@ -8,7 +8,7 @@ returns to the origin city?" It is an NP-hard problem in combinatorial optimizat
 science and operations research.
 
 <p align="center">  
- <img src="https://miro.medium.com/max/1838/1*by3MgdkmamEAxlCaIH68Xg.jpeg"  width="500"  alt="Example of the TSP problem"/>  
+ <img src="introduction.jpeg"  style="width:500px"  alt="Example of the TSP problem"/>  
 </p>  
 
 Obtained
@@ -806,7 +806,7 @@ Please, do not forget to cite the original paper where Manuel López-Ibañez _et
 _López-Ibáñez, M., Dubois-Lacoste, J., Cáceres, L. P., Birattari, M., & Stützle, T. (2016). The irace package: Iterated
 racing for automatic algorithm configuration. Operations Research Perspectives, 3, 43-58._
 
-## 6. Testing in MorK
+## 7. Testing in MorK
 
 #### Asserts
 
