@@ -4,7 +4,7 @@
 
     <groupId>es.urjc.etsii.grafo</groupId>
     <artifactId>mork-parent</artifactId>
-    <version>0.9-SNAPSHOT</version>
+    <version>0.10-SNAPSHOT</version>
     <packaging>pom</packaging>
 
     <modules>

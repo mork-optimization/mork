@@ -16,6 +16,7 @@ public class ConcurrencyUtil {
     /**
      * Awaits termination for the given executor service.
      * Wraps InterruptedException in an unchecked RuntimeException
+     *
      * @param executor Executor service
      */
     public static void await(ExecutorService executor) {
@@ -29,10 +30,11 @@ public class ConcurrencyUtil {
     /**
      * Block until the task is completed.
      * Wraps the annoying checked exception.
+     *
      * @param f Future we will wait for
      * @param <T> Future type
      * @return SimplifiedResult of the task
-     * @throws RuntimeException in case any error happened during the execution
+     * @throws java.lang.RuntimeException in case any error happened during the execution
      */
     public static <T> T await(Future<T> f){
         try {
@@ -48,11 +50,12 @@ public class ConcurrencyUtil {
     /**
      * Block until the task is completed.
      * Handles the exception with the given handler
+     *
      * @param f Future we will wait for
      * @param <T> Optional type
      * @param exceptionHandler pass the exception to handler instead of promoting to RuntimeException
      * @return SimplifiedResult of the task
-     * @throws RuntimeException in case any error happened during the execution
+     * @throws java.lang.RuntimeException in case any error happened during the execution
      */
     public static <T> Optional<T> await(Future<T> f, Consumer<Exception> exceptionHandler){
         try {
@@ -69,6 +72,7 @@ public class ConcurrencyUtil {
 
     /**
      * Await a collection of futures
+     *
      * @param futures collection of futures
      * @param <T> Futures type
      * @return Objects inside futures
@@ -79,6 +83,7 @@ public class ConcurrencyUtil {
 
     /**
      * Await a stream of futures
+     *
      * @param futures stream of futures
      * @param <T> Futures type
      * @return Objects inside futures

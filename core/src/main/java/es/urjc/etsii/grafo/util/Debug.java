@@ -7,6 +7,7 @@ public class Debug {
 
     /**
      * Print debugging message
+     *
      * @param s String to print
      */
     public static void debug(String s){
@@ -15,6 +16,7 @@ public class Debug {
 
     /**
      * Print debugging message
+     *
      * @param s String to print, can contain formatters
      * @param o Objects to format
      */

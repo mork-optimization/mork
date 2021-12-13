@@ -11,6 +11,10 @@ import es.urjc.etsii.grafo.solver.improve.sa.initialt.InitialTemperatureCalculat
 import es.urjc.etsii.grafo.solver.improve.sa.initialt.MaxDifferenceInitialTemperature;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
+/**
+ * <p>SimulatedAnnealingBuilder class.</p>
+ *
+ */
 public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> {
     private Neighborhood<M, S, I> neighborhood;
     private InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator;
@@ -25,6 +29,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
 
     /**
      * Neighborhood for the SA
+     *
      * @param neighborhood neighborhood
      * @return builder
      */
@@ -36,6 +41,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     /**
      * Provide a custom method for calculating the initial temperature.
      * Example: {@code (solution, neighborhood) -> solution.getNVertex() * 100}
+     *
      * @param initialTemperatureCalculator lambda expression or class implementation
      * @return builder
      */
@@ -46,6 +52,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
 
     /**
      * Provide a constant initial temperature
+     *
      * @param initialTemp fixed initial temperature
      * @return builder
      */
@@ -56,6 +63,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
 
     /**
      * Calculate initial temp as the difference between the best and worst moves in the given neighborhood
+     *
      * @return builder
      */
     public SimulatedAnnealingBuilder<M,S,I> withMaxDiffInitialTemp() {
@@ -65,6 +73,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
 
     /**
      * Calculate initial temp as the difference between the best and worst moves in the given neighborhood
+     *
      * @param ratio Multiply max difference by this parameter
      * @return builder
      */
@@ -78,6 +87,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * Can end sooner if the given method decides to end.
      * Example 1: {@code (solution, neighborhood, currentTemp, currentIter) -> currentIter > 100}
      * Example 2: {@code (solution, neighborhood, currentTemp, currentIter) -> currentTemp < solution.getNElements()}
+     *
      * @param terminationCriteria custom termination criteria
      * @return builder
      */
@@ -89,7 +99,9 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     /**
      * End when the maximum number of iterations is reached.
      * Can end sooner if we cannot apply any move
+     *
      * @return builder
+     * @param n a int.
      */
     public SimulatedAnnealingBuilder<M,S,I> withMaxIterationsTerminationCriteria(int n) {
         this.terminationCriteria = ((sol, neighborhood, currentTemp, iteration) -> iteration >= n);
@@ -98,6 +110,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
 
     /**
      * End when temperature reaches 0.
+     *
      * @return builder
      */
     public SimulatedAnnealingBuilder<M,S,I> withConvergeTerminationCriteria() {
@@ -109,6 +122,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     /**
      * Set a custom cool down function. Consider submitting a PR if it is generally aplicable.
      * Example (halve each iteration): {@code (solution, neighborhood, currentTemp, currentIter) -> currentTemp / 2}
+     *
      * @param coolDownControl custom cool down function.
      * @return builder
      */
@@ -120,6 +134,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     /**
      * Use an exponential cool down function.
      * Example (halve each iteration): {@code (solution, neighborhood, currentTemp, currentIter) -> currentTemp / 2}
+     *
      * @param ratio exponential ratio, i.e temp = initialT * (ratio ^ iteration)
      * @return builder
      */
@@ -130,6 +145,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
 
     /**
      * Configure cycle length, defaults to 1 if not called.
+     *
      * @param cycleLength How many moves should be executed for each temperature level.
      *                    Defaults to 1.
      * @return builder
@@ -141,6 +157,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
 
     /**
      * Build a SimulatedAnnealing using the provided config values. Default values are as follows:
+     *
      * @return SimulatedAnnealing algorithm
      */
     public SimulatedAnnealing<M,S,I> build() {

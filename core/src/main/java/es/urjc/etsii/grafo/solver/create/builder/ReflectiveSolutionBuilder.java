@@ -11,12 +11,19 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.HashSet;
 import java.util.Set;
 
+/**
+ * <p>ReflectiveSolutionBuilder class.</p>
+ *
+ */
 @SuppressWarnings("unchecked")
 public class ReflectiveSolutionBuilder<S extends Solution<S,I>,I extends Instance> extends SolutionBuilder<S, I> {
 
     private final Class<S> solClass;
     private  Constructor<S> constructor;
 
+    /**
+     * <p>Constructor for ReflectiveSolutionBuilder.</p>
+     */
     public ReflectiveSolutionBuilder() {
         Set<Class<S>> set = findSolutionCandidates();
         if(set.isEmpty()){
@@ -29,6 +36,7 @@ public class ReflectiveSolutionBuilder<S extends Solution<S,I>,I extends Instanc
         solClass = (Class<S>) set.toArray()[0];
     }
 
+    /** {@inheritDoc} */
     @Override
     public S initializeSolution(I i) {
         if(constructor == null){

@@ -9,6 +9,7 @@ public class ArrayUtil {
 
     /**
      * Reverse an array
+     *
      * @param arr array to reverse
      */
     public static void reverse(int[] arr) {
@@ -17,6 +18,7 @@ public class ArrayUtil {
 
     /**
      * Reverse a fragment inside an array from start to end (inclusive)
+     *
      * @param arr Array to reverse
      * @param start start index, inclusive
      * @param end   end index, inclusive
@@ -34,6 +36,7 @@ public class ArrayUtil {
 
     /**
      * Reverse a fragment inside an array from start to end (inclusive)
+     *
      * @param arr Array to reverse
      * @param start start index, inclusive
      * @param end   end index, inclusive
@@ -51,6 +54,7 @@ public class ArrayUtil {
 
     /**
      * Shuffle an array IN PLACE using Fisher–Yates shuffle
+     *
      * @param array Array to shuffle IN PLACE
      */
     public static void shuffle(int[] array){
@@ -66,7 +70,12 @@ public class ArrayUtil {
     }
 
     /**
+     *
      * Swaps the two specified elements in the specified array.
+     *
+     * @param arr array
+     * @param i origin destination index
+     * @param j destination index
      */
     public static void swap(Object[] arr, int i, int j) {
         Object tmp = arr[i];
@@ -77,6 +86,7 @@ public class ArrayUtil {
     /**
      * Copy and shuffle an array without modifying the original array.
      * Uses Fisher–Yates shuffle
+     *
      * @param array Array to shuffle
      * @return shuffled array. Original array is not modified
      */
@@ -88,6 +98,7 @@ public class ArrayUtil {
 
     /**
      * Shuffle an array IN PLACE using Fisher–Yates shuffle
+     *
      * @param array Array to shuffle IN PLACE
      */
     public static void shuffle(Object[] array){
@@ -105,6 +116,7 @@ public class ArrayUtil {
      * Example: deleteAndInsert([a,b,c,d,e,f], 0, 1) = [b,a,c,d,e,f]
      * Example: deleteAndInsert([a,b,c,d,e,f], 1, 4) = [a,c,d,e,b,f]
      * Example: deleteAndInsert([a,b,c,d,e,f], 5, 3) = [a,b,c,f,d,e]
+     *
      * @param array Array to modify
      * @param origin index of element to be removed
      * @param destination index where element will be inserted
@@ -130,6 +142,7 @@ public class ArrayUtil {
      * Deletes an item from and array and inserts it in the specified position.
      * Example: deleteAndInsert([a,b,c,d,e,f], 0, 1) = [b,a,c,d,e,f]
      * Example: deleteAndInsert([a,b,c,d,e,f], 1, 4) = [a,c,d,e,b,f]
+     *
      * @param array Array to modify
      * @param origin index of element to be removed
      * @param destination index where element will be inserted
@@ -155,6 +168,7 @@ public class ArrayUtil {
      * moving all elements in between one to the left
      * Example: deleteAndInsert([a,b,c,d,e,f], 0, 1) = [b,a,c,d,e,f]
      * Example: deleteAndInsert([a,b,c,d,e,f], 1, 4) = [a,c,d,e,b,f]
+     *
      * @param array Array to modify
      * @param origin index of element to be removed
      * @param destination index where element will be inserted
@@ -178,6 +192,7 @@ public class ArrayUtil {
     /**
      * Insert element in given position. Elements to the right are shifted one position to the right.
      * Rightmost element is dropped.
+     *
      * @param arr Array to modify
      * @param index Position in which insert the element
      * @param value Element to insert
@@ -190,6 +205,7 @@ public class ArrayUtil {
     /**
      * Insert element in given position. Elements to the right are shifted one position to the right.
      * Rightmost element is dropped.
+     *
      * @param arr Array to modify
      * @param index Position in which insert the element
      * @param value Element to insert
@@ -202,6 +218,7 @@ public class ArrayUtil {
     /**
      * Insert element in given position. Elements to the right are shifted one position to the right.
      * Rightmost element is dropped.
+     *
      * @param arr Array to modify
      * @param index Position in which insert the element
      * @param value Element to insert
@@ -214,6 +231,7 @@ public class ArrayUtil {
     /**
      * Insert element in given position. Elements to the right are shifted one position to the right.
      * Rightmost element is dropped.
+     *
      * @param arr Array to modify
      * @param index Position in which insert the element
      * @param value Element to insert
@@ -227,6 +245,7 @@ public class ArrayUtil {
     /**
      * Remove element at given index and shift elements to the left. Rightmost element is duplicated.
      * Example: remove([9,10,11,12], 1) → [9,11,12,12]
+     *
      * @param arr array to modify
      * @param index index of element to delete
      * @return removed element
@@ -240,6 +259,7 @@ public class ArrayUtil {
     /**
      * Remove element at given index and shift elements to the left. Rightmost element is duplicated.
      * Example: remove([9,10,11,12], 1) → [9,11,12,12]
+     *
      * @param arr array to modify
      * @param index index of element to delete
      * @return removed element
@@ -253,6 +273,7 @@ public class ArrayUtil {
     /**
      * Remove element at given index and shift elements to the left. Rightmost element is duplicated.
      * Example: remove([9,10,11,12], 1) → [9,11,12,12]
+     *
      * @param arr array to modify
      * @param index index of element to delete
      * @return removed element
@@ -266,6 +287,7 @@ public class ArrayUtil {
     /**
      * Remove element at given index and shift elements to the left. Rightmost element is duplicated.
      * Example: remove([9,10,11,12], 1) → [9,11,12,12]
+     *
      * @param arr array to modify
      * @param index index of element to delete
      * @param <T> type
@@ -279,6 +301,7 @@ public class ArrayUtil {
 
     /**
      * Flatten matrix to array
+     *
      * @param data array data
      * @return flattened array
      */
@@ -298,6 +321,7 @@ public class ArrayUtil {
 
     /**
      * Flatten matrix to array
+     *
      * @param data array data
      * @return flattened array
      */
@@ -317,6 +341,7 @@ public class ArrayUtil {
 
     /**
      * Flatten matrix to array
+     *
      * @param data array data
      * @return flattened array
      */
@@ -336,6 +361,7 @@ public class ArrayUtil {
 
     /**
      * Count how many elements are not null in given array
+     *
      * @param data array
      * @return number of non null elements
      */
@@ -345,6 +371,7 @@ public class ArrayUtil {
 
     /**
      * Count how many elements are null in given array
+     *
      * @param data array
      * @return number of null elements
      */
@@ -360,7 +387,8 @@ public class ArrayUtil {
 
     /**
      * Sum all elements in array
-     * @throws ArithmeticException if there is an overflow
+     *
+     * @throws java.lang.ArithmeticException if there is an overflow
      * @param data numbers to sum
      * @return sum of all numbers
      */
@@ -374,6 +402,7 @@ public class ArrayUtil {
 
     /**
      * Sum all elements in array
+     *
      * @param data numbers to sum
      * @return sum of all numbers
      */
@@ -387,7 +416,8 @@ public class ArrayUtil {
 
     /**
      * Sum all elements in array
-     * @throws ArithmeticException if there is an overflow
+     *
+     * @throws java.lang.ArithmeticException if there is an overflow
      * @param data numbers to sum
      * @return sum of all numbers
      */

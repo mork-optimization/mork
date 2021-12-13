@@ -11,13 +11,29 @@ import java.util.Arrays;
 import java.util.Optional;
 import java.util.logging.Logger;
 
+/**
+ * Shake a solution by executing a sequence of random moves
+ *
+ * @param <S> Solution class
+ * @param <I> Instance class
+ */
 public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extends Shake<S,I> {
 
     private static final Logger log = Logger.getLogger(RandomMoveShake.class.getName());
 
+    /**
+     * Set of randomizable neighborhoods available for the shake.
+     * A move will be randomly selected from any neighborhood
+     */
     RandomizableNeighborhood<?,S,I>[] neighborhoods;
     private int ratio;
 
+    /**
+     * Create a new RandomMoveShake
+     *
+     * @param ratio number of moves to execute = ratio * K
+     * @param neighborhoods neighborhoods to use
+     */
     @SafeVarargs
     public RandomMoveShake(int ratio, RandomizableNeighborhood<?,S,I>... neighborhoods) {
         this.ratio = ratio;
@@ -27,15 +43,20 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
         this.neighborhoods = neighborhoods;
     }
 
+    /**
+     * Create a new RandomMoveShake. Equivalent to RandomMoveShake(1, neighborhoods)
+     *
+     * @param neighborhoods neighborhoods to use
+     */
     @SafeVarargs
     public RandomMoveShake(RandomizableNeighborhood<?,S,I>... neighborhoods) {
         this(1, neighborhoods);
     }
 
     /**
+     * {@inheritDoc}
+     *
      * Shake the solution applying random movements from the configured neighborhood
-     * @param s Solution to shake
-     * @param k Number of movements to apply, maxK is not used in this implementation
      */
     public S shake(S s, int k) {
         var random = RandomManager.getRandom();
@@ -54,7 +75,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
             } while (chosenNeigh % neighborhoods.length != copy);
             if(move.isPresent()){
                 move.get().execute();
-                ValidationUtil.validSolution(s);
+                ValidationUtil.assertValidScore(s);
             } else {
                 log.warning("No move available in any of the given providers, ending Destruction phase now");
                 break;
@@ -64,6 +85,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
         return s;
     }
 
+    /** {@inheritDoc} */
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "{" +
@@ -74,6 +96,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
     /**
      * Repairs a solution after applying a set of random movements
      * If the solution does not need to be repaired, this method should be empty
+     *
      * @param s Solution to repair
      */
     protected void repairSolution(S s){

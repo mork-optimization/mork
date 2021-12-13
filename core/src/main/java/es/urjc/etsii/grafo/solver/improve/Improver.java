@@ -5,6 +5,12 @@ import es.urjc.etsii.grafo.solution.Solution;
 
 import java.util.logging.Logger;
 
+/**
+ * Any method that improves a given solution is called an Improver. The classical example, but not limited to, is a local search.
+ *
+ * @param <S> Solution class
+ * @param <I> Instance class
+ */
 public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
     private static final Logger log = Logger.getLogger(Improver.class.getName());
@@ -12,6 +18,7 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
     /**
      * Improves a model.Solution
      * Iterates until we run out of time, or we cannot improve the current es.urjc.etsii.grafo.solution any further
+     *
      * @param s model.Solution to improve
      * @return Improved s
      */
@@ -29,6 +36,7 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
     /**
      * Improves a model.Solution
      * Iterates until we run out of time, or we cannot improve the current es.urjc.etsii.grafo.solution any further
+     *
      * @param s model.Solution to improve
      * @return Improved s
      */
