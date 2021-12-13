@@ -624,6 +624,25 @@ Remember to look to the interactive dashboard run in [localhost](http://localhos
 
 ## 5. Visualizing solutions
 
+In some cases you may be interested in seeing the solutions you are generating with your algorithms. This may allow you
+to detect possible problems, such as errors in the calculation of the objective function, or to detect weaknesses of the
+proposed methods.
+
+This can be easily done with MorK. First, you have to look for a program/software to represent the solution you are
+generating. Particularly, in the case of the TSP, a solution of the problem represents a circular route, that cover a
+set of locations.
+
+A simple, easy and open source software to visualize graph is [Graphviz](https://graphviz.org/). Graph visualization is
+a way of representing structural information as diagrams of abstract graphs and networks. There are many other cool
+libraries you could use to visualize graphs such as [Highcharts](https://www.highcharts.com/)
+,[Chart.js](https://www.chartjs.org/) or [D3.js](https://d3js.org/), among others. For the
+moment, [Graphviz](https://graphviz.org/) is enough.
+
+All methods needed to draw a solution are located in `/drawing/DotGenerator.java`.
+
+We are not going to focus on how the graph is generated. We recommend the interested reader to have a look
+to [Graphviz documentation](https://graphviz.org/).
+
 ## 6. _irace_
 
 In short, irace is a software package that implements a number of automatic configuration procedures, that allows us to
@@ -652,8 +671,9 @@ extend `IraceAlgorithmGenerator`.
 This class must implement the
 method `public Algorithm<TSPSolution, TSPInstance> buildAlgorithm(IraceRuntimeConfiguration config)`, in charge of
 generate an Algorithm based on `IraceRuntimeConfiguration` object. This object contains the configuration of the
-experiment and will be defined in the next section. To obtain the configuration parameter, the method `String getValue(String s)` have to be called. 
-In this case, two parameters has to be defined: the strategy of the local search (first or best); and the neighborhood (insert or swap).
+experiment and will be defined in the next section. To obtain the configuration parameter, the
+method `String getValue(String s)` have to be called. In this case, two parameters has to be defined: the strategy of
+the local search (first or best); and the neighborhood (insert or swap).
 
 ```
 public class IraceExperiment extends IraceAlgorithmGenerator<TSPSolution, TSPInstance> {
@@ -687,7 +707,8 @@ public class IraceExperiment extends IraceAlgorithmGenerator<TSPSolution, TSPIns
 ```
 
 ### Define the parameters to test.
-Go to file `/resources/irace/parameters.txt`  and include at the end the two following lines: 
+
+Go to file `/resources/irace/parameters.txt`  and include at the end the two following lines:
 
 ```
 ## Configuration of the local searches
@@ -705,10 +726,12 @@ var localSearchStrategy = config.getValue("localSearchStrategy").orElseThrow();
 Be sure that you leave some empty lines at the end of the file (we don't why it crashes if there are no lines)
 
 ### Adjusting scenario options.
-Next, go to `/resources/irace/scenario.txt` and read carefully all configuration parameters.
-Some parameters you could modify are: `trainInstancesDir`, `maxExperiments`, `targetRunnerParallel`, among others. 
+
+Next, go to `/resources/irace/scenario.txt` and read carefully all configuration parameters. Some parameters you could
+modify are: `trainInstancesDir`, `maxExperiments`, `targetRunnerParallel`, among others.
 
 ### Execute irace
+
 To execute irace, first, go to `application.yml` and enable irace:
 
 ````
@@ -721,12 +744,14 @@ enabled: false
 shell: true
 ````
 
+Now, it's the moment when you wait a few hours until it ends. The time it takes to find the best configuration depends
+on the number of instances specified, as well as it sizes and the number of experiments that will be carried out.
 
 ### Did you use irace?.
+
 Please, do not forget to cite the original paper where Manuel López-Ibañez _et al._ published it:
 _López-Ibáñez, M., Dubois-Lacoste, J., Cáceres, L. P., Birattari, M., & Stützle, T. (2016). The irace package: Iterated
 racing for automatic algorithm configuration. Operations Research Perspectives, 3, 43-58._
-
 
 ## 6. Testing in MorK
 
