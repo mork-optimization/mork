@@ -25,8 +25,8 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
      * @return Should include parameter configuration if same algorithm is used with different parameters
      */
     public String getShortName(){
-        String s = this.toString().replaceAll("[\\s{}\\[\\]-_\\.=?+&^%,$#'\"@!]", "");
-        return s.substring(0, Math.min(s.length(), 180));
+        String s = this.toString().replaceAll("[Aa]lgorithm", "").replaceAll("[\\s{}\\[\\]-_\\.=?+&^%,$#'\"@!]", "");
+        return s.substring(0, Math.min(s.length(), 30));
     }
 
     /**

@@ -57,7 +57,7 @@ public class EventController {
     @GetMapping("/ping")
     public PingEvent ping(){
         var ping = new PingEvent();
-        EventPublisher.publishEvent(ping);
+        EventPublisher.getInstance().publishEvent(ping);
         return ping;
     }
 }

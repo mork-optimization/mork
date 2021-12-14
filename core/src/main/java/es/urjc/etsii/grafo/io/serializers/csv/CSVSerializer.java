@@ -3,9 +3,11 @@ package es.urjc.etsii.grafo.io.serializers.csv;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
+import es.urjc.etsii.grafo.solver.services.events.AbstractEventStorage;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -18,7 +20,7 @@ public class CSVSerializer extends ResultsSerializer {
 
     private static final Logger log = Logger.getLogger(CSVSerializer.class.getName());
 
-    private final CSVSerializerConfig config;
+    private final CSVConfig config;
 
     private final CsvMapper csvMapper;
 
@@ -27,8 +29,8 @@ public class CSVSerializer extends ResultsSerializer {
      *
      * @param config CSV Serializer configuration
      */
-    public CSVSerializer(CSVSerializerConfig config) {
-        super(config);
+    public CSVSerializer(AbstractEventStorage eventStorage, CSVConfig config) {
+        super(eventStorage, config);
         this.config = config;
         this.csvMapper = new CsvMapper();
         csvMapper.setVisibility(csvMapper.getSerializationConfig().getDefaultVisibilityChecker()
@@ -46,20 +48,13 @@ public class CSVSerializer extends ResultsSerializer {
                 .withColumnSeparator(config.getSeparator())
                 .sortedBy("instanceName", "algorithmName", "iteration")
                 .withHeader();
-        try(var br = Files.newBufferedWriter(p)){
+
+        // Problema: Reusar el path si existe, refactorizar el serializer comun, metodo helper a IOManager o donde sea, oo como ejemplo
+        try(var br = Files.newBufferedWriter(p, StandardCharsets.UTF_8)){
            var writer =  csvMapper.writer(schema);
            writer.writeValue(br, results);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
-
-//    /**
-//     * It makes no sense to serialize an instance or a solution to a CSV results file, ignore them
-//     * @return Fields that should not be serialized to CSV (solutions and instances)
-//     */
-//    private FilterProvider getFilters(){
-//        SimpleBeanPropertyFilter filter = SimpleBeanPropertyFilter.serializeAllExcept("solutions", "bestSolution", "instance");
-//        return new SimpleFilterProvider().addFilter("Solution/Instance filter in CSV", filter);
-//    }
 }

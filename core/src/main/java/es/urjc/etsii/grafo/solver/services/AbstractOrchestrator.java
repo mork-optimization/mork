@@ -20,7 +20,7 @@ public abstract class AbstractOrchestrator implements CommandLineRunner {
      * @return Implementation to use
      */
     public static <T> T decideImplementation(List<? extends T> list, Class<? extends T> defaultClass){
-        //String qualifiedDefaultname = defaultClass.getName();
+        // TODO This method could be deleted if using Spring's autowiring priorities
         T defaultImpl = null;
         for(var e: list){
             if(!e.getClass().equals(defaultClass)){

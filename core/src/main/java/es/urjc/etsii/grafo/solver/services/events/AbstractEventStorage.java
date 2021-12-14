@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.solver.services.events.types.MorkEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 /**
@@ -42,4 +43,15 @@ public abstract class AbstractEventStorage {
      * @return Stream of mork event.
      */
     public abstract Stream<MorkEvent> getAllEvents();
+
+    /**
+     * Count solutions in memory (not garbage collected) for a given experiment
+     * @return solution in memory for the given experiment
+     */
+    public long solutionsInMemory(String experimentName){
+        return this.getGeneratedSolEventForExp(experimentName)
+                .map(SolutionGeneratedEvent::getSolution)
+                .filter(Optional::isPresent)
+                .count();
+    }
 }

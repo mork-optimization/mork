@@ -8,7 +8,7 @@ import java.util.Optional;
 /**
  * Fallback configuration service for when it is not viable to use a Config DTO.
  * Avoid using this class and use small Config classes
- * (examples: SolverConfig, ExcelSerializerConfig, etc.) whenever possible
+ * (examples: SolverConfig, ExcelConfig, etc.) whenever possible
  */
 @Service
 public class ConfigService {

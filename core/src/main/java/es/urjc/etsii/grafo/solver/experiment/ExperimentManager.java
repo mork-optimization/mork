@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.solver.services;
+package es.urjc.etsii.grafo.solver.experiment;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -6,6 +6,8 @@ import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
+import es.urjc.etsii.grafo.solver.services.AbstractExperiment;
+import es.urjc.etsii.grafo.solver.services.Orchestrator;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -21,6 +23,7 @@ import java.util.regex.Pattern;
 @Service
 public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
 
+    private static final int MAX_SHORTNAME_LENGTH = 30;
     private Pattern experimentFilter;
 
     private static final Logger log = Logger.getLogger(Orchestrator.class.toString());
@@ -28,7 +31,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
     /**
      * List of experiments
      */
-    private final Map<String, List<Algorithm<S, I>>> experiments = new LinkedHashMap<>();
+    private final Map<String, Experiment<S,I>> experiments = new LinkedHashMap<>();
 
     /**
      * Constructor
@@ -48,9 +51,10 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
             fillSolutionBuilder(algorithms, solutionBuilder);
             validateAlgorithmNames(experiment.getName(), algorithms);
             String experimentName = experiment.getName();
+            Class<?> experimentClass = experiment.getClass();
             var matcher = experimentFilter.matcher(experimentName);
             if (matcher.matches()) {
-                this.experiments.put(experimentName, algorithms);
+                this.experiments.put(experimentName, new Experiment<>(experimentName, experimentClass, algorithms));
                 log.fine(String.format("Experiment %s matches against %s", experimentName, experimentPattern));
             } else {
                 log.fine(String.format("Experiment %s does not match against %s, ignoring", experimentName, experimentPattern));
@@ -75,7 +79,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
      *
      * @return mapping of experiments and it associated list of algorithms
      */
-    public Map<String, List<Algorithm<S, I>>> getExperiments() {
+    public Map<String, Experiment<S,I>> getExperiments() {
         return Collections.unmodifiableMap(this.experiments);
     }
 
@@ -98,6 +102,9 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
 
             // Same check for Algorithm::getShortName
             var shortName = algorithm.getShortName();
+            if(shortName.length() > MAX_SHORTNAME_LENGTH){
+                throw new IllegalArgumentException(String.format("Algorithms shortnames cannot be longer than %s chars. Bad algorithm: %s", MAX_SHORTNAME_LENGTH, algorithm));
+            }
             if (shortNames.contains(shortName)) {
                 throw new IllegalArgumentException(String.format("Duplicated algorithm shortName in experiment %s. FIX: All algorithm getShortName() should be unique per experiment → %s", experimentName, shortName));
             }

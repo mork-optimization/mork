@@ -8,8 +8,10 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
+import java.util.stream.Collectors;
 
 /**
  * Util methods for managing input/output
@@ -18,13 +20,13 @@ public class IOUtil {
     private static final Logger log = Logger.getLogger(IOUtil.class.getName());
 
     /**
-     * Create folder if not exists
+     * Create folder if not exists, recursively
      *
      * @param path a {@link java.lang.String} object.
      */
     public static void createFolder(String path) {
         File dir = new File(path);
-        dir.mkdir();
+        boolean created = dir.mkdirs();
         checkIsFolder(path);
     }
 
@@ -108,5 +110,50 @@ public class IOUtil {
             content = content.replace(e.getKey(), e.getValue());
         }
         Files.writeString(target, content);
+    }
+
+    /**
+     * Returns true if it is a file (not a folder) and the file is not hidden and its name does not start with a dot.
+     * @param p Path to check
+     * @return true if passes all checks, false otherwise
+     */
+    public static boolean isNormalFile(Path p){
+        try {
+            if(Files.isHidden(p)) {
+                return false;
+            }
+            if(p.toFile().getName().startsWith(".")){
+                // In Windows files starting with . are not considered hidden, but they are in Linux, so ignore them.
+                return false;
+            }
+        } catch (IOException e) {
+            log.warning("Error while reading file attributes, skipping instance file: " + p.toAbsolutePath());
+            return false;
+        }
+        return Files.isRegularFile(p);
+    }
+
+    /**
+     * List all normal files under a given path. Ignores hidden files. Recursively explores folders.
+     * @param path Path to iterate
+     * @return list of paths to normal files
+     */
+    public static List<Path> iterate(Path path) {
+        try(var stream = Files.walk(path)) {
+            return stream
+                    .filter(IOUtil::isNormalFile)
+                    .collect(Collectors.toList());
+        } catch (IOException e){
+            throw new RuntimeException(e);
+        }
+    }
+
+    /**
+     * List all normal files under a given path. Ignores hidden files. Recursively explores folders.
+     * @param path Path to iterate
+     * @return list of paths to normal files
+     */
+    public static List<Path> iterate(String path){
+        return iterate(Path.of(path));
     }
 }

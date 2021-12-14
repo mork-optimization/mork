@@ -1,6 +1,6 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
-import es.urjc.etsii.grafo.io.serializers.AbstractSerializerConfig;
+import es.urjc.etsii.grafo.io.serializers.AbstractResultSerializerConfig;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
  */
 @Configuration
 @ConfigurationProperties(prefix = "serializers.xlsx")
-public class ExcelSerializerConfig extends AbstractSerializerConfig {
+public class ExcelConfig extends AbstractResultSerializerConfig {
 
     /**
      * If True, instances in rows, algorithms in columns

@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.io.serializers;
 
 /**
- * This class is used to configure the serializer by the properties specified in the application.yml
+ * This class is used to configure common serializer properties.
+ * Includes both solution serializers and results serializers
  * {@see application.yml}
  */
-public abstract class AbstractSerializerConfig {
-
+public class AbstractSerializerConfig {
 
     /**
      * The serializer is enabled
@@ -13,14 +13,32 @@ public abstract class AbstractSerializerConfig {
     private boolean enabled;
 
     /**
-     *  Path where solutions will be exported
+     * Path where solutions will be exported
      */
     private String folder;
 
     /**
-     *  String formatter for current date using in solution filename
+     * String formatter for current date using in solution filename
      */
     private String format;
+
+    /**
+     * Get filename format. The serializer will use this pattern to decide the filename.
+     *
+     * @return filename format as a string
+     */
+    public String getFormat() {
+        return format;
+    }
+
+    /**
+     * Change filename format
+     *
+     * @param format filename format as a string
+     */
+    public void setFormat(String format) {
+        this.format = format;
+    }
 
     /**
      * Is the current serializer enabled?
@@ -59,21 +77,4 @@ public abstract class AbstractSerializerConfig {
         this.folder = folder;
     }
 
-    /**
-     * Get filename format. The serializer will use this pattern to decide the filename.
-     *
-     * @return filename format as a string
-     */
-    public String getFormat() {
-        return format;
-    }
-
-    /**
-     * Change filename format
-     *
-     * @param format filename format as a string
-     */
-    public void setFormat(String format) {
-        this.format = format;
-    }
 }
