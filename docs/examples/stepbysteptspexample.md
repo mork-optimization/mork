@@ -1,4 +1,4 @@
-# Step-by-step example for the Travelling Salesman Problem (TSP) with MorK
+# Step-by-step example for the Travelling Salesman Problem (TSP) with Mork
 
 ## What is the Travelling Salesman Problem?
 
@@ -8,7 +8,7 @@ returns to the origin city?" It is an NP-hard problem in combinatorial optimizat
 science and operations research.
 
 <p align="center">  
- <img src="introduction.jpeg"  style="width:500px"  alt="Example of the TSP problem"/>  
+ <img src="/imgs/introduction.jpeg"  style="width:500px"  alt="Example of the TSP problem"/>  
 </p>  
 
 Obtained
@@ -32,8 +32,7 @@ In order to test the proposed algorithms for the TSP we will use the standard in
 easily obtained from *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)*.  
 *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)* is a library of sample instances for the TSP  (and
 related problems) from various sources and of various types. Particularly, we will use
-the *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*
-. For the moment, you will only need to download the following
+the *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*. For the moment, you will only need to download the following
 files: [berlin52](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp)
 , [eil101](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/eil101.tsp)
 ,  [ch130](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ch130.tsp)
@@ -62,9 +61,9 @@ The project is organized in the following folders
 If you are using  [IntelliJ](https://www.jetbrains.com/idea/), you might have noticed that there are two default
 configuration files: `Performance.run.xml` and `Validation.run.xml`. On the one hand, the performance run configuration
 corresponds to a normal execution of the framework. On the other hand, the validation run configuration has the
-assertion enables (don't you know what assertion or assert is? Have a look to [Testing in MorK section]()). In this
+assertion enables (don't you know what assertion or assert is? Have a look to [Testing in Mork section]()). In this
 case, as soon as an assertion is not true, an exception will be thrown. Anyway, to configure your own run configuration,
-the main class of MorK is located at `es.urjc.etsii.grafo.TSP.Main`.
+the main class of Mork is located at `es.urjc.etsii.grafo.TSP.Main`.
 
 - 📁 **docker** :
 - 📁 **instances**
@@ -93,24 +92,22 @@ in this folder.
 
 ## 2. Our first step: reading instances
 
-This MorK project aims to approach the Traveling Salesman Problem (TSP). Given a set of points, (that can be considered
+This Mork project aims to approach the Traveling Salesman Problem (TSP). Given a set of points, (that can be considered
 as locations or cities), the TSP consist of find a roundtrip of minimal total length visiting each node exactly once. In
 this section you will learn, what an instance is, how to define an instance of the problem, and how to read an instance
 from a file.
 
 An instance of a problem is all the inputs needed to compute a solution to the problem. Focusing on the problem at hand,
-what is an instance? An instance represents a map of cities or locations, all of them connected to each other. In this  
-particular problem, all locations are defined by x/y coordinates.
+what is an instance? An instance represents a map of cities or locations, all of them connected to each other. In this particular problem, all locations are defined by x/y coordinates.
 
 At this point, you should have downloaded the instance
 files ([berlin52.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp)
 , [eil101](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/eil101.tsp)
 , [ch130](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ch130.tsp)
-, [st70](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp),and [a280](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/a280.tsp)
-and place it at the instance folder of the project.
+and [st70](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp), and place it at the instance folder of the project.
 
-Have a look to any of those four files. The structure is the same for each of them. Particularly, this files have the  
-following` <keyword>:<value>` structure. where `<keyword>` denotes an alphanumerical keyword and `<value>` denotes  
+Have a look to any of those four files. The structure is the same for each of them. Particularly, this files have the 
+following` <keyword>:<value>` structure. where `<keyword>` denotes an alphanumerical keyword and `<value>` denotes 
 alphanumerical or numerical data:
 
 - NAME : `<string>` // Identifies the data file.
@@ -121,14 +118,13 @@ alphanumerical or numerical data:
 - NODE COORD SECTION :   `<integer> <real> <real>` // Node coordinates are given in this section.
 
 Notice that the five instances selected have EDGE WEIGHT TYPE = EUC_2D, which means that the distance between two
-points  
-_i_ and _j_ is computed as follows: [_√[(ix – jx)2 + (iy – jy)2]_](https://en.wikipedia.org/wiki/Euclidean_distance).
+points _i_ and _j_ is computed as follows: [_√[(ix – jx)2 + (iy – jy)2]_](https://en.wikipedia.org/wiki/Euclidean_distance).
 
 If you are interested in a deep description of the instances to test the proposed algorithm with other type of instance,
 have a look to the [TSPLIB documentation](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp95.pdf).
 
-Then, open file `TSPInstance.java` located in `src/main/java/es/urjc/etsii/grafo/TSP/model`. This class will represent  
-an instance of the problem, i.e., a list of x/y coordinates. Therefore, we will carry out the following task:
+Then, open file `TSPInstance.java` located in `src/main/java/es/urjc/etsii/grafo/TSP/model`. This class will represent 
+an instance of the problem, i.e., a list of x/y coordinates. Therefore, we will carry out the following tasks:
 
 - Define an structure represent a 2D coordinate.
 - Define an attribute (in `TSPInstance` class) that represent list of locations and the distance of locations.
@@ -136,7 +132,7 @@ an instance of the problem, i.e., a list of x/y coordinates. Therefore, we will 
 
 Try yourself, and compare with our code (obviously more than one implementation is possible, everyone thinks different).
 
-The resultant class will be the following:
+The resultant class could be as the following:
 
 ```  
 public class TSPInstance extends Instance {  
@@ -207,16 +203,14 @@ public class TSPInstance extends Instance {
 ```  
 
 > 💡 _Tip_: is this the first time you have come across record? You don't know what you're missing!! Record classes, which are a special kind of class, help to model plain data aggregates with less ceremony than normal classes. Have a look to the [Java documentation](https://docs.oracle.com/en/java/javase/16/language/records.html) abut record classes.
----  
+
 
 **⚠️IMPORTANT : after calling the constructor of the instance, i.e., the instance is defined and generated, it MUST BE
 IMMUTABLE.**
----  
-
 
 Next, lets move on to the `TSPInstanceImporter.java` file. This class aims to generate an instance of the problem given
 a text file. To this end, we will need to implement the method: `importInstance(BufferedReader reader, String filename)`
-. This method receives as input parameters the buffer reader, managed by the framework and filename. Moreover, it
+. This method receives as input parameters the buffer reader, managed by the framework, and filename. Moreover, it
 returns the constructed instance. Considering the file instance structure, we will need to read line by line the file,
 storing the list of coordinates, and distance between each pair of coordinates, and finally, construct the instance. The
 resultant class will be the following:
@@ -318,7 +312,7 @@ public TSPSolution(TSPSolution s) {
 
 ### Objective function methods
 
-Therefore, it will also needed a method to calculate the objective function of the solution. In Mork, there are to main
+Therefore, it will also needed a method to calculate the objective function of the solution. In Mork, there are two main
 procedures to manage the objective function of the solution:
 
 - `public double getScore()` : get the objective function of the solution. This procedure is like a getter method, it
@@ -339,13 +333,13 @@ public double recalculateScore() {
   }  
   return distance;  
 }
- ```
+```
 
 ### Moving methods
 
 The solution class must have the necessary methods to operate and edit a solution. In this case, since it is a path,
 methods to exchange the order of two locations (classic interchange movement), to establish a position in the path of a
-position (classic interchange movement), or even to randomize a path make sense for the TSP.
+specific location (classic interchange movement), or even to randomize a path make sense for the TSP.
 
 ```    
    /**  
@@ -400,7 +394,7 @@ In this section we will generate our first solutions for the TSP. To do so, we w
 
 1. Implement a constructive that generates random solutions.
 2. Define an experiment.
-3. Run MorK: understanding the application.yml, the web interface and results.
+3. Run Mork: understanding the application.yml, the web interface and results.
 
 ### Constructive procedures
 
@@ -410,29 +404,63 @@ TSP must extend the `Constructive<TSPSolution, TSPInstance>`.
 
 The simplest implementation of a randomized construct is shown below:
 
+````
+    @Override
+    public TSPSolution construct(TSPSolution solution) {
+        for (int i = 0; i < solution.getInstance().numberOfLocations(); i++) {
+            solution.setOrderOfLocation(i, i);
+        }
+        solution.shuffleRoute();
+        solution.updateLastModifiedTime();
+        solution.setScore(solution.recalculateScore());
+        return solution;
+    }
+````
+
 ### Define an experiment
 
-Once the construct has been defined, let's define an experiment. Each of the experiments to be executed for the TSP must
+Once the constructive procedure has been defined, let's define an experiment. Each of the experiments to be executed for the TSP must
 be located in the 'experiments' folder and must extend the `AbstractExperiment<TSPSolution, TSPInstance>` class. To
 define an experiment it is necessary to implement the method `getAlgorithms()`; which returns a list of algorithms. In
-this case we are only interested in testing a simple algorithm, a constructive procedure. Therefore, the resulting
+this case, we are only interested in testing a simple algorithm, a constructive procedure. Therefore, the resulting
 experiment would look like this:
 
-### Run MorK
+````
+public class ConstructiveExperiment extends AbstractExperiment<TSPSolution, TSPInstance> {
 
-To run MorK it is necessary to configure previously the run parameters. To do so, go to application.yml file, located at
+    public ConstructiveExperiment(SolverConfig solverConfig) {
+        super(solverConfig.isMaximizing());
+    }
+
+    @Override
+    public List<Algorithm<TSPSolution, TSPInstance>> getAlgorithms() {
+
+        var algorithms = new ArrayList<Algorithm<TSPSolution, TSPInstance>>();
+
+        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive()));
+
+        return algorithms;
+    }
+}
+````
+
+### Run Mork
+
+To run Mork it is necessary to configure the run parameters. To do so, go to `application.yml` file, located at
 src/main/resources/. This file contains a list of well-documented properties. In this case we are going to focus just on
 some of them:
 
-- instances: in this property the path of instances should be indicated. It is possible to indicate a path for each
+- instances: in this property the path of the location of the instances should be indicated (either a specific instance or a folder of instances, or even a folder with folders of instances). It is possible to indicate a path for each
   experiment. In this case we set `default: 'instances'`.
 - maximizing: since the TSP is a minimization optimization problem, maximizing is set to false:  ` maximizing: false`.
 - experiments: this property determines which experiment or experiments should be executed. To do so, you should define
   a regex expression. However, for a single experiment execution, just specify the class
-  name:   `experiments: 'ConstructiveExperiment'`. Have a look to the rest of configuration parameters and feel free to
+  name:   `experiments: 'ConstructiveExperiment'`. 
+
+Have a look to the rest of configuration parameters and feel free to
   change whatever you want.
 
-Then, you are able to run MorK. You will see a lot of text and numbers in the console, don't worry, you can analyze them
+Then, you are able to run Mork. You will see a lot of text and numbers in the console, don't worry, you can analyze them
 carefully when the program finishes, it is not difficult to understand. While the algorithm is running, go
 to: *[http://localhost:8080/](http://localhost:8080/)*. In that website, you will be able to visualize the convergence
 chart and the actual value chart for each of the instance executed. In addition, you will be able to visualize the best
@@ -442,16 +470,15 @@ solution found (as soon as you learn how to do it).
 
 When the execution ends, go to the result folder and check that an excel file (*.xlxs) has been correctly generated. The
 excel file contains two sheets: a summary of the results and raw results. Particularly, the summary file should report
-the following data (exactly the same, MorKs' experiments are fully reproducible)
+the following data (exactly the same, Morks' experiments are fully reproducible)
 
-|                     | ScTSPRandomConstructivei |                |         |                |
-|---------------------|--------------------------|----------------|---------|----------------|
-| Etiquetas   de fila | Min. score               | Sum Total T(s) | hasBest | Min. %Dev2Best |
-| a280                | 31810.10976              | 0.0286772      | 1       | 0              |
-| berlin52            | 25944.86163              | 0.002271       | 1       | 0              |
-| ch130               | 42393.82045              | 0.0022626      | 1       | 0              |
-| eil101              | 3094.175908              | 0.0024924      | 1       | 0              |
-| st70                | 3285.619063              | 0.0015071      | 1       | 0              |
+|                     | ScTSPRandomConstructive |                |         |                |
+|---------------------|-------------------------|----------------|---------|----------------|
+| Etiquetas   de fila | Min. score              | Sum Total T(s) | hasBest | Min. %Dev2Best |
+| berlin52            | 25944.86163             | 0.002271       | 1       | 0              |
+| ch130               | 42393.82045             | 0.0022626      | 1       | 0              |
+| eil101              | 3094.175908             | 0.0024924      | 1       | 0              |
+| st70                | 3285.619063             | 0.0015071      | 1       | 0              |
 
 ### Local Searches
 
@@ -464,29 +491,30 @@ tasks:
 2. Implement the insert/swap operator.
 3. Define a Local Search experiment.
 
-#### Implement a neighborhood structure.
+#### Implement a neighborhood structure
 
-A neighborhoods represents all potential solutions that can be reached for a given solution applying a movement. In MorK
+A neighborhoods represents all potential solutions that can be reached for a given solution applying a movement. In Mork
 there are two types of neighborhoods:
 
-1. Eager Neighborhood: Movements in this neighborhood are generated at once, using List<> of EagerMoves.
-2. Lazy Neighborhood:  Movements in this neighborhood are generated lazily under demand using Streams with LazyMoves.
+1. Eager Neighborhood: Movements in this neighborhood are generated at once, using a list (`List<>`) of EagerMoves.
+2. Lazy Neighborhood:  Movements in this neighborhood are generated lazily under demand using `Streams` with LazyMoves.
 
 **Eager Neighborhood**
+
 To explain Eager Neighborhoods we are going to use the Insert classical move as an example. The insert operator consist
 in removing a location from the route and insert it between other two locations (i.e., insert it at a specific position)
 .
 
 Have a look to the example depicted in the figure above. The location with ID=7 has been removed from the route, and it
-is wanted to insert it between locations 2 and 3. The resultant route after the insertion is shown in the second array.
+is wanted to insert it between locations 2 and 3. The resulting route after the insertion is shown in the second array.
 ![insert](https://images.saymedia-content.com/.image/c_limit,cs_srgb,q_auto:eco,w_609/MTc0NDYxNTczNzExMDEzMjI0/c-standard-list-insert-examples.webp)
 
 Given the insert operator, the neighborhood is defined as all possible insertions of all locations in any position of
 the route. To this end, we first create a class named: `InsertNeighborhood` that must
 extend `EagerNeighborhood<InsertNeighborhood.InsertMove, TSPSolution, TSPInstance>`, and
-where `InsertNeighborhood.InsertMove`is the insert move operator we also have to define. Once the header of the class
+where `InsertNeighborhood.InsertMove`is the insert move operator we have to define. Once the header of the class
 has been defined, next task will be to implement the method `public List<InsertMove> getMovements(TSPSolution solution)`
-, This procedure will generate all possible insert moves given a solution (i.e., insert all location in each of the
+, This procedure will generate all possible insert moves given a solution (i.e., insert all locations in each of the
 positions of the route). A straightforward implementation is shown below:
 
     public List<InsertMove> getMovements(TSPSolution solution) {  
@@ -543,6 +571,7 @@ procedure is extremely inefficient. An efficient way to perform this calculation
 solution that has changed after the move. We depict a more efficient approach in the swap move example.
 
 **Lazy Neighborhood**
+
 Movements in this neighborhood are generated lazily under demand
 using [`Streams`](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html) with `LazyMoves`. In this
 neighborhood we will need to build an exhaustive stream to iterate over it. We will use the classical swap move operator
@@ -552,8 +581,8 @@ explained thru the following picture.
 ![enter image description here](https://raw.githubusercontent.com/nickbalestra/nickbalestra.github.io/master/assets/images/swap-in-place.png)
 
 The main difference between this neighborhood and the previous one is the way in which the movements are defined. In
-this case, instead of being a list of movements, it is a Stream. The idea of this neighborhood is that given a movement
-a next movement can be generated (if it exists). In this way, movements are only generated if they are needed. How to do
+this case, instead of generating a list of movements, we will define a Stream. The general idea of this neighborhood is that given a movement, 
+the next movement can be generated (if it exists). In this way, movements are only generated if they are needed. How to do
 it? First, we generate the Swap Neighborhood
 class (`SwapNeighborhood extends LazyNeighborhood<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance>`) and implement
 the stream method. This method generate an initial `SwapMove` object.
@@ -572,13 +601,13 @@ Therefore, this procedure should avoid generating already visited moves. Our pro
 
     public LazyMove<TSPSolution, TSPInstance> next() {  
       var nextPj = (pj + 1) % s.getInstance().numberOfLocations();  
-     var nextPi = pi;  
-     if (nextPj == initialPi) {  
-      nextPi = (nextPi + 1) % s.getInstance().numberOfLocations();  
-     if (nextPi == (initialPi -1 + s.getInstance().numberOfLocations())/ + s.getInstance().numberOfLocations()) {  
-      return null;  
-      }  
-      nextPj = (nextPi + 1) % s.getInstance().numberOfLocations();  
+      var nextPi = pi;  
+      if (nextPj == initialPi) {  
+        nextPi = (nextPi + 1) % s.getInstance().numberOfLocations();
+        if (nextPi == (initialPi -1 + s.getInstance().numberOfLocations())/ + s.getInstance().numberOfLocations()) {  
+          return null;  
+        }  
+        nextPj = (nextPi + 1) % s.getInstance().numberOfLocations();  
       }  
       return new SwapMove(s, initialPi, nextPi, nextPj);  
     }
@@ -590,34 +619,26 @@ D <-> E, and finally, `null`.
 #### Define a Local Search experiment
 
 Define a local search experiment is as easy as define a constructive experiment. Copy the `ConstructiveExperiment` class
-in the same folder and rename it to `LocalSearchExperiment`. In Mork, you could use to defined Local
-Searches: `LocalSearchFirstImprovement` and `LocalSearchBestImprovement`. The first one follows a first improvement
+in the same folder and rename it to `LocalSearchExperiment`. In Mork, there are already implemented two different type of local searches: `LocalSearchFirstImprovement` and `LocalSearchBestImprovement`. The first one follows a first improvement
 strategy, i.e., as soon as it finds a move that results on an improve, it is executed. The second one follows a best
 improvement strategy, it explores all solutions of a neighborhood and execute the best possible move, the move that
 results in the best solution of the neighborhood. In this experiment we are going to define 5 algorithms:
 
 - Random constructive:
 - Insert Neighborhood following a first and best improvement strategy
-- Swap Neighborhood following a first and best improvement strategy
+  - Swap Neighborhood following a first and best improvement strategy
 
-        public List<Algorithm<TSPSolution, TSPInstance>> getAlgorithms() {  
-          
-          var algorithms = new ArrayList<Algorithm<TSPSolution, TSPInstance>>();  
-          
-          
-          algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive()));  
-          algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),  
-         new LocalSearchFirstImprovement<>(super.isMaximizing(), new InsertNeighborhood())));  
-          algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),  
-         new LocalSearchBestImprovement<>(super.isMaximizing(), new InsertNeighborhood())));  
-          algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),  
-         new LocalSearchFirstImprovement<>(super.isMaximizing(), new SwapNeighborhood())));  
-          algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),  
-         new LocalSearchBestImprovement<>(super.isMaximizing(), new SwapNeighborhood())));  
-          
-         return algorithms;  
-
-  }
+````
+public List<Algorithm<TSPSolution, TSPInstance>> getAlgorithms() {  
+  var algorithms = new ArrayList<Algorithm<TSPSolution, TSPInstance>>();
+  algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive()));  
+  algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),new LocalSearchFirstImprovement<>(super.isMaximizing(), new InsertNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),new LocalSearchBestImprovement<>(super.isMaximizing(), new InsertNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),new LocalSearchFirstImprovement<>(super.isMaximizing(), new SwapNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),new LocalSearchBestImprovement<>(super.isMaximizing(), new SwapNeighborhood())));  
+  return algorithms;
+}
+````
 
 Now is the moment to run this new experiment. Change the experiment property in the `application.yml` file and run it!
 Remember to look to the interactive dashboard run in [localhost](http://localhost:8080/). Which is the best algorithm?
@@ -628,8 +649,8 @@ In some cases you may be interested in seeing the solutions you are generating w
 to detect possible problems, such as errors in the calculation of the objective function, or to detect weaknesses of the
 proposed methods.
 
-This can be easily done with MorK. First, you have to look for a program/software to represent the solution you are
-generating. Particularly, in the case of the TSP, a solution of the problem represents a circular route, that cover a
+This can be easily done with Mork. First, you have to look for a program/software to represent the solution you are
+generating. Particularly, in the case of the TSP, a solution of the problem represents a circular route that cover a
 set of locations.
 
 A simple, easy and open source software to visualize graph is [Graphviz](https://graphviz.org/). Graph visualization is
@@ -639,12 +660,11 @@ libraries you could use to visualize graphs such as [Highcharts](https://www.hig
 moment, [Graphviz](https://graphviz.org/) is enough.
 
 All methods needed to draw a solution are located in `/drawing/DotGenerator.java`. We are not going to focus on how the
-graph is generated. We recommend the interested reader to have a look to [Graphviz documentation](https://graphviz.org/)
-. An example Graphviz diagram of a solution for the
+graph is generated. We recommend the interested reader to have a look to [Graphviz documentation](https://graphviz.org/). An example Graphviz diagram of a solution for the
 instance [berlin52](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp) is illustrated in the following
 figure. Additionally, the source code that generates that figure can be found [here](berlin52.dot.txt).
 
-<img src="route.png" alt="Possible route for Berlin52 instance" style="float: left; margin-right: 10px;" />
+<img src="/imgs/route.png" alt="Possible route for Berlin52 instance" style="float: left; margin-right: 10px;" />
 
 
 Next task is to generate that figure each time a new best solution is found. Obviously, we want to show that figure in
@@ -679,10 +699,9 @@ function onSolutionGenerated(event) {
 ````
 
 Now it is time to execute again or Local Search experiment and analyse how the solution and the solution quality
-evolves. The result should be similar than the following image:
+evolves over the time. The result should be similar than the following image:
 
-<img src="dashboard.png" alt="dashboard example" style="float: left; margin-right: 10px;" />
-
+<img src="/imgs/dashboard.png" alt="dashboard example" style="float: left; margin-right: 10px;" />
 
 ## 6. _irace_
 
@@ -703,10 +722,10 @@ First or Best improvement local search, and Insert or Swap Neighborhood.
 2. Define the parameters to test.
 3. Adjusting scenario options.
 
-### Configure an irace experiment.
+### Configure an irace experiment
 
 To configure an irace experiment it is needed to create a class that
-extends `IraceAlgorithmGenerator<TSPSolution, TSPInstance>`. In a MorK project, just one class, and only one, can
+extends `IraceAlgorithmGenerator<TSPSolution, TSPInstance>`. In a Mork project, just one class, and only one, can
 extend `IraceAlgorithmGenerator`.
 
 This class must implement the
@@ -747,7 +766,7 @@ public class IraceExperiment extends IraceAlgorithmGenerator<TSPSolution, TSPIns
 }
 ```
 
-### Define the parameters to test.
+### Define the parameters to test
 
 Go to file `/resources/irace/parameters.txt`  and include at the end the two following lines:
 
@@ -766,7 +785,7 @@ var localSearchStrategy = config.getValue("localSearchStrategy").orElseThrow();
 
 Be sure that you leave some empty lines at the end of the file (we don't why it crashes if there are no lines)
 
-### Adjusting scenario options.
+### Adjusting scenario options
 
 Next, go to `/resources/irace/scenario.txt` and read carefully all configuration parameters. Some parameters you could
 modify are: `trainInstancesDir`, `maxExperiments`, `targetRunnerParallel`, among others.
@@ -800,21 +819,21 @@ A few hours later...
 Great! Irace has determined that the best neighborhood strategy was 'First improvement', exploring the neighborhood of
 the inserts. These results are consistent with our experimentation.
 
-### Did you use irace?.
+### Did you use irace?
 
 Please, do not forget to cite the original paper where Manuel López-Ibañez _et al._ published it:
 _López-Ibáñez, M., Dubois-Lacoste, J., Cáceres, L. P., Birattari, M., & Stützle, T. (2016). The irace package: Iterated
 racing for automatic algorithm configuration. Operations Research Perspectives, 3, 43-58._
 
-## 7. Testing in MorK
+## 7. Testing in Mork
 
 #### Asserts
 
 I'm sure you've spent hours in front of your code trying to find that 🤬 bug. For that reason, we consider that it is
 important that any operation must be validated, and check that the implemented procedures perform the desired
 behavior.  
-And how can this be done in MorK? There are many ways, testing is one way (go to section XXX for an example of Test
-implementation in MorK), but in this case, we are talking about **asserts**. The keyword or reserved word **assert** is
+And how can this be done in Mork? There are many ways, testing is one way (go to section XXX for an example of Test
+implementation in Mork), but in this case, we are talking about **asserts**. The keyword or reserved word **assert** is
 used to state that at a certain point in the code a certain condition must be true. For example, if you write a method
 that calculates the speed of a particle, you might assert that the calculated speed is less than the speed of light. Not
 using it yet? Take a look at
