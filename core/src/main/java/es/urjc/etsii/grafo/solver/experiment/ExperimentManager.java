@@ -23,6 +23,7 @@ import java.util.regex.Pattern;
 @Service
 public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
 
+    private static final int MAX_SHORTNAME_LENGTH = 30;
     private Pattern experimentFilter;
 
     private static final Logger log = Logger.getLogger(Orchestrator.class.toString());
@@ -101,6 +102,9 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
 
             // Same check for Algorithm::getShortName
             var shortName = algorithm.getShortName();
+            if(shortName.length() > MAX_SHORTNAME_LENGTH){
+                throw new IllegalArgumentException(String.format("Algorithms shortnames cannot be longer than %s chars. Bad algorithm: %s", MAX_SHORTNAME_LENGTH, algorithm));
+            }
             if (shortNames.contains(shortName)) {
                 throw new IllegalArgumentException(String.format("Duplicated algorithm shortName in experiment %s. FIX: All algorithm getShortName() should be unique per experiment → %s", experimentName, shortName));
             }
