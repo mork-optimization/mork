@@ -102,14 +102,14 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
             return new WorkUnitResult<>(workUnit, solution, executionTime, timeToTarget);
         } catch (Exception e) {
             workUnit.exceptionHandler().handleException(workUnit.experimentName(), e, Optional.ofNullable(solution), instance, workUnit.algorithm(), io);
-            EventPublisher.publishEvent(new ErrorEvent(e));
+            EventPublisher.getInstance().publishEvent(new ErrorEvent(e));
             return null;
         }
     }
 
     protected void processWorkUnitResult(WorkUnitResult<S,I> r){
         io.exportSolution(r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution());
-        EventPublisher.publishEvent(new SolutionGeneratedEvent<>(r.workUnit().i(), r.solution(), r.workUnit().experimentName(), r.workUnit().algorithm(), r.executionTime(), r.timeToTarget()));
+        EventPublisher.getInstance().publishEvent(new SolutionGeneratedEvent<>(r.workUnit().i(), r.solution(), r.workUnit().experimentName(), r.workUnit().algorithm(), r.executionTime(), r.timeToTarget()));
         log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() +1, r.executionTime() / 1_000_000_000D, r.timeToTarget() / 1000_000_000D, r.solution()));
     }
 

@@ -78,14 +78,14 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
         log.info("App started, ready to start solving!");
         var experiments = this.experimentManager.getExperiments();
         log.info("Experiments to execute: " + experiments.keySet());
-        EventPublisher.publishEvent(new ExecutionStartedEvent(new ArrayList<>(experiments.keySet())));
+        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
         try{
             experiments.values().forEach(this::experimentWrapper);
         } finally {
             executor.shutdown();
             long totalExecutionTime = System.nanoTime() - startTime;
-            EventPublisher.publishEvent(new ExecutionEndedEvent(totalExecutionTime));
+            EventPublisher.getInstance().publishEvent(new ExecutionEndedEvent(totalExecutionTime));
             log.info(String.format("Total execution time: %s (s)", totalExecutionTime / 1_000_000_000));
         }
     }
@@ -96,10 +96,10 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
         log.info("Running experiment: " + experiment.name());
 
         var instanceNames = instanceManager.getInstanceSolveOrder(experiment.name());
-        EventPublisher.publishEvent(new ExperimentStartedEvent(experiment.name(), instanceNames));
+        EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(experiment.name(), instanceNames));
         executor.executeExperiment(experiment, instanceNames, exceptionHandler, startTimestamp);
         long experimenExecutionTime = System.nanoTime() - startTime;
-        EventPublisher.publishEvent(new ExperimentEndedEvent(experiment.name(), experimenExecutionTime, startTimestamp));
+        EventPublisher.getInstance().publishEvent(new ExperimentEndedEvent(experiment.name(), experimenExecutionTime, startTimestamp));
         log.info("Finished running experiment: " + experiment.name());
     }
     

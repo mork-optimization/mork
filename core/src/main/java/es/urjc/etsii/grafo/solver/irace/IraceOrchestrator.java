@@ -82,19 +82,19 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         log.info("App started in IRACE mode, ready to start solving!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
-        EventPublisher.publishEvent(new ExecutionStartedEvent(experimentName));
+        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(experimentName));
         try{
             launchIrace();
         } finally {
             long totalExecutionTime = System.nanoTime() - startTime;
-            EventPublisher.publishEvent(new ExecutionEndedEvent(totalExecutionTime));
+            EventPublisher.getInstance().publishEvent(new ExecutionEndedEvent(totalExecutionTime));
             log.info(String.format("Total execution time: %s (s)", totalExecutionTime / 1_000_000_000));
         }
     }
 
     private void launchIrace() {
         log.info("Running experiment: IRACE autoconfig" );
-        EventPublisher.publishEvent(new ExperimentStartedEvent(IRACE_EXPNAME, new ArrayList<>()));
+        EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(IRACE_EXPNAME, new ArrayList<>()));
         var referenceClass = algorithmGenerator.getClass();
         var isJAR = IOUtil.isJAR(referenceClass);
         extractIraceFiles(isJAR);
@@ -103,7 +103,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         iraceIntegration.runIrace(isJAR);
         long end = System.nanoTime();
         log.info("Finished running experiment: IRACE autoconfig");
-        EventPublisher.publishEvent(new ExperimentEndedEvent(IRACE_EXPNAME, end - start, startTimestamp));
+        EventPublisher.getInstance().publishEvent(new ExperimentEndedEvent(IRACE_EXPNAME, end - start, startTimestamp));
     }
 
     private void extractIraceFiles(boolean isJar) {

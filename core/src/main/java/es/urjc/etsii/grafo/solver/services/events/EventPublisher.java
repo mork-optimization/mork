@@ -14,14 +14,15 @@ import java.util.logging.Logger;
  */
 @Component
 public class EventPublisher {
-    private static Logger log = Logger.getLogger(EventPublisher.class.getName());
-    private static int MAX_QUEUE_SIZE = 10_000;
-    private static BlockingQueue<MorkEvent> eventQueue;
+    private static final Logger log = Logger.getLogger(EventPublisher.class.getName());
+    private static final int MAX_QUEUE_SIZE = 10_000;
+    private static EventPublisher eventPublisher;
+    private BlockingQueue<MorkEvent> eventQueue;
 
     /**
      * Disable event propagation
      */
-    private static boolean blockEvents = false;
+    private boolean blockEvents = false;
 
     /**
      * Spring integration constructor
@@ -32,6 +33,15 @@ public class EventPublisher {
         eventQueue = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
         var eventInterceptor = new EventInterceptor(eventQueue, publisher);
         new Thread(eventInterceptor).start();
+        eventPublisher = this;
+    }
+
+    /**
+     * Get event publisher instance
+     * @return event publisher instance
+     */
+    public static EventPublisher getInstance(){
+        return EventPublisher.eventPublisher;
     }
 
     /**
@@ -39,31 +49,32 @@ public class EventPublisher {
      *
      * @param event Event to propagate
      */
-    public static void publishEvent(MorkEvent event){
-        if(blockEvents){
-            log.fine("Event system disabled: "+event);
+    public void publishEvent(MorkEvent event) {
+        if (blockEvents) {
+            log.fine("Event system disabled: " + event);
             return;
         }
-        boolean enqueued = eventQueue.offer(event);
-        if(!enqueued){
+        boolean enqueued = eventPublisher.eventQueue.offer(event);
+        if (!enqueued) {
             throw new IllegalStateException(
                     String.format("Maximum event queue capacity (%s) reached, cannot keep up? probably a bug", MAX_QUEUE_SIZE)
             );
         }
     }
 
+
     /**
      * Block dispatch of all future events. All calls to publishEvent() will be ignored.
      */
-    public static void block(){
-        EventPublisher.blockEvents = true;
+    public void block() {
+        this.blockEvents = true;
     }
 
     /**
      * Enable event dispatching.
      */
-    public static void unblock(){
-        EventPublisher.blockEvents = false;
+    public void unblock() {
+        this.blockEvents = false;
     }
 
     private static class EventInterceptor implements Runnable {
@@ -78,12 +89,12 @@ public class EventPublisher {
 
         @Override
         public void run() {
-            while(true){
+            while (true) {
                 try {
                     var event = eventQueue.take();
                     log.fine("Publishing event: " + event);
                     this.destination.publishEvent(event);
-                    if(event instanceof ExecutionEndedEvent){
+                    if (event instanceof ExecutionEndedEvent) {
                         log.info("Stopping event interceptor thread");
                         return;
                     }

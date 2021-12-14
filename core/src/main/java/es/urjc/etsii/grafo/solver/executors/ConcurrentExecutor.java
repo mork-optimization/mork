@@ -82,7 +82,7 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
             var instanceName = e.getKey();
             long instanceStartTime = System.nanoTime();
             var referenceValue = getOptionalReferenceValue(this.referenceResultProviders, instanceName);
-            EventPublisher.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
+            EventPublisher.getInstance().publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
             logger.info("Running algorithms for instance: " + instanceName);
 
             for(var f: e.getValue()){
@@ -91,7 +91,7 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
             }
 
             long totalInstanceTime = System.nanoTime() - instanceStartTime;
-            EventPublisher.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
+            EventPublisher.getInstance().publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
         }
     }
 

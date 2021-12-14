@@ -86,5 +86,5 @@ If you want to listen to all framework events use the method `onAnyEvent()`.
 # Using custom events
 Triggering custom events is extremely easy, for example in custom algorithms such as genetic algorithms.
 
-Just extend `MorkEvent` class, fill with data from any part of your code, and propagate to the framework using `EventPublisher.publishEvent(event)`.
+Just extend `MorkEvent` class, fill with data from any part of your code, and propagate to the framework using `EventPublisher.getInstance().publishEvent(event)`.
 Remember that all events are processed asynchronously, and they MUST be immutable (i.e do not implement any setter).
