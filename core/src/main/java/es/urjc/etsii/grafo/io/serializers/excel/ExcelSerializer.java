@@ -49,7 +49,7 @@ public class ExcelSerializer extends ResultsSerializer {
     private final boolean maximizing;
     private final List<ReferenceResultProvider> referenceResultProviders;
     private final Optional<ExcelCustomizer> excelCustomizer;
-    private final ExcelSerializerConfig config;
+    private final ExcelConfig config;
 
     /**
      * Create an Excel serializer
@@ -62,7 +62,7 @@ public class ExcelSerializer extends ResultsSerializer {
      */
     public ExcelSerializer(
             AbstractEventStorage eventStorage,
-            ExcelSerializerConfig serializerConfig,
+            ExcelConfig serializerConfig,
             SolverConfig solverConfig,
             List<ReferenceResultProvider> referenceResultProviders,
             Optional<ExcelCustomizer> excelCustomizer

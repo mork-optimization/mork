@@ -30,14 +30,14 @@ public abstract class ResultsSerializer {
     /**
      * Serializer config
      */
-    protected final AbstractSerializerConfig config;
+    protected final AbstractResultSerializerConfig config;
 
     /**
-     * Construct a result serializer given a specific configuration. {@see AbstractSerializerConfig.java}
+     * Construct a result serializer given a specific configuration. {@see AbstractResultSerializerConfig.java}
      * @param eventStorage
      * @param config serializer configuration
      */
-    public ResultsSerializer(AbstractEventStorage eventStorage, AbstractSerializerConfig config) {
+    public ResultsSerializer(AbstractEventStorage eventStorage, AbstractResultSerializerConfig config) {
         this.eventStorage = eventStorage;
         this.config = config;
     }
@@ -49,7 +49,7 @@ public abstract class ResultsSerializer {
      */
     @MorkEventListener
     public void saveOnExperimentEnd(ExperimentEndedEvent event){
-        if (!config.isEnabled() || config.getFrequency() != AbstractSerializerConfig.Frequency.EXPERIMENT_END) {
+        if (!config.isEnabled() || config.getFrequency() != AbstractResultSerializerConfig.Frequency.EXPERIMENT_END) {
             return;
         }
 
@@ -66,7 +66,7 @@ public abstract class ResultsSerializer {
      */
     @MorkEventListener
     public void saveOnInstanceEnd(InstanceProcessingEndedEvent event){
-        if (!config.isEnabled() || config.getFrequency() != AbstractSerializerConfig.Frequency.PER_INSTANCE) {
+        if (!config.isEnabled() || config.getFrequency() != AbstractResultSerializerConfig.Frequency.PER_INSTANCE) {
             return;
         }
         String expName = event.getExperimentName();

@@ -1,44 +1,17 @@
 package es.urjc.etsii.grafo.io.serializers.json;
 
+import es.urjc.etsii.grafo.io.serializers.AbstractSerializerConfig;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-/**
- * This class is used to configure the JSON serializer by the properties specified in the application.yml
- * Exports the best solution of each algorithm in JSON format.
- * {@see application.yml}
- */
 @Configuration
 @ConfigurationProperties(prefix = "serializers.solution-json")
-public class JSONSerializerConfig {
-
-    /**
-     * Enable default JSON serializer for solutions
-     */
-    private boolean enabled = true;
-
+public class JSONConfig extends AbstractSerializerConfig {
     /**
      * If pretty is true, the json file has multiple indented lines
      */
     private boolean pretty = true;
 
-    /**
-     * <p>isEnabled.</p>
-     *
-     * @return a boolean.
-     */
-    public boolean isEnabled() {
-        return enabled;
-    }
-
-    /**
-     * <p>Setter for the field <code>enabled</code>.</p>
-     *
-     * @param enabled a boolean.
-     */
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
-    }
 
     /**
      * <p>isPretty.</p>

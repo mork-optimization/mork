@@ -4,28 +4,21 @@ import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.urjc.etsii.grafo.ErrorConfig;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.io.InstanceImporter;
-import es.urjc.etsii.grafo.io.serializers.SerializerSolutionCommonConfig;
-import es.urjc.etsii.grafo.io.serializers.json.DefaultJSONSolutionSerializer;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
-import es.urjc.etsii.grafo.solver.configuration.InstanceConfiguration;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
-import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
-import java.util.stream.Stream;
 
-import static es.urjc.etsii.grafo.util.IOUtil.*;
+import static es.urjc.etsii.grafo.util.IOUtil.createFolder;
 
 /**
  * IO Service to export solutions, errors and load instances
@@ -39,23 +32,20 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
     private static final Logger log = Logger.getLogger(IOManager.class.toString());
 
     private final ErrorConfig errorConfig;
-    private final SerializerSolutionCommonConfig solCommonConfig;
 
-    private SolutionSerializer<S, I> solutionSerializer;
+    private List<SolutionSerializer<S, I>> solutionSerializers;
 
     /**
      * Initialize IOManager
      *
      * @param errorConfig error configuration
-     * @param serializerSolutionCommonConfig solution serializer configuration
      * @param solutionSerializers solution serializers
      */
-    public IOManager(ErrorConfig errorConfig, SerializerSolutionCommonConfig serializerSolutionCommonConfig, InstanceImporter<I> instanceImporter, List<SolutionSerializer<S, I>> solutionSerializers) {
+    public IOManager(ErrorConfig errorConfig, List<SolutionSerializer<S, I>> solutionSerializers) {
         this.errorConfig = errorConfig;
-        this.solCommonConfig = serializerSolutionCommonConfig;
-        this.solutionSerializer = Orchestrator.decideImplementation(solutionSerializers, DefaultJSONSolutionSerializer.class);
+        this.solutionSerializers = solutionSerializers;
 
-        log.info("Using solution exporter: "+this.solutionSerializer.getClass().getTypeName());
+        log.info("Using solution serializers: "+this.solutionSerializers);
     }
 
     /**
@@ -66,12 +56,9 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
      * @param s solution to serialize to disk
      */
     public void exportSolution(String experimentName, Algorithm<S,I> alg, S s){
-        log.fine(String.format("Exporting solution for algorithm %s using %s", alg.getClass().getSimpleName(), solutionSerializer.getClass().getSimpleName()));
-        String filename = experimentName + "__" + s.getInstance().getName() + "__" + alg.getShortName();
-        var solutionFolder = this.solCommonConfig.getFolder();
-        createFolder(solutionFolder);
-        File f = new File(solutionFolder, filename);
-        solutionSerializer.export(f, s);
+        for(var serializer: this.solutionSerializers){
+            serializer.exportSolution(experimentName, alg, s);
+        }
     }
 
     /**

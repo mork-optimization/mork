@@ -20,7 +20,7 @@ public class CSVSerializer extends ResultsSerializer {
 
     private static final Logger log = Logger.getLogger(CSVSerializer.class.getName());
 
-    private final CSVSerializerConfig config;
+    private final CSVConfig config;
 
     private final CsvMapper csvMapper;
 
@@ -29,7 +29,7 @@ public class CSVSerializer extends ResultsSerializer {
      *
      * @param config CSV Serializer configuration
      */
-    public CSVSerializer(AbstractEventStorage eventStorage, CSVSerializerConfig config) {
+    public CSVSerializer(AbstractEventStorage eventStorage, CSVConfig config) {
         super(eventStorage, config);
         this.config = config;
         this.csvMapper = new CsvMapper();

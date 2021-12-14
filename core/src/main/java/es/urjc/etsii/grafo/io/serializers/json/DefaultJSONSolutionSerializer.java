@@ -21,14 +21,15 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S,I>, I extends In
 
     ObjectWriter writer;
 
-    private final JSONSerializerConfig config;
+    private final JSONConfig config;
 
     /**
      * Construct a DefaultJSONSolutionSerializer object given the properties indicated in {@see JSONSerializerConfig.java}
      *
      * @param config configuration of the JSON Serializer
      */
-    public DefaultJSONSolutionSerializer(JSONSerializerConfig config) {
+    public DefaultJSONSolutionSerializer(JSONConfig config) {
+        super(config);
         var mapper = new ObjectMapper();
         if(config.isPretty()){
             writer = mapper.enable(SerializationFeature.INDENT_OUTPUT).writerWithDefaultPrettyPrinter();
