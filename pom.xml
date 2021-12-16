@@ -10,7 +10,7 @@
     <modules>
         <module>core</module>
         <module>template</module>
-        <module>examples/TSP</module>
+        <module>example-tsp</module>
     </modules>
 
     <licenses>
