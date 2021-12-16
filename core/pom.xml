@@ -10,7 +10,7 @@
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
-        <jackson.version>2.12.5</jackson.version>
+        <jackson.version>2.12.6</jackson.version>
         <graalvm.version>21.3.0</graalvm.version>
         <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>
         <sonar.organization>rmartinsanta</sonar.organization>
@@ -144,7 +144,7 @@
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
-            <version>3.0.4</version>
+            <version>3.0.5</version>
         </dependency>
 
         <!-- BenchmarkUtil Tool -->
