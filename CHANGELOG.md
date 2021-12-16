@@ -1,3 +1,15 @@
+# v.10
+Mainly internal changes, refactored some critical components
+- (New) Refactor Executors: ConcurrentExecutor can be as much as 8 times faster for certain workloads.
+- (New) Refactor solutions serializers: Easily extend and customize how solutions should be exported to disk. Disable or keep default JSON serializer.
+- (New) Refactor results serializers: New features, the most prominent one now they can export after solving each instance to provide instant feedback instead of waiting until the whole experiment ends.
+- (New) Added TSP example and documentation.
+- (New) Detect in some cases when user does not update TTB and throw exception.
+- (Fix) Added missing irace file during project generation via web.
+- (Fix) Irace logs were not included in log files.
+- (Fix) Irace middleware.sh now works properly in Mac.
+- (Fix) Max length for algorithms short names, throws exception before experiment starts if any algorithm is longer.
+
 # v0.9
 - (Fix) PatchMathRandom and PatchCollections for Java 11 and newer.
 - (New) MultiStartAlgorithm
