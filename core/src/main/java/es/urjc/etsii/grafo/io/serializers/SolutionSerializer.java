@@ -37,6 +37,14 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
     }
 
     /**
+     * Check if this serializer is enabled
+     * @return true if enabled and ready to export, false otherwise.
+     */
+    public boolean isEnabled(){
+        return this.config.isEnabled();
+    }
+
+    /**
      * Write a solution to disk.
      *
      * @param experimentName current experiment name

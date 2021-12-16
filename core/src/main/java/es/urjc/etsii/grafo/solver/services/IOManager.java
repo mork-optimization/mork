@@ -57,7 +57,9 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
      */
     public void exportSolution(String experimentName, Algorithm<S,I> alg, S s){
         for(var serializer: this.solutionSerializers){
-            serializer.exportSolution(experimentName, alg, s);
+            if(serializer.isEnabled()){
+                serializer.exportSolution(experimentName, alg, s);
+            }
         }
     }
 
