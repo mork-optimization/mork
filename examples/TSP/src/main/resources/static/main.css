@@ -1,0 +1,30 @@
+#main-content {
+    margin-top: 30px;
+    border-bottom: 1px black solid;
+}
+
+header {
+    position: sticky;
+    top: 0;
+    border-bottom: 1px black solid;
+    padding: 20px 20px 0;
+    z-index: 1;
+    background-color: white;
+}
+
+.app-status {
+}
+
+#progress-chart {
+    width: 200px;
+    margin-top: -20px;
+}
+
+.rendered-solution{
+    width: 90%;
+    height: 90%;
+}
+
+.box-rendered-solution{
+    height: 400px;
+}
