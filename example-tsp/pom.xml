@@ -4,20 +4,20 @@
 
     <!-- Project name and current version -->
     <artifactId>TSP</artifactId>
-    <version>0.10-SNAPSHOT</version>
+    <version>0.10</version>
 
     <!-- Automatic configuration, can be overridden -->
     <parent>
         <groupId>es.urjc.etsii.grafo</groupId>
         <artifactId>mork-parent</artifactId>
-        <version>0.10-SNAPSHOT</version>
+        <version>0.10</version>
     </parent>
 
     <dependencies>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork</artifactId>
-            <version>0.10-SNAPSHOT</version>
+            <version>0.10</version>
         </dependency>
 
         <dependency>
