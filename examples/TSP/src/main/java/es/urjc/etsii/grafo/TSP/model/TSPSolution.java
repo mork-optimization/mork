@@ -22,7 +22,7 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
     /**
      * Total length of the route
      */
-    private double distance;
+    private double routeLength;
 
     /**
      * Circular route represented by an integer array:
@@ -50,7 +50,7 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
     public TSPSolution(TSPSolution s) {
         super(s);
         this.route = s.route.clone();
-        this.distance = s.distance;
+        this.routeLength = s.routeLength;
     }
 
 
@@ -59,9 +59,14 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
         return new TSPSolution(this);
     }
 
+    /**
+     * Is the current solution strictly better than the solution given as a parameter?
+     * @param other solution we are comparing against
+     * @return true if strictly better, false if equals or worse.
+     */
     @Override
     protected boolean _isBetterThan(TSPSolution other) {
-        return DoubleComparator.isLessThan(this.distance, other.distance);
+        return DoubleComparator.isLessThan(this.routeLength, other.routeLength);
     }
 
     /**
@@ -74,14 +79,14 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
      */
     @Override
     public double getScore() {
-        return this.distance;
+        return this.routeLength;
     }
 
     /**
      * Set the current solution score.
      */
     public void setScore(double distance) {
-        this.distance = distance;
+        this.routeLength = distance;
     }
 
     /**
@@ -111,7 +116,7 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
      */
     @Override
     public String toString() {
-        return Arrays.toString(this.route) + "\n" + "Score: " + this.distance;
+        return Arrays.toString(this.route) + "\n" + "Score: " + this.routeLength;
     }
 
 
@@ -146,10 +151,10 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
     public void swapLocationOrder(int pi, int pj) {
         var i = this.route[pi];
         var j = this.route[pj];
-        this.distance = this.distance - getDistanceContribution(pi) - getDistanceContribution(pj);
+        this.routeLength = this.routeLength - getDistanceContribution(pi) - getDistanceContribution(pj);
         this.route[pi] = j;
         this.route[pj] = i;
-        this.distance = this.distance + getDistanceContribution(pi) + getDistanceContribution(pj);
+        this.routeLength = this.routeLength + getDistanceContribution(pi) + getDistanceContribution(pj);
     }
 
 
@@ -166,7 +171,7 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
      */
     public void insertLocationAtPiInPj(int pi, int pj) {
         ArrayUtil.deleteAndInsert(this.route, pi, pj);
-       this.distance = this.recalculateScore();
+       this.routeLength = this.recalculateScore();
     }
 
 
