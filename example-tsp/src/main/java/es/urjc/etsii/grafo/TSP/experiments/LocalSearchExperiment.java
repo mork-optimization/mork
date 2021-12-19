@@ -27,14 +27,14 @@ public class LocalSearchExperiment extends AbstractExperiment<TSPSolution, TSPIn
         var algorithms = new ArrayList<Algorithm<TSPSolution, TSPInstance>>();
 
 
-        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive()));
-        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),
+        algorithms.add(new SimpleAlgorithm<>("Random", new TSPRandomConstructive()));
+        algorithms.add(new SimpleAlgorithm<>("RandomFIInsert", new TSPRandomConstructive(),
                 new LocalSearchFirstImprovement<>(super.isMaximizing(), new InsertNeighborhood())));
-        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),
+        algorithms.add(new SimpleAlgorithm<>("RandomBIInsert", new TSPRandomConstructive(),
                 new LocalSearchBestImprovement<>(super.isMaximizing(), new InsertNeighborhood())));
-        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),
+        algorithms.add(new SimpleAlgorithm<>("RandomFISwap", new TSPRandomConstructive(),
                 new LocalSearchFirstImprovement<>(super.isMaximizing(), new SwapNeighborhood())));
-        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),
+        algorithms.add(new SimpleAlgorithm<>("RandomBISwap", new TSPRandomConstructive(),
                 new LocalSearchBestImprovement<>(super.isMaximizing(), new SwapNeighborhood())));
 
         return algorithms;
