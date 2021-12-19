@@ -1,0 +1,215 @@
+instances:
+  path:
+    # Default instance path for all experiments, can be overridden.
+    default: 'instances/TSPLIB/instances'
+
+    # Override default instance path only for the experiment declared in file PreliminarExperiment.java
+    # If an experiment does not have a specific path the default will be used. Example:
+    # PreliminarExperiment: './instances/preliminar'
+
+
+solver:
+  # Global random seed to ensure reproducibility
+  seed: 1234
+
+  # Random generator provider, see RandomType enum for a full list of available implementations
+  random-type: default
+
+  # Which experiments should be executed? .* --> All.
+  # Experiment names default to the class name in which they are declared unless overridden.
+  # Tip, you may use a Regex, example: Preeliminar.*
+  experiments: '.*'
+
+  # Maximize or minimize objective function? True --> Maximizing, False --> Minimizing
+  maximizing: false
+
+  # How many times should each experiment be repeated. Recommended a minimum of 30
+  repetitions: 100
+
+  # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALLELIZED
+  # Valid Values: true, false
+  parallelExecutor: true
+
+  # Number of workers to use if parallelExecutor is enabled
+  # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
+  nWorkers: -1
+
+  # Execute benchmark before starting solver? False to skip benchmark.
+  benchmark: false
+
+# Enable irace integration? Check IRACE Wiki section before enabling
+irace:
+  enabled: false
+
+  # False: use GraalVM implementation, does not need R installed locally
+  # True: Use shell to execute R scripts, R/Rscript need to be locally installed and in path
+  shell: true
+
+serializers:
+  solution-json:
+    # Enable default JSON serializer for solutions. Exports the best solution of each algorithm to JSON.
+    # If you want to export solutions to a custom format, extend SolutionSerializer,
+    # NOTE: the default JSON solution serializer is automatically disabled when the SolutionSerializer class is extended.
+    enabled: false
+
+    # Path where solutions will be exported (Only if a solution serializer is enabled, see below)
+    folder: 'solutions'
+
+    # If enabled, pretty print JSON (indentation + new lines)
+    pretty: true
+
+    # Filename format, replacements are applied as follows
+    # yyyy: replaced with current year, ex 2020
+    # MM, dd, HH, mm, ss: replaced by month, day, hour, minute and seconds
+    # any letters [a-zA-Z] can be part of the filename as long as they are between single quotes
+    # Always prepends ExperimentName, InstanceName and algorithm name to prevent name collisions
+    format: "'.json'"
+
+  csv:
+    # Export results to CSV, set to false to skip serializing results to CSV
+    enabled: false
+
+    # Can use commas, semicolons, \t (tabs) or any other character to separate columns when exporting the results to CSV
+    # Note: Use only a single character
+    separator: ','
+
+    # Results folder
+    folder: 'results'
+
+
+    # Filename format, replacements are applied as follows
+    # yyyy: replaced with current year, ex 2020
+    # MM, dd, HH, mm, ss: replaced by month, day, hour, minute and seconds
+    # any letters [a-zA-Z] can be part of the filename as long as they are between single quotes
+    format: "'Results'_yyyy-MM-dd_HH-mm-ss.'csv'"
+
+    # When should results be exported to disk?
+    # experiment_end: Export results when experiment ends (only once)
+    # per_instance: Each time an instance completes all algorithms
+    frequency: experiment_end
+
+  xlsx:
+    # Enable XLSX results serializer, set to false to skip serializing results to Excel 2007+
+    enabled: true
+
+    # Defines how to handle calculated values when serializing to Excel 2007+
+    # Possible values: java, excel, auto.
+    calculationMode: auto
+
+    # When generating the pivot table, should algorithms be in rows or columns?
+    # True: Instances per row, algorithms in columns
+    # False: Algorithms in rows, instances in columns
+    algorithmsInColumns: true
+
+    # Results folder
+    folder: 'results'
+
+    # Filename format, replacements are applied as follows
+    # yyyy: replaced with current year, ex 2020
+    # MM, dd, HH, mm, ss: replaced by month, day, hour, minute and seconds
+    # letters [a-zA-Z] can be part of the filename as long as they are between single quotes
+    format: "'Results'_yyyy-MM-dd_HH-mm-ss.'xlsx'"
+
+    # When should results be exported to disk?
+    # experiment_end: Export results when experiment ends (only once)
+    # per_instance: Each time an instance completes all algorithms
+    frequency: experiment_end
+
+    # Show best (min or max) score in pivot table
+    bestScoreEnabled: true
+
+    # Show average score in pivot table
+    avgScoreEnabled: false
+
+    # Show standard deviation of solution score in pivot table. Uses Excel STD_DEVP function
+    stdScoreEnabled: false
+
+    # Show variance of score in pivot table. Uses Excel VARP function
+    varScoreEnabled: false
+
+    # Show average time in seconds per iteration in pivot table.
+    avgTimeEnabled: false
+
+    # Show total time in seconds for a given (algorithm, instance) in pivot table.
+    totalTimeEnabled: true
+
+    # Show average time to the best solution in seconds in pivot table.
+    avgTTBEnabled: false
+
+    # Show total time to the best solution in seconds in pivot table.
+    totalTTBEnabled: false
+
+    # Show number of times a given algorithm reaches the best known solution.
+    sumBestKnownEnabled: false
+
+    # Show 1 if a given algorithm reaches the best solution for an instance, 0 otherwise.
+    hasBestKnownEnabled: true
+
+    # Show average percentage deviation to best known solution in pivot table.
+    avgDevToBestKnownEnabled: false
+
+    # Show minimum percentage deviation to best known solution in pivot table.
+    minDevToBestKnownEnabled: true
+
+    # Show generated grand total in pivot table
+    rowGrandTotal: false
+    columnGrandTotal: false
+
+
+# Event system integrations/configuration
+event:
+  # Stop webserver after all work is done?
+  # If true, app will stop after all experiments finish executing, and front end will stop loading. (DEFAULT)
+  # If false, webserver will keep executing, and front will be available until manually stopped by the user.
+  webserver:
+    stopOnExecutionEnd: true
+
+  # Enable message notifications to any given user on experiment end. See
+  telegram:
+    # If false bot is completely disabled
+    enabled: false
+    # Token returned by @BotFather
+    token: ''
+    # Chat where we will send notifications
+    chatId: ''
+
+# Experiment execution DOES NOT (usually) END if an uncontrolled exception is propagated
+# The error is logged, and we try to keep solving
+errors:
+  # Write exceptions and errors with their context to disk?
+  errorsToFile: true
+
+  # Path where all errors or exceptions encountered during experiment execution will be exported
+  folder: 'errors'
+
+# Advanced configuration, do not change unless you know what you are doing!
+advanced:
+  # Block Java API methods
+  block:
+    # Collections.shuffle(RandomManager.getRandom()) should be used instead of Collections.shuffle()
+    blockCollectionsShuffle: false
+    # Block Math.random(), use RandomManager.getRandom().nextDouble()
+    blockMathRandom: false
+
+# Logging configuration
+logging:
+  level:
+    # Default logging level, do not modify unless you know what you are doing
+    root: 'info'
+    es:
+      urjc:
+        etsii:
+          # Use:
+          # - INFO:  Print only important messages
+          # - DEBUG: Show debug logs for each algorithm
+          # - TRACE: Print all debug messages, and print ALL movements when they are applied to any solution.
+          #          Note: Enabling trace mode has a big performance impact.
+          #grafo: 'DEBUG'
+          grafo: 'INFO'
+
+  # Save logs to file 'log.txt'
+  file:
+    name: 'log.txt'
+
+  # Logging format for console
+  pattern.console: '%clr([%d{${LOG_DATEFORMAT_PATTERN:HH:mm:ss}}]){faint} %clr(${LOG_LEVEL_PATTERN:%3p}) %clr(%-26.26logger{25}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}'
