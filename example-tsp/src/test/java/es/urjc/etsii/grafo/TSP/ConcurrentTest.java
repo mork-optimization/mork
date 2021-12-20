@@ -1,13 +1,27 @@
 package es.urjc.etsii.grafo.TSP;
 
-import org.springframework.test.context.TestPropertySource;
+import es.urjc.etsii.grafo.TSP.model.TSPInstance;
+import es.urjc.etsii.grafo.TSP.model.TSPSolution;
+import es.urjc.etsii.grafo.solver.Mork;
+import es.urjc.etsii.grafo.solver.services.Orchestrator;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.ActiveProfiles;
 
-@TestPropertySource(
-        properties = {
-                "solver.parallelExecutor=true",
-                "solver.repetitions=100",
-                "solver.nWorkers=-1"
-        }
-)
+@SpringBootTest(classes = {Mork.class})
+@ActiveProfiles(profiles = {"test","testconcurrent"})
+@DirtiesContext
 public class ConcurrentTest {
+
+    @Autowired
+    private Orchestrator<TSPSolution, TSPInstance> orchestrator;
+
+    @Test
+    public void testExecutor() {
+        // Launch basic experiment
+        orchestrator.run();
+    }
+
 }
