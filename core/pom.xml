@@ -7,14 +7,7 @@
     <version>0.11-SNAPSHOT</version>
     <packaging>jar</packaging>
     <properties>
-        <java.version>17</java.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <jackson.version>2.12.6</jackson.version>
         <graalvm.version>21.3.0</graalvm.version>
-        <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>
-        <sonar.organization>rmartinsanta</sonar.organization>
-        <sonar.host.url>https://sonarcloud.io</sonar.host.url>
     </properties>
 
     <name>Mork</name>
@@ -59,10 +52,9 @@
 
 
     <parent>
-        <groupId>org.springframework.boot</groupId>
-        <artifactId>spring-boot-starter-parent</artifactId>
-        <version>2.6.1</version>
-        <relativePath />
+        <groupId>es.urjc.etsii.grafo</groupId>
+        <artifactId>mork-parent</artifactId>
+        <version>0.11-SNAPSHOT</version>
     </parent>
 
     <dependencies>
@@ -83,18 +75,6 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-websocket</artifactId>
-        </dependency>
-
-    <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
-            <scope>test</scope>
-            <exclusions>
-                <exclusion>
-                    <groupId>org.junit.vintage</groupId>
-                    <artifactId>junit-vintage-engine</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
 
         <dependency>
@@ -167,13 +147,18 @@
             <artifactId>graal-sdk</artifactId>
             <version>${graalvm.version}</version>
         </dependency>
-
-
-
     </dependencies>
 
     <build>
         <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
@@ -205,37 +190,6 @@
                 <configuration>
                     <doclint>all,-missing</doclint>
                 </configuration>
-            </plugin>
-
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>3.0.1</version>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
-            </plugin>
-
-            <!-- Test Coverage -->
-            <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.7</version>
-                <executions>
-                    <execution>
-                        <id>report</id>
-                        <goals>
-                            <goal>report</goal>
-                        </goals>
-                        <phase>verify</phase>
-                    </execution>
-                </executions>
             </plugin>
         </plugins>
     </build>

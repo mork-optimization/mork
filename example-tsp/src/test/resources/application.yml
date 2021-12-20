@@ -1,7 +1,7 @@
 instances:
   path:
     # Default instance path for all experiments, can be overridden.
-    default: 'instances'
+    default: 'instances/TSPLIB/instances'
 
     # Override default instance path only for the experiment declared in file PreliminarExperiment.java
     # If an experiment does not have a specific path the default will be used. Example:
@@ -21,7 +21,7 @@ solver:
   experiments: '.*'
 
   # Maximize or minimize objective function? True --> Maximizing, False --> Minimizing
-  maximizing: true
+  maximizing: false
 
   # How many times should each experiment be repeated. Recommended a minimum of 30
   repetitions: 100
@@ -213,3 +213,17 @@ logging:
 
   # Logging format for console
   pattern.console: '%clr([%d{${LOG_DATEFORMAT_PATTERN:HH:mm:ss}}]){faint} %clr(${LOG_LEVEL_PATTERN:%3p}) %clr(%-26.26logger{25}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}'
+
+---
+spring.config.activate.on-profile: test
+solver.repetitions: 10
+solver.experiments: 'ConstructiveExperiment'
+instances.path.default: 'instances/TSPLIB/test'
+event.webserver.stop-on-execution-end: true
+---
+spring.config.activate.on-profile: testsequential
+solver.parallelExecutor: false
+---
+spring.config.activate.on-profile: testconcurrent
+solver.parallelExecutor: true
+solver.nWorkers: -1

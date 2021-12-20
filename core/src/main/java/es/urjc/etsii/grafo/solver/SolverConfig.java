@@ -13,7 +13,6 @@ import java.util.logging.Logger;
 @Configuration
 @ConfigurationProperties(prefix = "solver")
 public class SolverConfig {
-    private static final Logger log = Logger.getLogger(SolverConfig.class.getName());
 
     /**
      * Global random seed to ensure reproducibility

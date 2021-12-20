@@ -156,7 +156,7 @@ public class MultiStartAlgorithmTest {
         multistart.algorithm(testInstance);
         long endTime = System.nanoTime();
         long ellapsed = (endTime - startTime) / 1_000_000;
-        Assertions.assertTrue(ellapsed < 15, "Does not stop after 10 millis");
+        Assertions.assertTrue(ellapsed < 20, "Does not stop after 10 millis");
         Assertions.assertTrue(ellapsed > 5, "Stops in less than 5 millis");
     }
 

@@ -1,14 +1,12 @@
 package es.urjc.etsii.grafo.solver.services;
 
-import org.springframework.boot.CommandLineRunner;
-
 import java.util.List;
 
 /**
  * Base orchestrator, contains common code.
  * An Orchestrator is the entity responsible for organizing all the work to execute and dispaching it.
  */
-public abstract class AbstractOrchestrator implements CommandLineRunner {
+public abstract class AbstractOrchestrator {
 
     /**
      * Given a list of implementations for a given class, which one should be used if we can only use one?
@@ -32,4 +30,11 @@ public abstract class AbstractOrchestrator implements CommandLineRunner {
         if(defaultImpl == null) throw new IllegalStateException("Where is the default implementation???");
         return defaultImpl;
     }
+
+    /**
+     * Run the Mork core, depending on the work to do.
+     * For example: there are two execution modes, standalone experiments and irace autoconfiguration.
+     * @param args command line parameters
+     */
+    public abstract void run(String... args);
 }
