@@ -13,7 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest(classes = {Mork.class})
 @ActiveProfiles(profiles = {"test","testconcurrent"})
 @DirtiesContext
-public class ConcurrentTest {
+class ConcurrentTest {
 
     @Autowired
     private Orchestrator<TSPSolution, TSPInstance> orchestrator;

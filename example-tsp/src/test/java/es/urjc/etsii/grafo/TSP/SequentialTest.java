@@ -13,7 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 @SpringBootTest(classes = {Mork.class})
 @ActiveProfiles(profiles = {"test", "testsequential"})
 @DirtiesContext
-public class SequentialTest {
+class SequentialTest {
 
     @Autowired
     private Orchestrator<TSPSolution, TSPInstance> orchestrator;

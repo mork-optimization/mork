@@ -12,7 +12,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(classes = {Mork.class})
 @ActiveProfiles("test")
-public class SmokeTest {
+class SmokeTest {
 
     @Autowired
     private AbstractOrchestrator orchestrator;
