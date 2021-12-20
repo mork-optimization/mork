@@ -187,9 +187,9 @@ advanced:
   # Block Java API methods
   block:
     # Collections.shuffle(RandomManager.getRandom()) should be used instead of Collections.shuffle()
-    blockCollectionsShuffle: true
+    blockCollectionsShuffle: false
     # Block Math.random(), use RandomManager.getRandom().nextDouble()
-    blockMathRandom: true
+    blockMathRandom: false
 
 # Logging configuration
 logging:
