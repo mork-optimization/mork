@@ -7,7 +7,9 @@ import javax.annotation.PostConstruct;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
+import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.Modifier;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
@@ -46,9 +48,9 @@ public class PatchMathRandom {
             internalRandom.setAccessible(true);
             makeNonFinal(internalRandom);
             internalRandom.set(null, new FailRandom());
-        } catch (NoSuchFieldException | IllegalAccessException | ClassNotFoundException e) {
-            log.warning("Failed to patch Math.random()");
-            throw new RuntimeException(e);
+        } catch (NoSuchFieldException | IllegalAccessException | ClassNotFoundException | InaccessibleObjectException e) {
+            // Log as warning, but do not stop application when failing to patch, it is not critical
+            log.log(Level.WARNING, "Failed to patch Collections.shuffle(), internal random is not accessible. Probably missing opens, see: https://mork-optimization.readthedocs.io/en/latest/quickstart/troubleshooting/", e);
         }
         log.info("Math.random() patched successfully");
     }
