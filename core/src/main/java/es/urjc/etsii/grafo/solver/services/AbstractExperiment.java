@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.solver.services;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 
@@ -26,11 +27,11 @@ public abstract class AbstractExperiment<S extends Solution<S,I>, I extends Inst
     /**
      * Initialize common fields for all experiments
      *
-     * @param maximizing true if maximizing, false otherwise
+     * @param solverConfig solver configuration, see the application.yml file for more details
      */
-    protected AbstractExperiment(@SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection") boolean maximizing) {
+    protected AbstractExperiment(SolverConfig solverConfig) {
         // Abstract classes are not instantiated by Spring, ignore warning
-        this.maximizing = maximizing;
+        this.maximizing = solverConfig.isMaximizing();
     }
 
     /**

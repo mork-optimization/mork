@@ -1,5 +1,6 @@
 # v0.11
 - (New) Swap methods in ArrayUtil
+- (Improvement) AbstractExperiment now requires SolverConfig instead of a "strange" boolean value.
 
 # v0.10
 Mainly internal changes, refactored some critical components
