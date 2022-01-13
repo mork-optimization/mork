@@ -3,7 +3,7 @@
     <option name="MAIN_CLASS_NAME" value="es.urjc.etsii.grafo.TSP.Main" />
     <module name="TSP" />
     <option name="PROGRAM_PARAMETERS" value="--add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED" />
-    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/example-TSP" />
+    <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/" />
     <extension name="coverage">
       <pattern>
         <option name="PATTERN" value="es.urjc.etsii.grafo.TSP.*" />

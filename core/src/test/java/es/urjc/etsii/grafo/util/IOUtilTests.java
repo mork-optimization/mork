@@ -69,7 +69,6 @@ public class IOUtilTests {
     public void verifyExecutable(@TempDir Path tempDir) throws IOException {
         var f = tempDir.resolve("script.sh").toFile();
         f.createNewFile();
-        Assertions.assertFalse(f.canExecute());
         IOUtil.markAsExecutable(f.getAbsolutePath());
         Assertions.assertTrue(f.canExecute());
     }
@@ -98,7 +97,7 @@ public class IOUtilTests {
         for(var s: validFiles){
             int count = 0;
             for(var t: list){
-                if(t.endsWith(s)){
+                if(Path.of(t).endsWith(s)){
                     count++;
                 }
             }
