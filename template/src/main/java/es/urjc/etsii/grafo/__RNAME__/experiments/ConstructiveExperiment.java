@@ -17,7 +17,7 @@ import java.util.List;
 public class ConstructiveExperiment extends AbstractExperiment<__RNAME__Solution, __RNAME__Instance> {
 
     public ConstructiveExperiment(SolverConfig solverConfig) {
-        super(solverConfig.isMaximizing());
+        super(solverConfig);
     }
 
     @Override

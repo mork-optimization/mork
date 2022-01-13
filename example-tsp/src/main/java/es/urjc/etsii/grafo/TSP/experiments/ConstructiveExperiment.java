@@ -14,7 +14,7 @@ import java.util.List;
 public class ConstructiveExperiment extends AbstractExperiment<TSPSolution, TSPInstance> {
 
     public ConstructiveExperiment(SolverConfig solverConfig) {
-        super(solverConfig.isMaximizing());
+        super(solverConfig);
     }
 
     @Override

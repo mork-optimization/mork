@@ -18,7 +18,7 @@ import java.util.List;
 public class LocalSearchExperiment extends AbstractExperiment<TSPSolution, TSPInstance> {
 
     public LocalSearchExperiment(SolverConfig solverConfig) {
-        super(solverConfig.isMaximizing());
+        super(solverConfig);
     }
 
     @Override

@@ -433,7 +433,7 @@ experiment would look like this:
 public class ConstructiveExperiment extends AbstractExperiment<TSPSolution, TSPInstance> {
 
     public ConstructiveExperiment(SolverConfig solverConfig) {
-        super(solverConfig.isMaximizing());
+        super(solverConfig);
     }
 
     @Override
