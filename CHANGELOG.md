@@ -1,4 +1,7 @@
-# v.10
+# v0.11
+- (New) Swap methods in ArrayUtil
+
+# v0.10
 Mainly internal changes, refactored some critical components
 - (New) Refactor Executors: ConcurrentExecutor can be as much as 8 times faster for certain workloads.
 - (New) Refactor solutions serializers: Easily extend and customize how solutions should be exported to disk. Disable or keep default JSON serializer.

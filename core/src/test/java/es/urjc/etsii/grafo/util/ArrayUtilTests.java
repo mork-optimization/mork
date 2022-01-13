@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.testutil.TestInstance;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -269,4 +270,47 @@ public class ArrayUtilTests {
         Assertions.assertEquals(5D, ArrayUtil.sum(new double[]{2, 3}), 0.001);
         Assertions.assertEquals(-1D, ArrayUtil.sum(new double[]{-2, 1}), 0.001);
     }
+
+    @Test
+    public void testSwapObjects(){
+        TestInstance first = new TestInstance("first");
+        TestInstance second = new TestInstance("second");
+        TestInstance third = new TestInstance("third");
+        TestInstance fourth = new TestInstance("fourth");
+        Object[] data = new Object[]{first, second, third, fourth};
+        ArrayUtil.swap(data, 0, 2);
+        Object[] expected1 = new Object[]{third, second, first, fourth};
+        Assertions.assertArrayEquals(data, expected1);
+        ArrayUtil.swap(data, 1, 3);
+        Object[] expected2 = new Object[]{third, fourth, first, second};
+        Assertions.assertArrayEquals(data, expected2);
+    }
+
+    @Test
+    public void testSwapInts(){
+        int[] data = new int[]{0,1,2,3,4,5};
+        ArrayUtil.swap(data, 0, 2);
+        Assertions.assertArrayEquals(data, new int[]{2,1,0,3,4,5});
+        ArrayUtil.swap(data, 4, 5);
+        Assertions.assertArrayEquals(data, new int[]{2,1,0,3,5,4});
+    }
+
+    @Test
+    public void testSwapDoubles(){
+        double[] data = new double[]{0,1,2,3,4,5};
+        ArrayUtil.swap(data, 0, 2);
+        Assertions.assertArrayEquals(data, new double[]{2,1,0,3,4,5});
+        ArrayUtil.swap(data, 4, 5);
+        Assertions.assertArrayEquals(data, new double[]{2,1,0,3,5,4});
+    }
+
+    @Test
+    public void testSwapLongs(){
+        long[] data = new long[]{0,1,2,3,4,5};
+        ArrayUtil.swap(data, 0, 2);
+        Assertions.assertArrayEquals(data, new long[]{2,1,0,3,4,5});
+        ArrayUtil.swap(data, 4, 5);
+        Assertions.assertArrayEquals(data, new long[]{2,1,0,3,5,4});
+    }
+
 }

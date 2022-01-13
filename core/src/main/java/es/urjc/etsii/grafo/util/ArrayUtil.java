@@ -83,6 +83,49 @@ public class ArrayUtil {
         arr[j] = tmp;
     }
 
+
+    /**
+     *
+     * Swaps the two specified elements in the specified array.
+     *
+     * @param arr array
+     * @param i origin destination index
+     * @param j destination index
+     */
+    public static void swap(int[] arr, int i, int j) {
+        int tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+    }
+
+    /**
+     *
+     * Swaps the two specified elements in the specified array.
+     *
+     * @param arr array
+     * @param i origin destination index
+     * @param j destination index
+     */
+    public static void swap(double[] arr, int i, int j) {
+        double tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+    }
+
+    /**
+     *
+     * Swaps the two specified elements in the specified array.
+     *
+     * @param arr array
+     * @param i origin destination index
+     * @param j destination index
+     */
+    public static void swap(long[] arr, int i, int j) {
+        long tmp = arr[i];
+        arr[i] = arr[j];
+        arr[j] = tmp;
+    }
+
     /**
      * Copy and shuffle an array without modifying the original array.
      * Uses Fisher–Yates shuffle
