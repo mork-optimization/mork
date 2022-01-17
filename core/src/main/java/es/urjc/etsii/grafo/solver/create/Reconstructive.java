@@ -13,6 +13,12 @@ import es.urjc.etsii.grafo.solution.Solution;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-public abstract class Reconstructive<S extends Solution<S,I>, I extends Instance> extends Constructive<S, I> {
+public abstract class Reconstructive<S extends Solution<S,I>, I extends Instance> extends Constructive<S,I> {
 
+    /**
+     * Rebuild a partially assigned / partially destroyed solution
+     * @param solution solution partially built
+     * @return valid solution completely built
+     */
+    public abstract S reconstruct(S solution);
 }
