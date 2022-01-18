@@ -103,7 +103,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
             // Same check for Algorithm::getShortName
             var shortName = algorithm.getShortName();
             if(shortName.length() > MAX_SHORTNAME_LENGTH){
-                throw new IllegalArgumentException(String.format("Algorithms shortnames cannot be longer than %s chars. Bad algorithm: %s", MAX_SHORTNAME_LENGTH, algorithm));
+                throw new IllegalArgumentException(String.format("Algorithms shortnames cannot be longer than %s chars. Bad algorithm: %s - %s", MAX_SHORTNAME_LENGTH, shortName, algorithm));
             }
             if (shortNames.contains(shortName)) {
                 throw new IllegalArgumentException(String.format("Duplicated algorithm shortName in experiment %s. FIX: All algorithm getShortName() should be unique per experiment → %s", experimentName, shortName));

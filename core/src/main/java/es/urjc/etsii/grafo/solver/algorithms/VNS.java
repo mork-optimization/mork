@@ -71,8 +71,8 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * @param improvers     List of improvers/local searches
      */
     @SafeVarargs
-    public VNS(String algorithmName, KProvider<I> kProvider, Shake<S, I> shake, Constructive<S, I> constructive, Improver<S, I>... improvers) {
-        this(algorithmName, kProvider, Collections.singletonList(shake), constructive, improvers);
+    public VNS(String algorithmName, KProvider<I> kProvider, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I>... improvers) {
+        this(algorithmName, kProvider, constructive, Collections.singletonList(shake), improvers);
     }
 
     /**
@@ -85,7 +85,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * @param improvers     List of improvers/local searches
      */
     @SafeVarargs
-    public VNS(String algorithmName, KProvider<I> kProvider, List<Shake<S, I>> shakes, Constructive<S, I> constructive, Improver<S, I>... improvers) {
+    public VNS(String algorithmName, KProvider<I> kProvider, Constructive<S, I> constructive, List<Shake<S, I>> shakes, Improver<S, I>... improvers) {
         this.algorithmName = algorithmName;
         this.kProvider = kProvider;
 
