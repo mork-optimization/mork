@@ -1,4 +1,7 @@
 site_name: "Mork Developers Guide"
 theme:
     name: "readthedocs"
+plugins:
+    - search
+    - mermaid2
 
