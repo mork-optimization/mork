@@ -8,6 +8,7 @@ import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.text.MessageFormat;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 public class SwapNeighborhood extends LazyNeighborhood<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance> {
@@ -78,13 +79,15 @@ public class SwapNeighborhood extends LazyNeighborhood<SwapNeighborhood.SwapMove
 
         @Override
         public boolean equals(Object o) {
-            SwapMove other = (SwapMove) o;
-            return (pi == other.pi && pj == other.pj) || (pj == other.pi && pi == other.pj);
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            SwapMove swapMove = (SwapMove) o;
+            return initialPi == swapMove.initialPi && pi == swapMove.pi && pj == swapMove.pj;
         }
 
         @Override
         public int hashCode() {
-            return 0;
+            return Objects.hash(initialPi, pi, pj);
         }
     }
 

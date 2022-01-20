@@ -9,6 +9,7 @@ import es.urjc.etsii.grafo.util.DoubleComparator;
 import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 public class InsertNeighborhood extends EagerNeighborhood<InsertNeighborhood.InsertMove, TSPSolution, TSPInstance> {
 
@@ -74,13 +75,15 @@ public class InsertNeighborhood extends EagerNeighborhood<InsertNeighborhood.Ins
 
         @Override
         public boolean equals(Object o) {
-            InsertMove other = (InsertMove) o;
-            return (pi == other.pi && pj == other.pj) || (pj == other.pi && pi == other.pj);
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            InsertMove that = (InsertMove) o;
+            return pi == that.pi && pj == that.pj;
         }
 
         @Override
         public int hashCode() {
-            return 0;
+            return Objects.hash(pi, pj);
         }
     }
 

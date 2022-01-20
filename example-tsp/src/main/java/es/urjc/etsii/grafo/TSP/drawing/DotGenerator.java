@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.TSP.drawing;
 
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
+import es.urjc.etsii.grafo.solver.services.events.AbstractEventStorage;
 import es.urjc.etsii.grafo.solver.services.events.MemoryEventStorage;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import guru.nidi.graphviz.engine.Format;
 import guru.nidi.graphviz.engine.Graphviz;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -34,6 +34,12 @@ public class DotGenerator {
      * Common feature for all files.
      */
     private static final String footer = "\n}";
+
+    private final AbstractEventStorage eventStorage;
+
+    public DotGenerator(MemoryEventStorage eventStorage) {
+        this.eventStorage = eventStorage;
+    }
 
 
     /**
@@ -89,24 +95,24 @@ public class DotGenerator {
         return locations.toString();
     }
 
-    @Autowired
-    private MemoryEventStorage eventStorage;
+    private static double normalize(double value, double min, double max) {
+        return 1 - ((value - min) / (max - min));
+    }
 
     @GetMapping("/api/generategraph/{eventId}")
     public String getSolutionAsDotString(@PathVariable int eventId) throws IOException {
-        var event = (SolutionGeneratedEvent) eventStorage.getEvents(eventId, eventId + 1).get(0);
-        var solution = (TSPSolution) event.getSolution().get();
-        var viz = Graphviz.fromString(generateDotDiagram(solution));
-        BufferedImage image = viz.render(Format.PNG).toImage();
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(image, "png", baos);
-        byte[] bytes = baos.toByteArray();
-        return new String(Base64.getEncoder().encode(bytes));
-    }
-
-
-    private static double normalize(double value, double min, double max) {
-        return 1 - ((value - min) / (max - min));
+        var event =  eventStorage.getEvent(eventId);
+        if(event instanceof SolutionGeneratedEvent solutionGeneratedEvent && solutionGeneratedEvent.getSolution().isPresent()){
+            var solution = (TSPSolution) solutionGeneratedEvent.getSolution().get();
+            var viz = Graphviz.fromString(generateDotDiagram(solution));
+            BufferedImage image = viz.render(Format.PNG).toImage();
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            ImageIO.write(image, "png", baos);
+            byte[] bytes = baos.toByteArray();
+            return new String(Base64.getEncoder().encode(bytes));
+        } else {
+            return "Invalid eventId or solution expired";
+        }
     }
 
 

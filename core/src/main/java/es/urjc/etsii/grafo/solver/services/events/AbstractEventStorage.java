@@ -21,6 +21,14 @@ public abstract class AbstractEventStorage {
     public abstract List<MorkEvent> getEvents(int from, int to);
 
     /**
+     * Get a single event with the given id
+     * @param id event id
+     * @return event with the given id
+     * @throws IllegalArgumentException if the id is not valid
+     */
+    public abstract MorkEvent getEvent(int id);
+
+    /**
      * Get all solution generated event for a given experiment.
      *
      * @param experimentName Experiment name

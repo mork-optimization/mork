@@ -49,6 +49,15 @@ public class MemoryEventStorage extends AbstractEventStorage {
         return new ArrayList<>(eventLog.subMap(from, to).values());
     }
 
+    @Override
+    public MorkEvent getEvent(int id) {
+        var event = eventLog.get(id);
+        if(event == null){
+            throw new IllegalArgumentException("No event with ID " + id);
+        }
+        return event;
+    }
+
     /** {@inheritDoc} */
     public Stream<? extends SolutionGeneratedEvent<?, ?>> getGeneratedSolEventForExp(String experimentName){
         return this.eventLog.values().stream()
