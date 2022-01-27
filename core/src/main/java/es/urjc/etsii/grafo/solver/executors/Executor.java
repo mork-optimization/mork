@@ -141,17 +141,19 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
      * @param repetitions how many times should we repeat the (instance, algorithm) pair
      * @return Map of workunits per instance
      */
-    protected Map<String, List<WorkUnit<S,I>>> getOrderedWorkUnits(Experiment<S,I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, int repetitions){
-        var workUnits = new LinkedHashMap<String, List<WorkUnit<S,I>>>();
+    protected Map<String, Map<Algorithm<S,I>, List<WorkUnit<S,I>>>> getOrderedWorkUnits(Experiment<S,I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, int repetitions){
+        var workUnits = new LinkedHashMap<String, Map<Algorithm<S,I>, List<WorkUnit<S,I>>>>();
         for(String instanceName: instanceNames){
-            var list = new ArrayList<WorkUnit<S,I>>();
+            var algWorkUnits = new LinkedHashMap<Algorithm<S,I>, List<WorkUnit<S,I>>>();
             for(var alg: experiment.algorithms()){
+                var list = new ArrayList<WorkUnit<S,I>>();
                 for (int i = 0; i < repetitions; i++) {
                     var workUnit = new WorkUnit<>(experiment.name(), instanceName, alg, i, exceptionHandler);
                     list.add(workUnit);
                 }
+                algWorkUnits.put(alg, list);
             }
-            workUnits.put(instanceName, list);
+            workUnits.put(instanceName, algWorkUnits);
         }
         return workUnits;
     }

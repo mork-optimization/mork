@@ -3,13 +3,14 @@ package es.urjc.etsii.grafo.solver.executors;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
-import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.experiment.Experiment;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.services.IOManager;
 import es.urjc.etsii.grafo.solver.services.InstanceManager;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
+import es.urjc.etsii.grafo.solver.services.events.types.AlgorithmProcessingEndedEvent;
+import es.urjc.etsii.grafo.solver.services.events.types.AlgorithmProcessingStartedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingStartedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
@@ -49,25 +50,32 @@ public class SequentialExecutor<S extends Solution<S,I>, I extends Instance> ext
     /** {@inheritDoc} */
     @Override
     public void executeExperiment(Experiment<S,I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, long startTimestamp) {
+        var events = EventPublisher.getInstance();
+
         var algorithms = experiment.algorithms();
         var experimentName = experiment.name();
         var workUnits = getOrderedWorkUnits(experiment, instanceNames, exceptionHandler, solverConfig.getRepetitions());
 
         // K: Instance name --> V: List of WorkUnits
-        for(var e: workUnits.entrySet()){
-            var instanceName = e.getKey();
+        for(var instanceWork: workUnits.entrySet()){
+            var instanceName = instanceWork.getKey();
             long instanceStartTime = System.nanoTime();
             var referenceValue = getOptionalReferenceValue(this.referenceResultProviders, instanceName);
-            EventPublisher.getInstance().publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
+            events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
             logger.info("Running algorithms for instance: " + instanceName);
 
-            for(var workUnit: e.getValue()){
-                var workUnitResult = doWork(workUnit);
-                this.processWorkUnitResult(workUnitResult);
+            for(var algorithmWork: instanceWork.getValue().entrySet()){
+                var algorithm = algorithmWork.getKey();
+                events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                for(var workUnit: algorithmWork.getValue()){
+                    var workUnitResult = doWork(workUnit);
+                    this.processWorkUnitResult(workUnitResult);
+                }
+                events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
             }
 
             long totalInstanceTime = System.nanoTime() - instanceStartTime;
-            EventPublisher.getInstance().publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
+            events.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
         }
     }
 

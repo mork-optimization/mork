@@ -1,7 +1,9 @@
 # v0.11
 - (New) Swap methods in ArrayUtil
+- (New) AlgorithmProcessingStartedEvent, AlgorithmProcessingEndedEvent
 - (Improvement) AbstractExperiment now requires SolverConfig instead of a "strange" boolean value.
 - (Improvement) IteratedGreedy
+- (Docs) Events and result export / solution serialization
 
 # v0.10
 Mainly internal changes, refactored some critical components

@@ -10,6 +10,8 @@ import es.urjc.etsii.grafo.solver.services.IOManager;
 import es.urjc.etsii.grafo.solver.services.InstanceManager;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
+import es.urjc.etsii.grafo.solver.services.events.types.AlgorithmProcessingEndedEvent;
+import es.urjc.etsii.grafo.solver.services.events.types.AlgorithmProcessingStartedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingStartedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
@@ -53,15 +55,20 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
         this.executor = Executors.newFixedThreadPool(this.nWorkers);
     }
 
-    private Map<String, List<Future<WorkUnitResult<S,I>>>> submitAll(Map<String, List<WorkUnit<S,I>>> workUnits){
-        var result = new LinkedHashMap<String, List<Future<WorkUnitResult<S,I>>>>();
+    private Map<String, Map<Algorithm<S,I>, List<Future<WorkUnitResult<S,I>>>>> submitAll(Map<String, Map<Algorithm<S,I>, List<WorkUnit<S,I>>>> workUnits){
+        var result = new LinkedHashMap<String, Map<Algorithm<S,I>, List<Future<WorkUnitResult<S,I>>>>>();
         for(var e: workUnits.entrySet()){
-            var list = new ArrayList<Future<WorkUnitResult<S,I>>>();
-            for(var workUnit: e.getValue()){
-                var future = this.executor.submit(() -> doWork(workUnit));
-                list.add(future);
+            var perAlgorithm = new LinkedHashMap<Algorithm<S,I>, List<Future<WorkUnitResult<S,I>>>>();
+            for(var algorithmWork: e.getValue().entrySet()){
+                var algorithm = algorithmWork.getKey();
+                var list = new ArrayList<Future<WorkUnitResult<S,I>>>();
+                for(var workUnit: algorithmWork.getValue()){
+                    var future = this.executor.submit(() -> doWork(workUnit));
+                    list.add(future);
+                }
+                perAlgorithm.put(algorithm, list);
             }
-            result.put(e.getKey(), list);
+            result.put(e.getKey(), perAlgorithm);
         }
         return result;
     }
@@ -73,6 +80,8 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
         var experimentName = experiment.name();
         var workUnits = getOrderedWorkUnits(experiment, instanceNames, exceptionHandler, solverConfig.getRepetitions());
 
+        var events = EventPublisher.getInstance();
+
         // Launch execution of all work units in parallel
         var futures = submitAll(workUnits);
 
@@ -82,16 +91,23 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
             var instanceName = e.getKey();
             long instanceStartTime = System.nanoTime();
             var referenceValue = getOptionalReferenceValue(this.referenceResultProviders, instanceName);
-            EventPublisher.getInstance().publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
+            events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
             logger.info("Running algorithms for instance: " + instanceName);
 
-            for(var f: e.getValue()){
-                var workUnitResult = ConcurrencyUtil.await(f);
-                this.processWorkUnitResult(workUnitResult);
+            for(var algorithmWork: e.getValue().entrySet()){
+                var algorithm = algorithmWork.getKey();
+
+                events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                for(var workUnit: algorithmWork.getValue()){
+                    var workUnitResult = ConcurrencyUtil.await(workUnit);
+                    this.processWorkUnitResult(workUnitResult);
+                }
+                events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+
             }
 
             long totalInstanceTime = System.nanoTime() - instanceStartTime;
-            EventPublisher.getInstance().publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
+            events.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
         }
     }
 
