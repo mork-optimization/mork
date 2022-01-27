@@ -8,9 +8,10 @@ import es.urjc.etsii.grafo.solver.destructor.DestroyRebuild;
 import es.urjc.etsii.grafo.solver.destructor.Destructive;
 import es.urjc.etsii.grafo.solver.destructor.Shake;
 import es.urjc.etsii.grafo.solver.improve.Improver;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Arrays;
-import java.util.logging.Logger;
 
 /**
  * Iterated greedy is a search method that iterates through applications of construction
@@ -43,7 +44,7 @@ import java.util.logging.Logger;
  */
 public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extends Algorithm<S, I> {
 
-    private static final Logger logger = Logger.getLogger(IteratedGreedy.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(IteratedGreedy.class);
 
     /**
      * Constructive procedure
@@ -128,10 +129,6 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
         this(maxIterations, stopIfNotImprovedIn, constructive, new DestroyRebuild<>(reconstructive, destructive), improvers);
     }
 
-    // POR AQUI, CAMBIAR SHAKE POR DESTROY REBUILD
-    // ADD CONSTRUCTOR TO PASS ONLY DESTRUCTOR AND REBUILD USING THE SAME CONSTRUCTIVE METHOID
-
-
     /**
      * {@inheritDoc}
      *
@@ -142,22 +139,26 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
         S solution = this.newSolution(instance);
         solution = this.constructive.construct(solution);
         solution = ls(solution);
-        logger.fine(String.format("Initial solution: %s - %s", solution.getScore(), solution));
+        logger.debug("Initial solution: {} - {}", solution.getScore(), solution);
         int iterationsWithoutImprovement = 0;
         for (int i = 0; i < maxIterations; i++) {
             S copy = solution.cloneSolution();
             copy = this.destructionReconstruction.shake(copy, 1);
-            copy = ls(copy);
-            if (copy.isBetterThan(solution)) {
-                solution = copy;
-                logger.fine(String.format("Improved at iteration %s: %s - %s", i, solution.getScore(), solution));
-                iterationsWithoutImprovement = 0;
-            } else {
+            if(copy != null){
+                copy = ls(copy);
+            }
+
+            // Analyze result
+            if(copy == null || !copy.isBetterThan(solution)){
                 iterationsWithoutImprovement++;
                 if (iterationsWithoutImprovement >= this.stopIfNotImprovedIn) {
-                    logger.fine(String.format("Not improved after %s iterations, stopping in iteration %s. Current score %s - %s", stopIfNotImprovedIn, i, solution.getScore(), solution));
+                    logger.debug("Not improved after {} iterations, stopping in iteration {}. Current score {} - {}", stopIfNotImprovedIn, i, solution.getScore(), solution);
                     break;
                 }
+            } else {
+                solution = copy;
+                logger.debug("Improved at iteration {}: {} - {}", i, solution.getScore(), solution);
+                iterationsWithoutImprovement = 0;
             }
         }
 

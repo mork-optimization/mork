@@ -15,9 +15,11 @@ public class DestroyRebuild<S extends Solution<S,I>, I extends Instance> extends
     }
 
     @Override
-    public S shake(S s, int k) {
-        var destroyedSolution = destructive.destroy(s, k);
-        var rebuiltSolution = constructive.reconstruct(destroyedSolution);
-        return rebuiltSolution;
+    public S shake(S solution, int k) {
+        solution = destructive.destroy(solution, k);
+        if(solution != null){
+            solution = constructive.reconstruct(solution);
+        }
+        return solution;
     }
 }
