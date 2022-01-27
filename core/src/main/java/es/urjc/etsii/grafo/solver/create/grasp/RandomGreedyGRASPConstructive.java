@@ -4,11 +4,11 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solver.create.Constructive;
+import es.urjc.etsii.grafo.solver.create.Reconstructive;
 import es.urjc.etsii.grafo.solver.improve.DefaultMoveComparator;
 import es.urjc.etsii.grafo.util.DoubleComparator;
-import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.ValidationUtil;
+import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -25,7 +25,7 @@ import static es.urjc.etsii.grafo.util.DoubleComparator.*;
  * @param <S> Solution type
  * @param <I> Instance type
  */
-public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> extends Constructive<S, I> {
+public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> extends Reconstructive<S, I> {
     private static final Logger log = Logger.getLogger(RandomGreedyGRASPConstructive.class.getName());
 
     /**
@@ -177,5 +177,10 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
                 "a='" + randomType + '\'' +
                 ", l=" + candidateListManager +
                 '}';
+    }
+
+    @Override
+    public S reconstruct(S solution) {
+        return assignMissing(solution);
     }
 }
