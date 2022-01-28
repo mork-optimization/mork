@@ -99,8 +99,8 @@ public class ExcelSerializer extends ResultsSerializer {
             }
             // Excel should recalculate on open always
             excelBook.setForceFormulaRecalculation(true);
-            log.info("Writing to disk...");
             excelBook.write(outputStream);
+            log.info("XLSX created successfully");
         } catch (Exception e) {
             throw new RuntimeException(String.format("Exception while trying to save Excel file: %s, reason: %s", f.getAbsolutePath(), e.getClass().getSimpleName()), e.getCause());
         }
