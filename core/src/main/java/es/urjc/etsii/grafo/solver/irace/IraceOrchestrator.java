@@ -131,7 +131,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
      * @param request a {@link es.urjc.etsii.grafo.restcontroller.dto.ExecuteRequest} object.
      * @return a double.
      */
-    public double iraceCallback(ExecuteRequest request){
+    public String iraceCallback(ExecuteRequest request){
         var config = buildConfig(request);
         var instancePath = Path.of(config.getInstanceName());
         var instance = instanceManager.getInstance(instancePath);
@@ -145,8 +145,8 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         RandomManager.reset(0);
 
         // Execute
-        double score = singleExecution(algorithm, instance);
-        return score;
+        String result = singleExecution(algorithm, instance);
+        return result;
     }
 
     private IraceRuntimeConfiguration buildConfig(ExecuteRequest request){
@@ -174,15 +174,16 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     }
 
 
-    private double singleExecution(Algorithm<S,I> algorithm, I instance) {
+    private String singleExecution(Algorithm<S,I> algorithm, I instance) {
         long startTime = System.nanoTime();
         var result = algorithm.algorithm(instance);
         long endTime = System.nanoTime();
         double score = result.getScore();
+        double elapsedSeconds = (endTime - startTime) / 1e9D;
         if(this.solverConfig.isMaximizing()){
             score *= -1; // Irace only minimizes
         }
-        log.fine(String.format("IRACE Iteration: %s %.2g%n", score, (endTime - startTime) / 1e9));
-        return score;
+        log.fine(String.format("IRACE Iteration: %s %.2g%n", score, elapsedSeconds));
+        return String.format("%s %s", score, elapsedSeconds);
     }
 }

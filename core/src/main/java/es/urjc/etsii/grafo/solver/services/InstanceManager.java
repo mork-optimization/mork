@@ -4,15 +4,14 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceImporter;
 import es.urjc.etsii.grafo.solver.configuration.InstanceConfiguration;
 import es.urjc.etsii.grafo.util.IOUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.lang.ref.SoftReference;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 import static es.urjc.etsii.grafo.util.IOUtil.checkExists;
@@ -24,7 +23,7 @@ import static es.urjc.etsii.grafo.util.IOUtil.checkExists;
 @Service
 public class InstanceManager<I extends Instance> {
 
-    private static final Logger log = Logger.getLogger(InstanceManager.class.toString());
+    private static final Logger log = LoggerFactory.getLogger(InstanceManager.class);
     private final SoftReference<I> EMPTY = new SoftReference<>(null);
     private final InstanceConfiguration instanceConfiguration;
     private final InstanceImporter<I> instanceImporter;
@@ -54,17 +53,21 @@ public class InstanceManager<I extends Instance> {
      */
     public List<String> getInstanceSolveOrder(String expName){
         String instancePath = this.instanceConfiguration.getPath(expName);
+        log.info("Loading all instances to check correctness...");
         checkExists(instancePath);
         List<Path> instancePaths = IOUtil.iterate(instancePath);
         List<I> instances = new ArrayList<>();
         for(var p: instancePaths){
+            log.debug("Loading instance: {}", p);
             I instance = loadInstance(p);
             instances.add(instance);
         }
         Collections.sort(instances);
         validate(instances, expName);
         // Return only the instance names
-        return instances.stream().map(Instance::getName).collect(Collectors.toList());
+        List<String> instanceNames = instances.stream().map(Instance::getName).collect(Collectors.toList());
+        log.info("Instance validation completed, solve order: " + instanceNames);
+        return instanceNames;
     }
 
     private void validate(List<I> instances, String expName) {

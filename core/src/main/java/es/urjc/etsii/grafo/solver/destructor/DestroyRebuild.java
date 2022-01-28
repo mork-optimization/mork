@@ -22,4 +22,12 @@ public class DestroyRebuild<S extends Solution<S,I>, I extends Instance> extends
         }
         return solution;
     }
+
+    @Override
+    public String toString() {
+        return "DR{" +
+                "d=" + destructive +
+                ", r=" + constructive +
+                '}';
+    }
 }

@@ -19,7 +19,7 @@ import java.util.logging.Logger;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-@RestController()
+@RestController
 @ConditionalOnExpression(value = "${irace.enabled}")
 public class ExecutionController<S extends Solution<S,I>, I extends Instance> {
 
@@ -44,7 +44,7 @@ public class ExecutionController<S extends Solution<S,I>, I extends Instance> {
      * @return run result
      */
     @PostMapping("/execute")
-    public ResponseEntity<Double> execute(@RequestBody ExecuteRequest request) {
+    public ResponseEntity<String> execute(@RequestBody ExecuteRequest request) {
         log.finest("Execute request: " + request);
         // TODO review async possibilities
         var result = this.orquestrator.iraceCallback(request);
