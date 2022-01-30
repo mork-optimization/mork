@@ -14,10 +14,11 @@ import es.urjc.etsii.grafo.solver.services.events.types.AlgorithmProcessingStart
 import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingStartedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 
 import java.util.*;
-import java.util.logging.Logger;
 
 /**
  * Processes work units sequentially
@@ -28,7 +29,7 @@ import java.util.logging.Logger;
 @ConditionalOnExpression(value = "!${solver.parallelExecutor} && !${irace.enabled}")
 public class SequentialExecutor<S extends Solution<S,I>, I extends Instance> extends Executor<S,I>{
 
-    private static final Logger logger = Logger.getLogger(SequentialExecutor.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(SequentialExecutor.class);
 
     /**
      * Create new sequential executor
@@ -62,11 +63,12 @@ public class SequentialExecutor<S extends Solution<S,I>, I extends Instance> ext
             long instanceStartTime = System.nanoTime();
             var referenceValue = getOptionalReferenceValue(this.referenceResultProviders, instanceName);
             events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
-            logger.info("Running algorithms for instance: " + instanceName);
+            logger.info("Running algorithms for instance: {}", instanceName);
 
             for(var algorithmWork: instanceWork.getValue().entrySet()){
                 var algorithm = algorithmWork.getKey();
                 events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                logger.info("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
                 for(var workUnit: algorithmWork.getValue()){
                     var workUnitResult = doWork(workUnit);
                     this.processWorkUnitResult(workUnitResult);

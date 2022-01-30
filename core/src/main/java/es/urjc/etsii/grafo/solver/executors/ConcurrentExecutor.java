@@ -16,13 +16,14 @@ import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingEndedE
 import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingStartedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.util.ConcurrencyUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.logging.Logger;
 
 /**
  * Concurrent executor, execute multiple runs in parallel for a given instance-algorithm pair
@@ -33,7 +34,7 @@ import java.util.logging.Logger;
 @ConditionalOnExpression(value = "${solver.parallelExecutor} && !${irace.enabled}")
 public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> extends Executor<S, I> {
 
-    private static final Logger logger = Logger.getLogger(ConcurrentExecutor.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(ConcurrentExecutor.class);
 
     private final int nWorkers;
     private final ExecutorService executor;
@@ -96,8 +97,8 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
 
             for(var algorithmWork: e.getValue().entrySet()){
                 var algorithm = algorithmWork.getKey();
-
                 events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                logger.info("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
                 for(var workUnit: algorithmWork.getValue()){
                     var workUnitResult = ConcurrencyUtil.await(workUnit);
                     this.processWorkUnitResult(workUnitResult);
