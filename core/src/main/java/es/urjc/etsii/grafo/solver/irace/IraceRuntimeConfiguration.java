@@ -111,4 +111,16 @@ public class IraceRuntimeConfiguration {
     public String getInstanceId() {
         return instanceId;
     }
+
+    @Override
+    public String toString() {
+        return "IraceRuntimeConfiguration{" +
+                "candidateConfiguration='" + candidateConfiguration + '\'' +
+                ", instanceId='" + instanceId + '\'' +
+                ", seed='" + seed + '\'' +
+                ", instanceName='" + instanceName + '\'' +
+                ", alg=" + alg +
+                ", isMaximizing=" + isMaximizing +
+                '}';
+    }
 }

@@ -17,6 +17,8 @@ import es.urjc.etsii.grafo.solver.services.events.types.ExperimentStartedEvent;
 import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
@@ -24,7 +26,6 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.util.IOUtil.*;
 
@@ -36,7 +37,7 @@ import static es.urjc.etsii.grafo.util.IOUtil.*;
 @ConditionalOnExpression(value = "${irace.enabled}")
 public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrchestrator {
 
-    private static final Logger log = Logger.getLogger(IraceOrchestrator.class.toString());
+    private static final Logger log = LoggerFactory.getLogger(IraceOrchestrator.class);
     private static final String IRACE_EXPNAME = "irace autoconfig";
 
     private final SolverConfig solverConfig;
@@ -137,7 +138,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         var instance = instanceManager.getInstance(instancePath);
         var algorithm = this.algorithmGenerator.buildAlgorithm(config);
         algorithm.setBuilder(this.solutionBuilder);
-        log.fine("Built algorithm: " + algorithm);
+        log.debug("Config {}. Built algorithm: {}", config, algorithm);
 
         // Configure randoms for reproducible experimentation
         long seed = Long.parseLong(config.getSeed());
@@ -183,7 +184,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         if(this.solverConfig.isMaximizing()){
             score *= -1; // Irace only minimizes
         }
-        log.fine(String.format("IRACE Iteration: %s %.2g%n", score, elapsedSeconds));
+        log.debug(String.format("IRACE Iteration: %s %.2g%n", score, elapsedSeconds));
         return String.format("%s %s", score, elapsedSeconds);
     }
 }
