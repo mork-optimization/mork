@@ -6,7 +6,7 @@ package es.urjc.etsii.grafo.solver.services;
 //
 //@Component
 //@SuppressWarnings("all")
-//public class MorkLifecycle implements SignalHandler {
+//public class Global implements SignalHandler {
 //
 //    private static volatile boolean stopping = false;
 //
@@ -14,14 +14,14 @@ package es.urjc.etsii.grafo.solver.services;
 //     * Listen to shutdown signal to safely finalize all pending tasks
 //     */
 //    static {
-//        MorkLifecycle.install("INT"); // Intercept Control+C
+//        Global.install("INT"); // Intercept Control+C
 //    }
 //
 //    private SignalHandler oldHandler;
 //
-//    public static MorkLifecycle install(String signalName) {
+//    public static Global install(String signalName) {
 //        Signal diagSignal = new Signal(signalName);
-//        MorkLifecycle morkLifecycle = new MorkLifecycle();
+//        Global morkLifecycle = new Global();
 //        morkLifecycle.oldHandler = Signal.handle(diagSignal, morkLifecycle);
 //        return morkLifecycle;
 //    }
@@ -61,10 +61,10 @@ package es.urjc.etsii.grafo.solver.services;
 //}
 
 /**
- * <p>MorkLifecycle class.</p>
+ * <p>Global class.</p>
  *
  */
-public class MorkLifecycle {
+public class Global {
     private static volatile boolean stopping = false;
 
     /**
@@ -74,5 +74,9 @@ public class MorkLifecycle {
      */
     public static boolean stop() {
         return stopping;
+    }
+
+    public static void setStop(boolean stop){
+        Global.stopping = stop;
     }
 }

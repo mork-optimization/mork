@@ -89,7 +89,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
 
         try {
             // If app is stopping do not run algorithm
-            if(MorkLifecycle.stop()) {
+            if(Global.stop()) {
                 return null;
             }
             RandomManager.reset(workUnit.i());

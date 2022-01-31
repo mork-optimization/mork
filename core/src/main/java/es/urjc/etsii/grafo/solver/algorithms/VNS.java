@@ -5,7 +5,7 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.create.Constructive;
 import es.urjc.etsii.grafo.solver.destructor.Shake;
 import es.urjc.etsii.grafo.solver.improve.Improver;
-import es.urjc.etsii.grafo.solver.services.MorkLifecycle;
+import es.urjc.etsii.grafo.solver.services.Global;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -117,7 +117,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
 
         int currentKIndex = 0;
         // While stop not request OR k in range. k check is done and breaks inside loop
-        while (!MorkLifecycle.stop()) {
+        while (!Global.stop()) {
             int currentK = kProvider.getK(instance, currentKIndex);
             if (currentK == KProvider.STOPNOW) {
                 printStatus(currentKIndex + ":STOPNOW", solution);

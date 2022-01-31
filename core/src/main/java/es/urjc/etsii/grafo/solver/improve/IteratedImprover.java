@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.solver.improve;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solver.services.MorkLifecycle;
+import es.urjc.etsii.grafo.solver.services.Global;
 
 import java.util.logging.Logger;
 
@@ -22,7 +22,7 @@ public abstract class IteratedImprover<S extends Solution<S,I>,I extends Instanc
     @Override
     protected S _improve(S s) {
         int rounds = 0;
-        while (!MorkLifecycle.stop() && iteration(s)){
+        while (!Global.stop() && iteration(s)){
             log.fine(String.format("Executing iteration %s for %s", rounds, this.getClass().getSimpleName()));
             rounds++;
         }

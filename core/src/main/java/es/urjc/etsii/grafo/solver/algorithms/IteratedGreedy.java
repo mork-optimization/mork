@@ -8,6 +8,7 @@ import es.urjc.etsii.grafo.solver.destructor.DestroyRebuild;
 import es.urjc.etsii.grafo.solver.destructor.Destructive;
 import es.urjc.etsii.grafo.solver.destructor.Shake;
 import es.urjc.etsii.grafo.solver.improve.Improver;
+import es.urjc.etsii.grafo.solver.services.Global;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -138,10 +139,16 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
     public S algorithm(I instance) {
         S solution = this.newSolution(instance);
         solution = this.constructive.construct(solution);
+        if(Global.stop()){
+            return solution;
+        }
         solution = ls(solution);
         logger.debug("Initial solution: {} - {}", solution.getScore(), solution);
         int iterationsWithoutImprovement = 0;
         for (int i = 0; i < maxIterations; i++) {
+            if(Global.stop()){
+                return solution;
+            }
             S copy = solution.cloneSolution();
             copy = this.destructionReconstruction.shake(copy, 1);
             if(copy != null){
