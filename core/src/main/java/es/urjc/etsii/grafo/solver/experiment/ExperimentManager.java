@@ -8,10 +8,11 @@ import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.AbstractExperiment;
 import es.urjc.etsii.grafo.solver.services.Orchestrator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
 /**
@@ -26,7 +27,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
     private static final int MAX_SHORTNAME_LENGTH = 30;
     private Pattern experimentFilter;
 
-    private static final Logger log = Logger.getLogger(Orchestrator.class.toString());
+    private static final Logger log = LoggerFactory.getLogger(Orchestrator.class);
 
     /**
      * List of experiments
@@ -47,17 +48,17 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
         log.info("Using SolutionBuilder implementation: "+solutionBuilder.getClass().getSimpleName());
 
         for (var experiment : experimentImplementations) {
-            var algorithms = experiment.getAlgorithms();
-            fillSolutionBuilder(algorithms, solutionBuilder);
-            validateAlgorithmNames(experiment.getName(), algorithms);
             String experimentName = experiment.getName();
             Class<?> experimentClass = experiment.getClass();
             var matcher = experimentFilter.matcher(experimentName);
             if (matcher.matches()) {
+                var algorithms = experiment.getAlgorithms();
+                fillSolutionBuilder(algorithms, solutionBuilder);
+                validateAlgorithmNames(experiment.getName(), algorithms);
                 this.experiments.put(experimentName, new Experiment<>(experimentName, experimentClass, algorithms));
-                log.fine(String.format("Experiment %s matches against %s", experimentName, experimentPattern));
+                log.debug(String.format("Experiment %s matches against %s", experimentName, experimentPattern));
             } else {
-                log.fine(String.format("Experiment %s does not match against %s, ignoring", experimentName, experimentPattern));
+                log.debug(String.format("Experiment %s does not match against %s, ignoring", experimentName, experimentPattern));
             }
         }
     }

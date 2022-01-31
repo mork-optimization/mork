@@ -91,4 +91,12 @@ public class ConcurrencyUtil {
     public static <T> List<T> awaitAll(Stream<Future<T>> futures){
         return futures.map(ConcurrencyUtil::await).collect(Collectors.toList());
     }
+
+    public static void sleep(int time, TimeUnit unit){
+        try {
+            Thread.sleep(unit.toMillis(time));
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
 }
