@@ -2,7 +2,7 @@
   <configuration default="false" name="Validation" type="Application" factoryName="Application">
     <option name="ALTERNATIVE_JRE_PATH" value="temurin-17" />
     <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
-    <option name="MAIN_CLASS_NAME" value="es.urjc.etsii.grafo.TSP.Main" />
+    <option name="MAIN_CLASS_NAME" value="es.urjc.etsii.grafo.__RNAME__.Main" />
     <module name="TSP" />
     <option name="VM_PARAMETERS" value="-ea --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED" />
     <extension name="coverage">
