@@ -11,7 +11,6 @@ import es.urjc.etsii.grafo.solver.improve.sa.cd.CoolDownControl;
 import es.urjc.etsii.grafo.solver.improve.sa.initialt.InitialTemperatureCalculator;
 import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
-import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.*;
 import java.util.logging.Logger;
@@ -21,6 +20,8 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
 
     private static final Logger log = Logger.getLogger(SimulatedAnnealing.class.getName());
 
+
+    private final AcceptanceCriteria<M,S,I> acceptanceCriteria;
     private final Neighborhood<M, S, I> neighborhood;
     private final TerminationCriteria<M,S,I> terminationCriteria;
     private final CoolDownControl<M,S,I> coolDownControl;
@@ -29,7 +30,8 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
 
     private record CycleResult<S>(boolean atLeastOneMove, boolean shortExecution, S bestSolution, S currentSolution){}
 
-    protected SimulatedAnnealing(Neighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength) {
+    protected SimulatedAnnealing(AcceptanceCriteria<M, S, I> acceptanceCriteria, Neighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength) {
+        this.acceptanceCriteria = acceptanceCriteria;
         this.neighborhood = ps;
         this.terminationCriteria = terminationCriteria;
         this.coolDownControl = coolDownControl;
@@ -82,7 +84,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
             boolean executed = false;
             var currentMoves = getMoves(solution);
             for(M move: currentMoves){
-                if(move.improves() || accept(move, currentTemperature)){
+                if(move.improves() || acceptanceCriteria.accept(move, currentTemperature)){
                     atLeastOne = true;
                     move.execute();
                     executed = true;
@@ -124,7 +126,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
                     fails++; continue;
                 }
                 testedMoves.add(move);
-                if(move.improves() || accept(move, currentTemperature)){
+                if(move.improves() || acceptanceCriteria.accept(move, currentTemperature)){
                     atLeastOne = true;
                     move.execute();
                     if(solution.isBetterThan(best)){
@@ -141,12 +143,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
         return new CycleResult<>(atLeastOne, false, best, solution);
     }
 
-    private boolean accept(M move, double currentTemperature) {
-        double change = Math.abs(move.getValue());
-        double metropolis = Math.exp(- change / currentTemperature);
-        double roll = RandomManager.getRandom().nextDouble();
-        return roll < metropolis;
-    }
+
 
     private Collection<M> getMoves(S s){
         List<M> moves;
