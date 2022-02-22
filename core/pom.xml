@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>mork</artifactId>
-    <version>0.11-SNAPSHOT</version>
+    <version>0.11</version>
     <packaging>jar</packaging>
     <properties>
         <graalvm.version>21.3.0</graalvm.version>
@@ -34,7 +34,7 @@
         <connection>scm:git:git://github.com/rmartinsanta/mork.git</connection>
         <developerConnection>scm:git:https://github.com/rmartinsanta/mork</developerConnection>
         <url>https://github.com/rmartinsanta/mork/tree/master</url>
-    <tag>HEAD</tag>
+    <tag>mork-parent-0.11</tag>
   </scm>
 
     <distributionManagement>
@@ -54,7 +54,7 @@
     <parent>
         <groupId>es.urjc.etsii.grafo</groupId>
         <artifactId>mork-parent</artifactId>
-        <version>0.11-SNAPSHOT</version>
+        <version>0.11</version>
     </parent>
 
     <dependencies>
