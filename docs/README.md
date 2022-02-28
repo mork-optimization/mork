@@ -1,6 +1,9 @@
 # MORK: Metaheuristic Optimization framewoRK
 
-[![Maven Central](https://maven-badges.herokuapp.com/maven-central/es.urjc.etsii.grafo/mork/badge.svg?style=square)](https://search.maven.org/artifact/es.urjc.etsii.grafo/mork) [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=bugs)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=coverage)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=duplicated_lines_density)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork)
+[![DOI](https://zenodo.org/badge/223169907.svg)](https://zenodo.org/badge/latestdoi/223169907)
+[![Maven Central](https://maven-badges.herokuapp.com/maven-central/es.urjc.etsii.grafo/mork/badge.svg?style=square)](https://search.maven.org/artifact/es.urjc.etsii.grafo/mork)
+[![Bugs](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=bugs)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork)
+[![Coverage](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=coverage)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=duplicated_lines_density)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork)
 
 ## What
 Mork is a framework for developing approaches for optimisation problems using the JVM, specially those considered challenging for traditional and exact methods, called [NP Hard Problems](https://en.wikipedia.org/wiki/NP-hardness).
@@ -18,7 +21,7 @@ The idea of the project is twofold: provide both high quality and tested compone
 - Automatic benchmarking and optional timings adjustment.
 - Nice web interface to visualize solution quality and experiment progress.
 
-<video controls="true" width="100%">
+<video controls width="100%">
   <source src="https://user-images.githubusercontent.com/55482385/140910473-1fa14244-5ef9-4ec5-9cf6-1139578f4151.mov" type="video/quicktime">
 </video>
 
@@ -28,4 +31,5 @@ The idea of the project is twofold: provide both high quality and tested compone
 
 TLDR: Go to [https://rmartinsanta.github.io/mork/](https://rmartinsanta.github.io/mork/), import in your favourite IDE (IntelliJ recommended) and start working.
 
-See Getting started page in the Wiki for more details.
+See Getting started page in the Wiki for more details, or any of the available examples under the "Examples" doc section, such as the [TSP](examples/TSP.md).
+
