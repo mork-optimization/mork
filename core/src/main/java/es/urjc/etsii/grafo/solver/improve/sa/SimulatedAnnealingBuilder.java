@@ -17,6 +17,7 @@ import es.urjc.etsii.grafo.util.DoubleComparator;
  */
 public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> {
     private Neighborhood<M, S, I> neighborhood;
+    private AcceptanceCriteria<M, S, I> acceptanceCriteria;
     private InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator;
     private TerminationCriteria<M, S, I> terminationCriteria;
     private CoolDownControl<M, S, I> coolDownControl;
@@ -176,6 +177,24 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
         if(cycleLength <= 0){
             throw new IllegalArgumentException("Cycle length must be > 0");
         }
-        return new SimulatedAnnealing<>(neighborhood, initialTemperatureCalculator, terminationCriteria, coolDownControl, this.cycleLength);
+        if(acceptanceCriteria == null){
+            throw new IllegalArgumentException("Acceptance criteria is not configured. Use either withAcceptanceCriteria or withDefaultAcceptanceCriteria to configure an acceptance criteria.");
+        }
+        return new SimulatedAnnealing<>(acceptanceCriteria, neighborhood, initialTemperatureCalculator, terminationCriteria, coolDownControl, this.cycleLength);
+    }
+
+    /**
+     * Configure a custom acceptance criteria.
+     * @param acceptanceCriteria acceptance criteria.
+     */
+    public void withAcceptanceCriteria(AcceptanceCriteria<M, S, I> acceptanceCriteria) {
+        this.acceptanceCriteria = acceptanceCriteria;
+    }
+
+    /**
+     * Set acceptance criteria to default value.
+     */
+    public void withDefaultAcceptanceCriteria(){
+        this.acceptanceCriteria = new DefaultAcceptanceCriteria<>();
     }
 }

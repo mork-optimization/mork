@@ -1,8 +1,14 @@
 # v0.11
 - (New) Swap methods in ArrayUtil
-- (New) AlgorithmProcessingStartedEvent, AlgorithmProcessingEndedEvent
+- (New) Events: AlgorithmProcessingStartedEvent, AlgorithmProcessingEndedEvent
 - (Improvement) AbstractExperiment now requires SolverConfig instead of a "strange" boolean value.
 - (Improvement) IteratedGreedy
+- (Improvement) SimulatedAnnealing: Customizable Acceptance Criteria
+- (Improvement) Irace: return both objetive function and elapsed time.
+- (Fix) Run configurations in template project
+- (Fix) Disable websockets logging by default
+- (Fix) Excel logger gave the impression to be stuck
+- (Fix) Potential classpath conflict with JSONObject
 - (Docs) Events and result export / solution serialization
 
 # v0.10
