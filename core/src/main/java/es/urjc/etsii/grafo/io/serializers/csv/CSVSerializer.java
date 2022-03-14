@@ -46,7 +46,7 @@ public class CSVSerializer extends ResultsSerializer {
 
         var schema = csvMapper.schemaFor(SolutionGeneratedEvent.class)
                 .withColumnSeparator(config.getSeparator())
-                .sortedBy("instanceName", "algorithmName", "iteration")
+                .sortedBy("instanceId", "algorithmName", "iteration")
                 .withHeader();
 
         // Problema: Reusar el path si existe, refactorizar el serializer comun, metodo helper a IOManager o donde sea, oo como ejemplo

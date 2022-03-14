@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.solver.services;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.executors.Executor;
@@ -95,9 +96,9 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
         long startTime = System.nanoTime();
         log.info("Running experiment: " + experiment.name());
 
-        var instanceNames = instanceManager.getInstanceSolveOrder(experiment.name());
-        EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(experiment.name(), instanceNames));
-        executor.executeExperiment(experiment, instanceNames, exceptionHandler, startTimestamp);
+        var instancePaths = instanceManager.getInstanceSolveOrder(experiment.name());
+        EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(experiment.name(), instancePaths));
+        executor.executeExperiment(experiment, instancePaths, exceptionHandler, startTimestamp);
         long experimenExecutionTime = System.nanoTime() - startTime;
         EventPublisher.getInstance().publishEvent(new ExperimentEndedEvent(experiment.name(), experimenExecutionTime, startTimestamp));
         log.info("Finished running experiment: " + experiment.name());

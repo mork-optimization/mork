@@ -1,3 +1,6 @@
+# v0.12
+- (New) Option to enable/disable instance preload
+
 # v0.11
 - (New) Swap methods in ArrayUtil
 - (New) Events: AlgorithmProcessingStartedEvent, AlgorithmProcessingEndedEvent

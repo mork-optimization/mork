@@ -52,8 +52,8 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      * @param s              solution to serialize to disk
      */
     public void exportSolution(String experimentName, Algorithm<S, I> alg, S s) {
-        log.fine(String.format("Exporting solution for (exp, instance, algorithm) = (%s, %s, %s) using %s", experimentName, s.getInstance().getName(), alg.getClass().getSimpleName(), this.getClass().getSimpleName()));
-        String filename = getFilename(experimentName, s.getInstance().getName(), alg.getShortName());
+        log.fine(String.format("Exporting solution for (exp, instance, algorithm) = (%s, %s, %s) using %s", experimentName, s.getInstance().getId(), alg.getClass().getSimpleName(), this.getClass().getSimpleName()));
+        String filename = getFilename(experimentName, s.getInstance().getId(), alg.getShortName());
         var solutionFolder = this.config.getFolder();
         createFolder(solutionFolder);
         File f = new File(solutionFolder, filename);

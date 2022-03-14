@@ -83,7 +83,7 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
         SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss.SSS");
         Date d = new Date();
         String filename = experimentName + "_" + sdf.format(d) + "_.json";
-        var errorData = Map.of("Algorithm", alg, "InstanceName", i.getName(), "StackTrace", stacktrace, "Error", t);
+        var errorData = Map.of("Algorithm", alg, "InstanceName", i.getId(), "StackTrace", stacktrace, "Error", t);
         var p = Path.of(this.errorConfig.getFolder(), filename);
         try (var outputStream = Files.newOutputStream(p)){
             var writer = new ObjectMapper().writer(new DefaultPrettyPrinter());

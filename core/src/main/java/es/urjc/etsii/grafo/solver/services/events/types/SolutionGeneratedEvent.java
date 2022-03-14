@@ -40,7 +40,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
         super();
         this.iteration = iteration;
         this.score = solution.getScore();
-        this.instanceName = solution.getInstance().getName();
+        this.instanceName = solution.getInstance().getId();
         this.solution = new SoftReference<>(solution);
         this.experimentName = experimentName;
         this.algorithm = algorithm;

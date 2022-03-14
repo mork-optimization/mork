@@ -1,7 +1,5 @@
-package es.urjc.etsii.grafo.solver.services;
+package es.urjc.etsii.grafo.io;
 
-import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.io.InstanceImporter;
 import es.urjc.etsii.grafo.solver.configuration.InstanceConfiguration;
 import es.urjc.etsii.grafo.util.IOUtil;
 import org.slf4j.Logger;
@@ -29,7 +27,6 @@ public class InstanceManager<I extends Instance> {
     private final InstanceImporter<I> instanceImporter;
 
     private final Map<String, SoftReference<I>> cacheByPath;
-    private final Map<String, String> pathByName;
 
 
     /**
@@ -40,7 +37,6 @@ public class InstanceManager<I extends Instance> {
     public InstanceManager(InstanceConfiguration instanceConfiguration, InstanceImporter<I> instanceImporter) {
         this.instanceConfiguration = instanceConfiguration;
         this.instanceImporter = instanceImporter;
-        this.pathByName = new ConcurrentHashMap<>();
         this.cacheByPath = new ConcurrentHashMap<>();
     }
 
@@ -53,30 +49,53 @@ public class InstanceManager<I extends Instance> {
      */
     public List<String> getInstanceSolveOrder(String expName){
         String instancePath = this.instanceConfiguration.getPath(expName);
-        log.info("Loading all instances to check correctness...");
         checkExists(instancePath);
-        List<Path> instancePaths = IOUtil.iterate(instancePath);
+        List<Path> instances = IOUtil.iterate(instancePath);
+
+        List<String> sortedInstances;
+        if(this.instanceConfiguration.isPreload()){
+            sortedInstances = validateAndSort(expName, instances);
+        } else {
+            sortedInstances = lexicSort(instances);
+        }
+
+        return sortedInstances;
+    }
+
+    protected List<String> validateAndSort(String expName, List<Path> instancePaths) {
+        List<String> sortedInstances;
+        log.info("Loading all instances to check correctness...");
         List<I> instances = new ArrayList<>();
         for(var p: instancePaths){
             log.debug("Loading instance: {}", p);
             I instance = loadInstance(p);
             instances.add(instance);
+            cacheByPath.put(instance.getId(), new SoftReference<>(instance));
         }
         Collections.sort(instances);
         validate(instances, expName);
-        // Return only the instance names
-        List<String> instanceNames = instances.stream().map(Instance::getName).collect(Collectors.toList());
-        log.info("Instance validation completed, solve order: " + instanceNames);
-        return instanceNames;
+        sortedInstances = instances.stream().map(Instance::getPath).collect(Collectors.toList());
+        log.info("Instance validation completed, solve order: " + sortedInstances);
+        return sortedInstances;
     }
 
-    private void validate(List<I> instances, String expName) {
+    protected List<String> lexicSort(List<Path> instancePaths){
+        List<String> sortedInstances = new ArrayList<>();
+        for(var i: instancePaths){
+            sortedInstances.add(i.toAbsolutePath().toString());
+        }
+        Collections.sort(sortedInstances);
+        return sortedInstances;
+    }
+
+
+    protected void validate(List<I> instances, String expName) {
         if(instances.isEmpty()){
             throw new IllegalArgumentException("Could not load any instance for experiment: " + expName);
         }
         Set<String> names = new HashSet<>();
         for(var instance: instances){
-            var name = instance.getName();
+            var name = instance.getId();
             if(names.contains(name)){
                 throw new IllegalArgumentException("Duplicated instance name in instance folder, check that there aren't multiple instances with name: " + name);
             }
@@ -90,7 +109,7 @@ public class InstanceManager<I extends Instance> {
      * @param p Path of instance to load
      * @return Loaded instance
      */
-    public I getInstance(Path p){
+    protected I getInstance(Path p){
         String absolutePath = p.toAbsolutePath().toString();
         I instance = this.cacheByPath.getOrDefault(absolutePath, EMPTY).get();
         if(instance == null){
@@ -104,28 +123,24 @@ public class InstanceManager<I extends Instance> {
     protected I loadInstance(Path p){
         I instance = this.instanceImporter.importInstance(p.toFile());
         String absPath = p.toAbsolutePath().toString();
-        String name = instance.getName();
-        this.pathByName.put(name, absPath);
+        instance.setPath(absPath);
         this.cacheByPath.put(absPath, new SoftReference<>(instance));
         return instance;
     }
 
     /**
-     * Get instance by name
-     * @param name instance name
+     * Get instance by ID. The ID format is not guaranteed, it should be treated as an opaque constant.
+     * @param instancePath instance path
      * @return Instance
      */
-    public I getInstance(String name){
-        if(!pathByName.containsKey(name)){
-            throw new IllegalArgumentException("Unknown instance name: " + name);
-        }
-        return getInstance(Path.of(pathByName.get(name)));
+    public I getInstance(String instancePath){
+        return getInstance(Path.of(instancePath));
     }
 
     /**
      * Purge instance cache
      */
-    public void purge(){
+    public void purgeCache(){
         this.cacheByPath.clear();
     }
 }

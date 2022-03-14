@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.solver.executors;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
@@ -85,7 +86,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
      */
     protected WorkUnitResult<S,I> doWork(WorkUnit<S,I> workUnit) {
         S solution = null;
-        I instance = this.instanceManager.getInstance(workUnit.instanceName());
+        I instance = this.instanceManager.getInstance(workUnit.instancePath());
 
         try {
             // If app is stopping do not run algorithm
@@ -136,24 +137,24 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     /**
      * Create workunits with solve order
      * @param experiment experiment definition
-     * @param instanceNames instance name list
+     * @param instancePaths instance name list
      * @param exceptionHandler what to do if something fails inside the workunit
      * @param repetitions how many times should we repeat the (instance, algorithm) pair
      * @return Map of workunits per instance
      */
-    protected Map<String, Map<Algorithm<S,I>, List<WorkUnit<S,I>>>> getOrderedWorkUnits(Experiment<S,I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, int repetitions){
+    protected Map<String, Map<Algorithm<S,I>, List<WorkUnit<S,I>>>> getOrderedWorkUnits(Experiment<S,I> experiment, List<String> instancePaths, ExceptionHandler<S, I> exceptionHandler, int repetitions){
         var workUnits = new LinkedHashMap<String, Map<Algorithm<S,I>, List<WorkUnit<S,I>>>>();
-        for(String instanceName: instanceNames){
+        for(String instancePath: instancePaths){
             var algWorkUnits = new LinkedHashMap<Algorithm<S,I>, List<WorkUnit<S,I>>>();
             for(var alg: experiment.algorithms()){
                 var list = new ArrayList<WorkUnit<S,I>>();
                 for (int i = 0; i < repetitions; i++) {
-                    var workUnit = new WorkUnit<>(experiment.name(), instanceName, alg, i, exceptionHandler);
+                    var workUnit = new WorkUnit<>(experiment.name(), instancePath, alg, i, exceptionHandler);
                     list.add(workUnit);
                 }
                 algWorkUnits.put(alg, list);
             }
-            workUnits.put(instanceName, algWorkUnits);
+            workUnits.put(instancePath, algWorkUnits);
         }
         return workUnits;
     }
