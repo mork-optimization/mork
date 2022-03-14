@@ -10,7 +10,7 @@ import es.urjc.etsii.grafo.util.IOUtil;
 
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.Instant;
 import java.util.List;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -104,6 +104,6 @@ public abstract class ResultsSerializer {
      * @return the file name
      */
     private String getFilename(String experimentName, long startTimestamp) {
-        return experimentName + new SimpleDateFormat(config.getFormat()).format(new Date(startTimestamp));
+        return experimentName + new SimpleDateFormat(config.getFormat()).format(Instant.ofEpochMilli(startTimestamp));
     }
 }

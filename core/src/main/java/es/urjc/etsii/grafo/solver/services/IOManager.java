@@ -13,7 +13,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -81,7 +81,7 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
 
         // Directamente desde aqui, si se quiere customizar se puede pisar el DefaultExceptionHandler
         SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss.SSS");
-        Date d = new Date();
+        LocalDate d = LocalDate.now();
         String filename = experimentName + "_" + sdf.format(d) + "_.json";
         var errorData = Map.of("Algorithm", alg, "InstanceName", i.getId(), "StackTrace", stacktrace, "Error", t);
         var p = Path.of(this.errorConfig.getFolder(), filename);
