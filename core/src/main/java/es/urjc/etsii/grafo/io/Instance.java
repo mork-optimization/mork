@@ -41,7 +41,7 @@ public abstract class Instance implements Comparable<Instance>{
      * Set instance path, used by the framework
      * @param path instance absolute path where it was loaded from
      */
-    void setPath(String path) {
+    protected void setPath(String path) {
         this.path = path;
     }
 
