@@ -87,7 +87,9 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
     @Override
     public S construct(S sol) {
         candidateListManager.beforeGRASP(sol);
-        return assignMissing(sol);
+        var constructedSolution = assignMissing(sol);
+        candidateListManager.afterGRASP(constructedSolution);
+        return constructedSolution;
     }
 
     /**

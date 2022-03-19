@@ -21,6 +21,15 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
 
     }
 
+    /**
+     * Do any kind of post-processing after there are no more valid GRASP moves
+     *
+     * @param s Solution to modify after the GRASP constructive method has finished
+     */
+    public void afterGRASP(S s){
+
+    }
+
 
     /**
      * Generate initial candidate list. The list will be sorted if necessary by the constructive method.

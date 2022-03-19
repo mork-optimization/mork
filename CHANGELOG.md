@@ -1,3 +1,7 @@
+# v0.12
+- (New) GRASP::afterGRASP: Optionally execute anything after the GRASP constructive finishes
+
+
 # v0.11
 - (New) Swap methods in ArrayUtil
 - (New) Events: AlgorithmProcessingStartedEvent, AlgorithmProcessingEndedEvent
