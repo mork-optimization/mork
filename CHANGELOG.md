@@ -1,6 +1,6 @@
 # v0.12
 - (New) GRASP::afterGRASP: Optionally execute anything after the GRASP constructive finishes
-
+- (New) Verify move changes solution score as expected
 
 # v0.11
 - (New) Swap methods in ArrayUtil
