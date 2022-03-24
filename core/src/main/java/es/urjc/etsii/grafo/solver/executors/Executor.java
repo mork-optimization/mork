@@ -108,7 +108,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     }
 
     protected void processWorkUnitResult(WorkUnitResult<S,I> r){
-        io.exportSolution(r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution());
+        io.exportSolution(r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution(), r.workUnit().i());
         EventPublisher.getInstance().publishEvent(new SolutionGeneratedEvent<>(r.workUnit().i(), r.solution(), r.workUnit().experimentName(), r.workUnit().algorithm(), r.executionTime(), r.timeToTarget()));
         log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() +1, r.executionTime() / 1_000_000_000D, r.timeToTarget() / 1000_000_000D, r.solution()));
     }
