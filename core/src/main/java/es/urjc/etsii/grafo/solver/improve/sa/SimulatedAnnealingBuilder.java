@@ -187,14 +187,16 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * Configure a custom acceptance criteria.
      * @param acceptanceCriteria acceptance criteria.
      */
-    public void withAcceptanceCriteria(AcceptanceCriteria<M, S, I> acceptanceCriteria) {
+    public SimulatedAnnealingBuilder<M,S,I> withAcceptanceCriteria(AcceptanceCriteria<M, S, I> acceptanceCriteria) {
         this.acceptanceCriteria = acceptanceCriteria;
+        return this;
     }
 
     /**
      * Set acceptance criteria to default value.
      */
-    public void withDefaultAcceptanceCriteria(){
+    public SimulatedAnnealingBuilder<M,S,I> withDefaultAcceptanceCriteria(){
         this.acceptanceCriteria = new DefaultAcceptanceCriteria<>();
+        return this;
     }
 }
