@@ -3,6 +3,8 @@ package es.urjc.etsii.grafo.solver.services;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
+import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
+import es.urjc.etsii.grafo.solver.exception.ResourceLimitException;
 import es.urjc.etsii.grafo.solver.executors.Executor;
 import es.urjc.etsii.grafo.solver.experiment.Experiment;
 import es.urjc.etsii.grafo.solver.experiment.ExperimentManager;
@@ -21,15 +23,16 @@ import java.util.logging.Logger;
 
 /**
  * <p>Orchestrator class.</p>
- *
  */
 @Service
 @ConditionalOnExpression(value = "!${irace.enabled}")
-public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrchestrator {
+public class Orchestrator<S extends Solution<S, I>, I extends Instance> extends AbstractOrchestrator {
 
     private static final Logger log = Logger.getLogger(Orchestrator.class.toString());
+    public static final int MAX_WORKLOAD = 1_000_000;
 
-    private final IOManager<S,I> io;
+
+    private final IOManager<S, I> io;
     private final InstanceManager<I> instanceManager;
     private final ExperimentManager<S, I> experimentManager;
     private final ExceptionHandler<S, I> exceptionHandler;
@@ -38,12 +41,13 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
 
     /**
      * <p>Constructor for Orchestrator.</p>
-     *  @param solverConfig a {@link SolverConfig} object.
-     * @param io a {@link IOManager} object.
-     * @param instanceManager a {@link InstanceManager} object.
+     *
+     * @param solverConfig      a {@link SolverConfig} object.
+     * @param io                a {@link IOManager} object.
+     * @param instanceManager   a {@link InstanceManager} object.
      * @param experimentManager a {@link ExperimentManager} object.
      * @param exceptionHandlers a {@link List} object.
-     * @param executor a {@link Executor} object.
+     * @param executor          a {@link Executor} object.
      */
     public Orchestrator(
             SolverConfig solverConfig,
@@ -61,8 +65,8 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
         this.executor = executor;
     }
 
-    private void runBenchmark(){
-        if(solverConfig.isBenchmark()){
+    private void runBenchmark() {
+        if (solverConfig.isBenchmark()) {
             log.info("Running CPU benchmark...");
             double score = BenchmarkUtil.getBenchmarkScore();
             log.info("Benchmark score: " + score);
@@ -71,7 +75,9 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
         }
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void run(String... args) {
         runBenchmark();
@@ -80,7 +86,7 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
         log.info("Experiments to execute: " + experiments.keySet());
         EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
-        try{
+        try {
             experiments.values().forEach(this::experimentWrapper);
         } finally {
             executor.shutdown();
@@ -90,17 +96,24 @@ public class Orchestrator<S extends Solution<S,I>, I extends Instance> extends A
         }
     }
 
-    private void experimentWrapper(Experiment<S,I> experiment) {
+    private void experimentWrapper(Experiment<S, I> experiment) {
         long startTimestamp = System.currentTimeMillis();
         long startTime = System.nanoTime();
         log.info("Running experiment: " + experiment.name());
 
         var instanceNames = instanceManager.getInstanceSolveOrder(experiment.name());
+        verifyWorkloadLimit(solverConfig, instanceNames, experiment.algorithms());
         EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(experiment.name(), instanceNames));
         executor.executeExperiment(experiment, instanceNames, exceptionHandler, startTimestamp);
         long experimenExecutionTime = System.nanoTime() - startTime;
         EventPublisher.getInstance().publishEvent(new ExperimentEndedEvent(experiment.name(), experimenExecutionTime, startTimestamp));
         log.info("Finished running experiment: " + experiment.name());
     }
-    
+
+    public static void verifyWorkloadLimit(SolverConfig config, List<String> instanceNames, List<?> experiment) {
+        int calculatedWorkload = instanceNames.size() * experiment.size() * config.getRepetitions();
+        if(calculatedWorkload >= MAX_WORKLOAD){
+            throw new ResourceLimitException(String.format("Maximum workload exceeded, reduce instances, number of algorithms or repetitions: %s * %s * %s = %s >= %s\n Tip: You may decrease the number of iterations using a multistart algorithm without changing the result", instanceNames.size(), experiment.size(), config.getRepetitions(), calculatedWorkload, MAX_WORKLOAD));
+        }
+    }
 }
