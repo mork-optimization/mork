@@ -8,7 +8,7 @@ returns to the origin city?" It is an NP-hard problem in combinatorial optimizat
 science and operations research.
 
 <p style="text-align: center">  
- <img src="/imgs/introduction.jpeg"  style="width:500px"  alt="Example of the TSP problem"/>  
+ <img src="../imgs/introduction.jpeg"  style="width:500px"  alt="Example of the TSP problem"/>  
 </p>  
 
 Obtained
@@ -674,7 +674,7 @@ graph is generated. We recommend the interested reader to have a look to [Graphv
 instance [berlin52](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp) is illustrated in the following
 figure. Additionally, the source code that generates that figure can be found [here](berlin52.dot.txt).
 
-<img src="/imgs/route.png" alt="Possible route for Berlin52 instance" style="float: left; margin-right: 10px;" />
+<img src="../imgs/route.png" alt="Possible route for Berlin52 instance" style="float: left; margin-right: 10px;" />
 
 
 Next task is to generate that figure each time a new best solution is found. Obviously, we want to show that figure in
@@ -711,7 +711,7 @@ function onSolutionGenerated(event) {
 Now it is time to execute again or Local Search experiment and analyse how the solution and the solution quality
 evolves over the time. The result should be similar than the following image:
 
-<img src="/imgs/dashboard.png" alt="dashboard example" style="float: left; margin-right: 10px;" />
+<img src="../imgs/dashboard.png" alt="dashboard example" style="float: left; margin-right: 10px;" />
 
 ## 6. _Irace_
 
