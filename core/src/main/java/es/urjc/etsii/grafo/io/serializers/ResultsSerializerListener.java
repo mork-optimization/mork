@@ -123,6 +123,6 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
      * @return the file name
      */
     public String getFilename(AbstractSerializerConfig config, String experimentName, long startTimestamp) {
-        return experimentName + new SimpleDateFormat(config.getFormat()).format(Instant.ofEpochMilli(startTimestamp));
+        return experimentName + new SimpleDateFormat(config.getFormat()).format(Date.from(Instant.ofEpochMilli(startTimestamp)));
     }
 }
