@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.solver.services.events;
 
+import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.services.events.types.MorkEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 
@@ -10,7 +12,7 @@ import java.util.stream.Stream;
 /**
  * Recover past events
  */
-public abstract class AbstractEventStorage {
+public abstract class AbstractEventStorage<S extends Solution<S,I>,I extends Instance> {
     /**
      * Get a list of events by id, in range [from, to)
      *
@@ -34,7 +36,7 @@ public abstract class AbstractEventStorage {
      * @param experimentName Experiment name
      * @return SolutionGenerated events
      */
-    public abstract Stream<? extends SolutionGeneratedEvent<?, ?>> getGeneratedSolEventForExp(String experimentName);
+    public abstract Stream<SolutionGeneratedEvent<S,I>> getGeneratedSolEventForExp(String experimentName);
 
     /**
      * Returns an event stream for the given event type, ordered by creation date.

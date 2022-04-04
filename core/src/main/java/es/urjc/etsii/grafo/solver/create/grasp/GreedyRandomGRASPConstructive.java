@@ -104,13 +104,13 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
     public S assignMissing(S sol) {
         double alpha = alphaProvider.getAlpha();
         var cl = candidateListManager.buildInitialCandidateList(sol);
-        assert cl instanceof RandomAccess : "Candidate List should have O(1) access time";
+        assert ValidationUtil.assertFastAccess(cl);
         while (!cl.isEmpty()) {
             int index = greedyRandom(alpha, cl);
             M chosen = cl.get(index);
             chosen.execute();
             cl = candidateListManager.updateCandidateList(sol, chosen, cl, index);
-            ValidationUtil.assertFastAccess(cl);
+            assert ValidationUtil.assertFastAccess(cl);
             ValidationUtil.assertValidScore(sol);
         }
         return sol;

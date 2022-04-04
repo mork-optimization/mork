@@ -55,10 +55,11 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
      * @param alg algorithm that generated this solution
      * @param s solution to serialize to disk
      */
-    public void exportSolution(String experimentName, Algorithm<S,I> alg, S s){
+    public void exportSolution(String experimentName, Algorithm<S,I> alg, S s, int iteration){
         for(var serializer: this.solutionSerializers){
             if(serializer.isEnabled()){
-                serializer.exportSolution(experimentName, alg, s);
+                String iterationId = Integer.toString(iteration);
+                serializer.exportSolution(experimentName, alg, s, iterationId);
             }
         }
     }

@@ -29,8 +29,11 @@ public class ValidationUtil {
      *
      * @param list to check
      */
-    public static void assertFastAccess(List<?> list){
-        assert list instanceof RandomAccess : "List should have O(1) access time";
+    public static boolean assertFastAccess(List<?> list){
+        if(!(list instanceof RandomAccess)){
+            throw new AssertionError("List should have O(1) access time");
+        }
+        return true;
     }
 
     /**

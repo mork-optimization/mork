@@ -2,6 +2,7 @@
 - (New) Option to enable/disable instance preload
 - (New) GRASP::afterGRASP: Optionally execute anything after the GRASP constructive finishes
 - (New) Verify move changes solution score as expected
+- (Fix) Export all generated solutions by default if a solution serializer is enabled instead of only best for pair (alg, instance) 
 
 # v0.11
 - (New) Swap methods in ArrayUtil

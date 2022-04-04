@@ -3,16 +3,18 @@ package es.urjc.etsii.grafo.solver.improve;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.services.Global;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.logging.Logger;
 
 /**
  * <p>Abstract IteratedImprover class.</p>
  *
  */
 public abstract class IteratedImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I>{
-    static final Logger log = Logger.getLogger(IteratedImprover.class.getName());
-    
+    static final Logger log = LoggerFactory.getLogger(IteratedImprover.class);
+    static final int WARN_LIMIT = 10_000;
+
     /**
      * {@inheritDoc}
      *
@@ -23,10 +25,13 @@ public abstract class IteratedImprover<S extends Solution<S,I>,I extends Instanc
     protected S _improve(S s) {
         int rounds = 0;
         while (!Global.stop() && iteration(s)){
-            log.fine(String.format("Executing iteration %s for %s", rounds, this.getClass().getSimpleName()));
+            log.debug("Executing iteration {} for {}", rounds, this.getClass().getSimpleName());
             rounds++;
+            if(rounds == WARN_LIMIT){
+                log.warn("Too many iterations, soft limit of {} passed, maybe stuck in an infinite loop?", WARN_LIMIT);
+            }
         }
-        log.fine(String.format("Improvement ended. %s executed %s iterations.", this.getClass().getSimpleName(), rounds));
+        log.debug("Improvement ended. {} executed {} iterations.", this.getClass().getSimpleName(), rounds);
         return s;
     }
 

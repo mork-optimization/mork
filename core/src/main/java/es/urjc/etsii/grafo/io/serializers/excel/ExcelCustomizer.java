@@ -16,8 +16,7 @@ public abstract class ExcelCustomizer {
      * but before the workbook is closed and saved to disk.
      *
      * @param excelBook Excel book
-     * @param eventStorage event storage, all generated events can be retrieved in order to calculate custom metrics.
      */
-    public abstract void customize(XSSFWorkbook excelBook, AbstractEventStorage eventStorage);
+    public abstract void customize(XSSFWorkbook excelBook);
 
 }
