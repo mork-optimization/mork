@@ -17,6 +17,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
 import java.text.SimpleDateFormat;
+import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -122,6 +123,6 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
      * @return the file name
      */
     public String getFilename(AbstractSerializerConfig config, String experimentName, long startTimestamp) {
-        return experimentName + new SimpleDateFormat(config.getFormat()).format(new Date(startTimestamp));
+        return experimentName + new SimpleDateFormat(config.getFormat()).format(Instant.ofEpochMilli(startTimestamp));
     }
 }

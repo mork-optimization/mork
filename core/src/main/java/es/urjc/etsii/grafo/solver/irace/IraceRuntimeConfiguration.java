@@ -10,7 +10,7 @@ import java.util.Optional;
  */
 public class IraceRuntimeConfiguration {
 
-    //candidateConfiguration, instanceId, seed, instanceName, config, isMaximizing
+    //candidateConfiguration, instanceId, seed, instancePath, config, isMaximizing
     private final String candidateConfiguration;
     private final String instanceId;
     private final String seed;
@@ -68,7 +68,7 @@ public class IraceRuntimeConfiguration {
     }
 
     /**
-     * <p>Getter for the field <code>instanceName</code>.</p>
+     * <p>Getter for the field <code>instancePath</code>.</p>
      *
      * @return a {@link java.lang.String} object.
      */
@@ -118,7 +118,7 @@ public class IraceRuntimeConfiguration {
                 "candidateConfiguration='" + candidateConfiguration + '\'' +
                 ", instanceId='" + instanceId + '\'' +
                 ", seed='" + seed + '\'' +
-                ", instanceName='" + instanceName + '\'' +
+                ", instancePath='" + instanceName + '\'' +
                 ", alg=" + alg +
                 ", isMaximizing=" + isMaximizing +
                 '}';

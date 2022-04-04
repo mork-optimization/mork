@@ -7,7 +7,7 @@ import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.experiment.Experiment;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.services.IOManager;
-import es.urjc.etsii.grafo.solver.services.InstanceManager;
+import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.types.AlgorithmProcessingEndedEvent;

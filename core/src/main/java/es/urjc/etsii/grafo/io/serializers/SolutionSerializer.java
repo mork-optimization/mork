@@ -10,7 +10,7 @@ import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.Date;
+import java.time.LocalDate;
 import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.util.IOUtil.createFolder;
@@ -52,8 +52,8 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      * @param s              solution to serialize to disk
      */
     public void exportSolution(String experimentName, Algorithm<S, I> alg, S s, String iterationId) {
-        log.fine(String.format("Exporting solution for (exp, instance, algorithm) = (%s, %s, %s) using %s", experimentName, s.getInstance().getName(), alg.getClass().getSimpleName(), this.getClass().getSimpleName()));
-        String filename = getFilename(experimentName, s.getInstance().getName(), alg.getShortName(), iterationId);
+        log.fine(String.format("Exporting solution for (exp, instance, algorithm) = (%s, %s, %s) using %s", experimentName, s.getInstance().getId(), alg.getClass().getSimpleName(), this.getClass().getSimpleName()));
+        String filename = getFilename(experimentName, s.getInstance().getId(), alg.getShortName(), iterationId);
         var solutionFolder = this.config.getFolder();
         createFolder(solutionFolder);
         File f = new File(solutionFolder, filename);
@@ -68,7 +68,7 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      */
     protected String getFilename(String experimentName, String instanceName, String shortAlgName, String iterationId) {
         String prefix = experimentName + "_" + instanceName + "_" + shortAlgName + "_" + iterationId + "_";
-        String name = new SimpleDateFormat(config.getFormat()).format(new Date()); // Use current date
+        String name = new SimpleDateFormat(config.getFormat()).format(LocalDate.now()); // Use current date
         return prefix + name;
     }
 

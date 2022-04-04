@@ -8,7 +8,7 @@ import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.solver.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.AbstractOrchestrator;
-import es.urjc.etsii.grafo.solver.services.InstanceManager;
+import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExecutionStartedEvent;
@@ -52,7 +52,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
      *
      * @param solverConfig a {@link es.urjc.etsii.grafo.solver.SolverConfig} object.
      * @param iraceIntegration a {@link es.urjc.etsii.grafo.solver.irace.IraceIntegration} object.
-     * @param instanceManager a {@link es.urjc.etsii.grafo.solver.services.InstanceManager} object.
+     * @param instanceManager a {@link InstanceManager} object.
      * @param solutionBuilders a {@link java.util.List} object.
      * @param algorithmGenerator a {@link java.util.Optional} object.
      * @param env a {@link org.springframework.core.env.Environment} object.
@@ -134,7 +134,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
      */
     public String iraceCallback(ExecuteRequest request){
         var config = buildConfig(request);
-        var instancePath = Path.of(config.getInstanceName());
+        var instancePath = config.getInstanceName();
         var instance = instanceManager.getInstance(instancePath);
         var algorithm = this.algorithmGenerator.buildAlgorithm(config);
         algorithm.setBuilder(this.solutionBuilder);

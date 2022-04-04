@@ -13,6 +13,8 @@ import java.util.Map;
 public class InstanceConfiguration {
     private Map<String, String> path;
 
+    private boolean preload;
+
     /**
      * Set instances folder for each experiment
      *
@@ -28,7 +30,28 @@ public class InstanceConfiguration {
      * @param experimentName experiment name
      * @return Instance path as a string
      */
-    public String getPath(String experimentName){
+    public String getPath(String experimentName) {
         return path.getOrDefault(experimentName, this.path.get("default"));
+    }
+
+    /**
+     * Loads all instances in RAM before starting each experiment.
+     * Can be disabled for example in problems where instances are huge in order to save some RAM.
+     *
+     * @return is preloading instances enabled?
+     */
+    public boolean isPreload() {
+        return preload;
+    }
+
+    /**
+     * Loads all instances in RAM before starting each experiment.
+     * Can be disabled for example in problems where instances are huge in order to save some RAM.
+     * Warning: Disabling it reverts instance solve order to instance name (lexicographically)
+     *
+     * @param preload change preload configuration to the value given by this parameter
+     */
+    public void setPreload(boolean preload) {
+        this.preload = preload;
     }
 }

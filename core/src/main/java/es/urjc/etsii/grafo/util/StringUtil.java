@@ -67,7 +67,7 @@ public class StringUtil {
     public static String b64encode(byte[] bytes){
         var encoder = Base64.getEncoder();
         var result = encoder.encode(bytes);
-        return new String(result);
+        return new String(result, DEFAULT_CHARSET);
     }
 
     /**
