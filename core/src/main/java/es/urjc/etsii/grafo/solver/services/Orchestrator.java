@@ -69,7 +69,7 @@ public class Orchestrator<S extends Solution<S, I>, I extends Instance> extends 
     private void runBenchmark() {
         if (solverConfig.isBenchmark()) {
             log.info("Running CPU benchmark...");
-            double score = BenchmarkUtil.getBenchmarkScore();
+            double score = BenchmarkUtil.getBenchmarkScore(this.solverConfig.getSeed());
             log.info("Benchmark score: " + score);
         } else {
             log.info("Skipping CPU benchmark");

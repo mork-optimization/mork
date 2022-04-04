@@ -11,8 +11,8 @@ public class BenchmarkUtil {
      *
      * @return score as a double
      */
-    public static double getBenchmarkScore(){
-        var result = ScimarkAPI.runBenchmark();
+    public static double getBenchmarkScore(int seed){
+        var result = ScimarkAPI.runBenchmark(seed);
         return result.getScore();
     }
 }
