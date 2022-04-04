@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.solver.services.events;
 
+import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.services.events.types.MorkEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import org.springframework.stereotype.Service;
@@ -13,7 +15,7 @@ import java.util.stream.Stream;
  * Store historical event data
  */
 @Service
-public class MemoryEventStorage extends AbstractEventStorage {
+public class MemoryEventStorage<S extends Solution<S,I>, I extends Instance> extends AbstractEventStorage<S,I> {
     /**
      * Use a tree as events may be processed unordered, but should be retrieved ordered by range query
      */
@@ -59,10 +61,11 @@ public class MemoryEventStorage extends AbstractEventStorage {
     }
 
     /** {@inheritDoc} */
-    public Stream<? extends SolutionGeneratedEvent<?, ?>> getGeneratedSolEventForExp(String experimentName){
+    @SuppressWarnings("unchecked")
+    public Stream<SolutionGeneratedEvent<S, I>> getGeneratedSolEventForExp(String experimentName){
         return this.eventLog.values().stream()
                 .filter(e -> e instanceof SolutionGeneratedEvent)
-                .map(e -> (SolutionGeneratedEvent<?,?>) e)
+                .map(e -> (SolutionGeneratedEvent<S,I>) e)
                 .filter(e -> e.getExperimentName().equals(experimentName));
     }
 

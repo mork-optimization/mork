@@ -10,6 +10,11 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
         super(ins);
     }
 
+    public TestSolution(TestInstance ins, double score) {
+        this(ins);
+        this.score = score;
+    }
+
     public TestSolution(TestSolution sol) {
         super(sol);
         this.score = sol.score;
@@ -29,12 +34,16 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
 
     @Override
     public double getScore() {
-        return 0;
+        return this.score;
+    }
+
+    public void setScore(double score){
+        this.score = score;
     }
 
     @Override
     public double recalculateScore() {
-        return 0;
+        return this.score;
     }
 
     @Override

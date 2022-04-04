@@ -1,6 +1,8 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
+import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
+import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.services.events.AbstractEventStorage;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
@@ -22,7 +24,7 @@ import java.util.logging.Logger;
 /**
  * Serialize results to Excel XML format
  */
-public class ExcelSerializer extends ResultsSerializer {
+public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  extends ResultsSerializer<S,I> {
 
     private static final Logger log = Logger.getLogger(ExcelSerializer.class.getName());
 
@@ -58,16 +60,14 @@ public class ExcelSerializer extends ResultsSerializer {
      * @param solverConfig solver configuration
      * @param referenceResultProviders reference result providers if available
      * @param excelCustomizer customizer if available
-     * @param eventStorage event storage
      */
     public ExcelSerializer(
-            AbstractEventStorage eventStorage,
             ExcelConfig serializerConfig,
             SolverConfig solverConfig,
             List<ReferenceResultProvider> referenceResultProviders,
             Optional<ExcelCustomizer> excelCustomizer
     ) {
-        super(eventStorage, serializerConfig);
+        super(serializerConfig);
         this.config = serializerConfig;
         this.maximizing = solverConfig.isMaximizing();
         this.referenceResultProviders = referenceResultProviders;
@@ -75,7 +75,7 @@ public class ExcelSerializer extends ResultsSerializer {
     }
 
     /** {@inheritDoc} */
-    public void _serializeResults(List<? extends SolutionGeneratedEvent<?, ?>> results, Path p) {
+    public void _serializeResults(List<SolutionGeneratedEvent<S, I>> results, Path p) {
         log.info("Exporting result data to XLSX...");
 
         File f = p.toFile();
@@ -93,7 +93,7 @@ public class ExcelSerializer extends ResultsSerializer {
             if(this.excelCustomizer.isPresent()){
                 var realExcelCustomizer = excelCustomizer.get();
                 log.info("Calling Excel customizer: " + realExcelCustomizer.getClass().getSimpleName());
-                realExcelCustomizer.customize(excelBook, this.eventStorage);
+                realExcelCustomizer.customize(excelBook);
             } else {
                 log.fine("ExcelCustomizer implementation not found");
             }
@@ -106,7 +106,7 @@ public class ExcelSerializer extends ResultsSerializer {
         }
     }
 
-    private RawSheetWriter getRawSheetWriter(List<? extends SolutionGeneratedEvent<?, ?>> results) {
+    private RawSheetWriter getRawSheetWriter(List<? extends SolutionGeneratedEvent<S, I>> results) {
         switch (this.config.getCalculationMode()){
             case EXCEL:
                 return new ExcelCalculatedRawSheetWriter();

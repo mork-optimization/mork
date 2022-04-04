@@ -91,8 +91,14 @@ public class ExcelConfig extends AbstractResultSerializerConfig {
      */
     private boolean columnGrandTotal = false;
 
-    private CalculationMode calculationMode;
+    /**
+     * Calculation mode, see enum for full details on each mode
+     */
+    private CalculationMode calculationMode = CalculationMode.AUTO;
 
+    /**
+     * Threshold for changing calculation mode if auto. Calculated empirically.
+     */
     private final int rowThreshold = 2000;
 
     /**
