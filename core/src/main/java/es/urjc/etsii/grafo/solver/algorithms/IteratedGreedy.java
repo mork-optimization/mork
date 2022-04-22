@@ -30,8 +30,8 @@ import java.util.Arrays;
  * } while (Termination criteria is not met)
  * return s
  * <p>
- * Iterated greedy algorithms  natural extension is to improve the generated solutions by
- * the application of a improvement algorithm, such as local search procedures.
+ * Iterated greedy algorithms natural extension is to improve the generated solutions by
+ * the application of an improvement algorithm, such as local search procedures.
  * <p>
  * Algorithmic outline of an IG with an additional local search step
  * <p>
@@ -53,9 +53,8 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
     private Constructive<S, I> constructive;
 
     /**
-     * Destructive an reconstructive procedure
+     * Destructive and reconstructive procedure
      */
-    //private Shake<S, I> destructionReconstruction;
     private Shake<S, I> destructionReconstruction;
 
     /**

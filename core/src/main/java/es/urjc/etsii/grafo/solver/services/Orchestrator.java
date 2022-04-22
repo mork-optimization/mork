@@ -4,7 +4,6 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
-import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.exception.ResourceLimitException;
 import es.urjc.etsii.grafo.solver.executors.Executor;
 import es.urjc.etsii.grafo.solver.experiment.Experiment;
