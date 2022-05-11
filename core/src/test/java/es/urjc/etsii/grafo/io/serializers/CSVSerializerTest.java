@@ -21,7 +21,7 @@ public class CSVSerializerTest {
         var config = new CSVConfig();
         config.setSeparator(separator);
         config.setFolder(p.toFile().getAbsolutePath());
-        return new CSVSerializer<>(config);
+        return new CSVSerializer<>(config, new ArrayList<>());
     }
 
     @Test

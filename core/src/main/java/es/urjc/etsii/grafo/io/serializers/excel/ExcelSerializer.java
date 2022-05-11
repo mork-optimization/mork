@@ -4,7 +4,6 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
-import es.urjc.etsii.grafo.solver.services.events.AbstractEventStorage;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
@@ -49,7 +48,6 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     public static final double NEGATIVE_INFINITY = -1e99;
 
     private final boolean maximizing;
-    private final List<ReferenceResultProvider> referenceResultProviders;
     private final Optional<ExcelCustomizer> excelCustomizer;
     private final ExcelConfig config;
 
@@ -67,10 +65,9 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             List<ReferenceResultProvider> referenceResultProviders,
             Optional<ExcelCustomizer> excelCustomizer
     ) {
-        super(serializerConfig);
+        super(serializerConfig, referenceResultProviders);
         this.config = serializerConfig;
         this.maximizing = solverConfig.isMaximizing();
-        this.referenceResultProviders = referenceResultProviders;
         this.excelCustomizer = excelCustomizer;
     }
 

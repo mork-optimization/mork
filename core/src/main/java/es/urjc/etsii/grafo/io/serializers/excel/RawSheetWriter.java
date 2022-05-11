@@ -14,7 +14,7 @@ import java.util.stream.Collectors;
 
 
 /**
- * Generates excel raw sheet with all data to use in pivot table and custom charts or other custom processin
+ * Generates excel raw sheet with all data to use in pivot table and custom charts or other custom processing
  */
 public abstract class RawSheetWriter {
 
