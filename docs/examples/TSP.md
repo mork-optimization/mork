@@ -7,9 +7,7 @@ distances between each pair of cities, what is the shortest possible route that 
 returns to the origin city?" It is an NP-hard problem in combinatorial optimization, important in theoretical computer
 science and operations research.
 
-<p style="text-align: center">  
- <img src="/imgs/introduction.jpeg"  style="width:500px"  alt="Example of the TSP problem"/>  
-</p>  
+![Example of the TSP problem](img/introduction.jpeg)
 
 Obtained
 from *[The Trials And Tribulations Of The Traveling Salesman](https://medium.com/basecs/the-trials-and-tribulations-of-the-traveling-salesman-56048d6709d)*
@@ -674,8 +672,7 @@ graph is generated. We recommend the interested reader to have a look to [Graphv
 instance [berlin52](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp) is illustrated in the following
 figure. Additionally, the source code that generates that figure can be found [here](berlin52.dot.txt).
 
-<img src="/imgs/route.png" alt="Possible route for Berlin52 instance" style="float: left; margin-right: 10px;" />
-
+![Possible route for Berlin52 instance](img/route.png)
 
 Next task is to generate that figure each time a new best solution is found. Obviously, we want to show that figure in
 the dashboard launched in *[http://localhost:8080/](http://localhost:8080/)*. To do so, you will need to have just a bit
@@ -711,7 +708,7 @@ function onSolutionGenerated(event) {
 Now it is time to execute again or Local Search experiment and analyse how the solution and the solution quality
 evolves over the time. The result should be similar than the following image:
 
-<img src="/imgs/dashboard.png" alt="dashboard example" style="float: left; margin-right: 10px;" />
+![Dashboard example](img/dashboard.png)
 
 ## 6. _Irace_
 
@@ -843,8 +840,7 @@ racing for automatic algorithm configuration. Operations Research Perspectives, 
 I'm sure you've spent hours in front of your code trying to find that 🤬 bug. For that reason, we consider that it is
 important that any operation must be validated, and check that the implemented procedures perform the desired
 behavior.  
-And how can this be done in Mork? There are many ways, testing is one way (go to section XXX for an example of Test
-implementation in Mork), but in this case, we are talking about **asserts**. The keyword or reserved word **assert** is
+And how can this be done in Mork? There are many ways, testing is one way, but in this case, we are talking about **asserts**. The keyword or reserved word **assert** is
 used to state that at a certain point in the code a certain condition must be true. For example, if you write a method
 that calculates the speed of a particle, you might assert that the calculated speed is less than the speed of light. Not
 using it yet? Take a look at
