@@ -1,3 +1,6 @@
+# v0.13
+- (Fix) Use reference results in all ResultSerializers instead of only when exporting to XLSX.
+
 # v0.12
 - (New) GRASP::afterGRASP: Optionally execute anything after the GRASP constructive finishes
 - (New) Verify move changes solution score as expected
