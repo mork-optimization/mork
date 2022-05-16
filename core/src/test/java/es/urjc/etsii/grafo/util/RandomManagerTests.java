@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.util;
 
 
-import es.urjc.etsii.grafo.testutil.HelperFactory;
+import es.urjc.etsii.grafo.testutil.TestHelperFactory;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.random.RandomType;
 import org.junit.jupiter.api.*;
@@ -18,7 +18,7 @@ public class RandomManagerTests {
     public void initializationTest(){
         RandomType type = RandomType.LEGACY;
         int initialseed = 123456, repetitions = 10;
-        RandomManager manager = HelperFactory.getRandomManager(type, initialseed, repetitions);
+        RandomManager manager = TestHelperFactory.getRandomManager(type, initialseed, repetitions);
 
         RandomManager.reset(0);
         var myRandom = RandomManager.getRandom();
@@ -40,7 +40,7 @@ public class RandomManagerTests {
     public void concurrentGenerationTest(){
         RandomType type = RandomType.LEGACY;
         int initialseed = 123456, repetitions = 8;
-        RandomManager manager = HelperFactory.getRandomManager(type, initialseed, repetitions);
+        RandomManager manager = TestHelperFactory.getRandomManager(type, initialseed, repetitions);
         var executor = Executors.newFixedThreadPool(4);
         for (int i = 0; i < repetitions; i++) {
             var iteration = i;
@@ -76,7 +76,7 @@ public class RandomManagerTests {
     public void testExceptions(){
         RandomType type = RandomType.LEGACY;
         int initialseed = 123456, repetitions = 8;
-        RandomManager manager = HelperFactory.getRandomManager(type, initialseed, repetitions);
+        RandomManager manager = TestHelperFactory.getRandomManager(type, initialseed, repetitions);
         Assertions.assertThrows(IllegalArgumentException.class, () -> RandomManager.getRandom().nextInt(0, 0));
         Assertions.assertThrows(IllegalArgumentException.class, () -> RandomManager.getRandom().nextInt(1, 0));
         Assertions.assertDoesNotThrow(() -> RandomManager.getRandom().nextInt(0, 1));

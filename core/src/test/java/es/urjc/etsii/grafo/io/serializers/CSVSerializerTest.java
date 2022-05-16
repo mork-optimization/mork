@@ -2,10 +2,7 @@ package es.urjc.etsii.grafo.io.serializers;
 
 import es.urjc.etsii.grafo.io.serializers.csv.CSVConfig;
 import es.urjc.etsii.grafo.io.serializers.csv.CSVSerializer;
-import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
-import es.urjc.etsii.grafo.solver.services.reference.ReferenceResult;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
-import es.urjc.etsii.grafo.testutil.HelperFactory;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;
@@ -16,12 +13,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 
-import static es.urjc.etsii.grafo.io.serializers.SerializerHelper.referencesGenerator;
-import static es.urjc.etsii.grafo.io.serializers.SerializerHelper.solutionGenerator;
+import static es.urjc.etsii.grafo.testutil.TestHelperFactory.referencesGenerator;
+import static es.urjc.etsii.grafo.testutil.TestHelperFactory.solutionGenerator;
 
 public class CSVSerializerTest {
 
@@ -47,19 +42,28 @@ public class CSVSerializerTest {
         Assertions.assertTrue(Files.exists(csvPath));
         String csvContent = Files.readString(csvPath);
         String[] cols = csvContent.split(String.valueOf(separator));
-        // CSV must contains 6 columns: intance name, algorithm name, iteration, value, t, ttb
+        // CSV must contain 6 columns: instance name, algorithm name, iteration, value, t, ttb
         Assertions.assertEquals(cols.length, 6);
     }
 
     @Test
     public void writeEmptyCSV(@TempDir Path temp) throws IOException {
         writeEmptyCSVParameters(temp, new ArrayList<>());
-
     }
 
     @Test
     public void writeEmptyCSVWithReferences(@TempDir Path temp) throws IOException {
         writeEmptyCSVParameters(temp, referencesGenerator(10,10));
+    }
+
+    @Test
+    public void writeEmptyCSVWithInvalidReference(@TempDir Path temp) {
+        Assertions.assertDoesNotThrow(() -> writeEmptyCSVParameters(temp, referencesGenerator(Double.NaN,Double.NaN)));
+    }
+
+    @Test
+    public void writeEmptyCSVInvalidPath() {
+        Assertions.assertThrows(RuntimeException.class, () -> writeEmptyCSVParameters(Path.of("/doesnotexist"), referencesGenerator(Double.NaN,Double.NaN)));
     }
 
     @Test

@@ -5,12 +5,9 @@ import es.urjc.etsii.grafo.io.serializers.excel.ExcelCustomizer;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelSerializer;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
-import es.urjc.etsii.grafo.testutil.HelperFactory;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.apache.poi.openxml4j.util.ZipSecureFile;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -21,14 +18,13 @@ import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 
-import static es.urjc.etsii.grafo.io.serializers.SerializerHelper.referencesGenerator;
-import static es.urjc.etsii.grafo.io.serializers.SerializerHelper.solutionGenerator;
+import static es.urjc.etsii.grafo.testutil.TestHelperFactory.referencesGenerator;
+import static es.urjc.etsii.grafo.testutil.TestHelperFactory.solutionGenerator;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -63,6 +59,16 @@ public class ExcelSerializerTest {
     @Test
     public void writeEmptyExcelWithReferences(@TempDir Path temp) throws IOException {
         writeEmptyExcelParameters(temp, referencesGenerator(10, 10));
+    }
+
+    @Test
+    public void writeEmptyCSVWithInvalidReference(@TempDir Path temp) {
+        Assertions.assertDoesNotThrow(() -> writeEmptyExcelParameters(temp, referencesGenerator(Double.NaN,Double.NaN)));
+    }
+
+    @Test
+    public void writeEmptyCSVInvalidPath() {
+        Assertions.assertThrows(RuntimeException.class, () -> writeEmptyExcelParameters(Path.of("/doesnotexist"), referencesGenerator(Double.NaN,Double.NaN)));
     }
 
     @Test

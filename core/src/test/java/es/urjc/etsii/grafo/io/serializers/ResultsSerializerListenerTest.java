@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.io.serializers;
 import es.urjc.etsii.grafo.io.serializers.AbstractResultSerializerConfig.Frequency;
 import es.urjc.etsii.grafo.solver.services.events.AbstractEventStorage;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
-import es.urjc.etsii.grafo.testutil.HelperFactory;
+import es.urjc.etsii.grafo.testutil.TestHelperFactory;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSerializerConfig;
 import es.urjc.etsii.grafo.testutil.TestSolution;
@@ -28,9 +28,9 @@ public class ResultsSerializerListenerTest {
 
 
     private List<SolutionGeneratedEvent<TestSolution,TestInstance>> data = Arrays.asList(
-            HelperFactory.solutionGenerated("fakeInstance", "fakeExp", "fakeAlg", 1, 2, 10, 8),
-            HelperFactory.solutionGenerated("fakeInstance2", "fakeExp2", "fakeAlg2", 2, 4, 12, 7),
-            HelperFactory.solutionGenerated("fakeInstance3", "fakeExp3", "fakeAlg3", 3, 5, 14, 6)
+            TestHelperFactory.solutionGenerated("fakeInstance", "fakeExp", "fakeAlg", 1, 2, 10, 8),
+            TestHelperFactory.solutionGenerated("fakeInstance2", "fakeExp2", "fakeAlg2", 2, 4, 12, 7),
+            TestHelperFactory.solutionGenerated("fakeInstance3", "fakeExp3", "fakeAlg3", 3, 5, 14, 6)
     );
     private ResultsSerializerListener<TestSolution, TestInstance> listener;
 
@@ -67,7 +67,7 @@ public class ResultsSerializerListenerTest {
 
     @Test
     public void checkOnExperimentEnd() {
-        this.listener.saveOnExperimentEnd(HelperFactory.experimentEnd(expName));
+        this.listener.saveOnExperimentEnd(TestHelperFactory.experimentEnd(expName));
         verify(this.serializer1, atLeastOnce()).getConfig();
         verify(this.serializer2, atLeastOnce()).getConfig();
         verify(this.serializer3, atLeastOnce()).getConfig();
@@ -79,7 +79,7 @@ public class ResultsSerializerListenerTest {
 
     @Test
     public void checkOnInstanceEnd() {
-        this.listener.saveOnInstanceEnd(HelperFactory.instanceEnd(expName));
+        this.listener.saveOnInstanceEnd(TestHelperFactory.instanceEnd(expName));
         verify(this.serializer1, atLeastOnce()).getConfig();
         verify(this.serializer2, atLeastOnce()).getConfig();
         verify(this.serializer3, atLeastOnce()).getConfig();
@@ -91,7 +91,7 @@ public class ResultsSerializerListenerTest {
 
     @Test
     public void skipIfNoResults1() {
-        this.listener.saveOnInstanceEnd(HelperFactory.instanceEnd("asdasdas"));
+        this.listener.saveOnInstanceEnd(TestHelperFactory.instanceEnd("asdasdas"));
 
         verify(this.serializer1, times(0)).serializeResults(anyList(), any());
         verify(this.serializer2, times(0)).serializeResults(anyList(), any());
@@ -100,7 +100,7 @@ public class ResultsSerializerListenerTest {
 
     @Test
     public void skipIfNoResults2() {
-        this.listener.saveOnExperimentEnd(HelperFactory.experimentEnd("asdasdas"));
+        this.listener.saveOnExperimentEnd(TestHelperFactory.experimentEnd("asdasdas"));
 
         verify(this.serializer1, times(0)).serializeResults(anyList(), any());
         verify(this.serializer2, times(0)).serializeResults(anyList(), any());
