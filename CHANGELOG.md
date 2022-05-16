@@ -6,11 +6,11 @@
 - (New) Verify move changes solution score as expected
 - (New) Option to enable/disable instance preload
 - (New) Warn if IteratedImproved appears stuck
-- (New) Added SolutionValidator to default project by default
+- (New) Added SolutionValidator to template project by default
 - (Refactor) Results Serializers: CSV, XLSX
-- (Fix) Workload hardlimit 1mk
+- (Fix) Workload hard limit 1mk
 - (Fix) Benchmark should use seed configured via properties
-- (Fix) Missing return in SimmulatedAnnealingBuilder method
+- (Fix) Missing return in SimulatedAnnealingBuilder method
 - (Fix) Export all generated solutions by default if a solution serializer is enabled instead of only best for pair (alg, instance)
 
 
