@@ -13,7 +13,7 @@ import java.util.Map;
 
 
 /**
- * Serialize raw sheet calculating all relevant data before hand. This method is extremely fast,
+ * Serialize raw sheet calculating all relevant data beforehand. This method is extremely fast,
  * but because the data is serialized after being calculated, some columns are not automatically updated if the user manually modifies
  * the raw sheet (%Dev to best, isBest value, etc).
  */

@@ -4,9 +4,12 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * This class handles the transformation of the results of the experiments to a file in a specific format.
@@ -15,16 +18,24 @@ import java.util.List;
 public abstract class ResultsSerializer<S extends Solution<S,I>, I extends Instance> {
 
     /**
+     * Reference values from previous experiments or previous works
+     */
+    protected final List<ReferenceResultProvider> referenceResultProviders;
+
+    /**
      * Serializer config
      */
     protected final AbstractResultSerializerConfig config;
 
     /**
      * Construct a result serializer given a specific configuration. {@see AbstractResultSerializerConfig.java}
-     * @param config serializer configuration
+     *
+     * @param config                   serializer configuration
+     * @param referenceResultProviders reference values, previous to this solver execution, for example SOTA values.
      */
-    public ResultsSerializer(AbstractResultSerializerConfig config) {
+    public ResultsSerializer(AbstractResultSerializerConfig config, List<ReferenceResultProvider> referenceResultProviders) {
         this.config = config;
+        this.referenceResultProviders = referenceResultProviders;
     }
 
     /**

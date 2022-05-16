@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.util;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
+@SuppressWarnings("ConstantConditions")
 public class AssertionUtilTests {
     @Test
     public void implicationTest(){

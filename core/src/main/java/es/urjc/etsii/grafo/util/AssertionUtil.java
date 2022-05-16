@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.util;
 
 /**
  * Assertion utils
- * http://www.cs.um.edu.mt/gordon.pace/Teaching/DiscreteMaths/Laws.pdf
+ * <a href="http://www.cs.um.edu.mt/gordon.pace/Teaching/DiscreteMaths/Laws.pdf">Reference</a>
  */
 public class AssertionUtil {
 

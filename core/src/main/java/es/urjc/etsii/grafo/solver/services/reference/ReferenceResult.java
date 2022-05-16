@@ -109,6 +109,22 @@ public class ReferenceResult {
     public ReferenceResult setTimeToBestInSeconds(String timeToBestInSeconds) {
         return this.setTimeToBestInSeconds(Double.parseDouble(timeToBestInSeconds));
     }
+
+    /**
+     * Get execution time in nanoseconds
+     * @return execution time in nanoseconds
+     */
+    public long getTimeInNanos(){
+        return (long)(this.timeInSeconds * 1_000_000_000);
+    }
+
+    /**
+     * Get time to best in nanoseconds
+     * @return time to best in nanoseconds
+     */
+    public long getTimeToBestInNanos(){
+        return (long)(this.timeToBestInSeconds * 1_000_000_000);
+    }
 }
 
 

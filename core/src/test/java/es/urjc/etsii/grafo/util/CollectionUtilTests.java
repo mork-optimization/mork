@@ -1,6 +1,6 @@
 package es.urjc.etsii.grafo.util;
 
-import es.urjc.etsii.grafo.testutil.HelperFactory;
+import es.urjc.etsii.grafo.testutil.TestHelperFactory;
 import es.urjc.etsii.grafo.util.random.RandomType;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -42,7 +42,7 @@ public class CollectionUtilTests {
     @Test
     public void pickRandomFromSetTest(){
         RandomType type = RandomType.LEGACY;
-        var initializeRandom = HelperFactory.getRandomManager(type, 0, 1);
+        var initializeRandom = TestHelperFactory.getRandomManager(type, 0, 1);
         var set = new HashSet<>(Arrays.asList(0, 1, 2, 3, 4, 5));
         for (int i = 0; i < 100; i++) {
             int n = CollectionUtil.pickRandom(set);
@@ -53,7 +53,7 @@ public class CollectionUtilTests {
     @Test
     public void pickRandomFromListTest(){
         RandomType type = RandomType.LEGACY;
-        var initializeRandom = HelperFactory.getRandomManager(type, 0, 1);
+        var initializeRandom = TestHelperFactory.getRandomManager(type, 0, 1);
         var list = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5));
         for (int i = 0; i < 100; i++) {
             int n = CollectionUtil.pickRandom(list);
