@@ -61,6 +61,14 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
                 log.debug(String.format("Experiment %s does not match against %s, ignoring", experimentName, experimentPattern));
             }
         }
+
+        if(this.experiments.isEmpty()){
+            if(experimentImplementations.isEmpty()){
+                log.error("No experiment definitions found. Experiments are defined by extending AbstractExperiment<S, I>, see the docs for more information.");
+            } else {
+                log.error("Experiment definitions found, but none passed filters. Verify that 'solver.experiments={}' is correct.", experimentPattern);
+            }
+        }
     }
 
     /**
