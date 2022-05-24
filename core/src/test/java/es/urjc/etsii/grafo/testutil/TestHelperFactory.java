@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.testutil;
 
+import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingEndedEvent;
@@ -8,11 +9,15 @@ import es.urjc.etsii.grafo.solver.services.reference.ReferenceResult;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.random.RandomType;
+import org.mockito.Mock;
+import org.mockito.Mockito;
 
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+
+import static org.mockito.ArgumentMatchers.anyString;
 
 public class TestHelperFactory {
     public static RandomManager getRandomManager(RandomType type, int seed, int repetitions){
@@ -70,5 +75,20 @@ public class TestHelperFactory {
                 TestHelperFactory.solutionGenerated("fakeInstance0", "fakeExp2", "fakeAlg2", 2, 4, 12, 7),
                 TestHelperFactory.solutionGenerated("fakeInstance1", "fakeExp3", "fakeAlg3", 3, 5, 14, 6)
         );
+    }
+
+    @SuppressWarnings("unchecked")
+    public static InstanceManager<TestInstance> emptyInstanceManager(){
+        InstanceManager<TestInstance> instanceManager = Mockito.mock(InstanceManager.class);
+        Mockito.when(instanceManager.getInstanceSolveOrder(anyString())).thenReturn(new ArrayList<>());
+        return instanceManager;
+    }
+
+    @SuppressWarnings("unchecked")
+    public static InstanceManager<TestInstance> simpleInstanceManager(TestInstance instance){
+        InstanceManager<TestInstance> instanceManager = Mockito.mock(InstanceManager.class);
+        Mockito.when(instanceManager.getInstanceSolveOrder(anyString())).thenReturn(List.of(instance.getId()));
+        Mockito.when(instanceManager.getInstance(instance.getId())).thenReturn(instance);
+        return instanceManager;
     }
 }

@@ -45,6 +45,6 @@ public class EventAsyncConfigurer implements AsyncConfigurer {
     @Override
     public AsyncUncaughtExceptionHandler getAsyncUncaughtExceptionHandler() {
         return (ex, method, params) ->
-                log.severe(String.format("Async listener FAILED (%s): Exception with message: %s, params: %s, exception: %s", method, ex.getMessage(), Arrays.toString(params), ex));
+                log.severe(String.format("Async listener FAILED (%s): Exception with message: %s, params: %s, location: %s", method, ex.getMessage(), Arrays.toString(params), ex.getStackTrace()[0]));
     }
 }

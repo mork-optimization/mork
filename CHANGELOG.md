@@ -1,4 +1,5 @@
 # v0.13
+- (New) Custom instance properties. See Instance::getProperty and setProperty for more info.
 - (Fix) Use reference results in all ResultSerializers instead of only when exporting to XLSX.
 
 # v0.12

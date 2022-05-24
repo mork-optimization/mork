@@ -71,7 +71,7 @@ public abstract class RawSheetWriter {
      * @param d value to write
      * @param type hints how the value should be interpreted. May or may not be honored.
      */
-    protected void writeCell(XSSFCell cell, Object d, CType type) {
+    protected static void writeCell(XSSFCell cell, Object d, CType type) {
         switch (type){
             case FORMULA:
                 if(! (d instanceof String)){

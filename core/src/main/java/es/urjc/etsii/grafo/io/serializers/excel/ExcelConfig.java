@@ -92,6 +92,11 @@ public class ExcelConfig extends AbstractResultSerializerConfig {
     private boolean columnGrandTotal = false;
 
     /**
+     * Create a new sheet with instance data
+     */
+    private boolean instanceSheetEnabled = true;
+
+    /**
      * Calculation mode, see enum for full details on each mode
      */
     private CalculationMode calculationMode = CalculationMode.AUTO;
@@ -420,5 +425,21 @@ public class ExcelConfig extends AbstractResultSerializerConfig {
      */
     public void setColumnGrandTotal(boolean columnGrandTotal) {
         this.columnGrandTotal = columnGrandTotal;
+    }
+
+    /**
+     * Should the instance sheet be created in the experiment results workbook?
+     * @return true if enabled, false if disabled
+     */
+    public boolean isInstanceSheetEnabled() {
+        return instanceSheetEnabled;
+    }
+
+    /**
+     * instanceSheetEnabled
+     * @param instanceSheetEnabled true to enable, false to disable
+     */
+    public void setInstanceSheetEnabled(boolean instanceSheetEnabled) {
+        this.instanceSheetEnabled = instanceSheetEnabled;
     }
 }

@@ -48,7 +48,7 @@ public class CSVSerializer<S extends Solution<S, I>, I extends Instance> extends
     /**
      * {@inheritDoc}
      */
-    public void _serializeResults(List<SolutionGeneratedEvent<S, I>> results, Path p) {
+    public void _serializeResults(String experimentName, List<SolutionGeneratedEvent<S, I>> results, Path p) {
         log.info("Exporting result data to CSV...");
 
         var instaceNames = new HashSet<String>();

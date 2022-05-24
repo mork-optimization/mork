@@ -51,8 +51,8 @@ public abstract class ResultsSerializer<S extends Solution<S,I>, I extends Insta
      * @param results Result data as a list of events.
      * @param p Path where results file should be written. Could be a folder depending on the serializer.
      */
-    public void serializeResults(List<SolutionGeneratedEvent<S, I>> results, Path p){
-        this._serializeResults(results, p);
+    public void serializeResults(String experimentName, List<SolutionGeneratedEvent<S, I>> results, Path p){
+        this._serializeResults(experimentName, results, p);
     }
 
     /**
@@ -61,7 +61,7 @@ public abstract class ResultsSerializer<S extends Solution<S,I>, I extends Insta
      * @param results list of results
      * @param p       path
      */
-    protected abstract void _serializeResults(List<SolutionGeneratedEvent<S, I>> results, Path p);
+    protected abstract void _serializeResults(String experimentName, List<SolutionGeneratedEvent<S, I>> results, Path p);
 
 
 }

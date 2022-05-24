@@ -1,10 +1,13 @@
 package es.urjc.etsii.grafo.io.serializers;
 
+import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelConfig;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelCustomizer;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelSerializer;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
+import es.urjc.etsii.grafo.testutil.TestHelperFactory;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.apache.poi.openxml4j.util.ZipSecureFile;
@@ -12,6 +15,8 @@ import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.mockito.Mockito;
@@ -30,13 +35,28 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 public class ExcelSerializerTest {
 
-    public ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references) {
+    @BeforeAll
+    public static void configurePOI(){
+        // In order to read the file due to the size of the pivot table
+        ZipSecureFile.setMinInflateRatio(0.001);
+    }
+
+    @BeforeEach
+    public void cleanInstance(){
+        Instance.resetProperties();
+    }
+
+    public ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references, InstanceManager<TestInstance> instanceManager) {
         var config = new ExcelConfig();
         config.setFolder(p.toFile().getAbsolutePath());
         config.setCalculationMode(ExcelConfig.CalculationMode.AUTO);
         var solverConfig = new SolverConfig();
         solverConfig.setMaximizing(true);
-        return new ExcelSerializer<>(config, solverConfig, references, customizer);
+        return new ExcelSerializer<>(config, solverConfig, references, customizer, instanceManager);
+    }
+
+    public ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references) {
+        return initExcel(customizer, p, references, TestHelperFactory.emptyInstanceManager());
     }
 
     public ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p) {
@@ -46,7 +66,7 @@ public class ExcelSerializerTest {
     public void writeEmptyExcelParameters(Path temp, List<ReferenceResultProvider> references) {
         var excel = initExcel(Optional.empty(), temp, references);
         var excelPath = temp.resolve("test.xlsx");
-        excel.serializeResults(new ArrayList<>(), excelPath);
+        excel.serializeResults("TestExperiment", new ArrayList<>(), excelPath);
 
         Assertions.assertTrue(Files.exists(excelPath));
     }
@@ -79,7 +99,7 @@ public class ExcelSerializerTest {
 
         var data = solutionGenerator();
 
-        excel.serializeResults(data, excelPath);
+        excel.serializeResults("TestExperiment", data, excelPath);
         Mockito.verify(customizer, Mockito.atLeastOnce()).customize(any());
         verifyNoMoreInteractions(customizer);
     }
@@ -91,19 +111,15 @@ public class ExcelSerializerTest {
 
         var data = solutionGenerator();
 
-        excel.serializeResults(data, excelPath);
+        excel.serializeResults("TestExperiment", data, excelPath);
 
         File excelFile = excelPath.toFile();
-        // In order to read the file due to the size of the pivot table
-        ZipSecureFile.setMinInflateRatio(0.001);
-        try (
-                FileInputStream fis = new FileInputStream(excelFile);
-        ) {
-            XSSFWorkbook myWorkBook = new XSSFWorkbook(fis);
-            XSSFSheet mySheet = myWorkBook.getSheetAt(1);
-            Iterator<Row> rowIterator = mySheet.iterator();
+        try (var workbook = new XSSFWorkbook(new FileInputStream(excelFile))) {
 
-            Assertions.assertEquals(data.size() * 2, mySheet.getPhysicalNumberOfRows() - 1); // There are headers
+            XSSFSheet rawResults = workbook.getSheetAt(1);
+            Iterator<Row> rowIterator = rawResults.iterator();
+
+            Assertions.assertEquals(data.size() * 2, rawResults.getPhysicalNumberOfRows() - 1); // There are headers
 
             while (rowIterator.hasNext()) {
                 Row row = rowIterator.next();
@@ -115,6 +131,56 @@ public class ExcelSerializerTest {
                 }
             }
         }
+    }
 
+    @Test
+    public void writeEmptyInstanceSheet(@TempDir Path temp) throws IOException {
+        var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10));
+        var excelPath = temp.resolve("emptyInstanceSheet.xlsx");
+        var data = solutionGenerator();
+        excel.serializeResults("TestExperiment", data, excelPath);
+        File excelFile = excelPath.toFile();
+
+        try (var wb = new XSSFWorkbook(new FileInputStream(excelFile))) {
+            XSSFSheet instanceSheet = wb.getSheetAt(2);
+            Iterator<Row> rowIterator = instanceSheet.iterator();
+
+            Assertions.assertTrue(rowIterator.hasNext(), "If empty there must be an explanation on the first row");
+            var explanation = rowIterator.next();
+            while (rowIterator.hasNext()) {
+                Row row = rowIterator.next();
+                Assertions.assertEquals(row.getLastCellNum(), 0);
+                // Rest should be empty
+            }
+        }
+    }
+
+    @Test
+    public void writeInstanceSheet(@TempDir Path temp) throws IOException {
+        var instance = new TestInstance("writeInstanceSheetTest");
+        instance.setProperty("customProperty", 1234567);
+        var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));
+        var excelPath = temp.resolve("instanceSheet.xlsx");
+        var data = solutionGenerator();
+        excel.serializeResults("TestExperiment", data, excelPath);
+        File excelFile = excelPath.toFile();
+
+        try (var wb = new XSSFWorkbook(new FileInputStream(excelFile))) {
+            XSSFSheet instanceSheet = wb.getSheetAt(2);
+            Iterator<Row> rowIterator = instanceSheet.iterator();
+
+            Assertions.assertTrue(rowIterator.hasNext(), "Missing headers in instance sheet");
+            var header = rowIterator.next();
+            Assertions.assertEquals(2, header.getLastCellNum(), "Two columns, instance name and property name");
+            var propertyName = header.getCell(1);
+            Assertions.assertEquals("customProperty", propertyName.getStringCellValue());
+
+            Assertions.assertTrue(rowIterator.hasNext(), "Missing values in instance sheet");
+            var firstData = rowIterator.next();
+            Assertions.assertEquals(2, header.getLastCellNum(), "Two columns, instance name and property name");
+            Assertions.assertEquals("writeInstanceSheetTest", firstData.getCell(0).getStringCellValue());
+            Assertions.assertEquals(1234567, firstData.getCell(1).getNumericCellValue());
+
+        }
     }
 }

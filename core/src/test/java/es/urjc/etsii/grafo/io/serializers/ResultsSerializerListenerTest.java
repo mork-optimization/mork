@@ -38,8 +38,9 @@ public class ResultsSerializerListenerTest {
     @BeforeEach
     public void prepareMocks(@TempDir Path temp) {
         Answer<?> answer = inv -> {
-            List<?> data = inv.getArgument(0);
-            Path p = inv.getArgument(1);
+            String experimentName = inv.getArgument(0);
+            List<?> data = inv.getArgument(1);
+            Path p = inv.getArgument(2);
             p.toFile().createNewFile();
             return null;
         };
@@ -51,15 +52,15 @@ public class ResultsSerializerListenerTest {
 
         this.serializer1 = mock(ResultsSerializer.class);
         when(this.serializer1.getConfig()).thenReturn(new TestSerializerConfig(true, Frequency.PER_INSTANCE, temp));
-        doAnswer(answer).when(this.serializer1).serializeResults(anyList(), any());
+        doAnswer(answer).when(this.serializer1).serializeResults(anyString(), anyList(), any());
 
         this.serializer2 = mock(ResultsSerializer.class);
         when(this.serializer2.getConfig()).thenReturn(new TestSerializerConfig(true, Frequency.EXPERIMENT_END, temp));
-        doAnswer(answer).when(this.serializer2).serializeResults(anyList(), any());
+        doAnswer(answer).when(this.serializer2).serializeResults(anyString(), anyList(), any());
 
         this.serializer3 = mock(ResultsSerializer.class);
         when(this.serializer3.getConfig()).thenReturn(new TestSerializerConfig(false, Frequency.EXPERIMENT_END, temp));
-        doAnswer(answer).when(this.serializer3).serializeResults(anyList(), any());
+        doAnswer(answer).when(this.serializer3).serializeResults(anyString(), anyList(), any());
 
         this.listener = new ResultsSerializerListener<>(this.eventStorage, Arrays.asList(this.serializer1, this.serializer2, this.serializer3));
     }
@@ -72,9 +73,9 @@ public class ResultsSerializerListenerTest {
         verify(this.serializer2, atLeastOnce()).getConfig();
         verify(this.serializer3, atLeastOnce()).getConfig();
 
-        verify(this.serializer1, times(0)).serializeResults(anyList(), any());
-        verify(this.serializer2, times(1)).serializeResults(anyList(), any());
-        verify(this.serializer3, times(0)).serializeResults(anyList(), any());
+        verify(this.serializer1, times(0)).serializeResults(anyString(), anyList(), any());
+        verify(this.serializer2, times(1)).serializeResults(anyString(), anyList(), any());
+        verify(this.serializer3, times(0)).serializeResults(anyString(), anyList(), any());
     }
 
     @Test
@@ -84,26 +85,26 @@ public class ResultsSerializerListenerTest {
         verify(this.serializer2, atLeastOnce()).getConfig();
         verify(this.serializer3, atLeastOnce()).getConfig();
 
-        verify(this.serializer1, times(1)).serializeResults(anyList(), any());
-        verify(this.serializer2, times(0)).serializeResults(anyList(), any());
-        verify(this.serializer3, times(0)).serializeResults(anyList(), any());
+        verify(this.serializer1, times(1)).serializeResults(anyString(), anyList(), any());
+        verify(this.serializer2, times(0)).serializeResults(anyString(), anyList(), any());
+        verify(this.serializer3, times(0)).serializeResults(anyString(), anyList(), any());
     }
 
     @Test
     public void skipIfNoResults1() {
         this.listener.saveOnInstanceEnd(TestHelperFactory.instanceEnd("asdasdas"));
 
-        verify(this.serializer1, times(0)).serializeResults(anyList(), any());
-        verify(this.serializer2, times(0)).serializeResults(anyList(), any());
-        verify(this.serializer3, times(0)).serializeResults(anyList(), any());
+        verify(this.serializer1, times(0)).serializeResults(anyString(), anyList(), any());
+        verify(this.serializer2, times(0)).serializeResults(anyString(), anyList(), any());
+        verify(this.serializer3, times(0)).serializeResults(anyString(), anyList(), any());
     }
 
     @Test
     public void skipIfNoResults2() {
         this.listener.saveOnExperimentEnd(TestHelperFactory.experimentEnd("asdasdas"));
 
-        verify(this.serializer1, times(0)).serializeResults(anyList(), any());
-        verify(this.serializer2, times(0)).serializeResults(anyList(), any());
-        verify(this.serializer3, times(0)).serializeResults(anyList(), any());
+        verify(this.serializer1, times(0)).serializeResults(anyString(), anyList(), any());
+        verify(this.serializer2, times(0)).serializeResults(anyString(), anyList(), any());
+        verify(this.serializer3, times(0)).serializeResults(anyString(), anyList(), any());
     }
 }

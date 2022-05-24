@@ -38,7 +38,7 @@ import java.util.Arrays;
  * For further information about Iterated Greedy Algorithms see:
  * Stützle T., Ruiz R. (2018) Iterated Greedy.
  * In: Martí R., Pardalos P., Resende M. (eds) Handbook of Heuristics.
- * Springer, Cham. https://doi.org/10.1007/978-3-319-07124-4_10
+ * Springer, Cham. <a href="https://doi.org/10.1007/978-3-319-07124-4_10">...</a>
  *
  * @param <S> the type of the problem solution
  * @param <I> the type of problem instances

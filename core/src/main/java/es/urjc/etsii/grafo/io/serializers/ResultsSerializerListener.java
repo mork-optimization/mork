@@ -72,7 +72,7 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
                 String filename = getFilename(config, expName, expStart);
                 Path realFile = Path.of(config.getFolder(), filename);
                 Path tempFile = Path.of(config.getFolder(), filename + TEMP_SUFFIX);
-                serializer.serializeResults(data, tempFile);
+                serializer.serializeResults(expName, data, tempFile);
                 try {
                     Files.move(tempFile, realFile, StandardCopyOption.REPLACE_EXISTING);
                 } catch (IOException e){

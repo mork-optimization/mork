@@ -121,6 +121,9 @@ serializers:
     # per_instance: Each time an instance completes all algorithms
     frequency: experiment_end
 
+    # Create a sheet detailing instance properties
+    instance-sheet-enabled: true
+
     # Show best (min or max) score in pivot table
     bestScoreEnabled: true
 

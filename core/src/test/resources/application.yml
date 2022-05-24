@@ -101,6 +101,9 @@ serializers:
     # False: Algorithms in rows, instances in columns
     algorithmsInColumns: true
 
+    # Create a sheet detailing instance properties
+    instance-sheet-enabled: true
+
     # Results folder
     folder: 'results'
 

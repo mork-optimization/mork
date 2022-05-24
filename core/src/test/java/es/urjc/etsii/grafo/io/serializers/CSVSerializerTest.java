@@ -37,7 +37,7 @@ public class CSVSerializerTest {
         char separator = ',';
         var csv = initCSV(separator, temp, providers);
         var csvPath = temp.resolve("test.csv");
-        csv.serializeResults(new ArrayList<>(), csvPath);
+        csv.serializeResults("TestExperiment", new ArrayList<>(), csvPath);
 
         Assertions.assertTrue(Files.exists(csvPath));
         String csvContent = Files.readString(csvPath);
@@ -73,7 +73,7 @@ public class CSVSerializerTest {
         var csvPath = temp.resolve("test2.csv");
         var data = solutionGenerator();
 
-        csv.serializeResults(data, csvPath);
+        csv.serializeResults("TestExperiment", data, csvPath);
         Assertions.assertTrue(Files.exists(csvPath));
         var csvContent = Files.readAllLines(csvPath);
         Assertions.assertEquals(data.size(), csvContent.size() - 1); // CSV has an extra row, the header
@@ -91,7 +91,7 @@ public class CSVSerializerTest {
         var csvPath = temp.resolve("test2.csv");
         var data = solutionGenerator();
 
-        csv.serializeResults(data, csvPath);
+        csv.serializeResults("TestExperiment", data, csvPath);
         Assertions.assertTrue(Files.exists(csvPath));
         var csvContent = Files.readAllLines(csvPath);
         Assertions.assertEquals(data.size() * 2, csvContent.size() - 1); // CSV has an extra row, there are references
