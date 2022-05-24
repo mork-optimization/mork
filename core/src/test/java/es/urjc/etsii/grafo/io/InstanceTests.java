@@ -14,6 +14,9 @@ public class InstanceTests {
         Assertions.assertThrows(IllegalArgumentException.class, () -> instance.getProperty(key));
         instance.setProperty(key, value);
         Assertions.assertEquals(value, instance.getProperty(key));
+
+        Assertions.assertThrows(IllegalArgumentException.class, () -> instance.setProperty(null, 1234));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> instance.setProperty("key", null));
     }
 
     private static class _Instance extends Instance {

@@ -72,6 +72,10 @@ public abstract class RawSheetWriter {
      * @param type hints how the value should be interpreted. May or may not be honored.
      */
     protected static void writeCell(XSSFCell cell, Object d, CType type) {
+        if(d == null){
+            cell.setBlank();
+            return;
+        }
         switch (type){
             case FORMULA:
                 if(! (d instanceof String)){
@@ -97,7 +101,7 @@ public abstract class RawSheetWriter {
                 } else if (d instanceof String) {
                     cell.setCellValue((String) d);
                 } else {
-                    throw new IllegalArgumentException("Invalid datatype");
+                    throw new IllegalArgumentException("Invalid datatype: " + d.getClass().getSimpleName());
                 }
                 break;
         }

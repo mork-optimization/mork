@@ -64,4 +64,11 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S,I>, I extends In
             }
         }
     }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "{" +
+                "config=" + config +
+                '}';
+    }
 }

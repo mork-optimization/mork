@@ -1,13 +1,13 @@
 package es.urjc.etsii.grafo.solver.executors;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.experiment.Experiment;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.services.IOManager;
-import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solver.services.SolutionValidator;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.types.AlgorithmProcessingEndedEvent;
@@ -89,9 +89,9 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
         // Simulate sequential execution to trigger all events in correct order
         // K: Instance name --> V: List of WorkUnits
         for(var e: futures.entrySet()){
-            var instanceName = e.getKey();
-            long instanceStartTime = System.nanoTime();
-            var referenceValue = getOptionalReferenceValue(this.referenceResultProviders, instanceName);
+            var instancePath = e.getKey();
+            var instanceName = instanceName(instancePath);            long instanceStartTime = System.nanoTime();
+            var referenceValue = getOptionalReferenceValue(instanceName);
             events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
             logger.info("Running algorithms for instance: " + instanceName);
 

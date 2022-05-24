@@ -30,4 +30,11 @@ public class JSONConfig extends AbstractSerializerConfig {
     public void setPretty(boolean pretty) {
         this.pretty = pretty;
     }
+
+    @Override
+    public String toString() {
+        return "{" +
+                "pretty=" + pretty +
+                '}';
+    }
 }

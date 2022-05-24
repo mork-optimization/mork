@@ -1,5 +1,7 @@
 # v0.13
 - (New) Custom instance properties. See Instance::getProperty and setProperty for more info.
+- (New) Improved logging, lot less noise
+- (Fix) ExcelSerializer: If a value to write is null then write empty cell instead of failing
 - (Fix) Use reference results in all ResultSerializers instead of only when exporting to XLSX.
 
 # v0.12

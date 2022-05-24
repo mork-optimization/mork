@@ -91,6 +91,13 @@ public abstract class Instance implements Comparable<Instance>{
      * @param property Property value.
      */
     public void setProperty(String key, Object property){
+        if(key == null){
+            throw new IllegalArgumentException("Null property key");
+        }
+        if(property == null){
+            throw new IllegalArgumentException("Null property value");
+        }
+
         Instance.uniqueProperties.add(key);
         this.properties.put(key, property);
     }

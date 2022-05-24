@@ -15,8 +15,10 @@ import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
+import java.io.File;
 import java.util.*;
 import java.util.logging.Logger;
+import java.util.regex.Pattern;
 
 /**
  * Processes work units
@@ -114,7 +116,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
         log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() +1, r.executionTime() / 1_000_000_000D, r.timeToTarget() / 1000_000_000D, r.solution()));
     }
 
-    protected Optional<Double> getOptionalReferenceValue(List<ReferenceResultProvider> provider, String instanceName){
+    protected Optional<Double> getOptionalReferenceValue(String instanceName){
         double best = this.solverConfig.isMaximizing()? Double.MIN_VALUE: Double.MAX_VALUE;
         for(var r: referenceResultProviders){
             double score = r.getValueFor(instanceName).getScoreOrNan();
@@ -157,5 +159,11 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
             workUnits.put(instancePath, algWorkUnits);
         }
         return workUnits;
+    }
+
+    public static String instanceName(String instancePath){
+        // TODO: review and improve
+        String[] parts = instancePath.split(Pattern.quote(File.separator));
+        return parts[parts.length - 1];
     }
 }
