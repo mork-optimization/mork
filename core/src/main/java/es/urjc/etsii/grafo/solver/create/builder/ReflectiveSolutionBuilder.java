@@ -1,7 +1,9 @@
 package es.urjc.etsii.grafo.solver.create.builder;
 
+import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.springframework.beans.factory.config.BeanDefinition;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AssignableTypeFilter;
@@ -68,6 +70,7 @@ public class ReflectiveSolutionBuilder<S extends Solution<S,I>,I extends Instanc
         var provider = new ClassPathScanningCandidateComponentProvider(false);
         provider.addIncludeFilter(new AssignableTypeFilter(Solution.class));
 
+        // TODO fix hardcoded package, user classes canbe in another package, Mork.class knows which one
         Set<BeanDefinition> allComponentes = provider.findCandidateComponents("es/urjc/etsii");
         Set<Class<S>> solutionImplementations = new HashSet<>();
 
@@ -75,7 +78,9 @@ public class ReflectiveSolutionBuilder<S extends Solution<S,I>,I extends Instanc
         {
             try {
                 Class<S> cls = (Class<S>) Class.forName(component.getBeanClassName());
-                solutionImplementations.add(cls);
+                if(!cls.getName().equals(TestSolution.class.getName())){
+                    solutionImplementations.add(cls);
+                }
             } catch (ClassNotFoundException e) {
                 throw new RuntimeException(e);
             }

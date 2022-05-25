@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
-import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
-import es.urjc.etsii.grafo.solver.services.events.AbstractEventStorage;
+import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**

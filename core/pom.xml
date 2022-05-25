@@ -61,6 +61,12 @@
 
     <dependencies>
         <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>mork-common</artifactId>
+            <version>0.13-SNAPSHOT</version>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
         </dependency>
@@ -127,13 +133,6 @@
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
             <version>3.0.6</version>
-        </dependency>
-
-        <!-- BenchmarkUtil Tool -->
-        <dependency>
-            <groupId>es.urjc.etsii.grafo</groupId>
-            <artifactId>scimark</artifactId>
-            <version>2.1.1</version>
         </dependency>
 
         <!-- Telegram integration -->

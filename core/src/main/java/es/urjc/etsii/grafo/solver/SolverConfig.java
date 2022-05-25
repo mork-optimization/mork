@@ -4,8 +4,6 @@ import es.urjc.etsii.grafo.util.random.RandomType;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
-import java.util.logging.Logger;
-
 /**
  * Configuration file based on application.yml file.
  * {@see application.yml}

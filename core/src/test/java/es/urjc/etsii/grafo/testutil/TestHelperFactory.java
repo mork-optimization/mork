@@ -1,15 +1,11 @@
 package es.urjc.etsii.grafo.testutil;
 
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResult;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
-import es.urjc.etsii.grafo.util.random.RandomManager;
-import es.urjc.etsii.grafo.util.random.RandomType;
-import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;
@@ -20,16 +16,6 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.anyString;
 
 public class TestHelperFactory {
-    public static RandomManager getRandomManager(RandomType type, int seed, int repetitions){
-        SolverConfig solverConfig = new SolverConfig();
-        solverConfig.setSeed(seed);
-        solverConfig.setRepetitions(repetitions);
-        solverConfig.setRandomType(type);
-        RandomManager r = new RandomManager(solverConfig);
-        RandomManager.reinitialize(type, seed, repetitions);
-        RandomManager.reset(0);
-        return r;
-    }
     public static SolutionGeneratedEvent<TestSolution, TestInstance> solutionGenerated(String instanceName, String expName, String algName, int iter, double score, long time, long ttb){
         var solution = new TestSolution(new TestInstance(instanceName), score);
         var algorithm = new TestAlgorithm(algName);

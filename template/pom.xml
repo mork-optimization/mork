@@ -20,6 +20,11 @@
             <artifactId>mork</artifactId>
             <version>0.13-SNAPSHOT</version>
         </dependency>
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>mork-common</artifactId>
+            <version>0.13-SNAPSHOT</version>
+        </dependency>
     </dependencies>
     
     <build>

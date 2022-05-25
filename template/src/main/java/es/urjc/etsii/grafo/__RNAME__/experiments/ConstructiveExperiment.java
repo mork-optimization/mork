@@ -5,10 +5,10 @@ import es.urjc.etsii.grafo.__RNAME__.constructives.grasp.__RNAME__ListManager;
 import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Instance;
 import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
-import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
-import es.urjc.etsii.grafo.solver.algorithms.SimpleAlgorithm;
-import es.urjc.etsii.grafo.solver.create.grasp.GreedyRandomGRASPConstructive;
-import es.urjc.etsii.grafo.solver.create.grasp.RandomGreedyGRASPConstructive;
+import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
+import es.urjc.etsii.grafo.create.grasp.GreedyRandomGRASPConstructive;
+import es.urjc.etsii.grafo.create.grasp.RandomGreedyGRASPConstructive;
 import es.urjc.etsii.grafo.solver.services.AbstractExperiment;
 
 import java.util.ArrayList;
