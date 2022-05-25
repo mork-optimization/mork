@@ -28,7 +28,7 @@ public abstract class IteratedImprover<S extends Solution<S,I>,I extends Instanc
             log.debug("Executing iteration {} for {}", rounds, this.getClass().getSimpleName());
             rounds++;
             if(rounds == WARN_LIMIT){
-                log.warn("Too many iterations, soft limit of {} passed, maybe stuck in an infinite loop?", WARN_LIMIT);
+                log.warn("Too many iterations, soft limit of {} passed, maybe {} is stuck in an infinite loop?", WARN_LIMIT, this.getClass().getSimpleName());
             }
         }
         log.debug("Improvement ended. {} executed {} iterations.", this.getClass().getSimpleName(), rounds);
