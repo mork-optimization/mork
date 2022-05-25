@@ -26,7 +26,9 @@ public class BannerProvider implements Banner {
                 " | | |  | |  | | (_) | |  |   <   | | |\n" +
                 " | | |  |_|  |_|\\___/|_|  |_|\\_\\  | | |\n" +
                 "  \\_\\_\\ ________________________ /_/_/\n" +
-                "                        Version: " + Mork.class.getPackage().getImplementationVersion();
+                "                        Version: " + Mork.class.getPackage().getImplementationVersion() + "\n" +
+                "                        Launched by: " + sourceClass.getName();
+
         out.println(banner);
     }
 }

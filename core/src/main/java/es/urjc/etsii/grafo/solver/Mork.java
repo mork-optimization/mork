@@ -2,7 +2,6 @@ package es.urjc.etsii.grafo.solver;
 
 import es.urjc.etsii.grafo.solver.services.BannerProvider;
 import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
-import org.slf4j.LoggerFactory;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
@@ -14,7 +13,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
  */
 @SpringBootApplication
 @EnableAsync
-@ComponentScan(basePackages = "es.urjc.etsii", includeFilters = @ComponentScan.Filter(InheritedComponent.class))
+@ComponentScan(basePackages = "${advanced.scan-pkgs:es.urjc.etsii}", includeFilters = @ComponentScan.Filter(InheritedComponent.class))
 public class Mork {
 
     /**
@@ -23,10 +22,23 @@ public class Mork {
      * @param args program arguments
      */
     public static void start(String[] args) {
+        Mork.start(null, args);
+    }
+
+    public static void start(String pkgRoot, String[] args){
+        configurePackageScanning(pkgRoot);
+        configureLogging();
         SpringApplication application = new SpringApplication(Mork.class);
         application.setBanner(new BannerProvider());
-        configureLogging();
         application.run(args);
+    }
+
+    private static void configurePackageScanning(String pkgRoot){
+        String pkgs = "es.urjc.etsii";
+        if(pkgRoot != null){
+            pkgs += "," + pkgRoot;
+        }
+        System.setProperty("advanced.scan-pkgs", pkgs);
     }
 
     private static void configureLogging(){

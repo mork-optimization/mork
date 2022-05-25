@@ -13,7 +13,7 @@ import java.util.Map;
 public class InstanceConfiguration {
     private Map<String, String> path;
 
-    private boolean preload;
+    private boolean preload = true;
 
     /**
      * Set instances folder for each experiment
