@@ -11,6 +11,8 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import java.util.List;
 import java.util.Map;
 
+import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
+
 
 /**
  * Serialize raw sheet calculating all relevant data beforehand. This method is extremely fast,
@@ -55,8 +57,8 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
             data[i][RawSheetCol.ALG_NAME.getIndex()] = r.getAlgorithmName();
             data[i][RawSheetCol.ITERATION.getIndex()] = r.getIteration();
             data[i][RawSheetCol.SCORE.getIndex()] = r.getScore();
-            data[i][RawSheetCol.TOTAL_TIME.getIndex()] = nanoToSecs(r.getExecutionTime());
-            data[i][RawSheetCol.TTB.getIndex()] = nanoToSecs(r.getTimeToBest());
+            data[i][RawSheetCol.TOTAL_TIME.getIndex()] = nanosToSecs(r.getExecutionTime());
+            data[i][RawSheetCol.TTB.getIndex()] = nanosToSecs(r.getTimeToBest());
             data[i][RawSheetCol.IS_BEST_KNOWN.getIndex()] = isBest ? 1 : 0;
             data[i][RawSheetCol.DEV_TO_BEST.getIndex()] = getPercentageDevToBest(r.getScore(), bestValueForInstance);
         }

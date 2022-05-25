@@ -6,6 +6,8 @@ import es.urjc.etsii.grafo.solver.services.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
 
+import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
+
 /**
  * Sends telegram messages on certain MorkEvents
  */
@@ -31,7 +33,7 @@ public class TelegramEventListener extends AbstractEventListener {
     @MorkEventListener
     public void onExperimentEnd(ExperimentEndedEvent event) {
         if (!telegramService.ready()) return;
-        telegramService.sendMessage(String.format("Experiment %s ended. Execution time: %s seconds", event.getExperimentName(), event.getExecutionTime() / 1_000_000_000));
+        telegramService.sendMessage(String.format("Experiment %s ended. Execution time: %s seconds", event.getExperimentName(), nanosToSecs(event.getExecutionTime())));
     }
 
     /**

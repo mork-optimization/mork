@@ -9,6 +9,7 @@ import org.apache.poi.xssf.usermodel.XSSFSheet;
 import java.util.List;
 import java.util.Map;
 
+import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 import static org.apache.poi.ss.util.CellReference.convertNumToColString;
 
 /**
@@ -52,8 +53,8 @@ public class ExcelCalculatedRawSheetWriter extends RawSheetWriter {
             data[i][RawSheetCol.ALG_NAME.getIndex()] = r.getAlgorithmName();
             data[i][RawSheetCol.ITERATION.getIndex()] = r.getIteration();
             data[i][RawSheetCol.SCORE.getIndex()] = r.getScore();
-            data[i][RawSheetCol.TOTAL_TIME.getIndex()] = nanoToSecs(r.getExecutionTime());
-            data[i][RawSheetCol.TTB.getIndex()] = nanoToSecs(r.getTimeToBest());
+            data[i][RawSheetCol.TOTAL_TIME.getIndex()] = nanosToSecs(r.getExecutionTime());
+            data[i][RawSheetCol.TTB.getIndex()] = nanosToSecs(r.getTimeToBest());
             int excelRowIndex = i + 1; // Current row +1 because Excel starts indexing rows on 1.
 //          // Example: =IF(D2=L2,1,0) with L2 best known for instance and D2 current score
             data[i][RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getIndex()] = String.format("%s(IF(%3$s:%3$s=%3$s%4$s,%2$s:%2$s))·%5$s%4$s", maximizing ? "MAX" : "MIN", RawSheetCol.SCORE.getExcelColIndex(),  RawSheetCol.INSTANCE_NAME.getExcelColIndex(), excelRowIndex, RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex());

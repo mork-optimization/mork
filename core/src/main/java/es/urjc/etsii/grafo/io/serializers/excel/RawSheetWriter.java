@@ -30,16 +30,6 @@ public abstract class RawSheetWriter {
     public abstract AreaReference fillRawSheet(XSSFSheet rawSheet, boolean maximizing, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders);
 
     /**
-     * Convert nanoseconds to seconds
-     *
-     * @param nanos nanoseconds
-     * @return seconds as a double value
-     */
-    protected static double nanoToSecs(long nanos) {
-        return nanos / (double) 1_000_000_000;
-    }
-
-    /**
      * Transform NaNs and other special double values to valid values in Excel
      *
      * @param maximizing true if this is a maximizing problem, false otherwise

@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.solver.services.reference;
 
 import java.util.Optional;
 
+import static es.urjc.etsii.grafo.util.TimeUtil.secsToNanos;
+
 /**
  * Reference result for an instance
  */
@@ -115,7 +117,7 @@ public class ReferenceResult {
      * @return execution time in nanoseconds
      */
     public long getTimeInNanos(){
-        return (long)(this.timeInSeconds * 1_000_000_000);
+        return secsToNanos(this.timeInSeconds);
     }
 
     /**
@@ -123,7 +125,7 @@ public class ReferenceResult {
      * @return time to best in nanoseconds
      */
     public long getTimeToBestInNanos(){
-        return (long)(this.timeToBestInSeconds * 1_000_000_000);
+        return secsToNanos(this.timeToBestInSeconds);
     }
 }
 

@@ -28,6 +28,7 @@ import java.nio.file.Path;
 import java.util.*;
 
 import static es.urjc.etsii.grafo.util.IOUtil.*;
+import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 
 /**
  * <p>IraceOrchestrator class.</p>
@@ -89,7 +90,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         } finally {
             long totalExecutionTime = System.nanoTime() - startTime;
             EventPublisher.getInstance().publishEvent(new ExecutionEndedEvent(totalExecutionTime));
-            log.info(String.format("Total execution time: %s (s)", totalExecutionTime / 1_000_000_000));
+            log.info(String.format("Total execution time: %s (s)", nanosToSecs(totalExecutionTime)));
         }
     }
 

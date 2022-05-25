@@ -20,6 +20,8 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.regex.Pattern;
 
+import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
+
 /**
  * Processes work units
  *
@@ -40,9 +42,9 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Fill common values used by all executors
-     *  @param validator solution validator if available
+     * @param validator solution validator if available
      * @param io IO manager
-     * @param referenceResultProviders
+     * @param referenceResultProviders list of all reference value providers implementations
      */
     protected Executor(
             Optional<SolutionValidator<S, I>> validator,
@@ -113,7 +115,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     protected void processWorkUnitResult(WorkUnitResult<S,I> r){
         io.exportSolution(r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution(), r.workUnit().i());
         EventPublisher.getInstance().publishEvent(new SolutionGeneratedEvent<>(r.workUnit().i(), r.solution(), r.workUnit().experimentName(), r.workUnit().algorithm(), r.executionTime(), r.timeToTarget()));
-        log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() +1, r.executionTime() / 1_000_000_000D, r.timeToTarget() / 1000_000_000D, r.solution()));
+        log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() + 1, nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
     }
 
     protected Optional<Double> getOptionalReferenceValue(String instanceName){

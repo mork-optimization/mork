@@ -10,7 +10,7 @@ import java.util.*;
 
 /**
  * Dinic's algorithm for the maxflow problem.
- * See https://www.geeksforgeeks.org/dinics-algorithm-maximum-flow/
+ * See <a href="https://www.geeksforgeeks.org/dinics-algorithm-maximum-flow/">...</a>
  */
 public class Dinic {
 

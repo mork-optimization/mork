@@ -3,6 +3,7 @@
 - (New) Improved logging, lot less noise
 - (New) Instance preload by default, set solve order by default to instance path, override by implementing Instance::compareTo.
 - (New) Root package name can be optionally customized
+- (New) TimeUtil class
 - (Fix) ExcelSerializer: If a value to write is null then write empty cell instead of failing
 - (Fix) Use reference results in all ResultSerializers instead of only when exporting to XLSX.
 

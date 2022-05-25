@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.logging.Logger;
 
+import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
+
 /**
  * <p>Orchestrator class.</p>
  */
@@ -92,7 +94,7 @@ public class Orchestrator<S extends Solution<S, I>, I extends Instance> extends 
             executor.shutdown();
             long totalExecutionTime = System.nanoTime() - startTime;
             EventPublisher.getInstance().publishEvent(new ExecutionEndedEvent(totalExecutionTime));
-            log.info(String.format("Total execution time: %s (s)", totalExecutionTime / 1_000_000_000));
+            log.info(String.format("Total execution time: %s (s)", nanosToSecs(totalExecutionTime)));
         }
     }
 
