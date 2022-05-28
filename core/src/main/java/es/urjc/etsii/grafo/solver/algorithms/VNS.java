@@ -118,12 +118,12 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
         int currentKIndex = 0;
         // While stop not request OR k in range. k check is done and breaks inside loop
         while (!Global.stop()) {
-            int currentK = kProvider.getK(instance, currentKIndex);
-            if (currentK == KProvider.STOPNOW) {
+            currentKIndex = kProvider.getK(instance, currentKIndex);
+            if (currentKIndex == KProvider.STOPNOW) {
                 printStatus(currentKIndex + ":STOPNOW", solution);
                 break;
             }
-            printStatus(currentKIndex + ":" + currentK, solution);
+            printStatus(currentKIndex, solution);
             S bestSolution = solution;
 
             for (var shake : shakes) {
@@ -134,9 +134,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
                     bestSolution = copy;
                 }
             }
-            if (bestSolution == solution) {  //
-                currentKIndex++;             //
-            } else {                         //  Neighborhood change
+            if (bestSolution != solution) {  //  Neighborhood change
                 solution = bestSolution;     //  procedure
                 currentKIndex = 0;           //
             }                                //
