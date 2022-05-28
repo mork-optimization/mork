@@ -128,8 +128,8 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
 
             for (var shake : shakes) {
                 S copy = bestSolution.cloneSolution();
-                copy = shake.shake(copy, currentK);    // Shake procedure
-                copy = localSearch(copy);              // Improvement procedure
+                copy = shake.shake(copy, currentKIndex); // Shake procedure
+                copy = localSearch(copy);                // Improvement procedure
                 if (copy.isBetterThan(bestSolution)) {
                     bestSolution = copy;
                 }
