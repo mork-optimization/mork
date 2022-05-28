@@ -123,7 +123,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
                 printStatus(currentKIndex + ":STOPNOW", solution);
                 break;
             }
-            printStatus(currentKIndex, solution);
+            printStatus(""+currentKIndex, solution);
             S bestSolution = solution;
 
             for (var shake : shakes) {
