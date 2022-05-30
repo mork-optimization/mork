@@ -1,6 +1,6 @@
 package es.urjc.etsii.grafo.solver.services.reference;
 
-import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
+import es.urjc.etsii.grafo.annotations.InheritedComponent;
 
 /**
  * If implemented, used when comparing experiment results

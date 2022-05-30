@@ -1,6 +1,6 @@
 package es.urjc.etsii.grafo.solver.services.events.types;
 
-import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.Algorithm;
 
 import java.util.List;
 import java.util.Optional;

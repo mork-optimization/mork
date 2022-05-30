@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.TSP.algorithms.constructives;
 
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
-import es.urjc.etsii.grafo.solver.create.Constructive;
+import es.urjc.etsii.grafo.create.Constructive;
 
 public class TSPRandomConstructive extends Constructive<TSPSolution, TSPInstance> {
 

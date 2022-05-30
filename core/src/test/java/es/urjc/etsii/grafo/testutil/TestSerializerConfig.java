@@ -5,7 +5,7 @@ import es.urjc.etsii.grafo.io.serializers.AbstractResultSerializerConfig;
 import java.nio.file.Path;
 
 public class TestSerializerConfig extends AbstractResultSerializerConfig {
-    public TestSerializerConfig(boolean enabled, Frequency frequency, Path p) {
+    public TestSerializerConfig(boolean enabled, AbstractResultSerializerConfig.Frequency frequency, Path p) {
         this.setEnabled(enabled);
         this.setFrequency(frequency);
         this.setFolder(p.toFile().getAbsolutePath());
