@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.io.serializers;
 
-import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelConfig;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelCustomizer;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelSerializer;

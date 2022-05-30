@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.solver.services;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solver.annotations.InheritedComponent;
+import es.urjc.etsii.grafo.annotations.InheritedComponent;
 
 /**
  * Solution validator: If implemented, validates the generated solutions from different algorithms

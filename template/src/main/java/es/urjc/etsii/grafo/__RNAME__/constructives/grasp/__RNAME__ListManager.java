@@ -2,8 +2,8 @@ package es.urjc.etsii.grafo.__RNAME__.constructives.grasp;
 
 import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Instance;
 import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Solution;
+import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
 import es.urjc.etsii.grafo.solution.EagerMove;
-import es.urjc.etsii.grafo.solver.create.grasp.GRASPListManager;
 
 import java.util.ArrayList;
 import java.util.List;

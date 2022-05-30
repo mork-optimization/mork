@@ -11,6 +11,7 @@
         <module>core</module>
         <module>template</module>
         <module>example-tsp</module>
+        <module>common</module>
     </modules>
 
     <licenses>

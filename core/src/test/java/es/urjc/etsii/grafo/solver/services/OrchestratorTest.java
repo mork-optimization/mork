@@ -1,10 +1,10 @@
 package es.urjc.etsii.grafo.solver.services;
 
 import es.urjc.etsii.grafo.solver.SolverConfig;
-import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
-import es.urjc.etsii.grafo.solver.algorithms.NoOp;
-import es.urjc.etsii.grafo.solver.algorithms.SimpleAlgorithm;
-import es.urjc.etsii.grafo.solver.exception.ResourceLimitException;
+import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.NoOp;
+import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
+import es.urjc.etsii.grafo.exception.ResourceLimitException;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;

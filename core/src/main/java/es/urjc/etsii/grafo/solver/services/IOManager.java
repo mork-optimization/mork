@@ -6,7 +6,7 @@ import es.urjc.etsii.grafo.ErrorConfig;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solver.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.Algorithm;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
