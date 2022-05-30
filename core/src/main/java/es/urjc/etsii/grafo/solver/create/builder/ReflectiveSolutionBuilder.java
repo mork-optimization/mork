@@ -27,7 +27,7 @@ public class ReflectiveSolutionBuilder<S extends Solution<S,I>,I extends Instanc
      * <p>Constructor for ReflectiveSolutionBuilder.</p>
      */
     public ReflectiveSolutionBuilder() {
-        Set<Class<S>> set = findSolutionCandidates();
+        Set<Class<S>> set = findSolutionCandidates(getPkgsToScan());
         if(set.isEmpty()){
             throw new RuntimeException("Cannot find any Solution implementation");
         }
@@ -66,12 +66,19 @@ public class ReflectiveSolutionBuilder<S extends Solution<S,I>,I extends Instanc
         }
     }
 
-    private Set<Class<S>> findSolutionCandidates(){
+    private String[] getPkgsToScan(){
+        var pkgs = System.getProperty("advanced.scan-pkgs", "es.urjc.etsii");
+        return pkgs.split(",");
+    }
+
+    private Set<Class<S>> findSolutionCandidates(String[] pkgs){
         var provider = new ClassPathScanningCandidateComponentProvider(false);
         provider.addIncludeFilter(new AssignableTypeFilter(Solution.class));
 
-        // TODO fix hardcoded package, user classes canbe in another package, Mork.class knows which one
-        Set<BeanDefinition> allComponentes = provider.findCandidateComponents("es/urjc/etsii");
+        Set<BeanDefinition> allComponentes = new HashSet<>();
+        for(var pkg: pkgs){
+            allComponentes.addAll(provider.findCandidateComponents(pkg.replace(".", "/")));
+        }
         Set<Class<S>> solutionImplementations = new HashSet<>();
 
         for (BeanDefinition component : allComponentes)
