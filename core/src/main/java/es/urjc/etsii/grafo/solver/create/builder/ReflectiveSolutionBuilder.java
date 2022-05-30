@@ -15,33 +15,34 @@ import java.util.Set;
 
 /**
  * <p>ReflectiveSolutionBuilder class.</p>
- *
  */
 @SuppressWarnings("unchecked")
-public class ReflectiveSolutionBuilder<S extends Solution<S,I>,I extends Instance> extends SolutionBuilder<S, I> {
+public class ReflectiveSolutionBuilder<S extends Solution<S, I>, I extends Instance> extends SolutionBuilder<S, I> {
 
     private final Class<S> solClass;
-    private  Constructor<S> constructor;
+    private Constructor<S> constructor;
 
     /**
      * <p>Constructor for ReflectiveSolutionBuilder.</p>
      */
     public ReflectiveSolutionBuilder() {
         Set<Class<S>> set = findSolutionCandidates(getPkgsToScan());
-        if(set.isEmpty()){
+        if (set.isEmpty()) {
             throw new RuntimeException("Cannot find any Solution implementation");
         }
-        if(set.size() > 1){
+        if (set.size() > 1) {
             throw new RuntimeException("Found multiple Solution<S,I> implementations, provide only one or implement your own SolutionBuilder");
         }
 
         solClass = (Class<S>) set.toArray()[0];
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public S initializeSolution(I i) {
-        if(constructor == null){
+        if (constructor == null) {
             initializeConstructorReference(i);
         }
         try {
@@ -54,10 +55,11 @@ public class ReflectiveSolutionBuilder<S extends Solution<S,I>,I extends Instanc
     /**
      * Get correct constructor reference and cache it.
      * This method can be called by several threads at the same time
+     *
      * @param i Instance class, get constructor by correct type
      */
     private synchronized void initializeConstructorReference(I i) {
-        if(constructor != null) return;
+        if (constructor != null) return;
 
         try {
             constructor = this.solClass.getConstructor(i.getClass());
@@ -66,26 +68,26 @@ public class ReflectiveSolutionBuilder<S extends Solution<S,I>,I extends Instanc
         }
     }
 
-    private String[] getPkgsToScan(){
+    private String[] getPkgsToScan() {
         var pkgs = System.getProperty("advanced.scan-pkgs", "es.urjc.etsii");
         return pkgs.split(",");
     }
 
-    private Set<Class<S>> findSolutionCandidates(String[] pkgs){
+    private Set<Class<S>> findSolutionCandidates(String[] pkgs) {
         var provider = new ClassPathScanningCandidateComponentProvider(false);
         provider.addIncludeFilter(new AssignableTypeFilter(Solution.class));
 
         Set<BeanDefinition> allComponentes = new HashSet<>();
-        for(var pkg: pkgs){
+        for (var pkg : pkgs) {
             allComponentes.addAll(provider.findCandidateComponents(pkg.replace(".", "/")));
         }
         Set<Class<S>> solutionImplementations = new HashSet<>();
 
-        for (BeanDefinition component : allComponentes)
-        {
+        for (BeanDefinition component : allComponentes) {
             try {
                 Class<S> cls = (Class<S>) Class.forName(component.getBeanClassName());
-                if(!cls.getName().equals(TestSolution.class.getName())){
+                if (!TestSolution.class.isAssignableFrom(cls)) {
+                    // Skip test implementations
                     solutionImplementations.add(cls);
                 }
             } catch (ClassNotFoundException e) {
