@@ -153,18 +153,18 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
 
             for (var shake : shakes) {
                 S copy = bestSolution.cloneSolution();
-                copy = shake.shake(copy, userK);    // Shake procedure
-                copy = localSearch(copy);              // Improvement procedure
+                copy = shake.shake(copy, userK);
+                copy = localSearch(copy);
                 if (copy.isBetterThan(bestSolution)) {
                     bestSolution = copy;
                 }
             }
-            if (bestSolution == solution) {  //
-                internalK++;             //
-            } else {                         //  Neighborhood change
-                solution = bestSolution;     //  procedure
-                internalK = 0;           //
-            }                                //
+            if (bestSolution == solution) {
+                internalK++;
+            } else {
+                solution = bestSolution;
+                internalK = 0;
+            }
         }
         return solution;
     }
