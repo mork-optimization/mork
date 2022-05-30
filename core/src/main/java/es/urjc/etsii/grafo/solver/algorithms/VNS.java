@@ -20,17 +20,19 @@ import java.util.logging.Logger;
  * <p>
  * Algorithmic outline of the simplest version of VNS
  * <p>
+ * <pre>
  * s = GenerateInitialSolution
  * while (Termination criteria is not met){
- * k = 1
- * while (k != kmax){
- * s' = Shake(s,k)
- * s'' = Improve (s')
- * NeighborhoodChange(s,s'',k)
+ *      k = 1
+ *      while (k != kmax){
+ *          s' = Shake(s,k)
+ *          s'' = Improve (s')
+ *          NeighborhoodChange(s,s'',k)
+ *      }
  * }
- * }
+ * </pre>
  * <p>
- * Further information can ben found in:
+ * More information can be found in:
  * Hansen P., Mladenović N. (2018) Variable Neighborhood Search.
  * In: Martí R., Pardalos P., Resende M. (eds) Handbook of Heuristics.
  * Springer, Cham. <a href="https://doi.org/10.1007/978-3-319-07124-4_19">...</a>
@@ -65,7 +67,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * Execute VNS until finished
      *
      * @param algorithmName Algorithm name, example: "VNSWithRandomConstructive"
-     * @param kMapper     k value provider, @see VNS.KMapper
+     * @param kMapper       k value provider, @see VNS.KMapper
      * @param shake         Perturbation method
      * @param constructive  Constructive method
      * @param improvers     List of improvers/local searches
@@ -99,7 +101,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * Execute VNS until finished
      *
      * @param algorithmName Algorithm name, example: "VNSWithRandomConstructive"
-     * @param kMapper     k value provider, @see VNS.KMapper
+     * @param kMapper       k value provider, @see VNS.KMapper
      * @param shakes        Perturbation method
      * @param constructive  Constructive method
      * @param improvers     List of improvers/local searches
@@ -118,13 +120,16 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
 
     /**
      * VNS algorithm. This procedure follows this schema:
-     * s = GenerateInitial solution
-     * k = 1
-     * while (k != kmax){
-     * s' = Shake(s,k)
-     * s'' = Improve (s')
-     * NeighborhoodChange(s,s'',k)
-     * }
+     * <pre>
+     *     s = GenerateInitial solution
+     *     k = 1
+     *     while (k != kmax){
+     *     s' = Shake(s,k)
+     *     s'' = Improve (s')
+     *     NeighborhoodChange(s,s'',k)
+     *     }
+     * </pre>
+     * <p>
      * To run the VNS procedure multiples time consider use MultiStart algorithm class {@see es.urjc.etsii.grafo.solver.algorithms.multistart.MultiStartAlgorithm}
      *
      * @param instance Instance to solve
@@ -167,7 +172,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
     /**
      * Improving method. Given a solution, this method execute sequentially the improvement procedures.
      *
-     * @param solution initial solution  of the procedure
+     * @param solution initial solution of the procedure
      * @return the improved solution
      */
     private S localSearch(S solution) {
@@ -179,25 +184,30 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
 
     /**
      * Print the current status of the VNS procedure, i.e., the current iteration the best solution.
+     *
      * @param phase current state of the vns procedure
-     * @param s solution
+     * @param s     solution
      */
     private void printStatus(String phase, S s) {
         log.fine(String.format("%s: \t%s", phase, s));
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
         return "VNS{" +
                 "improvers=" + improvers +
                 ", constructive=" + constructive +
                 ", shakes=" + shakes +
-                ", kprov=" + kMapper +
+                ", kmap=" + kMapper +
                 '}';
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String getShortName() {
         return this.algorithmName;
@@ -227,15 +237,17 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
          * 3 —> 15
          * etc.
          * </pre>
-
          *
-         * @param solution Current instance, provided as a parameter so K can be adapted or scaled to instance size.
-         * @param originalK   Current k strength. Starts in 0 and increments by 1 each time the solution does not improve.
+         * @param solution  Current instance, provided as a parameter so K can be adapted or scaled to instance size.
+         * @param originalK Current k strength. Starts in 0 and increments by 1 each time the solution does not improve.
          * @return K value to use. Return KMapper.STOPNOW to stop when the VNS should terminate
          */
         int mapK(S solution, int originalK);
     }
 
+    /**
+     * Default KMapper, maps identity, stops when k = 5
+     */
     private static final KMapper DEFAULT_KMAPPER = (solution, originalK) -> originalK >= 5 ? KMapper.STOPNOW : originalK;
 
 }
