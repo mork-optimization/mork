@@ -9,7 +9,7 @@ import es.urjc.etsii.grafo.solution.Solution;
  * An example use case is in IteratedGreedy and similar algorithms, applied after the destruction phase.
  * If your method does not work if the solution given as a parameter can be partially built, do NOT extend this class,
  * and use Constructive instead.
- * @see es.urjc.etsii.grafo.solver.create.Constructive
+ * @see es.urjc.etsii.grafo.create.Constructive
  * @param <S> Solution class
  * @param <I> Instance class
  */

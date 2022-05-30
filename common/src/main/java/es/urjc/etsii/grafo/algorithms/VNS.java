@@ -19,7 +19,7 @@ import java.util.logging.Logger;
  * phase to exit the corresponding local optimum
  * <p>
  * Algorithmic outline of the simplest version of VNS
- * <p>
+ * </p>
  * <pre>
  * s = GenerateInitialSolution
  * while (Termination criteria is not met){
@@ -31,7 +31,7 @@ import java.util.logging.Logger;
  *      }
  * }
  * </pre>
- * <p>
+ *
  * More information can be found in:
  * Hansen P., Mladenović N. (2018) Variable Neighborhood Search.
  * In: Martí R., Pardalos P., Resende M. (eds) Handbook of Heuristics.
