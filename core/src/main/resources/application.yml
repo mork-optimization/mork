@@ -191,29 +191,6 @@ advanced:
     # Block Math.random(), use RandomManager.getRandom().nextDouble()
     blockMathRandom: false
 
-# Logging configuration
-logging:
-  level:
-    # Default logging level, do not modify unless you know what you are doing
-    root: 'info'
-    es:
-      urjc:
-        etsii:
-          # Use:
-          # - INFO:  Print only important messages
-          # - DEBUG: Show debug logs for each algorithm
-          # - TRACE: Print all debug messages, and print ALL movements when they are applied to any solution.
-          #          Note: Enabling trace mode has a big performance impact.
-          #grafo: 'DEBUG'
-          grafo: 'INFO'
-
-  # Save logs to file 'log.txt'
-  file:
-    name: 'log.txt'
-
-  # Logging format for console
-  pattern.console: '%clr([%d{${LOG_DATEFORMAT_PATTERN:HH:mm:ss}}]){faint} %clr(${LOG_LEVEL_PATTERN:%3p}) %clr(%-26.26logger{25}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}'
-  
 # Set default server port (change if there is multiple Mork instances running)
 server:
     port : 8080

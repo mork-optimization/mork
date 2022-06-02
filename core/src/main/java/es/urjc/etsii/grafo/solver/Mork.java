@@ -66,8 +66,20 @@ public class Mork {
     }
 
     private static void configureLogging(){
+        // Log only important messages from Spring and web server
         setProperty("logging.level.org.apache.catalina", "WARN");
         setProperty("logging.level.org.springframework", "WARN");
+
+        // Set default log level, if not overriden by the user, to INFO
+        setProperty("logging.level.root", "INFO");
+        //setProperty("es.urjc.etsii.grafo", "INFO");
+
+        // Export logs to file "log.txt" by default
+        setProperty("logging.file.name", "log.txt");
+
+        // Default log formatting
+        setProperty("logging.pattern.console", "%clr([%d{${LOG_DATEFORMAT_PATTERN:HH:mm:ss}}]){faint} %clr(${LOG_LEVEL_PATTERN:%3p}) %clr(%-26.26logger{25}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}");
+        setProperty("logging.pattern.file", "%clr([%d{${LOG_DATEFORMAT_PATTERN:HH:mm:ss}}]){faint} %clr(${LOG_LEVEL_PATTERN:%3p}) %clr(%-26.26logger{25}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}");
     }
 
     private static boolean setProperty(String k, String v){
