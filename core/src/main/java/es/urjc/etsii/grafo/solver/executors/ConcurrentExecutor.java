@@ -90,7 +90,8 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
         // K: Instance name --> V: List of WorkUnits
         for(var e: futures.entrySet()){
             var instancePath = e.getKey();
-            var instanceName = instanceName(instancePath);            long instanceStartTime = System.nanoTime();
+            var instanceName = instanceName(instancePath);
+            long instanceStartTime = System.nanoTime();
             var referenceValue = getOptionalReferenceValue(instanceName);
             events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
             logger.info("Running algorithms for instance: " + instanceName);

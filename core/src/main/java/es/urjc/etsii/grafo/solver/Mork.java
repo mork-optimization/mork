@@ -16,21 +16,45 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @ComponentScan(basePackages = "${advanced.scan-pkgs:es.urjc.etsii}", includeFilters = @ComponentScan.Filter(InheritedComponent.class))
 public class Mork {
 
+    private static boolean maximizing;
+
     /**
      * Procedure to launch the application.
      *
-     * @param args program arguments
+     * @param args command line arguments, normally the parameter "String[] args" in the main method
+     * @param maximize true if this is a maximization problem, false if minimizing
      */
-    public static void start(String[] args) {
-        Mork.start(null, args);
+    public static void start(String[] args, boolean maximize) {
+        Mork.start(null, args, maximize);
     }
 
-    public static void start(String pkgRoot, String[] args){
+    /**
+     * Procedure to launch the application.
+     *
+     * @param pkgRoot Custom package root for component scanning if changed from the default package
+     * @param args command line arguments, normally the parameter "String[] args" in the main method
+     * @param maximize true if this is a maximization problem, false if minimizing
+     */
+    public static void start(String pkgRoot, String[] args, boolean maximize){
         configurePackageScanning(pkgRoot);
         configureLogging();
+        setSolvingMode(maximize);
         SpringApplication application = new SpringApplication(Mork.class);
         application.setBanner(new BannerProvider());
         application.run(args);
+    }
+
+    private static void setSolvingMode(boolean maximize) {
+        Mork.maximizing = maximize;
+        System.setProperty("solver.maximizing", String.valueOf(maximize));
+    }
+
+    /**
+     * Solving mode
+     * @return true if maximizing, false if minimizing
+     */
+    public static boolean isMaximizing(){
+        return maximizing;
     }
 
     private static void configurePackageScanning(String pkgRoot){

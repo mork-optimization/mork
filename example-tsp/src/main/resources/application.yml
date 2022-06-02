@@ -20,9 +20,6 @@ solver:
   # Tip, you may use a Regex, example: Preeliminar.*
   experiments: '.*'
 
-  # Maximize or minimize objective function? True --> Maximizing, False --> Minimizing
-  maximizing: false
-
   # How many times should each experiment be repeated. Recommended a minimum of 30
   repetitions: 100
 

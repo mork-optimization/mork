@@ -1,4 +1,5 @@
 # v0.13
+- (Change) Removed maximizing config parameter, now must be set when calling Mork.start from main method
 - (New) Custom instance properties. See Instance::getProperty and setProperty for more info.
 - (New) Improved logging, lot less noise
 - (New) Instance preload by default, set solve order by default to instance path, override by implementing Instance::compareTo.
