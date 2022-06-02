@@ -13,12 +13,12 @@ public class BlockConfig {
     /**
      * Should we block the method Collections.shuffle(List)?
      */
-    private boolean blockCollectionsShuffle = false;
+    private boolean blockCollectionsShuffle = true;
 
     /**
      * Should we block the method Math.random()?
      */
-    private boolean blockMathRandom = false;
+    private boolean blockMathRandom = true;
 
     /**
      * Return true if method Collections.shuffle(LIST) should be blocked.

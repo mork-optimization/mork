@@ -1,12 +1,12 @@
 package es.urjc.etsii.grafo.patches;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.lang.reflect.InaccessibleObjectException;
 import java.util.Collections;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Block calls to Collections.shuffle() as it uses an internal random that breaks experiment reproducibility
@@ -15,7 +15,7 @@ import java.util.logging.Logger;
 @Service
 public class PatchCollections {
 
-    private static final Logger log = Logger.getLogger(PatchCollections.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(PatchCollections.class);
 
     private final boolean isEnabled;
 
@@ -44,7 +44,7 @@ public class PatchCollections {
             internalRandom.set(null, new FailRandom());
         } catch (NoSuchFieldException | InaccessibleObjectException | IllegalAccessException e){
             // Log as warning, but do not stop application when failing to patch, it is not critical
-            log.log(Level.WARNING, "Failed to patch Collections.shuffle(), internal random is not accessible. Probably missing opens, see: https://mork-optimization.readthedocs.io/en/latest/quickstart/troubleshooting/", e);
+            log.warn("Failed to patch Collections.shuffle(), internal random is not accessible. Probably missing opens, see: https://mork-optimization.readthedocs.io/en/latest/quickstart/troubleshooting/. Cause: {}", e.getMessage());
         }
         log.info("Collections.shuffle() patched successfully");
     }

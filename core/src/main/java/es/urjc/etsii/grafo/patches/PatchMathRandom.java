@@ -1,16 +1,15 @@
 package es.urjc.etsii.grafo.patches;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
-
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.reflect.Field;
 import java.lang.reflect.InaccessibleObjectException;
 import java.lang.reflect.Modifier;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 /**
  * Block calls to Math.random() as it uses an internal random that breaks experiment reproducibility
@@ -19,7 +18,7 @@ import java.util.logging.Logger;
 @Service
 public class PatchMathRandom {
 
-    private static final Logger log = Logger.getLogger(PatchMathRandom.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(PatchMathRandom.class);
 
     private final boolean isEnabled;
 
@@ -50,7 +49,7 @@ public class PatchMathRandom {
             internalRandom.set(null, new FailRandom());
         } catch (NoSuchFieldException | IllegalAccessException | ClassNotFoundException | InaccessibleObjectException e) {
             // Log as warning, but do not stop application when failing to patch, it is not critical
-            log.log(Level.WARNING, "Failed to patch Collections.shuffle(), internal random is not accessible. Probably missing opens, see: https://mork-optimization.readthedocs.io/en/latest/quickstart/troubleshooting/", e);
+            log.warn("Failed to patch Collections.shuffle(), internal random is not accessible. Probably missing opens, see: https://mork-optimization.readthedocs.io/en/latest/quickstart/troubleshooting/. Cause: {}", e.getMessage());
         }
         log.info("Math.random() patched successfully");
     }

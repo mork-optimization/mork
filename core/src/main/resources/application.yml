@@ -182,15 +182,6 @@ errors:
   # Path where all errors or exceptions encountered during experiment execution will be exported
   folder: 'errors'
 
-# Advanced configuration, do not change unless you know what you are doing!
-advanced:
-  # Block Java API methods
-  block:
-    # Collections.shuffle(RandomManager.getRandom()) should be used instead of Collections.shuffle()
-    blockCollectionsShuffle: false
-    # Block Math.random(), use RandomManager.getRandom().nextDouble()
-    blockMathRandom: false
-
 # Set default server port (change if there is multiple Mork instances running)
 server:
     port : 8080
