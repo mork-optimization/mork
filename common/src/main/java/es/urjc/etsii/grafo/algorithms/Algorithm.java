@@ -17,16 +17,18 @@ import java.util.Objects;
  */
 public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
 
+    public static final int SHORTNAME_MAXLENGTH = 30;
+
     private SolutionBuilder<S,I> builder;
 
     /**
-     * Current algorithm short name, must be unique per execution. Truncated to 180 characters
+     * Current algorithm short name, must be unique per execution. Truncated to Algorithm.SHORTNAME_MAXLENGTH characters
      *
      * @return Should include parameter configuration if same algorithm is used with different parameters
      */
     public String getShortName(){
         String s = this.toString().replaceAll("[Aa]lgorithm", "").replaceAll("[\\s{}\\[\\]\\-_.=?+&^%,$#'\"@!]", "");
-        return s.substring(0, Math.min(s.length(), 30));
+        return s.substring(0, Math.min(s.length(), SHORTNAME_MAXLENGTH));
     }
 
     /**
