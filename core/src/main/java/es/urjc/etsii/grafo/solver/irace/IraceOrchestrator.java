@@ -84,7 +84,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         log.info("App started in IRACE mode, ready to start solving!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
-        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(experimentName));
+        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(solverConfig.isMaximizing(), experimentName));
         try{
             launchIrace();
         } finally {

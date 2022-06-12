@@ -86,7 +86,7 @@ public class Orchestrator<S extends Solution<S, I>, I extends Instance> extends 
         log.info("App started, ready to start solving!");
         var experiments = this.experimentManager.getExperiments();
         log.info("Experiments to execute: " + experiments.keySet());
-        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(new ArrayList<>(experiments.keySet())));
+        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(solverConfig.isMaximizing(), new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
         try {
             experiments.values().forEach(this::experimentWrapper);
