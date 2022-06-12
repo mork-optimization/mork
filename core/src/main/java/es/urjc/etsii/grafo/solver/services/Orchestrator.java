@@ -107,8 +107,8 @@ public class Orchestrator<S extends Solution<S, I>, I extends Instance> extends 
         verifyWorkloadLimit(solverConfig, instancePaths, experiment.algorithms());
         EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(experiment.name(), instancePaths));
         executor.executeExperiment(experiment, instancePaths, exceptionHandler, startTimestamp);
-        long experimenExecutionTime = System.nanoTime() - startTime;
-        EventPublisher.getInstance().publishEvent(new ExperimentEndedEvent(experiment.name(), experimenExecutionTime, startTimestamp));
+        long experimentExecutionTime = System.nanoTime() - startTime;
+        EventPublisher.getInstance().publishEvent(new ExperimentEndedEvent(experiment.name(), experimentExecutionTime, startTimestamp));
         log.info("Finished running experiment: " + experiment.name());
     }
 

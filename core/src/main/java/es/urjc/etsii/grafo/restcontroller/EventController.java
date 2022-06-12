@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.MemoryEventStorage;
 import es.urjc.etsii.grafo.solver.services.events.types.MorkEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.PingEvent;
+import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -14,6 +15,7 @@ import java.util.List;
  * Define API endpoints related to events.
  */
 @RestController
+@CrossOrigin
 public class EventController {
 
     private final MemoryEventStorage memoryEventStorage;
