@@ -1,4 +1,6 @@
 # v0.13
+
+- (New) Modular Angular 13 frontend
 - (Change) Removed maximizing config parameter, now must be set when calling Mork.start from main method.
 - (Change) Remove logging properties from configuration file, mostly unused, but can still be overridden.
 - (Change) Remove advanced properties from configuration file, try patch and skip if not possible.
