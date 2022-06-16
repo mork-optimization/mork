@@ -1,0 +1,63 @@
+<!--<router-outlet></router-outlet>-->
+
+<header>
+  <!--    <h1 class="text-center">Mission Control Panel</h1>-->
+  <div class="row app-status justify-content-center">
+    <div class="title-container col-md-3 col-xs-12">
+      <!--            <h1 class="title text-center">Control panel</h1>-->
+      <div class="running-status-container">
+        <p class="text-center">App status: <b id="running-status">{{status}}</b></p>
+      </div>
+      <div class="experiment-name-container">
+        <p class="text-center">Experiment name: <b id="experiment-name">{{experimentName}}</b></p>
+      </div>
+      <!--      <div class="experiment-name-container">-->
+      <!--        <p class="text-center">Experiment start: <b id="experiment-start">[Syncing...]</b></p>-->
+      <!--      </div>-->
+      <div class="events-processed">
+        <p class="text-center">Processed events: <b id="event-count">{{eventCount}}</b></p>
+      </div>
+    </div>
+    <!--        <div class="col-md-6"></div>-->
+    <div class="progress-chart-outer col-md-3 col-xs-12">
+      <!-- Activity gauge for Instance/Algorithm/Iteration -->
+      <div id="progress-chart" class="text-center"></div>
+    </div>
+    <!-- Current experiment name -->
+    <!-- Javascript clock for time since start, time since current experiment started -->
+  </div>
+</header>
+<div id="main-content" class="container">
+  <div class="row">
+    <div class="col-md-4">
+      <h2 class="text-center">Best solution</h2>
+    </div>
+    <div class="col-md-4">
+      <h2 class="text-center">Score convergence</h2>
+    </div>
+    <div class="col-md-4">
+      <h2 class="text-center">Scores</h2>
+    </div>
+  </div>
+  <div class="row" *ngFor="let c of chartConfigs">
+    <div class="col-md-4">
+      <app-solution-chart [config]="c.best">
+      </app-solution-chart>
+    </div>
+    <div class="col-md-4">
+      <app-convergence-chart [config]="c.convergence">
+      </app-convergence-chart>
+    </div>
+    <div class="col-md-4">
+      <app-scores-chart [config]="c.scores">
+      </app-scores-chart>
+    </div>
+  </div>
+  <!--    <div class="row">-->
+  <!--        <div class="col-md-12">-->
+  <!--            <h2 class="text-center">Logs</h2>-->
+  <!--            <label for="log" class="form-label">Triggered events</label>-->
+  <!--            <textarea class="form-control" id="log" rows="20"></textarea>-->
+  <!--        </div>-->
+  <!--    </div>-->
+</div>
