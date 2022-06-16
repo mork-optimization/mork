@@ -1,7 +1,8 @@
 <Algorithm> ::= Repeat(N, <Algorithm>) | <Constructive>,<Improver> | <Constructive> | <Improver> | <UserAlgorithm>
 <Constructive> ::= RGGRASP(UserListManager) | GRGRASP(UserListManager) | Random(UserNeighborhood) | Greedy(UserNeighborhood) | UserConstructive
-<Improver> ::= <Improver>,<Improver> | <Shake>,<Improver> | Repeat(N, <Improver>) | VND(<Improver>) | EstratOscillation(UserExpand, <Improver>, UserRepair) | BestImprovementLocalSearch(UserNeighborhood) | FirstImprovementLocalSearch(UserNeighborhood) | UserLocalSearch(UserNeighborhood) | UserImprover
+<Improver> ::= <Improver>,<Improver> | <Shake>,<Improver> | Repeat(N, <Improver>) | VND(<Improver>) | EstratOscillation(UserExpand, <Improver>, UserRepair) | BestImprovementLocalSearch(<Neighborhood>) | FirstImprovementLocalSearch(<Neighborhood>) | UserLocalSearch(<Neighborhood>) | UserImprover
 <Shake> ::= UserDestroy,<Constructive> | Destroy(UserNeighborhood),<Constructive> | ApplyRandomMoves(UserNeighborhood) | UserShake
 
+<Neighborhood> ::= UserNeighborhood | Merge(<Neighborhood>,<Neighborhood>)
 
 Árboles de derivación: IG, ILS, SA, GRASP

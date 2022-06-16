@@ -4,6 +4,7 @@
 - (Change) Remove advanced properties from configuration file, try patch and skip if not possible.
 - (New) Custom instance properties. See Instance::getProperty and setProperty for more info.
 - (New) Improved logging, lot less noise
+- (New) ExecutionStartedEvent::isMaximizing
 - (New) Instance preload by default, set solve order by default to instance path, override by implementing Instance::compareTo.
 - (New) Root package name can be optionally customized
 - (New) TimeUtil class
