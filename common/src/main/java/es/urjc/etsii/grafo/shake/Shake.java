@@ -22,4 +22,28 @@ public abstract class Shake<S extends Solution<S,I>, I extends Instance> {
      * @return shaken solution. Shaken, not stirred.
      */
     public abstract S shake(S s, int k);
+
+    /**
+     * Create a no operation shake method
+     * Returns the solution immediately without executing any operation
+     * @param <S> Solution class
+     * @param <I> Instance class
+     * @return Null shake method
+     */
+    public static <S extends Solution<S,I>, I extends Instance> Shake<S,I> nul(){
+        return new NullShake<>();
+    }
+
+    /**
+     * Do nothing shake
+     *
+     * @param <S> Solution class
+     * @param <I> Instance class
+     */
+    private static class NullShake<S extends Solution<S,I>,I extends Instance> extends Shake<S,I> {
+        @Override
+        public S shake(S s, int k) {
+            return s;
+        }
+    }
 }

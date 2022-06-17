@@ -34,10 +34,34 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
     }
 
     /**
-     * Improves a model.Solution
-     * Iterates until we run out of time, or we cannot improve the current es.urjc.etsii.grafo.solution any further
+     * Create a no operation improve method
+     * Returns the solution immediately without executing any operation
+     * @param <S> Solution class
+     * @param <I> Instance class
+     * @return Null improve method
+     */
+    public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> nul(){
+        return new NullImprover<>();
+    }
+
+    /**
+     * Do nothing local search
      *
-     * @param s model.Solution to improve
+     * @param <S> Solution class
+     * @param <I> Instance class
+     */
+    private static class NullImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {
+        @Override
+        protected S _improve(S s) {
+            return s;
+        }
+    }
+
+    /**
+     * Improves a Solution
+     * Iterates until we run out of time, or we cannot improve the current solution any further
+     *
+     * @param s Solution to improve
      * @return Improved s
      */
     protected abstract S _improve(S s);

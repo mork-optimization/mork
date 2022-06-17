@@ -1,8 +1,9 @@
 package es.urjc.etsii.grafo.solver.services;
 
+import es.urjc.etsii.grafo.create.Constructive;
+import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
-import es.urjc.etsii.grafo.algorithms.NoOp;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.exception.ResourceLimitException;
 import es.urjc.etsii.grafo.testutil.TestInstance;
@@ -30,7 +31,7 @@ public class OrchestratorTest {
     private TestData getTestData(int repetitions, int nInstances, int nAlgorithms){
         List<Algorithm<TestSolution, TestInstance>> algorithms = new ArrayList<>();
         for (int i = 0; i < nAlgorithms; i++) {
-            algorithms.add(new SimpleAlgorithm<TestSolution, TestInstance>(NoOp.constructive(), NoOp.improver()));
+            algorithms.add(new SimpleAlgorithm<TestSolution, TestInstance>(Constructive.nul(), Improver.nul()));
         }
 
         List<String> instances = new ArrayList<>();

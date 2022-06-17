@@ -25,4 +25,28 @@ public abstract class Constructive<S extends Solution<S,I>, I extends Instance> 
     public String toString() {
         return this.getClass().getSimpleName() + "{}";
     }
+
+    /**
+     * Create a no operation constructive method
+     * Returns the solution immediately without executing any operation
+     * @param <S> Solution class
+     * @param <I> Instance class
+     * @return Null improve method
+     */
+    public static <S extends Solution<S,I>, I extends Instance> Constructive<S,I> nul(){
+        return new NoOPConstructive<>();
+    }
+
+    /**
+     * Do nothing constructive
+     *
+     * @param <S> Solution class
+     * @param <I> Instance class
+     */
+    private static class NullConstructive<S extends Solution<S,I>,I extends Instance> extends Constructive<S,I> {
+        @Override
+        public S construct(S s) {
+            return s;
+        }
+    }
 }
