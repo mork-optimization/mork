@@ -11,7 +11,6 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 public class InstanceManagerTest {

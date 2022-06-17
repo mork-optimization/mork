@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.shake;
 
-import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;

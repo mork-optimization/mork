@@ -4,7 +4,6 @@ import es.urjc.etsii.grafo.solver.services.events.EventAsyncConfigurer;
 import es.urjc.etsii.grafo.solver.services.events.EventWebserverConfig;
 import es.urjc.etsii.grafo.solver.services.events.MorkEventListener;
 import es.urjc.etsii.grafo.solver.services.events.types.ExecutionEndedEvent;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Service;

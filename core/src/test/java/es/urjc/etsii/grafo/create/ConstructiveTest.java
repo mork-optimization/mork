@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.create;
 
-import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;
