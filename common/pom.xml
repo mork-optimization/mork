@@ -8,6 +8,10 @@
     <artifactId>mork-common</artifactId>
     <version>0.13-SNAPSHOT</version>
 
+    <name>mork-common</name>
+    <description>Metaheuristic Optimization framewoRK - Common library</description>
+    <url>https://github.com/rmartinsanta/mork</url>
+
     <licenses>
         <license>
             <name>MIT License</name>
