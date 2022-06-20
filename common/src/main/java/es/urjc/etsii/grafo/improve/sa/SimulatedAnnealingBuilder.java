@@ -12,8 +12,10 @@ import es.urjc.etsii.grafo.improve.sa.initialt.InitialTemperatureCalculator;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
 /**
- * <p>SimulatedAnnealingBuilder class.</p>
- *
+ * <p>Create instances of the simulated annealing algorithm. See {@link SimulatedAnnealing} for a detailed description of the algorithm</p>
+ * @param <M> Move type
+ * @param <S> Solution type
+ * @param <I> Instance type
  */
 public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> {
     private Neighborhood<M, S, I> neighborhood;
@@ -24,15 +26,16 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     private int cycleLength = 1;
 
     /**
-     * Use SimulatedAnnealing::builder static method instead
+     * Use {@link SimulatedAnnealing#builder()} static method instead
      */
     protected SimulatedAnnealingBuilder(){}
 
     /**
-     * Neighborhood for the SA
+     * Neighborhood for the Simulated Annealing.
+     * Tip: You may use a neighborhood composed or several others, see {@link Neighborhood#concat(Neighborhood[])} and {@link Neighborhood#interleave(Neighborhood[])}.
      *
      * @param neighborhood neighborhood
-     * @return builder
+     * @return simulated annealing builder
      */
     public SimulatedAnnealingBuilder<M,S,I> withNeighborhood(Neighborhood<M, S, I> neighborhood) {
         this.neighborhood = neighborhood;
@@ -44,9 +47,9 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * Example: {@code (solution, neighborhood) -> solution.getNVertex() * 100}
      *
      * @param initialTemperatureCalculator lambda expression or class implementation
-     * @return builder
+     * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withCustomInitialTempCalc(InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator) {
+    public SimulatedAnnealingBuilder<M,S,I> withInitialTempFunction(InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator) {
         this.initialTemperatureCalculator = initialTemperatureCalculator;
         return this;
     }
@@ -55,9 +58,9 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * Provide a constant initial temperature
      *
      * @param initialTemp fixed initial temperature
-     * @return builder
+     * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withInitialTemp(double initialTemp) {
+    public SimulatedAnnealingBuilder<M,S,I> withInitialTempValue(double initialTemp) {
         this.initialTemperatureCalculator = new ConstantInitialTemperature<>(initialTemp);
         return this;
     }
@@ -65,9 +68,9 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     /**
      * Calculate initial temp as the difference between the best and worst moves in the given neighborhood
      *
-     * @return builder
+     * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withMaxDiffInitialTemp() {
+    public SimulatedAnnealingBuilder<M,S,I> withInitialTempMaxValue() {
         this.initialTemperatureCalculator = new MaxDifferenceInitialTemperature<>();
         return this;
     }
@@ -76,9 +79,9 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * Calculate initial temp as the difference between the best and worst moves in the given neighborhood
      *
      * @param ratio Multiply max difference by this parameter
-     * @return builder
+     * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withMaxDiffInitialTemp(double ratio) {
+    public SimulatedAnnealingBuilder<M,S,I> withInitialTempMaxValue(double ratio) {
         this.initialTemperatureCalculator = new MaxDifferenceInitialTemperature<>(ratio);
         return this;
     }
@@ -90,9 +93,9 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * Example 2: {@code (solution, neighborhood, currentTemp, currentIter) -> currentTemp < solution.getNElements()}
      *
      * @param terminationCriteria custom termination criteria
-     * @return builder
+     * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withCustomTerminationCriteria(TerminationCriteria<M, S, I> terminationCriteria) {
+    public SimulatedAnnealingBuilder<M,S,I> withTerminationCriteriaCustom(TerminationCriteria<M, S, I> terminationCriteria) {
         this.terminationCriteria = terminationCriteria;
         return this;
     }
@@ -104,7 +107,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * @return builder
      * @param n a int.
      */
-    public SimulatedAnnealingBuilder<M,S,I> withMaxIterationsTerminationCriteria(int n) {
+    public SimulatedAnnealingBuilder<M,S,I> withTerminationCriteriaMaxIterations(int n) {
         this.terminationCriteria = ((sol, neighborhood, currentTemp, iteration) -> iteration >= n);
         return this;
     }
@@ -112,9 +115,9 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     /**
      * End when temperature reaches 0.
      *
-     * @return builder
+     * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withConvergeTerminationCriteria() {
+    public SimulatedAnnealingBuilder<M,S,I> withTerminationCriteriaConverge() {
         this.terminationCriteria = ((sol, neighborhood, currentTemp, iteration) -> DoubleComparator.isLessOrEquals(currentTemp, 0.01));
         return this;
     }
@@ -125,9 +128,9 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * Example (halve each iteration): {@code (solution, neighborhood, currentTemp, currentIter) -> currentTemp / 2}
      *
      * @param coolDownControl custom cool down function.
-     * @return builder
+     * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withCustomCoolDownControl(CoolDownControl<M, S, I> coolDownControl) {
+    public SimulatedAnnealingBuilder<M,S,I> withCoolDownCustom(CoolDownControl<M, S, I> coolDownControl) {
         this.coolDownControl = coolDownControl;
         return this;
     }
@@ -137,19 +140,19 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * Example (halve each iteration): {@code (solution, neighborhood, currentTemp, currentIter) -> currentTemp / 2}
      *
      * @param ratio exponential ratio, i.e temp = initialT * (ratio ^ iteration)
-     * @return builder
+     * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withExponentialCoolDown(double ratio) {
+    public SimulatedAnnealingBuilder<M,S,I> withCoolDownExponential(double ratio) {
         this.coolDownControl = new ExponentialCoolDown<>(ratio);
         return this;
     }
 
     /**
-     * Configure cycle length, defaults to 1 if not called.
+     * Set cycle length
      *
      * @param cycleLength How many moves should be executed for each temperature level.
      *                    Defaults to 1.
-     * @return builder
+     * @return simulated annealing builder
      */
     public SimulatedAnnealingBuilder<M,S,I> withCycleLength(int cycleLength) {
         this.cycleLength = cycleLength;
@@ -159,7 +162,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     /**
      * Build a SimulatedAnnealing using the provided config values. Default values are as follows:
      *
-     * @return SimulatedAnnealing algorithm
+     * @return configured and ready to use simulated annealing algorithm
      */
     public SimulatedAnnealing<M,S,I> build() {
         if(this.neighborhood == null){
@@ -187,16 +190,16 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * Configure a custom acceptance criteria.
      * @param acceptanceCriteria acceptance criteria.
      */
-    public SimulatedAnnealingBuilder<M,S,I> withAcceptanceCriteria(AcceptanceCriteria<M, S, I> acceptanceCriteria) {
+    public SimulatedAnnealingBuilder<M,S,I> withAcceptanceCriteriaCustom(AcceptanceCriteria<M, S, I> acceptanceCriteria) {
         this.acceptanceCriteria = acceptanceCriteria;
         return this;
     }
 
     /**
-     * Set acceptance criteria to default value.
+     * Set acceptance criteria to default value, based on the metropolis exponential function
      */
-    public SimulatedAnnealingBuilder<M,S,I> withDefaultAcceptanceCriteria(){
-        this.acceptanceCriteria = new DefaultAcceptanceCriteria<>();
+    public SimulatedAnnealingBuilder<M,S,I> withAcceptanceCriteriaDefault(){
+        this.acceptanceCriteria = new MetropolisAcceptanceCriteria<>();
         return this;
     }
 }

@@ -16,10 +16,29 @@ import java.util.*;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+/**
+ * Simulated annealing (SA) is a metaheuristic whose name comes from annealing in metallurgy.
+ * This metaheuristic considers some neighboring state s* of the current state s,
+ * and probabilistically decides between moving the system to state s* or staying in-state s.
+ * The transition is always performed if it improves the current solution, while it depends on the current temperature if not.
+ * The decision to transition is controlled by the {@link AcceptanceCriteria}.
+ * These probabilities ultimately lead the system to move to lower energy states. After each possible transition,
+ * the current temperature is lowered, using the {@link CoolDownControl}.
+ * The process is repeated until the {@link TerminationCriteria} is met.
+ * The initial temperature is configured using {@link InitialTemperatureCalculator},
+ * which usually defaults to something like the Max diff between the moves in the neighborhood,
+ * as implemented in {@link es.urjc.etsii.grafo.improve.sa.initialt.MaxDifferenceInitialTemperature}.
+ *
+ *
+ * @see <a href="https://en.wikipedia.org/wiki/Simulated_annealing"></a>
+ * @see SimulatedAnnealingBuilder
+ * @param <M> Move type
+ * @param <S> Solution type
+ * @param <I> Instance type
+ */
 public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> extends Improver<S,I> {
 
     private static final Logger log = Logger.getLogger(SimulatedAnnealing.class.getName());
-
 
     private final AcceptanceCriteria<M,S,I> acceptanceCriteria;
     private final Neighborhood<M, S, I> neighborhood;
@@ -30,6 +49,15 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
 
     private record CycleResult<S>(boolean atLeastOneMove, boolean shortExecution, S bestSolution, S currentSolution){}
 
+    /**
+     * Internal constructor, use {@link SimulatedAnnealing#builder()}.
+     * @param acceptanceCriteria
+     * @param ps
+     * @param initialTemperatureCalculator
+     * @param terminationCriteria
+     * @param coolDownControl
+     * @param cycleLength
+     */
     protected SimulatedAnnealing(AcceptanceCriteria<M, S, I> acceptanceCriteria, Neighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength) {
         this.acceptanceCriteria = acceptanceCriteria;
         this.neighborhood = ps;
@@ -39,6 +67,13 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
         this.cycleLength = cycleLength;
     }
 
+    /**
+     * Get simulated annealing builder.
+     * @return simulated annealing builder
+     * @param <M> Move type
+     * @param <S> Solution type
+     * @param <I> Instance type
+     */
     public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> SimulatedAnnealingBuilder<M,S,I> builder(){
         return new SimulatedAnnealingBuilder<>();
     }
@@ -78,7 +113,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
      * @param currentTemperature current temperature
      * @return best solution found, remember that you should NOT use the returned solution
      */
-    private CycleResult<S> doCycleSlow(Neighborhood<M,S,I> neighborhood, S solution, S best, double currentTemperature) {
+    protected CycleResult<S> doCycleSlow(Neighborhood<M,S,I> neighborhood, S solution, S best, double currentTemperature) {
         boolean atLeastOne = false;
         for (int i = 0; i < this.cycleLength; i++) {
             boolean executed = false;
@@ -110,7 +145,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
      * @param currentTemperature current temperature
      * @return best solution found, remember that you should NOT use the returned solution
      */
-    private CycleResult<S> doCycleFast(RandomizableNeighborhood<M,S,I> neighborhood, S solution, S best, double currentTemperature) {
+    protected CycleResult<S> doCycleFast(RandomizableNeighborhood<M,S,I> neighborhood, S solution, S best, double currentTemperature) {
         boolean atLeastOne = false;
         for (int i = 0; i < this.cycleLength; i++) {
             int fails = 0;
@@ -143,9 +178,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
         return new CycleResult<>(atLeastOne, false, best, solution);
     }
 
-
-
-    private Collection<M> getMoves(S s){
+    protected Collection<M> getMoves(S s){
         List<M> moves;
         if(neighborhood instanceof EagerNeighborhood eagerNeighborhood){
             moves = eagerNeighborhood.getMovements(s);
@@ -155,5 +188,4 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
         CollectionUtil.shuffle(moves);
         return moves;
     }
-
 }

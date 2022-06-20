@@ -8,7 +8,7 @@ import es.urjc.etsii.grafo.util.random.RandomManager;
 /**
  * Default termination criteria based on metropolis exponential function
  */
-public class DefaultAcceptanceCriteria<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> implements AcceptanceCriteria<M, S, I>{
+public class MetropolisAcceptanceCriteria<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> implements AcceptanceCriteria<M, S, I>{
     @Override
     public boolean accept(M move, double currentTemperature) {
         double change = Math.abs(move.getValue());
