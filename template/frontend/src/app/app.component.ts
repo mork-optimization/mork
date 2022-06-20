@@ -55,6 +55,8 @@ export class AppComponent {
   private bestValue: number = NaN;
 
   private maximizing!: boolean;
+  private executionStarted = false;
+
   private last_redraw = new Date().valueOf() - 1000;
 
   private progress_chart!: Chart;
@@ -173,8 +175,13 @@ export class AppComponent {
     this.onAnyEvent(event);
   }
   onExecutionStart(event: ExecutionStartedEvent) {
+    if(this.executionStarted){
+      // Backend restarted, reload frontend
+      window.location.reload();
+    }
     this.createProgressChart();
     this.maximizing = event.maximizing;
+    this.executionStarted = true;
   }
 
   onExecutionEnd(event: ExecutionEndedEvent) {
