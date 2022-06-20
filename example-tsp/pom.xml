@@ -4,7 +4,7 @@
 
     <!-- Project name and current version -->
     <artifactId>TSP</artifactId>
-    <version>0.13-SNAPSHOT</version>
+    <version>0.13</version>
 
     <properties>
         <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/../example-tsp/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
@@ -14,14 +14,14 @@
     <parent>
         <groupId>es.urjc.etsii.grafo</groupId>
         <artifactId>mork-parent</artifactId>
-        <version>0.13-SNAPSHOT</version>
+        <version>0.13</version>
     </parent>
 
     <dependencies>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork</artifactId>
-            <version>0.13-SNAPSHOT</version>
+            <version>0.13</version>
         </dependency>
 
         <dependency>
@@ -32,7 +32,7 @@
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork-common</artifactId>
-            <version>0.13-SNAPSHOT</version>
+            <version>0.13</version>
             <scope>compile</scope>
         </dependency>
     </dependencies>
