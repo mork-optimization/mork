@@ -1,20 +1,22 @@
 # v0.13
-
 - (New) Neighborhood.empty(), Neighborhood.concat(n1, n2), Neighborhood.interleave(n1, n2)
-- (Change) Simplify algorithms constructors, create no-op components with Constructive::null, Improver::null, Shake::nul
 - (New) Modular Angular 13 frontend
-- (Change) Removed maximizing config parameter, now must be set when calling Mork.start from main method.
-- (Change) Remove logging properties from configuration file, mostly unused, but can still be overridden.
-- (Change) Remove advanced properties from configuration file, try patch and skip if not possible.
 - (New) Custom instance properties. See Instance::getProperty and setProperty for more info.
-- (New) Improved logging, lot less noise
 - (New) ExecutionStartedEvent::isMaximizing
 - (New) Instance preload by default, set solve order by default to instance path, override by implementing Instance::compareTo.
 - (New) Root package name can be optionally customized
 - (New) TimeUtil class
+- (Change) Improved logging, lot less noise
+- (Change) Simplify algorithms constructors, create no-op components with Constructive::null, Improver::null, Shake::nul
+- (Change) Removed maximizing config parameter, now must be set when calling Mork.start from main method.
+- (Change) Remove logging properties from configuration file, mostly unused, but can still be overridden.
+- (Change) Remove advanced properties from configuration file, try patch and skip if not possible.
+- (Change) Add "common" submodule. More submodules will be added soon.
 - (Fix) ExcelSerializer: If a value to write is null then write empty cell instead of failing
-- (Fix) Use reference results in all ResultSerializers instead of only when exporting to XLSX.
-
+- (Fix) #77: Use reference results in all ResultSerializers instead of only when exporting to XLSX.
+- (Fix) #31: Frontend mixed experiment data under some circumstances. 
+- (Fix) #51: Frontend instance table alignment was wrong if a custom solution was bigger than a chart. 
+- (Fix) #40: Frontend displayed wrong data for maximization problems. 
 
 # v0.12
 - (New) GRASP::afterGRASP: Optionally execute anything after the GRASP constructive finishes
