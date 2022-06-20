@@ -4,6 +4,8 @@
 
 export const environment = {
   production: false,
+  websocketDebug: false,
+  eventDebug: false,
   APIPath: 'http://localhost:8080/',
 };
 

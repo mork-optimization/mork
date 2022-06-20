@@ -53,11 +53,10 @@ export class AppComponent {
   private current_chart_series!: any;
 
   private bestValue: number = NaN;
-
+  private alreadyConnected = false;
   private maximizing!: boolean;
-  private executionStarted = false;
-
   private last_redraw = new Date().valueOf() - 1000;
+  private lastEventId = -1;
 
   private progress_chart!: Chart;
   private nInstances!: number;
@@ -90,9 +89,19 @@ export class AppComponent {
 
   ngOnInit() {
     this.rxStompService.watch('/topic/events').subscribe((message) => this.eventHandler(message, this));
-    this.http.get<MorkEvent>(environment.APIPath + "lastevent").subscribe((event) => {
-      console.log("Recieved first event with id: " + event.eventId);
-      this.downloadOldEventData(0, event.eventId + 1); // [0, eventId]
+    this.rxStompService.connected$.subscribe(() => {
+      if(this.alreadyConnected){
+        console.log("Backend probably restarted, reloading...");
+        window.location.reload();
+      } else {
+        console.log("First STOMP connection");
+        this.alreadyConnected = true;
+        // Download event data
+        this.http.get<MorkEvent>(environment.APIPath + "lastevent").subscribe((event) => {
+          console.log("Recieved first event with id: " + event.eventId);
+          this.downloadOldEventData(0, event.eventId + 1); // [0, eventId]
+        });
+      }
     });
   }
 
@@ -142,7 +151,17 @@ export class AppComponent {
   }
 
   onEvent(event: MorkEvent) {
+    if(environment.eventDebug) console.log(`onEvent ${event.eventId}:${event.type}`);
     // Dispatch to event handlers
+    if(event.eventId <= this.lastEventId){
+      console.log("Skipping event handlers for the following event, already processed or out of order");
+      console.log(event);
+      return;
+    }
+    this.lastEventId++;
+    if(event.eventId !== this.lastEventId){
+      console.log(`Wrong event order, expected ${this.lastEventId}, for id ${event.eventId}`)
+    }
     switch (event.type) {
       case EventType.ExecutionStartedEvent:
         this.onExecutionStart(event as ExecutionStartedEvent);
@@ -175,13 +194,8 @@ export class AppComponent {
     this.onAnyEvent(event);
   }
   onExecutionStart(event: ExecutionStartedEvent) {
-    if(this.executionStarted){
-      // Backend restarted, reload frontend
-      window.location.reload();
-    }
     this.createProgressChart();
     this.maximizing = event.maximizing;
-    this.executionStarted = true;
   }
 
   onExecutionEnd(event: ExecutionEndedEvent) {
@@ -270,9 +284,9 @@ export class AppComponent {
     if (ellapsedTime > AppComponent.redraw_cooldown) {
       this.last_redraw = currentTime.valueOf();
       redraw = true;
-      console.log("Redrawing: " + ellapsedTime + ", eventId: " + event.eventId);
+      if(environment.eventDebug) console.log("Redrawing: " + ellapsedTime + ", eventId: " + event.eventId);
     } else {
-      console.log("Skipping redraw: " + ellapsedTime + ", eventId: " + event.eventId);
+      if(environment.eventDebug) console.log("Skipping redraw: " + ellapsedTime + ", eventId: " + event.eventId);
     }
 
     if (!this.convergence_chart_series.hasOwnProperty(event.algorithmName)) {

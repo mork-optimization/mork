@@ -27,7 +27,7 @@ export const MorkRxStompConfig: RxStompConfig = {
   // Will log diagnostics on console
   // It can be quite verbose, not recommended in production
   // Skip this key to stop logging to console
-  debug: (!environment.production) ? (msg: string): void => {
+  debug: (environment.websocketDebug) ? (msg: string): void => {
     console.log(new Date(), msg);
   } : () => {},
 };
