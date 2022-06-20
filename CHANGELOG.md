@@ -1,5 +1,7 @@
 # v0.13
 
+- (New) Neighborhood.empty(), Neighborhood.concat(n1, n2), Neighborhood.interleave(n1, n2)
+- (Change) Simplify algorithms constructors, create no-op components with Constructive::null, Improver::null, Shake::nul
 - (New) Modular Angular 13 frontend
 - (Change) Removed maximizing config parameter, now must be set when calling Mork.start from main method.
 - (Change) Remove logging properties from configuration file, mostly unused, but can still be overridden.

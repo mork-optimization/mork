@@ -15,6 +15,10 @@ public class TestMove extends Move<TestSolution, TestInstance> {
         this.maximizing = maximizing;
     }
 
+    public TestMove(TestSolution solution, double v) {
+        this(solution, v, false);
+    }
+
     @Override
     public boolean isValid() {
         return true;

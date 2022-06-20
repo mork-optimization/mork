@@ -120,8 +120,9 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
      *
      * @param maxIterations  maximum number of iterations the algorithm could be executed.
      * @param stopIfNotImprovedIn maximum number of iterations without improving the algorithm could be executed.
-     * @param constructive constructive procedure to generate the initial solution of the algorithm, and rebuild the solution after the destructive method
+     * @param constructive constructive procedure to generate the initial solution of the algorithm, solution is NOT rebuilt using this component
      * @param destructive destructive method called before the reconstructive
+     * @param reconstructive reconstructive procedure to rebuild the solution. Initial solution is NOT built using this method.
      * @param improvers improving procedures. Could be 0 or more.
      */
     @SafeVarargs
