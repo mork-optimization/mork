@@ -96,4 +96,11 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      * @throws IOException exception thrown in case something goes wrong
      */
     public abstract void export(BufferedWriter writer, S s) throws IOException;
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "{" +
+                "config=" + config +
+                '}';
+    }
 }
