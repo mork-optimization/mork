@@ -24,6 +24,11 @@ public abstract class ReferenceResultProvider {
      * @return Name for this Provider
      */
     public abstract String getProviderName();
+
+    @Override
+    public String toString() {
+        return this.getProviderName();
+    }
 }
 
 

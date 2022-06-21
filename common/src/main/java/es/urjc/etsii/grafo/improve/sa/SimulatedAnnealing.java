@@ -107,7 +107,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
 
     /**
      * Does a cycle with the same temperature. Always works on the same solution.
-     * NON RANDOMIZABLE NEIGHBORHOOD implementation
+     * Slow implementation as a fallback, when {@link SimulatedAnnealing#doCycleFast(RandomizableNeighborhood, Solution, Solution, double)} is not possible.
      * @param solution current working solution
      * @param best best solution found until now
      * @param currentTemperature current temperature
@@ -117,7 +117,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
         boolean atLeastOne = false;
         for (int i = 0; i < this.cycleLength; i++) {
             boolean executed = false;
-            var currentMoves = getMoves(solution);
+            var currentMoves = getMoves(neighborhood, solution);
             for(M move: currentMoves){
                 if(move.improves() || acceptanceCriteria.accept(move, currentTemperature)){
                     atLeastOne = true;
@@ -139,7 +139,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
 
     /**
      * Does a cycle with the same temperature. Always works on the same solution.
-     * NON RANDOMIZABLE NEIGHBORHOOD implementation
+     * Fast implementation that can only be used if the {@link Neighborhood} implements {@link RandomizableNeighborhood}.
      * @param solution current working solution
      * @param best best solution found until now
      * @param currentTemperature current temperature
@@ -178,7 +178,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
         return new CycleResult<>(atLeastOne, false, best, solution);
     }
 
-    protected Collection<M> getMoves(S s){
+    private Collection<M> getMoves(Neighborhood<M,S,I> neighborhood, S s){
         List<M> moves;
         if(neighborhood instanceof EagerNeighborhood eagerNeighborhood){
             moves = eagerNeighborhood.getMovements(s);

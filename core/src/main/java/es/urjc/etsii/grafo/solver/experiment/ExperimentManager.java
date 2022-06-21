@@ -8,6 +8,7 @@ import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.AbstractExperiment;
 import es.urjc.etsii.grafo.solver.services.Orchestrator;
+import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -34,18 +35,23 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
      */
     private final Map<String, Experiment<S,I>> experiments = new LinkedHashMap<>();
 
+    private final List<ReferenceResultProvider> referenceResultProviders;
+
     /**
      * Constructor
      *
      * @param experimentImplementations list of experiments
-     * @param solverConfig solver configuration
-     * @param solutionBuilders solution builder
+     * @param solverConfig              solver configuration
+     * @param solutionBuilders          solution builder
+     * @param referenceResultProviders
      */
-    public ExperimentManager(List<AbstractExperiment<S, I>> experimentImplementations, SolverConfig solverConfig, List<SolutionBuilder<S, I>> solutionBuilders) {
+    public ExperimentManager(List<AbstractExperiment<S, I>> experimentImplementations, SolverConfig solverConfig, List<SolutionBuilder<S, I>> solutionBuilders, List<ReferenceResultProvider> referenceResultProviders) {
+        this.referenceResultProviders = validateReferenceResultProviders(referenceResultProviders);
         var experimentPattern = solverConfig.getExperiments();
         experimentFilter = Pattern.compile(experimentPattern);
         var solutionBuilder = Orchestrator.decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         log.info("Using SolutionBuilder implementation: "+solutionBuilder.getClass().getSimpleName());
+        log.info("Using ReferenceResultProviders: " + referenceResultProviders);
 
         for (var experiment : experimentImplementations) {
             String experimentName = experiment.getName();
@@ -119,5 +125,17 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
             }
             shortNames.add(shortName);
         }
+    }
+
+    private List<ReferenceResultProvider> validateReferenceResultProviders(List<ReferenceResultProvider> referenceResultProviders){
+        Set<String> names = new HashSet<>();
+        for(var r: referenceResultProviders){
+            String name = r.getProviderName();
+            if(names.contains(name)){
+                throw new IllegalArgumentException("Duplicated provider name: " + name);
+            }
+            names.add(name);
+        }
+        return referenceResultProviders;
     }
 }
