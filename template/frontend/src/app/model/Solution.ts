@@ -1,8 +1,6 @@
 export class Solution {
   lastMoves: Move[] = [];
-  // DRFP specific
-  solutionData: any[] = [];
-  rowSizes: number[] = [];
+  // TODO: add the properties of your solution, same as in your Java class
 }
 
 

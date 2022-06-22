@@ -322,7 +322,12 @@ export class AppComponent {
 
     if (isNaN(this.bestValue) || this.isBetter(event.score, this.bestValue, this.maximizing)) {
       this.bestValue = event.score;
-      this.bestSolutions.get(0)?.renderSolution(event);
+      try {
+        this.bestSolutions.get(0)?.renderSolution(event);
+      } catch (e){
+        // Log exceptions but keep going, dont stop frontend due to user exception
+        console.log(e);
+      }
     }
   }
 
