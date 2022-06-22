@@ -11,9 +11,10 @@ import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 /**
@@ -38,7 +39,7 @@ import java.util.stream.Collectors;
  */
 public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> extends Improver<S,I> {
 
-    private static final Logger log = Logger.getLogger(SimulatedAnnealing.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(SimulatedAnnealing.class);
 
     private final AcceptanceCriteria<M,S,I> acceptanceCriteria;
     private final Neighborhood<M, S, I> neighborhood;
@@ -82,7 +83,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
     protected S _improve(S solution) {
         S best = solution.cloneSolution();
         double currentTemperature = this.initialTemperatureCalculator.initial(best, neighborhood);
-        log.fine("Initial temperature: " + currentTemperature);
+        log.debug("Initial temperature: {}", currentTemperature);
         int currentIteration = 0;
         while(!terminationCriteria.terminate(best, neighborhood, currentTemperature, currentIteration)){
             CycleResult<S> cycleResult = neighborhood instanceof RandomizableNeighborhood rn?
@@ -92,7 +93,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
             best = cycleResult.bestSolution;
             solution = cycleResult.currentSolution;
             if(!cycleResult.atLeastOneMove){
-                log.fine(String.format("Terminating early, no valid movement found. Current iter %s, t %s", currentIteration, currentTemperature));
+                log.debug("Terminating early, no valid movement found. Current iter {}, t {}", currentIteration, currentTemperature);
                 break;
             }
 
@@ -100,7 +101,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
             assert DoubleComparator.isLessThan(newTemperature, currentTemperature) : String.format("Next Temp %s should be < than prev %s", newTemperature, currentTemperature);
             currentTemperature = newTemperature;
             currentIteration++;
-            log.fine(String.format("Next iter %s with t: %s", currentIteration, currentTemperature));
+            log.debug("Next iter {} with t: {}", currentIteration, currentTemperature);
         }
         return best;
     }
@@ -130,7 +131,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
                 }
             }
             if(!executed){
-                log.fine(String.format("Breaking cycle at %s/%s", i, this.cycleLength));
+                log.debug("Breaking cycle at {}/{}", i, this.cycleLength);
                 return new CycleResult<>(atLeastOne, true, best, solution);
             }
         }
@@ -171,7 +172,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
                 }
             }
             if(fails >= maxRetries){
-                log.fine(String.format("Breaking cycle at %s/%s", i, this.cycleLength));
+                log.debug("Breaking cycle at {}/{}", i, this.cycleLength);
                 return new CycleResult<>(atLeastOne, true, best, solution);
             }
         }

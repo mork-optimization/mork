@@ -163,9 +163,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
         return workUnits;
     }
 
-    public static String instanceName(String instancePath){
-        // TODO: review and improve
-        String[] parts = instancePath.split(Pattern.quote(File.separator));
-        return parts[parts.length - 1];
+    public String instanceName(String instancePath){
+        return this.instanceManager.getInstance(instancePath).getId();
     }
 }

@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.solution.neighborhood;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.*;
 import java.util.function.Consumer;
@@ -82,12 +83,46 @@ public abstract class Neighborhood<M extends Move<S,I>, S extends Solution<S,I>,
         }
     }
 
-    private static class ConcatNeighborhood<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> extends Neighborhood<M,S,I> {
-        private final Neighborhood<M, S, I>[] neighborhoods;
+    private abstract static class DerivedNeighborhood<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> extends Neighborhood<M,S,I> implements RandomizableNeighborhood<M,S,I>{
+        final Neighborhood<M, S, I>[] neighborhoods;
+        final boolean randomizable;
+
+        @SafeVarargs
+        public DerivedNeighborhood(Neighborhood<M,S,I>... neighborhoods){
+            this.neighborhoods = Objects.requireNonNull(neighborhoods);
+
+            boolean randomizable = true;
+            for(var n: this.neighborhoods){
+                randomizable &= n instanceof RandomizableNeighborhood<?, ?, ?>;
+            }
+            this.randomizable = randomizable;
+        }
+
+        @Override
+        @SuppressWarnings("unchecked")
+        public Optional<M> getRandomMove(S s) {
+            if(!randomizable){
+                throw new IllegalArgumentException("At least one of the following neighborhoods does not implement RandomizableNeighborhood: " + Arrays.toString(this.neighborhoods));
+            }
+            int chosen = RandomManager.getRandom().nextInt(0, this.neighborhoods.length);
+            var randomizableNeigh = (RandomizableNeighborhood<M,S,I>) this.neighborhoods[chosen];
+            return randomizableNeigh.getRandomMove(s);
+        }
+
+        /** {@inheritDoc} */
+        @Override
+        public String toString() {
+            return this.getClass().getSimpleName() + "{" +
+                    "randAvailable=" + this.randomizable +
+                    "neighs=" + Arrays.toString(this.neighborhoods) +
+                    "}";
+        }
+    }
+    private static class ConcatNeighborhood<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> extends DerivedNeighborhood<M,S,I> {
 
         @SafeVarargs
         private ConcatNeighborhood(Neighborhood<M, S, I>... neighborhoods) {
-            this.neighborhoods = Objects.requireNonNull(neighborhoods);
+            super(neighborhoods);
         }
 
         @Override
@@ -103,13 +138,11 @@ public abstract class Neighborhood<M extends Move<S,I>, S extends Solution<S,I>,
         }
     }
 
-    private static class InterleavedNeighborhood<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> extends Neighborhood<M,S,I> {
-
-        private final Neighborhood<M,S,I>[] neighborhoods;
+    private static class InterleavedNeighborhood<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> extends DerivedNeighborhood<M,S,I>  {
 
         @SafeVarargs
         private InterleavedNeighborhood(Neighborhood<M, S, I>... neighborhoods) {
-            this.neighborhoods = neighborhoods;
+            super(neighborhoods);
         }
 
         @Override
