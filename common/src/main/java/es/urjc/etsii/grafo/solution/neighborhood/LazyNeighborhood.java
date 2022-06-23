@@ -26,10 +26,10 @@ public abstract class LazyNeighborhood<M extends LazyMove<S,I>, S extends Soluti
     /**
      * Build an exhaustive stream that allows iterating the whole neighborhood given an initial move
      *
-     * @param move initial move
+     * @param initialMove initial move
      * @return Stream with all the available moves in the neighborhood
      */
-    protected Stream<M> buildStream(M move){
-        return Stream.iterate(move, Objects::nonNull, m -> (M) m.next());
+    protected Stream<M> buildStream(M initialMove){
+        return Stream.iterate(initialMove, Objects::nonNull, m -> (M) m.next());
     }
 }

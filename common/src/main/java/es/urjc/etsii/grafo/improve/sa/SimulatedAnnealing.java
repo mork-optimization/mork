@@ -48,7 +48,7 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
     private final InitialTemperatureCalculator<M,S,I> initialTemperatureCalculator;
     private final int cycleLength;
 
-    private record CycleResult<S>(boolean atLeastOneMove, boolean shortExecution, S bestSolution, S currentSolution){}
+    private record CycleResult<S>(boolean atLeastOneMove, S bestSolution, S currentSolution){}
 
     /**
      * Internal constructor, use {@link SimulatedAnnealing#builder()}.
@@ -132,10 +132,10 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
             }
             if(!executed){
                 log.debug("Breaking cycle at {}/{}", i, this.cycleLength);
-                return new CycleResult<>(atLeastOne, true, best, solution);
+                return new CycleResult<>(atLeastOne, best, solution);
             }
         }
-        return new CycleResult<>(atLeastOne, false, best, solution);
+        return new CycleResult<>(atLeastOne, best, solution);
     }
 
     /**
@@ -173,10 +173,10 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
             }
             if(fails >= maxRetries){
                 log.debug("Breaking cycle at {}/{}", i, this.cycleLength);
-                return new CycleResult<>(atLeastOne, true, best, solution);
+                return new CycleResult<>(atLeastOne, best, solution);
             }
         }
-        return new CycleResult<>(atLeastOne, false, best, solution);
+        return new CycleResult<>(atLeastOne, best, solution);
     }
 
     private Collection<M> getMoves(Neighborhood<M,S,I> neighborhood, S s){

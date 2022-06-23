@@ -3,17 +3,17 @@ package es.urjc.etsii.grafo.solver.services;
 import com.fasterxml.jackson.core.util.DefaultPrettyPrinter;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.urjc.etsii.grafo.ErrorConfig;
+import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.algorithms.Algorithm;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.text.SimpleDateFormat;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.logging.Logger;
@@ -81,9 +81,9 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
         createFolder(this.errorConfig.getFolder());
 
         // Directamente desde aqui, si se quiere customizar se puede pisar el DefaultExceptionHandler
-        SimpleDateFormat sdf = new SimpleDateFormat("HH.mm.ss.SSS");
-        LocalDate d = LocalDate.now();
-        String filename = experimentName + "_" + sdf.format(d) + "_.json";
+        var formatter = DateTimeFormatter.ofPattern("HH.mm.ss.SSS");
+        LocalDateTime d = LocalDateTime.now();
+        String filename = experimentName + "_" + formatter.format(d) + "_.json";
         var errorData = Map.of("Algorithm", alg, "InstanceName", i.getId(), "StackTrace", stacktrace, "Error", t);
         var p = Path.of(this.errorConfig.getFolder(), filename);
         try (var outputStream = Files.newOutputStream(p)){
