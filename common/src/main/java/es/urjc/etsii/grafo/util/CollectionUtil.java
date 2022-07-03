@@ -4,6 +4,8 @@ import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.*;
 import java.util.random.RandomGenerator;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 /**
  * Util methods to manipulate collections and arrays that are not part of the standard java API
@@ -198,18 +200,13 @@ public class CollectionUtil {
     }
 
     /**
-     * Generate a list of integers  between two given values, start and end.
-     *
-     * @param start Start value
-     * @param end   End value
-     * @return List of integers
+     * returns a sequential ordered List from startInclusive (inclusive) to endExclusive (exclusive) by an incremental step of 1.
+     * @param start the (inclusive) initial start value
+     * @param end   the exclusive upper bound
+     * @return a sequential List for the range of int elements
      */
     public static List<Integer> generateIntegerList(int start, int end) {
-        List<Integer> list = new ArrayList<>();
-        for (int i = start; i < end; i++) {
-            list.add(i);
-        }
-        return list;
+        return IntStream.range(start, end).boxed().collect(Collectors.toList());
     }
 
     /**
