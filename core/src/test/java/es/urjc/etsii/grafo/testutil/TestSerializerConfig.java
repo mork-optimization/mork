@@ -1,15 +1,12 @@
 package es.urjc.etsii.grafo.testutil;
 
 import es.urjc.etsii.grafo.io.serializers.AbstractResultSerializerConfig;
+import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.context.annotation.Configuration;
 
 import java.nio.file.Path;
 
+@Configuration
+@ConfigurationProperties(prefix = "serializers.test")
 public class TestSerializerConfig extends AbstractResultSerializerConfig {
-    public TestSerializerConfig(boolean enabled, AbstractResultSerializerConfig.Frequency frequency, Path p) {
-        this.setEnabled(enabled);
-        this.setFrequency(frequency);
-        this.setFolder(p.toFile().getAbsolutePath());
-        this.setFormat("'Results'_yyyy-MM-dd_HH-mm-ss.'test'");
-
-    }
 }
