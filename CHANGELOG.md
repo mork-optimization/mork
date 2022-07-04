@@ -1,3 +1,6 @@
+# v0.14
+- (Fix) #88: Filename bug in SolutionSerializer, by @ea2809
+
 # v0.13
 - (New) Neighborhood.empty(), Neighborhood.concat(n1, n2), Neighborhood.interleave(n1, n2)
 - (New) Modular Angular 13 frontend
