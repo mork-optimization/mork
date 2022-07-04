@@ -34,7 +34,7 @@ public class MaxDifferenceInitialTemperature<M extends Move<S,I>, S extends Solu
     /** {@inheritDoc} */
     @Override
     public double initial(S solution, Neighborhood<M, S, I> neighborhood) {
-        var summary = neighborhood.stream(solution).mapToDouble(Move::getValue).summaryStatistics();
+        var summary = neighborhood.explore(solution).mapToDouble(Move::getValue).summaryStatistics();
         double diff = Math.abs(summary.getMin() - summary.getMax());
         double initialTemperature = diff * this.ratio;
         return initialTemperature;

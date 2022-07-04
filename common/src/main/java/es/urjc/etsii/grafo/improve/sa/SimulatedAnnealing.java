@@ -184,7 +184,12 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
         if(neighborhood instanceof EagerNeighborhood eagerNeighborhood){
             moves = eagerNeighborhood.getMovements(s);
         } else {
-            moves = neighborhood.stream(s).collect(Collectors.toList());
+            var result = neighborhood.explore(s);
+            if(result.sized()){
+                moves = result.moves().collect(Collectors.toCollection(() -> new ArrayList<>(result.size())));
+            } else {
+                moves = result.moves().toList();
+            }
         }
         CollectionUtil.shuffle(moves);
         return moves;

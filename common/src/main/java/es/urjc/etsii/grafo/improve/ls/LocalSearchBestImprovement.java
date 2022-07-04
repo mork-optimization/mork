@@ -64,7 +64,7 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
     public Optional<M> getMove(S s) {
         M move = null;
         for (var provider : this.providers) {
-            var _move = getBest(provider.stream(s));
+            var _move = getBest(provider.explore(s));
             if (_move.isEmpty()) continue;
             if (move == null) {
                 move = _move.get();

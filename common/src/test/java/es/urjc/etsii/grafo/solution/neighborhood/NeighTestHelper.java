@@ -12,7 +12,7 @@ public class NeighTestHelper {
     public static Neighborhood<TestMove, TestSolution, TestInstance> neighborhood(TestMove... moves){
         return new Neighborhood<>() {
             @Override
-            public Stream<TestMove> stream(TestSolution testSolution) {
+            public Stream<TestMove> explore(TestSolution testSolution) {
                 return Arrays.stream(moves);
             }
             @Override
@@ -25,7 +25,7 @@ public class NeighTestHelper {
     public static Neighborhood<TestMove, TestSolution, TestInstance> neighborhood(TestSolution solution, double... values){
         return new Neighborhood<>() {
             @Override
-            public Stream<TestMove> stream(TestSolution testSolution) {
+            public Stream<TestMove> explore(TestSolution testSolution) {
                 return Arrays.stream(values).mapToObj(v -> new TestMove(solution, v));
             }
             @Override

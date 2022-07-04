@@ -42,7 +42,7 @@ public class BaseLSTest {
         }
         var neighborhood = Mockito.mock(EagerNeighborhood.class);
         when(neighborhood.getMovements(solution)).thenReturn(moves);
-        when(neighborhood.stream(solution)).thenReturn(moves.stream());
+        when(neighborhood.explore(solution)).thenReturn(moves.stream());
         return neighborhood;
     }
 }
