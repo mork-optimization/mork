@@ -6,7 +6,6 @@ import es.urjc.etsii.grafo.improve.sa.initialt.InitialTemperatureCalculator;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solution.neighborhood.EagerNeighborhood;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.util.CollectionUtil;
@@ -30,28 +29,29 @@ import java.util.stream.Collectors;
  * which usually defaults to something like the Max diff between the moves in the neighborhood,
  * as implemented in {@link es.urjc.etsii.grafo.improve.sa.initialt.MaxDifferenceInitialTemperature}.
  *
- *
- * @see <a href="https://en.wikipedia.org/wiki/Simulated_annealing"></a>
- * @see SimulatedAnnealingBuilder
  * @param <M> Move type
  * @param <S> Solution type
  * @param <I> Instance type
+ * @see <a href="https://en.wikipedia.org/wiki/Simulated_annealing"></a>
+ * @see SimulatedAnnealingBuilder
  */
-public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> extends Improver<S,I> {
+public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends Improver<S, I> {
 
     private static final Logger log = LoggerFactory.getLogger(SimulatedAnnealing.class);
 
-    private final AcceptanceCriteria<M,S,I> acceptanceCriteria;
+    private final AcceptanceCriteria<M, S, I> acceptanceCriteria;
     private final Neighborhood<M, S, I> neighborhood;
-    private final TerminationCriteria<M,S,I> terminationCriteria;
-    private final CoolDownControl<M,S,I> coolDownControl;
-    private final InitialTemperatureCalculator<M,S,I> initialTemperatureCalculator;
+    private final TerminationCriteria<M, S, I> terminationCriteria;
+    private final CoolDownControl<M, S, I> coolDownControl;
+    private final InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator;
     private final int cycleLength;
 
-    private record CycleResult<S>(boolean atLeastOneMove, S bestSolution, S currentSolution){}
+    private record CycleResult<S>(boolean atLeastOneMove, S bestSolution, S currentSolution) {
+    }
 
     /**
      * Internal constructor, use {@link SimulatedAnnealing#builder()}.
+     *
      * @param acceptanceCriteria
      * @param ps
      * @param initialTemperatureCalculator
@@ -70,12 +70,13 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
 
     /**
      * Get simulated annealing builder.
-     * @return simulated annealing builder
+     *
      * @param <M> Move type
      * @param <S> Solution type
      * @param <I> Instance type
+     * @return simulated annealing builder
      */
-    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> SimulatedAnnealingBuilder<M,S,I> builder(){
+    public static <M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> SimulatedAnnealingBuilder<M, S, I> builder() {
         return new SimulatedAnnealingBuilder<>();
     }
 
@@ -85,14 +86,14 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
         double currentTemperature = this.initialTemperatureCalculator.initial(best, neighborhood);
         log.debug("Initial temperature: {}", currentTemperature);
         int currentIteration = 0;
-        while(!terminationCriteria.terminate(best, neighborhood, currentTemperature, currentIteration)){
-            CycleResult<S> cycleResult = neighborhood instanceof RandomizableNeighborhood rn?
-                            doCycleFast(rn, solution, best, currentTemperature) :
-                            doCycleSlow(neighborhood, solution, best, currentTemperature);
+        while (!terminationCriteria.terminate(best, neighborhood, currentTemperature, currentIteration)) {
+            CycleResult<S> cycleResult = neighborhood instanceof RandomizableNeighborhood rn ?
+                    doCycleFast(rn, solution, best, currentTemperature) :
+                    doCycleSlow(neighborhood, solution, best, currentTemperature);
 
             best = cycleResult.bestSolution;
             solution = cycleResult.currentSolution;
-            if(!cycleResult.atLeastOneMove){
+            if (!cycleResult.atLeastOneMove) {
                 log.debug("Terminating early, no valid movement found. Current iter {}, t {}", currentIteration, currentTemperature);
                 break;
             }
@@ -109,28 +110,29 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
     /**
      * Does a cycle with the same temperature. Always works on the same solution.
      * Slow implementation as a fallback, when {@link SimulatedAnnealing#doCycleFast(RandomizableNeighborhood, Solution, Solution, double)} is not possible.
-     * @param solution current working solution
-     * @param best best solution found until now
+     *
+     * @param solution           current working solution
+     * @param best               best solution found until now
      * @param currentTemperature current temperature
      * @return best solution found, remember that you should NOT use the returned solution
      */
-    protected CycleResult<S> doCycleSlow(Neighborhood<M,S,I> neighborhood, S solution, S best, double currentTemperature) {
+    protected CycleResult<S> doCycleSlow(Neighborhood<M, S, I> neighborhood, S solution, S best, double currentTemperature) {
         boolean atLeastOne = false;
         for (int i = 0; i < this.cycleLength; i++) {
             boolean executed = false;
             var currentMoves = getMoves(neighborhood, solution);
-            for(M move: currentMoves){
-                if(move.improves() || acceptanceCriteria.accept(move, currentTemperature)){
+            for (M move : currentMoves) {
+                if (move.improves() || acceptanceCriteria.accept(move, currentTemperature)) {
                     atLeastOne = true;
                     move.execute();
                     executed = true;
-                    if(solution.isBetterThan(best)){
+                    if (solution.isBetterThan(best)) {
                         best = solution.cloneSolution();
                     }
                     break;
                 }
             }
-            if(!executed){
+            if (!executed) {
                 log.debug("Breaking cycle at {}/{}", i, this.cycleLength);
                 return new CycleResult<>(atLeastOne, best, solution);
             }
@@ -141,37 +143,40 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
     /**
      * Does a cycle with the same temperature. Always works on the same solution.
      * Fast implementation that can only be used if the {@link Neighborhood} implements {@link RandomizableNeighborhood}.
-     * @param solution current working solution
-     * @param best best solution found until now
+     *
+     * @param solution           current working solution
+     * @param best               best solution found until now
      * @param currentTemperature current temperature
      * @return best solution found, remember that you should NOT use the returned solution
      */
-    protected CycleResult<S> doCycleFast(RandomizableNeighborhood<M,S,I> neighborhood, S solution, S best, double currentTemperature) {
+    protected CycleResult<S> doCycleFast(RandomizableNeighborhood<M, S, I> neighborhood, S solution, S best, double currentTemperature) {
         boolean atLeastOne = false;
         for (int i = 0; i < this.cycleLength; i++) {
             int fails = 0;
             int maxRetries = 3;
             Set<M> testedMoves = new HashSet<>();
-            while(fails < maxRetries){
+            while (fails < maxRetries) {
                 Optional<M> optionalMove = neighborhood.getRandomMove(solution);
-                if(optionalMove.isEmpty()){
-                    fails++; continue;
+                if (optionalMove.isEmpty()) {
+                    fails++;
+                    continue;
                 }
                 M move = optionalMove.get();
-                if(testedMoves.contains(move)){
-                    fails++; continue;
+                if (testedMoves.contains(move)) {
+                    fails++;
+                    continue;
                 }
                 testedMoves.add(move);
-                if(move.improves() || acceptanceCriteria.accept(move, currentTemperature)){
+                if (move.improves() || acceptanceCriteria.accept(move, currentTemperature)) {
                     atLeastOne = true;
                     move.execute();
-                    if(solution.isBetterThan(best)){
+                    if (solution.isBetterThan(best)) {
                         best = solution.cloneSolution();
                     }
                     break;
                 }
             }
-            if(fails >= maxRetries){
+            if (fails >= maxRetries) {
                 log.debug("Breaking cycle at {}/{}", i, this.cycleLength);
                 return new CycleResult<>(atLeastOne, best, solution);
             }
@@ -179,17 +184,13 @@ public class SimulatedAnnealing<M extends Move<S,I>, S extends Solution<S,I>, I 
         return new CycleResult<>(atLeastOne, best, solution);
     }
 
-    private Collection<M> getMoves(Neighborhood<M,S,I> neighborhood, S s){
+    private Collection<M> getMoves(Neighborhood<M, S, I> neighborhood, S s) {
         List<M> moves;
-        if(neighborhood instanceof EagerNeighborhood eagerNeighborhood){
-            moves = eagerNeighborhood.getMovements(s);
+        var result = neighborhood.explore(s);
+        if (result.sized()) {
+            moves = result.moves().collect(Collectors.toCollection(() -> new ArrayList<>(result.size())));
         } else {
-            var result = neighborhood.explore(s);
-            if(result.sized()){
-                moves = result.moves().collect(Collectors.toCollection(() -> new ArrayList<>(result.size())));
-            } else {
-                moves = result.moves().toList();
-            }
+            moves = result.moves().toList();
         }
         CollectionUtil.shuffle(moves);
         return moves;

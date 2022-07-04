@@ -61,10 +61,11 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
      * Get next move to execute.
      */
     @Override
-    public Optional<M> getMove(S s) {
+    public Optional<M> getMove(S solution) {
         M move = null;
         for (var provider : this.providers) {
-            var _move = getBest(provider.explore(s));
+            var expRes = provider.explore(solution);
+            var _move = getBest(expRes.moves());
             if (_move.isEmpty()) continue;
             if (move == null) {
                 move = _move.get();

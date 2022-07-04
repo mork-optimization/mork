@@ -3,21 +3,20 @@ package es.urjc.etsii.grafo.TSP.algorithms.neighborhood;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.solution.LazyMove;
-import es.urjc.etsii.grafo.solution.neighborhood.LazyNeighborhood;
+import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.text.MessageFormat;
 import java.util.Objects;
-import java.util.stream.Stream;
 
-public class SwapNeighborhood extends LazyNeighborhood<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance> {
+public class SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance> {
 
 
     @Override
-    public Stream<SwapMove> stream(TSPSolution solution) {
+    public ExploreResult<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance> explore(TSPSolution solution) {
         int initialVertex = RandomManager.getRandom().nextInt(solution.getInstance().numberOfLocations());
-        return buildStream(new SwapMove(solution, initialVertex, initialVertex, (initialVertex + 1) % solution.getInstance().numberOfLocations()));
+        return new ExploreResult<>(new SwapMove(solution, initialVertex, initialVertex, (initialVertex + 1) % solution.getInstance().numberOfLocations()));
     }
 
     public static class SwapMove extends LazyMove<TSPSolution, TSPInstance> {

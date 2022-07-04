@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.solution.neighborhood;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.LazyMove;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.random.RandomManager;
@@ -35,15 +36,39 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
      * @param <S>   Solution type
      * @param <I>   Instance type
      */
-    public record Result<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance>(Stream<M> moves,
-                                                                                             int size) {
+    public record ExploreResult<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance>(Stream<M> moves,
+                                                                                                    int size) {
         /**
-         * Unknown size constructor
-         *
+         * Unknown size constructor from stream
          * @param moves move stream
          */
-        Result(Stream<M> moves) {
+        public ExploreResult(Stream<M> moves) {
             this(moves, UNKNOWN_SIZE);
+        }
+
+        /**
+         * Explore result from a LazyMove
+         * @param move move list
+         */
+        public ExploreResult(LazyMove<S,I> move) {
+            this(move, UNKNOWN_SIZE);
+        }
+
+        /**
+         * Explore result from a LazyMove, when the neighborhood size is known
+         * @param move move list
+         */
+        public ExploreResult(LazyMove<S,I> move, int size) {
+            // TODO: review ugly casting
+            this((Stream<M>) Stream.iterate(move, Objects::nonNull, (LazyMove<S,I> m) -> m.next()), size);
+        }
+
+        /**
+         * Explore result from move
+         * @param moves move list
+         */
+        public ExploreResult(List<M> moves) {
+            this(moves.stream(), moves.size());
         }
 
         /**
@@ -69,7 +94,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
      * @param s Solution used to generate the neighborhood
      * @return Stream with all the available moves in the neighborhood
      */
-    public abstract Result<M, S, I> explore(S s);
+    public abstract ExploreResult<M, S, I> explore(S s);
 
     /**
      * <p>
@@ -140,8 +165,8 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
     private static class EmptyNeighborhood<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends Neighborhood<M, S, I> {
 
         @Override
-        public Result<M, S, I> explore(S s) {
-            return new Result<>(Stream.empty(), 0);
+        public ExploreResult<M, S, I> explore(S s) {
+            return new ExploreResult<>(Stream.empty(), 0);
         }
 
         @Override
@@ -248,9 +273,9 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
         }
 
         @Override
-        public Result<M, S, I> explore(S s) {
+        public ExploreResult<M, S, I> explore(S s) {
             if (neighborhoods.length == 0) {
-                return new Result<>(Stream.empty(), 0);
+                return new ExploreResult<>(Stream.empty(), 0);
             }
             int totalSize = 0;
             boolean sized = true;
@@ -266,7 +291,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
                 }
             }
 
-            return new Result<>(stream, sized ? totalSize : UNKNOWN_SIZE);
+            return new ExploreResult<>(stream, sized ? totalSize : UNKNOWN_SIZE);
         }
     }
 
@@ -278,7 +303,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
         }
 
         @Override
-        public Result<M, S, I> explore(S solution) {
+        public ExploreResult<M, S, I> explore(S solution) {
 
             int totalSize = 0;
             boolean sized = true;
@@ -298,7 +323,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
                 totalSize = UNKNOWN_SIZE;
             }
 
-            return new Result<>(StreamSupport.stream(new Spliterators.AbstractSpliterator<>(totalSize, ch) {
+            return new ExploreResult<>(StreamSupport.stream(new Spliterators.AbstractSpliterator<>(totalSize, ch) {
                 List<Spliterator<? extends M>> spliterators = sps;
                 int lastIndex = 0;
 

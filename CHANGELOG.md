@@ -1,4 +1,5 @@
 # v0.14
+- (Change) Neighborhoods refactor: delete eager and lazy neighborhoods, randomizable as subclass, always return ExploreResult.
 - (Fix) #88: Filename bug in SolutionSerializer, by @ea2809
 
 # v0.13

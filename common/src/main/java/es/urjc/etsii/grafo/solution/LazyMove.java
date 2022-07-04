@@ -9,8 +9,7 @@ import java.util.logging.Logger;
  * As both are in the same package as the Solution, they may directly manipulate it.
  * See the following references for differences between an EagerMove and a LazyMove
  *
- * @see es.urjc.etsii.grafo.solution.neighborhood.LazyNeighborhood
- * @see es.urjc.etsii.grafo.solution.neighborhood.EagerNeighborhood
+ * @see es.urjc.etsii.grafo.solution.neighborhood.Neighborhood
  */
 public abstract class LazyMove<S extends Solution<S,I>, I extends Instance> extends Move<S,I>{
 
