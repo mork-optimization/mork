@@ -38,8 +38,17 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
      */
     public record ExploreResult<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance>(Stream<M> moves,
                                                                                                     int size) {
+
+        /**
+         * Empty explore results
+         */
+        public ExploreResult(){
+            this(Stream.empty(), 0);
+        }
+
         /**
          * Unknown size constructor from stream
+         *
          * @param moves move stream
          */
         public ExploreResult(Stream<M> moves) {
@@ -47,24 +56,28 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
         }
 
         /**
-         * Explore result from a LazyMove
+         * Explore result from a LazyMove, unknown neighborhood size
+         *
          * @param move move list
          */
-        public ExploreResult(LazyMove<S,I> move) {
+        public ExploreResult(LazyMove<S, I> move) {
             this(move, UNKNOWN_SIZE);
         }
 
         /**
-         * Explore result from a LazyMove, when the neighborhood size is known
+         * Explore result from a LazyMove, when the neighborhood size is known.
+         *
          * @param move move list
+         * @param size upperbound neighborhood size for the current solution
          */
-        public ExploreResult(LazyMove<S,I> move, int size) {
+        public ExploreResult(LazyMove<S, I> move, int size) {
             // TODO: review ugly casting
-            this((Stream<M>) Stream.iterate(move, Objects::nonNull, (LazyMove<S,I> m) -> m.next()), size);
+            this((Stream<M>) Stream.iterate(move, Objects::nonNull, (LazyMove<S, I> m) -> m.next()), size);
         }
 
         /**
-         * Explore result from move
+         * Explore result from a list of moves (eager exploration)
+         *
          * @param moves move list
          */
         public ExploreResult(List<M> moves) {
