@@ -4,13 +4,13 @@
 
     <!-- Project name and current version -->
     <artifactId>__RNAME__</artifactId>
-    <version>0.13.1</version>
+    <version>0.13.2-SNAPSHOT</version>
 
     <!-- Automatic configuration, can be overridden -->
     <parent>
         <groupId>es.urjc.etsii.grafo</groupId>
         <artifactId>mork-parent</artifactId>
-        <version>0.13.1</version>
+        <version>0.13.2-SNAPSHOT</version>
 
     </parent>
 
@@ -18,12 +18,12 @@
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork</artifactId>
-            <version>0.13.1</version>
+            <version>0.13.2-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork-common</artifactId>
-            <version>0.13.1</version>
+            <version>0.13.2-SNAPSHOT</version>
         </dependency>
     </dependencies>
     
