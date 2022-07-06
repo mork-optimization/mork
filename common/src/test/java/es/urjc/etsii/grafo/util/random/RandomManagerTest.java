@@ -85,7 +85,7 @@ public class RandomManagerTest {
     public void allAvailable(){
         for(var type: RandomType.values()){
             Assertions.assertDoesNotThrow(() -> {
-                RandomManager.reinitialize(type, 1234, 100);
+                RandomManager.globalConfiguration(type, 1234, 100);
                 RandomManager.reset(0);
                 RandomManager.getRandom().nextInt(0, 100);
             });

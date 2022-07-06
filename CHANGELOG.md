@@ -1,6 +1,9 @@
 # v0.14
+
+- (Change) dynamically generate scenario for irace
 - (Change) Neighborhoods refactor: delete eager and lazy neighborhoods, randomizable as subclass, always return ExploreResult.
 - (Fix) #88: Filename bug in SolutionSerializer, by @ea2809
+- (Fix) #63: Bug parell irace with randoms, by @scaverod
 
 # v0.13
 - (New) Neighborhood.empty(), Neighborhood.concat(n1, n2), Neighborhood.interleave(n1, n2)

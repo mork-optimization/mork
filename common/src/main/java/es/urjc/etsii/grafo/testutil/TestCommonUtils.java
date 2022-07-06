@@ -12,7 +12,7 @@ public class TestCommonUtils {
     }
 
     public static RandomGenerator initRandom(RandomType type, int seed, int repetitions, int iteration){
-        RandomManager.reinitialize(type, seed, repetitions);
+        RandomManager.globalConfiguration(type, seed, repetitions);
         RandomManager.reset(iteration);
         return RandomManager.getRandom();
     }
