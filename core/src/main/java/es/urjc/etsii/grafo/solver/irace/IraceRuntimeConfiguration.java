@@ -59,6 +59,48 @@ public class IraceRuntimeConfiguration {
     }
 
     /**
+     * Get the value of a config property and parse as integer value
+     *
+     * @param key config key
+     * @return Optional with value if key was in config map, empty Optional if key was not in config map.
+     */
+    public Optional<Integer> getValueAsInt(String key){
+        return getValue(key).map(Integer::parseInt);
+    }
+
+    /**
+     * Get the value of a config property and parse as integer value
+     *
+     * @param key config key
+     * @param defaultValue value to return if key is not in config map
+     * @return Config value if key present, default value otherwise
+     */
+    public int getValueAsInt(String key, int defaultValue){
+        return getValueAsInt(key).orElse(defaultValue);
+    }
+
+    /**
+     * Get the value of a config property and parse as double value
+     *
+     * @param key config key
+     * @return Optional with value if key was in config map, empty Optional if key was not in config map.
+     */
+    public Optional<Double> getValueAsDouble(String key){
+        return getValue(key).map(Double::parseDouble);
+    }
+
+    /**
+     * Get the value of a config property and parse as a double value
+     *
+     * @param key config key
+     * @param defaultValue value to return if key is not in config map
+     * @return Config value as double if key present, default value otherwise
+     */
+    public double getValueAsDouble(String key, double defaultValue){
+        return getValueAsDouble(key).orElse(defaultValue);
+    }
+
+    /**
      * Get all config properties related to the irace algorithm
      *
      * @return all key/values as a map.
