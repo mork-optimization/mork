@@ -16,7 +16,6 @@ public class IraceRuntimeConfiguration {
     private final String seed;
     private final String instanceName;
     private final Map<String, String> alg;
-    private final boolean isMaximizing;
 
     /**
      * <p>Constructor for IraceRuntimeConfiguration.</p>
@@ -26,15 +25,13 @@ public class IraceRuntimeConfiguration {
      * @param seed a {@link java.lang.String} object.
      * @param instanceName a {@link java.lang.String} object.
      * @param alg a {@link java.util.Map} object.
-     * @param isMaximizing a boolean.
      */
-    public IraceRuntimeConfiguration(String candidateConfiguration, String instanceId, String seed, String instanceName, Map<String, String> alg, boolean isMaximizing) {
+    public IraceRuntimeConfiguration(String candidateConfiguration, String instanceId, String seed, String instanceName, Map<String, String> alg) {
         this.candidateConfiguration = candidateConfiguration;
         this.instanceId = instanceId;
         this.alg = alg;
         this.instanceName = instanceName;
         this.seed = seed;
-        this.isMaximizing = isMaximizing;
     }
 
     /**
@@ -128,15 +125,6 @@ public class IraceRuntimeConfiguration {
     }
 
     /**
-     * <p>isMaximizing.</p>
-     *
-     * @return a boolean.
-     */
-    public boolean isMaximizing(){
-        return this.isMaximizing;
-    }
-
-    /**
      * <p>Getter for the field <code>candidateConfiguration</code>.</p>
      *
      * @return a {@link java.lang.String} object.
@@ -162,7 +150,6 @@ public class IraceRuntimeConfiguration {
                 ", seed='" + seed + '\'' +
                 ", instancePath='" + instanceName + '\'' +
                 ", alg=" + alg +
-                ", isMaximizing=" + isMaximizing +
                 '}';
     }
 }
