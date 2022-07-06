@@ -175,6 +175,19 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
         return new EmptyNeighborhood<>();
     }
 
+    /**
+     * Create a neighborhood that picks random moves from a set of given neighborhoods
+     * @param balanced if false, all neighborhoods will be chosen with the same probability. If true, the neighborhood
+     *                 size for the current solution will be taken into account
+     * @return a RandomizableNeighborhood that randomly picks movements from a given set of neighborhoods.
+     * @param <M> Move type
+     * @param <S> Solution type
+     * @param <I> Instance type
+     */
+    public static <M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> RandomizableNeighborhood<M, S, I> random(boolean balanced, RandomizableNeighborhood<M, S, I>... neighborhoods) {
+        return new RandomFromNeighborhood<>(balanced, neighborhoods);
+    }
+
     private static class EmptyNeighborhood<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends Neighborhood<M, S, I> {
 
         @Override
@@ -189,10 +202,11 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
     }
 
 
-    private abstract static class RandomFromNeighborhood<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends RandomizableNeighborhood<M, S, I> {
+    private static class RandomFromNeighborhood<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends RandomizableNeighborhood<M, S, I> {
 
         private final boolean balanceProbabilities;
-        final RandomizableNeighborhood<M, S, I>[] neighborhoods;
+        private final RandomizableNeighborhood<M, S, I>[] neighborhoods;
+        private final Neighborhood<M, S, I> neighborhoodForExplore;
 
         /**
          * Pick a random move from the given neighborhoods
@@ -201,10 +215,15 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
          *                             if true, probability depends on the neighborhood size if available.
          * @param neighborhoods        list of neighborhoods where we can choose random moves from
          */
-        @SafeVarargs
-        protected RandomFromNeighborhood(boolean balanceProbabilities, RandomizableNeighborhood<M, S, I>... neighborhoods) {
+        protected RandomFromNeighborhood(boolean balanceProbabilities, RandomizableNeighborhood<M, S, I>[] neighborhoods) {
             this.balanceProbabilities = balanceProbabilities;
             this.neighborhoods = neighborhoods;
+            this.neighborhoodForExplore = Neighborhood.concat(neighborhoods);
+        }
+
+        @Override
+        public ExploreResult<M, S, I> explore(S s) {
+            return this.neighborhoodForExplore.explore(s);
         }
 
         @Override

@@ -40,7 +40,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
     private static final Logger log = LoggerFactory.getLogger(SimulatedAnnealing.class);
 
     private final AcceptanceCriteria<M, S, I> acceptanceCriteria;
-    private final Neighborhood<M, S, I> neighborhood;
+    private final RandomizableNeighborhood<M, S, I> neighborhood;
     private final TerminationCriteria<M, S, I> terminationCriteria;
     private final CoolDownControl<M, S, I> coolDownControl;
     private final InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator;
@@ -59,7 +59,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
      * @param coolDownControl
      * @param cycleLength
      */
-    protected SimulatedAnnealing(AcceptanceCriteria<M, S, I> acceptanceCriteria, Neighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength) {
+    protected SimulatedAnnealing(AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength) {
         this.acceptanceCriteria = acceptanceCriteria;
         this.neighborhood = ps;
         this.terminationCriteria = terminationCriteria;
@@ -87,10 +87,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
         log.debug("Initial temperature: {}", currentTemperature);
         int currentIteration = 0;
         while (!terminationCriteria.terminate(best, neighborhood, currentTemperature, currentIteration)) {
-            CycleResult<S> cycleResult = neighborhood instanceof RandomizableNeighborhood rn ?
-                    doCycleFast(rn, solution, best, currentTemperature) :
-                    doCycleSlow(neighborhood, solution, best, currentTemperature);
-
+            CycleResult<S> cycleResult = doCycleFast(neighborhood, solution, best, currentTemperature);
             best = cycleResult.bestSolution;
             solution = cycleResult.currentSolution;
             if (!cycleResult.atLeastOneMove) {
