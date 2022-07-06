@@ -49,7 +49,7 @@ public final class RandomManager {
      * @param seed random seed
      * @param repetitions (instance, algorithm) iteration
      */
-    public static void reinitialize(RandomType randomType, long seed, int repetitions){
+    public static void globalConfiguration(RandomType randomType, long seed, int repetitions){
         RandomManager.randomType = randomType;
         Random initRandom = new Random(seed);
         seeds = new long[repetitions];
@@ -59,6 +59,15 @@ public final class RandomManager {
         logger.fine("Using seeds = " + Arrays.toString(seeds));
         localRandom = ThreadLocal.withInitial(() -> {throw new IllegalStateException("");});
         initialized = true;
+    }
+
+    /**
+     * Initialize random only in current thread
+     * @param randomType random type
+     * @param seed random seed
+     */
+    public static void localConfiguration(RandomType randomType, long seed){
+        localRandom.set(RandomGeneratorFactory.of(randomType.getJavaName()).create(seed));
     }
 
     /**

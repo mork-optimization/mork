@@ -156,8 +156,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
 
         // Configure randoms for reproducible experimentation
         long seed = Long.parseLong(config.getSeed());
-        RandomManager.reinitialize(this.solverConfig.getRandomType(), seed, 1);
-        RandomManager.reset(0);
+        RandomManager.localConfiguration(this.solverConfig.getRandomType(), seed);
 
         // Execute
         String result = singleExecution(algorithm, instance);
