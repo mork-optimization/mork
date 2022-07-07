@@ -3,8 +3,8 @@ package es.urjc.etsii.grafo.solution;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.ValidationUtil;
-
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import static es.urjc.etsii.grafo.solution.Solution.MAX_DEBUG_MOVES;
 
@@ -18,7 +18,7 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
     /**
      * Static object to generate log messages.
      */
-    private static final Logger logger = Logger.getLogger(Move.class.getName());
+    private static final Logger logger = LoggerFactory.getLogger(Move.class);
 
     /**
      * This variable is used internally to check if the current solution has been modified.
@@ -51,7 +51,9 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
      * Executes the proposed move
      */
     public final void execute() {
-        logger.finer(this.toString());
+        if(logger.isTraceEnabled()){
+            logger.trace(this.toString());
+        }
         if (this.solutionVersion != s.version) {
             throw new AssertionError(String.format("Solution state changed to (%s), cannot execute move referencing solution state (%s)", s.version, this.solutionVersion));
         }
