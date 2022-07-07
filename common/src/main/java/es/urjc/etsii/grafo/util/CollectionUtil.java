@@ -153,14 +153,14 @@ public class CollectionUtil {
     /**
      * Randomly permute the specified list using the specified source of
      * randomness.  All permutations occur with equal likelihood
-     * assuming that the source of randomness is fair.<p>
-     * <p>
+     * assuming that the source of randomness is fair.
+     *
      * This implementation traverses the list backwards, from the last element
      * up to the second, repeatedly swapping a randomly selected element into
      * the "current position".  Elements are randomly selected from the
      * portion of the list that runs from the first element to the current
-     * position, inclusive.<p>
-     * <p>
+     * position, inclusive.
+     *
      * This method runs in linear time.  If the specified list does not
      * implement the {@link java.util.RandomAccess} interface and is large, this
      * implementation dumps the specified list into an array before shuffling
@@ -201,6 +201,9 @@ public class CollectionUtil {
 
     /**
      * returns a sequential ordered List from startInclusive (inclusive) to endExclusive (exclusive) by an incremental step of 1.
+     *
+     * If the start is greater or equal than the end, the returned list will be empty.
+     *
      * @param start the (inclusive) initial start value
      * @param end   the exclusive upper bound
      * @return a sequential List for the range of int elements
@@ -211,6 +214,8 @@ public class CollectionUtil {
 
     /**
      * Generate a list of integers between 0, and a given value.
+     *
+     * If end number is less than 0, the returned list will be empty.
      *
      * @param end End value
      * @return List of integers
