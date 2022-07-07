@@ -60,7 +60,7 @@ targetRunner = "__TARGET_RUNNER__"
 
 ## The maximum number of runs (invocations of targetRunner) that will
 ## performed. It determines the (maximum) budget of experiments for the tuning.
-maxExperiments = 10000
+maxExperiments = __MAX_EXPERIMENTS__
 
 ## Directory where testing instances are located, either absolute or relative
 ## to current directory.

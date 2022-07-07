@@ -116,7 +116,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
 
     private void extractIraceFiles(boolean isJar) {
         try {
-            var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration);
+            var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration, env);
             copyWithSubstitutions(getInputStreamFor("scenario.txt", isJar), Path.of("scenario.txt"), substitutions);
             copyWithSubstitutions(getInputStreamFor("parameters.txt", isJar), Path.of("parameters.txt"), substitutions);
             copyWithSubstitutions(getInputStreamFor("forbidden.txt", isJar), Path.of("forbidden.txt"), substitutions);
@@ -130,13 +130,27 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
 
     private final String integrationKey = StringUtil.generateSecret();
 
-    private Map<String, String> getSubstitutions(String integrationKey, SolverConfig solverConfig, InstanceConfiguration instanceConfiguration){
+    private Map<String, String> getSubstitutions(String integrationKey, SolverConfig solverConfig, InstanceConfiguration instanceConfiguration, Environment env){
+        String maxExperiments = env.getProperty("irace.maxExperiments", "10000");
         return Map.of(
                 "__INTEGRATION_KEY__", integrationKey,
                 "__INSTANCES_PATH__", instanceConfiguration.getPath("irace"),
                 "__TARGET_RUNNER__", "./middleware.sh",
-                "__PARALLEL__", "1"
+                "__PARALLEL__", nParallel(solverConfig),
+                "__MAX_EXPERIMENTS__", maxExperiments
         );
+    }
+
+    private String nParallel(SolverConfig solverConfig){
+        if(solverConfig.isParallelExecutor()){
+            int n = solverConfig.getnWorkers();
+            if(n < 1){
+                n = Runtime.getRuntime().availableProcessors() / 2;
+            }
+            return String.valueOf(n);
+        } else {
+            return "1";
+        }
     }
 
 
