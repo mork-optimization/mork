@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.util;
 
-import es.urjc.etsii.grafo.util.random.RandomType;
 import es.urjc.etsii.grafo.testutil.TestCommonUtils;
+import es.urjc.etsii.grafo.util.random.RandomType;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
@@ -13,15 +13,15 @@ import java.util.LinkedList;
 public class CollectionUtilTest {
 
     @Test
-    public void reverseFragmentTest(){
-        var list = Arrays.asList(0,1,2,3,4,5);
+    public void reverseFragmentTest() {
+        var list = Arrays.asList(0, 1, 2, 3, 4, 5);
         CollectionUtil.reverseFragment(list, 0, 3);
-        Assertions.assertEquals(list, Arrays.asList(3,2,1,0,4,5));
+        Assertions.assertEquals(list, Arrays.asList(3, 2, 1, 0, 4, 5));
         CollectionUtil.reverseFragment(list, 0, 3);
-        Assertions.assertEquals(list, Arrays.asList(0,1,2,3,4,5));
+        Assertions.assertEquals(list, Arrays.asList(0, 1, 2, 3, 4, 5));
 
-        CollectionUtil.reverseFragment(list, 3, list.size()-1);
-        Assertions.assertEquals(list, Arrays.asList(0,1,2,5,4,3));
+        CollectionUtil.reverseFragment(list, 3, list.size() - 1);
+        Assertions.assertEquals(list, Arrays.asList(0, 1, 2, 5, 4, 3));
 
         // index is inclusive, bounds checks
         Assertions.assertThrows(AssertionError.class, () -> CollectionUtil.reverseFragment(list, 0, list.size()));
@@ -33,14 +33,14 @@ public class CollectionUtilTest {
     }
 
     @Test
-    public void reverseTest(){
-        var list = Arrays.asList(0,1,2,3,4,5);
+    public void reverseTest() {
+        var list = Arrays.asList(0, 1, 2, 3, 4, 5);
         CollectionUtil.reverse(list);
-        Assertions.assertEquals(list, Arrays.asList(5,4,3,2,1,0));
+        Assertions.assertEquals(list, Arrays.asList(5, 4, 3, 2, 1, 0));
     }
 
     @Test
-    public void pickRandomFromSetTest(){
+    public void pickRandomFromSetTest() {
         RandomType type = RandomType.LEGACY;
         TestCommonUtils.initRandom(type, 0, 1);
         var set = new HashSet<>(Arrays.asList(0, 1, 2, 3, 4, 5));
@@ -51,7 +51,7 @@ public class CollectionUtilTest {
     }
 
     @Test
-    public void pickRandomFromListTest(){
+    public void pickRandomFromListTest() {
         RandomType type = RandomType.LEGACY;
         var initializeRandom = TestCommonUtils.initRandom(type, 0, 1);
         var list = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5));
@@ -63,29 +63,70 @@ public class CollectionUtilTest {
     }
 
     @Test
-    public void intToArray(){
-        var input = Arrays.asList(1,7,4,-9, Integer.MAX_VALUE, Integer.MIN_VALUE);
-        var expectedOutput = new int[]{1,7,4,-9, Integer.MAX_VALUE, Integer.MIN_VALUE};
+    public void intToArray() {
+        var input = Arrays.asList(1, 7, 4, -9, Integer.MAX_VALUE, Integer.MIN_VALUE);
+        var expectedOutput = new int[]{1, 7, 4, -9, Integer.MAX_VALUE, Integer.MIN_VALUE};
 
         var output = CollectionUtil.toIntArray(input);
         Assertions.assertArrayEquals(expectedOutput, output);
     }
 
     @Test
-    public void longToArray(){
-        var input = Arrays.asList(1L, 7L,4L,-9L, Long.MAX_VALUE, Long.MIN_VALUE);
-        var expectedOutput = new long[]{1, 7L,4,-9L, Long.MAX_VALUE, Long.MIN_VALUE};
+    public void longToArray() {
+        var input = Arrays.asList(1L, 7L, 4L, -9L, Long.MAX_VALUE, Long.MIN_VALUE);
+        var expectedOutput = new long[]{1, 7L, 4, -9L, Long.MAX_VALUE, Long.MIN_VALUE};
 
         var output = CollectionUtil.toLongArray(input);
         Assertions.assertArrayEquals(expectedOutput, output);
     }
 
     @Test
-    public void doubleToArray(){
-        var input = Arrays.asList(1D,7D,4D,-9D, Double.MAX_VALUE, Double.MIN_VALUE);
-        var expectedOutput = new double[]{1D,7D,4D,-9D, Double.MAX_VALUE, Double.MIN_VALUE};
+    public void doubleToArray() {
+        var input = Arrays.asList(1D, 7D, 4D, -9D, Double.MAX_VALUE, Double.MIN_VALUE);
+        var expectedOutput = new double[]{1D, 7D, 4D, -9D, Double.MAX_VALUE, Double.MIN_VALUE};
 
         var output = CollectionUtil.toDoubleArray(input);
         Assertions.assertArrayEquals(expectedOutput, output);
     }
+
+    @Test
+    public void generateIntegerList() {
+        var start = 0;
+        var end = 100;
+
+        var expectedOutput = new ArrayList<Integer>();
+        for (int i = start; i < end; i++) {
+            expectedOutput.add(i);
+        }
+
+        var expectedEmptyOutput = new ArrayList<Integer>();
+
+        Assertions.assertEquals(expectedOutput, CollectionUtil.generateIntegerList(start, end));
+        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(start, start));
+        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(end, start));
+        Assertions.assertEquals(expectedOutput, CollectionUtil.generateIntegerList(end));
+        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(start));
+
+        start = 50;
+        expectedOutput = new ArrayList<>();
+        for (int i = start; i < end; i++) {
+            expectedOutput.add(i);
+        }
+        Assertions.assertEquals(expectedOutput, CollectionUtil.generateIntegerList(start, end));
+        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(start, start));
+        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(end, start));
+
+
+        start = -25;
+        end = -1;
+        expectedOutput = new ArrayList<>();
+        for (int i = start; i < end; i++) {
+            expectedOutput.add(i);
+        }
+        Assertions.assertEquals(expectedOutput, CollectionUtil.generateIntegerList(start, end));
+        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(start, start));
+        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(end, start));
+    }
+
+
 }
