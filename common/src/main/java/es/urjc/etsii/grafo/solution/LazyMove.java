@@ -18,10 +18,10 @@ public abstract class LazyMove<S extends Solution<S,I>, I extends Instance> exte
     /**
      * <p>Constructor for LazyMove.</p>
      *
-     * @param s a S object.
+     * @param solution a S object.
      */
-    public LazyMove(S s) {
-        super(s);
+    public LazyMove(S solution) {
+        super(solution);
     }
 
     /**

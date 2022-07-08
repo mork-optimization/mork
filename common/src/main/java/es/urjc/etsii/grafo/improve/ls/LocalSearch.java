@@ -85,16 +85,16 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
      * In that case, the move is executed. Otherwise, the procedure ends.
      */
     @Override
-    public boolean iteration(S s) {
+    public boolean iteration(S solution) {
         // Get next move to execute
-        var move = getMove(s);
+        var move = getMove(solution);
 
         if (move.isEmpty()) {
             return false; // There are no valid transactions, the procedure ends
         }
 
         // The move is executed and ask for another iteration
-        move.get().execute();
+        move.get().execute(solution);
         return true;
     }
 
@@ -115,9 +115,9 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
     /**
      * Get next move to execute, different strategies are possible
      *
-     * @param s Solution
+     * @param solution Solution
      * @return Proposed move
      */
-    public abstract Optional<M> getMove(S s);
+    public abstract Optional<M> getMove(S solution);
 
 }

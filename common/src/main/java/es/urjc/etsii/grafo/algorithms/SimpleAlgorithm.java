@@ -92,10 +92,10 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
      * <p>printStatus.</p>
      *
      * @param phase a {@link String} object.
-     * @param s a S object.
+     * @param solution a S object.
      */
-    protected void printStatus(String phase, S s){
-        log.fine(() -> String.format("\t\t%s: %s", phase, s));
+    protected void printStatus(String phase, S solution){
+        log.fine(() -> String.format("\t\t%s: %s", phase, solution));
     }
 
     /** {@inheritDoc} */

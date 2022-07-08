@@ -25,8 +25,8 @@ public class TestMove extends Move<TestSolution, TestInstance> {
     }
 
     @Override
-    protected void _execute() {
-        getSolution().score += this.score;
+    protected void _execute(TestSolution solution) {
+        solution.score += this.score;
     }
 
     @Override

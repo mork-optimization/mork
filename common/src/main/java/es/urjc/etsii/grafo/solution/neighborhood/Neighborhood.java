@@ -104,10 +104,10 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
      * Using a stream is more efficient that a list
      * as moves are only generated if they are needed
      *
-     * @param s Solution used to generate the neighborhood
+     * @param solution Solution used to generate the neighborhood
      * @return Stream with all the available moves in the neighborhood
      */
-    public abstract ExploreResult<M, S, I> explore(S s);
+    public abstract ExploreResult<M, S, I> explore(S solution);
 
     /**
      * <p>
@@ -121,7 +121,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
      * Implementation  should have O(1) or O(log n) complexity, if the size can be calculated but takes O(n) or longer, it is recommended to return {@link Neighborhood#UNKNOWN_SIZE} instead.
      * </p>
      */
-    public int neighborhoodSize(S s) {
+    public int neighborhoodSize(S solution) {
         return Neighborhood.UNKNOWN_SIZE;
     }
 
@@ -191,7 +191,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
     private static class EmptyNeighborhood<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends Neighborhood<M, S, I> {
 
         @Override
-        public ExploreResult<M, S, I> explore(S s) {
+        public ExploreResult<M, S, I> explore(S solution) {
             return new ExploreResult<>(Stream.empty(), 0);
         }
 
@@ -222,16 +222,16 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
         }
 
         @Override
-        public ExploreResult<M, S, I> explore(S s) {
-            return this.neighborhoodForExplore.explore(s);
+        public ExploreResult<M, S, I> explore(S solution) {
+            return this.neighborhoodForExplore.explore(solution);
         }
 
         @Override
-        public int neighborhoodSize(S s) {
+        public int neighborhoodSize(S solution) {
             int totalSize = 0;
             boolean sized = true;
             for (var neighborhood : neighborhoods) {
-                var partialResult = neighborhood.explore(s);
+                var partialResult = neighborhood.explore(solution);
                 sized &= partialResult.sized();
                 totalSize += partialResult.size;
             }
@@ -305,7 +305,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
         }
 
         @Override
-        public ExploreResult<M, S, I> explore(S s) {
+        public ExploreResult<M, S, I> explore(S solution) {
             if (neighborhoods.length == 0) {
                 return new ExploreResult<>(Stream.empty(), 0);
             }
@@ -313,7 +313,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
             boolean sized = true;
             Stream<M> stream = null;
             for (var neighborhood : this.neighborhoods) {
-                var partialResult = neighborhood.explore(s);
+                var partialResult = neighborhood.explore(solution);
                 sized &= partialResult.sized();
                 totalSize += partialResult.size;
                 if (stream == null) {

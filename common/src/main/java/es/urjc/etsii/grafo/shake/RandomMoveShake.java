@@ -58,7 +58,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
      *
      * Shake the solution applying random movements from the configured neighborhood
      */
-    public S shake(S s, int k) {
+    public S shake(S solution, int k) {
         var random = RandomManager.getRandom();
 
         // Execute k*RATIO random moves in different neighbourhoods
@@ -67,22 +67,22 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
             int copy = chosenNeigh;
             Optional<? extends Move<S,I>> move;
             do {
-                move = neighborhoods[chosenNeigh % neighborhoods.length].getRandomMove(s);
+                move = neighborhoods[chosenNeigh % neighborhoods.length].getRandomMove(solution);
                 if (move.isPresent()) {
                     break;
                 }
                 chosenNeigh++;
             } while (chosenNeigh % neighborhoods.length != copy);
             if(move.isPresent()){
-                move.get().execute();
-                ValidationUtil.assertValidScore(s);
+                move.get().execute(solution);
+                ValidationUtil.assertValidScore(solution);
             } else {
                 log.warning("No move available in any of the given providers, ending Destruction phase now");
                 break;
             }
         }
-        repairSolution(s);
-        return s;
+        repairSolution(solution);
+        return solution;
     }
 
     /** {@inheritDoc} */
@@ -97,9 +97,9 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
      * Repairs a solution after applying a set of random movements
      * If the solution does not need to be repaired, this method should be empty
      *
-     * @param s Solution to repair
+     * @param solution Solution to repair
      */
-    protected void repairSolution(S s){
+    protected void repairSolution(S solution){
 
     }
 }

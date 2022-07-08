@@ -22,9 +22,9 @@ public abstract class IteratedImprover<S extends Solution<S,I>,I extends Instanc
      * Iterates until we run out of time, or we cannot improve the current es.urjc.etsii.grafo.solution any further
      */
     @Override
-    protected S _improve(S s) {
+    protected S _improve(S solution) {
         int rounds = 0;
-        while (!Global.stop() && iteration(s)){
+        while (!Global.stop() && iteration(solution)){
             log.debug("Executing iteration {} for {}", rounds, this.getClass().getSimpleName());
             rounds++;
             if(rounds == WARN_LIMIT){
@@ -32,14 +32,14 @@ public abstract class IteratedImprover<S extends Solution<S,I>,I extends Instanc
             }
         }
         log.debug("Improvement ended. {} executed {} iterations.", this.getClass().getSimpleName(), rounds);
-        return s;
+        return solution;
     }
 
     /**
      * Tries to improve the recieved es.urjc.etsii.grafo.solution
      *
-     * @param s Solution to improve
+     * @param solution Solution to improve
      * @return True if the es.urjc.etsii.grafo.solution has been improved, false otherwise
      */
-    public abstract boolean iteration(S s);
+    public abstract boolean iteration(S solution);
 }

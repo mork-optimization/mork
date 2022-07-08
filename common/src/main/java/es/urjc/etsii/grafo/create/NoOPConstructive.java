@@ -17,7 +17,7 @@ public class NoOPConstructive<S extends Solution<S,I>, I extends Instance> exten
      * Return the solution exactly as is
      */
     @Override
-    public S construct(S s) {
-        return s;
+    public S construct(S solution) {
+        return solution;
     }
 }

@@ -18,9 +18,9 @@ public abstract class EagerMove<S extends Solution<S,I>, I extends Instance> ext
     /**
      * Create a new eager move
      *
-     * @param s Solution this move refers to
+     * @param solution Solution this move refers to
      */
-    public EagerMove(S s) {
-        super(s);
+    public EagerMove(S solution) {
+        super(solution);
     }
 }

@@ -15,18 +15,18 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
      * F.e: In the case of clustering algorithms, usually each cluster needs to have at least one point,
      * different solutions types may require different initialization
      *
-     * @param s Solution to initialize before running the GRASP constructive method
+     * @param solution Solution to initialize before running the GRASP constructive method
      */
-    public void beforeGRASP(S s){
+    public void beforeGRASP(S solution){
 
     }
 
     /**
      * Do any kind of post-processing after there are no more valid GRASP moves
      *
-     * @param s Solution to modify after the GRASP constructive method has finished
+     * @param solution Solution to modify after the GRASP constructive method has finished
      */
-    public void afterGRASP(S s){
+    public void afterGRASP(S solution){
 
     }
 

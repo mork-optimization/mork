@@ -26,18 +26,12 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
     protected final long solutionVersion;
 
     /**
-     * Solution on which the movements are performed.
-     */
-    protected S s;
-
-    /**
      * Move constructor
      *
-     * @param s solution
+     * @param solution solution
      */
-    public Move(S s) {
-        this.s = s;
-        this.solutionVersion = s.version;
+    public Move(S solution) {
+        this.solutionVersion = solution.version;
     }
 
     /**
@@ -50,23 +44,23 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
     /**
      * Executes the proposed move
      */
-    public final void execute() {
+    public final void execute(S solution) {
         if(logger.isTraceEnabled()){
             logger.trace(this.toString());
         }
-        if (this.solutionVersion != s.version) {
-            throw new AssertionError(String.format("Solution state changed to (%s), cannot execute move referencing solution state (%s)", s.version, this.solutionVersion));
+        if (this.solutionVersion != solution.version) {
+            throw new AssertionError(String.format("Solution state changed to (%s), cannot execute move referencing solution state (%s)", solution.version, this.solutionVersion));
         }
-        assert saveLastMove(this);
-        double prevScore = s.getScore();
-        _execute();
-        if (!DoubleComparator.equals(prevScore, s.getScore())) {
+        assert saveLastMove(solution, this);
+        double prevScore = solution.getScore();
+        _execute(solution);
+        if (!DoubleComparator.equals(prevScore, solution.getScore())) {
             // Some moves may not affect the optimal score
-            s.updateLastModifiedTime();
+            solution.updateLastModifiedTime();
         }
-        s.version++;
-        assert ValidationUtil.scoreUpdate(s, prevScore, this);
-        ValidationUtil.assertValidScore(s);
+        solution.version++;
+        assert ValidationUtil.scoreUpdate(solution, prevScore, this);
+        ValidationUtil.assertValidScore(solution);
     }
 
     /**
@@ -79,11 +73,11 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
      * @param move move
      * @return the value is always true to prevent producing a java.lang.AssertionError exception.
      */
-    private boolean saveLastMove(Move<S, I> move) {
-        if (this.s.lastMoves.size() >= MAX_DEBUG_MOVES) {
-            this.s.lastMoves.removeFirst();
+    private boolean saveLastMove(S solution, Move<S, I> move) {
+        if (solution.lastMoves.size() >= MAX_DEBUG_MOVES) {
+            solution.lastMoves.removeFirst();
         }
-        this.s.lastMoves.add(move);
+        solution.lastMoves.add(move);
         return true;
     }
 
@@ -91,7 +85,7 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
      * Executes the proposed move,
      * to be implemented by each move type
      */
-    protected abstract void _execute();
+    protected abstract void _execute(S solution);
 
     /**
      * Get the movement value, represents how much does the move changes the f.o of a solution if executed
@@ -122,13 +116,4 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
     /** {@inheritDoc} */
     @Override
     public abstract int hashCode();
-
-    /**
-     * Get the solution this move originated from
-     *
-     * @return Solution
-     */
-    public S getSolution() {
-        return s;
-    }
 }

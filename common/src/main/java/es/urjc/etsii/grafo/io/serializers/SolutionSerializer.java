@@ -49,15 +49,15 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      *
      * @param experimentName current experiment name
      * @param alg            algorithm that generated this solution
-     * @param s              solution to serialize to disk
+     * @param solution              solution to serialize to disk
      */
-    public void exportSolution(String experimentName, Algorithm<S, I> alg, S s, String iterationId) {
-        log.fine(String.format("Exporting solution for (exp, instance, algorithm) = (%s, %s, %s) using %s", experimentName, s.getInstance().getId(), alg.getClass().getSimpleName(), this.getClass().getSimpleName()));
-        String filename = getFilename(experimentName, s.getInstance().getId(), alg.getShortName(), iterationId);
+    public void exportSolution(String experimentName, Algorithm<S, I> alg, S solution, String iterationId) {
+        log.fine(String.format("Exporting solution for (exp, instance, algorithm) = (%s, %s, %s) using %s", experimentName, solution.getInstance().getId(), alg.getClass().getSimpleName(), this.getClass().getSimpleName()));
+        String filename = getFilename(experimentName, solution.getInstance().getId(), alg.getShortName(), iterationId);
         var solutionFolder = this.config.getFolder();
         createFolder(solutionFolder);
         File f = new File(solutionFolder, filename);
-        this.export(f, s);
+        this.export(f, solution);
     }
 
     /**
@@ -76,11 +76,11 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      * Custom export implementation. Exports the given solution to the provided file.
      *
      * @param f Destination file
-     * @param s Solution to export
+     * @param solution Solution to export
      */
-    public void export(File f, S s) {
+    public void export(File f, S solution) {
         try (var bw = new BufferedWriter(new FileWriter(f))) {
-            this.export(bw, s);
+            this.export(bw, solution);
         } catch (IOException e) {
             log.severe("IOException exporting solution, skipping: " + e);
         }
@@ -92,10 +92,10 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      * the given solution export is skipped.
      *
      * @param writer Output, write data here
-     * @param s      Solution to export
+     * @param solution      Solution to export
      * @throws IOException exception thrown in case something goes wrong
      */
-    public abstract void export(BufferedWriter writer, S s) throws IOException;
+    public abstract void export(BufferedWriter writer, S solution) throws IOException;
 
     @Override
     public String toString() {

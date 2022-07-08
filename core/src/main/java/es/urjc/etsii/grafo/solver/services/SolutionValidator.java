@@ -17,8 +17,8 @@ public abstract class SolutionValidator<S extends Solution<S,I>, I extends Insta
     /**
      * Validate the current solution, check that no constraint is broken and everything is fine
      *
-     * @param s Solution to validate
+     * @param solution Solution to validate
      * @return ValidationResult.ok() if the solution is valid, ValidationResult.fail("reason why it failed") if a solution is not valid.
      */
-    public abstract ValidationResult validate(S s);
+    public abstract ValidationResult validate(S solution);
 }

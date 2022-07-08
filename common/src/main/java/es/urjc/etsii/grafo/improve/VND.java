@@ -28,25 +28,25 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
 
     /** {@inheritDoc} */
     @Override
-    protected S _improve(S s) {
+    protected S _improve(S solution) {
         int currentLS = 0;
         while(currentLS < improvers.size()){
-            double prev = s.getScore();
+            double prev = solution.getScore();
             var ls = improvers.get(currentLS);
-            s = ls.improve(s);
+            solution = ls.improve(solution);
             if(currentLS == 0){
                 // Why repeat when improver stops when
                 // it cannot improve the current solution?
                 currentLS++;
             } else if (this.maximize) {
-                if (DoubleComparator.isGreaterOrEqualsThan(prev, s.getScore())) {
+                if (DoubleComparator.isGreaterOrEqualsThan(prev, solution.getScore())) {
                     // prev >= current, no improvement
                     currentLS++;
                 } else {
                     currentLS = 0;
                 }
             } else {
-                if (DoubleComparator.isLessOrEquals(prev, s.getScore())) {
+                if (DoubleComparator.isLessOrEquals(prev, solution.getScore())) {
                     // prev <= current, no improvement
                     currentLS++;
                 } else {
@@ -54,7 +54,7 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
                 }
             }
         }
-        return s;
+        return solution;
     }
 
 

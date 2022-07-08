@@ -84,9 +84,9 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     /** {@inheritDoc} */
     @Override
-    public S construct(S sol) {
-        candidateListManager.beforeGRASP(sol);
-        var constructedSolution = assignMissing(sol);
+    public S construct(S solution) {
+        candidateListManager.beforeGRASP(solution);
+        var constructedSolution = assignMissing(solution);
         candidateListManager.afterGRASP(constructedSolution);
         return constructedSolution;
     }
@@ -97,22 +97,22 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
      * The difference between this method and construct is that this method does not call beforeGRASP().
      * This method can be used in algorithms such as iterated greedy during the reconstruction phase.
      *
-     * @param sol Solution to complete
+     * @param solution Solution to complete
      * @return Completed solution.
      */
-    public S assignMissing(S sol) {
+    public S assignMissing(S solution) {
         double alpha = alphaProvider.getAlpha();
-        var cl = candidateListManager.buildInitialCandidateList(sol);
+        var cl = candidateListManager.buildInitialCandidateList(solution);
         assert ValidationUtil.assertFastAccess(cl);
         while (!cl.isEmpty()) {
             int index = greedyRandom(alpha, cl);
             M chosen = cl.get(index);
-            chosen.execute();
-            cl = candidateListManager.updateCandidateList(sol, chosen, cl, index);
+            chosen.execute(solution);
+            cl = candidateListManager.updateCandidateList(solution, chosen, cl, index);
             assert ValidationUtil.assertFastAccess(cl);
-            ValidationUtil.assertValidScore(sol);
+            ValidationUtil.assertValidScore(solution);
         }
-        return sol;
+        return solution;
     }
 
     private int greedyRandom(double alpha, List<M> cl) {

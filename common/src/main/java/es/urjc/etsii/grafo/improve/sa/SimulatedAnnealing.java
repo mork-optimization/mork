@@ -121,7 +121,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
             for (M move : currentMoves) {
                 if (move.improves() || acceptanceCriteria.accept(move, currentTemperature)) {
                     atLeastOne = true;
-                    move.execute();
+                    move.execute(solution);
                     executed = true;
                     if (solution.isBetterThan(best)) {
                         best = solution.cloneSolution();
@@ -166,7 +166,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
                 testedMoves.add(move);
                 if (move.improves() || acceptanceCriteria.accept(move, currentTemperature)) {
                     atLeastOne = true;
-                    move.execute();
+                    move.execute(solution);
                     if (solution.isBetterThan(best)) {
                         best = solution.cloneSolution();
                     }
@@ -181,9 +181,9 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
         return new CycleResult<>(atLeastOne, best, solution);
     }
 
-    private Collection<M> getMoves(Neighborhood<M, S, I> neighborhood, S s) {
+    private Collection<M> getMoves(Neighborhood<M, S, I> neighborhood, S solution) {
         List<M> moves;
-        var result = neighborhood.explore(s);
+        var result = neighborhood.explore(solution);
         if (result.sized()) {
             moves = result.moves().collect(Collectors.toCollection(() -> new ArrayList<>(result.size())));
         } else {
