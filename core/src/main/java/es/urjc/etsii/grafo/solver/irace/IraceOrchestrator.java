@@ -164,7 +164,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         var config = buildConfig(request);
         var instancePath = config.getInstanceName();
         var instance = instanceManager.getInstance(instancePath);
-        var algorithm = this.algorithmGenerator.buildAlgorithm(config);
+        var algorithm = this.algorithmGenerator.buildAlgorithm(config.getAlgorithmConfig());
         algorithm.setBuilder(this.solutionBuilder);
         log.debug("Config {}. Built algorithm: {}", config, algorithm);
 
@@ -189,16 +189,10 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         String seed = args[2];
         String instance = args[3];
 
-        Map<String, String> config = new HashMap<>();
-        for (int i = 4, argsLength = args.length; i < argsLength; i++) {
-            String arg = args[i];
-            String[] keyValue = arg.split("=");
-            if (config.containsKey(keyValue[0])) {
-                throw new IllegalArgumentException("Duplicated key: " + keyValue[0]);
-            }
-            config.put(keyValue[0], keyValue[1]);
-        }
-        return new IraceRuntimeConfiguration(candidateConfiguration, instanceId, seed, instance, config);
+        int length = candidateConfiguration.length() + instanceId.length() + seed.length() + instance.length();
+        String algParams = decoded.substring(length);
+
+        return new IraceRuntimeConfiguration(candidateConfiguration, instanceId, seed, instance, new AlgorithmConfiguration(algParams));
     }
 
 
