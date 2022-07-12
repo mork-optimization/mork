@@ -46,7 +46,7 @@ public class TSPListManager extends GRASPListManager<TSPListManager.TSPGRASPMove
         }
 
         @Override
-        protected void _execute() {
+        protected void _execute(TSPSolution solution) {
             // TODO Apply changes to solution if movement is executed
             // this.s --> reference to current solution
             throw new UnsupportedOperationException("_execute() in TSPListManager not implemented yet");

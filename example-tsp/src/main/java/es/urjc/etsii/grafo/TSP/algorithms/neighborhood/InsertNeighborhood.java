@@ -29,6 +29,7 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
 
         final int pi;
         final int pj;
+        final double value;
 
         /**
          * Constructor on an insert move. Given a solution, an insert move consist in inserting the the location of a position pi, into a position pj.
@@ -42,6 +43,7 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
             super(solution);
             this.pi = pi;
             this.pj = pj;
+            this.value = calculateValue(solution);
         }
 
         @Override
@@ -50,21 +52,25 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
         }
 
         @Override
-        protected void _execute() {
-            this.getSolution().insertLocationAtPiInPj(pi, pj);
+        protected void _execute(TSPSolution solution) {
+            solution.insertLocationAtPiInPj(pi, pj);
         }
 
         @Override
         public double getValue() {
-            var s = this.getSolution().cloneSolution();
+            return this.value;
+        }
+
+        private double calculateValue(TSPSolution solution){
+            var s = solution.cloneSolution();
             s.insertLocationAtPiInPj(pi, pj);
-            return s.getScore() - this.getSolution().getScore();
+            return s.getScore() - solution.getScore();
         }
 
 
         @Override
         public String toString() {
-            return MessageFormat.format("Insert {0}[{1}] --> {2}", this.pi, this.getSolution().getLocation(pi), this.pj);
+            return String.format("Insert %s --> %s", this.pi, this.pj);
         }
 
         @Override

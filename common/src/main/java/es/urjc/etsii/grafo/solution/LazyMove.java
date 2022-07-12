@@ -27,8 +27,10 @@ public abstract class LazyMove<S extends Solution<S,I>, I extends Instance> exte
     /**
      * Get next move in this sequence.
      *
+     * @param solution solution used to generate the previous move,
+     *                and where data will be picked for the current move
      * @return the next move in this generator sequence if there is a next move, null otherwise
      */
-    public abstract LazyMove<S, I> next();
+    public abstract LazyMove<S, I> next(S solution);
 
 }

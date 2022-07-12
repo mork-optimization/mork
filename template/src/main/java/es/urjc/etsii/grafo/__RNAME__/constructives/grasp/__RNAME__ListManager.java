@@ -46,7 +46,7 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
         }
 
         @Override
-        protected void _execute() {
+        protected void _execute(__RNAME__Solution solution) {
             // TODO Apply changes to solution if movement is executed
             // this.s --> reference to current solution
             throw new UnsupportedOperationException("_execute() in __RNAME__ListManager not implemented yet");

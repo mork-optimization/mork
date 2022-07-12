@@ -16,36 +16,46 @@ public class SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TS
     @Override
     public ExploreResult<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance> explore(TSPSolution solution) {
         int initialVertex = RandomManager.getRandom().nextInt(solution.getInstance().numberOfLocations());
-        return new ExploreResult<>(new SwapMove(solution, initialVertex, initialVertex, (initialVertex + 1) % solution.getInstance().numberOfLocations()));
+        return new ExploreResult<>(solution, new SwapMove(solution, initialVertex, initialVertex, (initialVertex + 1) % solution.getInstance().numberOfLocations()));
     }
 
     public static class SwapMove extends LazyMove<TSPSolution, TSPInstance> {
 
         final int initialPi;
+        final int nLocations;
         final int pi;
         final int pj;
+        final double value;
 
         public SwapMove(TSPSolution solution, int initialPi, int pi, int pj) {
             super(solution);
             this.initialPi = initialPi;
+            this.nLocations = solution.getInstance().numberOfLocations();
             this.pi = pi;
             this.pj = pj;
+            this.value = calculateValue(solution);
 //            System.out.println(initialPi + "-" +this);
+        }
+
+        private double calculateValue(TSPSolution solution) {
+            var s = solution.cloneSolution();
+            s.swapLocationOrder(pi, pj);
+            return s.getScore() - solution.getScore();
         }
 
 
         @Override
-        public LazyMove<TSPSolution, TSPInstance> next() {
-            var nextPj = (pj + 1) % s.getInstance().numberOfLocations();
+        public LazyMove<TSPSolution, TSPInstance> next(TSPSolution solution) {
+            var nextPj = (pj + 1) % nLocations;
             var nextPi = pi;
             if (nextPj == initialPi) {
-                nextPi = (nextPi + 1) % s.getInstance().numberOfLocations();
-                if (nextPi == (initialPi -1 + s.getInstance().numberOfLocations())/ + s.getInstance().numberOfLocations()) {
+                nextPi = (nextPi + 1) % nLocations;
+                if (nextPi == (initialPi -1 + nLocations)/ + nLocations) {
                     return null;
                 }
-                nextPj = (nextPi + 1) % s.getInstance().numberOfLocations();
+                nextPj = (nextPi + 1) % nLocations;
             }
-            return new SwapMove(s, initialPi, nextPi, nextPj);
+            return new SwapMove(solution, initialPi, nextPi, nextPj);
         }
 
         @Override
@@ -54,16 +64,13 @@ public class SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TS
         }
 
         @Override
-        protected void _execute() {
-            this.getSolution().swapLocationOrder(pi, pj);
+        protected void _execute(TSPSolution solution) {
+            solution.swapLocationOrder(pi, pj);
         }
 
         @Override
         public double getValue() {
-            var s = this.getSolution().cloneSolution();
-            s.swapLocationOrder(pi, pj);
-            var result = s.getScore() - this.getSolution().getScore();
-            return result;
+            return value;
         }
 
         @Override
@@ -73,7 +80,7 @@ public class SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TS
 
         @Override
         public String toString() {
-            return MessageFormat.format("Swap {0}[{1}] <-> {2}[{3}]", this.pi, this.getSolution().getLocation(pi), this.pj, this.getSolution().getLocation(pj));
+            return String.format("Swap %s <-> %s", this.pi, this.pj);
         }
 
         @Override

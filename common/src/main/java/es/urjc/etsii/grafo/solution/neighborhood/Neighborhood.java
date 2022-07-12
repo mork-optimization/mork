@@ -58,10 +58,11 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
         /**
          * Explore result from a LazyMove, unknown neighborhood size
          *
+         * @param solution Solution used to iterate the moves
          * @param move move list
          */
-        public ExploreResult(LazyMove<S, I> move) {
-            this(move, UNKNOWN_SIZE);
+        public ExploreResult(S solution, LazyMove<S, I> move) {
+            this(solution, move, UNKNOWN_SIZE);
         }
 
         /**
@@ -70,9 +71,9 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
          * @param move move list
          * @param size upperbound neighborhood size for the current solution
          */
-        public ExploreResult(LazyMove<S, I> move, int size) {
+        public ExploreResult(S solution, LazyMove<S, I> move, int size) {
             // TODO: review ugly casting
-            this((Stream<M>) Stream.iterate(move, Objects::nonNull, (LazyMove<S, I> m) -> m.next()), size);
+            this((Stream<M>) Stream.iterate(move, Objects::nonNull, (LazyMove<S, I> m) -> m.next(solution)), size);
         }
 
         /**
