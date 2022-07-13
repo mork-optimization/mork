@@ -1,7 +1,7 @@
 # v0.14
 
 - (New) Algorithms can be built from strings using an IraceAlgorithmGenerator implementation. See IraceAlgorithmGenerator::buildFromString for more deatils
-- (Change) dynamically generate scenario.txt for Irace
+- (Change) dynamically generate scenario.txt for Irace. Use seed, instances, parallel config etc loaded from application.yml or environment.
 - (Change) Neighborhoods refactor: delete eager and lazy neighborhoods, randomizable as subclass, always return ExploreResult.
 - (Change) IraceAlgorithmGenerator refactor and cleanup, improve validation
 - (Fix) #88: Filename bug in SolutionSerializer, by @ea2809

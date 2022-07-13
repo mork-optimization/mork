@@ -137,7 +137,8 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
                 "__INSTANCES_PATH__", instanceConfiguration.getPath("irace"),
                 "__TARGET_RUNNER__", "./middleware.sh",
                 "__PARALLEL__", nParallel(solverConfig),
-                "__MAX_EXPERIMENTS__", maxExperiments
+                "__MAX_EXPERIMENTS__", maxExperiments,
+                "__SEED__", String.valueOf(solverConfig.getSeed())
         );
     }
 
