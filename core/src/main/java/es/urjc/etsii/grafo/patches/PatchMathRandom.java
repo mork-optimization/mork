@@ -47,11 +47,11 @@ public class PatchMathRandom {
             internalRandom.setAccessible(true);
             makeNonFinal(internalRandom);
             internalRandom.set(null, new FailRandom());
+            log.info("Math.random() patched successfully");
         } catch (NoSuchFieldException | IllegalAccessException | ClassNotFoundException | InaccessibleObjectException e) {
             // Log as warning, but do not stop application when failing to patch, it is not critical
             log.warn("Failed to patch Collections.shuffle(), internal random is not accessible. Probably missing opens, see: https://mork-optimization.readthedocs.io/en/latest/quickstart/troubleshooting/. Cause: {}", e.getMessage());
         }
-        log.info("Math.random() patched successfully");
     }
 
     private void makeNonFinal(Field field) throws NoSuchFieldException, IllegalAccessException {
