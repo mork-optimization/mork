@@ -78,7 +78,10 @@ public class InstanceManager<I extends Instance> {
         Collections.sort(instances);
         validate(instances, expName);
         sortedInstances = instances.stream().map(Instance::getPath).collect(Collectors.toList());
-        log.info("Instance validation completed, solve order: " + sortedInstances);
+        if(log.isInfoEnabled()){
+            var basePath = Path.of(instanceConfiguration.getPath(expName)).toAbsolutePath().normalize().toString();
+            log.info("Instance validation completed, solve order: " + sortedInstances.stream().map(path -> path.replace(basePath, "")).toList());
+        }
         return sortedInstances;
     }
 
