@@ -144,19 +144,19 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         writeCell(firstCell, "System properties", RawSheetWriter.CType.VALUE);
 
         // Benchmark score
-        var row1 = sheet.createRow(0);
+        var row1 = sheet.createRow(1);
         writeCell(row1.createCell(0), "Benchmark Score", RawSheetWriter.CType.VALUE);
         writeCell(row1.createCell(1), benchmarkInfo.score(), RawSheetWriter.CType.VALUE);
 
-        var row2 = sheet.createRow(0);
+        var row2 = sheet.createRow(2);
         writeCell(row2.createCell(0), "VM Version", RawSheetWriter.CType.VALUE);
         writeCell(row2.createCell(1), benchmarkInfo.info().vmVersion(), RawSheetWriter.CType.VALUE);
 
-        var row3 = sheet.createRow(0);
+        var row3 = sheet.createRow(3);
         writeCell(row3.createCell(0), "Java version", RawSheetWriter.CType.VALUE);
         writeCell(row3.createCell(1), benchmarkInfo.info().javaVersion(), RawSheetWriter.CType.VALUE);
 
-        var row4 = sheet.createRow(0);
+        var row4 = sheet.createRow(4);
         writeCell(row4.createCell(0), "N Processors", RawSheetWriter.CType.VALUE);
         writeCell(row4.createCell(1), benchmarkInfo.info().nProcessors(), RawSheetWriter.CType.VALUE);
     }
