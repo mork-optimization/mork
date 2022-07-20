@@ -29,8 +29,8 @@ public class AlgComponentService {
             componentByName.put(type.getSimpleName(), type);
             classify(componentsByType, type);
         }
-        log.info("Algorith components: {}", componentByName.keySet());
-        log.info("Classified algorithm components: {}", componentsByType);
+        log.info("Algorithm components found: {}", componentByName.keySet());
+        log.debug("Classified algorithm components: {}", componentsByType);
     }
 
     private static void classify(Map<Class<?>, Collection<Class<?>>> componentsByType, Class<?> initialType) {
