@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
+import es.urjc.etsii.grafo.util.BenchmarkUtil;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
 import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.ss.util.CellReference;
@@ -40,6 +41,11 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
      * Pivot table sheet name
      */
     public static final String PIVOT_SHEET = "Pivot Table";
+
+    /**
+     * Sheet name where common data such as VM version, benchmark score, etc will be stored
+     */
+    public static final String OTHER_DATA_SHEET = "Other";
 
     /**
      * Instance data sheet
@@ -97,6 +103,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         ) {
             var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
             var rawSheet = excelBook.createSheet(RAW_SHEET);
+            var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
 
             RawSheetWriter writer = getRawSheetWriter(results);
             var area = writer.fillRawSheet(rawSheet, maximizing, results, referenceResultProviders);
@@ -105,6 +112,8 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
 
             // Check and fill instance sheet if appropiate
             fillInstanceSheet(experimentName, excelBook);
+
+            fillOtherDataSheet(otherDataSheet);
 
             if(this.excelCustomizer.isPresent()){
                 var realExcelCustomizer = excelCustomizer.get();
@@ -120,6 +129,36 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         } catch (Exception e) {
             throw new RuntimeException(String.format("Exception while trying to save Excel file: %s, reason: %s", f.getAbsolutePath(), e.getClass().getSimpleName()), e.getCause());
         }
+    }
+
+    private void fillOtherDataSheet(XSSFSheet sheet) {
+        var benchmarkInfo = BenchmarkUtil.parseCache();
+        var row0 = sheet.createRow(0);
+        var firstCell = row0.createCell(0);
+        if(benchmarkInfo == null){
+            writeCell(firstCell, "Benchmark disabled, enable to save system info", RawSheetWriter.CType.VALUE);
+            return;
+        }
+
+        // Header
+        writeCell(firstCell, "System properties", RawSheetWriter.CType.VALUE);
+
+        // Benchmark score
+        var row1 = sheet.createRow(0);
+        writeCell(row1.createCell(0), "Benchmark Score", RawSheetWriter.CType.VALUE);
+        writeCell(row1.createCell(1), benchmarkInfo.score(), RawSheetWriter.CType.VALUE);
+
+        var row2 = sheet.createRow(0);
+        writeCell(row2.createCell(0), "VM Version", RawSheetWriter.CType.VALUE);
+        writeCell(row2.createCell(1), benchmarkInfo.info().vmVersion(), RawSheetWriter.CType.VALUE);
+
+        var row3 = sheet.createRow(0);
+        writeCell(row3.createCell(0), "Java version", RawSheetWriter.CType.VALUE);
+        writeCell(row3.createCell(1), benchmarkInfo.info().javaVersion(), RawSheetWriter.CType.VALUE);
+
+        var row4 = sheet.createRow(0);
+        writeCell(row4.createCell(0), "N Processors", RawSheetWriter.CType.VALUE);
+        writeCell(row4.createCell(1), benchmarkInfo.info().nProcessors(), RawSheetWriter.CType.VALUE);
     }
 
     protected void fillInstanceSheet(String expName, XSSFWorkbook excelBook) {
@@ -262,5 +301,4 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, RawSheetCol.DEV_TO_BEST.getIndex(), "Avg. %Dev2Best");
         }
     }
-    
 }

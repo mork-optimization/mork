@@ -142,7 +142,7 @@ public class ExcelSerializerTest {
         File excelFile = excelPath.toFile();
 
         try (var wb = new XSSFWorkbook(new FileInputStream(excelFile))) {
-            XSSFSheet instanceSheet = wb.getSheetAt(2);
+            XSSFSheet instanceSheet = wb.getSheet(ExcelSerializer.INSTANCE_SHEET);
             Iterator<Row> rowIterator = instanceSheet.iterator();
 
             Assertions.assertTrue(rowIterator.hasNext(), "If empty there must be an explanation on the first row");
@@ -166,7 +166,7 @@ public class ExcelSerializerTest {
         File excelFile = excelPath.toFile();
 
         try (var wb = new XSSFWorkbook(new FileInputStream(excelFile))) {
-            XSSFSheet instanceSheet = wb.getSheetAt(2);
+            XSSFSheet instanceSheet = wb.getSheet(ExcelSerializer.INSTANCE_SHEET);
             Iterator<Row> rowIterator = instanceSheet.iterator();
 
             Assertions.assertTrue(rowIterator.hasNext(), "Missing headers in instance sheet");

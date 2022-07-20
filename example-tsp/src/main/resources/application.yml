@@ -32,7 +32,7 @@ solver:
   nWorkers: -1
 
   # Execute benchmark before starting solver? False to skip benchmark.
-  benchmark: false
+  benchmark: true
 
 # Enable irace integration? Check IRACE Wiki section before enabling
 irace:
