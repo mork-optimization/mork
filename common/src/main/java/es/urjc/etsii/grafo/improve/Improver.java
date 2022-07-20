@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.improve;
 
+import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
@@ -11,6 +12,7 @@ import java.util.logging.Logger;
  * @param <S> Solution class
  * @param <I> Instance class
  */
+@AlgorithmComponent
 public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
     private static final Logger log = Logger.getLogger(Improver.class.getName());

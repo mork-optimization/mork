@@ -1,13 +1,12 @@
 package es.urjc.etsii.grafo.algorithms;
 
+import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 
 import java.util.Objects;
 
-//@InheritedComponent
-// TODO Idea: Allow algorithms via config instead of a AbstractExperimentSetup
 
 /**
  * Base algorithm class, all algorithms should extend this class or any of its subclasses.
@@ -15,6 +14,7 @@ import java.util.Objects;
  * @param <S> Solution class
  * @param <I> Instance class
  */
+@AlgorithmComponent
 public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
 
     public static final int SHORTNAME_MAXLENGTH = 30;

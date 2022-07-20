@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.shake;
 
 
+import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
@@ -11,6 +12,7 @@ import es.urjc.etsii.grafo.solution.Solution;
  * @param <I> Instance class
  * @see RandomMoveShake
  */
+@AlgorithmComponent
 public abstract class Shake<S extends Solution<S,I>, I extends Instance> {
 
     /**
