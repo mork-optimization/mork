@@ -3,6 +3,7 @@
 - (New) Algorithms can be built from strings using an IraceAlgorithmGenerator implementation. See IraceAlgorithmGenerator::buildFromString for more deatils
 - (New) Benchmark enabled by default, using cached results file.
 - (New) Add Other info Excel sheet
+- (Change) Upgrade dependencies
 - (Change) dynamically generate scenario.txt for Irace. Use seed, instances, parallel config etc loaded from application.yml or environment.
 - (Change) Neighborhoods refactor: delete eager and lazy neighborhoods, randomizable as subclass, always return ExploreResult.
 - (Change) IraceAlgorithmGenerator refactor and cleanup, improve validation

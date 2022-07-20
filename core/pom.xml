@@ -6,8 +6,8 @@
     <version>0.14-SNAPSHOT</version>
     <packaging>jar</packaging>
     <properties>
-        <graalvm.version>22.0.0.2</graalvm.version>
-        <jackson.version>2.13.2</jackson.version>
+        <graalvm.version>22.2.0</graalvm.version>
+        <jackson.version>2.13.3</jackson.version>
 
         <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/../example-tsp/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     </properties>
@@ -132,14 +132,14 @@
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>
             <artifactId>caffeine</artifactId>
-            <version>3.0.6</version>
+            <version>3.1.1</version>
         </dependency>
 
         <!-- Telegram integration -->
         <dependency>
             <groupId>org.telegram</groupId>
             <artifactId>telegrambots</artifactId>
-            <version>5.7.1</version>
+            <version>6.0.1</version>
         </dependency>
 
         <!-- Call other languages from Java -->
@@ -163,7 +163,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-source-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>3.2.1</version>
                 <executions>
                     <execution>
                         <id>attach-source</id>
@@ -179,7 +179,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.4.0</version>
                 <executions>
                     <execution>
                         <id>attach-javadocs</id>
