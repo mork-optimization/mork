@@ -15,7 +15,7 @@ property: IDENT EQ propertyValue;
 
 propertyValue: literal | component;
 
-literal: FloatingPointLiteral | IntegerLiteral | BooleanLiteral | NullLiteral | StringLiteral | CharacterLiteral | arrayLiteral;
+literal: NullLiteral | BooleanLiteral | FloatingPointLiteral | IntegerLiteral | StringLiteral | CharacterLiteral | arrayLiteral;
 
 
 // Only allow arrays as literals of the same type value

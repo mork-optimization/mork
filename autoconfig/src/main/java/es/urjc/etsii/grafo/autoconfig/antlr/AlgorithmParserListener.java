@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig.antlr;// Generated from resources/grammar/AlgorithmParser.g4 by ANTLR 4.10.1
+package es.urjc.etsii.grafo.autoconfig.antlr;// Generated from AlgorithmParser.g4 by ANTLR 4.10.1
 import org.antlr.v4.runtime.tree.ParseTreeListener;
 
 /**

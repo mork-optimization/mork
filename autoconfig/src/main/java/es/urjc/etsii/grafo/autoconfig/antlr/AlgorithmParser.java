@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig.antlr;// Generated from resources/grammar/AlgorithmParser.g4 by ANTLR 4.10.1
+package es.urjc.etsii.grafo.autoconfig.antlr;// Generated from AlgorithmParser.g4 by ANTLR 4.10.1
 import org.antlr.v4.runtime.atn.*;
 import org.antlr.v4.runtime.dfa.DFA;
 import org.antlr.v4.runtime.*;
@@ -16,9 +16,9 @@ public class AlgorithmParser extends Parser {
 	protected static final PredictionContextCache _sharedContextCache =
 		new PredictionContextCache();
 	public static final int
-		LBRCE=1, RBRCE=2, LBRCK=3, RBRCK=4, EQ=5, COMMA=6, IDENT=7, WS=8, IntegerLiteral=9, 
-		FloatingPointLiteral=10, BooleanLiteral=11, CharacterLiteral=12, StringLiteral=13, 
-		NullLiteral=14;
+		LBRCE=1, RBRCE=2, LBRCK=3, RBRCK=4, EQ=5, COMMA=6, MINUS=7, BooleanLiteral=8, 
+		NullLiteral=9, IDENT=10, WS=11, IntegerLiteral=12, FloatingPointLiteral=13, 
+		CharacterLiteral=14, StringLiteral=15;
 	public static final int
 		RULE_init = 0, RULE_component = 1, RULE_properties = 2, RULE_property = 3, 
 		RULE_propertyValue = 4, RULE_literal = 5, RULE_arrayLiteral = 6;
@@ -32,16 +32,15 @@ public class AlgorithmParser extends Parser {
 
 	private static String[] makeLiteralNames() {
 		return new String[] {
-			null, "'{'", "'}'", "'['", "']'", "'='", "','", null, null, null, null, 
-			null, null, null, "'null'"
+			null, "'{'", "'}'", "'['", "']'", "'='", "','", "'-'"
 		};
 	}
 	private static final String[] _LITERAL_NAMES = makeLiteralNames();
 	private static String[] makeSymbolicNames() {
 		return new String[] {
-			null, "LBRCE", "RBRCE", "LBRCK", "RBRCK", "EQ", "COMMA", "IDENT", "WS", 
-			"IntegerLiteral", "FloatingPointLiteral", "BooleanLiteral", "CharacterLiteral", 
-			"StringLiteral", "NullLiteral"
+			null, "LBRCE", "RBRCE", "LBRCK", "RBRCK", "EQ", "COMMA", "MINUS", "BooleanLiteral", 
+			"NullLiteral", "IDENT", "WS", "IntegerLiteral", "FloatingPointLiteral", 
+			"CharacterLiteral", "StringLiteral"
 		};
 	}
 	private static final String[] _SYMBOLIC_NAMES = makeSymbolicNames();
@@ -111,11 +110,6 @@ public class AlgorithmParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitInit(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof AlgorithmParserVisitor) return ((AlgorithmParserVisitor<? extends T>)visitor).visitInit(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final InitContext init() throws RecognitionException {
@@ -157,11 +151,6 @@ public class AlgorithmParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitComponent(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof AlgorithmParserVisitor) return ((AlgorithmParserVisitor<? extends T>)visitor).visitComponent(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -224,11 +213,6 @@ public class AlgorithmParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitProperties(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof AlgorithmParserVisitor) return ((AlgorithmParserVisitor<? extends T>)visitor).visitProperties(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final PropertiesContext properties() throws RecognitionException {
@@ -287,11 +271,6 @@ public class AlgorithmParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitProperty(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof AlgorithmParserVisitor) return ((AlgorithmParserVisitor<? extends T>)visitor).visitProperty(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final PropertyContext property() throws RecognitionException {
@@ -338,11 +317,6 @@ public class AlgorithmParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitPropertyValue(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof AlgorithmParserVisitor) return ((AlgorithmParserVisitor<? extends T>)visitor).visitPropertyValue(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final PropertyValueContext propertyValue() throws RecognitionException {
@@ -353,12 +327,12 @@ public class AlgorithmParser extends Parser {
 			_errHandler.sync(this);
 			switch (_input.LA(1)) {
 			case LBRCK:
+			case BooleanLiteral:
+			case NullLiteral:
 			case IntegerLiteral:
 			case FloatingPointLiteral:
-			case BooleanLiteral:
 			case CharacterLiteral:
 			case StringLiteral:
-			case NullLiteral:
 				enterOuterAlt(_localctx, 1);
 				{
 				setState(35);
@@ -388,10 +362,10 @@ public class AlgorithmParser extends Parser {
 	}
 
 	public static class LiteralContext extends ParserRuleContext {
+		public TerminalNode NullLiteral() { return getToken(AlgorithmParser.NullLiteral, 0); }
+		public TerminalNode BooleanLiteral() { return getToken(AlgorithmParser.BooleanLiteral, 0); }
 		public TerminalNode FloatingPointLiteral() { return getToken(AlgorithmParser.FloatingPointLiteral, 0); }
 		public TerminalNode IntegerLiteral() { return getToken(AlgorithmParser.IntegerLiteral, 0); }
-		public TerminalNode BooleanLiteral() { return getToken(AlgorithmParser.BooleanLiteral, 0); }
-		public TerminalNode NullLiteral() { return getToken(AlgorithmParser.NullLiteral, 0); }
 		public TerminalNode StringLiteral() { return getToken(AlgorithmParser.StringLiteral, 0); }
 		public TerminalNode CharacterLiteral() { return getToken(AlgorithmParser.CharacterLiteral, 0); }
 		public ArrayLiteralContext arrayLiteral() {
@@ -409,11 +383,6 @@ public class AlgorithmParser extends Parser {
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitLiteral(this);
 		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof AlgorithmParserVisitor) return ((AlgorithmParserVisitor<? extends T>)visitor).visitLiteral(this);
-			else return visitor.visitChildren(this);
-		}
 	}
 
 	public final LiteralContext literal() throws RecognitionException {
@@ -423,32 +392,32 @@ public class AlgorithmParser extends Parser {
 			setState(46);
 			_errHandler.sync(this);
 			switch (_input.LA(1)) {
-			case FloatingPointLiteral:
+			case NullLiteral:
 				enterOuterAlt(_localctx, 1);
 				{
 				setState(39);
+				match(NullLiteral);
+				}
+				break;
+			case BooleanLiteral:
+				enterOuterAlt(_localctx, 2);
+				{
+				setState(40);
+				match(BooleanLiteral);
+				}
+				break;
+			case FloatingPointLiteral:
+				enterOuterAlt(_localctx, 3);
+				{
+				setState(41);
 				match(FloatingPointLiteral);
 				}
 				break;
 			case IntegerLiteral:
-				enterOuterAlt(_localctx, 2);
-				{
-				setState(40);
-				match(IntegerLiteral);
-				}
-				break;
-			case BooleanLiteral:
-				enterOuterAlt(_localctx, 3);
-				{
-				setState(41);
-				match(BooleanLiteral);
-				}
-				break;
-			case NullLiteral:
 				enterOuterAlt(_localctx, 4);
 				{
 				setState(42);
-				match(NullLiteral);
+				match(IntegerLiteral);
 				}
 				break;
 			case StringLiteral:
@@ -525,11 +494,6 @@ public class AlgorithmParser extends Parser {
 		@Override
 		public void exitRule(ParseTreeListener listener) {
 			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitArrayLiteral(this);
-		}
-		@Override
-		public <T> T accept(ParseTreeVisitor<? extends T> visitor) {
-			if ( visitor instanceof AlgorithmParserVisitor) return ((AlgorithmParserVisitor<? extends T>)visitor).visitArrayLiteral(this);
-			else return visitor.visitChildren(this);
 		}
 	}
 
@@ -699,7 +663,7 @@ public class AlgorithmParser extends Parser {
 	}
 
 	public static final String _serializedATN =
-		"\u0004\u0001\u000eg\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002"+
+		"\u0004\u0001\u000fg\u0002\u0000\u0007\u0000\u0002\u0001\u0007\u0001\u0002"+
 		"\u0002\u0007\u0002\u0002\u0003\u0007\u0003\u0002\u0004\u0007\u0004\u0002"+
 		"\u0005\u0007\u0005\u0002\u0006\u0007\u0006\u0001\u0000\u0001\u0000\u0001"+
 		"\u0001\u0001\u0001\u0001\u0001\u0003\u0001\u0014\b\u0001\u0001\u0001\u0001"+
@@ -720,42 +684,42 @@ public class AlgorithmParser extends Parser {
 		"\u0010\u0001\u0000\u0000\u0000\u0004\u0017\u0001\u0000\u0000\u0000\u0006"+
 		"\u001f\u0001\u0000\u0000\u0000\b%\u0001\u0000\u0000\u0000\n.\u0001\u0000"+
 		"\u0000\u0000\fd\u0001\u0000\u0000\u0000\u000e\u000f\u0003\u0002\u0001"+
-		"\u0000\u000f\u0001\u0001\u0000\u0000\u0000\u0010\u0011\u0005\u0007\u0000"+
-		"\u0000\u0011\u0013\u0005\u0001\u0000\u0000\u0012\u0014\u0003\u0004\u0002"+
-		"\u0000\u0013\u0012\u0001\u0000\u0000\u0000\u0013\u0014\u0001\u0000\u0000"+
-		"\u0000\u0014\u0015\u0001\u0000\u0000\u0000\u0015\u0016\u0005\u0002\u0000"+
-		"\u0000\u0016\u0003\u0001\u0000\u0000\u0000\u0017\u001c\u0003\u0006\u0003"+
-		"\u0000\u0018\u0019\u0005\u0006\u0000\u0000\u0019\u001b\u0003\u0006\u0003"+
-		"\u0000\u001a\u0018\u0001\u0000\u0000\u0000\u001b\u001e\u0001\u0000\u0000"+
-		"\u0000\u001c\u001a\u0001\u0000\u0000\u0000\u001c\u001d\u0001\u0000\u0000"+
-		"\u0000\u001d\u0005\u0001\u0000\u0000\u0000\u001e\u001c\u0001\u0000\u0000"+
-		"\u0000\u001f \u0005\u0007\u0000\u0000 !\u0005\u0005\u0000\u0000!\"\u0003"+
-		"\b\u0004\u0000\"\u0007\u0001\u0000\u0000\u0000#&\u0003\n\u0005\u0000$"+
-		"&\u0003\u0002\u0001\u0000%#\u0001\u0000\u0000\u0000%$\u0001\u0000\u0000"+
-		"\u0000&\t\u0001\u0000\u0000\u0000\'/\u0005\n\u0000\u0000(/\u0005\t\u0000"+
-		"\u0000)/\u0005\u000b\u0000\u0000*/\u0005\u000e\u0000\u0000+/\u0005\r\u0000"+
-		"\u0000,/\u0005\f\u0000\u0000-/\u0003\f\u0006\u0000.\'\u0001\u0000\u0000"+
-		"\u0000.(\u0001\u0000\u0000\u0000.)\u0001\u0000\u0000\u0000.*\u0001\u0000"+
-		"\u0000\u0000.+\u0001\u0000\u0000\u0000.,\u0001\u0000\u0000\u0000.-\u0001"+
-		"\u0000\u0000\u0000/\u000b\u0001\u0000\u0000\u000001\u0005\u0003\u0000"+
-		"\u00001e\u0005\u0004\u0000\u000023\u0005\u0003\u0000\u000038\u0005\t\u0000"+
-		"\u000045\u0005\u0006\u0000\u000057\u0005\t\u0000\u000064\u0001\u0000\u0000"+
-		"\u00007:\u0001\u0000\u0000\u000086\u0001\u0000\u0000\u000089\u0001\u0000"+
-		"\u0000\u00009;\u0001\u0000\u0000\u0000:8\u0001\u0000\u0000\u0000;e\u0005"+
-		"\u0004\u0000\u0000<=\u0005\u0003\u0000\u0000=B\u0005\n\u0000\u0000>?\u0005"+
-		"\u0006\u0000\u0000?A\u0005\n\u0000\u0000@>\u0001\u0000\u0000\u0000AD\u0001"+
-		"\u0000\u0000\u0000B@\u0001\u0000\u0000\u0000BC\u0001\u0000\u0000\u0000"+
-		"CE\u0001\u0000\u0000\u0000DB\u0001\u0000\u0000\u0000Ee\u0005\u0004\u0000"+
-		"\u0000FG\u0005\u0003\u0000\u0000GL\u0005\u000b\u0000\u0000HI\u0005\u0006"+
-		"\u0000\u0000IK\u0005\u000b\u0000\u0000JH\u0001\u0000\u0000\u0000KN\u0001"+
-		"\u0000\u0000\u0000LJ\u0001\u0000\u0000\u0000LM\u0001\u0000\u0000\u0000"+
-		"MO\u0001\u0000\u0000\u0000NL\u0001\u0000\u0000\u0000Oe\u0005\u0004\u0000"+
-		"\u0000PQ\u0005\u0003\u0000\u0000QV\u0005\f\u0000\u0000RS\u0005\u0006\u0000"+
-		"\u0000SU\u0005\f\u0000\u0000TR\u0001\u0000\u0000\u0000UX\u0001\u0000\u0000"+
-		"\u0000VT\u0001\u0000\u0000\u0000VW\u0001\u0000\u0000\u0000WY\u0001\u0000"+
-		"\u0000\u0000XV\u0001\u0000\u0000\u0000Ye\u0005\u0004\u0000\u0000Z[\u0005"+
-		"\u0003\u0000\u0000[`\u0005\r\u0000\u0000\\]\u0005\u0006\u0000\u0000]_"+
-		"\u0005\r\u0000\u0000^\\\u0001\u0000\u0000\u0000_b\u0001\u0000\u0000\u0000"+
+		"\u0000\u000f\u0001\u0001\u0000\u0000\u0000\u0010\u0011\u0005\n\u0000\u0000"+
+		"\u0011\u0013\u0005\u0001\u0000\u0000\u0012\u0014\u0003\u0004\u0002\u0000"+
+		"\u0013\u0012\u0001\u0000\u0000\u0000\u0013\u0014\u0001\u0000\u0000\u0000"+
+		"\u0014\u0015\u0001\u0000\u0000\u0000\u0015\u0016\u0005\u0002\u0000\u0000"+
+		"\u0016\u0003\u0001\u0000\u0000\u0000\u0017\u001c\u0003\u0006\u0003\u0000"+
+		"\u0018\u0019\u0005\u0006\u0000\u0000\u0019\u001b\u0003\u0006\u0003\u0000"+
+		"\u001a\u0018\u0001\u0000\u0000\u0000\u001b\u001e\u0001\u0000\u0000\u0000"+
+		"\u001c\u001a\u0001\u0000\u0000\u0000\u001c\u001d\u0001\u0000\u0000\u0000"+
+		"\u001d\u0005\u0001\u0000\u0000\u0000\u001e\u001c\u0001\u0000\u0000\u0000"+
+		"\u001f \u0005\n\u0000\u0000 !\u0005\u0005\u0000\u0000!\"\u0003\b\u0004"+
+		"\u0000\"\u0007\u0001\u0000\u0000\u0000#&\u0003\n\u0005\u0000$&\u0003\u0002"+
+		"\u0001\u0000%#\u0001\u0000\u0000\u0000%$\u0001\u0000\u0000\u0000&\t\u0001"+
+		"\u0000\u0000\u0000\'/\u0005\t\u0000\u0000(/\u0005\b\u0000\u0000)/\u0005"+
+		"\r\u0000\u0000*/\u0005\f\u0000\u0000+/\u0005\u000f\u0000\u0000,/\u0005"+
+		"\u000e\u0000\u0000-/\u0003\f\u0006\u0000.\'\u0001\u0000\u0000\u0000.("+
+		"\u0001\u0000\u0000\u0000.)\u0001\u0000\u0000\u0000.*\u0001\u0000\u0000"+
+		"\u0000.+\u0001\u0000\u0000\u0000.,\u0001\u0000\u0000\u0000.-\u0001\u0000"+
+		"\u0000\u0000/\u000b\u0001\u0000\u0000\u000001\u0005\u0003\u0000\u0000"+
+		"1e\u0005\u0004\u0000\u000023\u0005\u0003\u0000\u000038\u0005\f\u0000\u0000"+
+		"45\u0005\u0006\u0000\u000057\u0005\f\u0000\u000064\u0001\u0000\u0000\u0000"+
+		"7:\u0001\u0000\u0000\u000086\u0001\u0000\u0000\u000089\u0001\u0000\u0000"+
+		"\u00009;\u0001\u0000\u0000\u0000:8\u0001\u0000\u0000\u0000;e\u0005\u0004"+
+		"\u0000\u0000<=\u0005\u0003\u0000\u0000=B\u0005\r\u0000\u0000>?\u0005\u0006"+
+		"\u0000\u0000?A\u0005\r\u0000\u0000@>\u0001\u0000\u0000\u0000AD\u0001\u0000"+
+		"\u0000\u0000B@\u0001\u0000\u0000\u0000BC\u0001\u0000\u0000\u0000CE\u0001"+
+		"\u0000\u0000\u0000DB\u0001\u0000\u0000\u0000Ee\u0005\u0004\u0000\u0000"+
+		"FG\u0005\u0003\u0000\u0000GL\u0005\b\u0000\u0000HI\u0005\u0006\u0000\u0000"+
+		"IK\u0005\b\u0000\u0000JH\u0001\u0000\u0000\u0000KN\u0001\u0000\u0000\u0000"+
+		"LJ\u0001\u0000\u0000\u0000LM\u0001\u0000\u0000\u0000MO\u0001\u0000\u0000"+
+		"\u0000NL\u0001\u0000\u0000\u0000Oe\u0005\u0004\u0000\u0000PQ\u0005\u0003"+
+		"\u0000\u0000QV\u0005\u000e\u0000\u0000RS\u0005\u0006\u0000\u0000SU\u0005"+
+		"\u000e\u0000\u0000TR\u0001\u0000\u0000\u0000UX\u0001\u0000\u0000\u0000"+
+		"VT\u0001\u0000\u0000\u0000VW\u0001\u0000\u0000\u0000WY\u0001\u0000\u0000"+
+		"\u0000XV\u0001\u0000\u0000\u0000Ye\u0005\u0004\u0000\u0000Z[\u0005\u0003"+
+		"\u0000\u0000[`\u0005\u000f\u0000\u0000\\]\u0005\u0006\u0000\u0000]_\u0005"+
+		"\u000f\u0000\u0000^\\\u0001\u0000\u0000\u0000_b\u0001\u0000\u0000\u0000"+
 		"`^\u0001\u0000\u0000\u0000`a\u0001\u0000\u0000\u0000ac\u0001\u0000\u0000"+
 		"\u0000b`\u0001\u0000\u0000\u0000ce\u0005\u0004\u0000\u0000d0\u0001\u0000"+
 		"\u0000\u0000d2\u0001\u0000\u0000\u0000d<\u0001\u0000\u0000\u0000dF\u0001"+

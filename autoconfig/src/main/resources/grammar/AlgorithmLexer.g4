@@ -8,6 +8,13 @@ RBRCK: ']';
 EQ: '=';
 COMMA: ',';
 MINUS: '-';
+fragment FALSE: 'false';
+fragment TRUE: 'true';
+fragment NULL: 'null';
+fragment UNDEF: 'undefined';
+
+BooleanLiteral: TRUE | FALSE;
+NullLiteral: NULL | UNDEF;
 
 IDENT: [a-zA-Z_]+;
 
@@ -229,11 +236,11 @@ BinaryExponentIndicator
 	;
 
 // §3.10.3 Boolean Literals
-
-BooleanLiteral
-	:	'true'
-	|	'false'
-	;
+//
+//BooleanLiteral
+//	:	TRUE
+//	|	FALSE
+//	;
 
 // §3.10.4 Character Literals
 
@@ -286,7 +293,7 @@ UnicodeEscape
     ;
 
 // §3.10.7 The Null Literal
-
-NullLiteral
-	:	'null'
-	;
+//
+//NullLiteral
+//	:	NULL
+//	;
