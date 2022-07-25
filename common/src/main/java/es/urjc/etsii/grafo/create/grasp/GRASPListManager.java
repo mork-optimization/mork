@@ -1,14 +1,17 @@
 package es.urjc.etsii.grafo.create.grasp;
 
+import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Creates and updates the candidate list when a movement is performed
  */
+@AlgorithmComponent
 public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> {
     /**
      * Initialize solution before GRASP algorithm is run
@@ -59,5 +62,37 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "{}";
+    }
+
+    /**
+     * Create a no operation GRASPListManager method
+     * Returns empty lists
+     * @param <M> Move class
+     * @param <S> Solution class
+     * @param <I> Instance class
+     * @return Null GRASPListManager method
+     */
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> GRASPListManager<M, S,I> nul(){
+        return new NullGraspListManager<>();
+    }
+
+    /**
+     * Do nothing GRASPListManager
+     *
+     * @param <M> Move class
+     * @param <S> Solution class
+     * @param <I> Instance class
+     */
+    private static class NullGraspListManager<M extends Move<S,I>, S extends Solution<S,I>,I extends Instance> extends GRASPListManager<M,S,I> {
+
+        @Override
+        public List<M> buildInitialCandidateList(S solution) {
+            return new ArrayList<>();
+        }
+
+        @Override
+        public List<M> updateCandidateList(S solution, M move, List<M> candidateList, int index) {
+            return buildInitialCandidateList(solution);
+        }
     }
 }

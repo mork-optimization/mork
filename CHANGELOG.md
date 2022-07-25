@@ -1,6 +1,6 @@
 # v0.14
-
-- (New) Algorithms can be built from strings using an IraceAlgorithmGenerator implementation. See IraceAlgorithmGenerator::buildFromString for more deatils
+- (New) Algorithms can be magically built from strings without user interaction, using the new autoconfig project. See AlgComponentService and AlgorithmBuilderUtil classes for more details.
+- (New) Algorithms can be manually built from strings using an IraceAlgorithmGenerator implementation. See IraceAlgorithmGenerator::buildFromString for more details
 - (New) Benchmark enabled by default, using cached results file.
 - (New) Add Other info Excel sheet
 - (Change) Upgrade dependencies
