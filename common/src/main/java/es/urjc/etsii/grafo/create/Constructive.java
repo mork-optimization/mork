@@ -36,7 +36,7 @@ public abstract class Constructive<S extends Solution<S,I>, I extends Instance> 
      * @return Null improve method
      */
     public static <S extends Solution<S,I>, I extends Instance> Constructive<S,I> nul(){
-        return new NoOPConstructive<>();
+        return new NullConstructive<>();
     }
 
     /**

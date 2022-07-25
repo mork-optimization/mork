@@ -3,9 +3,15 @@ package es.urjc.etsii.grafo.autoconfig.service;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderListener;
+import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil;
+import es.urjc.etsii.grafo.autoconfig.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.BailErrorStrategy;
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmLexer;
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmParser;
+import es.urjc.etsii.grafo.create.Constructive;
+import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
+import es.urjc.etsii.grafo.improve.Improver;
+import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solver.services.ClassUtil;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -17,6 +23,7 @@ import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
 import java.util.*;
+import java.util.function.Function;
 
 /**
  * Manage algorithm components at runtime. When starting the application, discovers all available components.
@@ -29,6 +36,25 @@ public class AlgComponentService {
 
     Map<Class<?>, Collection<Class<?>>> componentsByType = new HashMap<>();
     Map<String, Class<?>> componentByName = new HashMap<>();
+    Map<String, String> aliases = getAliases();
+    Map<String, Function<Map<String, Object>, Object>> factories = getFactories();
+
+    private static Map<String, Function<Map<String, Object>, Object>> getFactories() {
+        var map = new HashMap<String, Function<Map<String, Object>, Object>>();
+        map.put("NullConstructive", params -> Constructive.nul());
+        map.put("NullImprover", params -> Improver.nul());
+        map.put("NullShake", params -> Shake.nul());
+        map.put("NullGraspListManager", params -> GRASPListManager.nul());
+        return map;
+    }
+
+    private static Map<String, String> getAliases() {
+        var map = new HashMap<String, String>();
+        map.put("GRASP", "GreedyRandomGRASPConstructive");
+        map.put("NullGRASPListManager", "NullGraspListManager");
+        return map;
+    }
+
 
     @Value("${advanced.scan-pkgs:es.urjc.etsii}")
     String pkgs;
@@ -62,11 +88,23 @@ public class AlgComponentService {
         }
     }
 
-    public Class<?> byName(String name){
-        if(!this.componentByName.containsKey(name)){
-            throw new IllegalArgumentException(String.format("Unknown component: %s, known components: %s", name, this.componentByName.keySet()));
+    public Object buildAlgorithmComponentByName(String name, Map<String, Object> params){
+        if(aliases.containsKey(name)){
+            // Resolve alias and keep trying to build
+            return buildAlgorithmComponentByName(aliases.get(name), params);
         }
-        return this.componentByName.get(name);
+        if(this.factories.containsKey(name)){
+            // If registered factory method, invoke it
+            return this.factories.get(name).apply(params);
+        }
+
+        // Either we have discovered the component automatically, or fail
+        if(!this.componentByName.containsKey(name)){
+            // fail
+            throw new AlgorithmParsingException(String.format("Unknown component: %s, known components: %s, aliases: %s, factories: %s", name, this.componentByName.keySet(), this.aliases.keySet(), this.factories.keySet()));
+        }
+        var clazz = this.componentByName.get(name);
+        return AlgorithmBuilderUtil.build(clazz, params);
     }
 
     public Algorithm<?,?> buildFromString(String s){
@@ -77,7 +115,7 @@ public class AlgComponentService {
 
         var algorithm = listener.getLastPropertyValue();
         if(!(algorithm instanceof Algorithm<?,?>)){
-            throw new IllegalArgumentException(String.format("String does not represent an algorithm, built class type: %s", algorithm.getClass().getSimpleName()));
+            throw new AlgorithmParsingException(String.format("String does not represent an algorithm, built class type: %s", algorithm.getClass().getSimpleName()));
         }
         return (Algorithm<?,?>) algorithm;
     }

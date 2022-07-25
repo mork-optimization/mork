@@ -33,20 +33,20 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
      * <p>Constructor for SimpleAlgorithm.</p>
      *
      * @param constructive a {@link Constructive} object.
-     * @param improvers a {@link es.urjc.etsii.grafo.solver.improve.Improver} object.
+     * @param improvers a {@link es.urjc.etsii.grafo.improve.Improver} object.
      */
     public SimpleAlgorithm(Constructive<S, I> constructive, Improver<S,I>... improvers){
         this("", constructive, improvers);
     }
 
-    @SafeVarargs
     /**
      * <p>Constructor for SimpleAlgorithm.</p>
      *
      * @param algorithmName a {@link String} object.
      * @param constructive a {@link Constructive} object.
-     * @param improvers a {@link es.urjc.etsii.grafo.solver.improve.Improver} object.
+     * @param improvers a {@link es.urjc.etsii.grafo.improve.Improver} object.
      */
+    @SafeVarargs
     public SimpleAlgorithm(String algorithmName, Constructive<S, I> constructive, Improver<S,I>... improvers){
         this.algorithmName = algorithmName.trim();
         this.constructive = constructive;

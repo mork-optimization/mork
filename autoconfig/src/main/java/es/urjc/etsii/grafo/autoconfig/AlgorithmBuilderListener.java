@@ -10,6 +10,9 @@ import java.util.HashMap;
 import java.util.Map;
 
 public class AlgorithmBuilderListener extends AlgorithmParserBaseListener {
+    // Use EXPLICIT_NULL when the parsed property is null to differentiate it from a real java null
+    private static final Object EXPLICIT_NULL = new Object();
+
     private final Deque<Map<String, Object>> paramContext;
     private final AlgComponentService algorithmComponents;
     Object lastPropertyValue;
@@ -28,9 +31,7 @@ public class AlgorithmBuilderListener extends AlgorithmParserBaseListener {
     public void exitComponent(AlgorithmParser.ComponentContext ctx) {
         var params = paramContext.pop();
         String componentName = ctx.IDENT().getText();
-        var componentClass = this.algorithmComponents.byName(componentName);
-        var componentInstance = AlgorithmBuilderUtil.build(componentClass, params);
-        lastPropertyValue = componentInstance;
+        lastPropertyValue = this.algorithmComponents.buildAlgorithmComponentByName(componentName, params);
     }
 
     @Override
@@ -50,7 +51,7 @@ public class AlgorithmBuilderListener extends AlgorithmParserBaseListener {
         if (lastPropertyValue == null) {
             throw new IllegalStateException();
         }
-        currentContext().put(propertyName, lastPropertyValue);
+        currentContext().put(propertyName, lastPropertyValue == EXPLICIT_NULL? null: lastPropertyValue);
         lastPropertyValue = null;
     }
 
@@ -75,7 +76,7 @@ public class AlgorithmBuilderListener extends AlgorithmParserBaseListener {
             return ctx.StringLiteral().getText();
         }
         if (ctx.NullLiteral() != null) {
-            return null;
+            return EXPLICIT_NULL;
         }
         throw new UnsupportedOperationException("failed to process LiteralContext" + ctx);
     }

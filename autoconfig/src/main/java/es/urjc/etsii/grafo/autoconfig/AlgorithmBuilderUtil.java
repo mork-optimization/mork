@@ -15,6 +15,8 @@ import java.util.Map;
 public class AlgorithmBuilderUtil {
     private static final Logger log = LoggerFactory.getLogger(AlgorithmBuilderUtil.class);
 
+    private record UNKNOWNCLASS(){}
+
     /**
      * Build algorithm component reflectively
      * @param clazz Algorithm component class
@@ -23,10 +25,10 @@ public class AlgorithmBuilderUtil {
      */
     public static Object build(Class<?> clazz, Map<String, Object> args){
         Map<String, Class<?>> argTypes = new HashMap<>();
-        args.forEach((k, v) -> argTypes.put(k, v.getClass()));
+        args.forEach((k, v) -> argTypes.put(k, v == null? UNKNOWNCLASS.class: v.getClass()));
         var constructor = findConstructor(clazz, argTypes);
         if(constructor == null){
-            throw new IllegalArgumentException(String.format("Failed to find constructor method in class %s for params %s, types %s", clazz.getSimpleName(), args, argTypes));
+            throw new AlgorithmParsingException(String.format("Failed to find constructor method in class %s for params %s, types %s", clazz.getSimpleName(), args, argTypes));
         }
         var params = new Object[args.size()];
         var cParams = constructor.getParameters();
@@ -78,6 +80,10 @@ public class AlgorithmBuilderUtil {
                 return false;
             }
             var parsedType = params.get(cParamName);
+            if(parsedType == UNKNOWNCLASS.class && !cParamClass.isPrimitive()){
+                // Null values do not have a known class, but can be used as any parameter as long as it is not a primitive type
+                continue;
+            }
             if(!ClassUtils.isAssignable(parsedType, cParamClass)){
                 log.debug("Constructor {} ignored, arg {} with type {} is not assignable to {}, map {}", c, cParamName, parsedType, cParamClass, params);
                 return false;
