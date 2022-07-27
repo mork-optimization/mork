@@ -65,7 +65,11 @@ public class BenchmarkUtil {
 
         if (!current.equals(cached.info())) {
             log.warn("Benchmark file may not be from this computer, removing it");
-            f.delete();
+            try {
+                Files.delete(f.toPath());
+            } catch (IOException e){
+                log.error("Failed to delete benchmark file", e);
+            }
             return Double.NaN;
         }
         return cached.score();
