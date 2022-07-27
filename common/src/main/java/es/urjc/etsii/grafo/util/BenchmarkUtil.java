@@ -29,6 +29,7 @@ public class BenchmarkUtil {
         }
 
         if (Double.isNaN(score)) {
+            log.info("Benchmark data not found, running CPU benchmark...");
             var result = ScimarkAPI.runBenchmark(seed);
             score = result.getScore();
             store(f, result);
@@ -50,6 +51,8 @@ public class BenchmarkUtil {
             Files.setAttribute(f.toPath(), "dos:hidden", true);
         } catch (IOException e) {
             log.error("Failed to create benchmark file", e);
+        } catch (UnsupportedOperationException ignore){
+            // due to DOS view not available, for example in Mac OS X, just ignore it
         }
     }
 
