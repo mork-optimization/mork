@@ -3,8 +3,10 @@ package es.urjc.etsii.grafo.solver.irace;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.restcontroller.dto.ExecuteRequest;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.solver.configuration.InstanceConfiguration;
 import es.urjc.etsii.grafo.solver.create.builder.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.solver.services.AbstractOrchestrator;
@@ -16,6 +18,7 @@ import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.ExperimentStartedEvent;
 import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
+import es.urjc.etsii.grafo.util.TimeUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -42,6 +45,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     private static final String IRACE_EXPNAME = "irace autoconfig";
 
     private final SolverConfig solverConfig;
+    private final InstanceConfiguration instanceConfiguration;
     private final IraceIntegration iraceIntegration;
     private final SolutionBuilder<S, I> solutionBuilder;
     private final IraceAlgorithmGenerator<S,I> algorithmGenerator;
@@ -51,21 +55,23 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     /**
      * <p>Constructor for IraceOrchestrator.</p>
      *
-     * @param solverConfig a {@link es.urjc.etsii.grafo.solver.SolverConfig} object.
-     * @param iraceIntegration a {@link es.urjc.etsii.grafo.solver.irace.IraceIntegration} object.
-     * @param instanceManager a {@link InstanceManager} object.
-     * @param solutionBuilders a {@link java.util.List} object.
-     * @param algorithmGenerator a {@link java.util.Optional} object.
-     * @param env a {@link org.springframework.core.env.Environment} object.
+     * @param solverConfig          a {@link SolverConfig} object.
+     * @param instanceConfiguration
+     * @param iraceIntegration      a {@link IraceIntegration} object.
+     * @param instanceManager       a {@link InstanceManager} object.
+     * @param solutionBuilders      a {@link List} object.
+     * @param algorithmGenerator    a {@link Optional} object.
+     * @param env                   a {@link Environment} object.
      */
     public IraceOrchestrator(
             SolverConfig solverConfig,
-            IraceIntegration iraceIntegration,
+            InstanceConfiguration instanceConfiguration, IraceIntegration iraceIntegration,
             InstanceManager<I> instanceManager,
             List<SolutionBuilder<S, I>> solutionBuilders,
             Optional<IraceAlgorithmGenerator<S, I>> algorithmGenerator,
             Environment env) {
         this.solverConfig = solverConfig;
+        this.instanceConfiguration = instanceConfiguration;
         this.iraceIntegration = iraceIntegration;
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         this.instanceManager = instanceManager;
@@ -110,6 +116,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
 
     private void extractIraceFiles(boolean isJar) {
         try {
+            var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration, env);
             copyWithSubstitutions(getInputStreamFor("scenario.txt", isJar), Path.of("scenario.txt"), substitutions);
             copyWithSubstitutions(getInputStreamFor("parameters.txt", isJar), Path.of("parameters.txt"), substitutions);
             copyWithSubstitutions(getInputStreamFor("forbidden.txt", isJar), Path.of("forbidden.txt"), substitutions);
@@ -122,9 +129,30 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     }
 
     private final String integrationKey = StringUtil.generateSecret();
-    private final Map<String, String> substitutions = Map.of(
-            "__INTEGRATION_KEY__", integrationKey
-    );
+
+    private Map<String, String> getSubstitutions(String integrationKey, SolverConfig solverConfig, InstanceConfiguration instanceConfiguration, Environment env){
+        String maxExperiments = env.getProperty("irace.maxExperiments", "10000");
+        return Map.of(
+                "__INTEGRATION_KEY__", integrationKey,
+                "__INSTANCES_PATH__", instanceConfiguration.getPath("irace"),
+                "__TARGET_RUNNER__", "./middleware.sh",
+                "__PARALLEL__", nParallel(solverConfig),
+                "__MAX_EXPERIMENTS__", maxExperiments,
+                "__SEED__", String.valueOf(solverConfig.getSeed())
+        );
+    }
+
+    private String nParallel(SolverConfig solverConfig){
+        if(solverConfig.isParallelExecutor()){
+            int n = solverConfig.getnWorkers();
+            if(n < 1){
+                n = Runtime.getRuntime().availableProcessors() / 2;
+            }
+            return String.valueOf(n);
+        } else {
+            return "1";
+        }
+    }
 
 
     /**
@@ -137,14 +165,13 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         var config = buildConfig(request);
         var instancePath = config.getInstanceName();
         var instance = instanceManager.getInstance(instancePath);
-        var algorithm = this.algorithmGenerator.buildAlgorithm(config);
+        var algorithm = this.algorithmGenerator.buildAlgorithm(config.getAlgorithmConfig());
         algorithm.setBuilder(this.solutionBuilder);
         log.debug("Config {}. Built algorithm: {}", config, algorithm);
 
         // Configure randoms for reproducible experimentation
         long seed = Long.parseLong(config.getSeed());
-        RandomManager.reinitialize(this.solverConfig.getRandomType(), seed, 1);
-        RandomManager.reset(0);
+        RandomManager.localConfiguration(this.solverConfig.getRandomType(), seed);
 
         // Execute
         String result = singleExecution(algorithm, instance);
@@ -163,16 +190,10 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         String seed = args[2];
         String instance = args[3];
 
-        Map<String, String> config = new HashMap<>();
-        for (int i = 4, argsLength = args.length; i < argsLength; i++) {
-            String arg = args[i];
-            String[] keyValue = arg.split("=");
-            if (config.containsKey(keyValue[0])) {
-                throw new IllegalArgumentException("Duplicated key: " + keyValue[0]);
-            }
-            config.put(keyValue[0], keyValue[1]);
-        }
-        return new IraceRuntimeConfiguration(candidateConfiguration, instanceId, seed, instance, config, this.solverConfig.isMaximizing());
+        int length = candidateConfiguration.length() + instanceId.length() + seed.length() + instance.length();
+        String algParams = decoded.substring(length);
+
+        return new IraceRuntimeConfiguration(candidateConfiguration, instanceId, seed, instance, new AlgorithmConfiguration(algParams));
     }
 
 
@@ -181,8 +202,8 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         var result = algorithm.algorithm(instance);
         long endTime = System.nanoTime();
         double score = result.getScore();
-        double elapsedSeconds = (endTime - startTime) / 1e9D;
-        if(this.solverConfig.isMaximizing()){
+        double elapsedSeconds = TimeUtil.nanosToSecs(endTime - startTime);
+        if(Mork.isMaximizing()){
             score *= -1; // Irace only minimizes
         }
         log.debug(String.format("IRACE Iteration: %s %.2g%n", score, elapsedSeconds));

@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.create;
 
+import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
@@ -10,15 +11,16 @@ import es.urjc.etsii.grafo.solution.Solution;
  * @param <S> Solution class
  * @param <I> Instance class
  */
+@AlgorithmComponent
 public abstract class Constructive<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Build a solution. Start with an empty solution, end when the solution is valid.
      *
-     * @param s Empty solution, the result of calling the constructor.
+     * @param solution Empty solution, the result of calling the constructor.
      * @return A valid solution that fulfills all the problem constraints.
      */
-    public abstract S construct(S s);
+    public abstract S construct(S solution);
 
     /** {@inheritDoc} */
     @Override
@@ -34,7 +36,7 @@ public abstract class Constructive<S extends Solution<S,I>, I extends Instance> 
      * @return Null improve method
      */
     public static <S extends Solution<S,I>, I extends Instance> Constructive<S,I> nul(){
-        return new NoOPConstructive<>();
+        return new NullConstructive<>();
     }
 
     /**
@@ -45,8 +47,8 @@ public abstract class Constructive<S extends Solution<S,I>, I extends Instance> 
      */
     private static class NullConstructive<S extends Solution<S,I>,I extends Instance> extends Constructive<S,I> {
         @Override
-        public S construct(S s) {
-            return s;
+        public S construct(S solution) {
+            return solution;
         }
     }
 }

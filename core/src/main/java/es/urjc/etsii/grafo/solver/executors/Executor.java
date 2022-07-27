@@ -1,13 +1,16 @@
 package es.urjc.etsii.grafo.solver.executors;
 
+import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
-import es.urjc.etsii.grafo.algorithms.Algorithm;
-import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.solver.experiment.Experiment;
-import es.urjc.etsii.grafo.solver.services.*;
+import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
+import es.urjc.etsii.grafo.solver.services.Global;
+import es.urjc.etsii.grafo.solver.services.IOManager;
+import es.urjc.etsii.grafo.solver.services.SolutionValidator;
 import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
@@ -15,10 +18,8 @@ import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
-import java.io.File;
 import java.util.*;
 import java.util.logging.Logger;
-import java.util.regex.Pattern;
 
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 

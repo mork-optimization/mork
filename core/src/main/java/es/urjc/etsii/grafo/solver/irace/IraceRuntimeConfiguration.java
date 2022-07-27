@@ -1,12 +1,7 @@
 package es.urjc.etsii.grafo.solver.irace;
 
-import java.util.Collections;
-import java.util.Map;
-import java.util.Optional;
-
 /**
- * <p>IraceRuntimeConfiguration class.</p>
- *
+ * <p>Irace run configuration. Contains all data provided by irace for any given run</p>
  */
 public class IraceRuntimeConfiguration {
 
@@ -15,56 +10,27 @@ public class IraceRuntimeConfiguration {
     private final String instanceId;
     private final String seed;
     private final String instanceName;
-    private final Map<String, String> alg;
-    private final boolean isMaximizing;
+    private final AlgorithmConfiguration algorithmConfiguration;
 
     /**
      * <p>Constructor for IraceRuntimeConfiguration.</p>
      *
-     * @param candidateConfiguration a {@link java.lang.String} object.
-     * @param instanceId a {@link java.lang.String} object.
-     * @param seed a {@link java.lang.String} object.
-     * @param instanceName a {@link java.lang.String} object.
-     * @param alg a {@link java.util.Map} object.
-     * @param isMaximizing a boolean.
+     * @param candidateConfiguration full configuration as a string
+     * @param instanceId             instance id
+     * @param seed                   seed for the random manager
+     * @param instanceName           intance name
+     * @param algorithmConfiguration                    algorithm configuration
      */
-    public IraceRuntimeConfiguration(String candidateConfiguration, String instanceId, String seed, String instanceName, Map<String, String> alg, boolean isMaximizing) {
+    public IraceRuntimeConfiguration(String candidateConfiguration, String instanceId, String seed, String instanceName, AlgorithmConfiguration algorithmConfiguration) {
         this.candidateConfiguration = candidateConfiguration;
         this.instanceId = instanceId;
-        this.alg = alg;
+        this.algorithmConfiguration = algorithmConfiguration;
         this.instanceName = instanceName;
         this.seed = seed;
-        this.isMaximizing = isMaximizing;
     }
 
-    /**
-     * Get the value of a config property
-     *
-     * @param property config key
-     * @return Optional with value if key was in config map, empty Optional if key was not in config map.
-     */
-    public Optional<String> getValue(String property){
-        return Optional.ofNullable(alg.get(property));
-    }
-
-    /**
-     * Get the value of a config property
-     *
-     * @param key config key
-     * @param defaultValue value to return if key is not in config map
-     * @return Config value if key present, default value otherwise
-     */
-    public String getValue(String key, String defaultValue){
-        return alg.getOrDefault(key, defaultValue);
-    }
-
-    /**
-     * Get all config properties related to the irace algorithm
-     *
-     * @return all key/values as a map.
-     */
-    public Map<String, String> getConfig(){
-        return Collections.unmodifiableMap(this.alg);
+    public AlgorithmConfiguration getAlgorithmConfig() {
+        return algorithmConfiguration;
     }
 
     /**
@@ -72,7 +38,7 @@ public class IraceRuntimeConfiguration {
      *
      * @return a {@link java.lang.String} object.
      */
-    public String getInstanceName(){
+    public String getInstanceName() {
         return instanceName;
     }
 
@@ -81,17 +47,8 @@ public class IraceRuntimeConfiguration {
      *
      * @return a {@link java.lang.String} object.
      */
-    public String getSeed(){
+    public String getSeed() {
         return seed;
-    }
-
-    /**
-     * <p>isMaximizing.</p>
-     *
-     * @return a boolean.
-     */
-    public boolean isMaximizing(){
-        return this.isMaximizing;
     }
 
     /**
@@ -119,8 +76,7 @@ public class IraceRuntimeConfiguration {
                 ", instanceId='" + instanceId + '\'' +
                 ", seed='" + seed + '\'' +
                 ", instancePath='" + instanceName + '\'' +
-                ", alg=" + alg +
-                ", isMaximizing=" + isMaximizing +
+                ", alg=" + algorithmConfiguration +
                 '}';
     }
 }

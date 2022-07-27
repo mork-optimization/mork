@@ -31,15 +31,20 @@ public class GraalRLangRunner extends RLangRunner {
             var err_in = new PipedInputStream(err);
 
             // Build and launch
-            Context polyglot = Context.newBuilder(R_LANG)
+            var contextBuilder = Context.newBuilder(R_LANG)
                     .option("R.PrintErrorStacktracesToFile", "true")
                     .allowAllAccess(true)
                     .out(out)
-                    .err(err)
-                    .build();
-            new Thread(() -> polyglot.eval(R_LANG, script)).start();
+                    .err(err);
 
-            // Send irace output to our logs
+            // Execute R script inside the JVM in a new thread
+            new Thread(() -> {
+                try (Context polyglot = contextBuilder.build()){
+                    polyglot.eval(R_LANG, script);
+                }
+            }).start();
+
+            // Send irace output to our logs in real time
             drainStream(Level.INFO, out_in);
             log.info("IRACE Error Stream: ");
             drainStream(Level.WARNING, err_in);

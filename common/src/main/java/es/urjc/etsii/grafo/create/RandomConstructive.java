@@ -32,12 +32,12 @@ public class RandomConstructive<M extends Move<S,I>, S extends Solution<S,I>, I 
         return exhaustNeighborhood(solution, neighborhood);
     }
 
-    private S exhaustNeighborhood(S s, RandomizableNeighborhood<M,S,I> neighborhood) {
+    private S exhaustNeighborhood(S solution, RandomizableNeighborhood<M,S,I> neighborhood) {
         Optional<? extends Move<S,I>> move;
-        while((move = neighborhood.getRandomMove(s)).isPresent()){
-            move.get().execute();
+        while((move = neighborhood.getRandomMove(solution)).isPresent()){
+            move.get().execute(solution);
         }
 
-        return s;
+        return solution;
     }
 }

@@ -1,5 +1,17 @@
 # v0.14
+- (New) Algorithms can be magically built from strings without user interaction, using the new autoconfig project. See AlgComponentService and AlgorithmBuilderUtil classes for more details.
+- (New) Algorithms can be manually built from strings using an IraceAlgorithmGenerator implementation. See IraceAlgorithmGenerator::buildFromString for more details
+- (New) Benchmark enabled by default, using cached results file.
+- (New) Add Other info Excel sheet
+- (Change) Upgrade dependencies
+- (Change) dynamically generate scenario.txt for Irace. Use seed, instances, parallel config etc loaded from application.yml or environment.
+- (Change) Neighborhoods refactor: delete eager and lazy neighborhoods, randomizable as subclass, always return ExploreResult.
+- (Change) IraceAlgorithmGenerator refactor and cleanup, improve validation.
+- (Change) Move::execute now must return boolean, stating if current solution has changed after executing it or not. There are moves that may leave the solution exactly the same in certain problems.
+- (Remove) Move::isValid, not practical in its current implementation.
+- (Remove) NoOPConstructive, replaced by Constructive::nul
 - (Fix) #88: Filename bug in SolutionSerializer, by @ea2809
+- (Fix) #63: Bug parallel irace with randoms, by @scaverod
 
 # v0.13
 - (New) Neighborhood.empty(), Neighborhood.concat(n1, n2), Neighborhood.interleave(n1, n2)

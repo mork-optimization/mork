@@ -2,6 +2,10 @@
 ## Scenario setup for Iterated Race (iRace).
 ############################################################################
 
+## !!!! IMPORTANT !!!!
+## VALUES BETWEEN __ ARE AUTOCONFIGURED BY MORK AT RUNTIME
+## Example: trainInstancesDir will be automatically set to the instance folder set in application.yml
+
 ## To use the default value of a parameter of iRace, simply do not set
 ## the parameter (comment it out in this file, and do not give any
 ## value on the command line).
@@ -18,7 +22,7 @@ execDir = "./"
 
 ## Directory where tuning instances are located, either absolute path or
 ## relative to current directory.
-trainInstancesDir = "./instances/regular/"
+trainInstancesDir = "__INSTANCES_PATH__"
 
 ## File with a list of instances and (optionally) parameters.
 ## If empty or NULL, do not use a file.
@@ -32,7 +36,7 @@ trainInstancesDir = "./instances/regular/"
 
 ## The script called for each configuration that launches the program to be
 ## tuned.  See templates/target-runner.tmpl
-targetRunner = "./middleware.sh"
+targetRunner = "__TARGET_RUNNER__"
 
 ## Number of times to retry a call to target-runner if the call failed.
 # targetRunnerRetries = 0
@@ -56,7 +60,7 @@ targetRunner = "./middleware.sh"
 
 ## The maximum number of runs (invocations of targetRunner) that will
 ## performed. It determines the (maximum) budget of experiments for the tuning.
-maxExperiments = 10000
+maxExperiments = __MAX_EXPERIMENTS__
 
 ## Directory where testing instances are located, either absolute or relative
 ## to current directory.
@@ -130,11 +134,11 @@ firstTest = 7
 
 ## Seed of the random number generator (must be a positive integer, NA
 ## means use a random seed).
-# seed = NA
+seed = __SEED__
 
 ## Number of calls to targetRunner to execute in parallel. Less than 2
 ## means calls to targetRunner are sequentially executed.
-# parallel = 0
+parallel = __PARALLEL__
 
 ## Enable/disable load-balancing when executing experiments in
 ## parallel. Load-balancing makes better use of computing resources, but

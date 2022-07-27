@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.TSP.algorithms.neighborhood;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.solution.EagerMove;
-import es.urjc.etsii.grafo.solution.neighborhood.EagerNeighborhood;
+import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.text.MessageFormat;
@@ -11,24 +11,25 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
-public class InsertNeighborhood extends EagerNeighborhood<InsertNeighborhood.InsertMove, TSPSolution, TSPInstance> {
+public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMove, TSPSolution, TSPInstance> {
 
 
     @Override
-    public List<InsertMove> getMovements(TSPSolution solution) {
+    public ExploreResult<InsertMove, TSPSolution, TSPInstance> explore(TSPSolution solution) {
         List<InsertMove> list = new ArrayList<>();
         for (int i = 0; i < solution.getInstance().numberOfLocations(); i++) {
             for (int j = 0; j < solution.getInstance().numberOfLocations(); j++) {
                 list.add(new InsertMove(solution, i, j));
             }
         }
-        return list;
+        return new ExploreResult<>(list);
     }
 
     public static class InsertMove extends EagerMove<TSPSolution, TSPInstance> {
 
         final int pi;
         final int pj;
+        final double value;
 
         /**
          * Constructor on an insert move. Given a solution, an insert move consist in inserting the the location of a position pi, into a position pj.
@@ -42,29 +43,30 @@ public class InsertNeighborhood extends EagerNeighborhood<InsertNeighborhood.Ins
             super(solution);
             this.pi = pi;
             this.pj = pj;
+            this.value = calculateValue(solution);
         }
 
         @Override
-        public boolean isValid() {
+        protected boolean _execute(TSPSolution solution) {
+            solution.insertLocationAtPiInPj(pi, pj);
             return true;
         }
 
         @Override
-        protected void _execute() {
-            this.getSolution().insertLocationAtPiInPj(pi, pj);
+        public double getValue() {
+            return this.value;
         }
 
-        @Override
-        public double getValue() {
-            var s = this.getSolution().cloneSolution();
+        private double calculateValue(TSPSolution solution){
+            var s = solution.cloneSolution();
             s.insertLocationAtPiInPj(pi, pj);
-            return s.getScore() - this.getSolution().getScore();
+            return s.getScore() - solution.getScore();
         }
 
 
         @Override
         public String toString() {
-            return MessageFormat.format("Insert {0}[{1}] --> {2}", this.pi, this.getSolution().getLocation(pi), this.pj);
+            return String.format("Insert %s --> %s", this.pi, this.pj);
         }
 
         @Override

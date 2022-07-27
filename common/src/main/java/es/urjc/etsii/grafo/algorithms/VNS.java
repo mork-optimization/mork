@@ -186,10 +186,10 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * Print the current status of the VNS procedure, i.e., the current iteration the best solution.
      *
      * @param phase current state of the vns procedure
-     * @param s     solution
+     * @param solution     solution
      */
-    private void printStatus(String phase, S s) {
-        log.fine(String.format("%s: \t%s", phase, s));
+    private void printStatus(String phase, S solution) {
+        log.fine(String.format("%s: \t%s", phase, solution));
     }
 
     /**

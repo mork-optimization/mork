@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.improve;
 
 
-import es.urjc.etsii.grafo.solution.neighborhood.EagerNeighborhood;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
@@ -40,9 +39,8 @@ public class BaseLSTest {
         for(double d: values){
             moves.add(new TestMove(solution, d, maximizing));
         }
-        var neighborhood = Mockito.mock(EagerNeighborhood.class);
-        when(neighborhood.getMovements(solution)).thenReturn(moves);
-        when(neighborhood.stream(solution)).thenReturn(moves.stream());
+        var neighborhood = Mockito.mock(Neighborhood.class);
+        when(neighborhood.explore(solution)).thenReturn(new Neighborhood.ExploreResult<>(moves));
         return neighborhood;
     }
 }

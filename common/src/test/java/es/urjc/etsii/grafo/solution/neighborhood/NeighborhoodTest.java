@@ -22,7 +22,7 @@ public class NeighborhoodTest {
     @Test
     public void emptyNeighboorhood(){
         Neighborhood<?, TestSolution, TestInstance> neighborhhod = Neighborhood.empty();
-        Assertions.assertTrue(neighborhhod.stream(this.solution).findAny().isEmpty(), "Neighborhood.empty() should be empty");
+        Assertions.assertTrue(neighborhhod.explore(this.solution).moves().findAny().isEmpty(), "Neighborhood.empty() should be empty");
     }
 
     @Test
@@ -31,7 +31,7 @@ public class NeighborhoodTest {
         var neighB = NeighTestHelper.neighborhood(solution, 4, 5, 6);
 
         var neighborhood = Neighborhood.concat(neighA, neighB);
-        verifyMoveOrder(neighborhood.stream(solution), 1,2,3,4,5,6);
+        verifyMoveOrder(neighborhood.explore(solution), 1,2,3,4,5,6);
     }
 
     @Test
@@ -46,7 +46,7 @@ public class NeighborhoodTest {
         };
 
         var neighborhood = Neighborhood.concat(neighborhoods);
-        verifyMoveOrder(neighborhood.stream(solution), 1,2,3,4,5,6,7,8,9,10,11,12,13);
+        verifyMoveOrder(neighborhood.explore(solution), 1,2,3,4,5,6,7,8,9,10,11,12,13);
     }
 
     @Test
@@ -55,7 +55,7 @@ public class NeighborhoodTest {
         var neighB = NeighTestHelper.neighborhood(solution, 4, 5, 6);
 
         var neighborhood = Neighborhood.interleave(neighA, neighB);
-        verifyMoveOrder(neighborhood.stream(solution), 1,4,2,5,3,6);
+        verifyMoveOrder(neighborhood.explore(solution), 1,4,2,5,3,6);
     }
 
     @Test
@@ -70,10 +70,11 @@ public class NeighborhoodTest {
         };
 
         var neighborhood = Neighborhood.interleave(neighborhoods);
-        verifyMoveOrder(neighborhood.stream(solution), 1,4,7,9,13,2,5,8,10,3,6,11,12);
+        verifyMoveOrder(neighborhood.explore(solution), 1,4,7,9,13,2,5,8,10,3,6,11,12);
     }
 
-    private void verifyMoveOrder(Stream<TestMove> moves, double... expectedValues){
+    private void verifyMoveOrder(Neighborhood.ExploreResult<TestMove,TestSolution,TestInstance> exploreResult, double... expectedValues){
+        Stream<TestMove> moves = exploreResult.moves();
         double[] values = moves.mapToDouble(TestMove::getValue).toArray();
         Assertions.assertArrayEquals(expectedValues, values);
     }

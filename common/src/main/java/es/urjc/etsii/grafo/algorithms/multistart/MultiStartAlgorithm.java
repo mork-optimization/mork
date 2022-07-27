@@ -172,10 +172,10 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
      * Print the current status of the VNS procedure, i.e., the current iteration the best solution.
      *
      * @param iteration current iteration of the procedure
-     * @param s solution
+     * @param solution solution
      */
-    protected void printStatus(int iteration, S s) {
-        log.fine(() -> String.format("\t\t%s: %s", iteration, s));
+    protected void printStatus(int iteration, S solution) {
+        log.fine(() -> String.format("\t\t%s: %s", iteration, solution));
     }
 
 

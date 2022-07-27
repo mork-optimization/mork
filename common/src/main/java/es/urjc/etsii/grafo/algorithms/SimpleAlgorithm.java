@@ -33,20 +33,20 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
      * <p>Constructor for SimpleAlgorithm.</p>
      *
      * @param constructive a {@link Constructive} object.
-     * @param improvers a {@link es.urjc.etsii.grafo.solver.improve.Improver} object.
+     * @param improvers a {@link es.urjc.etsii.grafo.improve.Improver} object.
      */
     public SimpleAlgorithm(Constructive<S, I> constructive, Improver<S,I>... improvers){
         this("", constructive, improvers);
     }
 
-    @SafeVarargs
     /**
      * <p>Constructor for SimpleAlgorithm.</p>
      *
      * @param algorithmName a {@link String} object.
      * @param constructive a {@link Constructive} object.
-     * @param improvers a {@link es.urjc.etsii.grafo.solver.improve.Improver} object.
+     * @param improvers a {@link es.urjc.etsii.grafo.improve.Improver} object.
      */
+    @SafeVarargs
     public SimpleAlgorithm(String algorithmName, Constructive<S, I> constructive, Improver<S,I>... improvers){
         this.algorithmName = algorithmName.trim();
         this.constructive = constructive;
@@ -92,10 +92,10 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
      * <p>printStatus.</p>
      *
      * @param phase a {@link String} object.
-     * @param s a S object.
+     * @param solution a S object.
      */
-    protected void printStatus(String phase, S s){
-        log.fine(() -> String.format("\t\t%s: %s", phase, s));
+    protected void printStatus(String phase, S solution){
+        log.fine(() -> String.format("\t\t%s: %s", phase, solution));
     }
 
     /** {@inheritDoc} */

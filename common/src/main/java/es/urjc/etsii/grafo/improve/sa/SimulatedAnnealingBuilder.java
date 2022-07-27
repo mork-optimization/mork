@@ -9,6 +9,7 @@ import es.urjc.etsii.grafo.improve.sa.cd.CoolDownControl;
 import es.urjc.etsii.grafo.improve.sa.cd.ExponentialCoolDown;
 import es.urjc.etsii.grafo.improve.sa.initialt.ConstantInitialTemperature;
 import es.urjc.etsii.grafo.improve.sa.initialt.InitialTemperatureCalculator;
+import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
 /**
@@ -18,7 +19,7 @@ import es.urjc.etsii.grafo.util.DoubleComparator;
  * @param <I> Instance type
  */
 public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> {
-    private Neighborhood<M, S, I> neighborhood;
+    private RandomizableNeighborhood<M, S, I> neighborhood;
     private AcceptanceCriteria<M, S, I> acceptanceCriteria;
     private InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator;
     private TerminationCriteria<M, S, I> terminationCriteria;
@@ -37,7 +38,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * @param neighborhood neighborhood
      * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withNeighborhood(Neighborhood<M, S, I> neighborhood) {
+    public SimulatedAnnealingBuilder<M,S,I> withNeighborhood(RandomizableNeighborhood<M, S, I> neighborhood) {
         this.neighborhood = neighborhood;
         return this;
     }

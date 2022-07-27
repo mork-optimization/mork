@@ -22,6 +22,15 @@ public abstract class IraceAlgorithmGenerator<S extends Solution<S,I>, I extends
      * @param config Subset of config parameters, only those required for algorithm configuration
      * @return Algorithm generated according to Irace chosen parameters
      */
-    public abstract Algorithm<S,I> buildAlgorithm(IraceRuntimeConfiguration config);
+    public abstract Algorithm<S,I> buildAlgorithm(AlgorithmConfiguration config);
 
+    /**
+     * Build an algorithm from a config string such as those returned by irace.
+     * Example: "constructive=random balanced=true initialmaxdiffratio=0.8193 cooldownexpratio=0.9438 cyclelength=9"
+     * @param paramString config string with key-values for each parameter
+     * @return built algorithm
+     */
+    public Algorithm<S,I> buildFromString(String paramString){
+        return buildAlgorithm(new AlgorithmConfiguration(paramString));
+    }
 }

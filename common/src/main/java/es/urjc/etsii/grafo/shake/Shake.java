@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.shake;
 
 
+import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
@@ -11,17 +12,18 @@ import es.urjc.etsii.grafo.solution.Solution;
  * @param <I> Instance class
  * @see RandomMoveShake
  */
+@AlgorithmComponent
 public abstract class Shake<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Shake the solution. Use k to calculate how powerful the shake should be in your implementation.
      * Can be as simple as number of elements to remove, or to swap. Whatever you want.
      *
-     * @param s Solution to shake
+     * @param solution Solution to shake
      * @param k shake strength
      * @return shaken solution. Shaken, not stirred.
      */
-    public abstract S shake(S s, int k);
+    public abstract S shake(S solution, int k);
 
     /**
      * Create a no operation shake method
@@ -42,8 +44,8 @@ public abstract class Shake<S extends Solution<S,I>, I extends Instance> {
      */
     private static class NullShake<S extends Solution<S,I>,I extends Instance> extends Shake<S,I> {
         @Override
-        public S shake(S s, int k) {
-            return s;
+        public S shake(S solution, int k) {
+            return solution;
         }
     }
 }

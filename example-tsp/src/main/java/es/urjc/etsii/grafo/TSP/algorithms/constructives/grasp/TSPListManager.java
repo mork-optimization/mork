@@ -46,9 +46,8 @@ public class TSPListManager extends GRASPListManager<TSPListManager.TSPGRASPMove
         }
 
         @Override
-        protected void _execute() {
+        protected boolean _execute(TSPSolution solution) {
             // TODO Apply changes to solution if movement is executed
-            // this.s --> reference to current solution
             throw new UnsupportedOperationException("_execute() in TSPListManager not implemented yet");
 
         }
@@ -83,13 +82,6 @@ public class TSPListManager extends GRASPListManager<TSPListManager.TSPGRASPMove
         public int hashCode() {
             // TODO Use IDE to generate this method after all properties are defined
             throw new UnsupportedOperationException("hashCode() in TSP not implemented yet");
-        }
-
-        @Override
-        public boolean isValid() {
-            // A move is not valid if it leaves the solution in an unfeasible state
-            // If the movement is not valid, it should probably not be in the candidate list.
-            return true;
         }
     }
 }

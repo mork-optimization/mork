@@ -27,6 +27,7 @@ public class InstanceManager<I extends Instance> {
     private final InstanceImporter<I> instanceImporter;
 
     private final Map<String, SoftReference<I>> cacheByPath;
+    private final Map<String, List<String>> solveOrderByExperiment;
 
 
     /**
@@ -38,6 +39,7 @@ public class InstanceManager<I extends Instance> {
         this.instanceConfiguration = instanceConfiguration;
         this.instanceImporter = instanceImporter;
         this.cacheByPath = new ConcurrentHashMap<>();
+        this.solveOrderByExperiment = new ConcurrentHashMap<>();
     }
 
 
@@ -47,19 +49,20 @@ public class InstanceManager<I extends Instance> {
      * @param expName experiment name as string
      * @return Ordered list of instance identifiers, that can be later used by the getInstance method. Instances should be solved in the returned order.
      */
-    public List<String> getInstanceSolveOrder(String expName){
-        String instancePath = this.instanceConfiguration.getPath(expName);
-        checkExists(instancePath);
-        List<Path> instances = IOUtil.iterate(instancePath);
+    public synchronized List<String> getInstanceSolveOrder(String expName){
+        return this.solveOrderByExperiment.computeIfAbsent(expName, s -> {
+            String instancePath = this.instanceConfiguration.getPath(expName);
+            checkExists(instancePath);
+            List<Path> instances = IOUtil.iterate(instancePath);
 
-        List<String> sortedInstances;
-        if(this.instanceConfiguration.isPreload()){
-            sortedInstances = validateAndSort(expName, instances);
-        } else {
-            sortedInstances = lexicSort(instances);
-        }
-
-        return sortedInstances;
+            List<String> sortedInstances;
+            if(this.instanceConfiguration.isPreload()){
+                sortedInstances = validateAndSort(expName, instances);
+            } else {
+                sortedInstances = lexicSort(instances);
+            }
+            return sortedInstances;
+        });
     }
 
     protected List<String> validateAndSort(String expName, List<Path> instancePaths) {
@@ -75,7 +78,10 @@ public class InstanceManager<I extends Instance> {
         Collections.sort(instances);
         validate(instances, expName);
         sortedInstances = instances.stream().map(Instance::getPath).collect(Collectors.toList());
-        log.info("Instance validation completed, solve order: " + sortedInstances);
+        if(log.isInfoEnabled()){
+            var basePath = Path.of(instanceConfiguration.getPath(expName)).toAbsolutePath().normalize().toString();
+            log.info("Instance validation completed, solve order: " + sortedInstances.stream().map(path -> path.replace(basePath, "")).toList());
+        }
         return sortedInstances;
     }
 

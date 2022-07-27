@@ -495,15 +495,14 @@ tasks:
 
 #### Implement a neighborhood structure
 
-A neighborhoods represents all potential solutions that can be reached for a given solution applying a movement. In Mork
-there are two types of neighborhoods:
+A neighborhoods represents all potential solutions that can be reached for a given solution applying a movement. In general, Neighborhoods can be explored using two different strategies:
 
-1. Eager Neighborhood: Movements in this neighborhood are generated at once, using a list (`List<>`) of EagerMoves.
-2. Lazy Neighborhood:  Movements in this neighborhood are generated lazily under demand using `Streams` with LazyMoves.
+1. Eager exploration: Movements in this neighborhood are generated at once, using a list (`List<>`) of EagerMoves. Convenient, but may waste computer resources when the improve method is not a best improvement approach.
+2. Lazy exploration:  Movements in this neighborhood are generated lazily under demand using `Streams` with LazyMoves. Generate moves only when they need to be evaluated.
 
-**Eager Neighborhood**
+**Eager Exploration**
 
-To explain Eager Neighborhoods we are going to use the Insert classical move as an example. The insert operator consist
+To better explain eager exploration we are going to use the Insert classical move as an example. The insert operator consist
 in removing a location from the route and insert it between other two locations (i.e., insert it at a specific position)
 .
 
@@ -513,20 +512,22 @@ is wanted to insert it between locations 2 and 3. The resulting route after the 
 
 Given the insert operator, the neighborhood is defined as all possible insertions of all locations in any position of
 the route. To this end, we first create a class named: `InsertNeighborhood` that must
-extend `EagerNeighborhood<InsertNeighborhood.InsertMove, TSPSolution, TSPInstance>`, and
+extend `Neighborhood<InsertNeighborhood.InsertMove, TSPSolution, TSPInstance>`, and
 where `InsertNeighborhood.InsertMove`is the insert move operator we have to define. Once the header of the class
-has been defined, next task will be to implement the method `public List<InsertMove> getMovements(TSPSolution solution)`
-, This procedure will generate all possible insert moves given a solution (i.e., insert all locations in each of the
+has been defined, next task will be to implement the method `public ExploreResult<...> explore(TSPSolution solution)`. 
+This method will generate all possible insert moves given a solution (i.e., insert all locations in each of the
 positions of the route). A straightforward implementation is shown below:
 
 ```
-    public List<InsertMove> getMovements(TSPSolution solution) {  
-      List<InsertMove> list = new ArrayList<>();  
-     for (int i = 0; i < solution.getInstance().numberOfLocations(); i++) {  
-      for (int j = 0; j < solution.getInstance().numberOfLocations(); j++) {  
-      list.add(new InsertMove(solution, i, j));  
-      }  
-     }  return list;  
+    @Override
+    public ExploreResult<InsertMove, TSPSolution, TSPInstance> explore(TSPSolution solution) {
+        List<InsertMove> list = new ArrayList<>();
+        for (int i = 0; i < solution.getInstance().numberOfLocations(); i++) {
+            for (int j = 0; j < solution.getInstance().numberOfLocations(); j++) {
+                list.add(new InsertMove(solution, i, j));
+            }
+        }
+        return new ExploreResult<>(list);
     }
 ```
 
@@ -536,11 +537,10 @@ insert move receive tree parameters: the solution and two integers: the position
 in a desired position. Regardless of the type of movement intended (Eager or Lazy), the following methods have to be
 implemented:
 
-- `boolean isValid()`: true if the solution obtained after the move is feasible
-- `void execute()`: execute the move, the procedure changes the solution
+- `boolean _execute()`: execute the move, return false if the move is not applied for any reason, or the solution does not change
 - `double getValue()`: this procedure calculates the difference between the value of the solution that would be obtained
   if the movement were carried out, and the value of the current target solution. This method does NOT perform the
-  movement, the solution (and its structures) do not change.
+  movement, the solution (and its structures) must not change.
 - `boolean improves()` : returns true if applying the move results in a better solution than the current one.
 
 The easiest implementation of this class is depicted below.
@@ -552,22 +552,15 @@ The easiest implementation of this class is depicted below.
      this.pj = pj;  
     }  
       
-    public boolean isValid() {  
-      return true;  
-    }  
-      
-    protected void _execute() {  
+    protected boolean _execute() {  
       this.getSolution().insertLocationAtPiInPj(pi, pj);  
+      return true;
     }  
       
     public double getValue() {  
       var s = this.getSolution().cloneSolution();  
       s.insertLocationAtPiInPj(pi, pj);  
      return s.getScore() - this.getSolution().getScore();  
-    }
-    
-    public boolean improves() {  
-      return DoubleComparator.isLessThan(this.getValue(), 0);  
     }
 ```
 
@@ -576,7 +569,7 @@ difference in the objective function value between the cloned one (the neighbor 
 procedure is extremely inefficient. An efficient way to perform this calculation will evaluate just the part of the
 solution that has changed after the move. We depict a more efficient approach in the swap move example.
 
-**Lazy Neighborhood**
+**Lazy exploration**
 
 Movements in this neighborhood are generated lazily under demand
 using [`Streams`](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html) with `LazyMoves`. In this
@@ -590,13 +583,14 @@ The main difference between this neighborhood and the previous one is the way in
 this case, instead of generating a list of movements, we will define a Stream. The general idea of this neighborhood is that given a movement, 
 the next movement can be generated (if it exists). In this way, movements are only generated if they are needed. How to do
 it? First, we generate the Swap Neighborhood
-class (`SwapNeighborhood extends LazyNeighborhood<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance>`) and implement
-the stream method. This method generate an initial `SwapMove` object.
+class (`SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance>`) and implement
+the explore method. This method need to generate only the initial `SwapMove` object.
 
 ```
-    public Stream<SwapMove> stream(TSPSolution solution) {  
-      int initialVertex = RandomManager.getRandom().nextInt(solution.getInstance().numberOfLocations());  
-     return buildStream(new SwapMove(solution, initialVertex, initialVertex, (initialVertex + 1) % solution.getInstance().numberOfLocations()));  
+    @Override
+    public ExploreResult<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance> explore(TSPSolution solution) {
+        int initialVertex = RandomManager.getRandom().nextInt(solution.getInstance().numberOfLocations());
+        return new ExploreResult<>(new SwapMove(solution, initialVertex, initialVertex, (initialVertex + 1) % solution.getInstance().numberOfLocations()));
     }
 ```
 

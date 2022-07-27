@@ -45,7 +45,7 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S,I>, I extends In
      * JSON export method. Exports the given solution to the provided file in JSON format.
      */
     @Override
-    public void export(BufferedWriter writer, S s) {
+    public void export(BufferedWriter writer, S solution) {
         throw new UnsupportedOperationException();
     }
 
@@ -55,10 +55,10 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S,I>, I extends In
      * JSON export method. Exports the given solution to the provided file in JSON format.
      */
     @Override
-    public void export(File f, S s) {
+    public void export(File f, S solution) {
         if(config.isEnabled()){
             try {
-                writer.writeValue(f,s);
+                writer.writeValue(f,solution);
             } catch (IOException e){
                 throw new RuntimeException("IOException while writing to file: "+f.getAbsolutePath(), e);
             }

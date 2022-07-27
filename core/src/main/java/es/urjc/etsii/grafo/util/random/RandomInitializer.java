@@ -16,6 +16,6 @@ public class RandomInitializer {
 
     @PostConstruct
     public void initializeRandomManager(){
-        RandomManager.reinitialize(solverConfig.getRandomType(), solverConfig.getSeed(), solverConfig.getRepetitions());
+        RandomManager.globalConfiguration(solverConfig.getRandomType(), solverConfig.getSeed(), solverConfig.getRepetitions());
     }
 }

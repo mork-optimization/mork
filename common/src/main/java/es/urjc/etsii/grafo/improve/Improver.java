@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.improve;
 
+import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
@@ -11,6 +12,7 @@ import java.util.logging.Logger;
  * @param <S> Solution class
  * @param <I> Instance class
  */
+@AlgorithmComponent
 public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
     private static final Logger log = Logger.getLogger(Improver.class.getName());
@@ -19,13 +21,13 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
      * Improves a model.Solution
      * Iterates until we run out of time, or we cannot improve the current es.urjc.etsii.grafo.solution any further
      *
-     * @param s model.Solution to improve
+     * @param solution model.Solution to improve
      * @return Improved s
      */
-    public S improve(S s){
+    public S improve(S solution){
         long startTime = System.nanoTime();
-        double initialScore = s.getScore();
-        S improvedSolution = this._improve(s);
+        double initialScore = solution.getScore();
+        S improvedSolution = this._improve(solution);
         long endTime = System.nanoTime();
         long ellapedMillis = (endTime - startTime) / 1_000_000;
         double endScore = improvedSolution.getScore();
@@ -52,8 +54,8 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
      */
     private static class NullImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {
         @Override
-        protected S _improve(S s) {
-            return s;
+        protected S _improve(S solution) {
+            return solution;
         }
     }
 
@@ -61,8 +63,8 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
      * Improves a Solution
      * Iterates until we run out of time, or we cannot improve the current solution any further
      *
-     * @param s Solution to improve
-     * @return Improved s
+     * @param solution Solution to improve
+     * @return Improved solution
      */
-    protected abstract S _improve(S s);
+    protected abstract S _improve(S solution);
 }

@@ -61,10 +61,11 @@ public class LocalSearchFirstImprovement<M extends Move<S, I>, S extends Solutio
      * Get next move to execute.
      */
     @Override
-    public Optional<M> getMove(S s) {
+    public Optional<M> getMove(S solution) {
         M move = null;
         for (var provider : providers) {
-            var optionalMove = provider.stream(s).filter(Move::isValid).filter(Move::improves).findAny();
+            var expRes = provider.explore(solution);
+            var optionalMove = expRes.moves().filter(Move::improves).findAny();
             if (optionalMove.isEmpty()) continue;
             M _move = optionalMove.get();
             if (move == null) {
