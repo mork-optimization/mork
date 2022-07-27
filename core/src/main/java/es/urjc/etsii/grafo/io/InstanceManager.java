@@ -127,9 +127,13 @@ public class InstanceManager<I extends Instance> {
     }
 
     protected I loadInstance(Path p){
+        long startLoad = System.nanoTime();
         I instance = this.instanceImporter.importInstance(p.toFile());
+        long endLoad = System.nanoTime();
+        instance.setProperty(Instance.LOAD_TIME_NANOS, endLoad - startLoad);
         String absPath = p.toAbsolutePath().toString();
         instance.setPath(absPath);
+
         this.cacheByPath.put(absPath, new SoftReference<>(instance));
         return instance;
     }

@@ -8,6 +8,7 @@ import java.util.*;
  * (for example, to order by instance size or any other instance property)
  */
 public abstract class Instance implements Comparable<Instance>{
+    public static final String LOAD_TIME_NANOS = "loadTimeInNanos";
     private final String id;
     private String path;
 
