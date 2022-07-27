@@ -6,10 +6,6 @@
     <artifactId>TSP</artifactId>
     <version>0.14-SNAPSHOT</version>
 
-    <properties>
-        <sonar.coverage.jacoco.xmlReportPaths>${project.basedir}/../example-tsp/target/site/jacoco-aggregate/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
-    </properties>
-
     <!-- Automatic configuration, can be overridden -->
     <parent>
         <groupId>es.urjc.etsii.grafo</groupId>
@@ -35,6 +31,11 @@
             <version>0.14-SNAPSHOT</version>
             <scope>compile</scope>
         </dependency>
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>autoconfig</artifactId>
+            <version>0.14-SNAPSHOT</version>
+        </dependency>
     </dependencies>
 
     <build>
@@ -44,11 +45,11 @@
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <executions>
                     <execution>
-                        <id>report</id>
+                        <id>jacoco-report-aggregate</id>
+                        <phase>verify</phase>
                         <goals>
                             <goal>report-aggregate</goal>
                         </goals>
-                        <phase>verify</phase>
                     </execution>
                 </executions>
             </plugin>
