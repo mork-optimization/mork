@@ -46,11 +46,11 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
         }
 
         @Override
-        protected void _execute(__RNAME__Solution solution) {
-            // TODO Apply changes to solution if movement is executed
-            // this.s --> reference to current solution
+        protected boolean _execute(__RNAME__Solution solution) {
+            // TODO Apply changes to solution when this method is called
+            // Return true if the solution is modified,
+            // false if the solution is the same, or for any reason the movement is not executed
             throw new UnsupportedOperationException("_execute() in __RNAME__ListManager not implemented yet");
-
         }
 
         @Override
@@ -83,13 +83,6 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
         public int hashCode() {
             // TODO Use IDE to generate this method after all properties are defined
             throw new UnsupportedOperationException("hashCode() in __RNAME__ not implemented yet");
-        }
-
-        @Override
-        public boolean isValid() {
-            // A move is not valid if it leaves the solution in an unfeasible state
-            // If the movement is not valid, it should probably not be in the candidate list.
-            return true;
         }
     }
 }

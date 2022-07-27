@@ -537,11 +537,10 @@ insert move receive tree parameters: the solution and two integers: the position
 in a desired position. Regardless of the type of movement intended (Eager or Lazy), the following methods have to be
 implemented:
 
-- `boolean isValid()`: true if the solution obtained after the move is feasible
-- `void execute()`: execute the move, the procedure changes the solution
+- `boolean _execute()`: execute the move, return false if the move is not applied for any reason, or the solution does not change
 - `double getValue()`: this procedure calculates the difference between the value of the solution that would be obtained
   if the movement were carried out, and the value of the current target solution. This method does NOT perform the
-  movement, the solution (and its structures) do not change.
+  movement, the solution (and its structures) must not change.
 - `boolean improves()` : returns true if applying the move results in a better solution than the current one.
 
 The easiest implementation of this class is depicted below.
@@ -553,12 +552,9 @@ The easiest implementation of this class is depicted below.
      this.pj = pj;  
     }  
       
-    public boolean isValid() {  
-      return true;  
-    }  
-      
-    protected void _execute() {  
+    protected boolean _execute() {  
       this.getSolution().insertLocationAtPiInPj(pi, pj);  
+      return true;
     }  
       
     public double getValue() {  

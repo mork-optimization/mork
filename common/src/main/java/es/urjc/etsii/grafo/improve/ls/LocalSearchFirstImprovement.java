@@ -65,7 +65,7 @@ public class LocalSearchFirstImprovement<M extends Move<S, I>, S extends Solutio
         M move = null;
         for (var provider : providers) {
             var expRes = provider.explore(solution);
-            var optionalMove = expRes.moves().filter(Move::isValid).filter(Move::improves).findAny();
+            var optionalMove = expRes.moves().filter(Move::improves).findAny();
             if (optionalMove.isEmpty()) continue;
             M _move = optionalMove.get();
             if (move == null) {

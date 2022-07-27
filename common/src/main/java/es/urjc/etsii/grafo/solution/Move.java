@@ -20,6 +20,13 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
      */
     private static final Logger logger = LoggerFactory.getLogger(Move.class);
 
+    private static boolean asserts = false;
+    static {
+        // Intentional side effect to check if assertions are enabled for this class
+        //noinspection AssertWithSideEffects
+        assert asserts = true;
+    }
+
     /**
      * This variable is used internally to check if the current solution has been modified.
      */
@@ -35,32 +42,40 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
     }
 
     /**
-     * Method that checks if the solution is in a valid state after applying a move.
-     *
-     * @return True if the solution is in a valid state after applying the movement, false if we break any constraint
-     */
-    public abstract boolean isValid();
-
-    /**
      * Executes the proposed move
      */
-    public final void execute(S solution) {
+    public final boolean execute(S solution) {
         if(logger.isTraceEnabled()){
             logger.trace(this.toString());
         }
         if (this.solutionVersion != solution.version) {
             throw new AssertionError(String.format("Solution state changed to (%s), cannot execute move referencing solution state (%s)", solution.version, this.solutionVersion));
         }
-        assert saveLastMove(solution, this);
-        double prevScore = solution.getScore();
-        _execute(solution);
-        if (!DoubleComparator.equals(prevScore, solution.getScore())) {
+        if(asserts){
+            return executeAsserts(solution);
+        }
+        return executeDirect(solution);
+    }
+
+    private boolean executeDirect(S solution){
+        boolean changed = _execute(solution);
+        if (changed) {
             // Some moves may not affect the optimal score
             solution.updateLastModifiedTime();
         }
         solution.version++;
+        return changed;
+    }
+
+    private boolean executeAsserts(S solution){
+        assert saveLastMove(solution, this);
+        double prevScore = solution.getScore();
+        boolean changed = executeDirect(solution);
+        assert changed || DoubleComparator.equals(prevScore, solution.getScore()) :
+                String.format("Solution score changed but execute() returned false, from %s to %s after applying move %s", prevScore, solution.getScore(), this);
         assert ValidationUtil.scoreUpdate(solution, prevScore, this);
         ValidationUtil.assertValidScore(solution);
+        return changed;
     }
 
     /**
@@ -85,7 +100,7 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
      * Executes the proposed move,
      * to be implemented by each move type
      */
-    protected abstract void _execute(S solution);
+    protected abstract boolean _execute(S solution);
 
     /**
      * Get the movement value, represents how much does the move changes the f.o of a solution if executed

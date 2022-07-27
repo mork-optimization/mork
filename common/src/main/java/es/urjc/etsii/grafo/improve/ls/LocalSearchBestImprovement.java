@@ -83,7 +83,7 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
      * @return the best move of the stream
      */
     private Optional<M> getBest(Stream<M> stream) {
-        return stream.filter(Move::isValid).reduce((a, b) -> comparator.getBest(b, a));
+        return stream.reduce((a, b) -> comparator.getBest(b, a));
     }
 
 }

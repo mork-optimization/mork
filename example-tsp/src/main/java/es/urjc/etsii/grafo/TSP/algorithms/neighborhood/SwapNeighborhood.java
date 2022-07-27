@@ -59,13 +59,9 @@ public class SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TS
         }
 
         @Override
-        public boolean isValid() {
-            return true;
-        }
-
-        @Override
-        protected void _execute(TSPSolution solution) {
+        protected boolean _execute(TSPSolution solution) {
             solution.swapLocationOrder(pi, pj);
+            return true;
         }
 
         @Override

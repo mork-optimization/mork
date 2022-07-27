@@ -6,7 +6,10 @@
 - (Change) Upgrade dependencies
 - (Change) dynamically generate scenario.txt for Irace. Use seed, instances, parallel config etc loaded from application.yml or environment.
 - (Change) Neighborhoods refactor: delete eager and lazy neighborhoods, randomizable as subclass, always return ExploreResult.
-- (Change) IraceAlgorithmGenerator refactor and cleanup, improve validation
+- (Change) IraceAlgorithmGenerator refactor and cleanup, improve validation.
+- (Change) Move::execute now must return boolean, stating if current solution has changed after executing it or not. There are moves that may leave the solution exactly the same in certain problems.
+- (Remove) Move::isValid, not practical in its current implementation.
+- (Remove) NoOPConstructive, replaced by Constructive::nul
 - (Fix) #88: Filename bug in SolutionSerializer, by @ea2809
 - (Fix) #63: Bug parallel irace with randoms, by @scaverod
 

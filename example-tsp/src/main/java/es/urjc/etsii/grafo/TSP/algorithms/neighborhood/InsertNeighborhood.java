@@ -47,13 +47,9 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
         }
 
         @Override
-        public boolean isValid() {
-            return true;
-        }
-
-        @Override
-        protected void _execute(TSPSolution solution) {
+        protected boolean _execute(TSPSolution solution) {
             solution.insertLocationAtPiInPj(pi, pj);
+            return true;
         }
 
         @Override
