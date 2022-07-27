@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.patches;
 
+import es.urjc.etsii.grafo.exception.InvalidRandomException;
+
 import java.util.Random;
 import java.util.stream.DoubleStream;
 import java.util.stream.IntStream;
@@ -10,7 +12,6 @@ import java.util.stream.LongStream;
  * such as Math.random() and Collections.shuffle()
  */
 public class FailRandom extends Random {
-    private static final String FAIL_MESSAGE = "Invalid Random() usage, use RandomManager!";
 
     /**
      * {@inheritDoc}
@@ -19,7 +20,7 @@ public class FailRandom extends Random {
      */
     @Override
     protected int next(int bits) {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -29,7 +30,7 @@ public class FailRandom extends Random {
      */
     @Override
     public void nextBytes(byte[] bytes) {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -39,7 +40,7 @@ public class FailRandom extends Random {
      */
     @Override
     public int nextInt() {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -49,7 +50,7 @@ public class FailRandom extends Random {
      */
     @Override
     public int nextInt(int bound) {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -59,7 +60,7 @@ public class FailRandom extends Random {
      */
     @Override
     public long nextLong() {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -69,7 +70,7 @@ public class FailRandom extends Random {
      */
     @Override
     public boolean nextBoolean() {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -79,7 +80,7 @@ public class FailRandom extends Random {
      */
     @Override
     public float nextFloat() {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -89,7 +90,7 @@ public class FailRandom extends Random {
      */
     @Override
     public double nextDouble() {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -99,7 +100,7 @@ public class FailRandom extends Random {
      */
     @Override
     public synchronized double nextGaussian() {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -109,7 +110,7 @@ public class FailRandom extends Random {
      */
     @Override
     public IntStream ints(long streamSize) {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -119,7 +120,7 @@ public class FailRandom extends Random {
      */
     @Override
     public IntStream ints() {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -129,7 +130,7 @@ public class FailRandom extends Random {
      */
     @Override
     public IntStream ints(long streamSize, int randomNumberOrigin, int randomNumberBound) {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -139,7 +140,7 @@ public class FailRandom extends Random {
      */
     @Override
     public IntStream ints(int randomNumberOrigin, int randomNumberBound) {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -149,7 +150,7 @@ public class FailRandom extends Random {
      */
     @Override
     public LongStream longs(long streamSize) {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -159,7 +160,7 @@ public class FailRandom extends Random {
      */
     @Override
     public LongStream longs() {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -169,7 +170,7 @@ public class FailRandom extends Random {
      */
     @Override
     public LongStream longs(long streamSize, long randomNumberOrigin, long randomNumberBound) {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -179,7 +180,7 @@ public class FailRandom extends Random {
      */
     @Override
     public LongStream longs(long randomNumberOrigin, long randomNumberBound) {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -189,7 +190,7 @@ public class FailRandom extends Random {
      */
     @Override
     public DoubleStream doubles(long streamSize) {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -199,7 +200,7 @@ public class FailRandom extends Random {
      */
     @Override
     public DoubleStream doubles() {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -209,7 +210,7 @@ public class FailRandom extends Random {
      */
     @Override
     public DoubleStream doubles(long streamSize, double randomNumberOrigin, double randomNumberBound) {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 
     /**
@@ -219,6 +220,6 @@ public class FailRandom extends Random {
      */
     @Override
     public DoubleStream doubles(double randomNumberOrigin, double randomNumberBound) {
-        throw new UnsupportedOperationException(FAIL_MESSAGE);
+        throw new InvalidRandomException();
     }
 }

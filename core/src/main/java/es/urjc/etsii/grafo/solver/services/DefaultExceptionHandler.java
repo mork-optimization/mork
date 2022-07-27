@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.solver.services;
 
+import es.urjc.etsii.grafo.exception.InvalidRandomException;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
@@ -28,10 +29,17 @@ public class DefaultExceptionHandler<S extends Solution<S,I>, I extends Instance
      */
     public void handleException(String experimentName, Exception e, Optional<S> sOptional, I i, Algorithm<S,I> algorithm, IOManager<S, I> io){
         logger.severe(String.format("Error while solving instance %s with algorithm %s, skipping. Exception message: %s", i.getId(), algorithm.toString(), e.getMessage()));
+        explain(e);
         String stackTrace = getStackTrace(e);
         logger.severe("Stacktrace: " + stackTrace);
         sOptional.ifPresent(s -> logger.severe("Last executed movements: " + s.lastExecutesMoves()));
         io.exportError(experimentName, algorithm, i, e, stackTrace);
+    }
+
+    private void explain(Throwable e) {
+        if(e instanceof InvalidRandomException){
+            logger.severe("The exception InvalidRandomException is generated when a method from the Java API that would break reproducibility is executed. See https://mork-optimization.readthedocs.io/en/latest/quickstart/bestpractices/#customized-random-generator for more information.");
+        }
     }
 
     /**
