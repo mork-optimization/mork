@@ -1,9 +1,9 @@
 package es.urjc.etsii.grafo.patches;
 
+import es.urjc.etsii.grafo.exception.InvalidRandomException;
 import org.junit.jupiter.api.*;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-@Disabled
 public class DisableMathRandomPatchTest {
 
     @Order(1)
@@ -25,6 +25,6 @@ public class DisableMathRandomPatchTest {
         var patch = new PatchMathRandom(config);
         Assertions.assertDoesNotThrow(Math::random);
         patch.patch();
-        Assertions.assertThrows(UnsupportedOperationException.class, Math::random);
+        Assertions.assertThrows(InvalidRandomException.class, Math::random);
     }
 }
