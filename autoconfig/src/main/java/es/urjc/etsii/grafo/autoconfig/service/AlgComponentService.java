@@ -22,6 +22,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
+import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.function.Function;
 
@@ -59,6 +60,44 @@ public class AlgComponentService {
     @Value("${advanced.scan-pkgs:es.urjc.etsii}")
     String pkgs;
 
+    /**
+     * Create an alias for target with name alias. Example registerAlias("ILS", "IteratedLocalSearch")
+     * @param alias New name, reference target
+     * @param target target name
+     */
+    public void registerAlias(String alias, String target){
+        if(this.aliases.containsKey(target)){
+            throw new IllegalArgumentException(String.format("%s is already an alias, call registerAlias(%s, %s) instead of registerAlias(%s, %s)", target, alias, this.aliases.get(target), alias, target));
+        }
+        if(!this.factories.containsKey(target) && !this.componentByName.containsKey(target)){
+            throw new IllegalArgumentException(String.format("Cannot register alias for unknown target: %s --> %s", alias, target));
+        }
+        throwIfKnown(alias);
+        this.aliases.put(alias, target);
+    }
+
+    private void throwIfKnown(String name){
+        if(this.aliases.containsKey(name)){
+            throw new IllegalArgumentException(String.format("Alias already exists: %s --> %s", name, this.aliases.get(name)));
+        }
+        if(this.factories.containsKey(name)){
+            throw new IllegalArgumentException(String.format("Factory already exists with name: %s", name));
+        }
+        if(this.componentByName.containsKey(name)){
+            throw new IllegalArgumentException(String.format("Component already exists with name: %s", name));
+        }
+    }
+
+    /**
+     * Provide a function that given a parameter map can create components with id 'name'
+     * @param name name of the component
+     * @param factory function to execute such as f(params) --> returns component of type name
+     */
+    public void registerFactory(String name, Function<Map<String, Object>, Object> factory){
+        throwIfKnown(name);
+        this.factories.put(name, factory);
+    }
+
     @PostConstruct
     protected void runComponentDiscovery(){
         runComponentDiscovery(this.pkgs);
@@ -70,14 +109,21 @@ public class AlgComponentService {
             types.addAll(ClassUtil.findTypesByAnnotation(pkg, AlgorithmComponent.class));
         }
         for(var type: types){
-            if(componentByName.containsKey(type.getSimpleName())){
-                throw new IllegalArgumentException("Duplicated component name: " + type.getSimpleName());
+            if(!isAccesible(type)){
+                log.debug("Ignoring class {}", type);
+                continue;
             }
-            componentByName.put(type.getSimpleName(), type);
+            String componentName = type.getSimpleName();
+            throwIfKnown(componentName);
+            componentByName.put(componentName, type);
             classify(componentsByType, type);
         }
         log.info("Algorithm components found: {}", componentByName.keySet());
         log.debug("Classified algorithm components: {}", componentsByType);
+    }
+
+    private static boolean isAccesible(Class<?> clazz){
+        return Modifier.isPublic(clazz.getModifiers());
     }
 
     private static void classify(Map<Class<?>, Collection<Class<?>>> componentsByType, Class<?> initialType) {
@@ -88,6 +134,12 @@ public class AlgComponentService {
         }
     }
 
+    /**
+     * Build any algorithm component given its name and a map of parameters
+     * @param name component name, can be either an alias, a factory reference or a classname
+     * @param params parameter map used to create this component, provides the necessary args to call the constructor
+     * @return built component
+     */
     public Object buildAlgorithmComponentByName(String name, Map<String, Object> params){
         if(aliases.containsKey(name)){
             // Resolve alias and keep trying to build
@@ -107,6 +159,12 @@ public class AlgComponentService {
         return AlgorithmBuilderUtil.build(clazz, params);
     }
 
+    /**
+     * Build any algorithm component from the given string description. Must follow the format: Component{param1=value1, ...}.
+     * Any component can be a parameter too, example: Alg{constructive=GRASP{alpha=1}, ls=MyLS{}}
+     * @param s String description
+     * @return Built component
+     */
     public Algorithm<?,?> buildFromString(String s){
         var parser = getParser(s);
         var listener = new AlgorithmBuilderListener(this);
@@ -120,12 +178,17 @@ public class AlgComponentService {
         return (Algorithm<?,?>) algorithm;
     }
 
+    /**
+     * Get an instance of the algorithm parser, initialized as Parser --> TokenStream --> Lexer --> String
+     * @param s source string
+     * @return parser with BailOutStrategy, ie fails at the first error found.
+     */
     public static AlgorithmParser getParser(String s){
         var lexer = new AlgorithmLexer(CharStreams.fromString(s));
         var tokens = new CommonTokenStream(lexer);
         var parser = new AlgorithmParser(tokens);
         parser.setErrorHandler(new BailErrorStrategy());
-        // TODO Lexer error handler
+        // TODO Review Lexer error handler
         return parser;
     }
 }

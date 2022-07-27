@@ -46,4 +46,18 @@ public final class AlgComponentServiceTest {
         Assertions.assertThrows(AlgorithmParsingException.class, () -> algComponent.buildFromString(alg));
     }
 
+    @Test
+    public void duplicatedNames(){
+        // Fail because component is known
+        Assertions.assertThrows(IllegalArgumentException.class, () -> algComponent.registerAlias("AlgorithmA", "Any"));
+
+        // Fail because target is already an alias
+        algComponent.registerAlias("A", "AlgorithmA");
+        Assertions.assertThrows(IllegalArgumentException.class, () -> algComponent.registerAlias("B", "A"));
+
+        // Fail because factory name is an alias
+        Assertions.assertThrows(IllegalArgumentException.class, () -> algComponent.registerFactory("A", params -> params));
+
+    }
+
 }
