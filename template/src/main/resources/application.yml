@@ -1,3 +1,9 @@
+# Defines any custom property or configuration for the current problem.
+# The config values can be retrieved at runtime, for example inside the experiment
+# See https://mork-optimization.readthedocs.io/en/latest/features/config/ for more details
+custom:
+  my-property: 'myvalue'
+
 instances:
 
   # Loads all instances in RAM before starting each experiment.

@@ -23,6 +23,9 @@ public class __RNAME__SolutionValidator extends SolutionValidator<__RNAME__Solut
 //        if(solution.getAssignedElements() > 10){
 //            return ValidationResult.fail("Cannot have more than 10 assigned elements");
 //        }
+//        if(solution.myArray.length == 0){
+//            return ValidationResult.fail("Empty array data, should have at least 5 elements assigned");
+//        }
 
         return ValidationResult.ok();
     }

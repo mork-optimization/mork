@@ -2,13 +2,14 @@ package es.urjc.etsii.grafo.__RNAME__.experiments;
 
 import es.urjc.etsii.grafo.__RNAME__.constructives.__RNAME__RandomConstructive;
 import es.urjc.etsii.grafo.__RNAME__.constructives.grasp.__RNAME__ListManager;
+import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Config;
 import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Instance;
 import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Solution;
-import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.create.grasp.GreedyRandomGRASPConstructive;
 import es.urjc.etsii.grafo.create.grasp.RandomGreedyGRASPConstructive;
+import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.solver.services.AbstractExperiment;
 
 import java.util.ArrayList;
@@ -16,15 +17,19 @@ import java.util.List;
 
 public class ConstructiveExperiment extends AbstractExperiment<__RNAME__Solution, __RNAME__Instance> {
 
-    public ConstructiveExperiment(SolverConfig solverConfig) {
-        super(solverConfig);
+
+    private final __RNAME__Config config;
+
+    public ConstructiveExperiment(__RNAME__Config config) {
+        // Any config class can be requested via the constructor
+        this.config = config;
     }
 
     @Override
     public List<Algorithm<__RNAME__Solution, __RNAME__Instance>> getAlgorithms() {
         // In this experiment we will compare a random constructive with several GRASP constructive configurations
         // TODO: Using this experiment as an example, after first test define your own experiments.
-        boolean maximizing = super.isMaximizing();
+        boolean maximizing = Mork.isMaximizing();
         var algorithms = new ArrayList<Algorithm<__RNAME__Solution, __RNAME__Instance>>();
         var graspListManager = new __RNAME__ListManager();
         double[] alphaValues = {0d, 0.25d, 0.5d, 0.75d, 1d};

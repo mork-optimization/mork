@@ -20,28 +20,10 @@ import java.util.List;
 public abstract class AbstractExperiment<S extends Solution<S,I>, I extends Instance> {
 
     /**
-     * Are we maximizing or minimizing?
-     */
-    private final boolean maximizing;
-
-    /**
      * Initialize common fields for all experiments
      *
-     * @param solverConfig solver configuration, see the application.yml file for more details
      */
-    protected AbstractExperiment(SolverConfig solverConfig) {
-        // Abstract classes are not instantiated by Spring, ignore warning
-        this.maximizing = solverConfig.isMaximizing();
-    }
-
-    /**
-     * Is this problem a maximization or minimization problem?
-     *
-     * @return true if maximizing, false if minimizing
-     */
-    public boolean isMaximizing() {
-        return maximizing;
-    }
+    protected AbstractExperiment() {}
 
     /**
      * Get list of algorithms defined in this experiment. Each experiment can define a different set of algorithms.

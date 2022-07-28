@@ -11,7 +11,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
      */
     public __RNAME__Solution(__RNAME__Instance ins) {
         super(ins);
-        // TODO Initialize data structures if necessary
+        // TODO Initialize solution data structures if necessary
     }
 
     /**
@@ -22,7 +22,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
     public __RNAME__Solution(__RNAME__Solution s) {
         super(s);
         // TODO Copy ALL solution data, we are cloning a solution
-        throw new UnsupportedOperationException("__RNAME__Solution() in __RNAME__ not implemented yet");
+        throw new UnsupportedOperationException("__RNAME__Solution::new(__RNAME__Solution) not implemented yet");
     }
 
 
@@ -36,7 +36,9 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
     @Override
     protected boolean _isBetterThan(__RNAME__Solution other) {
         // TODO given two solutions, is the current solution STRICTLY better than the other?
-        throw new UnsupportedOperationException("isBetterThan() in __RNAME__ not implemented yet");
+        // Example implementation for a maximization problem:
+        // return DoubleComparator.isGreaterThan(this.getScore(), other.getScore());
+        throw new UnsupportedOperationException("__RNAME__Solution::isBetterThan not implemented yet");
     }
 
     /**
@@ -52,24 +54,28 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
         // TODO: Implement efficient score calculation.
         // Can be as simple as a score property that gets updated when the solution changes
         // Example: return this.score;
-        // Another ok start implementation can be: return recalculateScore();
-        throw new UnsupportedOperationException("getScore() in __RNAME__ not implemented yet");
+        // The following implementation is NOT efficient but gets you started quickly
+        return recalculateScore();
     }
 
     /**
-     * Recalculate solution score and validate current solution state
-     * You must check that no constraints are broken, and that all costs are valid
+     * Recalculate solution score from scratch, using the problem objective function.
      * The difference between this method and getScore is that we must recalculate the score from scratch,
      * without using any cache/shortcuts.
-     * DO NOT UPDATE CACHES / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
+     * This method will be used to validate the correct behaviour of the getScore() method, and to help catch
+     * bugs or mistakes when changing incremental score calculation.
+     * DO NOT UPDATE CACHES IN THIS METHOD / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
+     * DO NOT UPDATE CACHES IN THIS METHOD / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
+     * and once more
+     * DO NOT UPDATE CACHES IN THIS METHOD / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
      *
      * @return current solution score as double
      */
     @Override
     public double recalculateScore() {
-        // TODO calculate solution score from scratch, without using caches
-        //  and without modifying the current solution. Careful with side effects.
-        throw new UnsupportedOperationException("recalculateScore() in __RNAME__ not implemented yet");
+        // TODO calculate solution score from scratch without modifying the current solution.
+        //  Be careful with side effects.
+        throw new UnsupportedOperationException("__RNAME__Solution:recalculateScore not implemented yet");
     }
 
     /**
@@ -80,9 +86,11 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
      */
     @Override
     public String toString() {
-        // TODO: When all fields are implemented use your IDE to autogenerate this method
-        //  using only the most important fields.
-        // This method will be called to print best solutions in console while solving.
-        throw new UnsupportedOperationException("toString() in __RNAME__Solution not implemented yet");
+        // TODO: When all fields are implemented delete this method and use your IDE
+        //  to autogenerate it using only the most important fields.
+        // This method will be called to print best solutions in console while solving, and by your IDE when debugging
+        // WARNING: DO NOT UPDATE CACHES IN THIS METHOD / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
+        // Calling toString to a solution should NEVER change or update any of its fields
+        throw new UnsupportedOperationException("__RNAME__Solution::toString not implemented yet");
     }
 }

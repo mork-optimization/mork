@@ -28,11 +28,6 @@ public class SolverConfig {
     private String experiments;
 
     /**
-     * Maximize or minimize objective function. True if Maximizing, False if Minimizing
-     */
-    private boolean maximizing;
-
-    /**
      * How many times should each experiment be repeated.
      */
     private int repetitions = 1;
@@ -86,24 +81,6 @@ public class SolverConfig {
      */
     public void setExperiments(String experiments) {
         this.experiments = experiments;
-    }
-
-    /**
-     * <p>isMaximizing.</p>
-     *
-     * @return a boolean.
-     */
-    public boolean isMaximizing() {
-        return maximizing;
-    }
-
-    /**
-     * <p>Setter for the field <code>maximizing</code>.</p>
-     *
-     * @param maximizing a boolean.
-     */
-    public void setMaximizing(boolean maximizing) {
-        this.maximizing = maximizing;
     }
 
     /**

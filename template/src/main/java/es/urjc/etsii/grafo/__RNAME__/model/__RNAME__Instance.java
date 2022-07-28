@@ -9,6 +9,13 @@ public class __RNAME__Instance extends Instance {
         // TODO Add all required fields and parameters
     }
 
+    // compareTo may be overridden to specify a custom instance solving order
+    // (by default solve order is by instance filename)
 
-    // compareTo may be overriden to specify a custom instance solving order (default ordering by instance file name)
+//    @Override
+//    public int compareTo(Instance other) {
+//        return Comparator.comparing(this.size);
+//    }
+
+
 }
