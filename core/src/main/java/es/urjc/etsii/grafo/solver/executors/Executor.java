@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.experiment.Experiment;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
@@ -120,12 +121,12 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     }
 
     protected Optional<Double> getOptionalReferenceValue(String instanceName){
-        double best = this.solverConfig.isMaximizing()? Double.MIN_VALUE: Double.MAX_VALUE;
+        double best = Mork.isMaximizing()? Double.MIN_VALUE: Double.MAX_VALUE;
         for(var r: referenceResultProviders){
             double score = r.getValueFor(instanceName).getScoreOrNan();
             // Ignore if not valid value
             if (Double.isFinite(score)) {
-                if(this.solverConfig.isMaximizing()){
+                if(Mork.isMaximizing()){
                     best = Math.max(best, score);
                 } else {
                     best = Math.min(best, score);

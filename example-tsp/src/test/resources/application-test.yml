@@ -191,6 +191,13 @@ solver.repetitions: 10
 solver.experiments: 'ConstructiveExperiment'
 instances.path.default: 'instances/TSPLIB/test'
 event.webserver.stop-on-execution-end: true
+serializers:
+  csv:
+    folder: "resultstest"
+  xlsx:
+    folder: "resultstest"
+  solution-json:
+    folder: "resultstest"
 ---
 spring.config.activate.on-profile: testsequential
 solver.parallelExecutor: false

@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelConfig;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelCustomizer;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelSerializer;
+import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.testutil.TestHelperFactory;
@@ -51,7 +52,7 @@ public class ExcelSerializerTest {
         config.setFolder(p.toFile().getAbsolutePath());
         config.setCalculationMode(ExcelConfig.CalculationMode.AUTO);
         var solverConfig = new SolverConfig();
-        solverConfig.setMaximizing(true);
+        Mork.setSolvingMode(true);
         return new ExcelSerializer<>(config, solverConfig, references, customizer, instanceManager);
     }
 

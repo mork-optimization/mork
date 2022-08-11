@@ -44,7 +44,12 @@ public class Mork {
         application.run(args);
     }
 
-    private static void setSolvingMode(boolean maximize) {
+    /**
+     * Set solving mode,
+     * Warning: Changing the solving mode once the solving engine has started has undefined behaviour
+     * @param maximize
+     */
+    public static void setSolvingMode(boolean maximize) {
         Mork.maximizing = maximize;
         System.setProperty("solver.maximizing", String.valueOf(maximize));
     }

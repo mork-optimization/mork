@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.solver.services;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.exception.ResourceLimitException;
 import es.urjc.etsii.grafo.solver.executors.Executor;
@@ -85,7 +86,7 @@ public class Orchestrator<S extends Solution<S, I>, I extends Instance> extends 
         log.info("App started, ready to start solving!");
         var experiments = this.experimentManager.getExperiments();
         log.info("Experiments to execute: " + experiments.keySet());
-        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(solverConfig.isMaximizing(), new ArrayList<>(experiments.keySet())));
+        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Mork.isMaximizing(), new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
         try {
             experiments.values().forEach(this::experimentWrapper);

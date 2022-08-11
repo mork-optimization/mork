@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
@@ -87,7 +88,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             InstanceManager<I> instanceManager) {
         super(serializerConfig, referenceResultProviders);
         this.config = serializerConfig;
-        this.maximizing = solverConfig.isMaximizing();
+        this.maximizing = Mork.isMaximizing();
         this.excelCustomizer = excelCustomizer;
         this.instanceManager = instanceManager;
     }
