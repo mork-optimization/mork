@@ -86,10 +86,14 @@ public abstract class RawSheetWriter {
             case VALUE:
                 if (d instanceof Double) {
                     cell.setCellValue((double) d);
-                } else if (d instanceof Integer) {
-                    cell.setCellValue((int) d);
                 } else if (d instanceof String) {
                     cell.setCellValue((String) d);
+                } else if (d instanceof Integer) {
+                    cell.setCellValue((int) d);
+                } else if (d instanceof Long) {
+                    cell.setCellValue((long) d);
+                } else if (d instanceof Float) {
+                    cell.setCellValue((float) d);
                 } else {
                     throw new IllegalArgumentException("Invalid datatype: " + d.getClass().getSimpleName());
                 }

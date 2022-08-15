@@ -15,6 +15,7 @@
 - (Remove) NoOPConstructive, replaced by Constructive::nul
 - (Fix) #88: Filename bug in SolutionSerializer, by @ea2809
 - (Fix) #63: Bug parallel irace with randoms, by @scaverod
+- (Fix) RawSheetWriter::writeCell add float and long value handling
 
 # v0.13
 - (New) Neighborhood.empty(), Neighborhood.concat(n1, n2), Neighborhood.interleave(n1, n2)
