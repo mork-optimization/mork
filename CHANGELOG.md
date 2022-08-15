@@ -4,6 +4,7 @@
 - (New) Benchmark enabled by default, using cached results file.
 - (New) Add Other info Excel sheet
 - (New) ReferenceResult::isOptimalValue
+- (New) Default Instance::toString
 - (Change) Template project: Add base Move, ReferenceResultProvider, better comments
 - (Change) dynamically generate scenario.txt for Irace. Use seed, instances, parallel config etc loaded from application.yml or environment.
 - (Change) Neighborhoods refactor: delete eager and lazy neighborhoods, randomizable as subclass, always return ExploreResult.

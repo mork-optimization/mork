@@ -130,4 +130,11 @@ public abstract class Instance implements Comparable<Instance>{
     public int hashCode() {
         return Objects.hash(id);
     }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "{" +
+                "id='" + id + '\'' +
+                '}';
+    }
 }
