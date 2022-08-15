@@ -11,6 +11,7 @@ public class ReferenceResult {
     private double score = Double.NaN;
     private double timeInSeconds = Double.NaN;
     private double timeToBestInSeconds = Double.NaN;
+    private boolean isOptimalValue = false;
 
     /**
      * get score for this instance, or NaN if not defined
@@ -47,6 +48,7 @@ public class ReferenceResult {
     public double getTimeToBestInSeconds() {
         return timeToBestInSeconds;
     }
+
 
     /**
      * Set score
@@ -126,6 +128,23 @@ public class ReferenceResult {
      */
     public long getTimeToBestInNanos(){
         return secsToNanos(this.timeToBestInSeconds);
+    }
+
+    /**
+     * Is the current reference value returned by {@link ReferenceResult#getScore()} optimal?
+     * @return True if the value returned by getScore is known to be optimal, false otherwise
+     */
+    public boolean isOptimalValue() {
+        return isOptimalValue;
+    }
+
+    /**
+     * Specify if the value provided in {@link ReferenceResult#setScore(double)} ()} is optimal.
+     * If not specified, defaults to false.
+     * @param isOptimal True if the value returned by getScore is known to be optimal, false otherwise
+     */
+    public void setOptimalValue(boolean isOptimal) {
+        isOptimalValue = isOptimal;
     }
 }
 
