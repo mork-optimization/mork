@@ -1,12 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <!-- Project name and current version -->
     <groupId>es.urjc.etsii.grafo</groupId>
     <artifactId>mork-common</artifactId>
-    <version>0.14-SNAPSHOT</version>
+    <version>0.14</version>
 
     <name>mork-common</name>
     <description>Metaheuristic Optimization framewoRK - Common library</description>
@@ -32,7 +31,7 @@
         <connection>scm:git:git://github.com/rmartinsanta/mork.git</connection>
         <developerConnection>scm:git:https://github.com/rmartinsanta/mork</developerConnection>
         <url>https://github.com/rmartinsanta/mork/tree/master</url>
-        <tag>HEAD</tag>
+        <tag>mork-parent-0.14</tag>
     </scm>
 
     <properties>
