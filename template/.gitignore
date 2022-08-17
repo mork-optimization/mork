@@ -3,3 +3,5 @@ log.txt
 errors
 target
 __RNAME__.iml
+.DS_Store
+.benchmark
