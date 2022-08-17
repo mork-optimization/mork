@@ -4,11 +4,11 @@
   <parent>
     <artifactId>mork-parent</artifactId>
     <groupId>es.urjc.etsii.grafo</groupId>
-    <version>0.14</version>
+    <version>0.15-SNAPSHOT</version>
   </parent>
 
   <artifactId>autoconfig</artifactId>
-  <version>0.14</version>
+  <version>0.15-SNAPSHOT</version>
 
   <name>autoconfig</name>
   <url>https://github.com/rmartinsanta/mork</url>
@@ -33,7 +33,7 @@
     <connection>scm:git:git://github.com/rmartinsanta/mork.git</connection>
     <developerConnection>scm:git:https://github.com/rmartinsanta/mork</developerConnection>
     <url>https://github.com/rmartinsanta/mork/tree/master</url>
-    <tag>mork-parent-0.14</tag>
+    <tag>HEAD</tag>
   </scm>
 
   <distributionManagement>
@@ -53,7 +53,7 @@
     <dependency>
       <groupId>es.urjc.etsii.grafo</groupId>
       <artifactId>mork</artifactId>
-      <version>0.14</version>
+      <version>0.15-SNAPSHOT</version>
     </dependency>
 
     <dependency>
