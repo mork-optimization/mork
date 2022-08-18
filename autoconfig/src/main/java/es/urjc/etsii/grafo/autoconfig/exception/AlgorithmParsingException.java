@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig;
+package es.urjc.etsii.grafo.autoconfig.exception;
 
 public class AlgorithmParsingException extends RuntimeException {
 

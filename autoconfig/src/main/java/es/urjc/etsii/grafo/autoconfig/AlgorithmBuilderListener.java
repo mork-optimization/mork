@@ -73,7 +73,8 @@ public class AlgorithmBuilderListener extends AlgorithmParserBaseListener {
             return Double.parseDouble(ctx.FloatingPointLiteral().getText());
         }
         if (ctx.StringLiteral() != null) {
-            return ctx.StringLiteral().getText();
+            var stringLiteral = ctx.StringLiteral().getText();
+            return stringLiteral.substring(1, stringLiteral.length()-1); // Remove quotes
         }
         if (ctx.NullLiteral() != null) {
             return EXPLICIT_NULL;

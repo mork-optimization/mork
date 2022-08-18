@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig;
 
+import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import org.antlr.v4.runtime.*;
 
 public class BailErrorStrategy extends DefaultErrorStrategy {

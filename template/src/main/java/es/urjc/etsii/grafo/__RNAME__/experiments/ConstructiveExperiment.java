@@ -7,8 +7,7 @@ import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Instance;
 import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Solution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
-import es.urjc.etsii.grafo.create.grasp.GreedyRandomGRASPConstructive;
-import es.urjc.etsii.grafo.create.grasp.RandomGreedyGRASPConstructive;
+import es.urjc.etsii.grafo.create.grasp.GraspBuilder;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.solver.services.AbstractExperiment;
 
@@ -40,12 +39,23 @@ public class ConstructiveExperiment extends AbstractExperiment<__RNAME__Solution
 
         // Add GRASP constructive methods to experiment
         // if the alpha parameter is not given --> random alpha in range [0,1] for each construction
-        algorithms.add(new SimpleAlgorithm<>(new GreedyRandomGRASPConstructive<>(graspListManager, maximizing)));
-        algorithms.add(new SimpleAlgorithm<>(new RandomGreedyGRASPConstructive<>(graspListManager, maximizing)));
+        var graspBuilder = new GraspBuilder<__RNAME__ListManager.__RNAME__GRASPMove, __RNAME__Solution, __RNAME__Instance>()
+                //.withGreedyFunction()     // Optional, uncomment if a custom greedy function is used instead of the default
+                .withMaximizing(maximizing)   // Change maximizing to either true or false if a greedy function is specified
+                .withListManager(graspListManager);
 
+        // Create variants using greedy random strategy
+        graspBuilder.withStrategyGreedyRandom();
+        algorithms.add(new SimpleAlgorithm<>(graspBuilder.withAlphaRandom().build()));
         for (double alpha : alphaValues) {
-            algorithms.add(new SimpleAlgorithm<>(new GreedyRandomGRASPConstructive<>(graspListManager, alpha, maximizing)));
-            algorithms.add(new SimpleAlgorithm<>(new RandomGreedyGRASPConstructive<>(graspListManager, alpha, maximizing)));
+            algorithms.add(new SimpleAlgorithm<>(graspBuilder.withAlphaValue(alpha).build()));
+        }
+
+        // Create variants using random greedy strategy
+        graspBuilder.withStrategyRandomGreedy();
+        algorithms.add(new SimpleAlgorithm<>(graspBuilder.withAlphaRandom().build()));
+        for (double alpha : alphaValues) {
+            algorithms.add(new SimpleAlgorithm<>(graspBuilder.withAlphaValue(alpha).build()));
         }
 
         return algorithms;
