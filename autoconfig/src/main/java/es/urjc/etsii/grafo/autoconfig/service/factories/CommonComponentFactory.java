@@ -11,6 +11,8 @@ import java.util.Map;
  */
 public class CommonComponentFactory {
 
+    private CommonComponentFactory(){}
+
     @SuppressWarnings({"rawtypes", "unchecked"})
     public static Object createGRASP(Map<String, Object> params) {
         var graspBuilder = new GraspBuilder();
