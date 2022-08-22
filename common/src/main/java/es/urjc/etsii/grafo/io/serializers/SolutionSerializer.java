@@ -56,8 +56,7 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
         String filename = getFilename(experimentName, solution.getInstance().getId(), alg.getShortName(), iterationId);
         var solutionFolder = this.config.getFolder();
         createFolder(solutionFolder);
-        File f = new File(solutionFolder, filename);
-        this.export(f, solution);
+        this.export(solutionFolder, filename, solution);
     }
 
     /**
@@ -75,10 +74,12 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
     /**
      * Custom export implementation. Exports the given solution to the provided file.
      *
-     * @param f Destination file
+     * @param folder Folder where solutions should be stored according to the configuration
+     * @param suggestedFilename Suggested filename, can be ignored by the implementation
      * @param solution Solution to export
      */
-    public void export(File f, S solution) {
+    public void export(String folder, String suggestedFilename, S solution) {
+        var f = new File(folder, suggestedFilename);
         try (var bw = new BufferedWriter(new FileWriter(f))) {
             this.export(bw, solution);
         } catch (IOException e) {

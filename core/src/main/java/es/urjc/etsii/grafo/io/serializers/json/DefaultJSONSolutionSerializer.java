@@ -17,7 +17,7 @@ import java.io.IOException;
  * @param <S> type of the problem solution
  * @param <I> type of the problem instance
  */
-public class DefaultJSONSolutionSerializer<S extends Solution<S,I>, I extends Instance> extends SolutionSerializer<S,I> {
+public class DefaultJSONSolutionSerializer<S extends Solution<S, I>, I extends Instance> extends SolutionSerializer<S, I> {
 
     ObjectWriter writer;
 
@@ -31,7 +31,7 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S,I>, I extends In
     public DefaultJSONSolutionSerializer(JSONConfig config) {
         super(config);
         var mapper = new ObjectMapper();
-        if(config.isPretty()){
+        if (config.isPretty()) {
             writer = mapper.enable(SerializationFeature.INDENT_OUTPUT).writerWithDefaultPrettyPrinter();
         } else {
             writer = mapper.writer();
@@ -41,7 +41,7 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S,I>, I extends In
 
     /**
      * {@inheritDoc}
-     *
+     * <p>
      * JSON export method. Exports the given solution to the provided file in JSON format.
      */
     @Override
@@ -51,16 +51,17 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S,I>, I extends In
 
     /**
      * {@inheritDoc}
-     *
+     * <p>
      * JSON export method. Exports the given solution to the provided file in JSON format.
      */
     @Override
-    public void export(File f, S solution) {
-        if(config.isEnabled()){
+    public void export(String folder, String suggestedFilename, S solution) {
+        var f = new File(folder, suggestedFilename);
+        if (config.isEnabled()) {
             try {
-                writer.writeValue(f,solution);
-            } catch (IOException e){
-                throw new RuntimeException("IOException while writing to file: "+f.getAbsolutePath(), e);
+                writer.writeValue(f, solution);
+            } catch (IOException e) {
+                throw new RuntimeException("IOException while writing to file: " + f.getAbsolutePath(), e);
             }
         }
     }
