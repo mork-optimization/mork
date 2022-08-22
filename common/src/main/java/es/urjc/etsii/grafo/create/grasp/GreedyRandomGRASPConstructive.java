@@ -76,14 +76,13 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
     }
 
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String toString() {
-        return "GRGRASP" + "{" +
+        return "GRGRASP{" +
                 "a='" + alphaType + '\'' +
                 ", l=" + candidateListManager +
+                ", max=" + maximizing +
+                ", g=" + greedyFunction +
                 '}';
     }
 

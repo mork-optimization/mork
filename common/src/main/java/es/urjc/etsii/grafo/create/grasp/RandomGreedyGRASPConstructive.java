@@ -82,14 +82,13 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
         return cl.indexOf(besties.get(chosen));
     }
 
-    /**
-     * {@inheritDoc}
-     */
     @Override
     public String toString() {
-        return "RGGRASP" + "{" +
+        return "RGGRASP{" +
                 "a='" + alphaType + '\'' +
                 ", l=" + candidateListManager +
+                ", max=" + maximizing +
+                ", g=" + greedyFunction +
                 '}';
     }
 }
