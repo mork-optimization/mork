@@ -60,6 +60,7 @@ public class SequentialExecutor<S extends Solution<S,I>, I extends Instance> ext
 
         // K: Instance name --> V: List of WorkUnits
         for(var instanceWork: workUnits.entrySet()){
+            WorkUnitResult<S,I> instanceBest = null;
             var instancePath = instanceWork.getKey();
             var instanceName = instanceName(instancePath);
             long instanceStartTime = System.nanoTime();
@@ -68,16 +69,26 @@ public class SequentialExecutor<S extends Solution<S,I>, I extends Instance> ext
             logger.info("Running algorithms for instance: {}", instanceName);
 
             for(var algorithmWork: instanceWork.getValue().entrySet()){
+                WorkUnitResult<S,I> algorithmBest = null;
                 var algorithm = algorithmWork.getKey();
                 events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
                 logger.info("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
                 for(var workUnit: algorithmWork.getValue()){
                     var workUnitResult = doWork(workUnit);
                     this.processWorkUnitResult(workUnitResult);
+                    if(improves(workUnitResult, algorithmBest)){
+                        algorithmBest = workUnitResult;
+                    }
+                    if(improves(workUnitResult, instanceBest)){
+                        instanceBest = workUnitResult;
+                    }
                 }
+                assert algorithmBest != null;
+                exportAlgorithmInstanceSolution(algorithmBest);
                 events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
             }
-
+            assert instanceBest != null;
+            exportInstanceSolution(instanceBest);
             long totalInstanceTime = System.nanoTime() - instanceStartTime;
             events.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
         }

@@ -1,6 +1,7 @@
 # v.015
+- (New) Add option to choose how frequently any solution serializer should execute: best_per_instance, best_per_alg_instance and all iterations.
 - (Change) Improve SolutionSerializer::export method
-- (Change) Refactored GRASP Algorithm
+- (Change) Refactored GRASP Algorithm: Use builder pattern, add option to provide a custom greedy function.
 
 # v0.14
 - (New) Algorithms can be magically built from strings without user interaction, using the new autoconfig project. See AlgComponentService and AlgorithmBuilderUtil classes for more details.

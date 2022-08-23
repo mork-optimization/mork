@@ -25,14 +25,14 @@ import static es.urjc.etsii.grafo.util.IOUtil.createFolder;
 public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Instance> {
     private static final Logger log = Logger.getLogger(SolutionSerializer.class.getName());
 
-    private final AbstractSerializerConfig config;
+    private final AbstractSolutionSerializerConfig config;
 
     /**
      * Create a new solution serializer with the given config
      *
      * @param config
      */
-    public SolutionSerializer(AbstractSerializerConfig config) {
+    public SolutionSerializer(AbstractSolutionSerializerConfig config) {
         this.config = config;
     }
 
@@ -52,7 +52,7 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      * @param solution              solution to serialize to disk
      */
     public void exportSolution(String experimentName, Algorithm<S, I> alg, S solution, String iterationId) {
-        log.fine(String.format("Exporting solution for (exp, instance, algorithm) = (%s, %s, %s) using %s", experimentName, solution.getInstance().getId(), alg.getClass().getSimpleName(), this.getClass().getSimpleName()));
+        log.fine(String.format("Exporting solution for (exp, instance, algorithm) = (%s, %s, %s) using %s", experimentName, solution.getInstance().getId(), alg.getShortName(), this.getClass().getSimpleName()));
         String filename = getFilename(experimentName, solution.getInstance().getId(), alg.getShortName(), iterationId);
         var solutionFolder = this.config.getFolder();
         createFolder(solutionFolder);
@@ -97,6 +97,10 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      * @throws IOException exception thrown in case something goes wrong
      */
     public abstract void export(BufferedWriter writer, S solution) throws IOException;
+
+    public AbstractSolutionSerializerConfig getConfig() {
+        return config;
+    }
 
     @Override
     public String toString() {

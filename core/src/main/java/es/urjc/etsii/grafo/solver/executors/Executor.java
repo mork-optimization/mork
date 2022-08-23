@@ -1,9 +1,11 @@
 package es.urjc.etsii.grafo.solver.executors;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.EmptyAlgorithm;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.solver.SolverConfig;
@@ -16,11 +18,13 @@ import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
 import es.urjc.etsii.grafo.solver.services.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
-import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 
@@ -33,7 +37,7 @@ import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 @InheritedComponent
 public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
 
-    private static final Logger log = Logger.getLogger(Executor.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(Executor.class);
 
     protected final Optional<SolutionValidator<S,I>> validator;
     protected final IOManager<S, I> io;
@@ -58,9 +62,9 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
         this.referenceResultProviders = referenceResultProviders;
         this.solverConfig = solverConfig;
         if(validator.isEmpty()){
-            log.warning("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
+            log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
         } else {
-            log.info("SolutionValidator implementation found: " + validator.get().getClass().getSimpleName());
+            log.info("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
         }
 
         this.validator = validator;
@@ -115,9 +119,23 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     }
 
     protected void processWorkUnitResult(WorkUnitResult<S,I> r){
-        io.exportSolution(r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution(), r.workUnit().i());
+        exportAllSolutions(r);
         EventPublisher.getInstance().publishEvent(new SolutionGeneratedEvent<>(r.workUnit().i(), r.solution(), r.workUnit().experimentName(), r.workUnit().algorithm(), r.executionTime(), r.timeToTarget()));
-        log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() + 1, nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
+        if(log.isInfoEnabled()){
+            log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() + 1, nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
+        }
+    }
+
+    protected void exportAllSolutions(WorkUnitResult<S,I> r){
+        io.exportSolution(r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution(), String.valueOf(r.workUnit().i()), SolutionExportFrequency.ALL);
+    }
+
+    protected void exportAlgorithmInstanceSolution(WorkUnitResult<S,I> r){
+        io.exportSolution(r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution(), "bestiter", SolutionExportFrequency.BEST_PER_ALG_INSTANCE);
+    }
+
+    protected void exportInstanceSolution(WorkUnitResult<S,I> r){
+        io.exportSolution(r.workUnit().experimentName(), new EmptyAlgorithm<>("bestalg"), r.solution(), "bestiter", SolutionExportFrequency.BEST_PER_INSTANCE);
     }
 
     protected Optional<Double> getOptionalReferenceValue(String instanceName){
@@ -163,6 +181,20 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
             workUnits.put(instancePath, algWorkUnits);
         }
         return workUnits;
+    }
+
+    protected boolean improves(WorkUnitResult<S,I> candidate, WorkUnitResult<S,I> best){
+        if(candidate == null){
+            throw new IllegalArgumentException("Null candidate");
+        }
+        if(best == null){
+            return true;
+        }
+        if(Mork.isMaximizing()){
+            return DoubleComparator.isGreaterThan(candidate.solution().getScore(), best.solution().getScore());
+        } else {
+            return DoubleComparator.isLessThan(candidate.solution().getScore(), best.solution().getScore());
+        }
     }
 
     public String instanceName(String instancePath){

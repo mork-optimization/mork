@@ -2,7 +2,10 @@ package es.urjc.etsii.grafo.io.serializers;
 
 import es.urjc.etsii.grafo.solver.services.events.AbstractEventStorage;
 import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
-import es.urjc.etsii.grafo.testutil.*;
+import es.urjc.etsii.grafo.testutil.TestHelperFactory;
+import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestSerializerConfigUtils;
+import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -47,15 +50,15 @@ public class ResultsSerializerListenerTest {
 
 
         this.serializer1 = mock(ResultsSerializer.class);
-        when(this.serializer1.getConfig()).thenReturn(TestSerializerConfigUtils.create(true, AbstractResultSerializerConfig.Frequency.PER_INSTANCE, temp));
+        when(this.serializer1.getConfig()).thenReturn(TestSerializerConfigUtils.create(true, ResultExportFrequency.PER_INSTANCE, temp));
         doAnswer(answer).when(this.serializer1).serializeResults(anyString(), anyList(), any());
 
         this.serializer2 = mock(ResultsSerializer.class);
-        when(this.serializer2.getConfig()).thenReturn(TestSerializerConfigUtils.create(true, AbstractResultSerializerConfig.Frequency.EXPERIMENT_END, temp));
+        when(this.serializer2.getConfig()).thenReturn(TestSerializerConfigUtils.create(true, ResultExportFrequency.EXPERIMENT_END, temp));
         doAnswer(answer).when(this.serializer2).serializeResults(anyString(), anyList(), any());
 
         this.serializer3 = mock(ResultsSerializer.class);
-        when(this.serializer3.getConfig()).thenReturn(TestSerializerConfigUtils.create(false, AbstractResultSerializerConfig.Frequency.EXPERIMENT_END, temp));
+        when(this.serializer3.getConfig()).thenReturn(TestSerializerConfigUtils.create(false, ResultExportFrequency.EXPERIMENT_END, temp));
         doAnswer(answer).when(this.serializer3).serializeResults(anyString(), anyList(), any());
 
         this.listener = new ResultsSerializerListener<>(this.eventStorage, Arrays.asList(this.serializer1, this.serializer2, this.serializer3));

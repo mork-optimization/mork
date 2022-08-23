@@ -4,18 +4,18 @@ package es.urjc.etsii.grafo.io.serializers;
  * This class is used to configure the serializer by the properties specified in the application.yml
  * {@see application.yml}
  */
-public abstract class AbstractResultSerializerConfig extends AbstractSerializerConfig {
+public abstract class AbstractSolutionSerializerConfig extends AbstractSerializerConfig {
 
     /**
      * When should result data be exported?
      */
-    private ResultExportFrequency frequency = ResultExportFrequency.EXPERIMENT_END;
+    private SolutionExportFrequency frequency = SolutionExportFrequency.BEST_PER_ALG_INSTANCE;
 
     /**
      * How frequently should data be exported?
      * @return export frequency
      */
-    public ResultExportFrequency getFrequency() {
+    public SolutionExportFrequency getFrequency() {
         return frequency;
     }
 
@@ -23,7 +23,7 @@ public abstract class AbstractResultSerializerConfig extends AbstractSerializerC
      * How frequently should data be exported?
      * @param frequency export frequency
      */
-    public void setFrequency(ResultExportFrequency frequency) {
+    public void setFrequency(SolutionExportFrequency frequency) {
         this.frequency = frequency;
     }
 }

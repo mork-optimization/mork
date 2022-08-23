@@ -1,10 +1,10 @@
 package es.urjc.etsii.grafo.solver.executors;
 
+import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.SolverConfig;
-import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.solver.experiment.Experiment;
 import es.urjc.etsii.grafo.solver.services.ExceptionHandler;
 import es.urjc.etsii.grafo.solver.services.IOManager;
@@ -34,7 +34,7 @@ import java.util.concurrent.Future;
 @ConditionalOnExpression(value = "${solver.parallelExecutor} && !${irace.enabled}")
 public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> extends Executor<S, I> {
 
-    private static final Logger logger = LoggerFactory.getLogger(ConcurrentExecutor.class);
+    private static final Logger log = LoggerFactory.getLogger(ConcurrentExecutor.class);
 
     private final int nWorkers;
     private final ExecutorService executor;
@@ -89,25 +89,36 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
         // Simulate sequential execution to trigger all events in correct order
         // K: Instance name --> V: List of WorkUnits
         for(var e: futures.entrySet()){
+            WorkUnitResult<S,I> instanceBest = null;
             var instancePath = e.getKey();
             var instanceName = instanceName(instancePath);
             long instanceStartTime = System.nanoTime();
             var referenceValue = getOptionalReferenceValue(instanceName);
             events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
-            logger.info("Running algorithms for instance: " + instanceName);
+            log.info("Running algorithms for instance: {}", instanceName);
 
             for(var algorithmWork: e.getValue().entrySet()){
+                WorkUnitResult<S,I> algorithmBest = null;
                 var algorithm = algorithmWork.getKey();
                 events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
-                logger.info("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
+                log.info("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
                 for(var workUnit: algorithmWork.getValue()){
                     var workUnitResult = ConcurrencyUtil.await(workUnit);
                     this.processWorkUnitResult(workUnitResult);
+                    if(improves(workUnitResult, algorithmBest)){
+                        algorithmBest = workUnitResult;
+                    }
+                    if(improves(workUnitResult, instanceBest)){
+                        instanceBest = workUnitResult;
+                    }
                 }
+                assert algorithmBest != null;
+                exportAlgorithmInstanceSolution(algorithmBest);
                 events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
 
             }
-
+            assert instanceBest != null;
+            exportInstanceSolution(instanceBest);
             long totalInstanceTime = System.nanoTime() - instanceStartTime;
             events.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
         }
@@ -116,7 +127,7 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
     /** {@inheritDoc} */
     @Override
     public void shutdown() {
-        logger.info("Shutdown executor");
+        log.info("Shutdown executor");
         this.executor.shutdown();
     }
 }
