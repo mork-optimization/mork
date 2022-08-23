@@ -4,6 +4,8 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.BufferedWriter;
 import java.io.File;
@@ -11,7 +13,6 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.util.IOUtil.createFolder;
 
@@ -23,16 +24,16 @@ import static es.urjc.etsii.grafo.util.IOUtil.createFolder;
  */
 @InheritedComponent
 public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Instance> {
-    private static final Logger log = Logger.getLogger(SolutionSerializer.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(SolutionSerializer.class);
 
     private final AbstractSolutionSerializerConfig config;
 
     /**
      * Create a new solution serializer with the given config
      *
-     * @param config
+     * @param config Common solution serializer configuration
      */
-    public SolutionSerializer(AbstractSolutionSerializerConfig config) {
+    protected SolutionSerializer(AbstractSolutionSerializerConfig config) {
         this.config = config;
     }
 
@@ -52,7 +53,7 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      * @param solution              solution to serialize to disk
      */
     public void exportSolution(String experimentName, Algorithm<S, I> alg, S solution, String iterationId) {
-        log.fine(String.format("Exporting solution for (exp, instance, algorithm) = (%s, %s, %s) using %s", experimentName, solution.getInstance().getId(), alg.getShortName(), this.getClass().getSimpleName()));
+        log.debug("Exporting solution for (exp, instance, algorithm) = ({}, {}, {}) using {}", experimentName, solution.getInstance().getId(), alg.getShortName(), this.getClass().getSimpleName());
         String filename = getFilename(experimentName, solution.getInstance().getId(), alg.getShortName(), iterationId);
         var solutionFolder = this.config.getFolder();
         createFolder(solutionFolder);
@@ -83,7 +84,7 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
         try (var bw = new BufferedWriter(new FileWriter(f))) {
             this.export(bw, solution);
         } catch (IOException e) {
-            log.severe("IOException exporting solution, skipping: " + e);
+            log.warn("IOException exporting solution, skipping.", e);
         }
     }
 
@@ -105,7 +106,7 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "{" +
-                "config=" + config +
+                "cfg=" + config +
                 '}';
     }
 }

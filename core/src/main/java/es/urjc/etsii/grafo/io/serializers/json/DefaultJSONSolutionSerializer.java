@@ -19,9 +19,8 @@ import java.io.IOException;
  */
 public class DefaultJSONSolutionSerializer<S extends Solution<S, I>, I extends Instance> extends SolutionSerializer<S, I> {
 
-    ObjectWriter writer;
-
-    private final JSONConfig config;
+    final ObjectWriter writer;
+    final JSONConfig config;
 
     /**
      * Construct a DefaultJSONSolutionSerializer object given the properties indicated in {@see JSONSerializerConfig.java}
@@ -64,12 +63,5 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S, I>, I extends I
                 throw new RuntimeException("IOException while writing to file: " + f.getAbsolutePath(), e);
             }
         }
-    }
-
-    @Override
-    public String toString() {
-        return this.getClass().getSimpleName() + "{" +
-                "config=" + config +
-                '}';
     }
 }
