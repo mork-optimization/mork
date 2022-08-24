@@ -3,7 +3,6 @@ package es.urjc.etsii.grafo.TSP.experiments;
 import es.urjc.etsii.grafo.TSP.algorithms.constructives.TSPRandomConstructive;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
-import es.urjc.etsii.grafo.solver.SolverConfig;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.solver.services.AbstractExperiment;

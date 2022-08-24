@@ -56,4 +56,8 @@ public class TestMove extends Move<TestSolution, TestInstance> {
     public int hashCode() {
         return Objects.hash(score, maximizing);
     }
+
+    public boolean isMaximizing() {
+        return maximizing;
+    }
 }
