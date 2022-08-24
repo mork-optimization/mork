@@ -64,6 +64,12 @@ serializers:
     # NOTE: the default JSON solution serializer is automatically disabled when the SolutionSerializer class is extended.
     enabled: false
 
+    # Should we serialize:
+    # - all solutions for each iterations (all)
+    # - best solution for each algorithm instance pair (best_per_alg_instance)
+    # - best solution for each instance only (best_per_instance)
+    frequency: best_per_instance
+
     # Path where solutions will be exported (Only if a solution serializer is enabled, see below)
     folder: 'solutions'
 

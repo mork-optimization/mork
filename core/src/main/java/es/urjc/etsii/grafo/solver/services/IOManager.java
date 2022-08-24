@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.urjc.etsii.grafo.ErrorConfig;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
 import org.springframework.stereotype.Service;
@@ -55,11 +56,10 @@ public class IOManager<S extends Solution<S,I>, I extends Instance> {
      * @param alg algorithm that generated this solution
      * @param solution solution to serialize to disk
      */
-    public void exportSolution(String experimentName, Algorithm<S,I> alg, S solution, int iteration){
+    public void exportSolution(String experimentName, Algorithm<S,I> alg, S solution, String iteration, SolutionExportFrequency current){
         for(var serializer: this.solutionSerializers){
-            if(serializer.isEnabled()){
-                String iterationId = Integer.toString(iteration);
-                serializer.exportSolution(experimentName, alg, solution, iterationId);
+            if(serializer.isEnabled() && serializer.getConfig().getFrequency().matches(current)){
+                serializer.exportSolution(experimentName, alg, solution, iteration);
             }
         }
     }

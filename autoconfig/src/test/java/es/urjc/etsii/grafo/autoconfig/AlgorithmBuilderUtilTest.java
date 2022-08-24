@@ -1,8 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig;
 
+import es.urjc.etsii.grafo.autoconfig.fakecomponents.FakeGRASPConstructive;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
-import es.urjc.etsii.grafo.create.grasp.GreedyRandomGRASPConstructive;
-import es.urjc.etsii.grafo.create.grasp.RandomGreedyGRASPConstructive;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
@@ -76,10 +75,7 @@ public class AlgorithmBuilderUtilTest {
                         return buildInitialCandidateList(solution);
                     }
                 });
-        var greedyRandom = AlgorithmBuilderUtil.build(GreedyRandomGRASPConstructive.class, params);
+        var greedyRandom = AlgorithmBuilderUtil.build(FakeGRASPConstructive.class, params);
         Assertions.assertNotNull(greedyRandom);
-        var randomGreedy = AlgorithmBuilderUtil.build(RandomGreedyGRASPConstructive.class, params);
-        Assertions.assertNotNull(randomGreedy);
-
     }
 }

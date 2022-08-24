@@ -17,7 +17,7 @@
 //    public __RNAME__ReferenceResults() throws IOException {
 //        // For each line in our CSV/TSV file with the following structure, fill the hashmap
 //        // instanceName,o.fValue,executionTime
-//        Files.lines(Path.of("sota.tsv")).forEach(l -> {
+//        Files.lines(Path.of("sota.csv")).forEach(l -> {
 //            var parts = l.split(",");
 //            var referenceResult = new ReferenceResult();
 //            referenceResult.setScore(parts[1]);         // Change columns if necessary

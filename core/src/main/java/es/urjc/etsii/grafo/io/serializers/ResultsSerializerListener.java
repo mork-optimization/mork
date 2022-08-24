@@ -58,7 +58,7 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
      * @param frequency save frequency, will check each serializer config
      *                  and skip if the frequency configured does not match
      */
-    public void saveOnFreq(String expName, long expStart, AbstractResultSerializerConfig.Frequency frequency){
+    public void saveOnFreq(String expName, long expStart, ResultExportFrequency frequency){
         var data = getExpData(expName);
         if (data.isEmpty()) {
             logger.warn("Cannot save empty list of results, skipping result serialization.");
@@ -92,7 +92,7 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
         saveOnFreq(
                 event.getExperimentName(),
                 event.getExperimentStartTime(),
-                AbstractResultSerializerConfig.Frequency.EXPERIMENT_END
+                ResultExportFrequency.EXPERIMENT_END
         );
     }
 
@@ -106,7 +106,7 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
         saveOnFreq(
                 event.getExperimentName(),
                 event.getExperimentStartTime(),
-                AbstractResultSerializerConfig.Frequency.PER_INSTANCE
+                ResultExportFrequency.PER_INSTANCE
         );
     }
 

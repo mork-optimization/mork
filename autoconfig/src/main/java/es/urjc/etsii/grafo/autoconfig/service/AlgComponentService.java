@@ -4,10 +4,12 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderListener;
 import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil;
-import es.urjc.etsii.grafo.autoconfig.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.BailErrorStrategy;
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmLexer;
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmParser;
+import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
+import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
+import es.urjc.etsii.grafo.autoconfig.service.factories.CommonComponentFactory;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
 import es.urjc.etsii.grafo.improve.Improver;
@@ -24,7 +26,6 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Modifier;
 import java.util.*;
-import java.util.function.Function;
 
 /**
  * Manage algorithm components at runtime. When starting the application, discovers all available components.
@@ -38,20 +39,21 @@ public class AlgComponentService {
     Map<Class<?>, Collection<Class<?>>> componentsByType = new HashMap<>();
     Map<String, Class<?>> componentByName = new HashMap<>();
     Map<String, String> aliases = getAliases();
-    Map<String, Function<Map<String, Object>, Object>> factories = getFactories();
+    Map<String, AlgorithmComponentFactory> factories = getFactories();
 
-    private static Map<String, Function<Map<String, Object>, Object>> getFactories() {
-        var map = new HashMap<String, Function<Map<String, Object>, Object>>();
+    private static Map<String, AlgorithmComponentFactory> getFactories() {
+        var map = new HashMap<String, AlgorithmComponentFactory>();
         map.put("NullConstructive", params -> Constructive.nul());
         map.put("NullImprover", params -> Improver.nul());
         map.put("NullShake", params -> Shake.nul());
         map.put("NullGraspListManager", params -> GRASPListManager.nul());
+        map.put("GraspConstructive", CommonComponentFactory::createGRASP);
         return map;
     }
 
     private static Map<String, String> getAliases() {
         var map = new HashMap<String, String>();
-        map.put("GRASP", "GreedyRandomGRASPConstructive");
+        map.put("GRASP", "GraspConstructive");
         map.put("NullGRASPListManager", "NullGraspListManager");
         return map;
     }
@@ -93,7 +95,7 @@ public class AlgComponentService {
      * @param name name of the component
      * @param factory function to execute such as f(params) --> returns component of type name
      */
-    public void registerFactory(String name, Function<Map<String, Object>, Object> factory){
+    public void registerFactory(String name, AlgorithmComponentFactory factory){
         throwIfKnown(name);
         this.factories.put(name, factory);
     }
@@ -147,7 +149,7 @@ public class AlgComponentService {
         }
         if(this.factories.containsKey(name)){
             // If registered factory method, invoke it
-            return this.factories.get(name).apply(params);
+            return this.factories.get(name).create(params);
         }
 
         // Either we have discovered the component automatically, or fail
@@ -160,22 +162,33 @@ public class AlgComponentService {
     }
 
     /**
-     * Build any algorithm component from the given string description. Must follow the format: Component{param1=value1, ...}.
+     * Build any algorithm from the given string description. Must follow the format: Component{param1=value1, ...}.
      * Any component can be a parameter too, example: Alg{constructive=GRASP{alpha=1}, ls=MyLS{}}
      * @param s String description
      * @return Built component
      */
-    public Algorithm<?,?> buildFromString(String s){
+    public Algorithm<?,?> buildAlgorithmFromString(String s){
+        var component = buildAlgorithmComponentFromString(s);
+        if(!(component instanceof Algorithm<?,?>)){
+            throw new AlgorithmParsingException(String.format("String does not represent an algorithm, built class type: %s", component.getClass().getSimpleName()));
+        }
+        return (Algorithm<?,?>) component;
+    }
+
+    /**
+     * Build any algorithm from the given string description. Must follow the format: Component{param1=value1, ...}.
+     * Any component can be a parameter too, example: Alg{constructive=GRASP{alpha=1}, ls=MyLS{}}
+     * @param s String description
+     * @return Built component
+     */
+    public Object buildAlgorithmComponentFromString(String s){
         var parser = getParser(s);
         var listener = new AlgorithmBuilderListener(this);
         var walker = new ParseTreeWalker();
         walker.walk(listener, parser.init());
 
-        var algorithm = listener.getLastPropertyValue();
-        if(!(algorithm instanceof Algorithm<?,?>)){
-            throw new AlgorithmParsingException(String.format("String does not represent an algorithm, built class type: %s", algorithm.getClass().getSimpleName()));
-        }
-        return (Algorithm<?,?>) algorithm;
+        var component = listener.getLastPropertyValue();
+        return component;
     }
 
     /**

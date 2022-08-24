@@ -1,21 +1,17 @@
 package es.urjc.etsii.grafo.create.grasp;
 
-import es.urjc.etsii.grafo.create.Reconstructive;
-import es.urjc.etsii.grafo.improve.DefaultMoveComparator;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
-import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.DoubleComparator;
-import es.urjc.etsii.grafo.util.ValidationUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.logging.Logger;
-
-import static es.urjc.etsii.grafo.util.DoubleComparator.*;
+import java.util.function.Function;
 
 /**
  * GRASP Constructive method
@@ -24,119 +20,23 @@ import static es.urjc.etsii.grafo.util.DoubleComparator.*;
  * @param <S> Solution type
  * @param <I> Instance type
  */
-public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> extends Reconstructive<S, I> {
-    private static final Logger log = Logger.getLogger(RandomGreedyGRASPConstructive.class.getName());
+public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends GRASPConstructive<M, S, I> {
 
-    /**
-     * String explaining how alpha provider is generating alpha values.
-     * Example: FIXED{a=0.25}
-     */
-    protected final String randomType;
+    private static final Logger log = LoggerFactory.getLogger(RandomGreedyGRASPConstructive.class);
 
-    /**
-     * GRASP candidate list manager
-     */
-    protected final GRASPListManager<M, S, I> candidateListManager;
-    private final AlphaProvider alphaProvider;
-    private final MoveComparator<M, S, I> comparator;
-
-    /**
-     * GRASP Constructor, mantains a fixed alpha value
-     * Stops when the neighborhood does not provide any movement
-     *
-     * @param alpha      Randomness, adjusts the candidate list size.
-     *                   Takes values between [0,1] being 1 → totally random, 0 → full greedy.
-     * @param maximizing true if we are maximizing the score, false if minimizing
-     * @param candidateListManager list manager, implemented by the user
-     */
-    public RandomGreedyGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double alpha, boolean maximizing) {
-        this.candidateListManager = candidateListManager;
-        this.comparator = new DefaultMoveComparator<>(maximizing);
-        assert isGreaterOrEqualsThan(alpha, 0) && isLessOrEquals(alpha, 1);
-
-        randomType = String.format("FIXED{a=%.2f}", alpha);
-        alphaProvider = () -> alpha;
+    protected RandomGreedyGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, Function<M, Double> greedyFunction, AlphaProvider provider, String alphaType, Boolean maximize) {
+        super(candidateListManager, greedyFunction, provider, alphaType, maximize);
     }
 
     /**
-     * GRASP Constructor, generates a random alpha in each construction
-     * Alpha Takes values between [0,1] being 1 → totally random, 0 → full greedy.
+     * Get candidate using random greedy strategy
      *
-     * @param minAlpha   minimum value for the random alpha
-     * @param maxAlpha   maximum value for the random alpha
-     * @param comparator Comparator used when evaluating different moves in the candidate list manager
-     *                   //  TODO move to candidateListManager...
-     * @param candidateListManager Candidate List Manager
+     * @param alpha alpha value
+     * @param cl    candidate list
+     * @return candidate index
      */
-    public RandomGreedyGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, MoveComparator<M, S, I> comparator) {
-        this.candidateListManager = candidateListManager;
-        this.comparator = comparator;
-        assert isGreaterOrEqualsThan(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
-        assert isGreaterOrEqualsThan(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
-        assert isGreaterThan(maxAlpha, minAlpha);
-
-        alphaProvider = () -> RandomManager.getRandom().nextDouble() * (maxAlpha - minAlpha) + minAlpha;
-        randomType = String.format("RANGE{min=%.2f, max=%.2f}", minAlpha, maxAlpha);
-    }
-
-    /**
-     * GRASP Constructor, generates a random alpha in each construction
-     * Alpha Takes values between [0,1] being 1 → totally random, 0 → full greedy.
-     *
-     * @param minAlpha   minimum value for the random alpha
-     * @param maxAlpha   maximum value for the random alpha
-     * @param maximizing True if maximizing, false if minimizing
-     * @param candidateListManager Candidate List Manager
-     */
-    public RandomGreedyGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, boolean maximizing) {
-        this(candidateListManager, minAlpha, maxAlpha, new DefaultMoveComparator<>(maximizing));
-    }
-
-    /**
-     * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
-     *
-     * @param candidateListManager candidate list manager, implemented by the user
-     * @param maximizing True if maximizing, false if minimizing
-     */
-    public RandomGreedyGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, boolean maximizing) {
-        this(candidateListManager, 0, 1, maximizing);
-    }
-
-    /** {@inheritDoc} */
     @Override
-    public S construct(S solution) {
-        candidateListManager.beforeGRASP(solution);
-        var constructedSolution = assignMissing(solution);
-        candidateListManager.afterGRASP(constructedSolution);
-        return constructedSolution;
-    }
-
-    /**
-     * Assign missing elements to solution.
-     * This method ends when the candidate list is empty.
-     * The difference between this method and construct is that this method does not call beforeGRASP().
-     * This method can be used in algorithms such as iterated greedy during the reconstruction phase.
-     *
-     * @param solution Solution to complete
-     * @return Completed solution.
-     */
-    public S assignMissing(S solution) {
-        double alpha = alphaProvider.getAlpha();
-        var cl = candidateListManager.buildInitialCandidateList(solution);
-        assert ValidationUtil.assertFastAccess(cl);
-        while (!cl.isEmpty()) {
-            int index = randomGreedy(alpha, cl);
-            M chosen = cl.get(index);
-            chosen.execute(solution);
-            cl = candidateListManager.updateCandidateList(solution, chosen, cl, index);
-            assert ValidationUtil.assertFastAccess(cl);
-            ValidationUtil.assertValidScore(solution);
-        }
-        return solution;
-    }
-
-    private int randomGreedy(double alpha, List<M> cl) {
-        // TODO can we avoid creating another list?
+    protected int getCandidateIndex(double alpha, List<M> cl) {
         var rcl = new ArrayList<M>(cl.size());
         // Declare another random so we only use a value of the original random per iteration
         Random r = new Random(RandomManager.getRandom().nextLong());
@@ -152,36 +52,43 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
 
         // get best
         M best = null;
+        double bestValue = Double.NaN;
+
         for (M m : rcl) {
             assert m != null;
-            if (best == null) best = m;
-            else best = comparator.getBest(best, m);
+            if (best == null) {
+                best = m;
+                bestValue = greedyFunction.apply(best);
+            } else {
+                double currentValue = greedyFunction.apply(m);
+                if (isBetter.test(currentValue, bestValue)) {
+                    best = m;
+                    bestValue = currentValue;
+                }
+            }
         }
+        assert best != null : "null best with RCL:" + rcl;
 
         // Choose a random from all the items with equal best score
-        log.fine(String.format("Best score found: %s", best.getValue()));
+        log.debug("Best score found: {}", bestValue);
         var besties = new ArrayList<M>(cl.size());
         for (M m : rcl) {
-            if (DoubleComparator.equals(m.getValue(), best.getValue())) {
+            if (DoubleComparator.equals(greedyFunction.apply(m), bestValue)) {
                 besties.add(m);
             }
         }
         int chosen = RandomManager.getRandom().nextInt(0, besties.size());
-        log.fine(String.format("Number of movements with same score: %s, chosen: %s", besties.size(), besties.get(chosen)));
+        log.debug("Number of movements with same score: {}, chosen: {}", besties.size(), besties.get(chosen));
         return cl.indexOf(besties.get(chosen));
     }
 
-    /** {@inheritDoc} */
     @Override
     public String toString() {
-        return "RGGRASP" + "{" +
-                "a='" + randomType + '\'' +
+        return "RGGRASP{" +
+                "a='" + alphaType + '\'' +
                 ", l=" + candidateListManager +
+                ", max=" + maximizing +
+                ", g=" + greedyFunction +
                 '}';
-    }
-
-    @Override
-    public S reconstruct(S solution) {
-        return assignMissing(solution);
     }
 }
