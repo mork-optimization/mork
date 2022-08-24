@@ -6,18 +6,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-public final class BasicTokenTest {
-
-
-    @Test
-    public void parseBasicTypes() {
-        String alg = "false";
-        //var algorithm = algComponent.buildFromString(alg);
-    }
+class BasicTokenTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"1.234", "0.0", "-145.93e10", "5.1e10"})
-    public void basicParseFloat(String value){
+    void basicParseFloat(String value){
         var parser = AlgComponentService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
@@ -37,7 +30,7 @@ public final class BasicTokenTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"-94", "0", "12395"})
-    public void basicParseInteger(String value){
+    void basicParseInteger(String value){
         var parser = AlgComponentService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
@@ -58,7 +51,7 @@ public final class BasicTokenTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"true", "false"})
-    public void basicParseBoolean(String value){
+    void basicParseBoolean(String value){
         var parser = AlgComponentService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
@@ -78,7 +71,7 @@ public final class BasicTokenTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"\"\"", "\"a\"", "\"long string with spaces\"", "\"\\u0020\""})
-    public void basicParseString(String value){
+    void basicParseString(String value){
         var parser = AlgComponentService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
@@ -98,7 +91,7 @@ public final class BasicTokenTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"'\u0020'", "'a'", "'1'", "'\\\\'"})
-    public void basicParseCharacter(String value){
+    void basicParseCharacter(String value){
         var parser = AlgComponentService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
@@ -117,7 +110,7 @@ public final class BasicTokenTest {
     }
 
     @Test
-    public void basicParseNull(){
+    void basicParseNull(){
         String value = "null";
         var parser = AlgComponentService.getParser(value);
         var ctx = parser.propertyValue();
@@ -138,7 +131,7 @@ public final class BasicTokenTest {
 
     @ParameterizedTest
     @ValueSource(strings = {"True", "False", "z", "whatever", "'multichar'", "'", "\"", "''", "'\\'"})
-    public void failBasicParse(String value){
+    void failBasicParse(String value){
         var parser = AlgComponentService.getParser(value);
         Assertions.assertThrows(AlgorithmParsingException.class, parser::propertyValue);
     }

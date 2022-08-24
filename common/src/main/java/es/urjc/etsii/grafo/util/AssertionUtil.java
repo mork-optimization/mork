@@ -6,6 +6,8 @@ package es.urjc.etsii.grafo.util;
  */
 public class AssertionUtil {
 
+    private AssertionUtil(){}
+
     /**
      * Does the supposition "if and only if" hold?
      * {@code P <--> Q = (P & Q) | (!P & !Q)}
@@ -15,8 +17,9 @@ public class AssertionUtil {
      * @return true if valid supposition, false otherwise
      */
     public static boolean biimplication(boolean p, boolean q){
-        return (p & q) || (!p && !q);
+        return (p && q) || (!p && !q);
     }
+
     /**
      * Does the supposition "if then" hold?
      * {@code P --> Q = !P || Q}

@@ -14,26 +14,6 @@ import static org.mockito.Mockito.when;
 
 public class BaseLSTest {
 
-    protected double getMax(double[] values){
-        double max = Double.NEGATIVE_INFINITY;
-        for(var d: values){
-            if(d>max){
-                max = d;
-            }
-        }
-        return max;
-    }
-
-    protected double getMin(double[] values){
-        double min = Double.POSITIVE_INFINITY;
-        for(var d: values){
-            if(d < min){
-                min = d;
-            }
-        }
-        return min;
-    }
-
     protected Neighborhood<TestMove, TestSolution, TestInstance> getNeighborhoodMock(boolean maximizing, double[] values, TestSolution solution){
         List<TestMove> moves = new ArrayList<>();
         for(double d: values){

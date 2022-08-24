@@ -1,4 +1,5 @@
 # v.015
+- (New) ArrayUtil::max, ArrayUtil::min util methods for int, long and double primitives
 - (New) Add option to choose how frequently any solution serializer should execute: best_per_instance, best_per_alg_instance and all iterations.
 - (Change) Improve SolutionSerializer::export method
 - (Change) Refactored GRASP Algorithm: Use builder pattern, add option to provide a custom greedy function.

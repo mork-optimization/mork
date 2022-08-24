@@ -4,6 +4,7 @@ package es.urjc.etsii.grafo.improve;
 import es.urjc.etsii.grafo.improve.ls.LocalSearchBestImprovement;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.ArrayUtil;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -23,9 +24,9 @@ public class BestImprovementLSTest extends BaseLSTest {
         Assertions.assertTrue(chosenMove.isPresent());
         double value = chosenMove.get().getValue();
         if(maximizing){
-            Assertions.assertEquals(value, getMax(values));
+            Assertions.assertEquals(value, ArrayUtil.max(values));
         } else {
-            Assertions.assertEquals(value, getMin(values));
+            Assertions.assertEquals(value, ArrayUtil.min(values));
         }
     }
 
