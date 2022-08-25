@@ -8,6 +8,7 @@ import java.util.*;
  */
 public class Metrics {
     public static final String OBJECTIVE_FUNCTION = "objective";
+    public static final String BEST_OBJECTIVE_FUNCTION = "bestobjective";
 
     protected final Map<String, TreeSet<TimeValue>> metricValues;
     protected final long referencePoint;
@@ -17,7 +18,7 @@ public class Metrics {
      *
      * @param referenceTime all data points will be relative to this time, use the returned value of System.nanoTime()
      */
-    public Metrics(long referenceTime) {
+    protected Metrics(long referenceTime) {
         this.metricValues = new HashMap<>();
         this.referencePoint = referenceTime;
     }
@@ -25,7 +26,7 @@ public class Metrics {
     /**
      * Create a new metrics instance taking the current nanoTime as a reference point
      */
-    public Metrics() {
+    protected Metrics() {
         this(System.nanoTime());
     }
 
