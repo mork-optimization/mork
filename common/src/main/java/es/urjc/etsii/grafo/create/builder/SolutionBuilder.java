@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.create.builder;
 
+import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.annotations.InheritedComponent;
 
 /**
  * How to generate empty solutions from a given instance.
@@ -14,8 +14,8 @@ public abstract class SolutionBuilder<S extends Solution<S,I>, I extends Instanc
      /**
       * Generate a solution with the parameters given by the user
       *
-      * @param i Instance used to build the empty solution
+      * @param instance Instance used to build the empty solution
       * @return empty solution referencing the given instance
       */
-     public abstract S initializeSolution(I i);
+     public abstract S initializeSolution(I instance);
 }

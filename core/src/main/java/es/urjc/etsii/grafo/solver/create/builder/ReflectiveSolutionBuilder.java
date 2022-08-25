@@ -28,25 +28,26 @@ public class ReflectiveSolutionBuilder<S extends Solution<S, I>, I extends Insta
     public ReflectiveSolutionBuilder() {
         Set<Class<S>> set = findSolutionCandidates(getPkgsToScan());
         if (set.isEmpty()) {
-            throw new RuntimeException("Cannot find any Solution implementation");
+            throw new RuntimeException("Cannot find any class extending Solution<S,I>");
         }
         if (set.size() > 1) {
-            throw new RuntimeException("Found multiple Solution<S,I> implementations, provide only one or implement your own SolutionBuilder");
+            throw new RuntimeException(String.format("Found multiple classes extending Solution<S,I> (%s), provide only one or extend the class SolutionBuilder and implement the required method", set));
         }
 
-        solClass = (Class<S>) set.toArray()[0];
+        solClass = set.iterator().next();
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public S initializeSolution(I i) {
+    public S initializeSolution(I instance) {
         if (constructor == null) {
-            initializeConstructorReference(i);
+            initializeConstructorReference(instance);
         }
         try {
-            return constructor.newInstance(i);
+            var solution = constructor.newInstance(instance);
+            return solution;
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }

@@ -34,7 +34,7 @@ public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instanc
      *
      * @param ins Instance
      */
-    public Solution(I ins) {
+    protected Solution(I ins) {
         this.ins = ins;
     }
 

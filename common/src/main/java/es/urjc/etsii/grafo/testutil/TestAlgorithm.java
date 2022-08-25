@@ -11,8 +11,8 @@ public class TestAlgorithm extends Algorithm<TestSolution, TestInstance> {
         this.algName = algName;
         this.setBuilder(new SolutionBuilder<>() {
             @Override
-            public TestSolution initializeSolution(TestInstance testInstance) {
-                return new TestSolution(testInstance);
+            public TestSolution initializeSolution(TestInstance instance) {
+                return new TestSolution(instance);
             }
         });
     }
