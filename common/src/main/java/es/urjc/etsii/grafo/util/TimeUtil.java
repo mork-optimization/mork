@@ -11,6 +11,11 @@ public class TimeUtil {
     public static long NANOS_IN_SECOND = 1_000_000_000;
 
     /**
+     * Nanoseconds in 1 millisecond
+     */
+    public static long NANOS_IN_MILLISECOND = 1_000_000;
+
+    /**
      * Convert nanoseconds to seconds
      *
      * @param nanos nanoseconds

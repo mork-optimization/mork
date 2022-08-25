@@ -18,8 +18,8 @@ import java.util.Optional;
  * is found.
  * <p>
  * There exist two typical strategies to explore the corresponding neighborhood:
- * best improvement and first improvement. To use or extend those procedures see {@see es.urjc.etsii.grafo.solver.improve.ls.LocalSearchBestImprovement}
- * and {@see es.urjc.etsii.grafo.solver.improve.ls.LocalSearchFirstImprovement} respectively.
+ * best improvement and first improvement. To use or extend those procedures see {@link LocalSearchBestImprovement}
+ * and {@link LocalSearchFirstImprovement} respectively.
  *
  * @param <M> type of move
  * @param <S> type of the problem solution

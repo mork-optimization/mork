@@ -19,7 +19,7 @@ public abstract class IteratedImprover<S extends Solution<S,I>,I extends Instanc
      * {@inheritDoc}
      *
      * Improves a model.Solution
-     * Iterates until we run out of time, or we cannot improve the current es.urjc.etsii.grafo.solution any further
+     * Iterates until we run out of time, or we cannot improve the current solution any further
      */
     @Override
     protected S _improve(S solution) {
@@ -36,10 +36,10 @@ public abstract class IteratedImprover<S extends Solution<S,I>,I extends Instanc
     }
 
     /**
-     * Tries to improve the recieved es.urjc.etsii.grafo.solution
+     * Tries to improve the received solution
      *
      * @param solution Solution to improve
-     * @return True if the es.urjc.etsii.grafo.solution has been improved, false otherwise
+     * @return True if the solution has been improved, false otherwise
      */
     public abstract boolean iteration(S solution);
 }

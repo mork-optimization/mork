@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.TimeUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,6 +26,9 @@ import static es.urjc.etsii.grafo.util.IOUtil.createFolder;
 @InheritedComponent
 public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Instance> {
     private static final Logger log = LoggerFactory.getLogger(SolutionSerializer.class);
+    private static final long WARN_THRESHOLD = 500 * TimeUtil.NANOS_IN_MILLISECOND; // 500ms
+
+    private volatile boolean warnedSlow = false;
 
     private final AbstractSolutionSerializerConfig config;
 
@@ -52,12 +56,18 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      * @param alg            algorithm that generated this solution
      * @param solution              solution to serialize to disk
      */
-    public void exportSolution(String experimentName, Algorithm<S, I> alg, S solution, String iterationId) {
+    public final void exportSolution(String experimentName, Algorithm<S, I> alg, S solution, String iterationId) {
         log.debug("Exporting solution for (exp, instance, algorithm) = ({}, {}, {}) using {}", experimentName, solution.getInstance().getId(), alg.getShortName(), this.getClass().getSimpleName());
         String filename = getFilename(experimentName, solution.getInstance().getId(), alg.getShortName(), iterationId);
         var solutionFolder = this.config.getFolder();
         createFolder(solutionFolder);
+        long start = System.nanoTime();
         this.export(solutionFolder, filename, solution);
+        long elapsed = System.nanoTime() - start;
+        if(elapsed > WARN_THRESHOLD && !warnedSlow){
+            log.warn("Slow serialization detected in {}, last execution took {} ms. Consider using a faster format, or use an async event listener to improve performance", this.getClass().getSimpleName(), elapsed / TimeUtil.NANOS_IN_MILLISECOND);
+            warnedSlow = true;
+        }
     }
 
     /**

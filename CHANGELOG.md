@@ -1,6 +1,7 @@
 # v.015
 - (New) Metrics class to keep track of different metrics while any algorithm is executing. Calculate hypervolume of any metric in given range.
 - (New) ArrayUtil::max, ArrayUtil::min util methods for int, long and double primitives
+- (New) Warn on slow solution serialization (> 500ms)
 - (New) Add option to choose how frequently any solution serializer should execute: best_per_instance, best_per_alg_instance and all iterations.
 - (Change) Improve SolutionSerializer::export method
 - (Change) Refactored GRASP Algorithm: Use builder pattern, add option to provide a custom greedy function.
