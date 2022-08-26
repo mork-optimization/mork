@@ -41,8 +41,8 @@ class GRASPConstructiveMinimizingTest {
                 new TestMove(this.solution, 7, false)
         ));
         this.listManager = new TestGRASPListManager(this.moves);
-        this.gr = new GreedyRandomGRASPConstructive<>(listManager, TestMove::getValue, ()  -> 0, "Fixed{0}", false);
-        this.rg = new RandomGreedyGRASPConstructive<>(listManager, TestMove::getValue, ()  -> 0, "Fixed{0}", false);
+        this.gr = new GreedyRandomGRASPConstructive<>(false, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
+        this.rg = new RandomGreedyGRASPConstructive<>(false, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
 
     }
 
@@ -78,7 +78,7 @@ class GRASPConstructiveMinimizingTest {
         double last = moves.get(0).getValue();
         for (int i = 1; i < moves.size(); i++) {
             double current = moves.get(i).getValue();
-            assertTrue(DoubleComparator.isGreaterOrEqualsThan(current, last));
+            assertTrue(DoubleComparator.isGreaterOrEquals(current, last));
             last = current;
         }
     }

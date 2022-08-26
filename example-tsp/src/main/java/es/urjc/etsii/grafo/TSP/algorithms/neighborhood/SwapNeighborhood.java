@@ -3,20 +3,20 @@ package es.urjc.etsii.grafo.TSP.algorithms.neighborhood;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.solution.LazyMove;
+import es.urjc.etsii.grafo.solution.neighborhood.ExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
-import java.text.MessageFormat;
 import java.util.Objects;
 
 public class SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance> {
 
 
     @Override
-    public ExploreResult<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance> explore(TSPSolution solution) {
+    public ExploreResult<SwapMove, TSPSolution, TSPInstance> explore(TSPSolution solution) {
         int initialVertex = RandomManager.getRandom().nextInt(solution.getInstance().numberOfLocations());
-        return new ExploreResult<>(solution, new SwapMove(solution, initialVertex, initialVertex, (initialVertex + 1) % solution.getInstance().numberOfLocations()));
+        return ExploreResult.fromLazyMove(solution, new SwapMove(solution, initialVertex, initialVertex, (initialVertex + 1) % solution.getInstance().numberOfLocations()));
     }
 
     public static class SwapMove extends LazyMove<TSPSolution, TSPInstance> {
@@ -71,7 +71,7 @@ public class SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TS
 
         @Override
         public boolean improves() {
-            return DoubleComparator.isLessThan(this.getValue(), 0);
+            return DoubleComparator.isLess(this.getValue(), 0);
         }
 
         @Override

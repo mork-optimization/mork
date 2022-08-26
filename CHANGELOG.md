@@ -3,8 +3,10 @@
 - (New) ArrayUtil::max, ArrayUtil::min util methods for int, long and double primitives
 - (New) Warn on slow solution serialization (> 500ms)
 - (New) Add option to choose how frequently any solution serializer should execute: best_per_instance, best_per_alg_instance and all iterations.
-- (Change) Improve SolutionSerializer::export method
 - (Change) Refactored GRASP Algorithm: Use builder pattern, add option to provide a custom greedy function.
+- (Change) Refactored LocalSearch, enhance and simplify its behaviour.
+- (Change) Improve SolutionSerializer::export method
+- (Removed) IteratedImprover, MoveComparator, DefaultMoveComparator
 
 # v0.14
 - (New) Algorithms can be magically built from strings without user interaction, using the new autoconfig project. See AlgComponentService and AlgorithmBuilderUtil classes for more details.

@@ -73,7 +73,7 @@ public class NeighborhoodTest {
         verifyMoveOrder(neighborhood.explore(solution), 1,4,7,9,13,2,5,8,10,3,6,11,12);
     }
 
-    private void verifyMoveOrder(Neighborhood.ExploreResult<TestMove,TestSolution,TestInstance> exploreResult, double... expectedValues){
+    private void verifyMoveOrder(ExploreResult<TestMove,TestSolution,TestInstance> exploreResult, double... expectedValues){
         Stream<TestMove> moves = exploreResult.moves();
         double[] values = moves.mapToDouble(TestMove::getValue).toArray();
         Assertions.assertArrayEquals(expectedValues, values);

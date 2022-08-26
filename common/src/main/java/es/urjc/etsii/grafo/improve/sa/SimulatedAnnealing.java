@@ -59,7 +59,8 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
      * @param coolDownControl
      * @param cycleLength
      */
-    protected SimulatedAnnealing(AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength) {
+    protected SimulatedAnnealing(boolean ofMaximize, AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength) {
+        super(ofMaximize);
         this.acceptanceCriteria = acceptanceCriteria;
         this.neighborhood = ps;
         this.terminationCriteria = terminationCriteria;
@@ -96,7 +97,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
             }
 
             double newTemperature = coolDownControl.coolDown(best, neighborhood, currentTemperature, currentIteration);
-            assert DoubleComparator.isLessThan(newTemperature, currentTemperature) : String.format("Next Temp %s should be < than prev %s", newTemperature, currentTemperature);
+            assert DoubleComparator.isLess(newTemperature, currentTemperature) : String.format("Next Temp %s should be < than prev %s", newTemperature, currentTemperature);
             currentTemperature = newTemperature;
             currentIteration++;
             log.debug("Next iter {} with t: {}", currentIteration, currentTemperature);

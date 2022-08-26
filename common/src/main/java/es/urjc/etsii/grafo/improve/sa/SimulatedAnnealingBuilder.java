@@ -1,14 +1,14 @@
 package es.urjc.etsii.grafo.improve.sa;
 
+import es.urjc.etsii.grafo.improve.sa.cd.CoolDownControl;
+import es.urjc.etsii.grafo.improve.sa.cd.ExponentialCoolDown;
+import es.urjc.etsii.grafo.improve.sa.initialt.ConstantInitialTemperature;
+import es.urjc.etsii.grafo.improve.sa.initialt.InitialTemperatureCalculator;
 import es.urjc.etsii.grafo.improve.sa.initialt.MaxDifferenceInitialTemperature;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
-import es.urjc.etsii.grafo.improve.sa.cd.CoolDownControl;
-import es.urjc.etsii.grafo.improve.sa.cd.ExponentialCoolDown;
-import es.urjc.etsii.grafo.improve.sa.initialt.ConstantInitialTemperature;
-import es.urjc.etsii.grafo.improve.sa.initialt.InitialTemperatureCalculator;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
@@ -25,6 +25,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     private TerminationCriteria<M, S, I> terminationCriteria;
     private CoolDownControl<M, S, I> coolDownControl;
     private int cycleLength = 1;
+    private Boolean ofMaximize;
 
     /**
      * Use {@link SimulatedAnnealing#builder()} static method instead
@@ -161,11 +162,25 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     }
 
     /**
+     * Set maximizing or minimizing
+     *
+     * @param maximize true if maximizing, false if minimizing
+     * @return simulated annealing builder
+     */
+    public SimulatedAnnealingBuilder<M,S,I> withCycleLength(boolean maximize) {
+        this.ofMaximize = maximize;
+        return this;
+    }
+
+    /**
      * Build a SimulatedAnnealing using the provided config values. Default values are as follows:
      *
      * @return configured and ready to use simulated annealing algorithm
      */
     public SimulatedAnnealing<M,S,I> build() {
+        if(this.ofMaximize == null){
+            throw new IllegalArgumentException("Cannot create simulated annealing without specifying if it is a maximize or minimize problem, use withMaximize(boolean) method");
+        }
         if(this.neighborhood == null){
             throw new IllegalArgumentException("Cannot create simulated annealing without a neighborhood, use withNeighborhood method");
         }
@@ -184,7 +199,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
         if(acceptanceCriteria == null){
             throw new IllegalArgumentException("Acceptance criteria is not configured. Use either withAcceptanceCriteria or withDefaultAcceptanceCriteria to configure an acceptance criteria.");
         }
-        return new SimulatedAnnealing<>(acceptanceCriteria, neighborhood, initialTemperatureCalculator, terminationCriteria, coolDownControl, this.cycleLength);
+        return new SimulatedAnnealing<>(ofMaximize, acceptanceCriteria, neighborhood, initialTemperatureCalculator, terminationCriteria, coolDownControl, this.cycleLength);
     }
 
     /**

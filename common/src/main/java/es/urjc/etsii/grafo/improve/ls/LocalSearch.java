@@ -1,15 +1,19 @@
 package es.urjc.etsii.grafo.improve.ls;
 
-import es.urjc.etsii.grafo.improve.DefaultMoveComparator;
-import es.urjc.etsii.grafo.improve.IteratedImprover;
+import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
-import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solution.metrics.Metrics;
+import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
+import es.urjc.etsii.grafo.solver.services.Global;
+import es.urjc.etsii.grafo.util.DoubleComparator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.Optional;
+import java.util.function.BiPredicate;
+import java.util.function.ToDoubleFunction;
 
 /**
  * Local search procedures start from a given feasible solution and explore a determined neighborhood
@@ -25,99 +29,90 @@ import java.util.Optional;
  * @param <S> type of the problem solution
  * @param <I> type of the problem instance
  */
-public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends IteratedImprover<S, I> {
-    protected final Neighborhood<M, S, I>[] providers;
-    protected final MoveComparator<M, S, I> comparator;
-    protected final String lsName;
+public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends Improver<S, I> {
+
+    private static final Logger log = LoggerFactory.getLogger(LocalSearch.class);
+
+    private static final int WARN_LIMIT = 10_000;
+
+    protected final Neighborhood<M, S, I> neighborhood;
+    protected final BiPredicate<Double, Double> fIsBetter;
+    private final boolean fMaximize;
+    protected final ToDoubleFunction<M> f;
 
     /**
-     * Build a new local search
-     *
-     * @param comparator comparator to determine between two solutions which one is better
-     * @param lsName user defined name for the local search procedure
-     * @param ps neighborhood that generates the movements
+     * Create a new local search method using the given neighborhood
+     * @param neighborhood neighborhood to use
+     * @param ofMaximize true if the problem objective function is maximizing, false otherwise
+     * @param fMaximize true if we should maximize the values returned by function f, false otherwise
+     * @param f function used to get a double value from a move
      */
-    @SafeVarargs
-    public LocalSearch(MoveComparator<M, S, I> comparator, String lsName, Neighborhood<M, S, I>... ps) {
-        this.comparator = comparator;
-        this.providers = ps;
-        this.lsName = lsName.strip();
+    protected LocalSearch(boolean ofMaximize, Neighborhood<M, S, I> neighborhood, boolean fMaximize, ToDoubleFunction<M> f) {
+        super(ofMaximize);
+        this.neighborhood = neighborhood;
+        this.fMaximize = fMaximize;
+        this.fIsBetter = DoubleComparator.isBetterFunction(fMaximize);
+        this.f = f;
     }
 
     /**
-     * Build a new local search
-     *
-     * @param comparator comparator to determine between two solutions which one is better
-     * @param ps neighborhood that generates the movements
+     * Create a new local search method using the given neighborhood.
+     * Uses the method Move::getValue as the guiding function, with fMaximize = maximize.
+     * @param neighborhood neighborhood to use
+     * @param maximize true if the problem objective function is maximizing, false otherwise
      */
-    @SafeVarargs
-    public LocalSearch(MoveComparator<M, S, I> comparator, Neighborhood<M, S, I>... ps) {
-        this(comparator, "", ps);
-    }
-
-    /**
-     * Build a new local search
-     *
-     * @param lsName     Local Search name. If present, toString works as name{}. If not, Classname{neigh=[neigborhoods],comp=comparator}
-     * @param maximizing true if a movement with a bigger score is better
-     * @param ps         neighborhood that generates the movements
-     */
-    @SafeVarargs
-    public LocalSearch(boolean maximizing, String lsName, Neighborhood<M, S, I>... ps) {
-        this(new DefaultMoveComparator<>(maximizing), lsName, ps);
-    }
-
-    /**
-     * Build a new local search
-     *
-     * @param maximizing true if a movement with a bigger score is better
-     * @param ps         neighborhood that generates the movements
-     */
-    @SafeVarargs
-    public LocalSearch(boolean maximizing, Neighborhood<M, S, I>... ps) {
-        this(new DefaultMoveComparator<>(maximizing), "", ps);
+    protected LocalSearch(boolean maximize, Neighborhood<M, S, I> neighborhood) {
+        this(maximize, neighborhood, maximize, Move::getValue);
     }
 
     /**
      * {@inheritDoc}
      *
+     * Improves a model.Solution
+     * Iterates until we run out of time, or we cannot improve the current solution any further
+     */
+    @Override
+    protected S _improve(S solution) {
+        int rounds = 0;
+        while (!Global.stop() && iteration(solution)){
+            log.debug("Executing iteration {} for {}", rounds, this.getClass().getSimpleName());
+            rounds++;
+            if(rounds == WARN_LIMIT){
+                log.warn("Too many iterations, soft limit of {} passed, maybe {} is stuck in an infinite loop?", WARN_LIMIT, this.getClass().getSimpleName());
+            }
+        }
+        log.debug("Improvement {} ended after {} iterations.", this.getClass().getSimpleName(), rounds);
+        return solution;
+    }
+
+    /**
      * This procedure check if there are valid moves to neighbors solutions.
      * In that case, the move is executed. Otherwise, the procedure ends.
      */
-    @Override
     public boolean iteration(S solution) {
         // Get next move to execute
         var move = getMove(solution);
-
-        if (move.isEmpty()) {
-            return false; // There are no valid transactions, the procedure ends
+        if (move == null) {
+            return false; // There are no valid moves in the neighborhood, end local search
         }
 
-        // The move is executed and ask for another iteration
-        move.get().execute(solution);
+        // Execute move, save metric if improved, and ask for another iteration
+        double scoreBefore = solution.getScore();
+        move.execute(solution);
+        double scoreAfter = solution.getScore();
+        if(this.ofIsBetter.test(scoreAfter, scoreBefore)){
+            MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, scoreAfter);
+        }
         return true;
     }
 
-
-    /** {@inheritDoc} */
-    @Override
-    public String toString() {
-        if (this.lsName.isEmpty()) {
-            return (this.getClass().getSimpleName() + "{" +
-                    "neig=" + Arrays.toString(providers) +
-                    ", comp=" + comparator +
-                    '}').replace("LocalSearch", "LS").replace("Improvement", "");
-        } else {
-            return this.lsName;
-        }
-    }
 
     /**
      * Get next move to execute, different strategies are possible
      *
      * @param solution Solution
-     * @return Proposed move
+     * @return Proposed move, null if there are no candidate moves in the neighborhood
      */
-    public abstract Optional<M> getMove(S solution);
+    public abstract M getMove(S solution);
 
 }

@@ -41,8 +41,8 @@ class GRASPConstructiveMaximizingTest {
                 new TestMove(this.solution, 7, true)
         ));
         this.listManager = new TestGRASPListManager(this.moves);
-        this.gr = new GreedyRandomGRASPConstructive<>(listManager, TestMove::getValue, ()  -> 0, "Fixed{0}", true);
-        this.rg = new RandomGreedyGRASPConstructive<>(listManager, TestMove::getValue, ()  -> 0, "Fixed{0}", true);
+        this.gr = new GreedyRandomGRASPConstructive<>(true, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
+        this.rg = new RandomGreedyGRASPConstructive<>(true, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
 
     }
 

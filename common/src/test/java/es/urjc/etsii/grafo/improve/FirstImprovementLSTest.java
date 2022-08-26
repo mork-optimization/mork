@@ -20,12 +20,12 @@ public class FirstImprovementLSTest extends BaseLSTest {
         var mockNeighborhod = getNeighborhoodMock(maximizing, values, solution);
         var firstImprovementLS = new LocalSearchFirstImprovement<>(maximizing, mockNeighborhod);
         var chosenMove = firstImprovementLS.getMove(solution);
-        Assertions.assertTrue(chosenMove.isPresent());
-        double value = chosenMove.get().getValue();
+        Assertions.assertNotNull(chosenMove);
+        double value = chosenMove.getValue();
         if(maximizing){
-            Assertions.assertEquals(value, 0.5);
+            Assertions.assertEquals(0.5, value);
         } else {
-            Assertions.assertEquals(value, -95438);
+            Assertions.assertEquals(-95438, value);
         }
     }
 

@@ -3,10 +3,10 @@ package es.urjc.etsii.grafo.TSP.algorithms.neighborhood;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.solution.EagerMove;
+import es.urjc.etsii.grafo.solution.neighborhood.ExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
-import java.text.MessageFormat;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
@@ -22,7 +22,7 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
                 list.add(new InsertMove(solution, i, j));
             }
         }
-        return new ExploreResult<>(list);
+        return ExploreResult.fromList(list);
     }
 
     public static class InsertMove extends EagerMove<TSPSolution, TSPInstance> {
@@ -71,7 +71,7 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
 
         @Override
         public boolean improves() {
-            return DoubleComparator.isLessThan(this.getValue(), 0);
+            return DoubleComparator.isLess(this.getValue(), 0);
         }
 
 

@@ -191,9 +191,9 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
             return true;
         }
         if(Mork.isMaximizing()){
-            return DoubleComparator.isGreaterThan(candidate.solution().getScore(), best.solution().getScore());
+            return DoubleComparator.isGreater(candidate.solution().getScore(), best.solution().getScore());
         } else {
-            return DoubleComparator.isLessThan(candidate.solution().getScore(), best.solution().getScore());
+            return DoubleComparator.isLess(candidate.solution().getScore(), best.solution().getScore());
         }
     }
 

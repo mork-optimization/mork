@@ -13,7 +13,6 @@ import java.util.List;
 public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {
 
     private final List<Improver<S,I>> improvers;
-    private final boolean maximize;
 
     /**
      * <p>Constructor for VND.</p>
@@ -22,8 +21,8 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
      * @param maximize a boolean.
      */
     public VND(List<Improver<S, I>> improvers, boolean maximize) {
+        super(maximize);
         this.improvers = improvers;
-        this.maximize = maximize;
     }
 
     /** {@inheritDoc} */
@@ -38,8 +37,8 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
                 // Why repeat when improver stops when
                 // it cannot improve the current solution?
                 currentLS++;
-            } else if (this.maximize) {
-                if (DoubleComparator.isGreaterOrEqualsThan(prev, solution.getScore())) {
+            } else if (this.ofMaximize) {
+                if (DoubleComparator.isGreaterOrEquals(prev, solution.getScore())) {
                     // prev >= current, no improvement
                     currentLS++;
                 } else {

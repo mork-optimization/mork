@@ -3,12 +3,13 @@ package es.urjc.etsii.grafo.autoconfig.fakecomponents;
 import es.urjc.etsii.grafo.create.Reconstructive;
 import es.urjc.etsii.grafo.create.grasp.AlphaProvider;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
-import es.urjc.etsii.grafo.improve.DefaultMoveComparator;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
-import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.random.RandomManager;
+
+import java.util.function.BiPredicate;
 
 import static es.urjc.etsii.grafo.util.DoubleComparator.*;
 
@@ -25,7 +26,7 @@ public class FakeGRASPConstructive<M extends Move<S,I>, S extends Solution<S,I>,
      */
     protected final GRASPListManager<M, S, I> candidateListManager;
     private final AlphaProvider alphaProvider;
-    private final MoveComparator<M, S, I> comparator;
+    private final BiPredicate<Double, Double> isBetter;
 
     /**
      * GRASP Constructor, mantains a fixed alpha value
@@ -38,8 +39,8 @@ public class FakeGRASPConstructive<M extends Move<S,I>, S extends Solution<S,I>,
      */
     public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double alpha, boolean maximizing) {
         this.candidateListManager = candidateListManager;
-        this.comparator = new DefaultMoveComparator<>(maximizing);
-        assert isGreaterOrEqualsThan(alpha, 0) && isLessOrEquals(alpha, 1);
+        this.isBetter = DoubleComparator.isBetterFunction(maximizing);
+        assert isGreaterOrEquals(alpha, 0) && isLessOrEquals(alpha, 1);
 
         randomType = String.format("FIXED{a=%.2f}", alpha);
         alphaProvider = () -> alpha;
@@ -51,32 +52,18 @@ public class FakeGRASPConstructive<M extends Move<S,I>, S extends Solution<S,I>,
      *
      * @param minAlpha   minimum value for the random alpha
      * @param maxAlpha   maximum value for the random alpha
-     * @param comparator Comparator used when evaluating different moves in the candidate list manager
-     *                   //  TODO move to candidateListManager...
-     * @param candidateListManager Candidate List Manager
-     */
-    public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, MoveComparator<M, S, I> comparator) {
-        this.candidateListManager = candidateListManager;
-        this.comparator = comparator;
-        assert isGreaterOrEqualsThan(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
-        assert isGreaterOrEqualsThan(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
-        assert isGreaterThan(maxAlpha, minAlpha);
-
-        alphaProvider = () -> RandomManager.getRandom().nextDouble() * (maxAlpha - minAlpha) + minAlpha;
-        randomType = String.format("RANGE{min=%.2f, max=%.2f}", minAlpha, maxAlpha);
-    }
-
-    /**
-     * GRASP Constructor, generates a random alpha in each construction
-     * Alpha Takes values between [0,1] being 1 → totally random, 0 → full greedy.
-     *
-     * @param minAlpha   minimum value for the random alpha
-     * @param maxAlpha   maximum value for the random alpha
-     * @param maximizing True if maximizing, false if minimizing
+     * @param maximizing true if maximizing, false otherwise
      * @param candidateListManager Candidate List Manager
      */
     public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, boolean maximizing) {
-        this(candidateListManager, minAlpha, maxAlpha, new DefaultMoveComparator<>(maximizing));
+        this.candidateListManager = candidateListManager;
+        this.isBetter = DoubleComparator.isBetterFunction(maximizing);
+        assert isGreaterOrEquals(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
+        assert isGreaterOrEquals(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
+        assert isGreater(maxAlpha, minAlpha);
+
+        alphaProvider = () -> RandomManager.getRandom().nextDouble() * (maxAlpha - minAlpha) + minAlpha;
+        randomType = String.format("RANGE{min=%.2f, max=%.2f}", minAlpha, maxAlpha);
     }
 
     /**

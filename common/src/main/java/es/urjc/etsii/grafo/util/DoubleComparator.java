@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.util;
 
+import java.util.function.BiPredicate;
+
 /**
  * Helper methods to perform comparisons between doubles (or floats)
  * DANGER: DoubleComparator VIOLATES COMPARISON CONTRACT, DO NOT USE IN SORTS
@@ -153,7 +155,7 @@ public class DoubleComparator {
      * @param d2 second double
      * @return true if d1 &gt; d2, false otherwise
      */
-    public static boolean isGreaterThan(double d1, double d2){
+    public static boolean isGreater(double d1, double d2){
         return isPositive(d1 - d2);
     }
 
@@ -164,7 +166,7 @@ public class DoubleComparator {
      * @param d2 second double
      * @return true if d1 &gt;= d2, false otherwise
      */
-    public static boolean isGreaterOrEqualsThan(double d1, double d2){
+    public static boolean isGreaterOrEquals(double d1, double d2){
         return isPositiveOrZero(d1 - d2);
     }
 
@@ -175,7 +177,7 @@ public class DoubleComparator {
      * @param d2 second double
      * @return true if d1 &gt; d2, false otherwise
      */
-    public static boolean isLessThan(double d1, double d2){
+    public static boolean isLess(double d1, double d2){
         return isNegative(d1 - d2);
     }
 
@@ -190,4 +192,21 @@ public class DoubleComparator {
         return isNegativeOrZero(d1 - d2);
     }
 
+    /**
+     * Returns a function reference that can evaluate for any two given numbers if the first one is strictly better than the second
+     * @param maximize true if a maximization problem, false otherwise
+     * @return BiPredicate
+     */
+    public static BiPredicate<Double, Double> isBetterFunction(boolean maximize){
+        return maximize? DoubleComparator::isGreater : DoubleComparator::isLess;
+    }
+
+    /**
+     * Returns a function reference that can evaluate for any two given numbers if the first one is better than or equal to the second
+     * @param maximize true if a maximization problem, false otherwise
+     * @return BiPredicate
+     */
+    public static BiPredicate<Double, Double> isBetterOrEqualsFunction(boolean maximize){
+        return maximize? DoubleComparator::isGreaterOrEquals : DoubleComparator::isLessOrEquals;
+    }
 }

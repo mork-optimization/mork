@@ -3,8 +3,13 @@ package es.urjc.etsii.grafo.improve;
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solution.metrics.Metrics;
+import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
+import es.urjc.etsii.grafo.util.DoubleComparator;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.logging.Logger;
+import java.util.function.BiPredicate;
 
 /**
  * Any method that improves a given solution is called an Improver. The classical example, but not limited to, is a local search.
@@ -15,7 +20,15 @@ import java.util.logging.Logger;
 @AlgorithmComponent
 public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
-    private static final Logger log = Logger.getLogger(Improver.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(Improver.class);
+
+    protected final boolean ofMaximize;
+    protected final BiPredicate<Double, Double> ofIsBetter;
+
+    protected Improver(boolean ofMaximize) {
+        this.ofMaximize = ofMaximize;
+        this.ofIsBetter = DoubleComparator.isBetterFunction(ofMaximize);
+    }
 
     /**
      * Improves a model.Solution
@@ -25,13 +38,26 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
      * @return Improved s
      */
     public S improve(S solution){
+        // Before
         long startTime = System.nanoTime();
         double initialScore = solution.getScore();
+
+        // Improve
         S improvedSolution = this._improve(solution);
+
+        // After
         long endTime = System.nanoTime();
-        long ellapedMillis = (endTime - startTime) / 1_000_000;
+        long elapsedMillis = (endTime - startTime) / 1_000_000;
         double endScore = improvedSolution.getScore();
-        log.fine(String.format("Done in %s: %s --> %s", ellapedMillis, initialScore, endScore));
+
+        // Log, verify and store
+        log.debug("Done in {}: {} --> {}", elapsedMillis, initialScore, endScore);
+        if(ofIsBetter.test(initialScore, endScore)){
+            throw new IllegalStateException(String.format("Score has worsened after executing an improvement method: %s --> %s", initialScore, endScore));
+        }
+        if(ofIsBetter.test(endScore, initialScore)){
+            MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, endScore);
+        }
         return improvedSolution;
     }
 
@@ -53,6 +79,10 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
      * @param <I> Instance class
      */
     private static class NullImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {
+        private NullImprover() {
+            super(false); // It does not matter as it does nothing
+        }
+
         @Override
         protected S _improve(S solution) {
             return solution;

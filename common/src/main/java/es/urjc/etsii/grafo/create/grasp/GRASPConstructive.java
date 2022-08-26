@@ -9,7 +9,7 @@ import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.List;
 import java.util.function.BiPredicate;
-import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
 
 public abstract class GRASPConstructive<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends Reconstructive<S, I> {
 
@@ -17,23 +17,19 @@ public abstract class GRASPConstructive<M extends Move<S, I>, S extends Solution
     protected final GRASPListManager<M, S, I> candidateListManager;
     protected final AlphaProvider alphaProvider;
     protected final boolean maximizing;
-    protected final Function<M, Double> greedyFunction;
+    protected final ToDoubleFunction<M> greedyFunction;
     // A move is better than another one when its greedy function is greater if maximizing or less than if minimizing
     protected final BiPredicate<Double, Double> isBetter;
     protected final BiPredicate<Double, Double> isBetterOrEquals;
 
-    protected GRASPConstructive(GRASPListManager<M, S, I> candidateListManager, Function<M, Double> greedyFunction, AlphaProvider provider, String alphaType, Boolean maximize) {
+    protected GRASPConstructive(boolean maximize, GRASPListManager<M, S, I> candidateListManager, ToDoubleFunction<M> greedyFunction, AlphaProvider provider, String alphaType) {
         this.candidateListManager = candidateListManager;
         this.greedyFunction = greedyFunction;
         this.alphaProvider = provider;
         this.alphaType = alphaType;
         this.maximizing = maximize;
-        this.isBetter = this.maximizing ?
-                DoubleComparator::isGreaterThan :
-                DoubleComparator::isLessThan;
-        this.isBetterOrEquals = this.maximizing ?
-                DoubleComparator::isGreaterOrEqualsThan :
-                DoubleComparator::isLessOrEquals;
+        this.isBetter = DoubleComparator.isBetterFunction(this.maximizing);
+        this.isBetterOrEquals = DoubleComparator.isBetterOrEqualsFunction(this.maximizing);
     }
 
     /**

@@ -8,7 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
 
 /**
  * GRASP Constructive method using the greedy random strategy. Use {@link GraspBuilder} to create instances of GRASP constructives, do not use this class directly.
@@ -21,8 +21,8 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     private static final Logger log = LoggerFactory.getLogger(GreedyRandomGRASPConstructive.class);
 
-    protected GreedyRandomGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, Function<M, Double> greedyFunction, AlphaProvider provider, String alphaType, Boolean maximize) {
-        super(candidateListManager, greedyFunction, provider, alphaType, maximize);
+    protected GreedyRandomGRASPConstructive(boolean maximize, GRASPListManager<M, S, I> candidateListManager, ToDoubleFunction<M> greedyFunction, AlphaProvider provider, String alphaType) {
+        super(maximize, candidateListManager, greedyFunction, provider, alphaType);
     }
 
     /**
@@ -46,7 +46,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
 
         for (int i = 0, clSize = cl.size(); i < clSize; i++) {
             M move = cl.get(i);
-            double value = greedyFunction.apply(move);
+            double value = greedyFunction.applyAsDouble(move);
             if (isBetterOrEquals.test(value, limit)) {
                 validIndexes[next++] = i;
             }
@@ -61,7 +61,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
         double min = Double.MAX_VALUE;
         double max = -Double.MAX_VALUE;
         for (M m : cl) {
-            double value = greedyFunction.apply(m);
+            double value = greedyFunction.applyAsDouble(m);
             if (value < min) {
                 min = value;
             }

@@ -68,6 +68,7 @@ public final class MetricsManager {
      * Disable metrics
      */
     public static void disableMetrics(){
+        localMetrics.remove();
         enabled = false;
     }
 

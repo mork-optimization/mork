@@ -2,12 +2,12 @@ package es.urjc.etsii.grafo.improve.ls;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
-import es.urjc.etsii.grafo.solution.MoveComparator;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solution.neighborhood.ListExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
+import es.urjc.etsii.grafo.util.CollectionUtil;
 
-import java.util.Optional;
-import java.util.stream.Stream;
+import java.util.function.ToDoubleFunction;
 
 /**
  * Local search procedures start from a given feasible solution and explore a determined neighborhood
@@ -22,37 +22,24 @@ import java.util.stream.Stream;
 public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution<S,I>, I extends Instance> extends LocalSearch<M, S, I> {
 
     /**
-     * Build a new local search
-     *
-     * @param comparator comparator to determine between two solutions which one is better
-     * @param ps neighborhood that generates the movements
+     * Create a new local search method using the given neighborhood.
+     * Uses the method Move::getValue as the guiding function, with fMaximize = maximize.
+     * @param neighborhood neighborhood to use
+     * @param maximize true if the problem objective function is maximizing, false otherwise
      */
-    @SafeVarargs
-    public LocalSearchBestImprovement(MoveComparator<M, S, I> comparator, Neighborhood<M, S, I>... ps) {
-        super(comparator, ps);
+    public LocalSearchBestImprovement(boolean maximize, Neighborhood<M, S, I> neighborhood) {
+        super(maximize, neighborhood);
     }
 
     /**
-     * Build a new local search
-     *
-     * @param maximizing true if a movement with a bigger score is better
-     * @param ps         neighborhood that generates the movements
+     * Create a new local search method using the given neighborhood
+     * @param neighborhood neighborhood to use
+     * @param ofMaximize true if the problem objective function is maximizing, false otherwise
+     * @param fMaximize true if we should maximize the values returned by function f, false otherwise
+     * @param f function used to get a double value from a move
      */
-    @SafeVarargs
-    public LocalSearchBestImprovement(boolean maximizing, Neighborhood<M, S, I>... ps) {
-        super(maximizing, ps);
-    }
-
-    /**
-     * Build a new local search
-     *
-     * @param lsName     Local Search name. If present, toString works as name{}. If not, Classname{neigh=[neigborhoods],comp=comparator}
-     * @param maximizing true if a movement with a bigger score is better
-     * @param ps         neighborhood that generates the movements
-     */
-    @SafeVarargs
-    public LocalSearchBestImprovement(boolean maximizing, String lsName, Neighborhood<M, S, I>... ps) {
-        super(maximizing, lsName, ps);
+    protected LocalSearchBestImprovement(boolean ofMaximize, Neighborhood<M, S, I> neighborhood, boolean fMaximize, ToDoubleFunction<M> f) {
+        super(ofMaximize, neighborhood, fMaximize, f);
     }
 
     /**
@@ -61,29 +48,17 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
      * Get next move to execute.
      */
     @Override
-    public Optional<M> getMove(S solution) {
-        M move = null;
-        for (var provider : this.providers) {
-            var expRes = provider.explore(solution);
-            var _move = getBest(expRes.moves());
-            if (_move.isEmpty()) continue;
-            if (move == null) {
-                move = _move.get();
-            } else {
-                move = this.comparator.getBest(move, _move.get());
-            }
+    public M getMove(S solution) {
+        var expRes = neighborhood.explore(solution);
+        if(expRes instanceof ListExploreResult<M,S,I> list){
+            return CollectionUtil.getBest(list.moveList(), f, fIsBetter);
+        } else {
+            var move = expRes.moves().filter(Move::improves).reduce((m1, m2) -> {
+                double score1 = this.f.applyAsDouble(m1);
+                double score2 = this.f.applyAsDouble(m2);
+                return fIsBetter.test(score2, score1) ? m2 : m1;
+            });
+            return move.orElse(null);
         }
-        return move != null && move.improves() ? Optional.of(move) : Optional.empty();
     }
-
-    /**
-     * Get best move to execute.
-     *
-     * @param stream a sequence of possible moves
-     * @return the best move of the stream
-     */
-    private Optional<M> getBest(Stream<M> stream) {
-        return stream.reduce((a, b) -> comparator.getBest(b, a));
-    }
-
 }

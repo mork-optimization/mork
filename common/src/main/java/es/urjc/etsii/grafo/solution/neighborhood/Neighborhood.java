@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.solution.neighborhood;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solution.LazyMove;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.random.RandomManager;
@@ -19,86 +18,6 @@ import java.util.stream.StreamSupport;
 public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> {
 
     public static final int UNKNOWN_SIZE = Integer.MAX_VALUE; // Consistency with Spliterator API
-
-    /**
-     * <p>
-     * Optionally calculate how big the neighborhood is for a given solution.
-     * It does not need to be an exact value, but it should be an upper bound.
-     * It is perfectly valid to estimate the size to 100 and then returning only 90 elements from the neighborhood,
-     * but it is not ok to estimate size to 10 and then returning 100 elements.
-     * Internally will be used to correctly size data structures and try to improve performance.
-     * Implementation  should have O(1) or O(log n) complexity, if the size can be calculated but takes O(n) or longer, return {@link Neighborhood#UNKNOWN_SIZE} instead.
-     * </p>
-     *
-     * @param moves stream of moves
-     * @param size  neighborhood size if known, {@link Neighborhood#UNKNOWN_SIZE} if not
-     * @param <M>   Move type
-     * @param <S>   Solution type
-     * @param <I>   Instance type
-     */
-    public record ExploreResult<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance>(Stream<M> moves,
-                                                                                                    int size) {
-
-        /**
-         * Empty explore results
-         */
-        public ExploreResult(){
-            this(Stream.empty(), 0);
-        }
-
-        /**
-         * Unknown size constructor from stream
-         *
-         * @param moves move stream
-         */
-        public ExploreResult(Stream<M> moves) {
-            this(moves, UNKNOWN_SIZE);
-        }
-
-        /**
-         * Explore result from a LazyMove, unknown neighborhood size
-         *
-         * @param solution Solution used to iterate the moves
-         * @param move move list
-         */
-        public ExploreResult(S solution, LazyMove<S, I> move) {
-            this(solution, move, UNKNOWN_SIZE);
-        }
-
-        /**
-         * Explore result from a LazyMove, when the neighborhood size is known.
-         *
-         * @param move move list
-         * @param size upperbound neighborhood size for the current solution
-         */
-        public ExploreResult(S solution, LazyMove<S, I> move, int size) {
-            // TODO: review ugly casting
-            this((Stream<M>) Stream.iterate(move, Objects::nonNull, (LazyMove<S, I> m) -> m.next(solution)), size);
-        }
-
-        /**
-         * Explore result from a list of moves (eager exploration)
-         *
-         * @param moves move list
-         */
-        public ExploreResult(List<M> moves) {
-            this(moves.stream(), moves.size());
-        }
-
-        /**
-         * Optionally calculate how big the neighborhood is for a given solution.
-         * It does not need to be an exact value, but it should be an upper bound.
-         * It is perfectly valid to estimate the size to 100 and then returning only 90 elements from the neighborhood,
-         * but it is not ok to estimate size to 10 and then returning 100 elements.
-         * Internally will be used to correctly size data structures and try to improve performance.
-         * Implementation  should have O(1) or O(log n) complexity, if the size can be calculated but takes O(n) or longer, return {@link Neighborhood#UNKNOWN_SIZE} instead.
-         *
-         * @return true if the neighborhood has a size estimation, UNKNOWN_SIZE if the size is unknown or cannot be estimated.
-         */
-        public boolean sized() {
-            return this.size != UNKNOWN_SIZE;
-        }
-    }
 
     /**
      * Build an exhaustive stream that allows iterating the whole neighborhood
@@ -234,7 +153,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
             for (var neighborhood : neighborhoods) {
                 var partialResult = neighborhood.explore(solution);
                 sized &= partialResult.sized();
-                totalSize += partialResult.size;
+                totalSize += partialResult.size();
             }
             return sized ? totalSize : UNKNOWN_SIZE;
         }
@@ -316,11 +235,11 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
             for (var neighborhood : this.neighborhoods) {
                 var partialResult = neighborhood.explore(solution);
                 sized &= partialResult.sized();
-                totalSize += partialResult.size;
+                totalSize += partialResult.size();
                 if (stream == null) {
-                    stream = partialResult.moves;
+                    stream = partialResult.moves();
                 } else {
-                    stream = Stream.concat(stream, partialResult.moves);
+                    stream = Stream.concat(stream, partialResult.moves());
                 }
             }
 

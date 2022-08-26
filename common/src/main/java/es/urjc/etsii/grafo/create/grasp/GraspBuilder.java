@@ -5,7 +5,7 @@ import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
-import java.util.function.Function;
+import java.util.function.ToDoubleFunction;
 
 import static es.urjc.etsii.grafo.util.DoubleComparator.*;
 
@@ -18,7 +18,7 @@ import static es.urjc.etsii.grafo.util.DoubleComparator.*;
  */
 public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> {
     private Boolean greedyRandom;
-    private Function<M, Double> greedyFunction = M::getValue;
+    private ToDoubleFunction<M> greedyFunction = M::getValue;
     private Boolean maximizing;
     private AlphaProvider alphaProvider;
     private String alphaType;
@@ -53,7 +53,7 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
      *                       Remember to call {@link GraspBuilder#withMaximizing(boolean)} if the greedy function does not follow the same criteria as the objective function.
      * @return same builder with its config changed
      */
-    public GraspBuilder<M, S, I> withGreedyFunction(Function<M, Double> greedyFunction) {
+    public GraspBuilder<M, S, I> withGreedyFunction(ToDoubleFunction<M> greedyFunction) {
         this.greedyFunction = greedyFunction;
         return this;
     }
@@ -61,7 +61,7 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
     /**
      * Should we maximize or minimize the score returned by the moves?
      *
-     * @param maximizing true if the greedyFunction, or the objective function of the problem if not changed using {@link GraspBuilder#withGreedyFunction(Function)}, should maximize its score, false if minimizing
+     * @param maximizing true if the greedyFunction, or the objective function of the problem if not changed using {@link GraspBuilder#withGreedyFunction(ToDoubleFunction)} )}, should maximize its score, false if minimizing
      * @return same builder with its config changed
      */
     public GraspBuilder<M, S, I> withMaximizing(boolean maximizing) {
@@ -76,7 +76,7 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
      * @return same builder with its config changed
      */
     public GraspBuilder<M, S, I> withAlphaValue(double alpha) {
-        if (isNegative(alpha) || isGreaterThan(alpha, 1)) {
+        if (isNegative(alpha) || isGreater(alpha, 1)) {
             throw new IllegalArgumentException("Alpha value must be in range [0,1]");
         }
         this.alphaType = String.format("FIXED{a=%.2f}", alpha);
@@ -101,10 +101,10 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
      * @return same builder with its config changed
      */
     public GraspBuilder<M, S, I> withAlphaInRange(double alphaMin, double alphaMax) {
-        if (!isLessThan(alphaMin, alphaMax)) {
+        if (!isLess(alphaMin, alphaMax)) {
             throw new IllegalArgumentException("when using an alpha range min must be strictly than max");
         }
-        if (isNegative(alphaMin) || isNegative(alphaMax) || isGreaterThan(alphaMin, 1) || isGreaterThan(alphaMax, 1)) {
+        if (isNegative(alphaMin) || isNegative(alphaMax) || isGreater(alphaMin, 1) || isGreater(alphaMax, 1)) {
             throw new IllegalArgumentException("Both min and max alpha values must be in range [0,1]");
         }
         this.alphaType = String.format("RANGE{min=%.2f, max=%.2f}", alphaMin, alphaMax);
@@ -146,9 +146,9 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
     public GRASPConstructive<M, S, I> build() {
         validate();
         if (this.greedyRandom) {
-            return new GreedyRandomGRASPConstructive<>(this.candidateListManager, this.greedyFunction, this.alphaProvider, this.alphaType, this.maximizing);
+            return new GreedyRandomGRASPConstructive<>(this.maximizing, this.candidateListManager, this.greedyFunction, this.alphaProvider, this.alphaType);
         } else {
-            return new RandomGreedyGRASPConstructive<>(this.candidateListManager, this.greedyFunction, this.alphaProvider, this.alphaType, this.maximizing);
+            return new RandomGreedyGRASPConstructive<>(this.maximizing, this.candidateListManager, this.greedyFunction, this.alphaProvider, this.alphaType);
         }
     }
 

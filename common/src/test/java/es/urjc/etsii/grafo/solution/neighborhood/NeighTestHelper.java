@@ -5,7 +5,6 @@ import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 
 import java.util.Arrays;
-import java.util.stream.Stream;
 
 public class NeighTestHelper {
 
@@ -13,7 +12,7 @@ public class NeighTestHelper {
         return new Neighborhood<>() {
             @Override
             public ExploreResult<TestMove, TestSolution, TestInstance> explore(TestSolution solution) {
-                return new ExploreResult<>(Arrays.asList(moves));
+                return ExploreResult.fromList(Arrays.asList(moves));
             }
             @Override
             public String toString() {
@@ -26,7 +25,7 @@ public class NeighTestHelper {
         return new Neighborhood<>() {
             @Override
             public ExploreResult<TestMove, TestSolution, TestInstance> explore(TestSolution solution) {
-                return new ExploreResult<>(Arrays.stream(values).mapToObj(v -> new TestMove(solution, v)));
+                return ExploreResult.fromStream(Arrays.stream(values).mapToObj(v -> new TestMove(solution, v)), values.length);
             }
             @Override
             public String toString() {

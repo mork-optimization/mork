@@ -21,8 +21,8 @@ public class BestImprovementLSTest extends BaseLSTest {
         var mockNeighborhod = getNeighborhoodMock(maximizing, values, solution);
         var firstImprovementLS = new LocalSearchBestImprovement<>(maximizing, mockNeighborhod);
         var chosenMove = firstImprovementLS.getMove(solution);
-        Assertions.assertTrue(chosenMove.isPresent());
-        double value = chosenMove.get().getValue();
+        Assertions.assertNotNull(chosenMove);
+        double value = chosenMove.getValue();
         if(maximizing){
             Assertions.assertEquals(value, ArrayUtil.max(values));
         } else {

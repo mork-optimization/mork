@@ -66,7 +66,7 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
      */
     @Override
     protected boolean _isBetterThan(TSPSolution other) {
-        return DoubleComparator.isLessThan(this.routeLength, other.routeLength);
+        return DoubleComparator.isLess(this.routeLength, other.routeLength);
     }
 
     /**
