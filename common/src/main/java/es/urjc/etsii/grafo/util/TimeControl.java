@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.util;
 
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -40,10 +39,7 @@ public class TimeControl {
      * Remove time restrictions for the current thread
      */
     public static void remove(){
-        var t = timeStatus.get();
-        t.setStart(0);
-        t.setDuration(0);
-        t.setEnabled(false);
+        timeStatus.remove();
     }
 
     /**
@@ -85,12 +81,6 @@ public class TimeControl {
         private long duration;
 
         public TimeStatus(){}
-        
-        public TimeStatus(boolean enabled, long start, long duration) {
-            this.enabled = enabled;
-            this.start = start;
-            this.duration = duration;
-        }
 
         public boolean enabled() {
             return enabled;
@@ -114,29 +104,6 @@ public class TimeControl {
 
         public void setDuration(long duration) {
             this.duration = duration;
-        }
-
-        @Override
-        public boolean equals(Object obj) {
-            if (obj == this) return true;
-            if (obj == null || obj.getClass() != this.getClass()) return false;
-            var that = (TimeStatus) obj;
-            return this.enabled == that.enabled &&
-                    this.start == that.start &&
-                    this.duration == that.duration;
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(enabled, start, duration);
-        }
-
-        @Override
-        public String toString() {
-            return "TimeStatus[" +
-                    "enabled=" + enabled + ", " +
-                    "start=" + start + ", " +
-                    "duration=" + duration + ']';
         }
     }
 }
