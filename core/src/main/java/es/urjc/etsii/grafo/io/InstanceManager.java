@@ -1,6 +1,6 @@
 package es.urjc.etsii.grafo.io;
 
-import es.urjc.etsii.grafo.solver.configuration.InstanceConfiguration;
+import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.util.IOUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

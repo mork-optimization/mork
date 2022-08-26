@@ -1,6 +1,6 @@
 package es.urjc.etsii.grafo.solver;
 
-import es.urjc.etsii.grafo.solver.services.AbstractOrchestrator;
+import es.urjc.etsii.grafo.services.AbstractOrchestrator;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;

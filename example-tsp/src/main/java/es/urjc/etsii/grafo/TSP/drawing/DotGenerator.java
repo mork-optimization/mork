@@ -1,9 +1,9 @@
 package es.urjc.etsii.grafo.TSP.drawing;
 
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
-import es.urjc.etsii.grafo.solver.services.events.AbstractEventStorage;
-import es.urjc.etsii.grafo.solver.services.events.MemoryEventStorage;
-import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.events.AbstractEventStorage;
+import es.urjc.etsii.grafo.events.MemoryEventStorage;
+import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import guru.nidi.graphviz.engine.Format;
 import guru.nidi.graphviz.engine.Graphviz;
 import org.springframework.web.bind.annotation.GetMapping;

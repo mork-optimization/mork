@@ -1,10 +1,10 @@
 package es.urjc.etsii.grafo.TSP;
 
+import es.urjc.etsii.grafo.events.AbstractEventStorage;
+import es.urjc.etsii.grafo.executors.Executor;
+import es.urjc.etsii.grafo.services.AbstractOrchestrator;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.solver.RunOnStart;
-import es.urjc.etsii.grafo.solver.executors.Executor;
-import es.urjc.etsii.grafo.solver.services.AbstractOrchestrator;
-import es.urjc.etsii.grafo.solver.services.events.AbstractEventStorage;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;

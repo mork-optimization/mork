@@ -3,12 +3,12 @@ package es.urjc.etsii.grafo.io.serializers.csv;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
+import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
-import es.urjc.etsii.grafo.solver.services.reference.ReferenceResult;
-import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;

@@ -8,8 +8,8 @@ import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Solution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.create.grasp.GraspBuilder;
+import es.urjc.etsii.grafo.experiment.AbstractExperiment;
 import es.urjc.etsii.grafo.solver.Mork;
-import es.urjc.etsii.grafo.solver.services.AbstractExperiment;
 
 import java.util.ArrayList;
 import java.util.List;

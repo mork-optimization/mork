@@ -121,25 +121,11 @@
             <version>5.2.2</version>
         </dependency>
 
-        <!-- Best Java cache? -->
-        <dependency>
-            <groupId>com.github.ben-manes.caffeine</groupId>
-            <artifactId>caffeine</artifactId>
-            <version>3.1.1</version>
-        </dependency>
-
         <!-- Telegram integration -->
         <dependency>
             <groupId>org.telegram</groupId>
             <artifactId>telegrambots</artifactId>
             <version>6.0.1</version>
-        </dependency>
-
-        <!-- Call other languages from Java -->
-        <dependency>
-            <groupId>org.graalvm.sdk</groupId>
-            <artifactId>graal-sdk</artifactId>
-            <version>${graalvm.version}</version>
         </dependency>
 
     </dependencies>

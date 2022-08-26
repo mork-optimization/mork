@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.io.serializers;
 
-import es.urjc.etsii.grafo.solver.services.events.AbstractEventStorage;
-import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.events.AbstractEventStorage;
+import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.testutil.TestHelperFactory;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSerializerConfigUtils;

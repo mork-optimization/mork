@@ -1,6 +1,6 @@
 package es.urjc.etsii.grafo.io;
 
-import es.urjc.etsii.grafo.solver.configuration.InstanceConfiguration;
+import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;

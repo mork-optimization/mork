@@ -1,13 +1,13 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
+import es.urjc.etsii.grafo.config.SolverConfig;
+import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.Mork;
-import es.urjc.etsii.grafo.solver.SolverConfig;
-import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
-import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.util.BenchmarkUtil;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
 import org.apache.poi.ss.util.AreaReference;

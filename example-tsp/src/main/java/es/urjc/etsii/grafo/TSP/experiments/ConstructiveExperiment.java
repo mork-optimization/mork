@@ -5,7 +5,7 @@ import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
-import es.urjc.etsii.grafo.solver.services.AbstractExperiment;
+import es.urjc.etsii.grafo.experiment.AbstractExperiment;
 
 import java.util.ArrayList;
 import java.util.List;

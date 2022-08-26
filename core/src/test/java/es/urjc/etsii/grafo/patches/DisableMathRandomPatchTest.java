@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.patches;
 
+import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.exception.InvalidRandomException;
 import org.junit.jupiter.api.*;
 

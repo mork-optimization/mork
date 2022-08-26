@@ -14,7 +14,7 @@ import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.shake.Shake;
-import es.urjc.etsii.grafo.solver.services.ClassUtil;
+import es.urjc.etsii.grafo.util.ClassUtil;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;

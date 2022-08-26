@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.solver;
 
-import es.urjc.etsii.grafo.solver.services.BannerProvider;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
+import es.urjc.etsii.grafo.services.BannerProvider;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;

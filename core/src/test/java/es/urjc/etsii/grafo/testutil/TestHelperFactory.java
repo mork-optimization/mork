@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.testutil;
 
+import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
+import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
+import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
-import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingEndedEvent;
-import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
-import es.urjc.etsii.grafo.solver.services.reference.ReferenceResult;
-import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import org.mockito.Mockito;
 
 import java.util.ArrayList;

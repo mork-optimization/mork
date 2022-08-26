@@ -2,8 +2,8 @@ package es.urjc.etsii.grafo.TSP;
 
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
+import es.urjc.etsii.grafo.services.Orchestrator;
 import es.urjc.etsii.grafo.solver.Mork;
-import es.urjc.etsii.grafo.solver.services.Orchestrator;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;

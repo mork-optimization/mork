@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.io.serializers;
 
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.serializers.csv.CSVConfig;
 import es.urjc.etsii.grafo.io.serializers.csv.CSVSerializer;
-import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;

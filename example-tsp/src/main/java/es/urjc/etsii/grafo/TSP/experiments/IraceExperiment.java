@@ -7,12 +7,12 @@ import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
+import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
+import es.urjc.etsii.grafo.autoconfig.irace.IraceAlgorithmGenerator;
 import es.urjc.etsii.grafo.improve.ls.LocalSearch;
 import es.urjc.etsii.grafo.improve.ls.LocalSearchBestImprovement;
 import es.urjc.etsii.grafo.improve.ls.LocalSearchFirstImprovement;
 import es.urjc.etsii.grafo.solution.Move;
-import es.urjc.etsii.grafo.solver.irace.AlgorithmConfiguration;
-import es.urjc.etsii.grafo.solver.irace.IraceAlgorithmGenerator;
 
 public class IraceExperiment extends IraceAlgorithmGenerator<TSPSolution, TSPInstance> {
 

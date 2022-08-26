@@ -1,9 +1,9 @@
 package es.urjc.etsii.grafo.restcontroller;
 
-import es.urjc.etsii.grafo.solver.services.events.EventPublisher;
-import es.urjc.etsii.grafo.solver.services.events.MemoryEventStorage;
-import es.urjc.etsii.grafo.solver.services.events.types.MorkEvent;
-import es.urjc.etsii.grafo.solver.services.events.types.PingEvent;
+import es.urjc.etsii.grafo.events.EventPublisher;
+import es.urjc.etsii.grafo.events.MemoryEventStorage;
+import es.urjc.etsii.grafo.events.types.MorkEvent;
+import es.urjc.etsii.grafo.events.types.PingEvent;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;

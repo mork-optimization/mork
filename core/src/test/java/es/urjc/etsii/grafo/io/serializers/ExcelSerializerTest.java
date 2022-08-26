@@ -1,13 +1,13 @@
 package es.urjc.etsii.grafo.io.serializers;
 
-import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.config.SolverConfig;
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelConfig;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelCustomizer;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelSerializer;
 import es.urjc.etsii.grafo.solver.Mork;
-import es.urjc.etsii.grafo.solver.SolverConfig;
-import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.testutil.TestHelperFactory;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
@@ -27,7 +27,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Optional;
 
 import static es.urjc.etsii.grafo.testutil.TestHelperFactory.referencesGenerator;
 import static es.urjc.etsii.grafo.testutil.TestHelperFactory.solutionGenerator;

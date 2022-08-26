@@ -1,12 +1,12 @@
 package es.urjc.etsii.grafo.io.serializers;
 
+import es.urjc.etsii.grafo.events.AbstractEventStorage;
+import es.urjc.etsii.grafo.events.MorkEventListener;
+import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
+import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
+import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solver.services.events.AbstractEventStorage;
-import es.urjc.etsii.grafo.solver.services.events.MorkEventListener;
-import es.urjc.etsii.grafo.solver.services.events.types.ExperimentEndedEvent;
-import es.urjc.etsii.grafo.solver.services.events.types.InstanceProcessingEndedEvent;
-import es.urjc.etsii.grafo.solver.services.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.util.IOUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
