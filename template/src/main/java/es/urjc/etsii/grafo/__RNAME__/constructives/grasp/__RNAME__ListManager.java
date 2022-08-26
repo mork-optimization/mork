@@ -60,14 +60,6 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
         }
 
         @Override
-        public boolean improves() {
-            // TODO: Choose implementation
-            // If maximizing: return DoubleComparator.isPositive(this.score)
-            // If minimizing: return DoubleComparator.isNegative(this.score)
-            throw new UnsupportedOperationException("improves() in __RNAME__ListManager not implemented yet");
-        }
-
-        @Override
         public String toString() {
             // TODO Use IDE to generate this method after all properties are defined
             throw new UnsupportedOperationException("toString() in __RNAME__ not implemented yet");

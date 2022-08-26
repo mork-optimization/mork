@@ -53,7 +53,7 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
         if(expRes instanceof ListExploreResult<M,S,I> list){
             return CollectionUtil.getBest(list.moveList(), f, fIsBetter);
         } else {
-            var move = expRes.moves().filter(Move::improves).reduce((m1, m2) -> {
+            var move = expRes.moves().reduce((m1, m2) -> {
                 double score1 = this.f.applyAsDouble(m1);
                 double score2 = this.f.applyAsDouble(m2);
                 return fIsBetter.test(score2, score1) ? m2 : m1;

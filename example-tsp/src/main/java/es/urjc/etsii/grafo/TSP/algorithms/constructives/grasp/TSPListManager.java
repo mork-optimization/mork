@@ -2,8 +2,8 @@ package es.urjc.etsii.grafo.TSP.algorithms.constructives.grasp;
 
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
-import es.urjc.etsii.grafo.solution.EagerMove;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
+import es.urjc.etsii.grafo.solution.EagerMove;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -56,14 +56,6 @@ public class TSPListManager extends GRASPListManager<TSPListManager.TSPGRASPMove
         public double getValue() {
             // TODO How much does o.f. value change if we apply this movement?
             throw new UnsupportedOperationException("getValue() in TSPListManager not implemented yet");
-        }
-
-        @Override
-        public boolean improves() {
-            // TODO: Choose implementation
-            // If maximizing: return DoubleComparator.isPositive(this.score)
-            // If minimizing: return DoubleComparator.isNegative(this.score)
-            throw new UnsupportedOperationException("improves() in TSPListManager not implemented yet");
         }
 
         @Override

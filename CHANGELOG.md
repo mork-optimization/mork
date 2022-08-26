@@ -1,12 +1,13 @@
 # v.015
 - (New) Metrics class to keep track of different metrics while any algorithm is executing. Calculate hypervolume of any metric in given range.
 - (New) ArrayUtil::max, ArrayUtil::min util methods for int, long and double primitives
+- (New) DoubleComparator util functions
 - (New) Warn on slow solution serialization (> 500ms)
 - (New) Add option to choose how frequently any solution serializer should execute: best_per_instance, best_per_alg_instance and all iterations.
 - (Change) Refactored GRASP Algorithm: Use builder pattern, add option to provide a custom greedy function.
 - (Change) Refactored LocalSearch, enhance and simplify its behaviour.
 - (Change) Improve SolutionSerializer::export method
-- (Removed) IteratedImprover, MoveComparator, DefaultMoveComparator
+- (Removed) IteratedImprover, MoveComparator, DefaultMoveComparator, Move::improves
 
 # v0.14
 - (New) Algorithms can be magically built from strings without user interaction, using the new autoconfig project. See AlgComponentService and AlgorithmBuilderUtil classes for more details.

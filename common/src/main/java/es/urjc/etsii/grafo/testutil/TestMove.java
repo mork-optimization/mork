@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.testutil;
 
 import es.urjc.etsii.grafo.solution.Move;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.Objects;
 
@@ -28,12 +27,6 @@ public class TestMove extends Move<TestSolution, TestInstance> {
     @Override
     public double getValue() {
         return score;
-    }
-
-    @Override
-    public boolean improves() {
-        double v = this.getValue();
-        return maximizing ? DoubleComparator.isPositive(v) : DoubleComparator.isNegative(v);
     }
 
     @Override

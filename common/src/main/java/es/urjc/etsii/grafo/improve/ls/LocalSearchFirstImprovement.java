@@ -52,14 +52,19 @@ public class LocalSearchFirstImprovement<M extends Move<S, I>, S extends Solutio
 
         if(expRes instanceof ListExploreResult<M,S,I> list){
             for(var move: list.moveList()){
-                if(move.improves()){
+                if(improves(move)){
                     return move;
                 }
             }
             return null;
         } else {
-            var move = expRes.moves().filter(Move::improves).findAny();
+            var move = expRes.moves().filter(this::improves).findAny();
             return move.orElse(null);
         }
+    }
+
+    private boolean improves(M move){
+        double score = this.f.applyAsDouble(move);
+        return this.fIsBetter.test(score, 0.0);
     }
 }

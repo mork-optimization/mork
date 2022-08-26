@@ -12,6 +12,8 @@ import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
+import java.util.function.ToDoubleFunction;
+
 /**
  * <p>Create instances of the simulated annealing algorithm. See {@link SimulatedAnnealing} for a detailed description of the algorithm</p>
  * @param <M> Move type
@@ -26,11 +28,8 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     private CoolDownControl<M, S, I> coolDownControl;
     private int cycleLength = 1;
     private Boolean ofMaximize;
-
-    /**
-     * Use {@link SimulatedAnnealing#builder()} static method instead
-     */
-    protected SimulatedAnnealingBuilder(){}
+    private ToDoubleFunction<M> f;
+    private boolean fMaximize;
 
     /**
      * Neighborhood for the Simulated Annealing.
@@ -162,13 +161,24 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     }
 
     /**
-     * Set maximizing or minimizing
+     * Is this a maximization or minimization problem?
      *
      * @param maximize true if maximizing, false if minimizing
      * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withCycleLength(boolean maximize) {
+    public SimulatedAnnealingBuilder<M,S,I> withMaximizing(boolean maximize) {
         this.ofMaximize = maximize;
+        return this;
+    }
+
+    /**
+     * Set a custom score evaluation function for any move
+     *
+     * @return simulated annealing builder
+     */
+    public SimulatedAnnealingBuilder<M,S,I> withEvalFunction(ToDoubleFunction<M> f, boolean maximize) {
+        this.f = f;
+        this.fMaximize = maximize;
         return this;
     }
 
@@ -199,7 +209,13 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
         if(acceptanceCriteria == null){
             throw new IllegalArgumentException("Acceptance criteria is not configured. Use either withAcceptanceCriteria or withDefaultAcceptanceCriteria to configure an acceptance criteria.");
         }
-        return new SimulatedAnnealing<>(ofMaximize, acceptanceCriteria, neighborhood, initialTemperatureCalculator, terminationCriteria, coolDownControl, this.cycleLength);
+
+        if(f == null){
+            f = Move::getValue;
+            fMaximize = ofMaximize;
+        }
+
+        return new SimulatedAnnealing<>(ofMaximize, acceptanceCriteria, neighborhood, initialTemperatureCalculator, terminationCriteria, coolDownControl, this.cycleLength, f, fMaximize);
     }
 
     /**

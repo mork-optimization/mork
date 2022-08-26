@@ -14,6 +14,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.function.DoublePredicate;
+import java.util.function.ToDoubleFunction;
 import java.util.stream.Collectors;
 
 /**
@@ -39,18 +41,21 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
 
     private static final Logger log = LoggerFactory.getLogger(SimulatedAnnealing.class);
 
-    private final AcceptanceCriteria<M, S, I> acceptanceCriteria;
-    private final RandomizableNeighborhood<M, S, I> neighborhood;
-    private final TerminationCriteria<M, S, I> terminationCriteria;
-    private final CoolDownControl<M, S, I> coolDownControl;
-    private final InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator;
-    private final int cycleLength;
+    protected final AcceptanceCriteria<M, S, I> acceptanceCriteria;
+    protected final RandomizableNeighborhood<M, S, I> neighborhood;
+    protected final TerminationCriteria<M, S, I> terminationCriteria;
+    protected final CoolDownControl<M, S, I> coolDownControl;
+    protected final InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator;
+    protected final int cycleLength;
+    protected final ToDoubleFunction<M> f;
+    protected final boolean fMaximize;
+    protected final DoublePredicate fImproves;
 
     private record CycleResult<S>(boolean atLeastOneMove, S bestSolution, S currentSolution) {
     }
 
     /**
-     * Internal constructor, use {@link SimulatedAnnealing#builder()}.
+     * Internal constructor, use {@link SimulatedAnnealingBuilder#SimulatedAnnealingBuilder()}.
      *
      * @param acceptanceCriteria
      * @param ps
@@ -58,8 +63,10 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
      * @param terminationCriteria
      * @param coolDownControl
      * @param cycleLength
+     * @param f
+     * @param fMaximize
      */
-    protected SimulatedAnnealing(boolean ofMaximize, AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength) {
+    protected SimulatedAnnealing(boolean ofMaximize, AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength, ToDoubleFunction<M> f, boolean fMaximize) {
         super(ofMaximize);
         this.acceptanceCriteria = acceptanceCriteria;
         this.neighborhood = ps;
@@ -67,18 +74,9 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
         this.coolDownControl = coolDownControl;
         this.initialTemperatureCalculator = initialTemperatureCalculator;
         this.cycleLength = cycleLength;
-    }
-
-    /**
-     * Get simulated annealing builder.
-     *
-     * @param <M> Move type
-     * @param <S> Solution type
-     * @param <I> Instance type
-     * @return simulated annealing builder
-     */
-    public static <M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> SimulatedAnnealingBuilder<M, S, I> builder() {
-        return new SimulatedAnnealingBuilder<>();
+        this.f = f;
+        this.fMaximize = fMaximize;
+        this.fImproves = DoubleComparator.improvesFunction(fMaximize);
     }
 
     @Override
@@ -88,7 +86,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
         log.debug("Initial temperature: {}", currentTemperature);
         int currentIteration = 0;
         while (!terminationCriteria.terminate(best, neighborhood, currentTemperature, currentIteration)) {
-            CycleResult<S> cycleResult = doCycleFast(neighborhood, solution, best, currentTemperature);
+            CycleResult<S> cycleResult = doCycle(neighborhood, solution, best, currentTemperature);
             best = cycleResult.bestSolution;
             solution = cycleResult.currentSolution;
             if (!cycleResult.atLeastOneMove) {
@@ -107,7 +105,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
 
     /**
      * Does a cycle with the same temperature. Always works on the same solution.
-     * Slow implementation as a fallback, when {@link SimulatedAnnealing#doCycleFast(RandomizableNeighborhood, Solution, Solution, double)} is not possible.
+     * Slow implementation as a fallback, when {@link SimulatedAnnealing#doCycle(RandomizableNeighborhood, Solution, Solution, double)} is not possible.
      *
      * @param solution           current working solution
      * @param best               best solution found until now
@@ -120,7 +118,8 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
             boolean executed = false;
             var currentMoves = getMoves(neighborhood, solution);
             for (M move : currentMoves) {
-                if (move.improves() || acceptanceCriteria.accept(move, currentTemperature)) {
+                double score = f.applyAsDouble(move);
+                if (fImproves.test(score) || acceptanceCriteria.accept(move, currentTemperature)) {
                     atLeastOne = true;
                     move.execute(solution);
                     executed = true;
@@ -147,7 +146,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
      * @param currentTemperature current temperature
      * @return best solution found, remember that you should NOT use the returned solution
      */
-    protected CycleResult<S> doCycleFast(RandomizableNeighborhood<M, S, I> neighborhood, S solution, S best, double currentTemperature) {
+    protected CycleResult<S> doCycle(RandomizableNeighborhood<M, S, I> neighborhood, S solution, S best, double currentTemperature) {
         boolean atLeastOne = false;
         for (int i = 0; i < this.cycleLength; i++) {
             int fails = 0;
@@ -165,7 +164,8 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
                     continue;
                 }
                 testedMoves.add(move);
-                if (move.improves() || acceptanceCriteria.accept(move, currentTemperature)) {
+                double score = f.applyAsDouble(move);
+                if (fImproves.test(score) || acceptanceCriteria.accept(move, currentTemperature)) {
                     atLeastOne = true;
                     move.execute(solution);
                     if (solution.isBetterThan(best)) {

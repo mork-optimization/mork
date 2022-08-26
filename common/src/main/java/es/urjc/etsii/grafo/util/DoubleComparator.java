@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.util;
 
 import java.util.function.BiPredicate;
+import java.util.function.DoublePredicate;
 
 /**
  * Helper methods to perform comparisons between doubles (or floats)
@@ -208,5 +209,14 @@ public class DoubleComparator {
      */
     public static BiPredicate<Double, Double> isBetterOrEqualsFunction(boolean maximize){
         return maximize? DoubleComparator::isGreaterOrEquals : DoubleComparator::isLessOrEquals;
+    }
+
+    /**
+     * Returns a function reference that evaluates if any given number improves the score, for both the maximization and minimization cases
+     * @param maximize true if maximizing, false otherwise
+     * @return Predicate
+     */
+    public static DoublePredicate improvesFunction(boolean maximize){
+        return maximize ? DoubleComparator::isPositive : DoubleComparator::isNegative;
     }
 }

@@ -5,7 +5,6 @@ import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.solution.LazyMove;
 import es.urjc.etsii.grafo.solution.neighborhood.ExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.Objects;
@@ -67,11 +66,6 @@ public class SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TS
         @Override
         public double getValue() {
             return value;
-        }
-
-        @Override
-        public boolean improves() {
-            return DoubleComparator.isLess(this.getValue(), 0);
         }
 
         @Override

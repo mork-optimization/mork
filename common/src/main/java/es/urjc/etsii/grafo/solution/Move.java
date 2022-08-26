@@ -110,13 +110,6 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
     public abstract double getValue();
 
     /**
-     * Does the solution improve if the current move is applied?
-     *
-     * @return True if solution improves, false otherwise
-     */
-    public abstract boolean improves();
-
-    /**
      * Returns a String representation of the current movement.
      * Tip: Default IDEs implementations are usually fine
      *

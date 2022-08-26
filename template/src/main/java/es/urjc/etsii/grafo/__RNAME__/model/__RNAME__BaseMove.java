@@ -32,16 +32,6 @@ public abstract class __RNAME__BaseMove extends LazyMove<__RNAME__Solution, __RN
      */
     public abstract double getValue();
 
-    @Override
-    public boolean improves() {
-        // TODO: implement. Examples below
-        // If a maximization problem:
-        //return DoubleComparator.isPositive(this.getValue());
-        // If a minimization problem
-        //return DoubleComparator.isNegative(this.getValue());
-        throw new UnsupportedOperationException("Not implemented yet");
-    }
-
     /**
      * Get next move in this sequence.
      * There are two main strategies to generate moves:

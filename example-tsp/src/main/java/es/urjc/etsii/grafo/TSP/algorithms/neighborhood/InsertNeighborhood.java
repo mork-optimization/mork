@@ -5,7 +5,6 @@ import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.solution.EagerMove;
 import es.urjc.etsii.grafo.solution.neighborhood.ExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -67,11 +66,6 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
         @Override
         public String toString() {
             return String.format("Insert %s --> %s", this.pi, this.pj);
-        }
-
-        @Override
-        public boolean improves() {
-            return DoubleComparator.isLess(this.getValue(), 0);
         }
 
 
