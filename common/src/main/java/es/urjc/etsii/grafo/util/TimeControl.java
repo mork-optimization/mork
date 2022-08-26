@@ -80,8 +80,6 @@ public class TimeControl {
         private long start;
         private long duration;
 
-        public TimeStatus(){}
-
         public boolean enabled() {
             return enabled;
         }
