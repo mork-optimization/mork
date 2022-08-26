@@ -15,16 +15,18 @@ import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
 import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.SolutionValidator;
+import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.Mork;
-import es.urjc.etsii.grafo.solver.services.Global;
 import es.urjc.etsii.grafo.util.DoubleComparator;
+import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 
@@ -40,6 +42,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     private static final Logger log = LoggerFactory.getLogger(Executor.class);
 
     protected final Optional<SolutionValidator<S,I>> validator;
+    protected final Optional<TimeLimitCalculator<S,I>> timeLimitCalculator;
     protected final IOManager<S, I> io;
     protected final InstanceManager<I> instanceManager;
     protected final List<ReferenceResultProvider> referenceResultProviders;
@@ -48,17 +51,21 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Fill common values used by all executors
-     * @param validator solution validator if available
-     * @param io IO manager
+     *
+     * @param validator                solution validator if available
+     * @param timeLimitCalculator      time limit calculator if exists
+     * @param io                       IO manager
      * @param referenceResultProviders list of all reference value providers implementations
      */
     protected Executor(
             Optional<SolutionValidator<S, I>> validator,
+            Optional<TimeLimitCalculator<S, I>> timeLimitCalculator,
             IOManager<S, I> io,
             InstanceManager<I> instanceManager,
             List<ReferenceResultProvider> referenceResultProviders,
             SolverConfig solverConfig
     ) {
+        this.timeLimitCalculator = timeLimitCalculator;
         this.referenceResultProviders = referenceResultProviders;
         this.solverConfig = solverConfig;
         if(validator.isEmpty()){
@@ -86,7 +93,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
      */
     public void validate(S solution){
         ValidationUtil.positiveTTB(solution);
-        this.validator.ifPresent(validator -> validator.validate(solution));
+        this.validator.ifPresent(v -> v.validate(solution));
     }
 
     /**
@@ -97,19 +104,29 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     protected WorkUnitResult<S,I> doWork(WorkUnit<S,I> workUnit) {
         S solution = null;
         I instance = this.instanceManager.getInstance(workUnit.instancePath());
+        Algorithm<S,I> algorithm =workUnit.algorithm();
 
         try {
-            // If app is stopping do not run algorithm
-            if(Global.stop()) {
-                return null;
-            }
+            // Preparate current work unit
             RandomManager.reset(workUnit.i());
+            if(this.timeLimitCalculator.isPresent()){
+                long maxDuration = this.timeLimitCalculator.get().timeLimitInMillis(instance, algorithm);
+                TimeControl.setMaxExecutionTime(maxDuration, TimeUnit.MILLISECONDS);
+                TimeControl.start();
+            }
+
+            // Do real work
             long starTime = System.nanoTime();
-            solution = workUnit.algorithm().algorithm(instance);
+            solution = algorithm.algorithm(instance);
             long endTime = System.nanoTime();
+
+            // Prepare work unit results and cleanup
+            validate(solution);
+            if(timeLimitCalculator.isPresent()){
+                TimeControl.remove();
+            }
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long executionTime = endTime - starTime;
-            validate(solution);
             return new WorkUnitResult<>(workUnit, solution, executionTime, timeToTarget);
         } catch (Exception e) {
             workUnit.exceptionHandler().handleException(workUnit.experimentName(), e, Optional.ofNullable(solution), instance, workUnit.algorithm(), io);

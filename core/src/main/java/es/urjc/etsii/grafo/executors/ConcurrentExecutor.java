@@ -14,6 +14,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.SolutionValidator;
+import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 import org.slf4j.Logger;
@@ -46,8 +47,8 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
      * @param validator Solution validator
      * @param io IOManager
      */
-    public ConcurrentExecutor(SolverConfig solverConfig, Optional<SolutionValidator<S, I>> validator, IOManager<S, I> io, InstanceManager<I> instanceManager, List<ReferenceResultProvider> referenceResultProviders) {
-        super(validator, io, instanceManager, referenceResultProviders, solverConfig);
+    public ConcurrentExecutor(SolverConfig solverConfig, Optional<SolutionValidator<S, I>> validator, Optional<TimeLimitCalculator<S, I>> timeLimitCalculator, IOManager<S, I> io, InstanceManager<I> instanceManager, List<ReferenceResultProvider> referenceResultProviders) {
+        super(validator, timeLimitCalculator, io, instanceManager, referenceResultProviders, solverConfig);
         if (solverConfig.getnWorkers() == -1) {
             this.nWorkers = Runtime.getRuntime().availableProcessors() / 2;
         } else {

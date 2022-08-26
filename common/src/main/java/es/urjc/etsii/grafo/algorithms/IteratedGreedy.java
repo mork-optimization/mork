@@ -1,14 +1,14 @@
 package es.urjc.etsii.grafo.algorithms;
 
-import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.shake.DestroyRebuild;
-import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.Reconstructive;
+import es.urjc.etsii.grafo.improve.Improver;
+import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.shake.DestroyRebuild;
 import es.urjc.etsii.grafo.shake.Destructive;
 import es.urjc.etsii.grafo.shake.Shake;
-import es.urjc.etsii.grafo.improve.Improver;
-import es.urjc.etsii.grafo.solver.services.Global;
+import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -139,14 +139,14 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
     public S algorithm(I instance) {
         S solution = this.newSolution(instance);
         solution = this.constructive.construct(solution);
-        if(Global.stop()){
+        if(TimeControl.isTimeUp()){
             return solution;
         }
         solution = ls(solution);
         logger.debug("Initial solution: {} - {}", solution.getScore(), solution);
         int iterationsWithoutImprovement = 0;
         for (int i = 0; i < maxIterations; i++) {
-            if(Global.stop()){
+            if(TimeControl.isTimeUp()){
                 return solution;
             }
             S copy = solution.cloneSolution();

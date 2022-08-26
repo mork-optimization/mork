@@ -13,6 +13,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.SolutionValidator;
+import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,12 +42,13 @@ public class SequentialExecutor<S extends Solution<S,I>, I extends Instance> ext
      */
     public SequentialExecutor(
             Optional<SolutionValidator<S, I>> validator,
+            Optional<TimeLimitCalculator<S, I>> timeLimitCalculator,
             IOManager<S, I> io,
             InstanceManager<I> instanceManager,
             List<ReferenceResultProvider> referenceResultProviders,
             SolverConfig solverConfig
     ) {
-        super(validator, io, instanceManager, referenceResultProviders, solverConfig);
+        super(validator, timeLimitCalculator, io, instanceManager, referenceResultProviders, solverConfig);
     }
 
     /** {@inheritDoc} */

@@ -7,8 +7,8 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
-import es.urjc.etsii.grafo.solver.services.Global;
 import es.urjc.etsii.grafo.util.DoubleComparator;
+import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -73,9 +73,11 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
      */
     @Override
     protected S _improve(S solution) {
-        int rounds = 0;
-        while (!Global.stop() && iteration(solution)){
+        int rounds = 1;
+        boolean improved = true;
+        while (!TimeControl.isTimeUp() && improved) {
             log.debug("Executing iteration {} for {}", rounds, this.getClass().getSimpleName());
+            improved = iteration(solution);
             rounds++;
             if(rounds == WARN_LIMIT){
                 log.warn("Too many iterations, soft limit of {} passed, maybe {} is stuck in an infinite loop?", WARN_LIMIT, this.getClass().getSimpleName());
@@ -88,6 +90,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
     /**
      * This procedure check if there are valid moves to neighbors solutions.
      * In that case, the move is executed. Otherwise, the procedure ends.
+     * @return true if the solution has improved, false otherwise
      */
     public boolean iteration(S solution) {
         // Get next move to execute

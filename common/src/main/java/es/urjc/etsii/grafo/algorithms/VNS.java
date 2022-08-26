@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.algorithms;
 
-import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.create.Constructive;
-import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.improve.Improver;
-import es.urjc.etsii.grafo.solver.services.Global;
+import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.shake.Shake;
+import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.TimeControl;
 
 import java.util.Arrays;
 import java.util.Collections;
@@ -142,7 +142,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
 
         int internalK = 0;
         // While stop not request OR k in range. k check is done and breaks inside loop
-        while (!Global.stop()) {
+        while (!TimeControl.isTimeUp()) {
             int userK = kMapper.mapK(solution, internalK);
             if (userK == KMapper.STOPNOW) {
                 printStatus(internalK + ":STOPNOW", solution);
