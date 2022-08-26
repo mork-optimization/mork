@@ -1,9 +1,10 @@
 package es.urjc.etsii.grafo.algorithms;
 
-import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithm;
+import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithmBuilder;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.TimeControl;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,7 +14,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.*;
 
-public class MultiStartAlgorithmTest {
+class MultiStartAlgorithmTest {
 
     private final TestInstance testInstance = new TestInstance("testinstance");
     private final TestSolution testSolution = new TestSolution(testInstance);
@@ -21,86 +22,73 @@ public class MultiStartAlgorithmTest {
 
     @SuppressWarnings("unchecked")
     @BeforeEach
-    public void setUpAlgorithm() {
+    void setUpAlgorithm() {
         algorithm = Mockito.mock(Algorithm.class);
         when(algorithm.algorithm(testInstance)).thenReturn(testSolution);
     }
 
     @Test
-    public void testIllegalParameters() {
+    void testIllegalParameters() {
         // Legal
         int minNumberOfIterations = 1;
         int maxNumberOfIterations = 100;
         int maxIterWithoutImprovement = 100;
-        int maxTime = 1;
 
         // Illegal
         int _minNumberOfIterations = -1;
         int _maxNumberOfIterations = 0;
         int _maxIterWithoutImprovement = 0;
-        int _maxTime = 0;
-        TimeUnit timeUnit = TimeUnit.DAYS;
-        Assertions.assertThrows(IllegalArgumentException.class, () -> MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(_maxNumberOfIterations)
-                .withTime(maxTime, timeUnit)
                 .build(algorithm));
 
-        Assertions.assertThrows(IllegalArgumentException.class, () -> MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMinIterations(_minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
-                .withTime(maxTime, timeUnit)
                 .build(algorithm));
 
-        Assertions.assertThrows(IllegalArgumentException.class, () -> MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(_maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
-                .withTime(maxTime, timeUnit)
                 .build(algorithm));
 
-        Assertions.assertThrows(IllegalArgumentException.class, () -> MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(_maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
-                .withTime(_maxTime, timeUnit)
                 .build(algorithm));
 
-        Assertions.assertDoesNotThrow(() -> MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+        Assertions.assertDoesNotThrow(() -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
-                .withTime(maxTime, timeUnit)
                 .build(algorithm));
 
-        Assertions.assertThrows(IllegalArgumentException.class, () -> MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMinIterations(51)
                 .withMaxIterations(50)
-                .withTime(maxTime, timeUnit)
                 .build(algorithm));
 
-        Assertions.assertDoesNotThrow(() -> MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+        Assertions.assertDoesNotThrow(() -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMinIterations(50)
                 .withMaxIterations(50)
-                .withTime(maxTime, timeUnit)
                 .build(algorithm));
 
     }
 
     @Test
-    public void checkMinimumAndMaxNumberOfIterations() {
+    void checkMinimumAndMaxNumberOfIterations() {
         int minNumberOfIterations = 30;
         int maxNumberOfIterations = 80;
         int maxIterWithoutImprovement = 1000;
-        int maxTime = 2;
-        TimeUnit timeUnit = TimeUnit.DAYS;
-        var multistart = MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+        var multistart = new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
-                .withTime(maxTime, timeUnit)
                 .build(algorithm);
         multistart.algorithm(testInstance);
         verify(algorithm, atLeast(minNumberOfIterations)).algorithm(testInstance);
@@ -108,61 +96,57 @@ public class MultiStartAlgorithmTest {
     }
 
     @Test
-    public void checkMinimumStopNotImprovement() {
+    void checkMinimumStopNotImprovement() {
         int minNumberOfIterations = 30;
         int maxNumberOfIterations = 10_000_000;
-        int maxTime = 2;
-        TimeUnit timeUnit = TimeUnit.DAYS;
-        var multistart = MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+        var multistart = new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(1)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
-                .withTime(maxTime, timeUnit)
                 .build(algorithm);
         multistart.algorithm(testInstance);
         verify(algorithm, times(minNumberOfIterations)).algorithm(testInstance);
     }
 
     @Test
-    public void checkMaxNumberOfIterations() {
+    void checkMaxNumberOfIterations() {
         int minNumberOfIterations = 1;
         int maxNumberOfIterations = 100;
         int maxIterWithoutImprovement = 100;
-        int maxTime = 1;
-        TimeUnit timeUnit = TimeUnit.DAYS;
-        var multistart = MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+        var multistart = new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
-                .withTime(maxTime, timeUnit)
                 .build(algorithm);
         multistart.algorithm(testInstance);
         verify(algorithm, times(maxNumberOfIterations)).algorithm(testInstance);
     }
 
     @Test
-    public void checkStopByMaxTime() {
+    void checkStopByMaxTime() {
         int maxNumberOfIterations = 10_000_000;
         int maxIterWithoutImprovement = 10_000_000;
         int maxTime = 10;
         TimeUnit timeUnit = TimeUnit.MILLISECONDS;
-        var multistart = MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+        TimeControl.setMaxExecutionTime(maxTime, timeUnit);
+        TimeControl.start();
+        var multistart = new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMaxIterations(maxNumberOfIterations)
-                .withTime(maxTime, timeUnit)
                 .build(algorithm);
         long startTime = System.nanoTime();
         multistart.algorithm(testInstance);
         long endTime = System.nanoTime();
         long ellapsed = (endTime - startTime) / 1_000_000;
+        TimeControl.remove();
         Assertions.assertTrue(ellapsed < 20, "Does not stop after 10 millis");
         Assertions.assertTrue(ellapsed > 5, "Stops in less than 5 millis");
     }
 
     @Test
-    public void checkStopByMaxIterWithoutImprovement() {
+    void checkStopByMaxIterWithoutImprovement() {
         int maxIterWithoutImprovement = 1;
-        var multistart = MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+        var multistart = new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .build(algorithm);
         multistart.algorithm(testInstance);
@@ -171,11 +155,11 @@ public class MultiStartAlgorithmTest {
     }
 
     @Test
-    public void checkSetsBuilder(){
-        var multistart = MultiStartAlgorithm.<TestSolution, TestInstance>builder()
+    void checkSetsBuilder(){
+        var multistart = new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(100)
                 .build(algorithm);
-        SolutionBuilder<TestSolution, TestInstance> builder = new SolutionBuilder<TestSolution, TestInstance>() {
+        SolutionBuilder<TestSolution, TestInstance> builder = new SolutionBuilder<>() {
             @Override
             public TestSolution initializeSolution(TestInstance instance) {
                 return new TestSolution(instance);
