@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.improve.ls;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -27,6 +28,7 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
      * @param neighborhood neighborhood to use
      * @param maximize true if the problem objective function is maximizing, false otherwise
      */
+    @AutoconfigConstructor
     public LocalSearchBestImprovement(boolean maximize, Neighborhood<M, S, I> neighborhood) {
         super(maximize, neighborhood);
     }

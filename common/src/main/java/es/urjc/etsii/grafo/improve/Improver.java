@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.improve;
 
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
@@ -78,7 +79,9 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
      * @param <S> Solution class
      * @param <I> Instance class
      */
-    private static class NullImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {
+    public static class NullImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {
+
+        @AutoconfigConstructor
         private NullImprover() {
             super(false); // It does not matter as it does nothing
         }

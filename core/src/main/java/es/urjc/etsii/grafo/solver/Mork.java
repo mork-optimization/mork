@@ -41,6 +41,7 @@ public class Mork {
         setSolvingMode(maximize);
         SpringApplication application = new SpringApplication(Mork.class);
         application.setBanner(new BannerProvider());
+        application.setLogStartupInfo(false);
         application.run(args);
     }
 

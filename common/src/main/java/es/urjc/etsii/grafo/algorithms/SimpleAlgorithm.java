@@ -1,9 +1,10 @@
 package es.urjc.etsii.grafo.algorithms;
 
-import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
+import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.ArrayList;
@@ -28,15 +29,24 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
     protected final List<Improver<S, I>> improvers;
     protected final String algorithmName;
 
-    @SafeVarargs
     /**
      * <p>Constructor for SimpleAlgorithm.</p>
      *
      * @param constructive a {@link Constructive} object.
-     * @param improvers a {@link es.urjc.etsii.grafo.improve.Improver} object.
+     * @param improver a {@link es.urjc.etsii.grafo.improve.Improver} object.
      */
-    public SimpleAlgorithm(Constructive<S, I> constructive, Improver<S,I>... improvers){
-        this("", constructive, improvers);
+    @AutoconfigConstructor
+    public SimpleAlgorithm(Constructive<S, I> constructive, Improver<S,I> improver){
+        this("Simple", constructive, improver);
+    }
+
+    /**
+     * <p>Constructor for SimpleAlgorithm.</p>
+     *
+     * @param constructive a {@link Constructive} object.
+     */
+    public SimpleAlgorithm(Constructive<S, I> constructive){
+        this(constructive, Improver.nul());
     }
 
     /**

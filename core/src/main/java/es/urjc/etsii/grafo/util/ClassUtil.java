@@ -32,6 +32,4 @@ public class ClassUtil {
     public static boolean isObjectClass(Class<?> clazz) {
         return clazz.getCanonicalName().equals(Object.class.getCanonicalName());
     }
-
-
 }

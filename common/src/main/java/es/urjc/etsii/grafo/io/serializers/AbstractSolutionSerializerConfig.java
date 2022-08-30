@@ -26,4 +26,9 @@ public abstract class AbstractSolutionSerializerConfig extends AbstractSerialize
     public void setFrequency(SolutionExportFrequency frequency) {
         this.frequency = frequency;
     }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName();
+    }
 }

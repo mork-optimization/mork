@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig;
+package es.urjc.etsii.grafo.autoconfig.testutil;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.testutil.TestInstance;

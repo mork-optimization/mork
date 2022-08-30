@@ -1,5 +1,6 @@
-package es.urjc.etsii.grafo.autoconfig;
+package es.urjc.etsii.grafo.autoconfig.testutil;
 
+import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.FakeGRASPConstructive;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
 import es.urjc.etsii.grafo.testutil.TestInstance;

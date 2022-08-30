@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.create;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -22,6 +23,7 @@ public class RandomConstructive<M extends Move<S,I>, S extends Solution<S,I>, I 
      *
      * @param neighborhood neighborhood to use during construction
      */
+    @AutoconfigConstructor
     public RandomConstructive(RandomizableNeighborhood<M,S,I> neighborhood) {
         this.neighborhood = neighborhood;
     }

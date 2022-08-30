@@ -1,19 +1,31 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
+import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
+import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
+import es.urjc.etsii.grafo.autoconfig.testutil.TestUtil;
 import es.urjc.etsii.grafo.create.grasp.GRASPConstructive;
+import es.urjc.etsii.grafo.improve.Improver;
+import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-public final class AlgComponentServiceTest {
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
 
-    static AlgComponentService algComponent;
+class AlgorithmBuilderServiceTest {
+
+    static AlgorithmInventoryService algComponent;
+    static AlgorithmBuilderService builderService;
 
     @BeforeAll
     static void initialize(){
-        algComponent = new AlgComponentService();
+        algComponent = new AlgorithmInventoryService(TestUtil.getTestFactories());
         algComponent.runComponentDiscovery("es.urjc.etsii");
+        builderService = new AlgorithmBuilderService(algComponent);
     }
 
     @Test
@@ -21,7 +33,7 @@ public final class AlgComponentServiceTest {
         String component = """
         DoesNotExist{}
         """;
-        Assertions.assertThrows(AlgorithmParsingException.class, () -> algComponent.buildAlgorithmComponentFromString(component));
+        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmComponentFromString(component));
     }
 
     @Test
@@ -33,15 +45,15 @@ public final class AlgComponentServiceTest {
                 maximizing=false,
                 candidateListManager=NullGraspListManager{}
             },
-            improvers=null
+            improver=null
         }
         """;
-        var algorithm = algComponent.buildAlgorithmFromString(alg);
+        var algorithm = builderService.buildAlgorithmFromString(alg);
         Assertions.assertNotNull(algorithm);
     }
 
     @Test
-    public void failNullInPrimitive() {
+    void failNullInPrimitive() {
         String alg = """
         SimpleAlgorithm{
             constructive=FakeGRASPConstructive{
@@ -49,10 +61,10 @@ public final class AlgComponentServiceTest {
                 maximizing=false,
                 candidateListManager=NullGraspListManager{}
             },
-            improvers=null
+            improver=null
         }
         """;
-        Assertions.assertThrows(AlgorithmParsingException.class, () -> algComponent.buildAlgorithmFromString(alg));
+        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmFromString(alg));
     }
 
     @Test
@@ -61,21 +73,36 @@ public final class AlgComponentServiceTest {
         Assertions.assertThrows(IllegalArgumentException.class, () -> algComponent.registerAlias("AlgorithmA", "Any"));
 
         algComponent.registerAlias("A", "AlgorithmA");
-        algComponent.registerFactory("B", params -> params);
+        var factoryB = new AlgorithmComponentFactory() {
+            @Override
+            public Object buildComponent(Map<String, Object> params) {
+                return params;
+            }
+
+            @Override
+            public List<ComponentParameter> getRequiredParameters() {
+                return new ArrayList<>();
+            }
+
+            @Override
+            public Class<?> produces() {
+                return ImproverB.class;
+            }
+        };
+        algComponent.registerFactory(factoryB);
 
         // Fail because alias does not point to a valid component
         Assertions.assertThrows(IllegalArgumentException.class, () -> algComponent.registerAlias("C", "doesNotExist123"));
 
         // Fail because target is already an alias
-        Assertions.assertThrows(IllegalArgumentException.class, () -> algComponent.registerAlias("B", "A"));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> algComponent.registerAlias("ImproverB", "A"));
 
         // Fail because factory name is already used
-        Assertions.assertThrows(IllegalArgumentException.class, () -> algComponent.registerFactory("A", params -> params));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> algComponent.registerFactory("B", params -> params));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> algComponent.registerFactory(factoryB));
     }
 
     @Test
-    public void usingOnlyFactory(){
+    void usingOnlyFactory(){
         String alg = """
         GraspConstructive{
             alpha=0.2,
@@ -84,12 +111,12 @@ public final class AlgComponentServiceTest {
             strategy="greedyRandom"
         }
         """;
-        var component = algComponent.buildAlgorithmComponentFromString(alg);
+        var component = builderService.buildAlgorithmComponentFromString(alg);
         Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
 
     @Test
-    public void failBecauseNotAlgorithm(){
+    void failBecauseNotAlgorithm(){
         String alg = """
         GraspConstructive{
             alpha=0.2,
@@ -99,11 +126,11 @@ public final class AlgComponentServiceTest {
         }
         """;
         var component =
-        Assertions.assertThrows(AlgorithmParsingException.class, () -> algComponent.buildAlgorithmFromString(alg));
+        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmFromString(alg));
     }
 
     @Test
-    public void usingFactoryAndAliasAlphaValue(){
+    void usingFactoryAndAliasAlphaValue(){
         String alg = """
         GRASP{
             alpha=0.2,
@@ -112,12 +139,12 @@ public final class AlgComponentServiceTest {
             strategy="greedyRandom"
         }
         """;
-        var component = algComponent.buildAlgorithmComponentFromString(alg);
+        var component = builderService.buildAlgorithmComponentFromString(alg);
         Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
 
     @Test
-    public void usingFactoryAndAliasAlphaRange(){
+    void usingFactoryAndAliasAlphaRange(){
         String alg = """
         GRASP{
             minAlpha=0.2,
@@ -127,12 +154,12 @@ public final class AlgComponentServiceTest {
             strategy="greedyRandom"
         }
         """;
-        var component = algComponent.buildAlgorithmComponentFromString(alg);
+        var component = builderService.buildAlgorithmComponentFromString(alg);
         Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
 
     @Test
-    public void failUsingAliasInvalidStrategy(){
+    void failUsingAliasInvalidStrategy(){
         String alg = """
         GRASP{
             alpha=0.2,
@@ -141,11 +168,11 @@ public final class AlgComponentServiceTest {
             strategy="doesNotExist"
         }
         """;
-        Assertions.assertThrows(AlgorithmParsingException.class, () -> algComponent.buildAlgorithmComponentFromString(alg));
+        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
     }
 
     @Test
-    public void failUsingAliasMissingStrategy(){
+    void failUsingAliasMissingStrategy(){
         String alg = """
         GRASP{
             alpha=0.2,
@@ -153,7 +180,19 @@ public final class AlgComponentServiceTest {
             candidateListManager=NullGraspListManager{}
         }
         """;
-        Assertions.assertThrows(AlgorithmParsingException.class, () -> algComponent.buildAlgorithmComponentFromString(alg));
+        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
+    }
+
+
+    private static class ImproverB extends Improver<TestSolution, TestInstance> {
+        protected ImproverB(boolean ofMaximize) {
+            super(ofMaximize);
+        }
+
+        @Override
+        protected TestSolution _improve(TestSolution solution) {
+            return solution;
+        }
     }
 
 }

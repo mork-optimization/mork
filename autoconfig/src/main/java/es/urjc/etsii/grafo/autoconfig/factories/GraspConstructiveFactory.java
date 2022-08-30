@@ -1,20 +1,21 @@
-package es.urjc.etsii.grafo.autoconfig.service.factories;
+package es.urjc.etsii.grafo.autoconfig.factories;
 
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
+import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
+import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
+import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
+import es.urjc.etsii.grafo.create.grasp.GRASPConstructive;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
 import es.urjc.etsii.grafo.create.grasp.GraspBuilder;
 
+import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 
-/**
- * Create instances of GRASP constructive method
- */
-public class CommonComponentFactory {
+public class GraspConstructiveFactory extends AlgorithmComponentFactory {
 
-    private CommonComponentFactory(){}
-
-    @SuppressWarnings({"rawtypes", "unchecked"})
-    public static Object createGRASP(Map<String, Object> params) {
+    @Override
+    public Object buildComponent(Map<String, Object> params) {
         var graspBuilder = new GraspBuilder();
         graspBuilder.withMaximizing((boolean) params.get("maximizing"));
         if(params.containsKey("alphaMin") && params.containsKey("alphaMax")){
@@ -37,5 +38,18 @@ public class CommonComponentFactory {
             throw new AlgorithmParsingException("Unknown grasp strategy type: " + strategy);
         }
         return graspBuilder.build();
+    }
+
+    @Override
+    public List<ComponentParameter> getRequiredParameters() {
+        return Arrays.asList(
+                new ComponentParameter("alpha", ParameterType.REAL, false, 0, 1),
+                new ComponentParameter("strategy", ParameterType.CATEGORICAL, false, new Object[]{"greedyRandom", "randomGreedy"})
+        );
+    }
+
+    @Override
+    public Class<?> produces() {
+        return GRASPConstructive.class;
     }
 }

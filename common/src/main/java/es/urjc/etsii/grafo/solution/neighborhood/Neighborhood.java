@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.solution.neighborhood;
 
+import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -15,6 +17,7 @@ import java.util.stream.StreamSupport;
  * A neighborhoods represents all potential solutions that can be reached for a given solution applying a given move.
  * Usually used inside, but not limited to, a local search procedure,
  */
+@AlgorithmComponent
 public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> {
 
     public static final int UNKNOWN_SIZE = Integer.MAX_VALUE; // Consistency with Spliterator API
@@ -108,7 +111,10 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
         return new RandomFromNeighborhood<>(balanced, neighborhoods);
     }
 
-    private static class EmptyNeighborhood<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends Neighborhood<M, S, I> {
+    public static class EmptyNeighborhood<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends RandomizableNeighborhood<M, S, I> {
+
+        @AutoconfigConstructor
+        public EmptyNeighborhood() {}
 
         @Override
         public ExploreResult<M, S, I> explore(S solution) {
@@ -118,6 +124,11 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
         @Override
         public String toString() {
             return "EmptyNeighborhood{}";
+        }
+
+        @Override
+        public Optional<M> getRandomMove(S solution) {
+            return Optional.empty();
         }
     }
 
