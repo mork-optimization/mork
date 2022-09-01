@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import javax.annotation.PostConstruct;
 import java.lang.reflect.Modifier;
 import java.util.*;
+import java.util.stream.Collectors;
 
 import static java.util.Collections.unmodifiableMap;
 
@@ -133,5 +134,13 @@ public class AlgorithmInventoryService {
             Map<String, Class<?>> componentByName,
             Map<String, String> aliases,
             Map<String, AlgorithmComponentFactory> factories
-    ){}
+    ){
+        /**
+         * Get all detected algorithm components
+         * @return New set containing a reference to each algorithm component detected
+         */
+        public Set<Class<?>> allComponents(){
+            return componentsByType.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
+        }
+    }
 }

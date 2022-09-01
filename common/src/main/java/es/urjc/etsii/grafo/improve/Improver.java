@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.improve;
 
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.ProvidedParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
@@ -107,7 +109,11 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         }
 
         @AutoconfigConstructor
-        public SequentialImprover(boolean maximize, Improver<S, I> improverA, Improver<S, I> improverB) {
+        public SequentialImprover(
+                @ProvidedParam(type = ProvidedParamType.MAXIMIZE) boolean maximize,
+                Improver<S, I> improverA,
+                Improver<S, I> improverB
+        ) {
             super(maximize);
             this.improvers = new Improver[]{improverA, improverB};
         }

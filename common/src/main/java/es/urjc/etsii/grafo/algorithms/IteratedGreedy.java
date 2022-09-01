@@ -91,7 +91,8 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
     public IteratedGreedy(
             @IntegerParam(min = 0) int maxIterations,
             @IntegerParam(min = 1) int stopIfNotImprovedIn,
-            Constructive<S, I> constructive, Shake<S, I> destructionReconstruction,
+            Constructive<S, I> constructive,
+            Shake<S, I> destructionReconstruction,
             Improver<S, I> improver
     ) {
         if (stopIfNotImprovedIn < 1) {

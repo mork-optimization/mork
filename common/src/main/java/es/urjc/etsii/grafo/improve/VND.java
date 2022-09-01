@@ -1,6 +1,8 @@
 package es.urjc.etsii.grafo.improve;
 
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.ProvidedParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.DoubleComparator;
@@ -35,7 +37,10 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
      * @param maximize a boolean.
      */
     @AutoconfigConstructor
-    public VND(boolean maximize, Improver<S, I> improver1, Improver<S, I> improver2, Improver<S, I> improver3) {
+    public VND(
+            @ProvidedParam(type = ProvidedParamType.MAXIMIZE) boolean maximize,
+            Improver<S, I> improver1, Improver<S, I> improver2, Improver<S, I> improver3
+    ) {
         super(maximize);
         this.improvers = List.of(improver1, improver2, improver3);
     }

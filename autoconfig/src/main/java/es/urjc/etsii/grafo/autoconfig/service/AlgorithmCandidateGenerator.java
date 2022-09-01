@@ -3,38 +3,42 @@ package es.urjc.etsii.grafo.autoconfig.service;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.*;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
-import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class AlgorithmCandidateGenerator {
+    private static final Set<Class<?>> collectedClasses = Set.of(List.class, ArrayList.class, Set.class, HashSet.class, Collection.class);
+
     private final AlgorithmInventoryService inventoryService;
     private final Logger log = LoggerFactory.getLogger(AlgorithmCandidateGenerator.class);
     private final Map<Class<?>, List<ComponentParameter>> paramInfo;
 
     public AlgorithmCandidateGenerator(AlgorithmInventoryService inventoryService) {
         this.inventoryService = inventoryService;
-        this.paramInfo = analyzeAllComponentsParameters();
+        this.paramInfo = analyzeParametersRecursively();
     }
 
     /**
      * Analyze algorithm components recursively, starting from all algorithm classes, and extract parameter information
      * @return parameter info for each component
      */
-    public Map<Class<?>, List<ComponentParameter>> analyzeAllComponentsParameters(){
+    public Map<Class<?>, List<ComponentParameter>> analyzeParametersRecursively(){
         var inventory = this.inventoryService.getInventory();
         var algClasses = inventory.componentsByType().get(Algorithm.class);
         var byType = inventory.componentsByType();
 
         Queue<Class<?>> queue = new ArrayDeque<>(algClasses);
-        var notVisited = inventory.componentsByType().values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
+        var notVisited = inventory.allComponents();
         notVisited.removeAll(algClasses);
+
+        // For each analyzed alg component, its list of parameters/dependencies
         var result = new HashMap<Class<?>, List<ComponentParameter>>();
+
+        // Start exploring the algorithms using a BFS approach, continue by their dependencies
         while(!queue.isEmpty()){
             var currentComponentClass = queue.remove();
             var constructor = findAutoconfigConstructor(currentComponentClass);
@@ -43,10 +47,15 @@ public class AlgorithmCandidateGenerator {
                 continue;
             }
             var componentParameters = new ArrayList<ComponentParameter>();
-            for(var p: constructor.getParameters()){
+            for(Parameter p: constructor.getParameters()){
                 var cp = toComponentParameter(byType, p);
+                if(cp == null){
+                    throw new IllegalArgumentException(String.format("Unknown parameter in constructor %s --> (%s %s). Fix: missing annotation, or no valid algorithm component found that implements the given type", constructor, p.getType(), p.getName()));
+                }
                 componentParameters.add(cp);
-                if(cp.isRecursive()){
+                if(cp.recursive()){
+                    // Parameter has a known algorithm component type, for example Improver<S,I>
+                    // Add all implementations to the exploration queue
                     for(var candidate: byType.get(p.getType())){
                         if(notVisited.contains(candidate)){
                             notVisited.remove(candidate);
@@ -57,7 +66,9 @@ public class AlgorithmCandidateGenerator {
             }
             result.put(currentComponentClass, componentParameters);
         }
-        log.debug("Ignored components because they are not reachable: {}", notVisited);
+        if(!notVisited.isEmpty()){
+            log.debug("Ignored components because they are not reachable from any algorithms: {}", notVisited);
+        }
         return result;
     }
 
@@ -77,16 +88,19 @@ public class AlgorithmCandidateGenerator {
         if(p.isAnnotationPresent(OrdinalParam.class)){
             return ComponentParameter.from(name, p.getAnnotation(OrdinalParam.class));
         }
-
-        if(Boolean.TYPE.equals(type)){
-            return new ComponentParameter(name, ParameterType.CATEGORICAL, false, new Object[]{true, false});
+        if(p.isAnnotationPresent(ProvidedParam.class)){
+            return ComponentParameter.from(name, p.getAnnotation(ProvidedParam.class));
         }
+
+//        if (collectedClasses.contains(type)) {
+//            return new ComponentParameter(name, ParameterType.LIST, false, new Object[]{});
+//        }
 
         // Last option, not annotated but type is known
         if (types.containsKey(type)) {
             return ComponentParameter.from(name, types.get(type));
         }
-        throw new IllegalArgumentException(String.format("Failed to map parameter %s, with type %s", name, type));
+        return null;
     }
 
     /**

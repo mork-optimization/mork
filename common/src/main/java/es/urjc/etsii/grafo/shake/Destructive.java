@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.shake;
 
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
@@ -21,4 +22,32 @@ public abstract class Destructive<S extends Solution<S,I>, I extends Instance> {
      * // TODO clone always or not? decided by the caller?
      */
     public abstract S destroy(S solution, int k);
+
+
+    /**
+     * Create a no operation destructive method
+     * Returns the solution immediately without executing any operation
+     * @param <S> Solution class
+     * @param <I> Instance class
+     * @return Null destructive method
+     */
+    public static <S extends Solution<S,I>, I extends Instance> Destructive<S,I> nul(){
+        return new Destructive.NullDestructive<>();
+    }
+
+    /**
+     * Do nothing destructive method
+     *
+     * @param <S> Solution class
+     * @param <I> Instance class
+     */
+    public static class NullDestructive<S extends Solution<S,I>,I extends Instance> extends Destructive<S,I> {
+        @AutoconfigConstructor
+        public NullDestructive() {}
+
+        @Override
+        public S destroy(S solution, int k) {
+            return solution;
+        }
+    }
 }

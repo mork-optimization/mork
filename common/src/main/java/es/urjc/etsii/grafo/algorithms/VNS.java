@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.algorithms;
 
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.IntegerParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
@@ -78,7 +80,13 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * @param improver     List of improvers/local searches
      */
     @AutoconfigConstructor
-    public VNS(String algorithmName, @IntegerParam(min = 1) int maxK, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
+    public VNS(
+            @ProvidedParam(type = ProvidedParamType.ALGORITHM_NAME) String algorithmName,
+            @IntegerParam(min = 1) int maxK,
+            Constructive<S, I> constructive,
+            Shake<S, I> shake,
+            Improver<S, I> improver
+    ) {
         this(algorithmName, getDefaultKMapper(maxK), constructive, shake, improver);
     }
 

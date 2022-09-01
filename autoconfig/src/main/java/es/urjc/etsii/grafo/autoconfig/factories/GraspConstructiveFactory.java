@@ -43,8 +43,8 @@ public class GraspConstructiveFactory extends AlgorithmComponentFactory {
     @Override
     public List<ComponentParameter> getRequiredParameters() {
         return Arrays.asList(
-                new ComponentParameter("alpha", ParameterType.REAL, false, 0, 1),
-                new ComponentParameter("strategy", ParameterType.CATEGORICAL, false, new Object[]{"greedyRandom", "randomGreedy"})
+                new ComponentParameter("alpha", ParameterType.REAL, 0, 1),
+                new ComponentParameter("strategy", ParameterType.CATEGORICAL, new Object[]{"greedyRandom", "randomGreedy"})
         );
     }
 
