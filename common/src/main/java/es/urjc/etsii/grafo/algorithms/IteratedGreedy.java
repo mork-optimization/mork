@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.algorithms;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.IntegerParam;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.Reconstructive;
 import es.urjc.etsii.grafo.improve.Improver;
@@ -11,8 +13,6 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.Arrays;
 
 /**
  * Iterated greedy is a search method that iterates through applications of construction
@@ -60,7 +60,7 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
     /**
      * Improving procedures
      */
-    private Improver<S, I>[] improvers;
+    private Improver<S, I> improver;
 
     /**
      * Maximum number of iterations the algorithm could be executed.
@@ -85,10 +85,15 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
      * @param stopIfNotImprovedIn maximum number of iterations without improving the algorithm could be executed.
      * @param constructive constructive procedure to generate the initial solution of the algorithm
      * @param destructionReconstruction destruction and reconstruction procedures
-     * @param improvers improving procedures. Could be 0 or more.
+     * @param improver improving procedures. Could be 0 or more.
      */
-    @SafeVarargs
-    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Shake<S, I> destructionReconstruction, Improver<S, I>... improvers) {
+    @AutoconfigConstructor
+    public IteratedGreedy(
+            @IntegerParam(min = 0) int maxIterations,
+            @IntegerParam(min = 1) int stopIfNotImprovedIn,
+            Constructive<S, I> constructive, Shake<S, I> destructionReconstruction,
+            Improver<S, I> improver
+    ) {
         if (stopIfNotImprovedIn < 1) {
             throw new IllegalArgumentException("stopIfNotImprovedIn must be greater than 0");
         }
@@ -96,7 +101,7 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
         this.stopIfNotImprovedIn = stopIfNotImprovedIn;
         this.constructive = constructive;
         this.destructionReconstruction = destructionReconstruction;
-        this.improvers = improvers;
+        this.improver = improver;
     }
 
     /**
@@ -107,11 +112,10 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
      * @param stopIfNotImprovedIn maximum number of iterations without improving the algorithm could be executed.
      * @param constructive constructive procedure to generate the initial solution of the algorithm, and rebuild the solution after the destructive method
      * @param destructive destructive method called before the reconstructive
-     * @param improvers improving procedures. Could be 0 or more.
+     * @param improver improving procedures. Could be 0 or more.
      */
-    @SafeVarargs
-    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Reconstructive<S, I> constructive, Destructive<S, I> destructive, Improver<S, I>... improvers) {
-        this(maxIterations, stopIfNotImprovedIn, constructive, new DestroyRebuild<>(constructive, destructive), improvers);
+    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Reconstructive<S, I> constructive, Destructive<S, I> destructive, Improver<S, I> improver) {
+        this(maxIterations, stopIfNotImprovedIn, constructive, new DestroyRebuild<>(constructive, destructive), improver);
     }
 
     /**
@@ -123,11 +127,10 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
      * @param constructive constructive procedure to generate the initial solution of the algorithm, solution is NOT rebuilt using this component
      * @param destructive destructive method called before the reconstructive
      * @param reconstructive reconstructive procedure to rebuild the solution. Initial solution is NOT built using this method.
-     * @param improvers improving procedures. Could be 0 or more.
+     * @param improver improving procedures. Could be 0 or more.
      */
-    @SafeVarargs
-    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Destructive<S, I> destructive, Reconstructive<S, I> reconstructive, Improver<S, I>... improvers) {
-        this(maxIterations, stopIfNotImprovedIn, constructive, new DestroyRebuild<>(reconstructive, destructive), improvers);
+    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Destructive<S, I> destructive, Reconstructive<S, I> reconstructive, Improver<S, I> improver) {
+        this(maxIterations, stopIfNotImprovedIn, constructive, new DestroyRebuild<>(reconstructive, destructive), improver);
     }
 
     /**
@@ -180,11 +183,10 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
      * @return the improved solution
      */
     private S ls(S solution) {
-        if (improvers == null) return solution;
-
-        for (Improver<S, I> improver : improvers) {
+        if (improver != null){
             solution = improver.improve(solution);
         }
+
         return solution;
     }
 
@@ -194,7 +196,7 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
         return "IteratedGreedy{" +
                 "constructive=" + constructive +
                 ", shake=" + destructionReconstruction +
-                ", improvers=" + Arrays.toString(improvers) +
+                ", improver=" + improver +
                 '}';
     }
 }

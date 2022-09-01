@@ -1,16 +1,15 @@
 package es.urjc.etsii.grafo.algorithms;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.IntegerParam;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.TimeControl;
-
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Variable neighborhood search (VNS) is a metaheuristic for solving combinatorial
@@ -42,10 +41,11 @@ import java.util.logging.Logger;
  */
 public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm<S, I> {
 
-    private static final Logger log = Logger.getLogger(VNS.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(VNS.class);
+
     protected final String algorithmName;
 
-    protected List<Improver<S, I>> improvers;
+    protected Improver<S, I> improver;
 
 
     /**
@@ -56,26 +56,12 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
     /**
      * Shake procedure
      */
-    protected List<Shake<S, I>> shakes;
+    protected Shake<S, I> shake;
 
     /**
      * Calculates K value for each VNS step. {@see KMapper}
      */
     protected KMapper<S, I> kMapper;
-
-    /**
-     * Execute VNS until finished
-     *
-     * @param algorithmName Algorithm name, example: "VNSWithRandomConstructive"
-     * @param kMapper       k value provider, @see VNS.KMapper
-     * @param shake         Perturbation method
-     * @param constructive  Constructive method
-     * @param improvers     List of improvers/local searches
-     */
-    @SafeVarargs
-    public VNS(String algorithmName, KMapper<S, I> kMapper, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I>... improvers) {
-        this(algorithmName, kMapper, constructive, Collections.singletonList(shake), improvers);
-    }
 
     /**
      * VNS with default KMapper, which starts at 0 and increments by 1 each time the solution does not improve.
@@ -89,12 +75,11 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * @param algorithmName Algorithm name, example: "VNSWithRandomConstructive"
      * @param shake         Perturbation method
      * @param constructive  Constructive method
-     * @param improvers     List of improvers/local searches
+     * @param improver     List of improvers/local searches
      */
-    @SuppressWarnings("unchecked")
-    @SafeVarargs
-    public VNS(String algorithmName, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I>... improvers) {
-        this(algorithmName, DEFAULT_KMAPPER, constructive, Collections.singletonList(shake), improvers);
+    @AutoconfigConstructor
+    public VNS(String algorithmName, @IntegerParam(min = 1) int maxK, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
+        this(algorithmName, getDefaultKMapper(maxK), constructive, shake, improver);
     }
 
     /**
@@ -102,19 +87,18 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      *
      * @param algorithmName Algorithm name, example: "VNSWithRandomConstructive"
      * @param kMapper       k value provider, @see VNS.KMapper
-     * @param shakes        Perturbation method
+     * @param shake        Perturbation method
      * @param constructive  Constructive method
-     * @param improvers     List of improvers/local searches
+     * @param improver     List of improvers/local searches
      */
-    @SafeVarargs
-    public VNS(String algorithmName, KMapper<S, I> kMapper, Constructive<S, I> constructive, List<Shake<S, I>> shakes, Improver<S, I>... improvers) {
+    public VNS(String algorithmName, KMapper<S, I> kMapper, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
         this.algorithmName = algorithmName;
         this.kMapper = kMapper;
 
         // Ensure Ks are sorted, maxK is the last element
-        this.shakes = shakes;
+        this.shake = shake;
         this.constructive = constructive;
-        this.improvers = Arrays.asList(improvers);
+        this.improver = improver;
     }
 
 
@@ -138,46 +122,27 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
     public S algorithm(I instance) {
         var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
-        solution = localSearch(solution);
+        solution = improver.improve(solution);
 
         int internalK = 0;
         // While stop not request OR k in range. k check is done and breaks inside loop
         while (!TimeControl.isTimeUp()) {
             int userK = kMapper.mapK(solution, internalK);
             if (userK == KMapper.STOPNOW) {
-                printStatus(internalK + ":STOPNOW", solution);
+                printStatus(internalK, KMapper.STOPNOW, solution);
                 break;
             }
-            printStatus(internalK + ":" + userK, solution);
-            S bestSolution = solution;
+            printStatus(internalK, userK, solution);
 
-            for (var shake : shakes) {
-                S copy = bestSolution.cloneSolution();
-                copy = shake.shake(copy, userK);
-                copy = localSearch(copy);
-                if (copy.isBetterThan(bestSolution)) {
-                    bestSolution = copy;
-                }
-            }
-            if (bestSolution == solution) {
-                internalK++;
-            } else {
-                solution = bestSolution;
+            S copy = solution.cloneSolution();
+            copy = shake.shake(copy, userK);
+            copy = improver.improve(copy);
+            if (copy.isBetterThan(solution)) {
+                solution = copy;
                 internalK = 0;
+            } else {
+                internalK++;
             }
-        }
-        return solution;
-    }
-
-    /**
-     * Improving method. Given a solution, this method execute sequentially the improvement procedures.
-     *
-     * @param solution initial solution of the procedure
-     * @return the improved solution
-     */
-    private S localSearch(S solution) {
-        for (Improver<S, I> ls : improvers) {
-            solution = ls.improve(solution);
         }
         return solution;
     }
@@ -185,11 +150,12 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
     /**
      * Print the current status of the VNS procedure, i.e., the current iteration the best solution.
      *
-     * @param phase current state of the vns procedure
+     * @param internalK my value of K, starts at 0 and increments by 1
+     * @param mappedK external K value used for custom shake methods
      * @param solution     solution
      */
-    private void printStatus(String phase, S solution) {
-        log.fine(String.format("%s: \t%s", phase, solution));
+    private void printStatus(int internalK, int mappedK, S solution) {
+        log.debug("{}:{} -> \t{}", internalK, mappedK, solution);
     }
 
     /**
@@ -198,9 +164,9 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
     @Override
     public String toString() {
         return "VNS{" +
-                "improvers=" + improvers +
+                "improvers=" + improver +
                 ", constructive=" + constructive +
-                ", shakes=" + shakes +
+                ", shakes=" + shake +
                 ", kmap=" + kMapper +
                 '}';
     }
@@ -245,9 +211,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
         int mapK(S solution, int originalK);
     }
 
-    /**
-     * Default KMapper, maps identity, stops when k = 5
-     */
-    private static final KMapper DEFAULT_KMAPPER = (solution, originalK) -> originalK >= 5 ? KMapper.STOPNOW : originalK;
-
+    private static <S extends Solution<S,I>, I extends Instance> KMapper<S,I> getDefaultKMapper(int maxK){
+        return (solution, originalK) -> originalK >= maxK ? KMapper.STOPNOW : originalK;
+    }
 }

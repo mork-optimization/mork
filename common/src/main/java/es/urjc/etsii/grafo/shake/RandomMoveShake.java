@@ -1,15 +1,15 @@
 package es.urjc.etsii.grafo.shake;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.IntegerParam;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.util.ValidationUtil;
-import es.urjc.etsii.grafo.util.random.RandomManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-import java.util.Arrays;
-import java.util.Optional;
-import java.util.logging.Logger;
+import java.util.Objects;
 
 /**
  * Shake a solution by executing a sequence of random moves
@@ -19,38 +19,34 @@ import java.util.logging.Logger;
  */
 public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extends Shake<S,I> {
 
-    private static final Logger log = Logger.getLogger(RandomMoveShake.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(RandomMoveShake.class);
 
     /**
      * Set of randomizable neighborhoods available for the shake.
      * A move will be randomly selected from any neighborhood
      */
-    RandomizableNeighborhood<?,S,I>[] neighborhoods;
+    RandomizableNeighborhood<?,S,I> neighborhood;
     private int ratio;
 
     /**
      * Create a new RandomMoveShake
      *
      * @param ratio number of moves to execute = ratio * K
-     * @param neighborhoods neighborhoods to use
+     * @param neighborhood neighborhoods to use
      */
-    @SafeVarargs
-    public RandomMoveShake(int ratio, RandomizableNeighborhood<?,S,I>... neighborhoods) {
+    @AutoconfigConstructor
+    public RandomMoveShake(@IntegerParam(min = 1) int ratio, RandomizableNeighborhood<?,S,I> neighborhood) {
         this.ratio = ratio;
-        if(neighborhoods.length == 0){
-            throw new IllegalArgumentException("Use at least one MoveProvider");
-        }
-        this.neighborhoods = neighborhoods;
+        this.neighborhood = Objects.requireNonNull(neighborhood);
     }
 
     /**
      * Create a new RandomMoveShake. Equivalent to RandomMoveShake(1, neighborhoods)
      *
-     * @param neighborhoods neighborhoods to use
+     * @param neighborhood neighborhoods to use
      */
-    @SafeVarargs
-    public RandomMoveShake(RandomizableNeighborhood<?,S,I>... neighborhoods) {
-        this(1, neighborhoods);
+    public RandomMoveShake(RandomizableNeighborhood<?,S,I> neighborhood) {
+        this(1, neighborhood);
     }
 
     /**
@@ -59,29 +55,17 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
      * Shake the solution applying random movements from the configured neighborhood
      */
     public S shake(S solution, int k) {
-        var random = RandomManager.getRandom();
-
-        // Execute k*RATIO random moves in different neighbourhoods
+        // Execute k*RATIO random moves in the given neighborhood
         for (int i = 0; i < k*ratio; i++) {
-            int chosenNeigh = random.nextInt(neighborhoods.length);
-            int copy = chosenNeigh;
-            Optional<? extends Move<S,I>> move;
-            do {
-                move = neighborhoods[chosenNeigh % neighborhoods.length].getRandomMove(solution);
-                if (move.isPresent()) {
-                    break;
-                }
-                chosenNeigh++;
-            } while (chosenNeigh % neighborhoods.length != copy);
+            var move = this.neighborhood.getRandomMove(solution);
             if(move.isPresent()){
                 move.get().execute(solution);
                 ValidationUtil.assertValidScore(solution);
             } else {
-                log.warning("No move available in any of the given providers, ending Destruction phase now");
+                log.debug("No move available in {}, ending shake at {} of {} iterations", neighborhood.getClass().getSimpleName(), i, k*ratio);
                 break;
             }
         }
-        repairSolution(solution);
         return solution;
     }
 
@@ -89,17 +73,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "{" +
-                "neighborhoods=" + Arrays.toString(this.neighborhoods) +
+                "neighborhood=" + this.neighborhood +
                 '}';
-    }
-
-    /**
-     * Repairs a solution after applying a set of random movements
-     * If the solution does not need to be repaired, this method should be empty
-     *
-     * @param solution Solution to repair
-     */
-    protected void repairSolution(S solution){
-
     }
 }

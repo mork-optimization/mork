@@ -73,6 +73,10 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         return new NullImprover<>();
     }
 
+    public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> serial(boolean maximize, Improver<S, I>... improvers){
+        return new SequentialImprover<>(maximize, improvers);
+    }
+
     /**
      * Do nothing local search
      *
@@ -88,6 +92,31 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
         @Override
         protected S _improve(S solution) {
+            return solution;
+        }
+    }
+
+    public static class SequentialImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {
+
+        private final Improver<S,I>[] improvers;
+
+        @SafeVarargs
+        public SequentialImprover(boolean maximize, Improver<S, I>... improvers) {
+            super(maximize);
+            this.improvers = improvers;
+        }
+
+        @AutoconfigConstructor
+        public SequentialImprover(boolean maximize, Improver<S, I> improverA, Improver<S, I> improverB) {
+            super(maximize);
+            this.improvers = new Improver[]{improverA, improverB};
+        }
+
+        @Override
+        protected S _improve(S solution) {
+            for(var improver: improvers){
+                solution = improver._improve(solution);
+            }
             return solution;
         }
     }
