@@ -88,7 +88,7 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
     public static class NullImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {
 
         @AutoconfigConstructor
-        private NullImprover() {
+        public NullImprover() {
             super(false); // It does not matter as it does nothing
         }
 

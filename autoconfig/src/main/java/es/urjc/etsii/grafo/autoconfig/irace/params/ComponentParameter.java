@@ -8,46 +8,48 @@ import java.util.Collection;
 public class ComponentParameter {
     private final String name;
     private final ParameterType type;
+    private final Class<?> javaType;
     private final Object[] values;
 
-    public ComponentParameter(String name, ParameterType type, Object[] values){
+    public ComponentParameter(String name, Class<?> javaType, ParameterType type, Object[] values){
         this.name = name;
+        this.javaType = javaType;
         this.type = type;
         this.values = values;
     }
 
-    public ComponentParameter(String name, ParameterType type, Object min, Object max){
-        this(name, type, new Object[]{min, max});
+    public ComponentParameter(String name, Class<?> javaType, ParameterType type, Object min, Object max){
+        this(name, javaType, type, new Object[]{min, max});
     }
 
-    public static ComponentParameter from(String javaParameter, CategoricalParam p){
+    public static ComponentParameter from(String name, Class<?> javaType, CategoricalParam p){
         var values = checkLength(p.strings());
-        return new ComponentParameter(javaParameter, ParameterType.CATEGORICAL, false, values);
+        return new ComponentParameter(name, javaType, ParameterType.CATEGORICAL, false, values);
     }
 
-    public static ComponentParameter from(String javaParameter, OrdinalParam p){
+    public static ComponentParameter from(String name, Class<?> javaType, OrdinalParam p){
         var values = checkLength(p.strings());
-        return new ComponentParameter(javaParameter, ParameterType.ORDINAL, values);
+        return new ComponentParameter(name, javaType, ParameterType.ORDINAL, values);
     }
 
-    public static ComponentParameter from(String javaParameter, IntegerParam p){
-        return new ComponentParameter(javaParameter, ParameterType.INTEGER,  p.min(), p.max());
+    public static ComponentParameter from(String name, Class<?> javaType, IntegerParam p){
+        return new ComponentParameter(name, javaType, ParameterType.INTEGER,  p.min(), p.max());
     }
 
-    public static ComponentParameter from(String javaParameter, RealParam p){
-        return new ComponentParameter(javaParameter, ParameterType.REAL,  p.min(), p.max());
+    public static ComponentParameter from(String name, Class<?> javaType, RealParam p){
+        return new ComponentParameter(name, javaType, ParameterType.REAL,  p.min(), p.max());
     }
-    public static ComponentParameter from(String javaParameter, ProvidedParam p) {
-        return new ComponentParameter(javaParameter, ParameterType.PROVIDED, new Object[]{p.type()});
+    public static ComponentParameter from(String name, Class<?> javaType, ProvidedParam p) {
+        return new ComponentParameter(name, javaType, ParameterType.PROVIDED, new Object[]{p.type()});
     }
 
-    public static ComponentParameter from(String javaParameter, Collection<Class<?>> candidates){
-        String[] names = new String[candidates.size()];
+    public static ComponentParameter from(String name, Class<?> javaType, Collection<Class<?>> candidates){
+        Class[] names = new Class[candidates.size()];
         var iterator = candidates.iterator();
         for (int i = 0; i < candidates.size(); i++) {
-            names[i] = iterator.next().getSimpleName();
+            names[i] = iterator.next();
         }
-        return new ComponentParameter(javaParameter, ParameterType.NOT_ANNOTATED, names);
+        return new ComponentParameter(name, javaType, ParameterType.NOT_ANNOTATED, names);
     }
 
     private static Object[] checkLength(Object[] values){
@@ -91,11 +93,11 @@ public class ComponentParameter {
         return type;
     }
 
-    public Object[] getValues() {
-        return values;
+    public Class<?> getJavaType() {
+        return javaType;
     }
 
-    public String getName() {
-        return name;
+    public Object[] getValues() {
+        return values;
     }
 }

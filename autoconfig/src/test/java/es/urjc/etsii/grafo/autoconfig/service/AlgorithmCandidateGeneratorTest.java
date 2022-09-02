@@ -9,7 +9,7 @@ class AlgorithmCandidateGeneratorTest {
         var inventoryService = new AlgorithmInventoryService(TestUtil.getTestFactories());
         inventoryService.runComponentDiscovery("es.urjc.etsii");
         var candidateGenerator = new AlgorithmCandidateGenerator(inventoryService);
-        System.out.println(candidateGenerator);
+        System.out.println(candidateGenerator.generate(4));
     }
 
 }

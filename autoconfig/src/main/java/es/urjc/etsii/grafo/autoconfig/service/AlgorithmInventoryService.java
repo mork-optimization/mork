@@ -58,18 +58,18 @@ public class AlgorithmInventoryService {
         if(!this.factories.containsKey(target) && !this.componentByName.containsKey(target)){
             throw new IllegalArgumentException(String.format("Cannot register alias for unknown target: %s --> %s", alias, target));
         }
-        throwIfKnown(alias);
+        throwIfKnown(alias, true, true);
         this.aliases.put(alias, target);
     }
 
-    private void throwIfKnown(String name){
+    private void throwIfKnown(String name, boolean checkComponents, boolean checkFactories){
         if(this.aliases.containsKey(name)){
             throw new IllegalArgumentException(String.format("Alias already exists: %s --> %s", name, this.aliases.get(name)));
         }
-        if(this.factories.containsKey(name)){
+        if(checkFactories && this.factories.containsKey(name)){
             throw new IllegalArgumentException(String.format("Factory already exists with name: %s", name));
         }
-        if(this.componentByName.containsKey(name)){
+        if(checkComponents && this.componentByName.containsKey(name)){
             throw new IllegalArgumentException(String.format("Component already exists with name: %s", name));
         }
     }
@@ -81,7 +81,7 @@ public class AlgorithmInventoryService {
     public void registerFactory(AlgorithmComponentFactory factory){
         var clazz = factory.produces();
         String name = clazz.getSimpleName();
-        throwIfKnown(name);
+        throwIfKnown(name, false, true);
         this.factories.put(name, factory);
     }
 
@@ -101,7 +101,7 @@ public class AlgorithmInventoryService {
                 continue;
             }
             String componentName = type.getSimpleName();
-            throwIfKnown(componentName);
+            throwIfKnown(componentName, true, false);
             componentByName.put(componentName, type);
             classify(componentsByType, type);
         }
@@ -142,5 +142,9 @@ public class AlgorithmInventoryService {
         public Set<Class<?>> allComponents(){
             return componentsByType.values().stream().flatMap(Collection::stream).collect(Collectors.toSet());
         }
+    }
+
+    public AlgorithmComponentFactory getFactoryFor(Class<?> clazz){
+        return this.factories.get(clazz.getSimpleName());
     }
 }
