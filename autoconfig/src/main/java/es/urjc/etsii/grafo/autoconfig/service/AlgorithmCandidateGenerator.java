@@ -3,12 +3,15 @@ package es.urjc.etsii.grafo.autoconfig.service;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.*;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
+import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
 import java.util.*;
+
+import static es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter.*;
 
 public class AlgorithmCandidateGenerator {
     private static final Set<Class<?>> collectedClasses = Set.of(List.class, ArrayList.class, Set.class, HashSet.class, Collection.class);
@@ -145,55 +148,115 @@ public class AlgorithmCandidateGenerator {
         return Collections.unmodifiableMap(paramInfo);
     }
 
-    // Generate combinations using a recursive DFS approach, bounded by the depth
-    public List<String> generate(int depth){
-        var results = new ArrayList<String>();
-        for (Class<?> startPoint : inventoryService.getInventory().componentsByType().get(Algorithm.class)) {
-            var partialResults = generate("START", depth, startPoint, new ArrayDeque<>());
-            results.addAll(partialResults);
+    public List<String> toIraceParams(List<Node> nodes){
+        var iraceParams = new ArrayList<String>();
+        String[] initialDecisionValues = new String[nodes.size()];
+        for (int i = 0; i < nodes.size(); i++) {
+            initialDecisionValues[i] = nodes.get(i).clazz.getSimpleName();
         }
-        return results;
+        // TODO un poco chapucero
+        var firstParam = ComponentParameter.toIraceParameterString("ROOT", "c", initialDecisionValues, "", "", "");
+        firstParam = firstParam.substring(0, firstParam.lastIndexOf("|"));
+        iraceParams.add(firstParam);
+
+        // Preorder DFS tree transversal
+        var context = new ArrayDeque<String>();
+        for(var node: nodes){
+            recursiveToIraceParams(node, iraceParams, context);
+        }
+        assert context.isEmpty();
+        return iraceParams;
     }
 
-    protected List<String> generate(String currentNodeName, int maxDepth, Class<?> currentNode, ArrayDeque<String> context){
-        var params = this.paramInfo.get(currentNode);
-        if(params == null){
-            log.debug("Ignoring component {} due to null params, context {}", currentNode, context);
-            return new ArrayList<>();
+    protected void recursiveToIraceParams(Node node, ArrayList<String> params, ArrayDeque<String> context) {
+        String componentDecisionPrefix = toIraceParamName(context);
+        if(componentDecisionPrefix.isBlank()){
+            componentDecisionPrefix = node.paramName;
+        } else {
+            componentDecisionPrefix += PARAM_SEP + node.paramName;
         }
-        context.push(currentNode.getSimpleName());
-        var results = new ArrayList<String>();
-        boolean isTerminal = true;
+
+        String componentDecisionValue = node.clazz.getSimpleName();
+        context.push(node.paramName + NAMEVALUE_SEP + componentDecisionValue);
+        var nodeParams = this.paramInfo.get(node.clazz);
+
+        for(var p: nodeParams){
+            if(p.getType() != ParameterType.PROVIDED){
+                context.push(p.name());
+                var iraceParamName = toIraceParamName(context);
+                String iraceParam = p.toIraceParameterString(iraceParamName, componentDecisionPrefix, componentDecisionValue);
+                params.add(iraceParam);
+                context.pop();
+            }
+        }
+
+        for(var entry: node.children().entrySet()){
+            var candidates = entry.getValue();
+            for(var child: candidates){
+                recursiveToIraceParams(child, params, context);
+            }
+        }
+
+        context.pop();
+    }
+
+    // Generate combinations using a recursive DFS approach, bounded by the depth
+    public List<Node> buildTree(int depth){
+        var list = new ArrayList<Node>();
+        for (Class<?> startPoint : inventoryService.getInventory().componentsByType().get(Algorithm.class)) {
+            var node = recursiveBuildTree("ROOT", depth, startPoint, new ArrayDeque<>());
+            if(node != null){
+                list.add(node);
+            }
+        }
+        return list;
+    }
+
+    protected Node recursiveBuildTree(String currentParamName, int maxDepth, Class<?> currentComponent, ArrayDeque<String> context){
+        var params = this.paramInfo.get(currentComponent);
+        if(params == null){
+            log.debug("Ignoring component {} due to null params, context {}", currentComponent, context);
+            return null;
+        }
+        context.push(currentComponent.getSimpleName());
+        var allChildren = new HashMap<String, List<Node>>();
         for(var p: params){
             if(p.recursive()){
-                isTerminal = false;
                 var values = p.getValues();
                 if(values.length == 0){
                     throw new IllegalArgumentException("Should not happen, testing");
                 }
-                var partialResults = new ArrayList<String>();
+                var children = new ArrayList<Node>();
                 if(context.size() < maxDepth){
                     for(var v: values){
-                        partialResults.addAll(generate(p.name(), maxDepth, (Class<?>) v, context));
+                        var currentChildNode = recursiveBuildTree(p.name(), maxDepth, (Class<?>) v, context);
+                        if(currentChildNode != null){
+                            children.add(currentChildNode);
+                        }
                     }
                 }
-                if(partialResults.isEmpty()){
-                    // No valid config found exploring this part of the tree, return empty array
-                    return new ArrayList<>();
+                if(children.isEmpty()){
+                    // No valid config found exploring this part of the tree, even if the other params have values we cannot continue
+                    return null;
                 }
-                results.addAll(partialResults);
+                allChildren.put(p.name(), children);
             }
         }
-        if(isTerminal){
-            results.add(context.toString());
-        }
         context.pop();
-        return results;
+        return new Node(currentParamName, currentComponent, allChildren);
     }
 
-    private record Node(String name, Node parent, Map<String, List<Node>> children){
-        public Node(String name, Node parent){
-            this(name, parent, new HashMap<>());
+    public record Node(String paramName, Class<?> clazz, Map<String, List<Node>> children){
+        public Node(String paramName, Class<?> clazz){
+            this(paramName, clazz, new HashMap<>());
+        }
+
+        @Override
+        public String toString() {
+            return "Node{" +
+                    "n='" + paramName + '\'' +
+                    ", t=" + clazz +
+                    '}';
         }
     }
 }

@@ -13,13 +13,15 @@ public @interface IntegerParam {
 
     /**
      * Smallest valid value in range. Range is inclusive
+     * Defaults to Integer.MIN_VALUE / 2
      * @return int value
      */
-    int min() default Integer.MIN_VALUE;
+    int min() default Integer.MIN_VALUE / 2;
 
     /**
      * Biggest valid value in range. Range is inclusive
+     * Defaults to Integer.MAX_VALUE / 2
      * @return int value
      */
-    int max() default Integer.MAX_VALUE;
+    int max() default Integer.MAX_VALUE / 2;
 }
