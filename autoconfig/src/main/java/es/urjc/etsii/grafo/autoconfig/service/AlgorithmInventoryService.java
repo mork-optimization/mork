@@ -40,8 +40,9 @@ public class AlgorithmInventoryService {
 
     private static Map<String, String> getDefaultAliases() {
         var map = new HashMap<String, String>();
-        map.put("GRASP", "GRASPConstructive");
-        map.put("GraspConstructive", "GRASPConstructive");
+        map.put("GRASP", "GreedyRandomGRASPConstructive");
+        map.put("GRASPConstructive", "GreedyRandomGRASPConstructive");
+        map.put("GraspConstructive", "GreedyRandomGRASPConstructive");
         map.put("NullGRASPListManager", "NullGraspListManager");
         return map;
     }

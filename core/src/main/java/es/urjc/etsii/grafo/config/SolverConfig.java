@@ -48,6 +48,17 @@ public class SolverConfig {
     private boolean benchmark = false;
 
     /**
+     * Tree depth when using automatic configuration
+     * // TODO move no another class, like AutoconfigConfig
+     */
+    private int treeDepth = 4;
+
+    /**
+     * Autoconfig enabled
+     */
+    private boolean autoconfig = false;
+
+    /**
      * <p>Getter for the field <code>seed</code>.</p>
      *
      * @return a int.
@@ -171,5 +182,37 @@ public class SolverConfig {
      */
     public void setRandomType(RandomType randomType) {
         this.randomType = randomType;
+    }
+
+    /**
+     * Get autoconfig tree depth
+     * @return autoconfig tree depth
+     */
+    public int getTreeDepth() {
+        return treeDepth;
+    }
+
+    /**
+     * Set autoconfig tree depth
+     * @param treeDepth autoconfig tree depth
+     */
+    public void setTreeDepth(int treeDepth) {
+        this.treeDepth = treeDepth;
+    }
+
+    /**
+     * Is autoconfig module enabled?
+     * @return true if enabled, false otherwise
+     */
+    public boolean isAutoconfig() {
+        return autoconfig;
+    }
+
+    /**
+     * Enable or disable autoconfig module
+     * @param autoconfig true to enabled, false otherwise
+     */
+    public void setAutoconfig(boolean autoconfig) {
+        this.autoconfig = autoconfig;
     }
 }

@@ -107,8 +107,7 @@ class AlgorithmBuilderServiceTest {
         GraspConstructive{
             alpha=0.2,
             maximizing=false,
-            candidateListManager=NullGraspListManager{},
-            strategy="greedyRandom"
+            candidateListManager=NullGraspListManager{}
         }
         """;
         var component = builderService.buildAlgorithmComponentFromString(alg);
@@ -121,8 +120,7 @@ class AlgorithmBuilderServiceTest {
         GraspConstructive{
             alpha=0.2,
             maximizing=false,
-            candidateListManager=NullGraspListManager{},
-            strategy="greedyRandom"
+            candidateListManager=NullGraspListManager{}
         }
         """;
         var component =
@@ -135,8 +133,7 @@ class AlgorithmBuilderServiceTest {
         GRASP{
             alpha=0.2,
             maximizing=false,
-            candidateListManager=NullGraspListManager{},
-            strategy="greedyRandom"
+            candidateListManager=NullGraspListManager{}
         }
         """;
         var component = builderService.buildAlgorithmComponentFromString(alg);
@@ -150,8 +147,7 @@ class AlgorithmBuilderServiceTest {
             minAlpha=0.2,
             maxAlpha=0.4,
             maximizing=false,
-            candidateListManager=NullGraspListManager{},
-            strategy="greedyRandom"
+            candidateListManager=NullGraspListManager{}
         }
         """;
         var component = builderService.buildAlgorithmComponentFromString(alg);
@@ -159,28 +155,25 @@ class AlgorithmBuilderServiceTest {
     }
 
     @Test
-    void failUsingAliasInvalidStrategy(){
+    void failUsingAliasInvalidAlpha(){
         String alg = """
         GRASP{
-            alpha=0.2,
-            maximizing=false,
-            candidateListManager=NullGraspListManager{},
-            strategy="doesNotExist"
-        }
-        """;
-        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
-    }
-
-    @Test
-    void failUsingAliasMissingStrategy(){
-        String alg = """
-        GRASP{
-            alpha=0.2,
+            alpha=-0.9,
             maximizing=false,
             candidateListManager=NullGraspListManager{}
         }
         """;
-        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
+    }
+
+    @Test
+    void failUsingAliasMissingCL(){
+        String alg = """
+        GRASP{
+            maximizing=false
+        }
+        """;
+        Assertions.assertThrows(NullPointerException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
     }
 
 

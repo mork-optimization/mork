@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteRequest;
+import es.urjc.etsii.grafo.autoconfig.service.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
@@ -15,9 +16,11 @@ import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.services.AbstractOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
+import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.TimeUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
@@ -27,12 +30,15 @@ import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
+import static es.urjc.etsii.grafo.solution.metrics.Metrics.BEST_OBJECTIVE_FUNCTION;
 import static es.urjc.etsii.grafo.util.IOUtil.*;
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 
@@ -47,6 +53,10 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     private static final Logger log = LoggerFactory.getLogger(IraceOrchestrator.class);
     private static final String IRACE_EXPNAME = "irace autoconfig";
 
+    private static final long IGNORE_MILLIS = 10_000;
+    private static final long MAX_EXECTIME_MILLIS = 60_000;
+    private static final long INTERVAL_DURATION = MAX_EXECTIME_MILLIS - IGNORE_MILLIS;
+
     private final SolverConfig solverConfig;
     private final InstanceConfiguration instanceConfiguration;
     private final IraceIntegration iraceIntegration;
@@ -55,16 +65,19 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     private final InstanceManager<I> instanceManager;
     private final Environment env;
 
+    private final AlgorithmCandidateGenerator algorithmCandidateGenerator;
+
     /**
      * <p>Constructor for IraceOrchestrator.</p>
      *
-     * @param solverConfig          a {@link SolverConfig} object.
+     * @param solverConfig                a {@link SolverConfig} object.
      * @param instanceConfiguration
-     * @param iraceIntegration      a {@link IraceIntegration} object.
-     * @param instanceManager       a {@link InstanceManager} object.
-     * @param solutionBuilders      a {@link List} object.
-     * @param algorithmGenerator    a {@link Optional} object.
-     * @param env                   a {@link Environment} object.
+     * @param iraceIntegration            a {@link IraceIntegration} object.
+     * @param instanceManager             a {@link InstanceManager} object.
+     * @param solutionBuilders            a {@link List} object.
+     * @param algorithmGenerator          a {@link Optional} object.
+     * @param env                         a {@link Environment} object.
+     * @param algorithmCandidateGenerator
      */
     public IraceOrchestrator(
             SolverConfig solverConfig,
@@ -72,17 +85,19 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
             InstanceManager<I> instanceManager,
             List<SolutionBuilder<S, I>> solutionBuilders,
             Optional<IraceAlgorithmGenerator<S, I>> algorithmGenerator,
-            Environment env) {
+            Environment env, AlgorithmCandidateGenerator algorithmCandidateGenerator) {
         this.solverConfig = solverConfig;
         this.instanceConfiguration = instanceConfiguration;
         this.iraceIntegration = iraceIntegration;
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         this.instanceManager = instanceManager;
         this.env = env;
-        log.info("Using SolutionBuilder implementation: " + this.solutionBuilder.getClass().getSimpleName());
+        log.info("Using SolutionBuilder implementation: {}", this.solutionBuilder.getClass().getSimpleName());
 
         this.algorithmGenerator = algorithmGenerator.orElseThrow(() -> new RuntimeException("IRACE mode enabled but no implementation of IraceAlgorithmGenerator has been found. Check the Mork docs section about IRACE."));
-        log.info("IRACE mode enabled, using generator: " + this.algorithmGenerator.getClass().getSimpleName());
+        log.info("Using IraceAlgorithmGenerator implementation: {}", this.algorithmGenerator.getClass().getSimpleName());
+
+        this.algorithmCandidateGenerator = algorithmCandidateGenerator;
 
     }
 
@@ -99,7 +114,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         } finally {
             long totalExecutionTime = System.nanoTime() - startTime;
             EventPublisher.getInstance().publishEvent(new ExecutionEndedEvent(totalExecutionTime));
-            log.info(String.format("Total execution time: %s (s)", nanosToSecs(totalExecutionTime)));
+            log.info("Total execution time: {} (s)", nanosToSecs(totalExecutionTime));
         }
     }
 
@@ -111,10 +126,24 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         extractIraceFiles(isJAR);
         long start = System.nanoTime();
         long startTimestamp = System.currentTimeMillis();
+        if(solverConfig.isAutoconfig()){
+            overrideIraceParameters();
+        }
         iraceIntegration.runIrace(isJAR);
         long end = System.nanoTime();
         log.info("Finished running experiment: IRACE autoconfig");
         EventPublisher.getInstance().publishEvent(new ExperimentEndedEvent(IRACE_EXPNAME, end - start, startTimestamp));
+    }
+
+    private void overrideIraceParameters() {
+        var destination = Path.of("scenario.txt");
+        var nodes = this.algorithmCandidateGenerator.buildTree(solverConfig.getTreeDepth());
+        var iraceParams = this.algorithmCandidateGenerator.toIraceParams(nodes);
+        try {
+            Files.write(destination, iraceParams);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private void extractIraceFiles(boolean isJar) {
@@ -201,15 +230,29 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
 
 
     private String singleExecution(Algorithm<S,I> algorithm, I instance) {
+        if(solverConfig.isAutoconfig()){
+            TimeControl.setMaxExecutionTime(MAX_EXECTIME_MILLIS, TimeUnit.MILLISECONDS);
+            TimeControl.start();
+        }
         long startTime = System.nanoTime();
         var result = algorithm.algorithm(instance);
         long endTime = System.nanoTime();
-        double score = result.getScore();
+        double score;
+        if(solverConfig.isAutoconfig()){
+            TimeControl.remove();
+            var metrics = MetricsManager.getInstance();
+            score = metrics.hypervolume(BEST_OBJECTIVE_FUNCTION,
+                    TimeUtil.convert(IGNORE_MILLIS, TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
+                    TimeUtil.convert(INTERVAL_DURATION, TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS)
+            );
+        } else {
+            score = result.getScore();
+        }
         double elapsedSeconds = TimeUtil.nanosToSecs(endTime - startTime);
         if(Mork.isMaximizing()){
             score *= -1; // Irace only minimizes
         }
-        log.debug(String.format("IRACE Iteration: %s %.2g%n", score, elapsedSeconds));
+        log.debug("IRACE Iteration: {} {}", score, elapsedSeconds);
         return String.format("%s %s", score, elapsedSeconds);
     }
 }

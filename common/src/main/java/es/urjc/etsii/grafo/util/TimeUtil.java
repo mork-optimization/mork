@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.util;
 
+import java.util.concurrent.TimeUnit;
+
 /**
  * Common time operations
  */
@@ -33,6 +35,17 @@ public class TimeUtil {
      */
     public static long secsToNanos(double seconds){
         return (long)(seconds * NANOS_IN_SECOND);
+    }
+
+    /**
+     * Convert time between different timeunits
+     * @param value value to convert
+     * @param from TimeUnit of the value, example seconds
+     * @param to desired TimeUnit, example Milliseconds
+     * @return converted value to the given TimeUnit
+     */
+    public static long convert(long value, TimeUnit from, TimeUnit to){
+        return to.convert(value, from);
     }
 
 }

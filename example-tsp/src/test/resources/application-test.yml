@@ -34,6 +34,10 @@ solver:
   # Execute benchmark before starting solver? False to skip benchmark.
   benchmark: false
 
+  # Autoconfig properties
+  autoconfig: false
+  tree-depth: 4
+
 # Enable irace integration? Check IRACE Wiki section before enabling
 irace:
   enabled: false

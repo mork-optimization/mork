@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
+import java.util.Objects;
 import java.util.function.ToDoubleFunction;
 
 import static es.urjc.etsii.grafo.util.DoubleComparator.*;
@@ -132,7 +133,7 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
      * @return same builder with its config changed
      */
     public GraspBuilder<M, S, I> withListManager(GRASPListManager<M, S, I> graspListManager) {
-        this.candidateListManager = graspListManager;
+        this.candidateListManager = Objects.requireNonNull(graspListManager);
         return this;
     }
 
