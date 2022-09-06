@@ -15,6 +15,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.services.AbstractOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
+import es.urjc.etsii.grafo.services.SolutionValidator;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solver.Mork;
@@ -60,6 +61,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     private final SolutionBuilder<S, I> solutionBuilder;
     private final IraceAlgorithmGenerator<S,I> algorithmGenerator;
     private final InstanceManager<I> instanceManager;
+    private final Optional<SolutionValidator<S,I>> validator;
     private final Environment env;
 
     private final AlgorithmCandidateGenerator algorithmCandidateGenerator;
@@ -73,6 +75,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
      * @param instanceManager             a {@link InstanceManager} object.
      * @param solutionBuilders            a {@link List} object.
      * @param algorithmGenerator          a {@link Optional} object.
+     * @param validator
      * @param env                         a {@link Environment} object.
      * @param algorithmCandidateGenerator
      */
@@ -82,7 +85,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
             InstanceManager<I> instanceManager,
             List<SolutionBuilder<S, I>> solutionBuilders,
             Optional<IraceAlgorithmGenerator<S, I>> algorithmGenerator,
-            Environment env, AlgorithmCandidateGenerator algorithmCandidateGenerator) {
+            Optional<SolutionValidator<S, I>> validator, Environment env, AlgorithmCandidateGenerator algorithmCandidateGenerator) {
         this.solverConfig = solverConfig;
         this.instanceConfiguration = instanceConfiguration;
         this.iraceIntegration = iraceIntegration;
@@ -95,6 +98,18 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         log.info("Using IraceAlgorithmGenerator implementation: {}", this.algorithmGenerator.getClass().getSimpleName());
 
         this.algorithmCandidateGenerator = algorithmCandidateGenerator;
+
+        if(validator.isEmpty()){
+            log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
+        } else {
+            log.info("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
+        }
+
+        this.validator = validator;
+
+        if(this.validator.isEmpty()){
+            log.warn("");
+        }
 
     }
 
@@ -234,8 +249,13 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
             TimeControl.start();
         }
         long startTime = System.nanoTime();
-        var result = algorithm.algorithm(instance);
+        var solution = algorithm.algorithm(instance);
         long endTime = System.nanoTime();
+
+        // If the user has implemented a solution validator, check solution correctness
+        validator.ifPresent(v -> v.validate(solution).throwIfFail());
+
+        // TODO create custom exception if the params are not valid, and return really bad score
         double score;
         if(solverConfig.isAutoconfig()){
             TimeControl.remove();
@@ -245,12 +265,12 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
                     TimeUtil.convert(INTERVAL_DURATION, TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS)
             );
         } else {
-            score = result.getScore();
+            score = solution.getScore();
+            if(Mork.isMaximizing()){
+                score *= -1; // Irace only minimizes
+            }
         }
         double elapsedSeconds = TimeUtil.nanosToSecs(endTime - startTime);
-        if(Mork.isMaximizing()){
-            score *= -1; // Irace only minimizes
-        }
         log.debug("IRACE Iteration: {} {}", score, elapsedSeconds);
         return String.format("%s %s", score, elapsedSeconds);
     }

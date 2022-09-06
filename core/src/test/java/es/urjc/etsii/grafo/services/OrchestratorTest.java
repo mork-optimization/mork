@@ -31,7 +31,7 @@ class OrchestratorTest {
     private TestData getTestData(int repetitions, int nInstances, int nAlgorithms){
         List<Algorithm<TestSolution, TestInstance>> algorithms = new ArrayList<>();
         for (int i = 0; i < nAlgorithms; i++) {
-            algorithms.add(new SimpleAlgorithm<TestSolution, TestInstance>(Constructive.nul(), Improver.nul()));
+            algorithms.add(new SimpleAlgorithm<>(new NullConstructive(), Improver.nul()));
         }
 
         List<String> instances = new ArrayList<>();
@@ -45,4 +45,11 @@ class OrchestratorTest {
     }
 
     private record TestData(SolverConfig config, List<String> instances, List<Algorithm<TestSolution, TestInstance>> algorithms){}
+
+    private static class NullConstructive extends Constructive<TestSolution, TestInstance> {
+        @Override
+        public TestSolution construct(TestSolution solution) {
+            return solution;
+        }
+    }
 }
