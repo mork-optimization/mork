@@ -38,8 +38,9 @@ public class AlgorithmBuilderUtil {
         if(constructor == null){
             throw new AlgorithmParsingException(String.format("Failed to find constructor method in class %s for params %s, types %s", clazz.getSimpleName(), args, argTypes));
         }
-        var params = new Object[args.size()];
         var cParams = constructor.getParameters();
+        var params = new Object[cParams.length];
+
         for (int i = 0; i < cParams.length; i++) {
             var nextParamName = cParams[i].getName();
             if(args.containsKey(nextParamName)){
