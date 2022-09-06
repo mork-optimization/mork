@@ -15,7 +15,7 @@ public class ComponentParameter {
     private final Object[] values;
     private String condition = "";
 
-    public static final String NAMEVALUE_SEP = "-";
+    public static final String NAMEVALUE_SEP = "_";
     public static final String PARAM_SEP = ".";
 
     public ComponentParameter(String name, Class<?> javaType, ParameterType type, Object[] values) {
@@ -91,7 +91,7 @@ public class ComponentParameter {
 
         StringBuilder valString = new StringBuilder();
         valString.append(name).append("\t\t"); // Param name
-        valString.append("\"--").append(name).append("=\"\t\t"); // Param switch, ie --blabla=
+        valString.append("\"").append(name).append("=\"\t\t"); // Param switch, ie --blabla=
         valString.append(type).append("\t\t");
 
         valString.append("(");

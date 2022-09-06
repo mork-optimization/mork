@@ -2,17 +2,19 @@ package es.urjc.etsii.grafo.autoconfig.service;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.*;
+import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
 import java.util.*;
 
 import static es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter.*;
 
+@Service
 public class AlgorithmCandidateGenerator {
     private static final Set<Class<?>> collectedClasses = Set.of(List.class, ArrayList.class, Set.class, HashSet.class, Collection.class);
 
@@ -23,6 +25,11 @@ public class AlgorithmCandidateGenerator {
     public AlgorithmCandidateGenerator(AlgorithmInventoryService inventoryService) {
         this.inventoryService = inventoryService;
         this.paramInfo = analyzeParametersRecursively();
+        log.info("Components available for autoconfig: {}", paramInfo.keySet());
+    }
+
+    protected boolean isValidParamName(String name){
+        return name.matches("[a-zA-Z][a-zA-Z0-9]*");
     }
 
     /**
@@ -65,7 +72,7 @@ public class AlgorithmCandidateGenerator {
             } else {
 
                 // Second strategy: use autoconfig constructor
-                var constructor = findAutoconfigConstructor(currentComponentClass);
+                var constructor = AlgorithmBuilderUtil.findAutoconfigConstructor(currentComponentClass);
                 if(constructor == null){
                     log.debug("Skipping component {}, could not find constructor annotated with @AutoconfigConstructor", currentComponentClass.getSimpleName());
                     continue;
@@ -101,6 +108,9 @@ public class AlgorithmCandidateGenerator {
         // Either the parameter is annotated or it is a known type that we have to recursively analyze
         var type = p.getType();
         var name = p.getName();
+        if(!isValidParamName(name)){
+            throw new IllegalArgumentException(String.format("Invalid parameter name %s, must match[a-zA-Z][a-zA-Z0-9]*)", name));
+        }
         if(p.isAnnotationPresent(IntegerParam.class)){
             return ComponentParameter.from(name, type, p.getAnnotation(IntegerParam.class));
         }
@@ -124,22 +134,6 @@ public class AlgorithmCandidateGenerator {
         // Last option, not annotated but type is known
         if (types.containsKey(type)) {
             return ComponentParameter.from(name, type, types.get(type));
-        }
-        return null;
-    }
-
-    /**
-     * Analyze an algorithm component class to find which constructor is annotated with @AutoconfigConstructor
-     * @param algComponentClass Algorithm component to analyze
-     * @return constructor annotated with @AutoconfigConstructor if present, null otherwise
-     */
-    protected Constructor<?> findAutoconfigConstructor(Class<?> algComponentClass){
-        var constructors = algComponentClass.getConstructors();
-        for(var c: constructors){
-            var annotation = c.getAnnotation(AutoconfigConstructor.class);
-            if(annotation != null){
-                return c;
-            }
         }
         return null;
     }

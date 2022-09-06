@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import org.apache.commons.lang3.ClassUtils;
 import org.slf4j.Logger;
@@ -63,6 +64,22 @@ public class AlgorithmBuilderUtil {
             }
         }
         log.debug("Failed to to found a matching constructor for class {} and args {}, detected constructors: {}", clazz.getSimpleName(), args, constructors);
+        return null;
+    }
+
+    /**
+     * Analyze an algorithm component class to find which constructor is annotated with @AutoconfigConstructor
+     * @param algComponentClass Algorithm component to analyze
+     * @return constructor annotated with @AutoconfigConstructor if present, null otherwise
+     */
+    public static Constructor<?> findAutoconfigConstructor(Class<?> algComponentClass){
+        var constructors = algComponentClass.getConstructors();
+        for(var c: constructors){
+            var annotation = c.getAnnotation(AutoconfigConstructor.class);
+            if(annotation != null){
+                return c;
+            }
+        }
         return null;
     }
 

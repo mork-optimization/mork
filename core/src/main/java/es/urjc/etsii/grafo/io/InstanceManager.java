@@ -153,4 +153,8 @@ public class InstanceManager<I extends Instance> {
     public void purgeCache(){
         this.cacheByPath.clear();
     }
+
+    public InstanceImporter<I> getUserImporterImplementation(){
+        return this.instanceImporter;
+    }
 }

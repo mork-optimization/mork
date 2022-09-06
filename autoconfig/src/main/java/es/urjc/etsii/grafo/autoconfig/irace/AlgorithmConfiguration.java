@@ -22,10 +22,9 @@ public class AlgorithmConfiguration {
     /**
      * Build an algorithm configuration from a string value, such those returned from Irace.
      * Example: "constructive=random balanced=true initialmaxdiffratio=0.8193 cooldownexpratio=0.9438 cyclelength=9"
-     * @param params String representation of the algorithm parameters, see example in method description
+     * @param args String representation of the algorithm parameters, see example in method description
      */
-    public AlgorithmConfiguration(String params) {
-        var args = params.strip().split("\\s+");
+    public AlgorithmConfiguration(String[] args) {
         Map<String, String> config = new HashMap<>();
         for (String arg : args) {
             String[] keyValue = arg.split("=");

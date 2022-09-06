@@ -9,6 +9,7 @@
 - (Change) Refactored LocalSearch, enhance and simplify its behaviour.
 - (Change) Improve SolutionSerializer::export method
 - (Removed) IteratedImprover, MoveComparator, DefaultMoveComparator, Move::improves
+- (Fix) Irace bug when parsing args separated by multiple spaces
 
 # v0.14
 - (New) Algorithms can be magically built from strings without user interaction, using the new autoconfig project. See AlgComponentService and AlgorithmBuilderUtil classes for more details.

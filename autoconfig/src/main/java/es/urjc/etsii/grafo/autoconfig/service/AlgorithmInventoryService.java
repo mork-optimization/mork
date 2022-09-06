@@ -91,8 +91,17 @@ public class AlgorithmInventoryService {
         runComponentDiscovery(this.pkgs);
     }
 
+    protected boolean checkComponentName(Set<String> invalidNames, String name){
+        boolean isValid = name.matches("[a-zA-Z][a-zA-Z0-9]*");
+        if(!isValid && invalidNames != null){
+            invalidNames.add(name);
+        }
+        return isValid;
+    }
+
     protected void runComponentDiscovery(String pkgs){
         var types = new ArrayList<Class<?>>();
+        var failedValidationSet = new HashSet<String>();
         for(var pkg: pkgs.split(",")){
             types.addAll(ClassUtil.findTypesByAnnotation(pkg, AlgorithmComponent.class));
         }
@@ -102,9 +111,13 @@ public class AlgorithmInventoryService {
                 continue;
             }
             String componentName = type.getSimpleName();
+            checkComponentName(failedValidationSet, componentName);
             throwIfKnown(componentName, true, false);
             componentByName.put(componentName, type);
             classify(componentsByType, type);
+        }
+        if(!failedValidationSet.isEmpty()){
+            throw new IllegalArgumentException("Invalid component names detected: " + failedValidationSet);
         }
         log.info("Algorithm components found: {}", componentByName.keySet());
         log.debug("Classified algorithm components: {}", componentsByType);

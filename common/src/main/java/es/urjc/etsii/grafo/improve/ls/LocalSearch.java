@@ -33,7 +33,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
 
     private static final Logger log = LoggerFactory.getLogger(LocalSearch.class);
 
-    private static final int WARN_LIMIT = 10_000;
+    private static final int WARN_LIMIT = 50_000;
 
     protected final Neighborhood<M, S, I> neighborhood;
     protected final BiPredicate<Double, Double> fIsBetter;
@@ -80,7 +80,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
             improved = iteration(solution);
             rounds++;
             if(rounds == WARN_LIMIT){
-                log.warn("Too many iterations, soft limit of {} passed, maybe {} is stuck in an infinite loop?", WARN_LIMIT, this.getClass().getSimpleName());
+                log.warn("Localsearch method {} may be stuck in an infinite loop (warn at {})", this.getClass().getSimpleName(),  WARN_LIMIT);
             }
         }
         log.debug("Improvement {} ended after {} iterations.", this.getClass().getSimpleName(), rounds);

@@ -32,10 +32,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 import static es.urjc.etsii.grafo.solution.metrics.Metrics.BEST_OBJECTIVE_FUNCTION;
@@ -121,7 +118,10 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     private void launchIrace() {
         log.info("Running experiment: IRACE autoconfig" );
         EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(IRACE_EXPNAME, new ArrayList<>()));
-        var referenceClass = algorithmGenerator.getClass();
+        // Users must implement an Instance Importer to explain how to load instances
+        // Use that class to see if the project is executing inside a JAR file or inside an IDE, to appropriately fix path
+        // TODO: Review and improve
+        var referenceClass = instanceManager.getUserImporterImplementation().getClass();
         var isJAR = IOUtil.isJAR(referenceClass);
         extractIraceFiles(isJAR);
         long start = System.nanoTime();
@@ -136,7 +136,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     }
 
     private void overrideIraceParameters() {
-        var destination = Path.of("scenario.txt");
+        var destination = Path.of("parameters.txt");
         var nodes = this.algorithmCandidateGenerator.buildTree(solverConfig.getTreeDepth());
         var iraceParams = this.algorithmCandidateGenerator.toIraceParams(nodes);
         try {
@@ -222,8 +222,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         String seed = args[2];
         String instance = args[3];
 
-        int length = candidateConfiguration.length() + instanceId.length() + seed.length() + instance.length();
-        String algParams = decoded.substring(length);
+        String[] algParams = Arrays.copyOfRange(args, 4, args.length);
 
         return new IraceRuntimeConfiguration(candidateConfiguration, instanceId, seed, instance, new AlgorithmConfiguration(algParams));
     }
