@@ -15,7 +15,7 @@ public class RGGraspConstructiveFactory extends AlgorithmComponentFactory {
     @Override
     public Object buildComponent(Map<String, Object> params) {
         var graspBuilder = new GraspBuilder();
-        graspBuilder.withMaximizing((boolean) params.get("maximizing"));
+        graspBuilder.withMaximizing((boolean) params.get("maximize"));
         if(params.containsKey("alphaMin") && params.containsKey("alphaMax")){
             graspBuilder.withAlphaInRange((double) params.get("alphaMin"), (double) params.get("alphaMax"));
         } else if(params.containsKey("alpha")){
