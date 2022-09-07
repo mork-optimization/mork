@@ -109,20 +109,24 @@ public class ComponentParameter {
         return valString.toString();
     }
 
+    public String toIraceParameterStringNotAnnotated(String name, String parentName, String parentValue, String[] values){
+        if(getType() != NOT_ANNOTATED){
+            throw new IllegalArgumentException("Only valid for parameters with type NOT_ANNOTATED");
+        }
+
+        // Cannot use this.values[i] as some tree branches may have been pruned for the current node
+        // Must use the set given as a parameter
+        return toIraceParameterString(name, CATEGORICAL.iraceType(), values, parentName, parentValue, condition);
+    }
+
     public String toIraceParameterString(String name, String parentName, String parentValue) {
-        String iraceType;
-        String[] iraceValues = new String[this.values.length];
         if(getType() == NOT_ANNOTATED){
-            iraceType = CATEGORICAL.iraceType();
-            for (int i = 0; i < this.values.length; i++) {
-                iraceValues[i] = ((Class<?>) this.values[i]).getSimpleName();
-            }
-            Arrays.sort(iraceValues);
-        } else {
-            iraceType = getType().iraceType();
-            for (int i = 0; i < this.values.length; i++) {
-                iraceValues[i] = this.values[i].toString();
-            }
+            throw new IllegalArgumentException("Only valid for parameters with type different to NOT_ANNOTATED, current is " + getType());
+        }
+        String iraceType = getType().iraceType();
+        String[] iraceValues = new String[this.values.length];
+        for (int i = 0; i < this.values.length; i++) {
+            iraceValues[i] = this.values[i].toString();
         }
         return toIraceParameterString(name, iraceType, iraceValues, parentName, parentValue, condition);
     }

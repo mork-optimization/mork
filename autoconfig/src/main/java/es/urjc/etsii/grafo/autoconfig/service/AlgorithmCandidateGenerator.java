@@ -25,7 +25,7 @@ public class AlgorithmCandidateGenerator {
     public AlgorithmCandidateGenerator(AlgorithmInventoryService inventoryService) {
         this.inventoryService = inventoryService;
         this.paramInfo = analyzeParametersRecursively();
-        log.info("Components available for autoconfig: {}", paramInfo.keySet());
+        log.info("Components available for autoconfig: {}", paramInfo.keySet().stream().map(Class::getSimpleName).sorted().toList());
     }
 
     protected boolean isValidParamName(String name){
@@ -182,7 +182,10 @@ public class AlgorithmCandidateGenerator {
             if(p.getType() != ParameterType.PROVIDED){
                 context.push(p.name());
                 var iraceParamName = toIraceParamName(context);
-                String iraceParam = p.toIraceParameterString(iraceParamName, componentDecisionPrefix, componentDecisionValue);
+                String iraceParam = p.recursive()?
+                        p.toIraceParameterStringNotAnnotated(iraceParamName, componentDecisionPrefix, componentDecisionValue, getValidChildrenNamesForParam(node, p)):
+                        p.toIraceParameterString(iraceParamName, componentDecisionPrefix, componentDecisionValue);
+
                 params.add(iraceParam);
                 context.pop();
             }
@@ -196,6 +199,20 @@ public class AlgorithmCandidateGenerator {
         }
 
         context.pop();
+    }
+
+    private String[] getValidChildrenNamesForParam(Node node, ComponentParameter p) {
+        List<String> validNames = new ArrayList<>();
+        var childrenForParameter = node.children.get(p.name());
+        for(var childNode: childrenForParameter){
+            validNames.add(childNode.clazz.getSimpleName());
+        }
+        if(validNames.isEmpty()){
+            throw new IllegalStateException(String.format("Empty children for param %s in node %s, should have been pruned before", p , node));
+        }
+        String[] sortedNames = validNames.toArray(new String[0]);
+        Arrays.sort(sortedNames);
+        return sortedNames;
     }
 
     // Generate combinations using a recursive DFS approach, bounded by the depth
