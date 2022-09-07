@@ -5,6 +5,8 @@ import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solution.metrics.Metrics;
+import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.ArrayList;
@@ -77,6 +79,7 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
         var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
         ValidationUtil.assertValidScore(solution);
+        MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, solution.getScore());
         printStatus("Constructive", solution);
         solution = localSearch(solution);
         return solution;
@@ -93,6 +96,7 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
             Improver<S, I> ls = improvers.get(i);
             solution = ls.improve(solution);
             ValidationUtil.assertValidScore(solution);
+            MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, solution.getScore());
             printStatus("Improver " + i, solution);
         }
         return solution;
