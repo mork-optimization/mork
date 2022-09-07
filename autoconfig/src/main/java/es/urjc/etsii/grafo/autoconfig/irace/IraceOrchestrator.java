@@ -230,7 +230,11 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
             throw new IllegalArgumentException(String.format("Invalid integration key, got %s", request.getKey()));
         }
         String decoded = StringUtil.b64decode(request.getConfig());
-        String[] args = decoded.split("\\s+");
+        return toIraceRuntimeConfig(decoded);
+    }
+
+    public static IraceRuntimeConfiguration toIraceRuntimeConfig(String commandline){
+        String[] args = commandline.split("\\s+");
 
         String candidateConfiguration = args[0];
         String instanceId = args[1];
