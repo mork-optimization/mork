@@ -24,4 +24,14 @@ public class DebugController {
         return this.generator.buildTree(solverConfig.getTreeDepth());
     }
 
+    @GetMapping("/auto/debug/params")
+    public Object params(){
+        return this.generator.componentParams();
+    }
+
+    @GetMapping("/auto/debug/inventory")
+    public Object getInventory(){
+        return this.inventory.getInventory();
+    }
+
 }
