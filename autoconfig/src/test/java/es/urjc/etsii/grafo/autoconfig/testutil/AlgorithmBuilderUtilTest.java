@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.List;
 import java.util.Map;
 
-public class AlgorithmBuilderUtilTest {
+class AlgorithmBuilderUtilTest {
 
     @Test
     void testFindMultipleConstructors() {
@@ -63,7 +63,7 @@ public class AlgorithmBuilderUtilTest {
     @Test
     void buildGrasp(){
         Map<String, Object> params = Map.of(
-                "maximizing", false,
+                "maximize", false,
                 "alpha", 0.75,
                 "candidateListManager", new GRASPListManager<TestMove, TestSolution, TestInstance>() {
                     @Override

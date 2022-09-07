@@ -42,7 +42,7 @@ class AlgorithmBuilderServiceTest {
         SimpleAlgorithm{
             constructive=FakeGRASPConstructive{
                 alpha=0.5,
-                maximizing=false,
+                maximize=false,
                 candidateListManager=NullGraspListManager{}
             },
             improver=null
@@ -58,7 +58,7 @@ class AlgorithmBuilderServiceTest {
         SimpleAlgorithm{
             constructive=FakeGRASPConstructive{
                 alpha=null,
-                maximizing=false,
+                maximize=false,
                 candidateListManager=NullGraspListManager{}
             },
             improver=null
@@ -106,7 +106,7 @@ class AlgorithmBuilderServiceTest {
         String alg = """
         GraspConstructive{
             alpha=0.2,
-            maximizing=false,
+            maximize=false,
             candidateListManager=NullGraspListManager{}
         }
         """;
@@ -119,7 +119,7 @@ class AlgorithmBuilderServiceTest {
         String alg = """
         GraspConstructive{
             alpha=0.2,
-            maximizing=false,
+            maximize=false,
             candidateListManager=NullGraspListManager{}
         }
         """;
@@ -132,7 +132,7 @@ class AlgorithmBuilderServiceTest {
         String alg = """
         GRASP{
             alpha=0.2,
-            maximizing=false,
+            maximize=false,
             candidateListManager=NullGraspListManager{}
         }
         """;
@@ -146,7 +146,7 @@ class AlgorithmBuilderServiceTest {
         GRASP{
             minAlpha=0.2,
             maxAlpha=0.4,
-            maximizing=false,
+            maximize=false,
             candidateListManager=NullGraspListManager{}
         }
         """;
@@ -159,7 +159,7 @@ class AlgorithmBuilderServiceTest {
         String alg = """
         GRASP{
             alpha=-0.9,
-            maximizing=false,
+            maximize=false,
             candidateListManager=NullGraspListManager{}
         }
         """;
@@ -170,7 +170,7 @@ class AlgorithmBuilderServiceTest {
     void failUsingAliasMissingCL(){
         String alg = """
         GRASP{
-            maximizing=false
+            maximize=false
         }
         """;
         Assertions.assertThrows(NullPointerException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
