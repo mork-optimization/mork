@@ -245,10 +245,14 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
 
     private String singleExecution(Algorithm<S,I> algorithm, I instance) {
         if(solverConfig.isAutoconfig()){
+            MetricsManager.enableMetrics();
+            MetricsManager.resetMetrics();
             TimeControl.setMaxExecutionTime(MAX_EXECTIME_MILLIS, TimeUnit.MILLISECONDS);
             TimeControl.start();
         }
+
         long startTime = System.nanoTime();
+
         var solution = algorithm.algorithm(instance);
         long endTime = System.nanoTime();
 

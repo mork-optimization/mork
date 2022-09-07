@@ -2,7 +2,10 @@ package es.urjc.etsii.grafo.autoconfig;
 
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
+import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
+import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.StringUtil;
 import org.apache.commons.lang3.ClassUtils;
@@ -64,8 +67,20 @@ public class AlgorithmBuilderUtil {
         }
 
         var provided = p.getAnnotation(ProvidedParam.class);
-        return switch (provided.type()){
-            case UNKNOWN -> throw new IllegalArgumentException(String.format("Parameter %s is annotated with @ProvidedParam, but the type property has not been specified", p));
+        return getProvidedValue(provided.type());
+    }
+
+    public static Object getProvidedValue(ComponentParameter p){
+        if(p.getType() != ParameterType.PROVIDED){
+            throw new IllegalArgumentException("Expected PROVIDED type, component parameter is: " + p.getType());
+        }
+        var providedParamType = (ProvidedParamType) p.getValues()[0];
+        return getProvidedValue(providedParamType);
+    }
+
+    public static Object getProvidedValue(ProvidedParamType type){
+        return switch (type){
+            case UNKNOWN -> throw new IllegalArgumentException("Parameter declared as provided but provided type is UNKNOWN");
             case MAXIMIZE -> Mork.isMaximizing();
             case ALGORITHM_NAME -> StringUtil.randomAlgorithmName();
         };

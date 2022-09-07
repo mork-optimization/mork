@@ -59,6 +59,12 @@ public class SolverConfig {
     private boolean autoconfig = false;
 
     /**
+     * Metrics tracking
+     */
+    private boolean metrics = false;
+
+
+    /**
      * <p>Getter for the field <code>seed</code>.</p>
      *
      * @return a int.
@@ -214,5 +220,13 @@ public class SolverConfig {
      */
     public void setAutoconfig(boolean autoconfig) {
         this.autoconfig = autoconfig;
+    }
+
+    public boolean isMetrics() {
+        return metrics;
+    }
+
+    public void setMetrics(boolean metrics) {
+        this.metrics = metrics;
     }
 }

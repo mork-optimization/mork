@@ -38,6 +38,9 @@ solver:
   autoconfig: false
   tree-depth: 4
 
+  # Enable or disable metrics tracking. Force enabled if using autoconfig.
+  metrics: false
+
 # Enable irace integration? Check IRACE Wiki section before enabling
 irace:
   enabled: false

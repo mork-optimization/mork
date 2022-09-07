@@ -7,11 +7,13 @@ import es.urjc.etsii.grafo.autoconfig.BailErrorStrategy;
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmLexer;
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmParser;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
+import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @Service
@@ -36,8 +38,15 @@ public class AlgorithmBuilderService {
             return buildAlgorithmComponentByName(inventory.aliases().get(name), params);
         }
         if(inventory.factories().containsKey(name)){
-            // If registered factory method, invoke it
-            return inventory.factories().get(name).buildComponent(params);
+            // If registered factory method, invoke it adding our provided values
+            var factory = inventory.factories().get(name);
+            var factoryParams = new HashMap<>(params);
+            for(var p: factory.getRequiredParameters()){
+                if(p.getType() == ParameterType.PROVIDED){
+                    factoryParams.put(p.name(), AlgorithmBuilderUtil.getProvidedValue(p));
+                }
+            }
+            return factory.buildComponent(factoryParams);
         }
 
         // Either we have discovered the component automatically, or fail

@@ -17,6 +17,7 @@ import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.SolutionValidator;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.TimeControl;
@@ -113,6 +114,11 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
                 long maxDuration = this.timeLimitCalculator.get().timeLimitInMillis(instance, algorithm);
                 TimeControl.setMaxExecutionTime(maxDuration, TimeUnit.MILLISECONDS);
                 TimeControl.start();
+            }
+
+            if(solverConfig.isMetrics()){
+                MetricsManager.enableMetrics();
+                MetricsManager.resetMetrics();
             }
 
             // Do real work
