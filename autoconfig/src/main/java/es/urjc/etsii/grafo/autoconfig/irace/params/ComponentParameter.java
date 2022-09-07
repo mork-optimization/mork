@@ -12,7 +12,7 @@ public class ComponentParameter {
     private final String name;
     private final ParameterType type;
     private final Class<?> javaType;
-    private final Object[] values;
+    private Object[] values;
     private String condition = "";
 
     public static final String NAMEVALUE_SEP = "_";
@@ -117,6 +117,7 @@ public class ComponentParameter {
             for (int i = 0; i < this.values.length; i++) {
                 iraceValues[i] = ((Class<?>) this.values[i]).getSimpleName();
             }
+            Arrays.sort(iraceValues);
         } else {
             iraceType = getType().iraceType();
             for (int i = 0; i < this.values.length; i++) {
@@ -136,6 +137,10 @@ public class ComponentParameter {
 
     public Object[] getValues() {
         return values;
+    }
+
+    public void setValues(Object[] values){
+        this.values = values;
     }
 
     public static String toIraceParamName(Deque<String> context) {

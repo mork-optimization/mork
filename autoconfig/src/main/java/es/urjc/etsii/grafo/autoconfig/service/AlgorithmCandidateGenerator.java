@@ -57,9 +57,11 @@ public class AlgorithmCandidateGenerator {
                 var params = factory.getRequiredParameters();
                 for(var cp: params){
                     if(cp.recursive()){
+                        var candidates = byType.get(cp.getJavaType());
+                        cp.setValues(candidates.toArray());
                         // Parameter has a known algorithm component type, for example Improver<S,I>
                         // Add all implementations to the exploration queue
-                        for(var candidate: byType.get(cp.getJavaType())){
+                        for(var candidate: candidates){
                             if(notVisited.contains(candidate)){
                                 notVisited.remove(candidate);
                                 queue.add(candidate);
@@ -159,6 +161,7 @@ public class AlgorithmCandidateGenerator {
             recursiveToIraceParams(node, iraceParams, context);
         }
         assert context.isEmpty();
+        Collections.sort(iraceParams);
         return iraceParams;
     }
 

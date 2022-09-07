@@ -10,6 +10,8 @@ import es.urjc.etsii.grafo.shake.DestroyRebuild;
 import es.urjc.etsii.grafo.shake.Destructive;
 import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solution.metrics.Metrics;
+import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -143,6 +145,7 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
     public S algorithm(I instance) {
         S solution = this.newSolution(instance);
         solution = this.constructive.construct(solution);
+        MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, solution.getScore());
         if(TimeControl.isTimeUp()){
             return solution;
         }
@@ -169,6 +172,7 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
             } else {
                 solution = copy;
                 logger.debug("Improved at iteration {}: {} - {}", i, solution.getScore(), solution);
+                MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, solution.getScore());
                 iterationsWithoutImprovement = 0;
             }
         }

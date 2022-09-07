@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.factories;
 
+import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
@@ -32,7 +33,9 @@ public class RGGraspConstructiveFactory extends AlgorithmComponentFactory {
     @Override
     public List<ComponentParameter> getRequiredParameters() {
         return List.of(
-                new ComponentParameter("alpha", Double.TYPE, ParameterType.REAL, 0, 1)
+                new ComponentParameter("alpha", Double.TYPE, ParameterType.REAL, 0, 1),
+                new ComponentParameter("maximize", Boolean.TYPE, ParameterType.PROVIDED, new Object[]{ProvidedParamType.MAXIMIZE}),
+                new ComponentParameter("candidateListManager", GRASPListManager.class, ParameterType.NOT_ANNOTATED, new Object[]{})
         );
     }
 
