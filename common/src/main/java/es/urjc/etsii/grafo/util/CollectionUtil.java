@@ -56,6 +56,9 @@ public class CollectionUtil {
      * @return Chosen element
      */
     public static <T> T pickRandom(Set<T> set) {
+        if(set.isEmpty()){
+            throw new IllegalArgumentException("Cannot pick random element from empty set");
+        }
         int index = RandomManager.getRandom().nextInt(0, set.size());
         int i = 0;
         for (T t : set) {
@@ -73,6 +76,9 @@ public class CollectionUtil {
      * @return Chosen element
      */
     public static <T> T pickRandom(List<T> list) {
+        if(list.isEmpty()){
+            throw new IllegalArgumentException("Cannot pick random element from empty list");
+        }
         var random = RandomManager.getRandom();
         return list.get(random.nextInt(list.size()));
     }
