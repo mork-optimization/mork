@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.create.grasp;
 
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
-import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -86,7 +85,6 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
      */
     public static class NullGraspListManager<M extends Move<S,I>, S extends Solution<S,I>,I extends Instance> extends GRASPListManager<M,S,I> {
 
-        @AutoconfigConstructor
         public NullGraspListManager() {}
 
         @Override

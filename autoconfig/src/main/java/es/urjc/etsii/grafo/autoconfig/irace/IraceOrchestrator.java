@@ -268,6 +268,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
                     TimeUtil.convert(IGNORE_MILLIS, TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
                     TimeUtil.convert(INTERVAL_DURATION, TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS)
             );
+            score /= TimeUtil.NANOS_IN_MILLISECOND;
         } else {
             score = solution.getScore();
             if(Mork.isMaximizing()){

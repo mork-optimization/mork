@@ -150,6 +150,7 @@ public class AlgorithmCandidateGenerator {
         for (int i = 0; i < nodes.size(); i++) {
             initialDecisionValues[i] = nodes.get(i).clazz.getSimpleName();
         }
+        Arrays.sort(initialDecisionValues);
         // TODO un poco chapucero
         var firstParam = ComponentParameter.toIraceParameterString("ROOT", "c", initialDecisionValues, "", "", "");
         firstParam = firstParam.substring(0, firstParam.lastIndexOf("|"));
