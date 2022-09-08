@@ -33,7 +33,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
 
     private static final Logger log = LoggerFactory.getLogger(LocalSearch.class);
 
-    private static final int WARN_LIMIT = 50_000;
+    private static final int WARN_LIMIT = 100_000;
 
     protected final Neighborhood<M, S, I> neighborhood;
     protected final BiPredicate<Double, Double> fIsBetter;

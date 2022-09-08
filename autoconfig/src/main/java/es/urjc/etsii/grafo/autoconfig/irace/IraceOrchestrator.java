@@ -34,6 +34,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.TimeUnit;
 
 import static es.urjc.etsii.grafo.solution.metrics.Metrics.BEST_OBJECTIVE_FUNCTION;
@@ -65,6 +66,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     private final Environment env;
 
     private final AlgorithmCandidateGenerator algorithmCandidateGenerator;
+    private CopyOnWriteArrayList<IraceRuntimeConfiguration> configHistoric = new CopyOnWriteArrayList<>();
 
     /**
      * <p>Constructor for IraceOrchestrator.</p>
@@ -201,6 +203,9 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         }
     }
 
+    public List<IraceRuntimeConfiguration> getConfigHistoric() {
+        return configHistoric;
+    }
 
     /**
      * <p>iraceCallback.</p>
@@ -210,6 +215,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
      */
     public String iraceCallback(ExecuteRequest request){
         var config = buildConfig(request);
+        this.configHistoric.add(config);
         var instancePath = config.getInstanceName();
         var instance = instanceManager.getInstance(instancePath);
         var algorithm = this.algorithmGenerator.buildAlgorithm(config.getAlgorithmConfig());
@@ -275,9 +281,9 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
             score /= TimeUtil.NANOS_IN_MILLISECOND;
         } else {
             score = solution.getScore();
-            if(Mork.isMaximizing()){
-                score *= -1; // Irace only minimizes
-            }
+        }
+        if(Mork.isMaximizing()){
+            score *= -1; // Irace only minimizes. Applies to area under the metric curve too.
         }
         double elapsedSeconds = TimeUtil.nanosToSecs(endTime - startTime);
         log.debug("IRACE Iteration: {} {}", score, elapsedSeconds);

@@ -7,9 +7,9 @@ import es.urjc.etsii.grafo.autoconfig.service.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
 
 @RestController
@@ -20,12 +20,14 @@ public class AutoconfigDebugController {
     private final AlgorithmInventoryService inventory;
     private final AlgorithmCandidateGenerator candidateGenerator;
     private final AutomaticIraceAlgorithmGenerator<?, ?> algorithmGenerator;
+    private final IraceOrchestrator<?, ?> orchestrator;
 
-    public AutoconfigDebugController(SolverConfig solverConfig, AlgorithmInventoryService inventory, AlgorithmCandidateGenerator candidateGenerator, AutomaticIraceAlgorithmGenerator<?, ?> algorithmGenerator) {
+    public AutoconfigDebugController(SolverConfig solverConfig, AlgorithmInventoryService inventory, AlgorithmCandidateGenerator candidateGenerator, AutomaticIraceAlgorithmGenerator<?, ?> algorithmGenerator, IraceOrchestrator<?, ?> orchestrator) {
         this.solverConfig = solverConfig;
         this.inventory = inventory;
         this.candidateGenerator = candidateGenerator;
         this.algorithmGenerator = algorithmGenerator;
+        this.orchestrator = orchestrator;
     }
 
     @GetMapping("/auto/debug/tree")
@@ -43,10 +45,19 @@ public class AutoconfigDebugController {
         return this.inventory.getInventory();
     }
 
-    @GetMapping("/auto/debug/decode/{cmdline}")
-    public Object decode(@PathVariable String cmdline){
+    @GetMapping("/auto/debug/decode/**")
+    public Object decode(HttpServletRequest request){
+        String url = request.getRequestURI();
+        String cmdline = url.split("/decode/")[1];
         var config = IraceOrchestrator.toIraceRuntimeConfig(cmdline);
         var algorithm = this.algorithmGenerator.buildAlgorithm(config.getAlgorithmConfig());
         return Map.of("config", config, "algorithm", algorithm);
     }
+
+    @GetMapping("/auto/debug/history")
+    public Object historic(){
+        return this.orchestrator.getConfigHistoric();
+    }
+
+
 }
