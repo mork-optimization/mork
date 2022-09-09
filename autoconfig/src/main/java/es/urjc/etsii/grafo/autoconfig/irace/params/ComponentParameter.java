@@ -67,7 +67,7 @@ public class ComponentParameter {
         return values;
     }
 
-    public String name() {
+    public String getName() {
         return this.name;
     }
 
@@ -78,7 +78,7 @@ public class ComponentParameter {
     @Override
     public String toString() {
         return "ComponentParameter{" +
-                "name='" + name() + '\'' +
+                "name='" + getName() + '\'' +
                 ", type=" + type +
                 ", v=" + Arrays.toString(values) +
                 '}';

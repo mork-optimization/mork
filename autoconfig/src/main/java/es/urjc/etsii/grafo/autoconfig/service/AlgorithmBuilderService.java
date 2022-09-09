@@ -43,7 +43,7 @@ public class AlgorithmBuilderService {
             var factoryParams = new HashMap<>(params);
             for(var p: factory.getRequiredParameters()){
                 if(p.getType() == ParameterType.PROVIDED){
-                    factoryParams.put(p.name(), AlgorithmBuilderUtil.getProvidedValue(p));
+                    factoryParams.put(p.getName(), AlgorithmBuilderUtil.getProvidedValue(p));
                 }
             }
             return factory.buildComponent(factoryParams);

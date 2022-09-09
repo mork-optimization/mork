@@ -180,7 +180,7 @@ public class AlgorithmCandidateGenerator {
 
         for(var p: nodeParams){
             if(p.getType() != ParameterType.PROVIDED){
-                context.push(p.name());
+                context.push(p.getName());
                 var iraceParamName = toIraceParamName(context);
                 String iraceParam = p.recursive()?
                         p.toIraceParameterStringNotAnnotated(iraceParamName, componentDecisionPrefix, componentDecisionValue, getValidChildrenNamesForParam(node, p)):
@@ -203,7 +203,7 @@ public class AlgorithmCandidateGenerator {
 
     private String[] getValidChildrenNamesForParam(Node node, ComponentParameter p) {
         List<String> validNames = new ArrayList<>();
-        var childrenForParameter = node.children.get(p.name());
+        var childrenForParameter = node.children.get(p.getName());
         for(var childNode: childrenForParameter){
             validNames.add(childNode.clazz.getSimpleName());
         }
@@ -244,7 +244,7 @@ public class AlgorithmCandidateGenerator {
                 var children = new ArrayList<Node>();
                 if(context.size() < maxDepth){
                     for(var v: values){
-                        var currentChildNode = recursiveBuildTree(p.name(), maxDepth, (Class<?>) v, context);
+                        var currentChildNode = recursiveBuildTree(p.getName(), maxDepth, (Class<?>) v, context);
                         if(currentChildNode != null){
                             children.add(currentChildNode);
                         }
@@ -254,7 +254,7 @@ public class AlgorithmCandidateGenerator {
                     // No valid config found exploring this part of the tree, even if the other params have values we cannot continue
                     return null;
                 }
-                allChildren.put(p.name(), children);
+                allChildren.put(p.getName(), children);
             }
         }
         context.pop();
