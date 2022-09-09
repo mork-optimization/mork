@@ -69,9 +69,4 @@ public class LocalSearchFirstImprovement<M extends Move<S, I>, S extends Solutio
             return move.orElse(null);
         }
     }
-
-    private boolean improves(M move){
-        double score = this.f.applyAsDouble(move);
-        return this.fIsBetter.test(score, 0.0);
-    }
 }

@@ -37,7 +37,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
 
     protected final Neighborhood<M, S, I> neighborhood;
     protected final BiPredicate<Double, Double> fIsBetter;
-    private final boolean fMaximize;
+    protected final boolean fMaximize;
     protected final ToDoubleFunction<M> f;
 
     /**
@@ -117,5 +117,10 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
      * @return Proposed move, null if there are no candidate moves in the neighborhood
      */
     public abstract M getMove(S solution);
+
+    protected boolean improves(M move){
+        double score = this.f.applyAsDouble(move);
+        return this.fIsBetter.test(score, 0.0);
+    }
 
 }
