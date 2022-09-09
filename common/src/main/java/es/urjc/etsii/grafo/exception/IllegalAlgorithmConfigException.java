@@ -1,12 +1,15 @@
 package es.urjc.etsii.grafo.exception;
 
+/**
+ * Thrown by any algorithm component when the combination of parameters given is not valid
+ */
 public class IllegalAlgorithmConfigException extends IllegalArgumentException {
 
     /**
      * Initialize the exception
-     * @param message Explanation
+     * @param explanation Explanation
      */
-    public IllegalAlgorithmConfigException(String message) {
-        super(message);
+    public IllegalAlgorithmConfigException(String explanation) {
+        super(explanation);
     }
 }

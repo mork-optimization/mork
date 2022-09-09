@@ -10,6 +10,8 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 @RestController
@@ -49,9 +51,10 @@ public class AutoconfigDebugController {
     public Object decode(HttpServletRequest request){
         String url = request.getRequestURI();
         String cmdline = url.split("/decode/")[1];
+        cmdline = URLDecoder.decode(cmdline, StandardCharsets.UTF_8);
         var config = IraceOrchestrator.toIraceRuntimeConfig(cmdline);
-        var algorithm = this.algorithmGenerator.buildAlgorithm(config.getAlgorithmConfig());
-        return Map.of("config", config, "algorithm", algorithm);
+        var algorithmString = this.algorithmGenerator.buildAlgorithmString(config.getAlgorithmConfig());
+        return Map.of("config", config, "algorithmString", algorithmString);
     }
 
     @GetMapping("/auto/debug/history")

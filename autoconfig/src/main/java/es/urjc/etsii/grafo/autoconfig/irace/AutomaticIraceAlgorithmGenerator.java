@@ -26,8 +26,7 @@ public class AutomaticIraceAlgorithmGenerator<S extends Solution<S,I>, I extends
         this.tree = candidateGenerator.buildTree(solverConfig.getTreeDepth());
     }
 
-    @Override
-    public Algorithm<S, I> buildAlgorithm(AlgorithmConfiguration config) {
+    public String buildAlgorithmString(AlgorithmConfiguration config){
         var params = config.getConfig().keySet().toArray(new String[0]);
         Arrays.sort(params);
         var root = new Node("ROOT");
@@ -47,7 +46,12 @@ public class AutomaticIraceAlgorithmGenerator<S extends Solution<S,I>, I extends
             current.children.put(name, new Node(value));
         }
 
-        var algorithmAsString = root.toAlgorithmString();
+        return root.toAlgorithmString();
+    }
+
+    @Override
+    public Algorithm<S, I> buildAlgorithm(AlgorithmConfiguration config) {
+        var algorithmAsString = this.buildAlgorithmString(config);
         var algorithm = this.algorithmBuilder.buildAlgorithmFromString(algorithmAsString);
         return (Algorithm<S, I>) algorithm;
     }

@@ -11,6 +11,7 @@ import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentStartedEvent;
+import es.urjc.etsii.grafo.exception.IllegalAlgorithmConfigException;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.services.AbstractOrchestrator;
@@ -218,7 +219,13 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         this.configHistoric.add(config);
         var instancePath = config.getInstanceName();
         var instance = instanceManager.getInstance(instancePath);
-        var algorithm = this.algorithmGenerator.buildAlgorithm(config.getAlgorithmConfig());
+        Algorithm<S,I> algorithm = null;
+        try {
+            algorithm = this.algorithmGenerator.buildAlgorithm(config.getAlgorithmConfig());
+        } catch (IllegalAlgorithmConfigException e){
+            log.debug("Invalid config, reason {}, config: {}", e.getMessage(), config);
+            return failedResult();
+        }
         algorithm.setBuilder(this.solutionBuilder);
         log.debug("Config {}. Built algorithm: {}", config, algorithm);
 
@@ -229,6 +236,12 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         // Execute
         String result = singleExecution(algorithm, instance);
         return result;
+    }
+
+    private String failedResult() {
+        double score = Mork.isMaximizing()? Integer.MIN_VALUE: Integer.MAX_VALUE;
+        double time = 0;
+        return "%s %s".formatted(score, time);
     }
 
     private IraceRuntimeConfiguration buildConfig(ExecuteRequest request){
