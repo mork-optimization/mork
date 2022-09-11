@@ -239,9 +239,13 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     }
 
     private String failedResult() {
-        double score = Mork.isMaximizing()? Integer.MIN_VALUE: Integer.MAX_VALUE;
-        double time = 0;
-        return "%s %s".formatted(score, time);
+//        double score = Mork.isMaximizing()? Integer.MIN_VALUE: Integer.MAX_VALUE;
+//        double time = 0;
+//        return "%s %s".formatted(score, time);
+
+        // Translate failures so Irace understands what has happened
+        // See "10.8 Unreliable target algorithms and immediate rejection" of the Irace Manual for full details
+        return "Inf 0";
     }
 
     private IraceRuntimeConfiguration buildConfig(ExecuteRequest request){
