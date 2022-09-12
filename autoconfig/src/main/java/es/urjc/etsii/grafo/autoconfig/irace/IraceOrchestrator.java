@@ -286,10 +286,9 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         // If the user has implemented a solution validator, check solution correctness
         validator.ifPresent(v -> v.validate(solution).throwIfFail());
 
-        // TODO create custom exception if the params are not valid, and return really bad score
         double score;
         if(solverConfig.isAutoconfig()){
-            TimeControl.remove();
+            TimeControl.remove(); // TODO call Executor.endTimeControl
             var metrics = MetricsManager.getInstance();
             score = metrics.hypervolume(BEST_OBJECTIVE_FUNCTION,
                     TimeUtil.convert(IGNORE_MILLIS, TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),

@@ -21,6 +21,7 @@ import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.TimeControl;
+import es.urjc.etsii.grafo.util.TimeUtil;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
@@ -41,6 +42,7 @@ import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(Executor.class);
+    private static final int EXTRA_SECS_BEFORE_WARNING = 10;
 
     protected final Optional<SolutionValidator<S,I>> validator;
     protected final Optional<TimeLimitCalculator<S,I>> timeLimitCalculator;
@@ -49,6 +51,22 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     protected final List<ReferenceResultProvider> referenceResultProviders;
     protected final SolverConfig solverConfig;
 
+    /**
+     * If time control is enabled, remove it and check ellapsed time to see if too many time has been spent
+     *
+     * @param <S>                 Solution class
+     * @param <I>                 Instance class
+     * @param timeLimitCalculator time limit calculator if implemented
+     * @param workUnit current work unit
+     */
+    public static <S extends Solution<S,I>, I extends Instance> void endTimeControl(Optional<TimeLimitCalculator<S, I>> timeLimitCalculator, WorkUnit<S,I> workUnit) {
+        if(timeLimitCalculator.isPresent()){
+            if(TimeControl.remaining() < -TimeUtil.secsToNanos(EXTRA_SECS_BEFORE_WARNING)){
+                log.warn("Algorithm takes too long to stop after time is up. Offending unit: {}", workUnit);
+            }
+            TimeControl.remove();
+        }
+    }
 
     /**
      * Fill common values used by all executors
@@ -127,10 +145,9 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
             long endTime = System.nanoTime();
 
             // Prepare work unit results and cleanup
+            endTimeControl(timeLimitCalculator, workUnit);
             validate(solution);
-            if(timeLimitCalculator.isPresent()){
-                TimeControl.remove();
-            }
+
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long executionTime = endTime - starTime;
             return new WorkUnitResult<>(workUnit, solution, executionTime, timeToTarget);
