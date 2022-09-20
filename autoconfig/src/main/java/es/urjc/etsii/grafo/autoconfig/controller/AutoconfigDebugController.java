@@ -1,7 +1,9 @@
 package es.urjc.etsii.grafo.autoconfig.controller;
 
+import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticIraceAlgorithmGenerator;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
+import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
 import es.urjc.etsii.grafo.autoconfig.service.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.autoconfig.service.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.config.SolverConfig;
@@ -12,7 +14,9 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.servlet.http.HttpServletRequest;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @ConditionalOnExpression(value = "${solver.autoconfig}")
@@ -52,9 +56,18 @@ public class AutoconfigDebugController {
         String url = request.getRequestURI();
         String cmdline = url.split("/decode/")[1];
         cmdline = URLDecoder.decode(cmdline, StandardCharsets.UTF_8);
-        var config = IraceOrchestrator.toIraceRuntimeConfig(cmdline);
+        cmdline = cleanCmdLine(cmdline);
+
+        var config = cmdline.startsWith("ROOT")?
+                new IraceRuntimeConfiguration("Unknown", "Unknown", "Unknown", "Unknown", new AlgorithmConfiguration(cmdline.split("\\s+"))):
+                IraceOrchestrator.toIraceRuntimeConfig(cmdline);
         var algorithmString = this.algorithmGenerator.buildAlgorithmString(config.getAlgorithmConfig());
         return Map.of("config", config, "algorithmString", algorithmString);
+    }
+
+    private String cleanCmdLine(String cmdline) {
+        cmdline = cmdline.trim();
+        return cmdline.contains("middleware.sh") ? Arrays.stream(cmdline.split("\\s+")).skip(1).collect(Collectors.joining(" ")) : cmdline;
     }
 
     @GetMapping("/auto/debug/history")

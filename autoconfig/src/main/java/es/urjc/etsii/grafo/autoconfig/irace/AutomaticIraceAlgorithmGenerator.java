@@ -67,22 +67,33 @@ public class AutomaticIraceAlgorithmGenerator<S extends Solution<S,I>, I extends
             }
             assert this.children.size() == 1;
             var sb = new StringBuilder();
-            this.children.entrySet().iterator().next().getValue().toAlgorithmString(sb);
+            this.children.entrySet().iterator().next().getValue().toAlgorithmString(sb, 0);
             return sb.toString();
         }
 
-        public void toAlgorithmString(StringBuilder sb){
+        public void toAlgorithmString(StringBuilder sb, int depth){
             sb.append(this.name);
             sb.append('{');
-            for (var iterator = this.children.entrySet().iterator(); iterator.hasNext(); ) {
-                Map.Entry<String, Node> e = iterator.next();
-                sb.append(e.getKey()).append('=');
-                e.getValue().toAlgorithmString(sb);
-                if(iterator.hasNext()){
-                    sb.append(", ");
+            depth++;
+            boolean atLeastOneIter = false;
+            for (var child : this.children.entrySet()) {
+                if (atLeastOneIter) {
+                    sb.append(",");
+                } else {
+                    atLeastOneIter = true;
                 }
+                tabs(sb, depth);
+                sb.append(child.getKey()).append('=');
+                child.getValue().toAlgorithmString(sb, depth);
             }
+            depth--;
+            if(atLeastOneIter) tabs(sb, depth);
             sb.append('}');
+        }
+
+        public void tabs(StringBuilder sb, int depth){
+            sb.append("\n");
+            sb.append("\t".repeat(Math.max(0, depth)));
         }
     }
 }
