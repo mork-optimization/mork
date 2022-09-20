@@ -53,10 +53,6 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     private static final Logger log = LoggerFactory.getLogger(IraceOrchestrator.class);
     private static final String IRACE_EXPNAME = "irace autoconfig";
 
-    private static final long IGNORE_MILLIS = 10_000;
-    private static final long MAX_EXECTIME_MILLIS = 60_000;
-    private static final long INTERVAL_DURATION = MAX_EXECTIME_MILLIS - IGNORE_MILLIS;
-
     private final SolverConfig solverConfig;
     private final InstanceConfiguration instanceConfiguration;
     private final IraceIntegration iraceIntegration;
@@ -271,10 +267,11 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
 
 
     private String singleExecution(Algorithm<S,I> algorithm, I instance) {
+        long maxExecTime = this.solverConfig.getIgnoreInitialMillis() + this.solverConfig.getIntervalDurationMillis();
         if(solverConfig.isAutoconfig()){
             MetricsManager.enableMetrics();
             MetricsManager.resetMetrics();
-            TimeControl.setMaxExecutionTime(MAX_EXECTIME_MILLIS, TimeUnit.MILLISECONDS);
+            TimeControl.setMaxExecutionTime(maxExecTime, TimeUnit.MILLISECONDS);
             TimeControl.start();
         }
 
@@ -291,8 +288,8 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
             TimeControl.remove(); // TODO call Executor.endTimeControl
             var metrics = MetricsManager.getInstance();
             score = metrics.hypervolume(BEST_OBJECTIVE_FUNCTION,
-                    TimeUtil.convert(IGNORE_MILLIS, TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
-                    TimeUtil.convert(INTERVAL_DURATION, TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS)
+                    TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
+                    TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS)
             );
             score /= TimeUtil.NANOS_IN_MILLISECOND;
         } else {
