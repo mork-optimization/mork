@@ -24,6 +24,9 @@ import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.TimeUtil;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
+import me.tongfei.progressbar.ProgressBar;
+import me.tongfei.progressbar.ProgressBarBuilder;
+import me.tongfei.progressbar.ProgressBarStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -158,11 +161,13 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
         }
     }
 
-    protected void processWorkUnitResult(WorkUnitResult<S,I> r){
+    protected void processWorkUnitResult(WorkUnitResult<S,I> r, ProgressBar pb, ProgressBar pb2){
+        pb.step();
+        pb2.step();
         exportAllSolutions(r);
         EventPublisher.getInstance().publishEvent(new SolutionGeneratedEvent<>(r.workUnit().i(), r.solution(), r.workUnit().experimentName(), r.workUnit().algorithm(), r.executionTime(), r.timeToTarget()));
-        if(log.isInfoEnabled()){
-            log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() + 1, nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
+        if(log.isDebugEnabled()){
+            log.debug(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() + 1, nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
         }
     }
 
@@ -240,4 +245,33 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     public String instanceName(String instancePath){
         return this.instanceManager.getInstance(instancePath).getId();
     }
+
+    public static ProgressBarBuilder getPBarBuilder(){
+        return new ProgressBarBuilder()
+                .setUpdateIntervalMillis(1000)
+                .continuousUpdate()
+                .setStyle(ProgressBarStyle.COLORFUL_UNICODE_BLOCK);
+    }
+
+    public ProgressBar getGlobalSolvingProgressBar(Map<String, Map<Algorithm<S,I>, List<WorkUnit<S,I>>>> workUnits){
+        int totalUnits = 0;
+        for(var v1: workUnits.values()){
+            for(var v2: v1.values()){
+                totalUnits += v2.size();
+            }
+        }
+        return getPBarBuilder()
+                .setInitialMax(totalUnits)
+                .setTaskName("Total")
+                .build();
+    }
+
+    public ProgressBar getInstanceSolvingProgressBar(int nInstanceWorkUnits){
+        return getPBarBuilder()
+                .setTaskName("Inst.")
+                .setInitialMax(nInstanceWorkUnits)
+                .build();
+    }
+
+
 }

@@ -33,7 +33,7 @@ import java.util.concurrent.Future;
  * @param <I> Instance class
  */
 @ConditionalOnExpression(value = "${solver.parallelExecutor} && !${irace.enabled}")
-public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> extends Executor<S, I> {
+public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> extends Executor<S, I> {
 
     private static final Logger log = LoggerFactory.getLogger(ConcurrentExecutor.class);
 
@@ -44,8 +44,8 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
      * Create a new ConcurrentExecutor. Do not create executors manually, inject them.
      *
      * @param solverConfig Solver configuration instance
-     * @param validator Solution validator
-     * @param io IOManager
+     * @param validator    Solution validator
+     * @param io           IOManager
      */
     public ConcurrentExecutor(SolverConfig solverConfig, Optional<SolutionValidator<S, I>> validator, Optional<TimeLimitCalculator<S, I>> timeLimitCalculator, IOManager<S, I> io, InstanceManager<I> instanceManager, List<ReferenceResultProvider> referenceResultProviders) {
         super(validator, timeLimitCalculator, io, instanceManager, referenceResultProviders, solverConfig);
@@ -57,14 +57,14 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
         this.executor = Executors.newFixedThreadPool(this.nWorkers);
     }
 
-    private Map<String, Map<Algorithm<S,I>, List<Future<WorkUnitResult<S,I>>>>> submitAll(Map<String, Map<Algorithm<S,I>, List<WorkUnit<S,I>>>> workUnits){
-        var result = new LinkedHashMap<String, Map<Algorithm<S,I>, List<Future<WorkUnitResult<S,I>>>>>();
-        for(var e: workUnits.entrySet()){
-            var perAlgorithm = new LinkedHashMap<Algorithm<S,I>, List<Future<WorkUnitResult<S,I>>>>();
-            for(var algorithmWork: e.getValue().entrySet()){
+    private Map<String, Map<Algorithm<S, I>, List<Future<WorkUnitResult<S, I>>>>> submitAll(Map<String, Map<Algorithm<S, I>, List<WorkUnit<S, I>>>> workUnits) {
+        var result = new LinkedHashMap<String, Map<Algorithm<S, I>, List<Future<WorkUnitResult<S, I>>>>>();
+        for (var e : workUnits.entrySet()) {
+            var perAlgorithm = new LinkedHashMap<Algorithm<S, I>, List<Future<WorkUnitResult<S, I>>>>();
+            for (var algorithmWork : e.getValue().entrySet()) {
                 var algorithm = algorithmWork.getKey();
-                var list = new ArrayList<Future<WorkUnitResult<S,I>>>();
-                for(var workUnit: algorithmWork.getValue()){
+                var list = new ArrayList<Future<WorkUnitResult<S, I>>>();
+                for (var workUnit : algorithmWork.getValue()) {
                     var future = this.executor.submit(() -> doWork(workUnit));
                     list.add(future);
                 }
@@ -75,57 +75,68 @@ public class ConcurrentExecutor<S extends Solution<S,I>, I extends Instance> ext
         return result;
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void executeExperiment(Experiment<S,I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, long startTimestamp) {
+    public void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, long startTimestamp) {
         var algorithms = experiment.algorithms();
         var experimentName = experiment.name();
         var workUnits = getOrderedWorkUnits(experiment, instanceNames, exceptionHandler, solverConfig.getRepetitions());
 
         var events = EventPublisher.getInstance();
 
-        // Launch execution of all work units in parallel
-        var futures = submitAll(workUnits);
+        try (var pb = getGlobalSolvingProgressBar(workUnits);
+             var pb2 = getInstanceSolvingProgressBar(experiment.algorithms().size() * solverConfig.getRepetitions())) {
+            // Launch execution of all work units in parallel
+            var futures = submitAll(workUnits);
 
-        // Simulate sequential execution to trigger all events in correct order
-        // K: Instance name --> V: List of WorkUnits
-        for(var e: futures.entrySet()){
-            WorkUnitResult<S,I> instanceBest = null;
-            var instancePath = e.getKey();
-            var instanceName = instanceName(instancePath);
-            long instanceStartTime = System.nanoTime();
-            var referenceValue = getOptionalReferenceValue(instanceName);
-            events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
-            log.info("Running algorithms for instance: {}", instanceName);
+            // Simulate sequential execution to trigger all events in correct order
+            // K: Instance name --> V: List of WorkUnits
+            for (var e : futures.entrySet()) {
+                WorkUnitResult<S, I> instanceBest = null;
+                var instancePath = e.getKey();
+                var instanceName = instanceName(instancePath);
+                long instanceStartTime = System.nanoTime();
+                var referenceValue = getOptionalReferenceValue(instanceName);
+                events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
+                log.debug("Running algorithms for instance: {}", instanceName);
 
-            for(var algorithmWork: e.getValue().entrySet()){
-                WorkUnitResult<S,I> algorithmBest = null;
-                var algorithm = algorithmWork.getKey();
-                events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
-                log.info("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
-                for(var workUnit: algorithmWork.getValue()){
-                    var workUnitResult = ConcurrencyUtil.await(workUnit);
-                    this.processWorkUnitResult(workUnitResult);
-                    if(improves(workUnitResult, algorithmBest)){
-                        algorithmBest = workUnitResult;
+                pb2.setExtraMessage(instanceName);
+                pb2.reset();
+                for (var algorithmWork : e.getValue().entrySet()) {
+                    WorkUnitResult<S, I> algorithmBest = null;
+                    var algorithm = algorithmWork.getKey();
+                    events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                    log.debug("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
+                    for (var workUnit : algorithmWork.getValue()) {
+                        var workUnitResult = ConcurrencyUtil.await(workUnit);
+                        this.processWorkUnitResult(workUnitResult, pb, pb2);
+                        if (improves(workUnitResult, algorithmBest)) {
+                            algorithmBest = workUnitResult;
+                        }
+                        if (improves(workUnitResult, instanceBest)) {
+                            instanceBest = workUnitResult;
+                        }
                     }
-                    if(improves(workUnitResult, instanceBest)){
-                        instanceBest = workUnitResult;
-                    }
+                    assert algorithmBest != null;
+                    exportAlgorithmInstanceSolution(algorithmBest);
+                    events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+
                 }
-                assert algorithmBest != null;
-                exportAlgorithmInstanceSolution(algorithmBest);
-                events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
 
+                assert instanceBest != null;
+                exportInstanceSolution(instanceBest);
+                long totalInstanceTime = System.nanoTime() - instanceStartTime;
+                events.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
             }
-            assert instanceBest != null;
-            exportInstanceSolution(instanceBest);
-            long totalInstanceTime = System.nanoTime() - instanceStartTime;
-            events.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
         }
+
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void shutdown() {
         log.info("Shutdown executor");

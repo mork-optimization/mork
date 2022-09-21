@@ -29,15 +29,15 @@ import java.util.Optional;
  * @param <I> Instance class
  */
 @ConditionalOnExpression(value = "!${solver.parallelExecutor} && !${irace.enabled}")
-public class SequentialExecutor<S extends Solution<S,I>, I extends Instance> extends Executor<S,I>{
+public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> extends Executor<S, I> {
 
     private static final Logger logger = LoggerFactory.getLogger(SequentialExecutor.class);
 
     /**
      * Create new sequential executor
      *
-     * @param validator solution validator if present
-     * @param io IO manager
+     * @param validator       solution validator if present
+     * @param io              IO manager
      * @param instanceManager Instance Manager
      */
     public SequentialExecutor(
@@ -51,52 +51,63 @@ public class SequentialExecutor<S extends Solution<S,I>, I extends Instance> ext
         super(validator, timeLimitCalculator, io, instanceManager, referenceResultProviders, solverConfig);
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void executeExperiment(Experiment<S,I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, long startTimestamp) {
+    public void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, long startTimestamp) {
         var events = EventPublisher.getInstance();
 
         var algorithms = experiment.algorithms();
         var experimentName = experiment.name();
         var workUnits = getOrderedWorkUnits(experiment, instanceNames, exceptionHandler, solverConfig.getRepetitions());
 
-        // K: Instance name --> V: List of WorkUnits
-        for(var instanceWork: workUnits.entrySet()){
-            WorkUnitResult<S,I> instanceBest = null;
-            var instancePath = instanceWork.getKey();
-            var instanceName = instanceName(instancePath);
-            long instanceStartTime = System.nanoTime();
-            var referenceValue = getOptionalReferenceValue(instanceName);
-            events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
-            logger.info("Running algorithms for instance: {}", instanceName);
+        try (var pb = getGlobalSolvingProgressBar(workUnits);
+             var pb2 = getInstanceSolvingProgressBar(experiment.algorithms().size() * solverConfig.getRepetitions())) {
+            // K: Instance name --> V: List of WorkUnits
+            for (var instanceWork : workUnits.entrySet()) {
+                WorkUnitResult<S, I> instanceBest = null;
+                var instancePath = instanceWork.getKey();
+                var instanceName = instanceName(instancePath);
+                pb2.setExtraMessage(instanceName);
+                pb2.reset();
+                long instanceStartTime = System.nanoTime();
+                var referenceValue = getOptionalReferenceValue(instanceName);
+                events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
+                logger.debug("Running algorithms for instance: {}", instanceName);
 
-            for(var algorithmWork: instanceWork.getValue().entrySet()){
-                WorkUnitResult<S,I> algorithmBest = null;
-                var algorithm = algorithmWork.getKey();
-                events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
-                logger.info("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
-                for(var workUnit: algorithmWork.getValue()){
-                    var workUnitResult = doWork(workUnit);
-                    this.processWorkUnitResult(workUnitResult);
-                    if(improves(workUnitResult, algorithmBest)){
-                        algorithmBest = workUnitResult;
+                for (var algorithmWork : instanceWork.getValue().entrySet()) {
+                    WorkUnitResult<S, I> algorithmBest = null;
+                    var algorithm = algorithmWork.getKey();
+                    events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                    logger.debug("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
+                    for (var workUnit : algorithmWork.getValue()) {
+                        var workUnitResult = doWork(workUnit);
+                        this.processWorkUnitResult(workUnitResult, pb, pb2);
+                        if (improves(workUnitResult, algorithmBest)) {
+                            algorithmBest = workUnitResult;
+                        }
+                        if (improves(workUnitResult, instanceBest)) {
+                            instanceBest = workUnitResult;
+                        }
                     }
-                    if(improves(workUnitResult, instanceBest)){
-                        instanceBest = workUnitResult;
-                    }
+                    assert algorithmBest != null;
+                    exportAlgorithmInstanceSolution(algorithmBest);
+                    events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+
                 }
-                assert algorithmBest != null;
-                exportAlgorithmInstanceSolution(algorithmBest);
-                events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                assert instanceBest != null;
+                exportInstanceSolution(instanceBest);
+                long totalInstanceTime = System.nanoTime() - instanceStartTime;
+                events.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
             }
-            assert instanceBest != null;
-            exportInstanceSolution(instanceBest);
-            long totalInstanceTime = System.nanoTime() - instanceStartTime;
-            events.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
         }
+
     }
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void shutdown() {
         logger.info("Shutdown executor");

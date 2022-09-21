@@ -4,6 +4,7 @@
 - (New) DoubleComparator util functions
 - (New) Warn on slow solution serialization (> 500ms)
 - (New) Add option to choose how frequently any solution serializer should execute: best_per_instance, best_per_alg_instance and all iterations.
+- (New) Solving progress bar, logging improvement
 - (Change) All irace related classes moved to autoconfig module
 - (Change) Refactored GRASP Algorithm: Use builder pattern, add option to provide a custom greedy function.
 - (Change) Refactored LocalSearch, enhance and simplify its behaviour.
