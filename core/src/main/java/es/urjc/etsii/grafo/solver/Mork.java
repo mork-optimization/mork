@@ -76,6 +76,9 @@ public class Mork {
         setProperty("logging.level.org.apache.catalina", "WARN");
         setProperty("logging.level.org.springframework", "WARN");
 
+        // Ignore Apache POI warnings
+        setProperty("logging.level.org.apache.poi.util.XMLHelper", "ERROR");
+
         // Set default log level, if not overriden by the user, to INFO
         setProperty("logging.level.root", "INFO");
         //setProperty("es.urjc.etsii.grafo", "INFO");
