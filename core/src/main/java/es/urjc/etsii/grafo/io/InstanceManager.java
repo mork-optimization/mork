@@ -8,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.lang.ref.SoftReference;
 import java.nio.file.Path;
 import java.util.*;
@@ -83,7 +84,7 @@ public class InstanceManager<I extends Instance> {
         sortedInstances = instances.stream().map(Instance::getPath).collect(Collectors.toList());
         if(log.isInfoEnabled()){
             var basePath = Path.of(instanceConfiguration.getPath(expName)).toAbsolutePath().normalize().toString();
-            log.info("Instance validation completed, solve order: {}", sortedInstances.stream().map(path -> path.replace(basePath, "")).toList());
+            log.info("Instance validation completed, solve order: {}", sortedInstances.stream().map(path -> path.replace(basePath + File.separator, "")).toList());
         }
         return sortedInstances;
     }
