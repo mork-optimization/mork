@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.autoconfig.service;
 
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
+import es.urjc.etsii.grafo.autoconfig.service.filter.InventoryFilterStrategy;
 import es.urjc.etsii.grafo.util.ClassUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +24,7 @@ import static java.util.Collections.unmodifiableMap;
 @Service
 public class AlgorithmInventoryService {
     private static final Logger log = LoggerFactory.getLogger(AlgorithmInventoryService.class);
+    private final InventoryFilterStrategy filterStrategy;
 
     protected Map<Class<?>, Collection<Class<?>>> componentsByType = new HashMap<>();
     protected Map<String, Class<?>> componentByName = new HashMap<>();
@@ -32,7 +34,8 @@ public class AlgorithmInventoryService {
     @Value("${advanced.scan-pkgs:es.urjc.etsii}")
     protected String pkgs;
 
-    public AlgorithmInventoryService(List<AlgorithmComponentFactory> factoryList) {
+    public AlgorithmInventoryService(InventoryFilterStrategy filterStrategy, List<AlgorithmComponentFactory> factoryList) {
+        this.filterStrategy = filterStrategy;
         for(var f: factoryList){
             this.registerFactory(f);
         }

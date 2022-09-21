@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.autoconfig.service;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
+import es.urjc.etsii.grafo.autoconfig.service.filter.DefaultFilterStrategy;
 import es.urjc.etsii.grafo.autoconfig.testutil.TestUtil;
 import es.urjc.etsii.grafo.create.grasp.GRASPConstructive;
 import es.urjc.etsii.grafo.improve.Improver;
@@ -23,7 +24,7 @@ class AlgorithmBuilderServiceTest {
 
     @BeforeAll
     static void initialize(){
-        algComponent = new AlgorithmInventoryService(TestUtil.getTestFactories());
+        algComponent = new AlgorithmInventoryService(new DefaultFilterStrategy(), TestUtil.getTestFactories());
         algComponent.runComponentDiscovery("es.urjc.etsii");
         builderService = new AlgorithmBuilderService(algComponent);
     }
