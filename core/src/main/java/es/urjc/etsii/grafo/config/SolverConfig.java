@@ -70,6 +70,12 @@ public class SolverConfig {
     private int intervalDurationMillis = 50_000;
 
     /**
+     * Determine irace execution budget dynamically depending on the number of parameters to tune.
+     * Used only when autoconfig is enabled, for each 50 params uses 10k executions
+     */
+    private int iterationsPerParameter = 200; // 50 params --> 10k
+
+    /**
      * Metrics tracking
      */
     private boolean metrics = false;
@@ -255,5 +261,13 @@ public class SolverConfig {
 
     public void setIntervalDurationMillis(int intervalDurationMillis) {
         this.intervalDurationMillis = intervalDurationMillis;
+    }
+
+    public int getIterationsPerParameter() {
+        return iterationsPerParameter;
+    }
+
+    public void setIterationsPerParameter(int iterationsPerParameter) {
+        this.iterationsPerParameter = iterationsPerParameter;
     }
 }

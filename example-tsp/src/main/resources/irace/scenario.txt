@@ -78,7 +78,7 @@ maxExperiments = __MAX_EXPERIMENTS__
 
 ## Indicates the number of decimal places to be considered for the
 ## real parameters.
-digits = 4
+digits = 2
 
 ## A value of 0 silences all debug messages. Higher values provide
 ## more verbose debug messages.
@@ -98,11 +98,11 @@ digits = 4
 # sampleInstances = 1
 
 ## Specifies the statistical test type: F-test or t-test.
-# testType = "F-test"
+testType = "t-test"
 
 ## Specifies how many instances are seen before the first elimination
 ## test. It must be a multiple of eachTest.
-firstTest = 7
+firstTest = 5
 
 ## Specifies how many instances are seen between elimination tests.
 # eachTest = 1

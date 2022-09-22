@@ -12,6 +12,7 @@ import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentStartedEvent;
 import es.urjc.etsii.grafo.exception.IllegalAlgorithmConfigException;
+import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.services.AbstractOrchestrator;
@@ -28,7 +29,6 @@ import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -44,26 +44,35 @@ import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 
 /**
  * <p>IraceOrchestrator class.</p>
- *
  */
 @Service
 @ConditionalOnExpression(value = "${irace.enabled}")
-public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrchestrator {
+public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> extends AbstractOrchestrator {
 
     private static final Logger log = LoggerFactory.getLogger(IraceOrchestrator.class);
     private static final String IRACE_EXPNAME = "irace autoconfig";
+    public static final String K_INTEGRATION_KEY = "__INTEGRATION_KEY__";
+    public static final String K_INSTANCES_PATH = "__INSTANCES_PATH__";
+    public static final String K_TARGET_RUNNER = "__TARGET_RUNNER__";
+    public static final String K_PARALLEL = "__PARALLEL__";
+    public static final String K_MAX_EXP = "__MAX_EXPERIMENTS__";
+    public static final String K_SEED = "__SEED__";
+    public static final String F_PARAMETERS = "parameters.txt";
+    public static final String F_SCENARIO = "scenario.txt";
+    public static final String F_FORBIDDEN = "forbidden.txt";
+    public static final String F_MIDDLEWARE = "middleware.sh";
 
     private final SolverConfig solverConfig;
     private final InstanceConfiguration instanceConfiguration;
     private final IraceIntegration iraceIntegration;
     private final SolutionBuilder<S, I> solutionBuilder;
-    private final IraceAlgorithmGenerator<S,I> algorithmGenerator;
+    private final IraceAlgorithmGenerator<S, I> algorithmGenerator;
     private final InstanceManager<I> instanceManager;
-    private final Optional<SolutionValidator<S,I>> validator;
-    private final Environment env;
+    private final Optional<SolutionValidator<S, I>> validator;
 
     private final AlgorithmCandidateGenerator algorithmCandidateGenerator;
     private CopyOnWriteArrayList<IraceRuntimeConfiguration> configHistoric = new CopyOnWriteArrayList<>();
+    private int nIraceParameters = -1;
 
     /**
      * <p>Constructor for IraceOrchestrator.</p>
@@ -75,7 +84,6 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
      * @param solutionBuilders            a {@link List} object.
      * @param algorithmGenerator          a {@link Optional} object.
      * @param validator
-     * @param env                         a {@link Environment} object.
      * @param algorithmCandidateGenerator
      */
     public IraceOrchestrator(
@@ -84,13 +92,14 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
             InstanceManager<I> instanceManager,
             List<SolutionBuilder<S, I>> solutionBuilders,
             Optional<IraceAlgorithmGenerator<S, I>> algorithmGenerator,
-            Optional<SolutionValidator<S, I>> validator, Environment env, AlgorithmCandidateGenerator algorithmCandidateGenerator) {
+            Optional<SolutionValidator<S, I>> validator,
+            AlgorithmCandidateGenerator algorithmCandidateGenerator
+    ) {
         this.solverConfig = solverConfig;
         this.instanceConfiguration = instanceConfiguration;
         this.iraceIntegration = iraceIntegration;
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         this.instanceManager = instanceManager;
-        this.env = env;
         log.info("Using SolutionBuilder implementation: {}", this.solutionBuilder.getClass().getSimpleName());
 
         this.algorithmGenerator = algorithmGenerator.orElseThrow(() -> new RuntimeException("IRACE mode enabled but no implementation of IraceAlgorithmGenerator has been found. Check the Mork docs section about IRACE."));
@@ -98,29 +107,26 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
 
         this.algorithmCandidateGenerator = algorithmCandidateGenerator;
 
-        if(validator.isEmpty()){
+        if (validator.isEmpty()) {
             log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
         } else {
             log.info("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
         }
 
         this.validator = validator;
-
-        if(this.validator.isEmpty()){
-            log.warn("");
-        }
-
     }
 
 
-    /** {@inheritDoc} */
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void run(String... args) {
         log.info("App started in IRACE mode, ready to start solving!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
         EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Mork.isMaximizing(), experimentName));
-        try{
+        try {
             launchIrace();
         } finally {
             long totalExecutionTime = System.nanoTime() - startTime;
@@ -130,7 +136,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     }
 
     private void launchIrace() {
-        log.info("Running experiment: IRACE autoconfig" );
+        log.info("Running experiment: IRACE autoconfig");
         EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(IRACE_EXPNAME, new ArrayList<>()));
         // Users must implement an Instance Importer to explain how to load instances
         // Use that class to see if the project is executing inside a JAR file or inside an IDE, to appropriately fix path
@@ -138,60 +144,68 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         var referenceClass = instanceManager.getUserImporterImplementation().getClass();
         var isJAR = IOUtil.isJAR(referenceClass);
         extractIraceFiles(isJAR);
+
         long start = System.nanoTime();
         long startTimestamp = System.currentTimeMillis();
-        if(solverConfig.isAutoconfig()){
-            overrideIraceParameters();
-        }
         iraceIntegration.runIrace(isJAR);
         long end = System.nanoTime();
         log.info("Finished running experiment: IRACE autoconfig");
         EventPublisher.getInstance().publishEvent(new ExperimentEndedEvent(IRACE_EXPNAME, end - start, startTimestamp));
     }
 
-    private void overrideIraceParameters() {
-        var destination = Path.of("parameters.txt");
-        var nodes = this.algorithmCandidateGenerator.buildTree(solverConfig.getTreeDepth());
-        var iraceParams = this.algorithmCandidateGenerator.toIraceParams(nodes);
-        try {
-            Files.write(destination, iraceParams);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private void extractIraceFiles(boolean isJar) {
+        Path paramsPath = Path.of(F_PARAMETERS);
         try {
-            var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration, env);
-            copyWithSubstitutions(getInputStreamFor("scenario.txt", isJar), Path.of("scenario.txt"), substitutions);
-            copyWithSubstitutions(getInputStreamFor("parameters.txt", isJar), Path.of("parameters.txt"), substitutions);
-            copyWithSubstitutions(getInputStreamFor("forbidden.txt", isJar), Path.of("forbidden.txt"), substitutions);
-            copyWithSubstitutions(getInputStreamFor("middleware.sh", isJar), Path.of("middleware.sh"), substitutions);
-            markAsExecutable("middleware.sh");
+            if(solverConfig.isAutoconfig()){
+                var nodes = this.algorithmCandidateGenerator.buildTree(solverConfig.getTreeDepth());
+                var iraceParams = this.algorithmCandidateGenerator.toIraceParams(nodes);
+                this.nIraceParameters = iraceParams.size();
+                Files.write(paramsPath, iraceParams);
+            }
 
-        } catch (IOException e){
+            var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration);
+            if(!solverConfig.isAutoconfig()){
+                copyWithSubstitutions(getInputStreamFor(F_PARAMETERS, isJar), paramsPath, substitutions);
+            }
+            copyWithSubstitutions(getInputStreamFor(F_SCENARIO, isJar), Path.of(F_SCENARIO), substitutions);
+            copyWithSubstitutions(getInputStreamFor(F_FORBIDDEN, isJar), Path.of(F_FORBIDDEN), substitutions);
+            copyWithSubstitutions(getInputStreamFor(F_MIDDLEWARE, isJar), Path.of(F_MIDDLEWARE), substitutions);
+            markAsExecutable(F_MIDDLEWARE);
+        } catch (IOException e) {
             throw new RuntimeException("Failed extracting irace config files", e);
         }
     }
 
     private final String integrationKey = StringUtil.generateSecret();
 
-    private Map<String, String> getSubstitutions(String integrationKey, SolverConfig solverConfig, InstanceConfiguration instanceConfiguration, Environment env){
-        String maxExperiments = env.getProperty("irace.maxExperiments", "10000");
+    private Map<String, String> getSubstitutions(String integrationKey, SolverConfig solverConfig, InstanceConfiguration instanceConfiguration) {
         return Map.of(
-                "__INTEGRATION_KEY__", integrationKey,
-                "__INSTANCES_PATH__", instanceConfiguration.getPath("irace"),
-                "__TARGET_RUNNER__", "./middleware.sh",
-                "__PARALLEL__", nParallel(solverConfig),
-                "__MAX_EXPERIMENTS__", maxExperiments,
-                "__SEED__", String.valueOf(solverConfig.getSeed())
+                K_INTEGRATION_KEY, integrationKey,
+                K_INSTANCES_PATH, instanceConfiguration.getPath("irace"),
+                K_TARGET_RUNNER, "./middleware.sh",
+                K_PARALLEL, nParallel(solverConfig),
+                K_MAX_EXP, calculateMaxExperiments(solverConfig),
+                K_SEED, String.valueOf(solverConfig.getSeed())
         );
     }
 
-    private String nParallel(SolverConfig solverConfig){
-        if(solverConfig.isParallelExecutor()){
+    private String calculateMaxExperiments(SolverConfig solverConfig) {
+        int maxExperiments;
+        if (solverConfig.isAutoconfig()) {
+            if(this.nIraceParameters < 1){
+                throw new IllegalArgumentException("nIraceParameters must be positive");
+            }
+            maxExperiments = solverConfig.getIterationsPerParameter() * this.nIraceParameters;
+        } else {
+            maxExperiments = 10_000; // 10k experiments by default if not specified otherwise
+        }
+        return String.valueOf(maxExperiments);
+    }
+
+    private String nParallel(SolverConfig solverConfig) {
+        if (solverConfig.isParallelExecutor()) {
             int n = solverConfig.getnWorkers();
-            if(n < 1){
+            if (n < 1) {
                 n = Runtime.getRuntime().availableProcessors() / 2;
             }
             return String.valueOf(n);
@@ -210,15 +224,15 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
      * @param request a {@link ExecuteRequest} object.
      * @return a double.
      */
-    public String iraceCallback(ExecuteRequest request){
+    public String iraceCallback(ExecuteRequest request) {
         var config = buildConfig(request);
         this.configHistoric.add(config);
         var instancePath = config.getInstanceName();
         var instance = instanceManager.getInstance(instancePath);
-        Algorithm<S,I> algorithm = null;
+        Algorithm<S, I> algorithm = null;
         try {
             algorithm = this.algorithmGenerator.buildAlgorithm(config.getAlgorithmConfig());
-        } catch (IllegalAlgorithmConfigException e){
+        } catch (IllegalAlgorithmConfigException e) {
             log.debug("Invalid config, reason {}, config: {}", e.getMessage(), config);
             return failedResult();
         }
@@ -244,15 +258,15 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         return "Inf 0";
     }
 
-    private IraceRuntimeConfiguration buildConfig(ExecuteRequest request){
-        if(!request.getKey().equals(integrationKey)){
+    private IraceRuntimeConfiguration buildConfig(ExecuteRequest request) {
+        if (!request.getKey().equals(integrationKey)) {
             throw new IllegalArgumentException(String.format("Invalid integration key, got %s", request.getKey()));
         }
         String decoded = StringUtil.b64decode(request.getConfig());
         return toIraceRuntimeConfig(decoded);
     }
 
-    public static IraceRuntimeConfiguration toIraceRuntimeConfig(String commandline){
+    public static IraceRuntimeConfiguration toIraceRuntimeConfig(String commandline) {
         String[] args = commandline.split("\\s+");
 
         String candidateConfiguration = args[0];
@@ -266,9 +280,9 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
     }
 
 
-    private String singleExecution(Algorithm<S,I> algorithm, I instance) {
+    private String singleExecution(Algorithm<S, I> algorithm, I instance) {
         long maxExecTime = this.solverConfig.getIgnoreInitialMillis() + this.solverConfig.getIntervalDurationMillis();
-        if(solverConfig.isAutoconfig()){
+        if (solverConfig.isAutoconfig()) {
             MetricsManager.enableMetrics();
             MetricsManager.resetMetrics();
             TimeControl.setMaxExecutionTime(maxExecTime, TimeUnit.MILLISECONDS);
@@ -284,8 +298,11 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         validator.ifPresent(v -> v.validate(solution).throwIfFail());
 
         double score;
-        if(solverConfig.isAutoconfig()){
-            TimeControl.remove(); // TODO call Executor.endTimeControl
+        if (solverConfig.isAutoconfig()) {
+            if(TimeControl.remaining() < -TimeUtil.secsToNanos(Executor.EXTRA_SECS_BEFORE_WARNING)){
+                log.warn("Algorithm takes too long to stop after time is up in instance {}. Algorithm::toString {}", instance.getId(), algorithm);
+            }
+            TimeControl.remove();
             var metrics = MetricsManager.getInstance();
             score = metrics.hypervolume(BEST_OBJECTIVE_FUNCTION,
                     TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
@@ -295,7 +312,7 @@ public class IraceOrchestrator<S extends Solution<S,I>, I extends Instance> exte
         } else {
             score = solution.getScore();
         }
-        if(Mork.isMaximizing()){
+        if (Mork.isMaximizing()) {
             score *= -1; // Irace only minimizes. Applies to area under the metric curve too.
         }
         double elapsedSeconds = TimeUtil.nanosToSecs(endTime - startTime);

@@ -46,7 +46,7 @@ public class PatchCollections {
             log.info("Collections.shuffle() patched successfully");
         } catch (NoSuchFieldException | InaccessibleObjectException | IllegalAccessException e){
             // Log as warning, but do not stop application when failing to patch, it is not critical
-            log.warn("Failed to patch Collections.shuffle(), internal random is not accessible. Probably missing opens, see: https://mork-optimization.readthedocs.io/en/latest/quickstart/troubleshooting/. Cause: {}", e.getMessage());
+            log.warn("Failed to patch Collections.shuffle(), probably due to missing opens, see: https://mork-optimization.readthedocs.io/en/latest/quickstart/troubleshooting/. Cause: {}", e.getMessage());
         }
     }
 }
