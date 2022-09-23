@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.annotations;
 
+import org.springframework.util.ClassUtils;
+
 public enum ProvidedParamType {
     UNKNOWN(Object.class),
     MAXIMIZE(boolean.class),
@@ -12,6 +14,6 @@ public enum ProvidedParamType {
     }
 
     public boolean isAssignableTo(Class<?> target){
-        return target.isAssignableFrom(this.providedClass);
+        return ClassUtils.isAssignable(target, this.providedClass);
     }
 }
