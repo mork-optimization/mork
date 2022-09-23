@@ -413,7 +413,7 @@ A simple implementation of a randomized constructive is shown below:
             solution.setOrderOfLocation(i, i);
         }
         solution.shuffleRoute();
-        solution.updateLastModifiedTime();
+        solution.notifyUpdate();
         solution.setScore(solution.recalculateScore());
         return solution;
     }

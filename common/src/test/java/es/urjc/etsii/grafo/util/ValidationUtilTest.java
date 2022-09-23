@@ -13,7 +13,7 @@ public class ValidationUtilTest {
         TestSolution solution = new TestSolution(testInstance);
 
         Assertions.assertThrows(AssertionError.class,() -> ValidationUtil.positiveTTB(solution));
-        solution.updateLastModifiedTime();
+        solution.notifyUpdate();
         Assertions.assertDoesNotThrow(() -> ValidationUtil.positiveTTB(solution));
     }
 }

@@ -13,8 +13,8 @@ public class __RNAME__RandomConstructive extends Constructive<__RNAME__Solution,
         // TODO: Implement random constructive
 
 
-        // Remember to call solution.updateLastModifiedTime() if the solution is modified without using moves!!
-        solution.updateLastModifiedTime();
+        // Remember to call solution.notifyUpdate() if the solution is modified without using moves!!
+        solution.notifyUpdate();
         //return solution;
         throw new UnsupportedOperationException("RandomConstructive not implemented yet");
     }

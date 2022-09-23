@@ -9,6 +9,7 @@
 - (Change) Refactored GRASP Algorithm: Use builder pattern, add option to provide a custom greedy function.
 - (Change) Refactored LocalSearch, enhance and simplify its behaviour.
 - (Change) Improve SolutionSerializer::export method
+- (Change) Solution::updateLastModifiedTime renamed to Solution::notifyUpdate
 - (Removed) IteratedImprover, MoveComparator, DefaultMoveComparator, Move::improves
 - (Fix) Irace bug when parsing args separated by multiple spaces
 

@@ -61,7 +61,7 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
         boolean changed = _execute(solution);
         if (changed) {
             // Some moves may not affect the optimal score
-            solution.updateLastModifiedTime();
+            solution.notifyUpdate();
         }
         solution.version++;
         return changed;
