@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Parameter;
@@ -15,6 +16,7 @@ import java.util.*;
 import static es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter.*;
 
 @Service
+@Profile("autoconfig")
 public class AlgorithmCandidateGenerator {
     private static final Set<Class<?>> collectedClasses = Set.of(List.class, ArrayList.class, Set.class, HashSet.class, Collection.class);
 

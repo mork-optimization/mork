@@ -7,7 +7,7 @@ import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
 import es.urjc.etsii.grafo.autoconfig.service.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.autoconfig.service.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.config.SolverConfig;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -19,7 +19,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
-@ConditionalOnExpression(value = "${solver.autoconfig}")
+@Profile("autoconfig")
 public class AutoconfigDebugController {
 
     private final SolverConfig solverConfig;

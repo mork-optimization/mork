@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.util.ClassUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -22,6 +23,7 @@ import static java.util.Collections.unmodifiableMap;
  * as long as there is a matching constructor in the algorithm component.
  */
 @Service
+@Profile("autoconfig")
 public class AlgorithmInventoryService {
     private static final Logger log = LoggerFactory.getLogger(AlgorithmInventoryService.class);
     private final InventoryFilterStrategy filterStrategy;
@@ -83,6 +85,11 @@ public class AlgorithmInventoryService {
      * @param factory function to execute such as f(params) --> returns component of type name
      */
     public void registerFactory(AlgorithmComponentFactory factory){
+        if(!this.filterStrategy.include(factory.produces())){
+            log.debug("Ignoring factory {} because it is excluded by the filter {}", factory.getClass().getSimpleName(), this.filterStrategy.getClass().getSimpleName());
+            return;
+        }
+        log.debug("Adding factory {} produces {}", factory.getClass().getSimpleName(), factory.produces().getSimpleName());
         var clazz = factory.produces();
         String name = clazz.getSimpleName();
         throwIfKnown(name, false, true);
@@ -110,10 +117,14 @@ public class AlgorithmInventoryService {
         }
         for(var type: types){
             if(!isAccesible(type)){
-                log.debug("Ignoring class {} because it is not public", type);
+                log.debug("Ignoring component {} because it is not public", type);
                 continue;
             }
             String componentName = type.getSimpleName();
+            if(!this.filterStrategy.include(type)){
+                log.debug("Ignoring component {} because it is excluded by filter {}", componentName, this.filterStrategy.getClass().getSimpleName());
+                continue;
+            }
             checkComponentName(failedValidationSet, componentName);
             throwIfKnown(componentName, true, false);
             componentByName.put(componentName, type);
