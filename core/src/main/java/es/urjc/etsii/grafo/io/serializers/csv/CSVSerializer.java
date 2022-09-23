@@ -9,6 +9,8 @@ import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -17,13 +19,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.logging.Logger;
 
 /**
  * CSV serializer. By changing the separator in the configuration from ',' to '\t', can serialize to other formats such as TSV.
  */
 public class CSVSerializer<S extends Solution<S, I>, I extends Instance> extends ResultsSerializer<S, I> {
-    private static final Logger log = Logger.getLogger(CSVSerializer.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(CSVSerializer.class);
 
     private final CSVConfig config;
 
@@ -49,7 +50,7 @@ public class CSVSerializer<S extends Solution<S, I>, I extends Instance> extends
      * {@inheritDoc}
      */
     public void _serializeResults(String experimentName, List<SolutionGeneratedEvent<S, I>> results, Path p) {
-        log.info("Exporting result data to CSV...");
+        log.debug("Exporting result data to CSV...");
 
         var instaceNames = new HashSet<String>();
         var data = new ArrayList<CSVRow>(results.size());

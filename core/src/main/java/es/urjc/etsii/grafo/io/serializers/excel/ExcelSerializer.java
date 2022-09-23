@@ -14,6 +14,8 @@ import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -21,7 +23,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetWriter.writeCell;
 
@@ -31,7 +32,7 @@ import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetWriter.writeCell;
  */
 public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  extends ResultsSerializer<S,I> {
 
-    private static final Logger log = Logger.getLogger(ExcelSerializer.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(ExcelSerializer.class);
 
     /**
      * Raw sheet name
@@ -95,7 +96,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
 
     /** {@inheritDoc} */
     public void _serializeResults(String experimentName, List<SolutionGeneratedEvent<S, I>> results, Path p) {
-        log.info("Exporting result data to XLSX...");
+        log.debug("Exporting result data to XLSX...");
 
         File f = p.toFile();
         try (
@@ -121,7 +122,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
                 log.info("Calling Excel customizer: " + realExcelCustomizer.getClass().getSimpleName());
                 realExcelCustomizer.customize(excelBook);
             } else {
-                log.fine("ExcelCustomizer implementation not found");
+                log.debug("ExcelCustomizer implementation not found");
             }
             // Excel should recalculate on open always
             excelBook.setForceFormulaRecalculation(true);
@@ -164,11 +165,11 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
 
     protected void fillInstanceSheet(String expName, XSSFWorkbook excelBook) {
         if(!this.config.isInstanceSheetEnabled()){
-            log.fine("Instance sheet disabled");
+            log.debug("Instance sheet disabled");
             return;
         }
 
-        log.fine("Creating instance sheet...");
+        log.debug("Creating instance sheet...");
         var keys = Instance.getUniquePropertiesKeys().toArray(new String[0]);
 
         if (keys.length == 0) {
@@ -190,7 +191,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
                 writeCell(cell, rowData[j], RawSheetWriter.CType.VALUE);
             }
         }
-        log.fine("Instance sheet created");
+        log.debug("Instance sheet created");
     }
 
     private Object[][] getInstancePropertyData(String expName, String[] keys) {
