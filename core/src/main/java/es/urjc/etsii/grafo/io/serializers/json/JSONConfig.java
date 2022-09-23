@@ -1,10 +1,10 @@
 package es.urjc.etsii.grafo.io.serializers.json;
 
+import es.urjc.etsii.grafo.annotation.SerializerSource;
 import es.urjc.etsii.grafo.io.serializers.AbstractSolutionSerializerConfig;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
 
-@Configuration
+@SerializerSource
 @ConfigurationProperties(prefix = "serializers.solution-json")
 public class JSONConfig extends AbstractSolutionSerializerConfig {
     /**

@@ -56,7 +56,7 @@ public class ExcelSerializerTest {
         config.setCalculationMode(ExcelConfig.CalculationMode.AUTO);
         var solverConfig = new SolverConfig();
         Mork.setSolvingMode(true);
-        return new ExcelSerializer<>(config, solverConfig, references, customizer, instanceManager);
+        return new ExcelSerializer<>(config, references, customizer, instanceManager);
     }
 
     public ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references) {

@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
-import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
@@ -76,14 +75,12 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
      * Create an Excel serializer
      *
      * @param serializerConfig         excel serializer configuration
-     * @param solverConfig             solver configuration
      * @param referenceResultProviders reference result providers if available
      * @param excelCustomizer          customizer if available
      * @param instanceManager
      */
     public ExcelSerializer(
             ExcelConfig serializerConfig,
-            SolverConfig solverConfig,
             List<ReferenceResultProvider> referenceResultProviders,
             Optional<ExcelCustomizer> excelCustomizer,
             InstanceManager<I> instanceManager) {
