@@ -116,7 +116,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
 
             if(this.excelCustomizer.isPresent()){
                 var realExcelCustomizer = excelCustomizer.get();
-                log.info("Calling Excel customizer: " + realExcelCustomizer.getClass().getSimpleName());
+                log.debug("Calling Excel customizer: {}", realExcelCustomizer.getClass().getSimpleName());
                 realExcelCustomizer.customize(excelBook);
             } else {
                 log.debug("ExcelCustomizer implementation not found");
@@ -124,7 +124,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             // Excel should recalculate on open always
             excelBook.setForceFormulaRecalculation(true);
             excelBook.write(outputStream);
-            log.info("XLSX created successfully");
+            log.debug("XLSX created successfully");
         } catch (Exception e) {
             throw new RuntimeException(String.format("Exception while trying to save Excel file: %s, reason: %s", f.getAbsolutePath(), e.getClass().getSimpleName()), e.getCause());
         }
@@ -170,7 +170,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         var keys = Instance.getUniquePropertiesKeys().toArray(new String[0]);
 
         if (keys.length == 0) {
-            log.info("Instance sheet enabled, but no data available, skipping");
+            log.debug("Instance sheet enabled, but no data available, skipping");
             this.instancePropertyData = new Object[][]{{"Instance sheet is enabled but no properties found for any instance, remember to define properties using Instance::setProperty. If you do not want to use this feature, set serializers.xlsx.instance-sheet-enabled to false"}};
         } else {
             if(this.instancePropertyData == null){
