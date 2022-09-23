@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.services;
+package es.urjc.etsii.grafo.orchestrator;
 
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.EventPublisher;
@@ -14,10 +14,11 @@ import es.urjc.etsii.grafo.experiment.Experiment;
 import es.urjc.etsii.grafo.experiment.ExperimentManager;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.BenchmarkUtil;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -27,13 +28,13 @@ import java.util.logging.Logger;
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 
 /**
- * <p>Orchestrator class.</p>
+ * <p>UserExperimentOrchestrator class.</p>
  */
 @Service
-@ConditionalOnExpression(value = "!${irace.enabled}")
-public class Orchestrator<S extends Solution<S, I>, I extends Instance> extends AbstractOrchestrator {
+@Profile("user-experiment")
+public class UserExperimentOrchestrator<S extends Solution<S, I>, I extends Instance> extends AbstractOrchestrator {
 
-    private static final Logger log = Logger.getLogger(Orchestrator.class.toString());
+    private static final Logger log = Logger.getLogger(UserExperimentOrchestrator.class.toString());
     public static final int MAX_WORKLOAD = 1_000_000;
 
 
@@ -45,7 +46,7 @@ public class Orchestrator<S extends Solution<S, I>, I extends Instance> extends 
     private final SolverConfig solverConfig;
 
     /**
-     * <p>Constructor for Orchestrator.</p>
+     * <p>Constructor for UserExperimentOrchestrator.</p>
      *
      * @param solverConfig      a {@link SolverConfig} object.
      * @param io                a {@link IOManager} object.
@@ -54,7 +55,7 @@ public class Orchestrator<S extends Solution<S, I>, I extends Instance> extends 
      * @param exceptionHandlers a {@link List} object.
      * @param executor          a {@link Executor} object.
      */
-    public Orchestrator(
+    public UserExperimentOrchestrator(
             SolverConfig solverConfig,
             IOManager<S, I> io,
             InstanceManager<I> instanceManager,

@@ -15,7 +15,7 @@ import es.urjc.etsii.grafo.exception.IllegalAlgorithmConfigException;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.services.AbstractOrchestrator;
+import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.services.SolutionValidator;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -28,7 +28,7 @@ import es.urjc.etsii.grafo.util.TimeUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -46,7 +46,7 @@ import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
  * <p>IraceOrchestrator class.</p>
  */
 @Service
-@ConditionalOnExpression(value = "${irace.enabled}")
+@Profile({"irace", "autoconfig"})
 public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> extends AbstractOrchestrator {
 
     private static final Logger log = LoggerFactory.getLogger(IraceOrchestrator.class);

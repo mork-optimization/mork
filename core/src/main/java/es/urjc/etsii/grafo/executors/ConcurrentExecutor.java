@@ -20,6 +20,7 @@ import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Profile;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -32,7 +33,8 @@ import java.util.concurrent.Future;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-@ConditionalOnExpression(value = "${solver.parallelExecutor} && !${irace.enabled}")
+@Profile("user-experiment")
+@ConditionalOnExpression(value = "${solver.parallelExecutor}")
 public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> extends Executor<S, I> {
 
     private static final Logger log = LoggerFactory.getLogger(ConcurrentExecutor.class);

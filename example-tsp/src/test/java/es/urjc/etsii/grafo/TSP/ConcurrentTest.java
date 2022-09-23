@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.TSP;
 
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
-import es.urjc.etsii.grafo.services.Orchestrator;
+import es.urjc.etsii.grafo.orchestrator.UserExperimentOrchestrator;
 import es.urjc.etsii.grafo.solver.Mork;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
@@ -19,19 +19,19 @@ import java.io.FileNotFoundException;
 import java.io.IOException;
 
 @SpringBootTest(classes = {Mork.class})
-@ActiveProfiles(profiles = {"test","testconcurrent"})
+@ActiveProfiles(profiles = {"test","testconcurrent", "user-experiment"})
 @DirtiesContext
 class ConcurrentTest {
 
     private static Logger log = LoggerFactory.getLogger(ConcurrentTest.class);
 
     @Autowired
-    private Orchestrator<TSPSolution, TSPInstance> orchestrator;
+    private UserExperimentOrchestrator<TSPSolution, TSPInstance> userExperimentOrchestrator;
 
     @Test
     void testExecutor() {
         // Launch basic experiment
-        orchestrator.run();
+        userExperimentOrchestrator.run();
     }
 
     @AfterAll
