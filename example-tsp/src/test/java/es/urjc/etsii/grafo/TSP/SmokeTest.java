@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.TSP;
 
 import es.urjc.etsii.grafo.events.AbstractEventStorage;
 import es.urjc.etsii.grafo.executors.Executor;
-import es.urjc.etsii.grafo.services.AbstractOrchestrator;
+import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.solver.RunOnStart;
 import org.junit.jupiter.api.Assertions;
@@ -14,7 +14,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.test.context.ActiveProfiles;
 
 @SpringBootTest(classes = {Mork.class})
-@ActiveProfiles("test")
+@ActiveProfiles(profiles = {"test", "user-experiment"})
 class SmokeTest {
 
     @Autowired
@@ -30,7 +30,7 @@ class SmokeTest {
     private ApplicationContext applicationContext;
 
     @Test
-    public void checkInjected(){
+    void checkInjected(){
         // There must exactly one implementation of the following components loaded
         Assertions.assertNotNull(orchestrator);
         Assertions.assertNotNull(executor);
@@ -39,7 +39,7 @@ class SmokeTest {
     }
 
     @Test
-    public void checkNotRunner(){
+    void checkNotRunner(){
         Assertions.assertThrows(NoSuchBeanDefinitionException.class,
                 () -> this.applicationContext.getBean(RunOnStart.class),
                 "CommandLineRunner should not be loaded during this integration test");

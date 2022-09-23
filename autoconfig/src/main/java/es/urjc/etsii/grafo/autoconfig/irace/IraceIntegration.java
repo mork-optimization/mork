@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.autoconfig.irace.runners.RLangRunner;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -14,7 +14,7 @@ import static es.urjc.etsii.grafo.util.IOUtil.getInputStreamFor;
  *
  */
 @Service
-@ConditionalOnExpression(value = "${irace.enabled}")
+@Profile({"irace", "autoconfig"})
 public class IraceIntegration {
     private static final Logger log = Logger.getLogger(IraceIntegration.class.getName());
 

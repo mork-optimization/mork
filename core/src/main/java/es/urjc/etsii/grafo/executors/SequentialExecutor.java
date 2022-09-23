@@ -18,6 +18,7 @@ import es.urjc.etsii.grafo.solution.Solution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Profile;
 
 import java.util.List;
 import java.util.Optional;
@@ -28,7 +29,8 @@ import java.util.Optional;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-@ConditionalOnExpression(value = "!${solver.parallelExecutor} && !${irace.enabled}")
+@Profile("user-experiment")
+@ConditionalOnExpression(value = "!${solver.parallelExecutor}")
 public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> extends Executor<S, I> {
 
     private static final Logger logger = LoggerFactory.getLogger(SequentialExecutor.class);

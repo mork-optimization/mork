@@ -6,7 +6,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
  * @param <I> Instance class
  */
 @RestController
-@ConditionalOnExpression(value = "${irace.enabled}")
+@Profile({"irace", "autoconfig"})
 public class ExecutionController<S extends Solution<S,I>, I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(ExecutionController.class);

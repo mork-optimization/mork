@@ -7,7 +7,7 @@ import es.urjc.etsii.grafo.autoconfig.service.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
+import org.springframework.context.annotation.Profile;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-@ConditionalOnExpression(value = "${solver.autoconfig}")
+@Profile("autoconfig")
 public class AutomaticIraceAlgorithmGenerator<S extends Solution<S,I>, I extends Instance> extends IraceAlgorithmGenerator<S,I> {
 
     private final List<AlgorithmCandidateGenerator.Node> tree;
