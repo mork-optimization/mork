@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.TSP;
+package es.urjc.etsii.morktests;
 
 import es.urjc.etsii.grafo.events.AbstractEventStorage;
 import es.urjc.etsii.grafo.executors.Executor;

@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.TSP;
+package es.urjc.etsii.morktests;
 
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;

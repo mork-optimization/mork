@@ -1,224 +1,110 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
 
     <modelVersion>4.0.0</modelVersion>
-
     <groupId>es.urjc.etsii.grafo</groupId>
-
     <artifactId>mork-parent</artifactId>
-
     <version>0.15-SNAPSHOT</version>
-
     <packaging>pom</packaging>
-
     <modules>
-
         <module>core</module>
-
         <module>template</module>
-
         <module>example-tsp</module>
-
         <module>common</module>
-
         <module>autoconfig</module>
-
+        <module>integration-tests</module>
     </modules>
 
     <licenses>
-
         <license>
-
             <name>MIT License</name>
-
             <url>http://www.opensource.org/licenses/mit-license.php</url>
-
         </license>
-
     </licenses>
-
     <developers>
-
         <developer>
-
             <name>Raúl Martín</name>
-
             <email>raul.martin@urjc.es</email>
-
             <organization>GRAFO - ETSII, URJC</organization>
-
             <organizationUrl>https://grafo.etsii.urjc.es/</organizationUrl>
-
         </developer>
-
     </developers>
-
     <scm>
-
         <connection>scm:git:git://github.com/rmartinsanta/mork.git</connection>
-
         <developerConnection>scm:git:https://github.com/rmartinsanta/mork</developerConnection>
-
         <url>https://github.com/rmartinsanta/mork/tree/master</url>
-
         <tag>HEAD</tag>
-
     </scm>
-
     <properties>
-
         <java.version>17</java.version>
-
         <maven.compiler.source>17</maven.compiler.source>
-
         <maven.compiler.target>17</maven.compiler.target>
-
-        <jackson.version>2.13.3</jackson.version>
-
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <jackson.version>2.13.4</jackson.version>
+        <springboot.version>2.7.4</springboot.version>
+        <msurefire.version>2.22.2</msurefire.version>
+        <mcompiler.version>3.10.1</mcompiler.version>
         <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>
-
         <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
-
         <sonar.organization>rmartinsanta</sonar.organization>
-
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-
         <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
-
         <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
-
         <sonar.coverage.jacoco.xmlReportPaths>
-            ${project.basedir}/../example-tsp/target/site/jacoco-aggregate/jacoco.xml
+            ${project.basedir}/../integration-tests/target/site/jacoco-aggregate/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
-
         <sonar.language>java</sonar.language>
-
         <graalvm.version>22.2.0</graalvm.version>
-
     </properties>
 
     <distributionManagement>
-
         <snapshotRepository>
-
             <id>sonatype-nexus-snapshots</id>
-
             <name>Sonatype Nexus Snapshots</name>
-
             <url>https://s01.oss.sonatype.org/content/repositories/snapshots</url>
-
         </snapshotRepository>
-
         <repository>
-
             <id>sonatype-nexus-staging</id>
-
             <name>Nexus Release Repository</name>
-
             <url>https://s01.oss.sonatype.org/service/local/staging/deploy/maven2</url>
-
         </repository>
-
     </distributionManagement>
-
-    <parent>
-
-        <groupId>org.springframework.boot</groupId>
-
-        <artifactId>spring-boot-starter-parent</artifactId>
-
-        <version>2.7.1</version>
-
-    </parent>
-
-    <dependencies>
-
-        <dependency>
-
-            <groupId>org.springframework.boot</groupId>
-
-            <artifactId>spring-boot-starter-test</artifactId>
-
-            <scope>test</scope>
-
-            <exclusions>
-
-                <exclusion>
-
-                    <groupId>org.junit.vintage</groupId>
-
-                    <artifactId>junit-vintage-engine</artifactId>
-
-                </exclusion>
-
-                <exclusion>
-
-                    <groupId>com.vaadin.external.google</groupId>
-
-                    <artifactId>android-json</artifactId>
-
-                </exclusion>
-
-            </exclusions>
-
-        </dependency>
-
-    </dependencies>
-
     <build>
-
         <plugins>
-
-            <plugin>
-
-                <groupId>org.apache.maven.plugins</groupId>
-
-                <artifactId>maven-gpg-plugin</artifactId>
-
-                <version>3.0.1</version>
-
-                <executions>
-
-                    <execution>
-
-                        <id>sign-artifacts</id>
-
-                        <phase>verify</phase>
-
-                        <goals>
-
-                            <goal>sign</goal>
-
-                        </goals>
-
-                    </execution>
-
-                </executions>
-
-            </plugin>
-
-            <!-- Test Coverage -->
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>0.8.8</version>
                 <executions>
                     <execution>
-                        <id>jacoco-prepare-agent</id>
                         <goals>
                             <goal>prepare-agent</goal>
                         </goals>
                     </execution>
                     <execution>
-                        <id>jacoco-report</id>
+                        <id>jacoco-report-aggregate</id>
+                        <phase>verify</phase>
                         <goals>
-                            <goal>report</goal>
+                            <goal>report-aggregate</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.0.1</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
                         </goals>
                     </execution>
                 </executions>
             </plugin>
         </plugins>
-
     </build>
-
 </project>

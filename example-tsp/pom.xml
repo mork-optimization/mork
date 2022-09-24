@@ -19,41 +19,31 @@
             <artifactId>mork</artifactId>
             <version>0.15-SNAPSHOT</version>
         </dependency>
-
-        <dependency>
-            <groupId>guru.nidi</groupId>
-            <artifactId>graphviz-java-all-j2v8</artifactId>
-            <version>0.18.1</version>
-        </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork-common</artifactId>
             <version>0.15-SNAPSHOT</version>
-            <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>autoconfig</artifactId>
             <version>0.15-SNAPSHOT</version>
         </dependency>
+
+        <dependency>
+            <groupId>guru.nidi</groupId>
+            <artifactId>graphviz-java-all-j2v8</artifactId>
+            <version>0.18.1</version>
+        </dependency>
     </dependencies>
 
     <build>
         <plugins>
             <plugin>
-                <groupId>org.jacoco</groupId>
-                <artifactId>jacoco-maven-plugin</artifactId>
-                <executions>
-                    <execution>
-                        <id>jacoco-report-aggregate</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>report-aggregate</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <version>${springboot.version}</version>
             </plugin>
         </plugins>
     </build>
-
 </project>

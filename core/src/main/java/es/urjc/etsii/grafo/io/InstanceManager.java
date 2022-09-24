@@ -25,12 +25,12 @@ import static es.urjc.etsii.grafo.util.IOUtil.checkExists;
 public class InstanceManager<I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(InstanceManager.class);
-    private final SoftReference<I> EMPTY = new SoftReference<>(null);
-    private final InstanceConfiguration instanceConfiguration;
-    private final InstanceImporter<I> instanceImporter;
+    protected final SoftReference<I> EMPTY = new SoftReference<>(null);
+    protected final InstanceConfiguration instanceConfiguration;
+    protected final InstanceImporter<I> instanceImporter;
 
-    private final Map<String, SoftReference<I>> cacheByPath;
-    private final Map<String, List<String>> solveOrderByExperiment;
+    protected final Map<String, SoftReference<I>> cacheByPath;
+    protected final Map<String, List<String>> solveOrderByExperiment;
 
 
     /**

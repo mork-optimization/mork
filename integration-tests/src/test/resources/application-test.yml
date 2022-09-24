@@ -1,7 +1,7 @@
 instances:
   path:
     # Default instance path for all experiments, can be overridden.
-    default: 'instances/TSPLIB/instances'
+    default: '../example-tsp/instances/TSPLIB/test'
 
     # Override default instance path only for the experiment declared in file PreliminarExperiment.java
     # If an experiment does not have a specific path the default will be used. Example:
@@ -208,7 +208,7 @@ errors:
 spring.config.activate.on-profile: test
 solver.repetitions: 10
 solver.experiments: 'ConstructiveExperiment'
-instances.path.default: 'instances/TSPLIB/test'
+instances.path.default: '../example-tsp/instances/TSPLIB/test'
 event.webserver.stop-on-execution-end: true
 serializers:
   csv:
