@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.shake;
 
 
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
@@ -42,7 +43,10 @@ public abstract class Shake<S extends Solution<S,I>, I extends Instance> {
      * @param <S> Solution class
      * @param <I> Instance class
      */
-    private static class NullShake<S extends Solution<S,I>,I extends Instance> extends Shake<S,I> {
+    public static class NullShake<S extends Solution<S,I>,I extends Instance> extends Shake<S,I> {
+        @AutoconfigConstructor
+        public NullShake() {}
+
         @Override
         public S shake(S solution, int k) {
             return solution;

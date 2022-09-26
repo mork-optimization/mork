@@ -1,8 +1,9 @@
 #!/bin/sh
+set -e
 
 mvn -Dgpg.skip -B clean jacoco:prepare-agent verify
 
-path="example-tsp/target/site/jacoco-aggregate/index.html"
+path="integration-tests/target/site/jacoco-aggregate/index.html"
 if command -v open > /dev/null 2>&1
 then
     open "$path"

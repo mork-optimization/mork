@@ -4,13 +4,11 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
-import java.util.concurrent.TimeUnit;
-
 /**
- * Mutistart algorithm builder based on Java Builder Pattern
+ * Multi-start algorithm builder based on Java Builder Pattern
  *
  * @param <S> type of the solution of the problem
- * @param <I>  type of the instance of the problem
+ * @param <I> type of the instance of the problem
  */
 public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Instance> {
 
@@ -35,18 +33,9 @@ public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Inst
     private int maxIterationsWithoutImproving = Integer.MAX_VALUE / 2;
 
     /**
-     * Cut off time of the algorithm. In this case is set to 1 year.
+     * Builder for {@link MultiStartAlgorithm}
      */
-    private int units = 365;
-    private TimeUnit timeUnit = TimeUnit.DAYS;
-
-
-    /**
-     * Use MultiStartAlgorithmBuilder::builder static method instead
-     */
-    protected MultiStartAlgorithmBuilder() {
-    }
-
+    public MultiStartAlgorithmBuilder() {}
 
     /**
      * <p>withAlgorithmName.</p>
@@ -93,27 +82,13 @@ public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Inst
         return this;
     }
 
-
     /**
-     * <p>withTime.</p>
-     *
-     * @param time     number of a spcefic time unit measure
-     * @param timeUnit time unit measure: SECOND, DAY, etc.
-     * @return MultiStartAlgorithmBuilder
-     */
-    public MultiStartAlgorithmBuilder<S, I> withTime(int time, TimeUnit timeUnit) {
-        this.units = time;
-        this.timeUnit = timeUnit;
-        return this;
-    }
-
-    /**
-     * Method to build a Multistart Algorithm
+     * build a multistart algorithm with the current configuration
      *
      * @param algorithm algorithm
      * @return the multistart algorithm
      */
     public MultiStartAlgorithm<S, I> build(Algorithm<S, I> algorithm) {
-        return new MultiStartAlgorithm<>(name, algorithm, maxIterations, minIterations, maxIterationsWithoutImproving, units, timeUnit);
+        return new MultiStartAlgorithm<>(name, algorithm, maxIterations, minIterations, maxIterationsWithoutImproving);
     }
 }

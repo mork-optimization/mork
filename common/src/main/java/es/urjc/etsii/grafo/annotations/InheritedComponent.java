@@ -6,9 +6,12 @@ import java.lang.annotation.*;
 
 
 /**
- * Used to detect at runtime implementing classes without forcing users to use annotations
+ * Used to detect at runtime implementing classes without forcing users to use annotations.
+ * Example: If abstract class SolutionSerializer is annotated with @InheritedComponent,
+ * all implementations will inherit the annotation, and therefore be detected at runtime
+ * as candidates for dependency injection.
  */
-// TODO: change @component with Dependency Injection (CDI) of Java EE 6
+// TODO: review and see if its possible to swap @component with Java EE 6 Dependency Injection
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Component

@@ -45,7 +45,7 @@ public class ValidationUtil {
      */
     public static <S extends Solution<S,I>, I extends Instance> void positiveTTB(S solution){
         if(solution.getLastModifiedTime() < 0){
-            throw new AssertionError(String.format("Last modified time cannot be negative, current value: %s. Remember to call Solution::updateLastModifiedTime if you have modified the solution without using a Move!", solution.getLastModifiedTime()));
+            throw new AssertionError(String.format("Last modified time cannot be negative, current value: %s. Remember to call Solution::notifyUpdate if you have modified the solution without using a Move!", solution.getLastModifiedTime()));
         }
     }
 

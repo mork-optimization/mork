@@ -31,6 +31,7 @@ public abstract class IraceAlgorithmGenerator<S extends Solution<S,I>, I extends
      * @return built algorithm
      */
     public Algorithm<S,I> buildFromString(String paramString){
-        return buildAlgorithm(new AlgorithmConfiguration(paramString));
+        String[] params = paramString.split("\\s+");
+        return buildAlgorithm(new AlgorithmConfiguration(params));
     }
 }

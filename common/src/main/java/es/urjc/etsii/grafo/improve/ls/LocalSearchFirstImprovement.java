@@ -1,5 +1,8 @@
 package es.urjc.etsii.grafo.improve.ls;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.ProvidedParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -26,7 +29,11 @@ public class LocalSearchFirstImprovement<M extends Move<S, I>, S extends Solutio
      * @param neighborhood neighborhood to use
      * @param maximize true if the problem objective function is maximizing, false otherwise
      */
-    public LocalSearchFirstImprovement(boolean maximize, Neighborhood<M, S, I> neighborhood) {
+    @AutoconfigConstructor
+    public LocalSearchFirstImprovement(
+            @ProvidedParam(type = ProvidedParamType.MAXIMIZE) boolean maximize,
+            Neighborhood<M, S, I> neighborhood
+    ) {
         super(maximize, neighborhood);
     }
 
@@ -61,10 +68,5 @@ public class LocalSearchFirstImprovement<M extends Move<S, I>, S extends Solutio
             var move = expRes.moves().filter(this::improves).findAny();
             return move.orElse(null);
         }
-    }
-
-    private boolean improves(M move){
-        double score = this.f.applyAsDouble(move);
-        return this.fIsBetter.test(score, 0.0);
     }
 }

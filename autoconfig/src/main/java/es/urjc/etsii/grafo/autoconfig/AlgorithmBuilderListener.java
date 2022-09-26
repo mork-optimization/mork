@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.autoconfig;
 
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmParser;
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmParserBaseListener;
-import es.urjc.etsii.grafo.autoconfig.service.AlgComponentService;
+import es.urjc.etsii.grafo.autoconfig.service.AlgorithmBuilderService;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
@@ -14,10 +14,10 @@ public class AlgorithmBuilderListener extends AlgorithmParserBaseListener {
     private static final Object EXPLICIT_NULL = new Object();
 
     private final Deque<Map<String, Object>> paramContext;
-    private final AlgComponentService algorithmComponents;
+    private final AlgorithmBuilderService algorithmComponents;
     Object lastPropertyValue;
 
-    public AlgorithmBuilderListener(AlgComponentService algorithmComponents) {
+    public AlgorithmBuilderListener(AlgorithmBuilderService algorithmComponents) {
         this.algorithmComponents = algorithmComponents;
         paramContext = new ArrayDeque<>();
     }

@@ -115,8 +115,6 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
 
     @Override
     public String toString() {
-        return this.getClass().getSimpleName() + "{" +
-                "cfg=" + config +
-                '}';
+        return this.getClass().getSimpleName();
     }
 }

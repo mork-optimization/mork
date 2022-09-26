@@ -83,7 +83,9 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
      * @param <S> Solution class
      * @param <I> Instance class
      */
-    private static class NullGraspListManager<M extends Move<S,I>, S extends Solution<S,I>,I extends Instance> extends GRASPListManager<M,S,I> {
+    public static class NullGraspListManager<M extends Move<S,I>, S extends Solution<S,I>,I extends Instance> extends GRASPListManager<M,S,I> {
+
+        public NullGraspListManager() {}
 
         @Override
         public List<M> buildInitialCandidateList(S solution) {

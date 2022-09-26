@@ -11,7 +11,7 @@ class BasicTokenTest {
     @ParameterizedTest
     @ValueSource(strings = {"1.234", "0.0", "-145.93e10", "5.1e10"})
     void basicParseFloat(String value){
-        var parser = AlgComponentService.getParser(value);
+        var parser = AlgorithmBuilderService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
         var l = ctx.literal();
@@ -31,7 +31,7 @@ class BasicTokenTest {
     @ParameterizedTest
     @ValueSource(strings = {"-94", "0", "12395"})
     void basicParseInteger(String value){
-        var parser = AlgComponentService.getParser(value);
+        var parser = AlgorithmBuilderService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
         var l = ctx.literal();
@@ -52,7 +52,7 @@ class BasicTokenTest {
     @ParameterizedTest
     @ValueSource(strings = {"true", "false"})
     void basicParseBoolean(String value){
-        var parser = AlgComponentService.getParser(value);
+        var parser = AlgorithmBuilderService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
         var l = ctx.literal();
@@ -72,7 +72,7 @@ class BasicTokenTest {
     @ParameterizedTest
     @ValueSource(strings = {"\"\"", "\"a\"", "\"long string with spaces\"", "\"\\u0020\""})
     void basicParseString(String value){
-        var parser = AlgComponentService.getParser(value);
+        var parser = AlgorithmBuilderService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
         var l = ctx.literal();
@@ -92,7 +92,7 @@ class BasicTokenTest {
     @ParameterizedTest
     @ValueSource(strings = {"'\u0020'", "'a'", "'1'", "'\\\\'"})
     void basicParseCharacter(String value){
-        var parser = AlgComponentService.getParser(value);
+        var parser = AlgorithmBuilderService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
         var l = ctx.literal();
@@ -112,7 +112,7 @@ class BasicTokenTest {
     @Test
     void basicParseNull(){
         String value = "null";
-        var parser = AlgComponentService.getParser(value);
+        var parser = AlgorithmBuilderService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
         var l = ctx.literal();
@@ -132,7 +132,7 @@ class BasicTokenTest {
     @ParameterizedTest
     @ValueSource(strings = {"True", "False", "z", "whatever", "'multichar'", "'", "\"", "''", "'\\'"})
     void failBasicParse(String value){
-        var parser = AlgComponentService.getParser(value);
+        var parser = AlgorithmBuilderService.getParser(value);
         Assertions.assertThrows(AlgorithmParsingException.class, parser::propertyValue);
     }
 }

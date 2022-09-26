@@ -1,13 +1,23 @@
 package es.urjc.etsii.grafo.autoconfig;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.ProvidedParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
+import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
+import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
+import es.urjc.etsii.grafo.solver.Mork;
+import es.urjc.etsii.grafo.util.StringUtil;
 import org.apache.commons.lang3.ClassUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Parameter;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -31,16 +41,49 @@ public class AlgorithmBuilderUtil {
         if(constructor == null){
             throw new AlgorithmParsingException(String.format("Failed to find constructor method in class %s for params %s, types %s", clazz.getSimpleName(), args, argTypes));
         }
-        var params = new Object[args.size()];
         var cParams = constructor.getParameters();
+        var params = new Object[cParams.length];
+
         for (int i = 0; i < cParams.length; i++) {
-            params[i] = args.get(cParams[i].getName());
+            var nextParamName = cParams[i].getName();
+            if(args.containsKey(nextParamName)){
+                // Either the value is in our map
+                params[i] = args.get(nextParamName);
+            } else {
+                // Or it is a provided value
+                params[i] = getProvidedValue(cParams[i]);
+            }
         }
         try {
             return constructor.newInstance(params);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new RuntimeException(e);
         }
+    }
+
+    public static Object getProvidedValue(Parameter p){
+        if(!p.isAnnotationPresent(ProvidedParam.class)){
+            throw new IllegalArgumentException(String.format("Parameter %s not annotated with @ProvidedParam", p));
+        }
+
+        var provided = p.getAnnotation(ProvidedParam.class);
+        return getProvidedValue(provided.type());
+    }
+
+    public static Object getProvidedValue(ComponentParameter p){
+        if(p.getType() != ParameterType.PROVIDED){
+            throw new IllegalArgumentException("Expected PROVIDED type, component parameter is: " + p.getType());
+        }
+        var providedParamType = (ProvidedParamType) p.getValues()[0];
+        return getProvidedValue(providedParamType);
+    }
+
+    public static Object getProvidedValue(ProvidedParamType type){
+        return switch (type){
+            case UNKNOWN -> throw new IllegalArgumentException("Parameter declared as provided but provided type is UNKNOWN");
+            case MAXIMIZE -> Mork.isMaximizing();
+            case ALGORITHM_NAME -> StringUtil.randomAlgorithmName();
+        };
     }
 
     /**
@@ -66,14 +109,40 @@ public class AlgorithmBuilderUtil {
         return null;
     }
 
+    /**
+     * Analyze an algorithm component class to find which constructor is annotated with @AutoconfigConstructor
+     * @param algComponentClass Algorithm component to analyze
+     * @return constructor annotated with @AutoconfigConstructor if present, null otherwise
+     */
+    public static Constructor<?> findAutoconfigConstructor(Class<?> algComponentClass){
+        var constructors = algComponentClass.getConstructors();
+        for(var c: constructors){
+            var annotation = c.getAnnotation(AutoconfigConstructor.class);
+            if(annotation != null){
+                return c;
+            }
+        }
+        return null;
+    }
+
     private static boolean doParamsMatch(Constructor<?> c, Map<String, Class<?>> params) {
-        var cParams = c.getParameters();
-        if(cParams.length != params.size()){
+        var unfilteredParams = c.getParameters();
+
+        // Skip all params annotated with @ProvidedParam
+        List<Parameter> filteredParams = new ArrayList<>(unfilteredParams.length);
+        for(var p: unfilteredParams){
+            if (!p.isAnnotationPresent(ProvidedParam.class)) {
+                filteredParams.add(p);
+            }
+        }
+
+        if(filteredParams.size() != params.size()){
             log.debug("Constructor {} ignored, args size mismatch, |params|={}", c, params.size());
             return false;
         }
 
-        for(var p: cParams){
+        // Check if all parameters for the current constructor are in our parameter map
+        for(var p: filteredParams){
             String cParamName = p.getName();
             var cParamClass = p.getType();
             if(!params.containsKey(cParamName)){

@@ -4,10 +4,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.util.ClassUtils;
 
 import java.lang.annotation.Annotation;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 public class ClassUtil {
 
@@ -29,9 +31,35 @@ public class ClassUtil {
         return result;
     }
 
+
+    /**
+     * Check if the given class is equivalent to Object.class
+     * @param clazz class to test
+     * @return true if the given class is a reference to the Object class, false otherwise
+     */
     public static boolean isObjectClass(Class<?> clazz) {
         return clazz.getCanonicalName().equals(Object.class.getCanonicalName());
     }
 
-
+    /**
+     * Check if the given class or any of the classes it extends, or the interfaces it implements, is contained in the set
+     * Example: hierarchyContainsAny(ArrayList.class, Set.of(List.class)) would return true.
+     * @param clazz class to test
+     * @param set set of reference classes
+     * @return return true if the class extends any class in the set, or is directly in the set, false otherwise
+     */
+    public static boolean hierarchyContainsAny(Class<?> clazz, Set<Class<?>> set){
+        for (Class<?> type = clazz; type != null; type = type.getSuperclass()){
+            if(set.contains(type)){
+                return true;
+            }
+        }
+        // Check interfaces too
+        for(var interf: ClassUtils.getAllInterfacesForClass(clazz)){
+            if(set.contains(interf)){
+                return true;
+            }
+        }
+        return false;
+    }
 }

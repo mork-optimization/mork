@@ -4,11 +4,17 @@
 - (New) DoubleComparator util functions
 - (New) Warn on slow solution serialization (> 500ms)
 - (New) Add option to choose how frequently any solution serializer should execute: best_per_instance, best_per_alg_instance and all iterations.
+- (New) Solving progress bar, logging improvement
+- (New) Add solution exporter to template project
+- (New) Profile activation via --{profilename}, example: --irace --autoconfig
 - (Change) All irace related classes moved to autoconfig module
 - (Change) Refactored GRASP Algorithm: Use builder pattern, add option to provide a custom greedy function.
 - (Change) Refactored LocalSearch, enhance and simplify its behaviour.
 - (Change) Improve SolutionSerializer::export method
+- (Change) Solution::updateLastModifiedTime renamed to Solution::notifyUpdate
+- (Change) Split configuration in different files
 - (Removed) IteratedImprover, MoveComparator, DefaultMoveComparator, Move::improves
+- (Fix) Irace bug when parsing args separated by multiple spaces
 
 # v0.14
 - (New) Algorithms can be magically built from strings without user interaction, using the new autoconfig project. See AlgComponentService and AlgorithmBuilderUtil classes for more details.

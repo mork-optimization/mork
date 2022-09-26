@@ -1,5 +1,8 @@
 package es.urjc.etsii.grafo.improve.ls;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.ProvidedParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -27,7 +30,11 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
      * @param neighborhood neighborhood to use
      * @param maximize true if the problem objective function is maximizing, false otherwise
      */
-    public LocalSearchBestImprovement(boolean maximize, Neighborhood<M, S, I> neighborhood) {
+    @AutoconfigConstructor
+    public LocalSearchBestImprovement(
+            @ProvidedParam(type = ProvidedParamType.MAXIMIZE) boolean maximize,
+            Neighborhood<M, S, I> neighborhood
+    ) {
         super(maximize, neighborhood);
     }
 
@@ -50,15 +57,18 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
     @Override
     public M getMove(S solution) {
         var expRes = neighborhood.explore(solution);
+        M bestMove;
         if(expRes instanceof ListExploreResult<M,S,I> list){
-            return CollectionUtil.getBest(list.moveList(), f, fIsBetter);
+            bestMove = CollectionUtil.getBest(list.moveList(), f, fIsBetter);
         } else {
             var move = expRes.moves().reduce((m1, m2) -> {
                 double score1 = this.f.applyAsDouble(m1);
                 double score2 = this.f.applyAsDouble(m2);
                 return fIsBetter.test(score2, score1) ? m2 : m1;
             });
-            return move.orElse(null);
+            bestMove = move.orElse(null);
         }
+        // Check if best move actually improves, if not end
+        return bestMove != null && improves(bestMove) ? bestMove : null;
     }
 }

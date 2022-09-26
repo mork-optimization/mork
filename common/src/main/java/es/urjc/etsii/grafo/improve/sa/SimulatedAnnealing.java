@@ -55,7 +55,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
     }
 
     /**
-     * Internal constructor, use {@link SimulatedAnnealingBuilder#SimulatedAnnealingBuilder()}.
+     * Internal constructor, use {@link SimulatedAnnealingBuilder}.
      *
      * @param acceptanceCriteria
      * @param ps

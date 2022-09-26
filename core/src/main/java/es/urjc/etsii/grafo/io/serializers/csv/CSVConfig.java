@@ -1,15 +1,15 @@
 package es.urjc.etsii.grafo.io.serializers.csv;
 
+import es.urjc.etsii.grafo.annotation.SerializerSource;
 import es.urjc.etsii.grafo.io.serializers.AbstractResultSerializerConfig;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
 
 
 /**
  * This class is used to configure the CSV serializer by the properties specified in the application.yml
  * {@see application.yml}
  */
-@Configuration
+@SerializerSource
 @ConfigurationProperties(prefix = "serializers.csv")
 public class CSVConfig extends AbstractResultSerializerConfig {
 

@@ -12,8 +12,8 @@ public class TSPRandomConstructive extends Constructive<TSPSolution, TSPInstance
             solution.setOrderOfLocation(i, i);
         }
         solution.shuffleRoute();
-        solution.updateLastModifiedTime();
         solution.setScore(solution.recalculateScore());
+        solution.notifyUpdate();
         return solution;
     }
 }

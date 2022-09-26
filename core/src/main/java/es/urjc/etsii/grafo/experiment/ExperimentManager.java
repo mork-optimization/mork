@@ -5,7 +5,7 @@ import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.services.Orchestrator;
+import es.urjc.etsii.grafo.orchestrator.UserExperimentOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.solution.Solution;
 import org.slf4j.Logger;
@@ -27,7 +27,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
     private static final int MAX_SHORTNAME_LENGTH = 30;
     private Pattern experimentFilter;
 
-    private static final Logger log = LoggerFactory.getLogger(Orchestrator.class);
+    private static final Logger log = LoggerFactory.getLogger(UserExperimentOrchestrator.class);
 
     /**
      * List of experiments
@@ -48,7 +48,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
         this.referenceResultProviders = validateReferenceResultProviders(referenceResultProviders);
         var experimentPattern = solverConfig.getExperiments();
         experimentFilter = Pattern.compile(experimentPattern);
-        var solutionBuilder = Orchestrator.decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
+        var solutionBuilder = UserExperimentOrchestrator.decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         log.info("Using SolutionBuilder implementation: "+solutionBuilder.getClass().getSimpleName());
         log.info("Using ReferenceResultProviders: " + referenceResultProviders);
 

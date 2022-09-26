@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
+import es.urjc.etsii.grafo.annotation.SerializerSource;
 import es.urjc.etsii.grafo.io.serializers.AbstractResultSerializerConfig;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
 
 
 /**
@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
  * Exports the results of each experiment.
  * {@see application.yml}
  */
-@Configuration
+@SerializerSource
 @ConfigurationProperties(prefix = "serializers.xlsx")
 public class ExcelConfig extends AbstractResultSerializerConfig {
 

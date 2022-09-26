@@ -9,22 +9,22 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 
 import static org.mockito.Mockito.*;
 
-public class InstanceManagerTest {
-
+class InstanceManagerTest {
 
     InstanceImporter<TestInstance> instanceImporter;
     String instancePath;
     File instance1File;
     File instance2File;
 
-
     @SuppressWarnings("unchecked")
     @BeforeEach
-    public void setUpMock(@TempDir File tempFolder) throws IOException {
+    void setUpMock(@TempDir File tempFolder) throws IOException {
         instancePath = tempFolder.getAbsolutePath();
         instance1File = new File(tempFolder, "TestInstance1");
         instance1File.createNewFile();
@@ -43,7 +43,7 @@ public class InstanceManagerTest {
     }
 
     @Test
-    public void testLazy(){
+    void testLazy(){
         InstanceConfiguration config = new InstanceConfiguration();
         config.setPreload(false);
         config.setPath(Map.of("Experiment1", instancePath));
@@ -55,7 +55,7 @@ public class InstanceManagerTest {
     }
 
     @Test
-    public void testCustomOrder(){
+    void testCustomOrder(){
         InstanceConfiguration config = new InstanceConfiguration();
         config.setPreload(true);
         config.setPath(Map.of("Experiment1", instancePath));
@@ -67,20 +67,24 @@ public class InstanceManagerTest {
     }
 
     @Test
-    public void checkCache(){
+    void checkCache(){
         InstanceConfiguration config = new InstanceConfiguration();
         config.setPreload(true);
         config.setPath(Map.of("Experiment1", instancePath));
         var manager = new InstanceManager<>(config, instanceImporter);
         var instances = manager.getInstanceSolveOrder("Experiment1");
         verify(instanceImporter, times(2)).importInstance(any());
-        verifyNoMoreInteractions(instanceImporter);
         manager.getInstance(instances.get(0));
         manager.getInstance(instances.get(1));
+        verify(instanceImporter, times(2)).importInstance(any());
+        manager.purgeCache();
+        manager.getInstance(instances.get(0));
+        manager.getInstance(instances.get(1));
+        verify(instanceImporter, times(4)).importInstance(any());
     }
 
     @Test
-    public void checkNoCache(){
+    void checkNoCache(){
         InstanceConfiguration config = new InstanceConfiguration();
         config.setPreload(false);
         config.setPath(Map.of("Experiment1", instancePath));
@@ -100,6 +104,19 @@ public class InstanceManagerTest {
 
         verifyNoMoreInteractions(instanceImporter);
         manager.getInstance(instances.get(1));
+    }
+
+    @Test
+    void validateTest(){
+        InstanceConfiguration config = new InstanceConfiguration();
+        config.setPreload(false);
+        var manager = new InstanceManager<>(config, instanceImporter);
+        Assertions.assertEquals(instanceImporter, manager.getUserImporterImplementation());
+
+        Assertions.assertThrows(IllegalArgumentException.class, () -> manager.validate(new ArrayList<>(), "Test experiment"));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> manager.validate(List.of(
+                new TestInstance("Instance 1"), new TestInstance("Instance 2"), new TestInstance("Instance 1")
+        ), "Test experiment"));
 
     }
 }

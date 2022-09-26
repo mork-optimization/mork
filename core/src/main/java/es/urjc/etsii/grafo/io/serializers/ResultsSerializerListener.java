@@ -20,7 +20,6 @@ import java.text.SimpleDateFormat;
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
-import java.util.stream.Collectors;
 
 /**
  * Retrieve results and export to disk when appropriate
@@ -112,8 +111,8 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
 
     public List<SolutionGeneratedEvent<S,I>> getExpData(String expName){
         long solutionsInMemory = this.eventStorage.solutionsInMemory(expName);
-        var expData = eventStorage.getGeneratedSolEventForExp(expName).collect(Collectors.toList());
-        logger.info(String.format("Solutions in memory: %s of %s", solutionsInMemory, expData.size()));
+        var expData = eventStorage.getGeneratedSolEventForExp(expName).toList();
+        logger.debug("Solutions in memory: {} of {}", solutionsInMemory, expData.size());
         return expData;
     }
 

@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.io;
 
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
+import es.urjc.etsii.grafo.exception.InstanceImportException;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -26,8 +27,8 @@ public abstract class InstanceImporter<I extends Instance> {
     public I importInstance(File f){
         try (var reader = Files.newBufferedReader(f.toPath())) {
             return importInstance(reader, f.getName());
-        } catch (IOException e) {
-            throw new RuntimeException("Error while loading file: " + f.getAbsolutePath(), e);
+        } catch (Exception e) {
+            throw new InstanceImportException("Error while loading file: " + f.getAbsolutePath(), e);
         }
     }
 

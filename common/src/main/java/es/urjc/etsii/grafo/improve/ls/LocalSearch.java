@@ -7,8 +7,8 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
-import es.urjc.etsii.grafo.solver.services.Global;
 import es.urjc.etsii.grafo.util.DoubleComparator;
+import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,11 +33,11 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
 
     private static final Logger log = LoggerFactory.getLogger(LocalSearch.class);
 
-    private static final int WARN_LIMIT = 10_000;
+    private static final int WARN_LIMIT = 100_000;
 
     protected final Neighborhood<M, S, I> neighborhood;
     protected final BiPredicate<Double, Double> fIsBetter;
-    private final boolean fMaximize;
+    protected final boolean fMaximize;
     protected final ToDoubleFunction<M> f;
 
     /**
@@ -73,12 +73,14 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
      */
     @Override
     protected S _improve(S solution) {
-        int rounds = 0;
-        while (!Global.stop() && iteration(solution)){
+        int rounds = 1;
+        boolean improved = true;
+        while (!TimeControl.isTimeUp() && improved) {
             log.debug("Executing iteration {} for {}", rounds, this.getClass().getSimpleName());
+            improved = iteration(solution);
             rounds++;
             if(rounds == WARN_LIMIT){
-                log.warn("Too many iterations, soft limit of {} passed, maybe {} is stuck in an infinite loop?", WARN_LIMIT, this.getClass().getSimpleName());
+                log.warn("Localsearch method {} may be stuck in an infinite loop (warn at {})", this.getClass().getSimpleName(),  WARN_LIMIT);
             }
         }
         log.debug("Improvement {} ended after {} iterations.", this.getClass().getSimpleName(), rounds);
@@ -88,6 +90,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
     /**
      * This procedure check if there are valid moves to neighbors solutions.
      * In that case, the move is executed. Otherwise, the procedure ends.
+     * @return true if the solution has improved, false otherwise
      */
     public boolean iteration(S solution) {
         // Get next move to execute
@@ -114,5 +117,10 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
      * @return Proposed move, null if there are no candidate moves in the neighborhood
      */
     public abstract M getMove(S solution);
+
+    protected boolean improves(M move){
+        double score = this.f.applyAsDouble(move);
+        return this.fIsBetter.test(score, 0.0);
+    }
 
 }

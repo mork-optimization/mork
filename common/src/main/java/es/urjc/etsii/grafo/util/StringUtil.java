@@ -95,4 +95,8 @@ public class StringUtil {
     public static String generateSecret() {
         return generateSecret(16);
     }
+
+    public static String randomAlgorithmName(){
+        return generateSecret(6);
+    }
 }

@@ -5,11 +5,11 @@ import es.urjc.etsii.grafo.exception.InvalidRandomException;
 import org.junit.jupiter.api.*;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
-public class DisableMathRandomPatchTest {
+class DisableMathRandomPatchTest {
 
     @Order(1)
     @Test
-    public void testMathRandomPatchDisabled(){
+    void testMathRandomPatchDisabled(){
         BlockConfig config = new BlockConfig();
         config.setBlockMathRandom(false);
         var patch = new PatchMathRandom(config);
@@ -20,7 +20,7 @@ public class DisableMathRandomPatchTest {
 
     @Order(2)
     @Test
-    public void testMathRandomPatchEnabled(){
+    void testMathRandomPatchEnabled(){
         BlockConfig config = new BlockConfig();
         config.setBlockMathRandom(true);
         var patch = new PatchMathRandom(config);

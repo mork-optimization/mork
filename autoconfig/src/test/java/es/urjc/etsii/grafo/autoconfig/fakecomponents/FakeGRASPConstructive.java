@@ -34,12 +34,12 @@ public class FakeGRASPConstructive<M extends Move<S,I>, S extends Solution<S,I>,
      *
      * @param alpha      Randomness, adjusts the candidate list size.
      *                   Takes values between [0,1] being 1 → totally random, 0 → full greedy.
-     * @param maximizing true if we are maximizing the score, false if minimizing
+     * @param maximize true if we are maximizing the score, false if minimizing
      * @param candidateListManager list manager, implemented by the user
      */
-    public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double alpha, boolean maximizing) {
+    public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double alpha, boolean maximize) {
         this.candidateListManager = candidateListManager;
-        this.isBetter = DoubleComparator.isBetterFunction(maximizing);
+        this.isBetter = DoubleComparator.isBetterFunction(maximize);
         assert isGreaterOrEquals(alpha, 0) && isLessOrEquals(alpha, 1);
 
         randomType = String.format("FIXED{a=%.2f}", alpha);
@@ -52,12 +52,12 @@ public class FakeGRASPConstructive<M extends Move<S,I>, S extends Solution<S,I>,
      *
      * @param minAlpha   minimum value for the random alpha
      * @param maxAlpha   maximum value for the random alpha
-     * @param maximizing true if maximizing, false otherwise
+     * @param maximize true if maximizing, false otherwise
      * @param candidateListManager Candidate List Manager
      */
-    public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, boolean maximizing) {
+    public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, boolean maximize) {
         this.candidateListManager = candidateListManager;
-        this.isBetter = DoubleComparator.isBetterFunction(maximizing);
+        this.isBetter = DoubleComparator.isBetterFunction(maximize);
         assert isGreaterOrEquals(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
         assert isGreaterOrEquals(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
         assert isGreater(maxAlpha, minAlpha);
@@ -70,10 +70,10 @@ public class FakeGRASPConstructive<M extends Move<S,I>, S extends Solution<S,I>,
      * GRASP Constructor, generates a random alpha in each construction, between 0 and 1 (inclusive).
      *
      * @param candidateListManager candidate list manager, implemented by the user
-     * @param maximizing True if maximizing, false if minimizing
+     * @param maximize True if maximizing, false if minimizing
      */
-    public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, boolean maximizing) {
-        this(candidateListManager, 0, 1, maximizing);
+    public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, boolean maximize) {
+        this(candidateListManager, 0, 1, maximize);
     }
 
     @Override

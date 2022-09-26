@@ -1,6 +1,9 @@
 package es.urjc.etsii.grafo.improve;
 
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.ProvidedParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
@@ -72,19 +75,54 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         return new NullImprover<>();
     }
 
+    public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> serial(boolean maximize, Improver<S, I>... improvers){
+        return new SequentialImprover<>(maximize, improvers);
+    }
+
     /**
      * Do nothing local search
      *
      * @param <S> Solution class
      * @param <I> Instance class
      */
-    private static class NullImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {
-        private NullImprover() {
+    public static class NullImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {
+
+        @AutoconfigConstructor
+        public NullImprover() {
             super(false); // It does not matter as it does nothing
         }
 
         @Override
         protected S _improve(S solution) {
+            return solution;
+        }
+    }
+
+    public static class SequentialImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {
+
+        private final Improver<S,I>[] improvers;
+
+        @SafeVarargs
+        public SequentialImprover(boolean maximize, Improver<S, I>... improvers) {
+            super(maximize);
+            this.improvers = improvers;
+        }
+
+        @AutoconfigConstructor
+        public SequentialImprover(
+                @ProvidedParam(type = ProvidedParamType.MAXIMIZE) boolean maximize,
+                Improver<S, I> improverA,
+                Improver<S, I> improverB
+        ) {
+            super(maximize);
+            this.improvers = new Improver[]{improverA, improverB};
+        }
+
+        @Override
+        protected S _improve(S solution) {
+            for(var improver: improvers){
+                solution = improver._improve(solution);
+            }
             return solution;
         }
     }

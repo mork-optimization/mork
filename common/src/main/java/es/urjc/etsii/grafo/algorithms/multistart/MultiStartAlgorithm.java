@@ -1,12 +1,12 @@
 package es.urjc.etsii.grafo.algorithms.multistart;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
-
-import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
+import es.urjc.etsii.grafo.util.TimeControl;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Example multistart algorithm, executes a user-defined algorithm until N iterations are reached, return best found.
@@ -16,38 +16,33 @@ import java.util.logging.Logger;
  */
 public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> extends Algorithm<S, I> {
 
-    private static final Logger log = Logger.getLogger(MultiStartAlgorithm.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(MultiStartAlgorithm.class);
 
     /**
      * Algorithm name
      */
-    final String algorithmName;
+    protected final String algorithmName;
+
     /**
      * Algorithm
      */
-    final Algorithm<S, I> algorithm;
+    protected final Algorithm<S, I> algorithm;
 
     /**
      * Maximum number of iterations
      */
-    private final int maxIterations;
+    protected final int maxIterations;
 
     /**
      * Minimum number of iterations
      */
-    private final int minIterations;
+    protected final int minIterations;
 
     /**
      * Maximum number of iteration without improving. When the algorithm has been executed this number of time
      * without finding a new best solution, the multistart procedure ends.
      */
-    private final int maxIterationsWithoutImproving;
-
-    /**
-     * Cut off time in nanotime
-     */
-    private final long nanoTime;
-
+    protected final int maxIterationsWithoutImproving;
 
     /**
      * Use the {@link MultiStartAlgorithmBuilder} class to generate a MultiStart Algorithm
@@ -57,29 +52,14 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
      * @param maxIterations                 maximum number of iterations
      * @param minIterations                 minimum number of iteration the algorithm will be run. Must be less or equatl than the maximum number of iterations.
      * @param maxIterationsWithoutImproving number of iterations the algorithm should be run without improving before stop
-     * @param maxTime                       maximum allowed time
-     * @param timeUnit                      Time unit of the maximum allowed time (i.e., SECONDS, DAYS, etc.)
      */
-    protected MultiStartAlgorithm(String algorithmName, Algorithm<S, I> algorithm, int maxIterations, int minIterations, int maxIterationsWithoutImproving, int maxTime, TimeUnit timeUnit) {
-        checkParameters(maxIterations, minIterations, maxIterationsWithoutImproving, maxTime);
+    protected MultiStartAlgorithm(String algorithmName, Algorithm<S, I> algorithm, int maxIterations, int minIterations, int maxIterationsWithoutImproving) {
+        checkParameters(maxIterations, minIterations, maxIterationsWithoutImproving);
         this.algorithmName = algorithmName;
         this.algorithm = algorithm;
         this.maxIterations = maxIterations;
         this.minIterations = minIterations;
         this.maxIterationsWithoutImproving = maxIterationsWithoutImproving;
-        this.nanoTime = timeUnit.toNanos(maxTime);
-    }
-
-
-    /**
-     * Build a multistart algorithm
-     *
-     * @param <S> Solution class
-     * @param <I> Instance class
-     * @return the multistart algorithm
-     */
-    public static <S extends Solution<S,I>, I extends Instance> MultiStartAlgorithmBuilder<S, I> builder() {
-        return new MultiStartAlgorithmBuilder<>();
     }
 
     /**
@@ -88,9 +68,8 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
      * @param maxIterations                 maximum number of iterations
      * @param minIterations                 minimum number of iteration the algorithm will be run. Must be less or equatl than the maximum number of iterations.
      * @param maxIterationsWithoutImproving number of iterations the algorithm should be run without improving before stop
-     * @param maxTime                       maximum allowed time
      */
-    private void checkParameters(int maxIterations, int minIterations, int maxIterationsWithoutImproving, int maxTime) {
+    private void checkParameters(int maxIterations, int minIterations, int maxIterationsWithoutImproving) {
         if (minIterations <= 0) {
             throw new IllegalArgumentException("The minimum number should be greater than 0");
         }
@@ -103,10 +82,6 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
         if (minIterations > maxIterations) {
             throw new IllegalArgumentException("The minimum number of iterations should be lower than the maximum number of iterations");
         }
-        if (maxTime <= 0) {
-            throw new IllegalArgumentException("The maximum running time of the experiment should be greater than 0");
-        }
-
     }
 
 
@@ -120,8 +95,7 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
         S best = null;
         int iter = 0;
         int iterWI = 0;
-        long startT = System.nanoTime();
-        while (!terminationCriteriaIsMet(iter, iterWI, startT)) {
+        while (!terminationCriteriaIsMet(iter, iterWI)) {
             iter++;
             iterWI++;
             S solution = this.algorithm.algorithm(instance);
@@ -141,20 +115,16 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
      *
      * @param iter   current number of iteration of the algorithm
      * @param iterWI currr
-     * @param startT starting time
      * @return true if the termination criteria is met, false otherwise
      */
-    private boolean terminationCriteriaIsMet(int iter, int iterWI, long startT) {
+    private boolean terminationCriteriaIsMet(int iter, int iterWI) {
+        if(TimeControl.isTimeUp()){
+            return true;
+        }
         if (iter >= this.maxIterations) {
             return true;
         }
-        if (iter >= this.minIterations) {
-            if (iterWI >= this.maxIterationsWithoutImproving) {
-                return true;
-            }
-            return System.nanoTime() - startT > this.nanoTime;
-        }
-        return false;
+        return iter >= this.minIterations && iterWI >= this.maxIterationsWithoutImproving;
     }
 
     /** {@inheritDoc} */
@@ -165,7 +135,7 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
                 ", mxIter=" + maxIterations +
                 ", mnIter=" + minIterations +
                 ", mxIterWI=" + maxIterationsWithoutImproving +
-                ", mxT=" + nanoTime;
+                "}";
     }
 
     /**
@@ -175,9 +145,8 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
      * @param solution solution
      */
     protected void printStatus(int iteration, S solution) {
-        log.fine(() -> String.format("\t\t%s: %s", iteration, solution));
+        log.debug("\t\t{}: {}", iteration, solution);
     }
-
 
     /**
      * {@inheritDoc}

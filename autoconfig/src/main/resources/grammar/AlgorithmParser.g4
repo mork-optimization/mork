@@ -13,7 +13,8 @@ properties: property (COMMA property)*;
 
 property: IDENT EQ propertyValue;
 
-propertyValue: literal | component;
+// Allow optional {} after literal values to simplify algorithm reconstruction
+propertyValue: literal (LBRCE RBRCE)? | component;
 
 literal: NullLiteral | BooleanLiteral | FloatingPointLiteral | IntegerLiteral | StringLiteral | CharacterLiteral | arrayLiteral;
 

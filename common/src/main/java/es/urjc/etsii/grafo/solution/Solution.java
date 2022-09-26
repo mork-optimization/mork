@@ -53,9 +53,9 @@ public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instanc
 
 
     /**
-     * <p>updateLastModifiedTime.</p>
+     * <p>notifyUpdate.</p>
      */
-    public void updateLastModifiedTime() {
+    public void notifyUpdate() {
         this.lastModifiedTime = System.nanoTime();
     }
 

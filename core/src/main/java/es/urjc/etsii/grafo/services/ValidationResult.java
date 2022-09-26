@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.services;
 
+import es.urjc.etsii.grafo.exception.InvalidSolutionException;
+
 /**
  * Result of validating a solution
  */
@@ -28,6 +30,12 @@ public class ValidationResult {
     private ValidationResult(boolean isValid, String reasonFailed) {
         this.isValid = isValid;
         this.reasonFailed = reasonFailed;
+    }
+
+    public void throwIfFail(){
+        if(!this.isValid()){
+            throw new InvalidSolutionException(this.reasonFailed);
+        }
     }
 
     /**

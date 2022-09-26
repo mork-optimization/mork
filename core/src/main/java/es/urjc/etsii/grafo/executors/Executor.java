@@ -15,16 +15,23 @@ import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
 import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.SolutionValidator;
+import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solver.Mork;
-import es.urjc.etsii.grafo.solver.services.Global;
 import es.urjc.etsii.grafo.util.DoubleComparator;
+import es.urjc.etsii.grafo.util.TimeControl;
+import es.urjc.etsii.grafo.util.TimeUtil;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
+import me.tongfei.progressbar.ProgressBar;
+import me.tongfei.progressbar.ProgressBarBuilder;
+import me.tongfei.progressbar.ProgressBarStyle;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 
@@ -38,27 +45,49 @@ import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(Executor.class);
+    public static final int EXTRA_SECS_BEFORE_WARNING = 10;
 
     protected final Optional<SolutionValidator<S,I>> validator;
+    protected final Optional<TimeLimitCalculator<S,I>> timeLimitCalculator;
     protected final IOManager<S, I> io;
     protected final InstanceManager<I> instanceManager;
     protected final List<ReferenceResultProvider> referenceResultProviders;
     protected final SolverConfig solverConfig;
 
+    /**
+     * If time control is enabled, remove it and check ellapsed time to see if too many time has been spent
+     *
+     * @param <S>                 Solution class
+     * @param <I>                 Instance class
+     * @param timeLimitCalculator time limit calculator if implemented
+     * @param workUnit current work unit
+     */
+    public static <S extends Solution<S,I>, I extends Instance> void endTimeControl(Optional<TimeLimitCalculator<S, I>> timeLimitCalculator, WorkUnit<S,I> workUnit) {
+        if(timeLimitCalculator.isPresent()){
+            if(TimeControl.remaining() < -TimeUtil.secsToNanos(EXTRA_SECS_BEFORE_WARNING)){
+                log.warn("Algorithm takes too long to stop after time is up. Offending unit: {}", workUnit);
+            }
+            TimeControl.remove();
+        }
+    }
 
     /**
      * Fill common values used by all executors
-     * @param validator solution validator if available
-     * @param io IO manager
+     *
+     * @param validator                solution validator if available
+     * @param timeLimitCalculator      time limit calculator if exists
+     * @param io                       IO manager
      * @param referenceResultProviders list of all reference value providers implementations
      */
     protected Executor(
             Optional<SolutionValidator<S, I>> validator,
+            Optional<TimeLimitCalculator<S, I>> timeLimitCalculator,
             IOManager<S, I> io,
             InstanceManager<I> instanceManager,
             List<ReferenceResultProvider> referenceResultProviders,
             SolverConfig solverConfig
     ) {
+        this.timeLimitCalculator = timeLimitCalculator;
         this.referenceResultProviders = referenceResultProviders;
         this.solverConfig = solverConfig;
         if(validator.isEmpty()){
@@ -86,7 +115,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
      */
     public void validate(S solution){
         ValidationUtil.positiveTTB(solution);
-        this.validator.ifPresent(validator -> validator.validate(solution));
+        this.validator.ifPresent(v -> v.validate(solution));
     }
 
     /**
@@ -97,19 +126,33 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     protected WorkUnitResult<S,I> doWork(WorkUnit<S,I> workUnit) {
         S solution = null;
         I instance = this.instanceManager.getInstance(workUnit.instancePath());
+        Algorithm<S,I> algorithm =workUnit.algorithm();
 
         try {
-            // If app is stopping do not run algorithm
-            if(Global.stop()) {
-                return null;
-            }
+            // Preparate current work unit
             RandomManager.reset(workUnit.i());
+            if(this.timeLimitCalculator.isPresent()){
+                long maxDuration = this.timeLimitCalculator.get().timeLimitInMillis(instance, algorithm);
+                TimeControl.setMaxExecutionTime(maxDuration, TimeUnit.MILLISECONDS);
+                TimeControl.start();
+            }
+
+            if(solverConfig.isMetrics()){
+                MetricsManager.enableMetrics();
+                MetricsManager.resetMetrics();
+            }
+
+            // Do real work
             long starTime = System.nanoTime();
-            solution = workUnit.algorithm().algorithm(instance);
+            solution = algorithm.algorithm(instance);
             long endTime = System.nanoTime();
+
+            // Prepare work unit results and cleanup
+            endTimeControl(timeLimitCalculator, workUnit);
+            validate(solution);
+
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long executionTime = endTime - starTime;
-            validate(solution);
             return new WorkUnitResult<>(workUnit, solution, executionTime, timeToTarget);
         } catch (Exception e) {
             workUnit.exceptionHandler().handleException(workUnit.experimentName(), e, Optional.ofNullable(solution), instance, workUnit.algorithm(), io);
@@ -118,11 +161,13 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
         }
     }
 
-    protected void processWorkUnitResult(WorkUnitResult<S,I> r){
+    protected void processWorkUnitResult(WorkUnitResult<S,I> r, ProgressBar pb, ProgressBar pb2){
+        pb.step();
+        pb2.step();
         exportAllSolutions(r);
         EventPublisher.getInstance().publishEvent(new SolutionGeneratedEvent<>(r.workUnit().i(), r.solution(), r.workUnit().experimentName(), r.workUnit().algorithm(), r.executionTime(), r.timeToTarget()));
-        if(log.isInfoEnabled()){
-            log.info(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() + 1, nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
+        if(log.isDebugEnabled()){
+            log.debug(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() + 1, nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
         }
     }
 
@@ -200,4 +245,33 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     public String instanceName(String instancePath){
         return this.instanceManager.getInstance(instancePath).getId();
     }
+
+    public static ProgressBarBuilder getPBarBuilder(){
+        return new ProgressBarBuilder()
+                .setUpdateIntervalMillis(1000)
+                .continuousUpdate()
+                .setStyle(ProgressBarStyle.COLORFUL_UNICODE_BLOCK);
+    }
+
+    public ProgressBar getGlobalSolvingProgressBar(Map<String, Map<Algorithm<S,I>, List<WorkUnit<S,I>>>> workUnits){
+        int totalUnits = 0;
+        for(var v1: workUnits.values()){
+            for(var v2: v1.values()){
+                totalUnits += v2.size();
+            }
+        }
+        return getPBarBuilder()
+                .setInitialMax(totalUnits)
+                .setTaskName("Total")
+                .build();
+    }
+
+    public ProgressBar getInstanceSolvingProgressBar(int nInstanceWorkUnits){
+        return getPBarBuilder()
+                .setTaskName("Inst.")
+                .setInitialMax(nInstanceWorkUnits)
+                .build();
+    }
+
+
 }

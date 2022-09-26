@@ -1,11 +1,14 @@
 package es.urjc.etsii.grafo.io;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
+import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.util.IOUtil;
+import me.tongfei.progressbar.ProgressBar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
 import java.lang.ref.SoftReference;
 import java.nio.file.Path;
 import java.util.*;
@@ -22,12 +25,12 @@ import static es.urjc.etsii.grafo.util.IOUtil.checkExists;
 public class InstanceManager<I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(InstanceManager.class);
-    private final SoftReference<I> EMPTY = new SoftReference<>(null);
-    private final InstanceConfiguration instanceConfiguration;
-    private final InstanceImporter<I> instanceImporter;
+    protected final SoftReference<I> EMPTY = new SoftReference<>(null);
+    protected final InstanceConfiguration instanceConfiguration;
+    protected final InstanceImporter<I> instanceImporter;
 
-    private final Map<String, SoftReference<I>> cacheByPath;
-    private final Map<String, List<String>> solveOrderByExperiment;
+    protected final Map<String, SoftReference<I>> cacheByPath;
+    protected final Map<String, List<String>> solveOrderByExperiment;
 
 
     /**
@@ -69,9 +72,10 @@ public class InstanceManager<I extends Instance> {
         List<String> sortedInstances;
         log.info("Loading all instances to check correctness...");
         List<I> instances = new ArrayList<>();
-        for(var p: instancePaths){
-            log.debug("Loading instance: {}", p);
-            I instance = loadInstance(p);
+        var iterator = ProgressBar.wrap(instancePaths, Executor.getPBarBuilder().setTaskName("Instance validation"));
+        for(var path: iterator){
+            log.debug("Loading instance: {}", path);
+            I instance = loadInstance(path);
             instances.add(instance);
             cacheByPath.put(instance.getId(), new SoftReference<>(instance));
         }
@@ -80,7 +84,7 @@ public class InstanceManager<I extends Instance> {
         sortedInstances = instances.stream().map(Instance::getPath).collect(Collectors.toList());
         if(log.isInfoEnabled()){
             var basePath = Path.of(instanceConfiguration.getPath(expName)).toAbsolutePath().normalize().toString();
-            log.info("Instance validation completed, solve order: " + sortedInstances.stream().map(path -> path.replace(basePath, "")).toList());
+            log.info("Instance validation completed, solve order: {}", sortedInstances.stream().map(path -> path.replace(basePath + File.separator, "")).toList());
         }
         return sortedInstances;
     }
@@ -152,5 +156,9 @@ public class InstanceManager<I extends Instance> {
      */
     public void purgeCache(){
         this.cacheByPath.clear();
+    }
+
+    public InstanceImporter<I> getUserImporterImplementation(){
+        return this.instanceImporter;
     }
 }
