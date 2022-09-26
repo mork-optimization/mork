@@ -46,7 +46,10 @@ public class ExecutionController<S extends Solution<S,I>, I extends Instance> {
     @PostMapping("/execute")
     public ResponseEntity<String> execute(@RequestBody ExecuteRequest request) {
         log.debug("Execute request: {}", request);
-        // TODO review async possibilities
+        if(!request.isValid()){
+            return ResponseEntity.badRequest().body("ExecuteRequest failed validation");
+        }
+
         var result = this.orquestrator.iraceCallback(request);
         return ResponseEntity.ok(result);
     }

@@ -61,6 +61,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public static final String F_SCENARIO = "scenario.txt";
     public static final String F_FORBIDDEN = "forbidden.txt";
     public static final String F_MIDDLEWARE = "middleware.sh";
+    public static final int DEFAULT_IRACE_EXPERIMENTS = 10_000;
+    public static final int MINIMUM_IRACE_EXPERIMENTS = 10_000;
 
     private final SolverConfig solverConfig;
     private final InstanceConfiguration instanceConfiguration;
@@ -71,7 +73,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final Optional<SolutionValidator<S, I>> validator;
 
     private final AlgorithmCandidateGenerator algorithmCandidateGenerator;
-    private CopyOnWriteArrayList<IraceRuntimeConfiguration> configHistoric = new CopyOnWriteArrayList<>();
+    private final CopyOnWriteArrayList<IraceRuntimeConfiguration> configHistoric = new CopyOnWriteArrayList<>();
     private int nIraceParameters = -1;
 
     /**
@@ -184,25 +186,25 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 K_INSTANCES_PATH, instanceConfiguration.getPath("irace"),
                 K_TARGET_RUNNER, "./middleware.sh",
                 K_PARALLEL, nParallel(solverConfig),
-                K_MAX_EXP, calculateMaxExperiments(solverConfig),
+                K_MAX_EXP, calculateMaxExperiments(solverConfig, nIraceParameters),
                 K_SEED, String.valueOf(solverConfig.getSeed())
         );
     }
 
-    private String calculateMaxExperiments(SolverConfig solverConfig) {
+    protected static String calculateMaxExperiments(SolverConfig solverConfig, int nIraceParameters) {
         int maxExperiments;
         if (solverConfig.isAutoconfig()) {
-            if(this.nIraceParameters < 1){
+            if(nIraceParameters < 1){
                 throw new IllegalArgumentException("nIraceParameters must be positive");
             }
-            maxExperiments = solverConfig.getIterationsPerParameter() * this.nIraceParameters;
+            maxExperiments = Math.max(MINIMUM_IRACE_EXPERIMENTS, solverConfig.getIterationsPerParameter() * nIraceParameters);
         } else {
-            maxExperiments = 10_000; // 10k experiments by default if not specified otherwise
+            maxExperiments = DEFAULT_IRACE_EXPERIMENTS; // 10k experiments by default if not specified otherwise
         }
         return String.valueOf(maxExperiments);
     }
 
-    private String nParallel(SolverConfig solverConfig) {
+    protected static String nParallel(SolverConfig solverConfig) {
         if (solverConfig.isParallelExecutor()) {
             int n = solverConfig.getnWorkers();
             if (n < 1) {
@@ -225,7 +227,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      * @return a double.
      */
     public String iraceCallback(ExecuteRequest request) {
-        var config = buildConfig(request);
+        var config = buildConfig(request, integrationKey);
         this.configHistoric.add(config);
         var instancePath = config.getInstanceName();
         var instance = instanceManager.getInstance(instancePath);
@@ -248,7 +250,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         return result;
     }
 
-    private String failedResult() {
+    protected static String failedResult() {
 //        double score = Mork.isMaximizing()? Integer.MIN_VALUE: Integer.MAX_VALUE;
 //        double time = 0;
 //        return "%s %s".formatted(score, time);
@@ -258,7 +260,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         return "Inf 0";
     }
 
-    private IraceRuntimeConfiguration buildConfig(ExecuteRequest request) {
+    protected static IraceRuntimeConfiguration buildConfig(ExecuteRequest request, String integrationKey) {
         if (!request.getKey().equals(integrationKey)) {
             throw new IllegalArgumentException(String.format("Invalid integration key, got %s", request.getKey()));
         }
