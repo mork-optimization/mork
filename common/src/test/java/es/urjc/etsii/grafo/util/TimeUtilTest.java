@@ -28,6 +28,6 @@ class TimeUtilTest {
         Assertions.assertEquals(36_000, TimeUtil.convert(10, TimeUnit.HOURS, TimeUnit.SECONDS));
         Assertions.assertEquals(10_000, TimeUtil.convert(10, TimeUnit.SECONDS, TimeUnit.MILLISECONDS));
         Assertions.assertEquals(TimeUtil.NANOS_IN_SECOND, TimeUtil.convert(1, TimeUnit.SECONDS, TimeUnit.NANOSECONDS));
-        Assertions.assertEquals(TimeUtil.NANOS_IN_MILLISECOND, TimeUtil.convert(1, TimeUnit.MILLISECONDS, TimeUnit.SECONDS));
+        Assertions.assertEquals(TimeUtil.NANOS_IN_MILLISECOND, TimeUtil.convert(1, TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS));
     }
 }
