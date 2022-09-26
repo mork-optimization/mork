@@ -38,7 +38,7 @@ class ConcurrentTest {
     public static void deleteResults() throws IOException {
         log.info("Deleting resultstest");
         try {
-            FileUtils.forceDelete(new File("resultstest"));
+            FileUtils.forceDeleteOnExit(new File("resultstest"));
         } catch (FileNotFoundException e){
             log.warn("File resultstest does not exist");
         }
