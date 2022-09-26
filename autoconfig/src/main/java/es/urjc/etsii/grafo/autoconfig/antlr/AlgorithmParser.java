@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig.antlr;// Generated from AlgorithmParser.g4 by ANTLR 4.10.1
+package es.urjc.etsii.grafo.autoconfig.antlr;// Generated from java-escape by ANTLR 4.11.1
 
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.atn.ATN;
@@ -11,9 +11,9 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.List;
 
-@SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast"})
+@SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast", "CheckReturnValue"})
 public class AlgorithmParser extends Parser {
-	static { RuntimeMetaData.checkVersion("4.10.1", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.11.1", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
@@ -81,7 +81,7 @@ public class AlgorithmParser extends Parser {
 	}
 
 	@Override
-	public String getGrammarFileName() { return "AlgorithmParser.g4"; }
+	public String getGrammarFileName() { return "java-escape"; }
 
 	@Override
 	public String[] getRuleNames() { return ruleNames; }
@@ -97,6 +97,7 @@ public class AlgorithmParser extends Parser {
 		_interp = new ParserATNSimulator(this,_ATN,_decisionToDFA,_sharedContextCache);
 	}
 
+	@SuppressWarnings("CheckReturnValue")
 	public static class InitContext extends ParserRuleContext {
 		public ComponentContext component() {
 			return getRuleContext(ComponentContext.class,0);
@@ -136,6 +137,7 @@ public class AlgorithmParser extends Parser {
 		return _localctx;
 	}
 
+	@SuppressWarnings("CheckReturnValue")
 	public static class ComponentContext extends ParserRuleContext {
 		public TerminalNode IDENT() { return getToken(AlgorithmParser.IDENT, 0); }
 		public TerminalNode LBRCE() { return getToken(AlgorithmParser.LBRCE, 0); }
@@ -193,6 +195,7 @@ public class AlgorithmParser extends Parser {
 		return _localctx;
 	}
 
+	@SuppressWarnings("CheckReturnValue")
 	public static class PropertiesContext extends ParserRuleContext {
 		public List<PropertyContext> property() {
 			return getRuleContexts(PropertyContext.class);
@@ -256,6 +259,7 @@ public class AlgorithmParser extends Parser {
 		return _localctx;
 	}
 
+	@SuppressWarnings("CheckReturnValue")
 	public static class PropertyContext extends ParserRuleContext {
 		public TerminalNode IDENT() { return getToken(AlgorithmParser.IDENT, 0); }
 		public TerminalNode EQ() { return getToken(AlgorithmParser.EQ, 0); }
@@ -301,6 +305,7 @@ public class AlgorithmParser extends Parser {
 		return _localctx;
 	}
 
+	@SuppressWarnings("CheckReturnValue")
 	public static class PropertyValueContext extends ParserRuleContext {
 		public LiteralContext literal() {
 			return getRuleContext(LiteralContext.class,0);
@@ -379,6 +384,7 @@ public class AlgorithmParser extends Parser {
 		return _localctx;
 	}
 
+	@SuppressWarnings("CheckReturnValue")
 	public static class LiteralContext extends ParserRuleContext {
 		public TerminalNode NullLiteral() { return getToken(AlgorithmParser.NullLiteral, 0); }
 		public TerminalNode BooleanLiteral() { return getToken(AlgorithmParser.BooleanLiteral, 0); }
@@ -474,6 +480,7 @@ public class AlgorithmParser extends Parser {
 		return _localctx;
 	}
 
+	@SuppressWarnings("CheckReturnValue")
 	public static class ArrayLiteralContext extends ParserRuleContext {
 		public TerminalNode LBRCK() { return getToken(AlgorithmParser.LBRCK, 0); }
 		public TerminalNode RBRCK() { return getToken(AlgorithmParser.RBRCK, 0); }
