@@ -10,6 +10,11 @@ import java.util.function.DoublePredicate;
 public class DoubleComparator {
 
     /**
+     * Util class should never be instantiated
+     */
+    private DoubleComparator() {}
+
+    /**
      * Default epsilon value. If the difference between two numbers is less than epsilon, the numbers are considered equal.
      */
     public static final double DEFAULT_EPSILON = 0.000_001;
