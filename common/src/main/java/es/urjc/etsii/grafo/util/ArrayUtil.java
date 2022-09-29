@@ -586,4 +586,76 @@ public class ArrayUtil {
         }
         return min;
     }
+
+    /**
+     * Find the position of the minimum value in the array.
+     * If multiple positions have the same minimum value, returns the lower index.
+     * @param values array of values
+     * @return position of the minimum value in the array
+     */
+    public static int minIndex(int[] values){
+        if(values.length == 0){
+            throw new IllegalArgumentException("Empty array");
+        }
+        int min = Integer.MAX_VALUE;
+        int index = -1;
+        for (int i = 0; i < values.length; i++) {
+            int v = values[i];
+            if (v < min) {
+                index = i;
+                min = v;
+            }
+        }
+        assert index != -1;
+        return index;
+    }
+
+    /**
+     * Find the position of the minimum value in the array.
+     * If multiple positions have the same minimum value, returns the lower index.
+     * @param values array of values
+     * @return position of the minimum value in the array
+     */
+    public static int minIndex(long[] values){
+        if(values.length == 0){
+            throw new IllegalArgumentException("Empty array");
+        }
+        long min = Long.MAX_VALUE;
+        int index = -1;
+        for (int i = 0; i < values.length; i++) {
+            long v = values[i];
+            if (v < min) {
+                index = i;
+                min = v;
+            }
+        }
+        assert index != -1;
+        return index;
+    }
+
+    /**
+     * Find the position of the minimum value in the array.
+     * If multiple positions have the same minimum value, returns the lower index.
+     * @param values array of values
+     * @return position of the minimum value in the array
+     */
+    public static int minIndex(double[] values){
+        if(values.length == 0){
+            throw new IllegalArgumentException("Empty array");
+        }
+        double min = Double.MAX_VALUE;
+        int index = -1;
+        for (int i = 0; i < values.length; i++) {
+            double v = values[i];
+            if (Double.isNaN(v)) {
+                throw new IllegalArgumentException("NaN at index " + i);
+            }
+            if (v < min) {
+                index = i;
+                min = v;
+            }
+        }
+        assert index != -1;
+        return index;
+    }
 }

@@ -356,5 +356,35 @@ class ArrayUtilTest {
         Assertions.assertEquals(-4123D, ArrayUtil.min(new double[]{-1, 0, -4123}));
         Assertions.assertEquals(0D, ArrayUtil.min(new double[]{0}));
     }
+
+    @Test
+    void testMinIndexInt(){
+        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.minIndex(new int[]{}));
+        Assertions.assertEquals(2, ArrayUtil.minIndex(new int[]{-1, 0, -4123}));
+        Assertions.assertEquals(2, ArrayUtil.minIndex(new int[]{-1, 0, -4123, -4123}));
+        Assertions.assertEquals(3, ArrayUtil.minIndex(new int[]{-1, 0, -4123, -4124}));
+        Assertions.assertEquals(0, ArrayUtil.minIndex(new int[]{0}));
+    }
+
+    @Test
+    void testMinIndexLong(){
+        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.minIndex(new long[]{}));
+        Assertions.assertEquals(2, ArrayUtil.minIndex(new long[]{-1, 0, -4123}));
+        Assertions.assertEquals(2, ArrayUtil.minIndex(new long[]{-1, 0, -4123, -4123}));
+        Assertions.assertEquals(3, ArrayUtil.minIndex(new long[]{-1, 0, -4123, -4124}));
+        Assertions.assertEquals(0, ArrayUtil.minIndex(new long[]{0}));
+    }
+
+    @Test
+    void testMinIndexDouble(){
+        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.minIndex(new double[]{}));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.minIndex(new double[]{1,4,Double.NaN,8}));
+        Assertions.assertEquals(2, ArrayUtil.minIndex(new double[]{-1, 0, -4123}));
+        Assertions.assertEquals(2, ArrayUtil.minIndex(new double[]{-1, 0, -4123, -4123}));
+        Assertions.assertEquals(3, ArrayUtil.minIndex(new double[]{-1, 0, -4123, -4124}));
+        Assertions.assertEquals(0, ArrayUtil.minIndex(new double[]{0}));
+    }
+
+
     
 }
