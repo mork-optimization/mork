@@ -71,7 +71,7 @@ public class Metrics {
      * @param duration  pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
      * @return area calculation as a double value
      */
-    public double hypervolume(String name, long skipNanos, long duration) {
+    public double areaUnderCurve(String name, long skipNanos, long duration) {
         if (!this.metricValues.containsKey(name)) {
             throw new IllegalArgumentException("Unknown metric: " + name);
         }

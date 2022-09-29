@@ -306,7 +306,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             }
             TimeControl.remove();
             var metrics = MetricsManager.getInstance();
-            score = metrics.hypervolume(BEST_OBJECTIVE_FUNCTION,
+            score = metrics.areaUnderCurve(BEST_OBJECTIVE_FUNCTION,
                     TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
                     TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS)
             );
