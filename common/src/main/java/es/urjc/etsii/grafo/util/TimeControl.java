@@ -5,7 +5,7 @@ import java.util.concurrent.TimeUnit;
 /**
  * Tracks time usage across different threads.
  * Long-running methods should frequently check if they are exceeding their time budget
- * Once the budget has been consumed
+ * Once the budget has been consumed, they should return as soon as possible
  */
 public class TimeControl {
 

@@ -58,18 +58,18 @@ class MetricsTest {
     }
 
     @Test
-    void hypervolume(){
+    void areaUnderCurve(){
         var metricA = new Metrics(10);
         // calculate area between 15 and 35, or in other words, ignore first 5 nanoseconds, duration 30
-        assertThrows(IllegalArgumentException.class, () -> metricA.hypervolume("test", 5, 30));
+        assertThrows(IllegalArgumentException.class, () -> metricA.areaUnderCurve("test", 5, 30));
         assertDoesNotThrow(() -> metricA.addDatapoint("test", 5, 11));
         assertDoesNotThrow(() -> metricA.addDatapoint("test", 2, 21));
         assertDoesNotThrow(() -> metricA.addDatapoint("test", 1, 31));
         assertDoesNotThrow(() -> metricA.addDatapoint("test", 0.5, 41));
-        assertThrows(ArithmeticException.class, () -> metricA.hypervolume("test", 5, Long.MAX_VALUE));
-        assertThrows(IllegalArgumentException.class, () -> metricA.hypervolume("test", 0, 30));
-        double area1 = metricA.hypervolume("test", 1, 35);
-        double area2 = metricA.hypervolume("test", 6, 40);
+        assertThrows(ArithmeticException.class, () -> metricA.areaUnderCurve("test", 5, Long.MAX_VALUE));
+        assertThrows(IllegalArgumentException.class, () -> metricA.areaUnderCurve("test", 0, 30));
+        double area1 = metricA.areaUnderCurve("test", 1, 35);
+        double area2 = metricA.areaUnderCurve("test", 6, 40);
         double expected1 = 50 + 20 + 10 + 2.5, expected2 = 25 + 20 + 10 + 7.5;
         assertEquals(expected1, area1);
         assertEquals(expected2, area2);
