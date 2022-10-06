@@ -9,7 +9,7 @@ class ConstructiveTest {
     @Test
     void nullConstructive(){
         TestSolution solution = new TestSolution(new TestInstance("Fake instance"));
-        Constructive<TestSolution, TestInstance> constructive = new NullConstructive<>();
+        Constructive<TestSolution, TestInstance> constructive = Constructive.nul();
         Assertions.assertNotNull(constructive);
         TestSolution improved = Assertions.assertDoesNotThrow(() -> constructive.construct(solution));
         Assertions.assertEquals(solution, improved);

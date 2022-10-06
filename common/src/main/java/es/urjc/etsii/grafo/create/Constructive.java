@@ -27,4 +27,35 @@ public abstract class Constructive<S extends Solution<S,I>, I extends Instance> 
     public String toString() {
         return this.getClass().getSimpleName() + "{}";
     }
+
+    /**
+     * No operation constructive method
+     * Returns the solution immediately without executing any operation
+     * Not included by default as an autoconfig component because most
+     * problems require a constructive method or solutions will not be valid
+     */
+    public static class NullConstructive<S extends Solution<S,I>,I extends Instance> extends Constructive<S,I> {
+
+        /**
+         * Create a no operation constructive method
+         * Returns the solution immediately without executing any operation
+         */
+        public NullConstructive() {}
+
+        @Override
+        public S construct(S solution) {
+            return solution;
+        }
+    }
+
+    /**
+     * Create a no operation constructive method
+     * Returns the solution immediately without executing any operation
+     * @param <S> Solution class
+     * @param <I> Instance class
+     * @return Null constructive method
+     */
+    public static <S extends Solution<S,I>, I extends Instance> Constructive<S,I> nul(){
+        return new NullConstructive<>();
+    }
 }

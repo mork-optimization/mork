@@ -10,6 +10,7 @@ import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
+import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -85,7 +86,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
         double currentTemperature = this.initialTemperatureCalculator.initial(best, neighborhood);
         log.debug("Initial temperature: {}", currentTemperature);
         int currentIteration = 0;
-        while (!terminationCriteria.terminate(best, neighborhood, currentTemperature, currentIteration)) {
+        while (!TimeControl.isTimeUp() && !terminationCriteria.terminate(best, neighborhood, currentTemperature, currentIteration)) {
             CycleResult<S> cycleResult = doCycle(neighborhood, solution, best, currentTemperature);
             best = cycleResult.bestSolution;
             solution = cycleResult.currentSolution;

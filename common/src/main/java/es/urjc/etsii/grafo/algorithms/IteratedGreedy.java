@@ -97,6 +97,9 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
             Shake<S, I> destructionReconstruction,
             Improver<S, I> improver
     ) {
+        if (maxIterations < 0) {
+            throw new IllegalArgumentException("maxIterations must be greater or equal to 0");
+        }
         if (stopIfNotImprovedIn < 1) {
             throw new IllegalArgumentException("stopIfNotImprovedIn must be greater than 0");
         }
