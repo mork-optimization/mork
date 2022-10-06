@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.algorithms;
 
 import es.urjc.etsii.grafo.create.Constructive;
-import es.urjc.etsii.grafo.create.NullConstructive;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.shake.Shake;
@@ -22,6 +21,8 @@ class IteratedGreedyUnitAlgorithmTest {
     private final TestInstance testInstance = new TestInstance("testinstance");
     private final TestSolution testSolution = new TestSolution(testInstance);
     private Shake<TestSolution, TestInstance> mockitoShake;
+    Constructive<TestSolution, TestInstance> nullConstructive = Constructive.nul();
+    Improver<TestSolution, TestInstance> nullImprover = Improver.nul();
 
     @SuppressWarnings("unchecked")
     @BeforeEach
@@ -32,9 +33,6 @@ class IteratedGreedyUnitAlgorithmTest {
 
     @Test
     void testIllegalParameters() {
-        Constructive<TestSolution, TestInstance> constructive = new NullConstructive<>();
-        Improver<TestSolution, TestInstance> improver = new Improver.NullImprover<>();
-
         // Legal
         int maxIterations = 10;
         int stopIfNotImprovedIn = 5;
@@ -44,25 +42,23 @@ class IteratedGreedyUnitAlgorithmTest {
         int _stopIfNotImprovedIn = 0;
 
         Assertions.assertDoesNotThrow(() ->
-                new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, constructive, mockitoShake, improver));
+                new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover));
 
         Assertions.assertThrows(IllegalArgumentException.class, () ->
-                new IteratedGreedy<>(_maxIterations, stopIfNotImprovedIn, constructive, mockitoShake, improver));
+                new IteratedGreedy<>(_maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover));
 
         Assertions.assertThrows(IllegalArgumentException.class, () ->
-                new IteratedGreedy<>(maxIterations, _stopIfNotImprovedIn, constructive, mockitoShake, improver));
+                new IteratedGreedy<>(maxIterations, _stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover));
 
         Assertions.assertThrows(IllegalArgumentException.class, () ->
-                new IteratedGreedy<>(_maxIterations, _stopIfNotImprovedIn, constructive, mockitoShake, improver));
+                new IteratedGreedy<>(_maxIterations, _stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover));
     }
 
     @Test
     void checkMinimumAndMaxNumberOfIterations() {
-        Constructive<TestSolution, TestInstance> constructive = new NullConstructive<>();
-        Improver<TestSolution, TestInstance> improver = new Improver.NullImprover<>();
         int maxIterations = 10;
         int stopIfNotImprovedIn = 5;
-        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, constructive, mockitoShake, improver);
+        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover);
         iteratedGreedy.setBuilder(new SolutionBuilder<>() {
             @Override
             public TestSolution initializeSolution(TestInstance instance) {
@@ -76,11 +72,9 @@ class IteratedGreedyUnitAlgorithmTest {
 
     @Test
     void checkMinimumStopNotImprovement() {
-        Constructive<TestSolution, TestInstance> constructive = new NullConstructive<>();
-        Improver<TestSolution, TestInstance> improver = new Improver.NullImprover<>();
         int maxIterations = 10_000_000;
         int stopIfNotImprovedIn = 10;
-        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, constructive, mockitoShake, improver);
+        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover);
         iteratedGreedy.setBuilder(new SolutionBuilder<>() {
             @Override
             public TestSolution initializeSolution(TestInstance instance) {
@@ -93,11 +87,9 @@ class IteratedGreedyUnitAlgorithmTest {
 
     @Test
     void checkMaxNumberOfIterations() {
-        Constructive<TestSolution, TestInstance> constructive = new NullConstructive<>();
-        Improver<TestSolution, TestInstance> improver = new Improver.NullImprover<>();
         int maxIterations = 10;
         int stopIfNotImprovedIn = 10_000_000;
-        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, constructive, mockitoShake, improver);
+        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover);
         iteratedGreedy.setBuilder(new SolutionBuilder<>() {
             @Override
             public TestSolution initializeSolution(TestInstance instance) {
@@ -110,9 +102,7 @@ class IteratedGreedyUnitAlgorithmTest {
 
     @Test
     void checkStopByMaxTime() {
-        Constructive<TestSolution, TestInstance> constructive = new NullConstructive<>();
         Shake<TestSolution, TestInstance> shake = new Shake.NullShake<>();
-        Improver<TestSolution, TestInstance> improver = new Improver.NullImprover<>();
         int maxIterations = 10_000_000;
         int stopIfNotImprovedIn = 10_000_000;
 
@@ -120,7 +110,7 @@ class IteratedGreedyUnitAlgorithmTest {
         TimeUnit timeUnit = TimeUnit.MILLISECONDS;
         TimeControl.setMaxExecutionTime(maxTime, timeUnit);
         TimeControl.start();
-        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, constructive, shake, improver);
+        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, nullConstructive, shake, nullImprover);
         iteratedGreedy.setBuilder(new SolutionBuilder<>() {
             @Override
             public TestSolution initializeSolution(TestInstance instance) {

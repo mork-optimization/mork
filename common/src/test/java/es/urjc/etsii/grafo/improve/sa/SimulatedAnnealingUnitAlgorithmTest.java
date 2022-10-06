@@ -1,19 +1,13 @@
 package es.urjc.etsii.grafo.improve.sa;
 
-import es.urjc.etsii.grafo.algorithms.IteratedGreedy;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.create.Constructive;
-import es.urjc.etsii.grafo.create.NullConstructive;
-import es.urjc.etsii.grafo.create.RandomConstructive;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
-import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.improve.sa.cd.CoolDownControl;
 import es.urjc.etsii.grafo.improve.sa.cd.ExponentialCoolDown;
 import es.urjc.etsii.grafo.improve.sa.initialt.InitialTemperatureCalculator;
 import es.urjc.etsii.grafo.improve.sa.initialt.MaxDifferenceInitialTemperature;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.shake.Shake;
-import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
@@ -34,13 +28,14 @@ class SimulatedAnnealingUnitAlgorithmTest {
 
     private final TestInstance testInstance = new TestInstance("testinstance");
     private final TestSolution testSolution = new TestSolution(testInstance);
-    private CoolDownControl mockitoShake;
+    Constructive<TestSolution, TestInstance> constructive = Constructive.nul();
+    private CoolDownControl mockitoCoolDownControl;
 
     @SuppressWarnings("unchecked")
     @BeforeEach
     void setUpAlgorithm() {
-        mockitoShake = Mockito.mock(ExponentialCoolDown.class);
-        when(mockitoShake.coolDown(any(TestSolution.class), any(Neighborhood.class), anyDouble(), anyInt())).thenAnswer(new Answer<Double>() {
+        mockitoCoolDownControl = Mockito.mock(ExponentialCoolDown.class);
+        when(mockitoCoolDownControl.coolDown(any(TestSolution.class), any(Neighborhood.class), anyDouble(), anyInt())).thenAnswer(new Answer<Double>() {
             @Override
             public Double answer(InvocationOnMock invocation) throws Throwable {
                 Object[] args = invocation.getArguments();
@@ -149,7 +144,6 @@ class SimulatedAnnealingUnitAlgorithmTest {
 
     @Test
     void checkMinimumAndMaxNumberOfIterations() {
-        Constructive<TestSolution, TestInstance> constructive = new NullConstructive<>();
         AcceptanceCriteria acceptanceCriteria = new MetropolisAcceptanceCriteria<>();
         TerminationCriteria terminationCriteria = (solution, neighborhood, currentTemperature, iteration) -> iteration >= 15;
         InitialTemperatureCalculator initialTemperatureCalculator = new TestInitialTemperatureCalculator();
@@ -157,7 +151,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
 
 
         SimulatedAnnealing sa = new SimulatedAnnealingBuilder<>()
-                        .withCoolDownCustom(mockitoShake)
+                        .withCoolDownCustom(mockitoCoolDownControl)
                         .withAcceptanceCriteriaCustom(acceptanceCriteria)
                         .withCycleLength(10)
                         .withTerminationCriteriaCustom(terminationCriteria)
@@ -173,15 +167,14 @@ class SimulatedAnnealingUnitAlgorithmTest {
             }
         });
         simpleAlgorithm.algorithm(testInstance);
-        verify(mockitoShake, atLeast(1)).coolDown(any(TestSolution.class), any(Neighborhood.class), anyDouble(), anyInt());
-        verify(mockitoShake, atMost(15)).coolDown(any(TestSolution.class), any(Neighborhood.class), anyDouble(), anyInt());
+        verify(mockitoCoolDownControl, atLeast(1)).coolDown(any(TestSolution.class), any(Neighborhood.class), anyDouble(), anyInt());
+        verify(mockitoCoolDownControl, atMost(15)).coolDown(any(TestSolution.class), any(Neighborhood.class), anyDouble(), anyInt());
     }
 
     @Test
     void checkMinimumAndMaxNumberOfIterationsByTemperature() {
-        mockitoShake = Mockito.mock(ExponentialCoolDown.class);
-        when(mockitoShake.coolDown(any(TestSolution.class), any(Neighborhood.class), anyDouble(), anyInt())).thenReturn(0.0);
-        Constructive<TestSolution, TestInstance> constructive = new NullConstructive<>();
+        mockitoCoolDownControl = Mockito.mock(ExponentialCoolDown.class);
+        when(mockitoCoolDownControl.coolDown(any(TestSolution.class), any(Neighborhood.class), anyDouble(), anyInt())).thenReturn(0.0);
         AcceptanceCriteria acceptanceCriteria = new MetropolisAcceptanceCriteria<>();
         TerminationCriteria terminationCriteria = (solution, neighborhood, currentTemperature, iteration) -> currentTemperature <= 0.0;
         InitialTemperatureCalculator initialTemperatureCalculator = new TestInitialTemperatureCalculator();
@@ -189,7 +182,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
 
 
         SimulatedAnnealing sa = new SimulatedAnnealingBuilder<>()
-                .withCoolDownCustom(mockitoShake)
+                .withCoolDownCustom(mockitoCoolDownControl)
                 .withAcceptanceCriteriaCustom(acceptanceCriteria)
                 .withCycleLength(10)
                 .withTerminationCriteriaCustom(terminationCriteria)
@@ -205,12 +198,11 @@ class SimulatedAnnealingUnitAlgorithmTest {
             }
         });
         simpleAlgorithm.algorithm(testInstance);
-        verify(mockitoShake, times(1)).coolDown(any(TestSolution.class), any(Neighborhood.class), anyDouble(), anyInt());
+        verify(mockitoCoolDownControl, times(1)).coolDown(any(TestSolution.class), any(Neighborhood.class), anyDouble(), anyInt());
     }
 
     @Test
     void checkStopByMaxTime() {
-        Constructive<TestSolution, TestInstance> constructive = new NullConstructive<>();
         CoolDownControl coolDownControl = new ExponentialCoolDown<>(0.9);
         AcceptanceCriteria acceptanceCriteria = new MetropolisAcceptanceCriteria<>();
         TerminationCriteria terminationCriteria = (solution, neighborhood, currentTemperature, iteration) -> iteration == Integer.MAX_VALUE;

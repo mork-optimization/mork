@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.create;
 
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
@@ -26,5 +27,31 @@ public abstract class Constructive<S extends Solution<S,I>, I extends Instance> 
     @Override
     public String toString() {
         return this.getClass().getSimpleName() + "{}";
+    }
+
+    public static class NullConstructive<S extends Solution<S,I>,I extends Instance> extends Constructive<S,I> {
+
+        /**
+         * Create a no operation constructive method
+         * Returns the solution immediately without executing any operation
+         */
+        @AutoconfigConstructor
+        public NullConstructive() {}
+
+        @Override
+        public S construct(S solution) {
+            return solution;
+        }
+    }
+
+    /**
+     * Create a no operation constructive method
+     * Returns the solution immediately without executing any operation
+     * @param <S> Solution class
+     * @param <I> Instance class
+     * @return Null constructive method
+     */
+    public static <S extends Solution<S,I>, I extends Instance> Constructive<S,I> nul(){
+        return new NullConstructive<>();
     }
 }
