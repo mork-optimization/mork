@@ -11,7 +11,9 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
-import es.urjc.etsii.grafo.testutil.*;
+import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestNeighborhood;
+import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -146,7 +148,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
     void checkMinimumAndMaxNumberOfIterations() {
         AcceptanceCriteria acceptanceCriteria = new MetropolisAcceptanceCriteria<>();
         TerminationCriteria terminationCriteria = (solution, neighborhood, currentTemperature, iteration) -> iteration >= 15;
-        InitialTemperatureCalculator initialTemperatureCalculator = new TestInitialTemperatureCalculator();
+        InitialTemperatureCalculator initialTemperatureCalculator = (ignored1, ignored2) -> Integer.MAX_VALUE;
         RandomizableNeighborhood randomizableNeighborhood = new TestNeighborhood(testSolution, 0.5, 0.5);
 
 
@@ -177,7 +179,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
         when(mockitoCoolDownControl.coolDown(any(TestSolution.class), any(Neighborhood.class), anyDouble(), anyInt())).thenReturn(0.0);
         AcceptanceCriteria acceptanceCriteria = new MetropolisAcceptanceCriteria<>();
         TerminationCriteria terminationCriteria = (solution, neighborhood, currentTemperature, iteration) -> currentTemperature <= 0.0;
-        InitialTemperatureCalculator initialTemperatureCalculator = new TestInitialTemperatureCalculator();
+        InitialTemperatureCalculator initialTemperatureCalculator = (ignored1, ignored2) -> Integer.MAX_VALUE;
         RandomizableNeighborhood randomizableNeighborhood = new TestNeighborhood(testSolution, 0.5, 0.5);
 
 
@@ -206,7 +208,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
         CoolDownControl coolDownControl = new ExponentialCoolDown<>(0.9);
         AcceptanceCriteria acceptanceCriteria = new MetropolisAcceptanceCriteria<>();
         TerminationCriteria terminationCriteria = (solution, neighborhood, currentTemperature, iteration) -> iteration == Integer.MAX_VALUE;
-        InitialTemperatureCalculator initialTemperatureCalculator = new TestInitialTemperatureCalculator();
+        InitialTemperatureCalculator initialTemperatureCalculator = (ignored1, ignored2) -> Integer.MAX_VALUE;
         RandomizableNeighborhood randomizableNeighborhood = new TestNeighborhood(testSolution, 0.5, 0.5);
         int maxTime = 10;
         TimeUnit timeUnit = TimeUnit.MILLISECONDS;
