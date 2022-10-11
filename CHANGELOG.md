@@ -1,4 +1,7 @@
-# v.015
+# v0.15.1
+- (Change) Remove autoconfig enable/disable from config files, use --autoconfig param
+
+# v0.15
 - (New) Metrics class to keep track of different metrics while any algorithm is executing. Calculate hypervolume of any metric in given range.
 - (New) ArrayUtil::max, ArrayUtil::min util methods for int, long and double primitives
 - (New) DoubleComparator util functions

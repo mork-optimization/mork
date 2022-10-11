@@ -24,13 +24,11 @@ class IraceOrchestratorTest {
     @Test
     void testCalculateMaxExperiments(){
         var config = new SolverConfig();
-        config.setAutoconfig(false);
-        Assertions.assertEquals(String.valueOf(DEFAULT_IRACE_EXPERIMENTS), IraceOrchestrator.calculateMaxExperiments(config, -1));
-        config.setAutoconfig(true);
+        Assertions.assertEquals(String.valueOf(DEFAULT_IRACE_EXPERIMENTS), IraceOrchestrator.calculateMaxExperiments(false, config, -1));
         config.setIterationsPerParameter(10);
-        Assertions.assertThrows(IllegalArgumentException.class, () -> IraceOrchestrator.calculateMaxExperiments(config, -1));
-        Assertions.assertEquals("100000", IraceOrchestrator.calculateMaxExperiments(config, 10_000));
-        Assertions.assertEquals(String.valueOf(MINIMUM_IRACE_EXPERIMENTS), IraceOrchestrator.calculateMaxExperiments(config, 10));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> IraceOrchestrator.calculateMaxExperiments(true, config, -1));
+        Assertions.assertEquals("100000", IraceOrchestrator.calculateMaxExperiments(true, config, 10_000));
+        Assertions.assertEquals(String.valueOf(MINIMUM_IRACE_EXPERIMENTS), IraceOrchestrator.calculateMaxExperiments(true, config, 10));
     }
 
     @Test

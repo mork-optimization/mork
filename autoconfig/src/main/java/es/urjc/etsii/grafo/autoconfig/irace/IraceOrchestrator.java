@@ -29,6 +29,7 @@ import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -74,6 +75,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
     private final AlgorithmCandidateGenerator algorithmCandidateGenerator;
     private final CopyOnWriteArrayList<IraceRuntimeConfiguration> configHistoric = new CopyOnWriteArrayList<>();
+    private final boolean isAutoconfigEnabled;
     private int nIraceParameters = -1;
 
     /**
@@ -89,6 +91,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      * @param algorithmCandidateGenerator
      */
     public IraceOrchestrator(
+            Environment env,
             SolverConfig solverConfig,
             InstanceConfiguration instanceConfiguration, IraceIntegration iraceIntegration,
             InstanceManager<I> instanceManager,
@@ -116,6 +119,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         }
 
         this.validator = validator;
+        this.isAutoconfigEnabled = Arrays.asList(env.getActiveProfiles()).contains("autoconfig");
     }
 
 
@@ -158,7 +162,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private void extractIraceFiles(boolean isJar) {
         Path paramsPath = Path.of(F_PARAMETERS);
         try {
-            if(solverConfig.isAutoconfig()){
+            if(isAutoconfigEnabled){
                 var nodes = this.algorithmCandidateGenerator.buildTree(solverConfig.getTreeDepth());
                 var iraceParams = this.algorithmCandidateGenerator.toIraceParams(nodes);
                 this.nIraceParameters = iraceParams.size();
@@ -166,7 +170,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             }
 
             var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration);
-            if(!solverConfig.isAutoconfig()){
+            if(!isAutoconfigEnabled){
                 copyWithSubstitutions(getInputStreamFor(F_PARAMETERS, isJar), paramsPath, substitutions);
             }
             copyWithSubstitutions(getInputStreamFor(F_SCENARIO, isJar), Path.of(F_SCENARIO), substitutions);
@@ -186,14 +190,14 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 K_INSTANCES_PATH, instanceConfiguration.getPath("irace"),
                 K_TARGET_RUNNER, "./middleware.sh",
                 K_PARALLEL, nParallel(solverConfig),
-                K_MAX_EXP, calculateMaxExperiments(solverConfig, nIraceParameters),
+                K_MAX_EXP, calculateMaxExperiments(isAutoconfigEnabled, solverConfig, nIraceParameters),
                 K_SEED, String.valueOf(solverConfig.getSeed())
         );
     }
 
-    protected static String calculateMaxExperiments(SolverConfig solverConfig, int nIraceParameters) {
+    protected static String calculateMaxExperiments(boolean autoconfigEnabled, SolverConfig solverConfig, int nIraceParameters) {
         int maxExperiments;
-        if (solverConfig.isAutoconfig()) {
+        if (autoconfigEnabled) {
             if(nIraceParameters < 1){
                 throw new IllegalArgumentException("nIraceParameters must be positive");
             }
@@ -284,7 +288,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
     private String singleExecution(Algorithm<S, I> algorithm, I instance) {
         long maxExecTime = this.solverConfig.getIgnoreInitialMillis() + this.solverConfig.getIntervalDurationMillis();
-        if (solverConfig.isAutoconfig()) {
+        if (isAutoconfigEnabled) {
             MetricsManager.enableMetrics();
             MetricsManager.resetMetrics();
             TimeControl.setMaxExecutionTime(maxExecTime, TimeUnit.MILLISECONDS);
@@ -300,7 +304,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         validator.ifPresent(v -> v.validate(solution).throwIfFail());
 
         double score;
-        if (solverConfig.isAutoconfig()) {
+        if (isAutoconfigEnabled) {
             if(TimeControl.remaining() < -TimeUtil.secsToNanos(Executor.EXTRA_SECS_BEFORE_WARNING)){
                 log.warn("Algorithm takes too long to stop after time is up in instance {}. Algorithm::toString {}", instance.getId(), algorithm);
             }
