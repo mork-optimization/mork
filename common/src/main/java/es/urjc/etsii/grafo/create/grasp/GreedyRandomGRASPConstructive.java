@@ -56,7 +56,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
         return validIndexes[index];
     }
 
-    private double[] getMinMax(List<M> cl) {
+    protected double[] getMinMax(List<M> cl) {
         assert !cl.isEmpty();
         double min = Double.MAX_VALUE;
         double max = -Double.MAX_VALUE;

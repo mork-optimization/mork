@@ -148,13 +148,13 @@ public class AlgorithmCandidateGenerator {
 
     public List<String> toIraceParams(List<Node> nodes){
         var iraceParams = new ArrayList<String>();
-        String[] initialDecisionValues = new String[nodes.size()];
+        Class[] initialDecisionValues = new Class[nodes.size()];
         for (int i = 0; i < nodes.size(); i++) {
-            initialDecisionValues[i] = nodes.get(i).clazz.getSimpleName();
+            initialDecisionValues[i] = nodes.get(i).clazz;
         }
-        Arrays.sort(initialDecisionValues);
-        // TODO un poco chapucero
-        var firstParam = ComponentParameter.toIraceParameterString("ROOT", "c", initialDecisionValues, "", "", "");
+        Arrays.sort(initialDecisionValues, Comparator.comparing(Class::getSimpleName));
+
+        var firstParam = ComponentParameter.toIraceParameterString("ROOT", ParameterType.CATEGORICAL, initialDecisionValues, "", "", "");
         firstParam = firstParam.substring(0, firstParam.lastIndexOf("|"));
         iraceParams.add(firstParam);
 
@@ -185,7 +185,7 @@ public class AlgorithmCandidateGenerator {
                 context.push(p.getName());
                 var iraceParamName = toIraceParamName(context);
                 String iraceParam = p.recursive()?
-                        p.toIraceParameterStringNotAnnotated(iraceParamName, componentDecisionPrefix, componentDecisionValue, getValidChildrenNamesForParam(node, p)):
+                        p.toIraceParameterStringNotAnnotated(iraceParamName, componentDecisionPrefix, componentDecisionValue, getValidChildrenValuesForParam(node, p)):
                         p.toIraceParameterString(iraceParamName, componentDecisionPrefix, componentDecisionValue);
 
                 params.add(iraceParam);
@@ -203,18 +203,17 @@ public class AlgorithmCandidateGenerator {
         context.pop();
     }
 
-    private String[] getValidChildrenNamesForParam(Node node, ComponentParameter p) {
-        List<String> validNames = new ArrayList<>();
+    private Class[] getValidChildrenValuesForParam(Node node, ComponentParameter p) {
         var childrenForParameter = node.children.get(p.getName());
-        for(var childNode: childrenForParameter){
-            validNames.add(childNode.clazz.getSimpleName());
-        }
-        if(validNames.isEmpty()){
+        Class[] validClasses = new Class[childrenForParameter.size()];
+        if(childrenForParameter.size() == 0){
             throw new IllegalStateException(String.format("Empty children for param %s in node %s, should have been pruned before", p , node));
         }
-        String[] sortedNames = validNames.toArray(new String[0]);
-        Arrays.sort(sortedNames);
-        return sortedNames;
+        for (int i = 0; i < childrenForParameter.size(); i++) {
+            validClasses[i] = childrenForParameter.get(i).clazz;
+        }
+        Arrays.sort(validClasses, Comparator.comparing(Class::getSimpleName));
+        return validClasses;
     }
 
     // Generate combinations using a recursive DFS approach, bounded by the depth
@@ -254,6 +253,7 @@ public class AlgorithmCandidateGenerator {
                 }
                 if(children.isEmpty()){
                     // No valid config found exploring this part of the tree, even if the other params have values we cannot continue
+                    context.pop();
                     return null;
                 }
                 allChildren.put(p.getName(), children);

@@ -31,7 +31,7 @@ public class ComponentParameter {
 
     public static ComponentParameter from(String name, Class<?> javaType, CategoricalParam p) {
         var values = checkLength(p.strings());
-        return new ComponentParameter(name, javaType, CATEGORICAL, false, values);
+        return new ComponentParameter(name, javaType, CATEGORICAL, values);
     }
 
     public static ComponentParameter from(String name, Class<?> javaType, OrdinalParam p) {
@@ -84,19 +84,31 @@ public class ComponentParameter {
                 '}';
     }
 
-    public static String toIraceParameterString(String name, String type, String[] values, String parentName, String parentValue, String condition) {
-        if (type.length() != 1) {
-            throw new IllegalArgumentException("Invalid irace type, must be single char: " + type);
+    public static String toIraceParameterString(String name, ParameterType type, Object[] values, String parentName, String parentValue, String condition) {
+        String iraceType = type.iraceType();
+        if (iraceType.length() != 1) {
+            throw new IllegalArgumentException("Invalid irace type, must be single char: " + iraceType);
         }
 
         StringBuilder valString = new StringBuilder();
         valString.append(name).append("\t\t"); // Param name
         valString.append("\"").append(name).append("=\"\t\t"); // Param switch, ie --blabla=
-        valString.append(type).append("\t\t");
+        valString.append(iraceType).append("\t\t");
 
         valString.append("(");
         for (int i = 0; i < values.length; i++) {
-            valString.append('"').append(values[i]).append('"');
+            Object value = values[i];
+            if(value instanceof Number){
+                valString.append(value);
+            } else if (value instanceof String){
+                valString.append("'\"").append(value).append("\"'");
+            } else if(value instanceof Class<?> c){
+                valString.append('"').append(c.getSimpleName()).append('"');
+            } else {
+                throw new IllegalArgumentException("values for component parameter contains type that currently is not implemented: " + value.getClass().getSimpleName());
+                //valString.append('"').append(value).append('"');
+            }
+
             if (i != values.length - 1) {
                 valString.append(", ");
             }
@@ -109,26 +121,21 @@ public class ComponentParameter {
         return valString.toString();
     }
 
-    public String toIraceParameterStringNotAnnotated(String name, String parentName, String parentValue, String[] values){
+    public String toIraceParameterStringNotAnnotated(String name, String parentName, String parentValue, Object[] values){
         if(getType() != NOT_ANNOTATED){
             throw new IllegalArgumentException("Only valid for parameters with type NOT_ANNOTATED");
         }
 
         // Cannot use this.values[i] as some tree branches may have been pruned for the current node
         // Must use the set given as a parameter
-        return toIraceParameterString(name, CATEGORICAL.iraceType(), values, parentName, parentValue, condition);
+        return toIraceParameterString(name, CATEGORICAL, values, parentName, parentValue, condition);
     }
 
     public String toIraceParameterString(String name, String parentName, String parentValue) {
         if(getType() == NOT_ANNOTATED){
             throw new IllegalArgumentException("Only valid for parameters with type different to NOT_ANNOTATED, current is " + getType());
         }
-        String iraceType = getType().iraceType();
-        String[] iraceValues = new String[this.values.length];
-        for (int i = 0; i < this.values.length; i++) {
-            iraceValues[i] = this.values[i].toString();
-        }
-        return toIraceParameterString(name, iraceType, iraceValues, parentName, parentValue, condition);
+        return toIraceParameterString(name, getType(), values, parentName, parentValue, condition);
     }
 
     public ParameterType getType() {

@@ -1,5 +1,7 @@
 # v0.15.1
 - (Change) Remove autoconfig enable/disable from config files, use --autoconfig param
+- (Fix) Autoconfig bugfix: more robust @CategorialParam serializing for irace
+- (Fix) Autoconfig bugfix: recursive generation context when children is empty
 
 # v0.15
 - (New) Metrics class to keep track of different metrics while any algorithm is executing. Calculate hypervolume of any metric in given range.
