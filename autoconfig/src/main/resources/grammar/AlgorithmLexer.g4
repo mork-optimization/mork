@@ -16,7 +16,7 @@ fragment UNDEF: 'undefined';
 BooleanLiteral: TRUE | FALSE;
 NullLiteral: NULL | UNDEF;
 
-IDENT: [a-zA-Z_]+;
+IDENT: [a-zA-Z_][a-zA-Z_0-9]*;
 
 // Ignore whitespace
 WS  :  [ \t\r\n\u000C]+ -> skip

@@ -109,7 +109,7 @@ public class AlgorithmInventoryService {
         return isValid;
     }
 
-    protected void runComponentDiscovery(String pkgs){
+    public void runComponentDiscovery(String pkgs){
         var types = new ArrayList<Class<?>>();
         var failedValidationSet = new HashSet<String>();
         for(var pkg: pkgs.split(",")){
