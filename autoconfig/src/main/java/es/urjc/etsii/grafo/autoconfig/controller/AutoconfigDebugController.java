@@ -65,6 +65,11 @@ public class AutoconfigDebugController {
         return Map.of("config", config, "algorithmString", algorithmString);
     }
 
+    @GetMapping("/auto/debug/slow")
+    public Object getSlow(){
+        return this.orchestrator.getSlowRuns();
+    }
+
     private String cleanCmdLine(String cmdline) {
         cmdline = cmdline.trim();
         return cmdline.contains("middleware.sh") ? Arrays.stream(cmdline.split("\\s+")).skip(1).collect(Collectors.joining(" ")) : cmdline;

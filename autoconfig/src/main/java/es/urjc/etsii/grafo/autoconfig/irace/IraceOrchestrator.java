@@ -305,9 +305,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
         double score;
         if (isAutoconfigEnabled) {
-            if(TimeControl.remaining() < -TimeUtil.secsToNanos(Executor.EXTRA_SECS_BEFORE_WARNING)){
-                log.warn("Algorithm takes too long to stop after time is up in instance {}. Algorithm::toString {}", instance.getId(), algorithm);
-            }
+            checkExecutionTime(algorithm, instance);
             TimeControl.remove();
             var metrics = MetricsManager.getInstance();
             score = metrics.areaUnderCurve(BEST_OBJECTIVE_FUNCTION,
@@ -325,4 +323,19 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         log.debug("IRACE Iteration: {} {}", score, elapsedSeconds);
         return String.format("%s %s", score, elapsedSeconds);
     }
+
+    private void checkExecutionTime(Algorithm<S, I> algorithm, I instance) {
+        if(TimeControl.remaining() < -TimeUtil.secsToNanos(Executor.EXTRA_SECS_BEFORE_WARNING)){
+            log.warn("Algorithm takes too long to stop after time is up in instance {}. Algorithm::toString {}", instance.getId(), algorithm);
+            slowExecutions.add(new SlowExecution(TimeControl.remaining(), instance.getId(), algorithm));
+        }
+    }
+
+    private final List<SlowExecution> slowExecutions = Collections.synchronizedList(new ArrayList<>());
+
+    public List<SlowExecution> getSlowRuns() {
+        return Collections.unmodifiableList(this.slowExecutions);
+    }
+
+    public record SlowExecution(long relativeTime, String instanceName, Algorithm<?,?> algorithm){}
 }
