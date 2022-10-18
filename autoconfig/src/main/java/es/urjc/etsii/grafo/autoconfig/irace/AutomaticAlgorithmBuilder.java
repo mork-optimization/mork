@@ -8,20 +8,21 @@ import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.regex.Pattern;
 
 public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instance> extends AlgorithmBuilder<S,I> {
 
-    private final List<AlgorithmCandidateGenerator.Node> tree;
+    private final List<AlgorithmCandidateGenerator.Node> algorithmCandidateTree;
     private final AlgorithmBuilderService algorithmBuilder;
 
     public AutomaticAlgorithmBuilder(SolverConfig solverConfig, AlgorithmCandidateGenerator candidateGenerator, AlgorithmBuilderService algorithmBuilder) {
         this.algorithmBuilder = algorithmBuilder;
-        this.tree = candidateGenerator.buildTree(solverConfig.getTreeDepth());
+        this.algorithmCandidateTree = candidateGenerator.buildTree(solverConfig.getTreeDepth());
+    }
+
+    public List<AlgorithmCandidateGenerator.Node> getAlgorithmCandidateTree() {
+        return Collections.unmodifiableList(algorithmCandidateTree);
     }
 
     public String asParseableAlgorithm(AlgorithmConfiguration config){
@@ -47,11 +48,16 @@ public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instan
         return root.toAlgorithmString();
     }
 
+    @SuppressWarnings("unchecked")
+    public Algorithm<S, I> buildFromStringDescription(String stringDescription){
+        return (Algorithm<S, I>) this.algorithmBuilder.buildAlgorithmFromString(stringDescription);
+    }
+
     @Override
     public Algorithm<S, I> buildFromConfig(AlgorithmConfiguration config) {
         var algorithmAsString = this.asParseableAlgorithm(config);
-        var algorithm = this.algorithmBuilder.buildAlgorithmFromString(algorithmAsString);
-        return (Algorithm<S, I>) algorithm;
+        var algorithm = buildFromStringDescription(algorithmAsString);
+        return algorithm;
     }
 
     private record Node(String name, Map<String, Node> children){
