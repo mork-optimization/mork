@@ -237,7 +237,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         var instance = instanceManager.getInstance(instancePath);
         Algorithm<S, I> algorithm = null;
         try {
-            algorithm = this.algorithmBuilder.buildAlgorithm(config.getAlgorithmConfig());
+            algorithm = this.algorithmBuilder.buildFromConfig(config.getAlgorithmConfig());
         } catch (IllegalAlgorithmConfigException e) {
             log.debug("Invalid config, reason {}, config: {}", e.getMessage(), config);
             return failedResult();

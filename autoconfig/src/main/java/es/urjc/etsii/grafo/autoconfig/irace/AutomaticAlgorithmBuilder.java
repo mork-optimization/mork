@@ -24,7 +24,7 @@ public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instan
         this.tree = candidateGenerator.buildTree(solverConfig.getTreeDepth());
     }
 
-    public String buildAlgorithmString(AlgorithmConfiguration config){
+    public String asParseableAlgorithm(AlgorithmConfiguration config){
         var params = config.getConfig().keySet().toArray(new String[0]);
         Arrays.sort(params);
         var root = new Node("ROOT");
@@ -48,8 +48,8 @@ public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instan
     }
 
     @Override
-    public Algorithm<S, I> buildAlgorithm(AlgorithmConfiguration config) {
-        var algorithmAsString = this.buildAlgorithmString(config);
+    public Algorithm<S, I> buildFromConfig(AlgorithmConfiguration config) {
+        var algorithmAsString = this.asParseableAlgorithm(config);
         var algorithm = this.algorithmBuilder.buildAlgorithmFromString(algorithmAsString);
         return (Algorithm<S, I>) algorithm;
     }

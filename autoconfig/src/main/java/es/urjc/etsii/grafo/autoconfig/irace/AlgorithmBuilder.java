@@ -22,7 +22,7 @@ public abstract class AlgorithmBuilder<S extends Solution<S,I>, I extends Instan
      * @param config Subset of config parameters, only those required for algorithm configuration
      * @return Algorithm generated according to Irace chosen parameters
      */
-    public abstract Algorithm<S,I> buildAlgorithm(AlgorithmConfiguration config);
+    public abstract Algorithm<S,I> buildFromConfig(AlgorithmConfiguration config);
 
     /**
      * Build an algorithm from a config string such as those returned by irace.
@@ -30,8 +30,8 @@ public abstract class AlgorithmBuilder<S extends Solution<S,I>, I extends Instan
      * @param paramString config string with key-values for each parameter
      * @return built algorithm
      */
-    public Algorithm<S,I> buildFromString(String paramString){
+    public Algorithm<S,I> buildFromStringParams(String paramString){
         String[] params = paramString.split("\\s+");
-        return buildAlgorithm(new AlgorithmConfiguration(params));
+        return buildFromConfig(new AlgorithmConfiguration(params));
     }
 }

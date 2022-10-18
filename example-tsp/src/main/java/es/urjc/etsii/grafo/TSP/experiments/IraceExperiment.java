@@ -17,7 +17,7 @@ import es.urjc.etsii.grafo.solution.Move;
 public class IraceExperiment extends AlgorithmBuilder<TSPSolution, TSPInstance> {
 
     @Override
-    public Algorithm<TSPSolution, TSPInstance> buildAlgorithm(AlgorithmConfiguration config) {
+    public Algorithm<TSPSolution, TSPInstance> buildFromConfig(AlgorithmConfiguration config) {
 
         var localSearchName = config.getValue("localsearch").orElseThrow();
         var localSearchStrategy = config.getValue("localSearchStrategy").orElseThrow();

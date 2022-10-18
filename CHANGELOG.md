@@ -3,6 +3,7 @@
 - (Fix) Autoconfig bugfix: more robust @CategorialParam serializing for irace
 - (Fix) Autoconfig bugfix: recursive generation context when children is empty
 - (New) API endpoint /autoconfig/debug/slow returns slow executions that did not respect the time limit
+- (Change) Rename some autoconfig related method and classes, simplify their API
 
 # v0.15
 - (New) Metrics class to keep track of different metrics while any algorithm is executing. Calculate hypervolume of any metric in given range.
