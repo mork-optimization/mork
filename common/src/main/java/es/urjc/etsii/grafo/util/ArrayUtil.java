@@ -665,12 +665,9 @@ public class ArrayUtil {
      * Merge arrays
      * @param arrs arrays to merge
      * @return array with all elements in same order
-     * @param <T> element type
      */
-    public static <T> Object[] merge(T[]... arrs)
+    public static String[] merge(String[]... arrs)
     {
-        return Stream.of(arrs).flatMap(Stream::of).toArray();
+        return Stream.of(arrs).flatMap(Stream::of).toArray(String[]::new);
     }
-
-
 }

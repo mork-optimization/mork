@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.io.serializers.excel;
 
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
+import es.urjc.etsii.grafo.util.ArrayUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.util.AreaReference;
@@ -27,7 +28,8 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
         Map<String, Double> bestValuesPerInstance = bestResultPerInstance(results, referenceResultProviders, maximizing);
 
         // Create headers
-        String[] header = new String[]{
+        String[] customProperties = getCustomPropertyNames(results);
+        String[] commonHeaders = new String[]{
                 RawSheetCol.INSTANCE_NAME.getName(),
                 RawSheetCol.ALG_NAME.getName(),
                 RawSheetCol.ITERATION.getName(),
@@ -38,7 +40,9 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
                 RawSheetCol.DEV_TO_BEST.getName()
         };
 
-        int nColumns = header.length;
+        String[] headers = ArrayUtil.merge(commonHeaders, customProperties);
+
+        int nColumns = headers.length;
         int cutOff = results.size() + 1;
         int rowsForProvider = referenceResultProviders.size() * bestValuesPerInstance.keySet().size();
         int nRows = cutOff + rowsForProvider;
@@ -46,7 +50,7 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
 
         // Create matrix data
         Object[][] data = new Object[nRows][nColumns];
-        data[0] = header;
+        data[0] = headers;
 
         for (int i = 1; i < cutOff; i++) {
             var r = results.get(i - 1);
@@ -61,6 +65,12 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
             data[i][RawSheetCol.TTB.getIndex()] = nanosToSecs(r.getTimeToBest());
             data[i][RawSheetCol.IS_BEST_KNOWN.getIndex()] = isBest ? 1 : 0;
             data[i][RawSheetCol.DEV_TO_BEST.getIndex()] = getPercentageDevToBest(r.getScore(), bestValueForInstance);
+
+            var userProps = r.getUserDefinedProperties();
+            for (int j = 0; j < customProperties.length; j++) {
+                var propName = customProperties[j];
+                data[i][commonHeaders.length + j] = userProps.get(propName);
+            }
         }
 
         int currentRow = cutOff;
@@ -86,7 +96,7 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
         // Write matrix data to cell Excel sheet
         for (int i = 0; i < data.length; i++) {
             var row = rawSheet.createRow(i);
-            for (int j = 0; j < data[0].length; j++) {
+            for (int j = 0; j < data[i].length; j++) {
                 var cell = row.createCell(j);
                 writeCell(cell, data[i][j], CType.VALUE);
             }

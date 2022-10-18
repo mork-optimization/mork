@@ -7,6 +7,7 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -101,6 +102,16 @@ public abstract class RawSheetWriter {
         }
     }
 
+    protected String[] getCustomPropertyNames(List<? extends SolutionGeneratedEvent<?, ?>> results) {
+        var stringRef = new String[0];
+        if(results.isEmpty()){
+            return stringRef;
+        }
+        var first = results.get(0);
+        var names = first.getUserDefinedProperties().keySet().toArray(stringRef);
+        Arrays.sort(names);
+        return names;
+    }
 
     /**
      * Get best result for a given instance

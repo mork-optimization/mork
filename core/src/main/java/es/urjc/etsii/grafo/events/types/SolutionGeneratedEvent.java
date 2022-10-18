@@ -134,4 +134,12 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
     public Optional<S> getSolution() {
         return Optional.ofNullable(this.solution.get());
     }
+
+    /**
+     * Get user defined properties
+     * @return Map where key is property name, value property value as calculated by the user provided function
+     */
+    public Map<String, Object> getUserDefinedProperties() {
+        return userDefinedProperties;
+    }
 }
