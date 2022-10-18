@@ -8,10 +8,7 @@ import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import org.mockito.Mockito;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static org.mockito.ArgumentMatchers.anyString;
 
@@ -19,7 +16,7 @@ public class TestHelperFactory {
     public static SolutionGeneratedEvent<TestSolution, TestInstance> solutionGenerated(String instanceName, String expName, String algName, int iter, double score, long time, long ttb){
         var solution = new TestSolution(new TestInstance(instanceName), score);
         var algorithm = new TestAlgorithm(algName);
-        return new SolutionGeneratedEvent<>(iter, solution, expName, algorithm, time, ttb, userDefinedProperties);
+        return new SolutionGeneratedEvent<>(iter, solution, expName, algorithm, time, ttb, new HashMap<>());
     }
     public static InstanceProcessingEndedEvent instanceEnd(){
         return instanceEnd("TestExp");
