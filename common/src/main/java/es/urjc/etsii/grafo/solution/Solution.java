@@ -6,6 +6,8 @@ import es.urjc.etsii.grafo.io.Instance;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 /**
  * <p>Abstract Solution class.</p>
@@ -168,5 +170,13 @@ public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instanc
      */
     public long getLastModifiedTime() {
         return lastModifiedTime;
+    }
+
+    /**
+     * Define custom properties for the solution
+     * @return Map of properties, where the key is the property name and the value is how to calculate the property value
+     */
+    public Map<String, Function<SELF, Object>> customProperties(){
+        return Map.of();
     }
 }
