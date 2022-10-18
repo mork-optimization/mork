@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.util;
 
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
+import java.util.stream.Stream;
+
 /**
  * Util methods to manipulate collections and arrays that are not part of the standard java API
  */
@@ -658,4 +660,17 @@ public class ArrayUtil {
         assert index != -1;
         return index;
     }
+
+    /**
+     * Merge arrays
+     * @param arrs arrays to merge
+     * @return array with all elements in same order
+     * @param <T> element type
+     */
+    public static <T> Object[] merge(T[]... arrs)
+    {
+        return Stream.of(arrs).flatMap(Stream::of).toArray();
+    }
+
+
 }
