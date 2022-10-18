@@ -13,7 +13,7 @@ import es.urjc.etsii.grafo.solution.Solution;
  * @param <I> Instance class
  */
 @InheritedComponent
-public abstract class IraceAlgorithmGenerator<S extends Solution<S,I>, I extends Instance> {
+public abstract class AlgorithmBuilder<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Generates an algorithm from a given Irace config.

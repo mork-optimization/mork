@@ -7,7 +7,6 @@ import es.urjc.etsii.grafo.util.ClassUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.PostConstruct;
@@ -23,7 +22,6 @@ import static java.util.Collections.unmodifiableMap;
  * as long as there is a matching constructor in the algorithm component.
  */
 @Service
-@Profile("autoconfig")
 public class AlgorithmInventoryService {
     private static final Logger log = LoggerFactory.getLogger(AlgorithmInventoryService.class);
     private final InventoryFilterStrategy filterStrategy;

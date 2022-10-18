@@ -7,7 +7,6 @@ import es.urjc.etsii.grafo.autoconfig.service.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import org.springframework.context.annotation.Profile;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -15,13 +14,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-@Profile("autoconfig")
-public class AutomaticIraceAlgorithmGenerator<S extends Solution<S,I>, I extends Instance> extends IraceAlgorithmGenerator<S,I> {
+public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instance> extends AlgorithmBuilder<S,I> {
 
     private final List<AlgorithmCandidateGenerator.Node> tree;
     private final AlgorithmBuilderService algorithmBuilder;
 
-    public AutomaticIraceAlgorithmGenerator(SolverConfig solverConfig, AlgorithmCandidateGenerator candidateGenerator, AlgorithmBuilderService algorithmBuilder) {
+    public AutomaticAlgorithmBuilder(SolverConfig solverConfig, AlgorithmCandidateGenerator candidateGenerator, AlgorithmBuilderService algorithmBuilder) {
         this.algorithmBuilder = algorithmBuilder;
         this.tree = candidateGenerator.buildTree(solverConfig.getTreeDepth());
     }

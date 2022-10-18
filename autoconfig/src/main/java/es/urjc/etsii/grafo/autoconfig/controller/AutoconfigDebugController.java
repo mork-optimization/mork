@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.controller;
 
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
-import es.urjc.etsii.grafo.autoconfig.irace.AutomaticIraceAlgorithmGenerator;
+import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
 import es.urjc.etsii.grafo.autoconfig.service.AlgorithmCandidateGenerator;
@@ -25,10 +25,10 @@ public class AutoconfigDebugController {
     private final SolverConfig solverConfig;
     private final AlgorithmInventoryService inventory;
     private final AlgorithmCandidateGenerator candidateGenerator;
-    private final AutomaticIraceAlgorithmGenerator<?, ?> algorithmGenerator;
+    private final AutomaticAlgorithmBuilder<?, ?> algorithmGenerator;
     private final IraceOrchestrator<?, ?> orchestrator;
 
-    public AutoconfigDebugController(SolverConfig solverConfig, AlgorithmInventoryService inventory, AlgorithmCandidateGenerator candidateGenerator, AutomaticIraceAlgorithmGenerator<?, ?> algorithmGenerator, IraceOrchestrator<?, ?> orchestrator) {
+    public AutoconfigDebugController(SolverConfig solverConfig, AlgorithmInventoryService inventory, AlgorithmCandidateGenerator candidateGenerator, AutomaticAlgorithmBuilder<?, ?> algorithmGenerator, IraceOrchestrator<?, ?> orchestrator) {
         this.solverConfig = solverConfig;
         this.inventory = inventory;
         this.candidateGenerator = candidateGenerator;

@@ -11,14 +11,12 @@ import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
 
 @Service
-@Profile("autoconfig")
 public class AlgorithmBuilderService {
 
     private final AlgorithmInventoryService inventoryService;

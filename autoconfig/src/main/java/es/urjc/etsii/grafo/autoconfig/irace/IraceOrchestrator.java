@@ -69,7 +69,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final InstanceConfiguration instanceConfiguration;
     private final IraceIntegration iraceIntegration;
     private final SolutionBuilder<S, I> solutionBuilder;
-    private final IraceAlgorithmGenerator<S, I> algorithmGenerator;
+    private final AlgorithmBuilder<S, I> algorithmBuilder;
     private final InstanceManager<I> instanceManager;
     private final Optional<SolutionValidator<S, I>> validator;
 
@@ -86,7 +86,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      * @param iraceIntegration            a {@link IraceIntegration} object.
      * @param instanceManager             a {@link InstanceManager} object.
      * @param solutionBuilders            a {@link List} object.
-     * @param algorithmGenerator          a {@link Optional} object.
+     * @param algorithmBuilders          a {@link List} object.
      * @param validator
      * @param algorithmCandidateGenerator
      */
@@ -96,7 +96,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             InstanceConfiguration instanceConfiguration, IraceIntegration iraceIntegration,
             InstanceManager<I> instanceManager,
             List<SolutionBuilder<S, I>> solutionBuilders,
-            Optional<IraceAlgorithmGenerator<S, I>> algorithmGenerator,
+            List<AlgorithmBuilder<S, I>> algorithmBuilders,
             Optional<SolutionValidator<S, I>> validator,
             AlgorithmCandidateGenerator algorithmCandidateGenerator
     ) {
@@ -107,8 +107,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         this.instanceManager = instanceManager;
         log.info("Using SolutionBuilder implementation: {}", this.solutionBuilder.getClass().getSimpleName());
 
-        this.algorithmGenerator = algorithmGenerator.orElseThrow(() -> new RuntimeException("IRACE mode enabled but no implementation of IraceAlgorithmGenerator has been found. Check the Mork docs section about IRACE."));
-        log.info("Using IraceAlgorithmGenerator implementation: {}", this.algorithmGenerator.getClass().getSimpleName());
+        this.algorithmBuilder = decideImplementation(algorithmBuilders, AutomaticAlgorithmBuilder.class);
+        log.info("Using AlgorithmBuilder implementation: {}", this.algorithmBuilder.getClass().getSimpleName());
 
         this.algorithmCandidateGenerator = algorithmCandidateGenerator;
 
@@ -237,7 +237,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         var instance = instanceManager.getInstance(instancePath);
         Algorithm<S, I> algorithm = null;
         try {
-            algorithm = this.algorithmGenerator.buildAlgorithm(config.getAlgorithmConfig());
+            algorithm = this.algorithmBuilder.buildAlgorithm(config.getAlgorithmConfig());
         } catch (IllegalAlgorithmConfigException e) {
             log.debug("Invalid config, reason {}, config: {}", e.getMessage(), config);
             return failedResult();
