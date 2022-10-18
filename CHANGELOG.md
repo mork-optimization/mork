@@ -2,6 +2,7 @@
 - (Change) Remove autoconfig enable/disable from config files, use --autoconfig param
 - (Fix) Autoconfig bugfix: more robust @CategorialParam serializing for irace
 - (Fix) Autoconfig bugfix: recursive generation context when children is empty
+- (Fix) Autoconfig bugfix: automatically remove single quotes from parameter values before running parser
 - (New) API endpoint /autoconfig/debug/slow returns slow executions that did not respect the time limit
 - (Change) Rename some autoconfig related method and classes, simplify their API
 

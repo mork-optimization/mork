@@ -34,7 +34,12 @@ public class AlgorithmConfiguration {
             if (config.containsKey(keyValue[0])) {
                 throw new IllegalArgumentException("Duplicated key: " + keyValue[0]);
             }
-            config.put(keyValue[0], keyValue[1]);
+            String value = keyValue[1];
+            if(value.startsWith("'") && value.endsWith("'")){
+                // Quotes probably used so terminal does not improperly split / modify value, remove as they should not be necessary
+                value = value.substring(1, value.length()-1);
+            }
+            config.put(keyValue[0], value);
         }
         this.params = config;
     }
