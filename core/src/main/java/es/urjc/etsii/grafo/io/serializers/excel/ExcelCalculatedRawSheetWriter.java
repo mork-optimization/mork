@@ -108,6 +108,6 @@ public class ExcelCalculatedRawSheetWriter extends RawSheetWriter {
         }
 
         // Return total area used
-        return new AreaReference(convertNumToColString(0) + ":" + convertNumToColString(nColumns-1), SpreadsheetVersion.EXCEL2007);
+        return new AreaReference(convertNumToColString(0) + ":" + convertNumToColString(commonHeaders.length-1), SpreadsheetVersion.EXCEL2007);
     }
 }

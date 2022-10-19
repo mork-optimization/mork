@@ -103,6 +103,6 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
         }
 
         // Return total area used
-        return new AreaReference(new CellReference(0, 0), new CellReference(nRows - 1, nColumns - 1), SpreadsheetVersion.EXCEL2007);
+        return new AreaReference(new CellReference(0, 0), new CellReference(nRows - 1, commonHeaders.length - 1), SpreadsheetVersion.EXCEL2007);
     }
 }
