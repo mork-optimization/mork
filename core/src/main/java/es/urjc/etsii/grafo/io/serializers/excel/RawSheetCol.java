@@ -109,10 +109,14 @@ public enum RawSheetCol {
      * @param index index to search
      * @return enum value for given index
      */
-    public static RawSheetCol getForIndex(int index){
-        for(var i: RawSheetCol.values()){
+    public static RawSheetWriter.CType getCTypeForIndex(int index){
+        var values = RawSheetCol.values();
+        if(index >= values.length){
+            return RawSheetWriter.CType.VALUE;
+        }
+        for(var i: values){
             if(i.getIndex() == index){
-                return i;
+                return i.getCType();
             }
         }
         throw new IllegalArgumentException(String.format("Invalid index: %s, not declared", index));

@@ -102,7 +102,7 @@ public class ExcelCalculatedRawSheetWriter extends RawSheetWriter {
             for (int j = 0; j < data[i].length; j++) {
                 var cell = row.createCell(j);
                 // Header is NEVER a formula
-                CType type = i == 0? CType.VALUE: RawSheetCol.getForIndex(j).getCType();
+                CType type = i == 0? CType.VALUE: RawSheetCol.getCTypeForIndex(j);
                 writeCell(cell, data[i][j], type);
             }
         }
