@@ -50,7 +50,7 @@ public class ExcelCalculatedRawSheetWriter extends RawSheetWriter {
 
         // Create matrix data
         Object[][] data = new Object[nRows][nColumns];
-        data[0] = commonHeaders;
+        data[0] = headers;
 
         for (int i = 1; i < cutOff; i++) {
             var r = results.get(i - 1);
