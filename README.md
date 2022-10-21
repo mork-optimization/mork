@@ -30,5 +30,18 @@ https://user-images.githubusercontent.com/55482385/140910473-1fa14244-5ef9-4ec5-
 TLDR: https://rmartinsanta.github.io/mork/
 Import in your favourite IDE and start working!
 
-See Getting started page in the Wiki for more details.
+See [Getting started page](https://mork-optimization.readthedocs.io/en/latest/quickstart/starting/) in the [Wiki](https://mork-optimization.readthedocs.io/en/latest/) for more details.
 
+
+What functionality do you need? Whether you want everything or just a specific Mork functionality, take a look at the table below and determine what you need. 
+
+The current development version (0.15) is a Maven project structured in the following modules:
+
+| Module     | Description                                                                                        |
+|------------|----------------------------------------------------------------------------------------------------|
+| core       | This is where the magic happens: parallelization, report generation, web interface, and much more! |
+| common     | Basic and fundamental mork classics: algorithms, solutions, instances, and so on.                  |
+| autoconfig | Automatic configuration procedures that allow you to easily tune algorithms.                       |
+
+
+Determine what your needs are and easily add/remove your dependencies in the `pom.xml` file.
