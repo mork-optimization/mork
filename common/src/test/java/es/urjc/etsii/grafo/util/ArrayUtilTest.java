@@ -241,6 +241,20 @@ class ArrayUtilTest {
     }
 
     @Test
+    void testFlattenObject() {
+        String[][] original = {
+                {"a", "b", "c"},
+                {"d"},
+                {"e"},
+                {},
+                {"f"}
+        };
+        String[] expected = {"a", "b", "c", "d", "e", "f"};
+        String[] flatten = ArrayUtil.flatten(original);
+        Assertions.assertArrayEquals(expected, flatten);
+    }
+
+    @Test
     void countNulls(){
         Object[] empty = new Integer[]{};
         Assertions.assertEquals(0, ArrayUtil.countNull(empty));
