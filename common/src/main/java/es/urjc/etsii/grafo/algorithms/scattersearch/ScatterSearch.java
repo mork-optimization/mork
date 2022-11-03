@@ -133,7 +133,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
 
         int iterations = 0;
         while (iterations < maxIterations && !TimeControl.isTimeUp()) {
-            var newSet = newSet(merge(refsets.best, refsets.diversity));
+            var newSet = combinator.newSet(merge(refsets.best, refsets.diversity));
             var mergeResultByValue = mergeSetsByValue(refsets.best, refsets.bestSize, newSet);
             var mergeResultByDiversity = mergeSetsByDiversity(refsets.diversity, refsets.diversitySize, newSet);
 
@@ -202,18 +202,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
         return initialSolutions;
     }
 
-    protected List<S> newSet(List<S> refset) {
-        var newsize = (refset.size() * (refset.size() - 1)) / 2;
-        var newset = new ArrayList<S>(newsize);
-        for (int i = 0; i < refset.size() - 1; i++) {
-            for (int j = i + 1; j < refset.size(); j++) {
-                var combinedSolution = this.combinator.apply(refset.get(i), refset.get(j));
-                combinedSolution.notifyUpdate();
-                newset.add(combinedSolution);
-            }
-        }
-        return newset;
-    }
+
 
     protected MergeResult<S, I> mergeSetsByValue(List<Pair<S, I>> refset, int bestRefSetSize, List<S> newSet) {
         var newSetPairs = new ArrayList<Pair<S, I>>(newSet.size());
