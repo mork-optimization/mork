@@ -13,5 +13,5 @@ public abstract class SolutionCombinator<S extends Solution<S, I>, I extends Ins
      * @param currentSet current reference set, DO NOT MODIFY
      * @return new reference set
      */
-    public abstract List<S> newSet(List<S> currentSet);
+    public abstract List<S> newSet(S[] currentSet);
 }
