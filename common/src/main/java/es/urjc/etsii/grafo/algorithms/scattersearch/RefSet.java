@@ -3,7 +3,10 @@ package es.urjc.etsii.grafo.algorithms.scattersearch;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
 public final class RefSet<S extends Solution<S, I>, I extends Instance> {
     S[] solutions;
@@ -24,6 +27,13 @@ public final class RefSet<S extends Solution<S, I>, I extends Instance> {
 
     public boolean isInRefset(S solution){
         return this.currentRefset.contains(solution);
+    }
+
+    @Override
+    public String toString() {
+        return "RefSet{" +
+                "solutions=" + Arrays.toString(solutions) +
+                '}';
     }
 }
 
