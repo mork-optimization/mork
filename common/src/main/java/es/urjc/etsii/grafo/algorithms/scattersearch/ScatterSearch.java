@@ -25,6 +25,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
      */
     private static int ERROR_INIT_ITER_THRESHOLD = 500;
 
+    private final String name;
     /**
      * During refset initialization, initialRefset * INITIAL_RATIO solutions,
      * to ensure we have enough non repeated and diverse solutions
@@ -56,6 +57,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
      */
     @AutoconfigConstructor
     public ScatterSearch(
+            @ProvidedParam(type = ProvidedParamType.ALGORITHM_NAME) String name,
             @IntegerParam(min = 1, max = 10) int initialRatio,
             @IntegerParam(min = 10, max = 30) int refsetSize,
             Constructive<S, I> constructiveGoodValues,
@@ -67,6 +69,15 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
             @RealParam(min = 0, max = 1) double diversityRatio,
             SolutionDistance<S, I> solutionDistance
     ) {
+        if(initialRatio < 1){
+            throw new IllegalArgumentException("initialRatio must be > 0");
+        }
+
+        if(diversityRatio < 0 || diversityRatio > 1){
+            throw new IllegalArgumentException("Diversity ratio must be in range [0, 1]");
+        }
+
+        this.name = name;
         this.initialRatio = initialRatio;
         this.refsetSize = refsetSize;
         this.constructiveGoodValues = constructiveGoodValues;
