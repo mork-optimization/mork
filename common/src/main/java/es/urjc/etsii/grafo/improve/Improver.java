@@ -96,6 +96,12 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         protected S _improve(S solution) {
             return solution;
         }
+
+        @Override
+        public S improve(S solution) {
+            return solution;
+
+        }
     }
 
     public static class SequentialImprover<S extends Solution<S,I>,I extends Instance> extends Improver<S,I> {

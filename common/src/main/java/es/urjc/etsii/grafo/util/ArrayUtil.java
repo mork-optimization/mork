@@ -2,6 +2,9 @@ package es.urjc.etsii.grafo.util;
 
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
+import java.lang.reflect.Array;
+import java.util.Objects;
+
 import java.util.stream.Stream;
 
 /**
@@ -394,6 +397,30 @@ public class ArrayUtil {
         }
         int left = 0;
         var result = new long[size];
+        for (var row : data) {
+            System.arraycopy(row, 0, result, left, row.length);
+            left += row.length;
+        }
+        return result;
+    }
+
+    /**
+     * Flatten matrix to array. Matrix must be initialized, even if each row has a different size.
+     * Having null arrays is not valid, having null values is perfectly valid
+     *
+     * @param data array data
+     * @return flattened array
+     */
+    @SuppressWarnings("unchecked")
+    public static <T> T[] flatten(T[][] data) {
+        int size = 0;
+        for (var row : data) {
+            size += row.length;
+        }
+        var type = Objects.requireNonNull(data[0].getClass().getComponentType());
+        var result = (T[]) Array.newInstance(type, size);
+
+        int left = 0;
         for (var row : data) {
             System.arraycopy(row, 0, result, left, row.length);
             left += row.length;
