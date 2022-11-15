@@ -20,7 +20,7 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      * The bigger the initialRatio, the better the initial solutions and more diverse,
      * but it will take longer to initialize the refset and reset it if it gets stuck.
      */
-    private int initialRatio = 1;
+    private double initialRatio = 1;
 
     /**
      * Maximum number of iterations, set by default to a value near Integer.MAX_VALUE
@@ -181,7 +181,7 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      *              If not configured defaults to 1.
      * @return builder
      */
-    public ScatterSearchBuilder<S,I> withInitialRatio(int ratio){
+    public ScatterSearchBuilder<S,I> withInitialRatio(double ratio){
         if(ratio < 1){
             throw new IllegalArgumentException("Ratio must be >0");
         }
