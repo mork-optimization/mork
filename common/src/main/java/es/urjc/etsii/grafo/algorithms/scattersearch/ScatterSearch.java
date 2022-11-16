@@ -69,6 +69,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
             @RealParam(min = 0, max = 1) double diversityRatio,
             SolutionDistance<S, I> solutionDistance
     ) {
+        super(name);
         if(initialRatio < 1){
             throw new IllegalArgumentException("initialRatio must be > 0");
         }

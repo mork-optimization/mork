@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.autoconfig.testutil;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.StringUtil;
 
 public class AlgorithmA extends Algorithm<TestSolution, TestInstance> {
 
@@ -24,6 +25,7 @@ public class AlgorithmA extends Algorithm<TestSolution, TestInstance> {
     }
 
     public AlgorithmA(int tetha, double alpha) {
+        super(StringUtil.randomAlgorithmName());
         this.tetha = tetha;
         this.alpha = alpha;
     }

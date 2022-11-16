@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.algorithms;
 
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.IntegerParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.Reconstructive;
 import es.urjc.etsii.grafo.improve.Improver;
@@ -12,6 +14,7 @@ import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
+import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,15 +77,10 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
      */
     private int stopIfNotImprovedIn;
 
-
-    /**
-     * Protected constructor, for serialization, use public one when creating a new IteratedGreedy
-     */
-    protected IteratedGreedy() {}
-
     /**
      *  Iterated Greedy Algorithm constructor
      *
+     * @param name Algorithm name, uniquely identifies the current algorithm. Tip: If you dont care about the name, generate a random one using {@link StringUtil#randomAlgorithmName()}
      * @param maxIterations  maximum number of iterations the algorithm could be executed.
      * @param stopIfNotImprovedIn maximum number of iterations without improving the algorithm could be executed.
      * @param constructive constructive procedure to generate the initial solution of the algorithm
@@ -91,12 +89,14 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
      */
     @AutoconfigConstructor
     public IteratedGreedy(
+            @ProvidedParam(type = ProvidedParamType.ALGORITHM_NAME) String name,
             @IntegerParam(min = 0) int maxIterations,
             @IntegerParam(min = 1) int stopIfNotImprovedIn,
             Constructive<S, I> constructive,
             Shake<S, I> destructionReconstruction,
             Improver<S, I> improver
     ) {
+        super(name);
         if (maxIterations < 0) {
             throw new IllegalArgumentException("maxIterations must be greater or equal to 0");
         }
@@ -114,20 +114,22 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
      *  Iterated Greedy Algorithm constructor: uses same constructive
      *  method when building the initial solution and after the destructive.
      *
+     * @param name Algorithm name, uniquely identifies the current algorithm. Tip: If you dont care about the name, generate a random one using {@link StringUtil#randomAlgorithmName()}
      * @param maxIterations  maximum number of iterations the algorithm could be executed.
      * @param stopIfNotImprovedIn maximum number of iterations without improving the algorithm could be executed.
      * @param constructive constructive procedure to generate the initial solution of the algorithm, and rebuild the solution after the destructive method
      * @param destructive destructive method called before the reconstructive
      * @param improver improving procedures. Could be 0 or more.
      */
-    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Reconstructive<S, I> constructive, Destructive<S, I> destructive, Improver<S, I> improver) {
-        this(maxIterations, stopIfNotImprovedIn, constructive, new DestroyRebuild<>(constructive, destructive), improver);
+    public IteratedGreedy(String name, int maxIterations, int stopIfNotImprovedIn, Reconstructive<S, I> constructive, Destructive<S, I> destructive, Improver<S, I> improver) {
+        this(name, maxIterations, stopIfNotImprovedIn, constructive, new DestroyRebuild<>(constructive, destructive), improver);
     }
 
     /**
      *  Iterated Greedy Algorithm constructor: uses one constructive
      *  method when building the initial solution and another one when reconstructing
      *
+     * @param name Algorithm name, uniquely identifies the current algorithm. Tip: If you dont care about the name, generate a random one using {@link StringUtil#randomAlgorithmName()}
      * @param maxIterations  maximum number of iterations the algorithm could be executed.
      * @param stopIfNotImprovedIn maximum number of iterations without improving the algorithm could be executed.
      * @param constructive constructive procedure to generate the initial solution of the algorithm, solution is NOT rebuilt using this component
@@ -135,8 +137,8 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
      * @param reconstructive reconstructive procedure to rebuild the solution. Initial solution is NOT built using this method.
      * @param improver improving procedures. Could be 0 or more.
      */
-    public IteratedGreedy(int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Destructive<S, I> destructive, Reconstructive<S, I> reconstructive, Improver<S, I> improver) {
-        this(maxIterations, stopIfNotImprovedIn, constructive, new DestroyRebuild<>(reconstructive, destructive), improver);
+    public IteratedGreedy(String name, int maxIterations, int stopIfNotImprovedIn, Constructive<S, I> constructive, Destructive<S, I> destructive, Reconstructive<S, I> reconstructive, Improver<S, I> improver) {
+        this(name, maxIterations, stopIfNotImprovedIn, constructive, new DestroyRebuild<>(reconstructive, destructive), improver);
     }
 
     /**
