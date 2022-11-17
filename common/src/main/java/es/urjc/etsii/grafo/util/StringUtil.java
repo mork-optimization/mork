@@ -136,12 +136,12 @@ public class StringUtil {
                 int match = (lhs.charAt(i - 1) == rhs.charAt(j - 1)) ? 0 : 1;
 
                 // computing cost for each transformation
-                int cost_replace = cost[i - 1] + match;
-                int cost_insert  = cost[i] + 1;
-                int cost_delete  = newcost[i - 1] + 1;
+                int costReplace = cost[i - 1] + match;
+                int costInsert  = cost[i] + 1;
+                int costDelete  = newcost[i - 1] + 1;
 
                 // keep minimum cost
-                newcost[i] = Math.min(Math.min(cost_insert, cost_delete), cost_replace);
+                newcost[i] = Math.min(Math.min(costInsert, costDelete), costReplace);
             }
 
             // swap cost/newcost arrays
@@ -206,12 +206,12 @@ public class StringUtil {
                 int match = (lhs[i - 1] == rhs[j - 1]) ? 0 : 1;
 
                 // computing cost for each transformation
-                int cost_replace = cost[i - 1] + match;
-                int cost_insert  = cost[i] + 1;
-                int cost_delete  = newcost[i - 1] + 1;
+                int costReplace = cost[i - 1] + match;
+                int costInsert  = cost[i] + 1;
+                int costDelete  = newcost[i - 1] + 1;
 
                 // keep minimum cost
-                newcost[i] = Math.min(Math.min(cost_insert, cost_delete), cost_replace);
+                newcost[i] = Math.min(Math.min(costInsert, costDelete), costReplace);
             }
 
             // swap cost/newcost arrays

@@ -23,9 +23,8 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
     /**
      * If we build more than WARN_INIT_ITER_THRESHOLD and we still get duplicates, warn user that something wrong may be happening
      */
-    private static int ERROR_INIT_ITER_THRESHOLD = 500;
+    private static final int ERROR_INIT_ITER_THRESHOLD = 500;
 
-    private final String name;
     /**
      * During refset initialization, initialRefset * INITIAL_RATIO solutions,
      * to ensure we have enough non repeated and diverse solutions
@@ -78,18 +77,21 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
             throw new IllegalArgumentException("Diversity ratio must be in range [0, 1]");
         }
 
-        this.name = name;
+        if(refsetSize < 2){
+            throw new IllegalArgumentException("Refset size should be least 2, configured: " + refsetSize);
+        }
+
         this.initialRatio = initialRatio;
         this.refsetSize = refsetSize;
-        this.constructiveGoodValues = constructiveGoodValues;
-        this.constructiveGoodDiversity = constructiveGoodDiversity;
-        this.improver = improver;
-        this.combinator = combinator;
+        this.constructiveGoodValues = Objects.requireNonNull(constructiveGoodValues);
+        this.constructiveGoodDiversity = Objects.requireNonNull(constructiveGoodDiversity);
+        this.improver = Objects.requireNonNull(improver);
+        this.combinator = Objects.requireNonNull(combinator);
         this.isBetterFunction = DoubleComparator.isBetterFunction(maximizing);
         this.softRestartEnabled = true;
         this.maxIterations = maxIterations;
         this.ratio = diversityRatio;
-        this.solutionDistance = solutionDistance;
+        this.solutionDistance = Objects.requireNonNull(solutionDistance);
 
         Comparator<S> compareByScore = Comparator.comparing(Solution::getScore);
         // Comparator orders from less to more by default, if maximizing reverse ordering

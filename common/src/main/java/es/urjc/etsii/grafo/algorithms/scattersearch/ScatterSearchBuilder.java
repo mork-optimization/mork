@@ -12,7 +12,7 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
     /**
      * Name of the algorithm
      */
-    private String name = StringUtil.randomAlgorithmName();
+    protected String name = StringUtil.randomAlgorithmName();
 
     /**
      * When initializing the refset inside the Scatter Search, build (initialRatio * refSetSize) solutions,
@@ -20,54 +20,54 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      * The bigger the initialRatio, the better the initial solutions and more diverse,
      * but it will take longer to initialize the refset and reset it if it gets stuck.
      */
-    private double initialRatio = 1;
+    protected double initialRatio = 1;
 
     /**
      * Maximum number of iterations, set by default to a value near Integer.MAX_VALUE
      */
-    private int maxIterations = Integer.MAX_VALUE / 2;
+    protected int maxIterations = Integer.MAX_VALUE / 2;
 
     /**
      * Refset size
      */
-    private int refsetSize;
+    protected int refsetSize = -1;
 
     /**
      * Proportion of items in refset to select using diversity criteria
      * instead of a greedy or by value one. Must be in range [0, 1]
      */
-    private double diversityRatio;
+    protected double diversityRatio = 0;
 
     /**
      * True if maximizing objective function, false otherwise.
      * Tip: Can be obtained by calling Mork.isMaximizing() or hardcoded in the experiment.
      */
-    private boolean maximizing;
+    protected Boolean maximizing;
 
     /**
      * Constructive to use to create "good value" solutions
      */
-    private Constructive<S, I> constructiveGoodValues;
+    protected Constructive<S, I> constructiveGoodValues;
 
     /**
      * Constructive to use when creating "diverse" solutions
      */
-    private Constructive<S, I> constructiveDiverseValues;
+    protected Constructive<S, I> constructiveDiverseValues;
 
     /**
      * Improvement method
      */
-    private Improver<S, I> improver = Improver.nul();
+    protected Improver<S, I> improver = Improver.nul();
 
     /**
      * Defines how solutions are combined to create the new candidate refset
      */
-    private SolutionCombinator<S, I> combinator;
+    protected SolutionCombinator<S, I> combinator;
 
     /**
      * How solution distance is measured, useful to calculate diversity metrics
      */
-    private SolutionDistance<S, I> solutionDistance;
+    protected SolutionDistance<S, I> solutionDistance;
 
     /**
      * Create a new Scatter Search Builder. After configuring the parameters, call ref build()
@@ -220,6 +220,10 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
     public ScatterSearch<S,I> build(){
         if(this.constructiveGoodValues == null){
             throw new IllegalArgumentException("no constructive method has been configured");
+        }
+
+        if(this.maximizing == null){
+            throw new IllegalArgumentException("Null maximizing value");
         }
         
         return new ScatterSearch<>(name,
