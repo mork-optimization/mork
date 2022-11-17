@@ -13,16 +13,16 @@ public @interface RealParam {
 
     /**
      * Smallest valid value in range. Range is inclusive
-     * Defaults to Double.MIN_VALUE / 2
+     * Defaults to Integer.MIN_VALUE / 2
      * @return double value
      */
-    double min() default Double.MIN_VALUE / 2;
+    double min() default Integer.MIN_VALUE / 2;
 
     /**
      * Biggest valid value in range. Range is inclusive
-     * Defaults to Double.MAX_VALUE / 2
+     * Defaults to Integer.MAX_VALUE / 2
      * @return double value
      */
-    double max() default Double.MAX_VALUE / 2;
+    double max() default Integer.MAX_VALUE / 2;
 
 }

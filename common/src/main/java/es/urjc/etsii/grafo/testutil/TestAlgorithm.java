@@ -5,10 +5,9 @@ import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 
 public class TestAlgorithm extends Algorithm<TestSolution, TestInstance> {
 
-    private final String algName;
 
     public TestAlgorithm(String algName) {
-        this.algName = algName;
+        super(algName);
         this.setBuilder(new SolutionBuilder<>() {
             @Override
             public TestSolution initializeSolution(TestInstance instance) {
@@ -27,8 +26,4 @@ public class TestAlgorithm extends Algorithm<TestSolution, TestInstance> {
         return solution;
     }
 
-    @Override
-    public String getShortName() {
-        return this.algName;
-    }
 }

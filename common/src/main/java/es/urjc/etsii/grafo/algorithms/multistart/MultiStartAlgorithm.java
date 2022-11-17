@@ -19,11 +19,6 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
     private static final Logger log = LoggerFactory.getLogger(MultiStartAlgorithm.class);
 
     /**
-     * Algorithm name
-     */
-    protected final String algorithmName;
-
-    /**
      * Algorithm
      */
     protected final Algorithm<S, I> algorithm;
@@ -54,8 +49,8 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
      * @param maxIterationsWithoutImproving number of iterations the algorithm should be run without improving before stop
      */
     protected MultiStartAlgorithm(String algorithmName, Algorithm<S, I> algorithm, int maxIterations, int minIterations, int maxIterationsWithoutImproving) {
+        super(algorithmName);
         checkParameters(maxIterations, minIterations, maxIterationsWithoutImproving);
-        this.algorithmName = algorithmName;
         this.algorithm = algorithm;
         this.maxIterations = maxIterations;
         this.minIterations = minIterations;
@@ -131,7 +126,7 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
     @Override
     public String toString() {
         return "MA{" +
-                "alg=" + (algorithmName.equals("") ? algorithm : algorithmName) +
+                "name=" + getShortName() +
                 ", mxIter=" + maxIterations +
                 ", mnIter=" + minIterations +
                 ", mxIterWI=" + maxIterationsWithoutImproving +

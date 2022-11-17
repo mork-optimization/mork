@@ -1,9 +1,9 @@
 package es.urjc.etsii.grafo.algorithms;
 
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
+import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 
 import java.util.Objects;
 
@@ -17,9 +17,16 @@ import java.util.Objects;
 @AlgorithmComponent
 public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
 
-    public static final int SHORTNAME_MAXLENGTH = 30;
-
     private SolutionBuilder<S,I> builder;
+    private final String algorithmName;
+
+    /**
+     * Initialize common algorithm fields
+     * @param algorithmName algorithm name
+     */
+    protected Algorithm(String algorithmName) {
+        this.algorithmName = algorithmName;
+    }
 
     /**
      * Current algorithm short name, must be unique per execution. Truncated to Algorithm.SHORTNAME_MAXLENGTH characters
@@ -27,8 +34,7 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
      * @return Should include parameter configuration if same algorithm is used with different parameters
      */
     public String getShortName(){
-        String s = this.toString().replaceAll("[Aa]lgorithm", "").replaceAll("[\\s{}\\[\\]\\-_.=?+&^%,$#'\"@!]", "");
-        return s.substring(0, Math.min(s.length(), SHORTNAME_MAXLENGTH));
+        return this.algorithmName;
     }
 
     /**

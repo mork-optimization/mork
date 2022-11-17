@@ -1,3 +1,7 @@
+# v0.16
+- (New) Generic ScatterSearch algorithm implementation.
+- (New) More methods in StringUtil + missing tests
+
 # v0.15.1
 - (Change) Remove autoconfig enable/disable from config files, use --autoconfig param
 - (Fix) Autoconfig bugfix: more robust @CategorialParam serializing for irace
