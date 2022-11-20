@@ -53,7 +53,7 @@ Algorithms that do not have public constructors use [the builder pattern](https:
 
 ## RuntimeException: Could not found Solution constructor Solution(Instance)
 
-By default, solutions are automatically initialized. The only requirement is that the solution class has a constructor with the following types:
+By default, the framework finds the solution class implementation, the instance implementation, and automatically initializes solutions under demand using the following solution class constructor:
 ```java
 public class MySolution extends Solution<MySolution, MyInstance>{
     // fields, etc
@@ -65,8 +65,13 @@ public class MySolution extends Solution<MySolution, MyInstance>{
     // other methods
 }
 ```
+However, there are certain cases where this strategy will fail:
+- If there are multiple classes extending the base Instance.
+- If there are multiple classes extending the base Solution.
+- If there is no constructor with the structure of the previous code snippet, for example because more parameters are required.
 
-If for any reason, the constructor method cannot have the instance as a single parameter, for example because more parameters are needed, you may need to create a SolutionBuilder, which determines how solutions are initialized:
+All the previous cases are easily fixed by explaining to the framework how to initialize solutions for an instance.
+The only required step is extending the class SolutionBuilder, which determines how solutions are initialized. 
 Example:
 ```java
 public class MyProblemSolutionBuilder extends SolutionBuilder<VRPODSolution, VRPODInstance> {
@@ -77,4 +82,4 @@ public class MyProblemSolutionBuilder extends SolutionBuilder<VRPODSolution, VRP
 }
 ```
 
-If a custom SolutionBuilder implementation is provided by the user, the default ReflectiveSolutionBuilder is automatically disabled.
+If a custom SolutionBuilder implementation is provided by the user, the default strategy is automatically disabled.
