@@ -75,6 +75,7 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         return new NullImprover<>();
     }
 
+    @SafeVarargs
     public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> serial(boolean maximize, Improver<S, I>... improvers){
         return new SequentialImprover<>(maximize, improvers);
     }
