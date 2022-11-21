@@ -2,9 +2,16 @@ package es.urjc.etsii.grafo.testutil;
 
 import es.urjc.etsii.grafo.solution.Solution;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
 public class TestSolution extends Solution<TestSolution, TestInstance> {
 
     protected double score;
+
+    Map<String, Function<TestSolution, Object>> properties = new HashMap<>();
+
 
     public TestSolution(TestInstance ins) {
         super(ins);
@@ -13,6 +20,12 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
     public TestSolution(TestInstance ins, double score) {
         this(ins);
         this.score = score;
+    }
+
+    public TestSolution(TestInstance ins, double score, Map<String, Function<TestSolution, Object>> properties) {
+        this(ins);
+        this.score = score;
+        this.properties = properties;
     }
 
     public TestSolution(TestSolution sol) {
@@ -50,4 +63,12 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
     public String toString() {
         return "TestSolution";
     }
+
+
+
+    @Override
+    public Map<String, Function<TestSolution, Object>> customProperties() {
+        return this.properties;
+    }
+
 }

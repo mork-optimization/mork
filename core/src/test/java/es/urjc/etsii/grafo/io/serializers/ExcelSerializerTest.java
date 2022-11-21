@@ -32,21 +32,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
-import static es.urjc.etsii.grafo.testutil.TestHelperFactory.referencesGenerator;
-import static es.urjc.etsii.grafo.testutil.TestHelperFactory.solutionGenerator;
+import static es.urjc.etsii.grafo.testutil.TestHelperFactory.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 public class ExcelSerializerTest {
 
     @BeforeAll
-    public static void configurePOI(){
+    public static void configurePOI() {
         // In order to read the file due to the size of the pivot table
         ZipSecureFile.setMinInflateRatio(0.001);
     }
 
     @BeforeEach
-    public void cleanInstance(){
+    public void cleanInstance() {
         Instance.resetProperties();
     }
 
@@ -87,12 +86,12 @@ public class ExcelSerializerTest {
 
     @Test
     public void writeEmptyCSVWithInvalidReference(@TempDir Path temp) {
-        Assertions.assertDoesNotThrow(() -> writeEmptyExcelParameters(temp, referencesGenerator(Double.NaN,Double.NaN)));
+        Assertions.assertDoesNotThrow(() -> writeEmptyExcelParameters(temp, referencesGenerator(Double.NaN, Double.NaN)));
     }
 
     @Test
     public void writeEmptyCSVInvalidPath() {
-        Assertions.assertThrows(RuntimeException.class, () -> writeEmptyExcelParameters(Path.of("/doesnotexist"), referencesGenerator(Double.NaN,Double.NaN)));
+        Assertions.assertThrows(RuntimeException.class, () -> writeEmptyExcelParameters(Path.of("/doesnotexist"), referencesGenerator(Double.NaN, Double.NaN)));
     }
 
     @Test
@@ -185,6 +184,38 @@ public class ExcelSerializerTest {
             Assertions.assertEquals("writeInstanceSheetTest", firstData.getCell(0).getStringCellValue());
             Assertions.assertEquals(1234567, firstData.getCell(1).getNumericCellValue());
 
+        }
+    }
+
+    @Test
+    public void writeExcelWithCustomProperties(@TempDir Path temp) throws IOException {
+        var instance = new TestInstance("writeInstanceSheetTest");
+        instance.setProperty("customProperty", 1234567);
+        var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));
+        var excelPath = temp.resolve("instanceSheet.xlsx");
+        var data = solutionWithCustomPropertiesGenerator();
+        excel.serializeResults("TestExperiment", data, excelPath);
+        File excelFile = excelPath.toFile();
+
+        try (var wb = new XSSFWorkbook(new FileInputStream(excelFile))) {
+            XSSFSheet instanceSheet = wb.getSheet(ExcelSerializer.RAW_SHEET);
+            Iterator<Row> rowIterator = instanceSheet.iterator();
+
+            Assertions.assertTrue(rowIterator.hasNext(), "Missing headers in raw result sheet");
+            var header = rowIterator.next();
+            Assertions.assertEquals(11, header.getLastCellNum(), "Missing headers in instance sheet");
+            var propertyName = header.getCell(9);
+            Assertions.assertEquals("prop1", propertyName.getStringCellValue());
+            propertyName = header.getCell(10);
+            Assertions.assertEquals("prop2", propertyName.getStringCellValue());
+
+            Assertions.assertTrue(rowIterator.hasNext(), "Missing values in raw result sheet");
+            var firstData = rowIterator.next();
+            Assertions.assertEquals(4, firstData.getCell(9).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
+            Assertions.assertEquals(1, firstData.getCell(10).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
+            var secondData = rowIterator.next();
+            Assertions.assertEquals(6, secondData.getCell(9).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
+            Assertions.assertEquals(2, secondData.getCell(10).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
         }
     }
 }

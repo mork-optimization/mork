@@ -11,7 +11,7 @@ public record WorkUnitResult<S extends Solution<S, I>, I extends Instance>(WorkU
         this(workUnit, solution, executionTime, timeToTarget, calculateProperties(solution));
     }
 
-    private static <S extends Solution<S, I>, I extends Instance> Map<String, Object> calculateProperties(S solution) {
+    public static <S extends Solution<S, I>, I extends Instance> Map<String, Object> calculateProperties(S solution) {
         var calculatedProperties = new HashMap<String, Object>();
         for(var entry: solution.customProperties().entrySet()){
             calculatedProperties.put(entry.getKey(), entry.getValue().apply(solution));
