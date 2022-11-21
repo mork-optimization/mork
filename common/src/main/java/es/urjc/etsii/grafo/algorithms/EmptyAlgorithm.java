@@ -7,6 +7,7 @@ public class EmptyAlgorithm<S extends Solution<S,I>, I extends Instance> extends
     private final String name;
 
     public EmptyAlgorithm(String name) {
+        super(name);
         if(name == null || name.isBlank()){
             throw new IllegalArgumentException("Invalid name, must be non non blank and non null");
         }

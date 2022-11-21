@@ -21,4 +21,9 @@ public abstract class SolutionDistance<S extends Solution<S, I>, I extends Insta
      * @return distance matrix with distances between any two solutions
      */
     public abstract double distances(S sa, S sb);
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "{}";
+    }
 }

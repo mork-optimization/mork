@@ -42,23 +42,23 @@ class IteratedGreedyUnitAlgorithmTest {
         int _stopIfNotImprovedIn = 0;
 
         Assertions.assertDoesNotThrow(() ->
-                new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover));
+                new IteratedGreedy<>("Test", maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover));
 
         Assertions.assertThrows(IllegalArgumentException.class, () ->
-                new IteratedGreedy<>(_maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover));
+                new IteratedGreedy<>("Test", _maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover));
 
         Assertions.assertThrows(IllegalArgumentException.class, () ->
-                new IteratedGreedy<>(maxIterations, _stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover));
+                new IteratedGreedy<>("Test", maxIterations, _stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover));
 
         Assertions.assertThrows(IllegalArgumentException.class, () ->
-                new IteratedGreedy<>(_maxIterations, _stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover));
+                new IteratedGreedy<>("Test", _maxIterations, _stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover));
     }
 
     @Test
     void checkMinimumAndMaxNumberOfIterations() {
         int maxIterations = 10;
         int stopIfNotImprovedIn = 5;
-        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover);
+        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>("Test", maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover);
         iteratedGreedy.setBuilder(new SolutionBuilder<>() {
             @Override
             public TestSolution initializeSolution(TestInstance instance) {
@@ -74,7 +74,7 @@ class IteratedGreedyUnitAlgorithmTest {
     void checkMinimumStopNotImprovement() {
         int maxIterations = 10_000_000;
         int stopIfNotImprovedIn = 10;
-        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover);
+        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>("Test", maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover);
         iteratedGreedy.setBuilder(new SolutionBuilder<>() {
             @Override
             public TestSolution initializeSolution(TestInstance instance) {
@@ -89,7 +89,7 @@ class IteratedGreedyUnitAlgorithmTest {
     void checkMaxNumberOfIterations() {
         int maxIterations = 10;
         int stopIfNotImprovedIn = 10_000_000;
-        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover);
+        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>("Test", maxIterations, stopIfNotImprovedIn, nullConstructive, mockitoShake, nullImprover);
         iteratedGreedy.setBuilder(new SolutionBuilder<>() {
             @Override
             public TestSolution initializeSolution(TestInstance instance) {
@@ -110,7 +110,7 @@ class IteratedGreedyUnitAlgorithmTest {
         TimeUnit timeUnit = TimeUnit.MILLISECONDS;
         TimeControl.setMaxExecutionTime(maxTime, timeUnit);
         TimeControl.start();
-        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>(maxIterations, stopIfNotImprovedIn, nullConstructive, shake, nullImprover);
+        IteratedGreedy<TestSolution, TestInstance> iteratedGreedy = new IteratedGreedy<>("Test", maxIterations, stopIfNotImprovedIn, nullConstructive, shake, nullImprover);
         iteratedGreedy.setBuilder(new SolutionBuilder<>() {
             @Override
             public TestSolution initializeSolution(TestInstance instance) {

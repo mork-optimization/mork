@@ -18,7 +18,12 @@ public abstract class GraspConstructiveFactory extends AlgorithmComponentFactory
         if(params.containsKey("alphaMin") && params.containsKey("alphaMax")){
             graspBuilder.withAlphaInRange((double) params.get("alphaMin"), (double) params.get("alphaMax"));
         } else if(params.containsKey("alpha")){
-            graspBuilder.withAlphaValue((double) params.get("alpha"));
+            Object v = params.get("alpha");
+            if(v instanceof Integer vi){
+                graspBuilder.withAlphaValue(vi.doubleValue());
+            } else if (v instanceof Double vd){
+                graspBuilder.withAlphaValue(vd);
+            }
         } else {
             graspBuilder.withAlphaRandom();
         }

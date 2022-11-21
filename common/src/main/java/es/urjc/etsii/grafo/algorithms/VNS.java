@@ -11,6 +11,7 @@ import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
+import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -47,10 +48,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
 
     private static final Logger log = LoggerFactory.getLogger(VNS.class);
 
-    protected final String algorithmName;
-
     protected Improver<S, I> improver;
-
 
     /**
      * Constructive procedure
@@ -76,7 +74,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * }
      * </pre>
      *
-     * @param algorithmName Algorithm name, example: "VNSWithRandomConstructive"
+     * @param algorithmName Algorithm name, example "VNS1-GRASP". Uniquely identifies the current algorithm. Tip: If you dont care about the name, generate a random one using {@link StringUtil#randomAlgorithmName()}
      * @param shake         Perturbation method
      * @param constructive  Constructive method
      * @param improver     List of improvers/local searches
@@ -102,7 +100,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * @param improver     List of improvers/local searches
      */
     public VNS(String algorithmName, KMapper<S, I> kMapper, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
-        this.algorithmName = algorithmName;
+        super(algorithmName);
         this.kMapper = kMapper;
 
         // Ensure Ks are sorted, maxK is the last element
@@ -182,14 +180,6 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
                 ", shakes=" + shake +
                 ", kmap=" + kMapper +
                 '}';
-    }
-
-    /**
-     * {@inheritDoc}
-     */
-    @Override
-    public String getShortName() {
-        return this.algorithmName;
     }
 
     /**

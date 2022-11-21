@@ -1,20 +1,22 @@
 # App configuration
 
-The app can be configured in multiple ways. See the application.yml
+Instead of hardcoding different values during app compilation, an easy to use configuration mechanism is provided to easily swap different config parameters, experiments, algorithms, etc., at runtime without recompiling the application.
+There are multiple ways to pass configuration parameters. For a list of generic available parameters, see the default application.yml provided below.
 
 ## How to provide or change configuration at runtime
-Several ways to override the embedded configuration file are provided, from more priority to less.
+There are multiple ways to pass config values or override existing ones if already specified. From more priority to less, the following are available:
 
 ### Using the command line
 ```bash
 java -jar myproject.jar --seed=1235 --instances.path.default=/results
 ```
-or
+or using Java properties
+
 ```
 java -Dseed=1235 -Dinstances.path.default=/results -jar myproject.jar
 ```
 
-> Remember: command line properties always take precedence over any configuration file.
+> Remember: command line config properties always take precedence over any configuration file. If any property is already specified for example in the application.yml, the corresponding value is overriden.
 
 ### Using environment variables
 ```bash
@@ -22,6 +24,13 @@ export INSTANCES_PATH_DEFAULT="/results"
 java -jar myproject.jar
 ```
 Note that the equivalent environment variable for a property is calculated as: `-` are removed, `.` replaced with `_`, and the string is uppercased.
+Environment variables can useful for configuring a given environment for all experiments. Example: if I have a powerful server with 96 real cores (no hyper-threading)
+I can export the property `SOLVER_NWORKERS`, and `SOLVER_PARALLELEXEUCUTOR`, such as:
+```bash
+export SOLVER_PARALLELEXEUCUTOR=true
+export SOLVER_NWORKERS=96
+```
+This way, any experiment launched in this machine will automatically use the parallel executor with 96 cores. This can be automated using `.bashrc` if using Bash, or `.zshrc` if using zsh.
 
 ### Using a configuration file
 Place an `application.yml` on the same folder as the jar. Any property or configuration parameter in this `application.yml` overrides the corresponding value of the packaged `application.yml` inside the jar.
@@ -38,127 +47,105 @@ The app configuration system is inherited from Spring Boot. Everything that can 
 The following is a reference configuration as can be found in the generated project. All properties should be properly documented, open an issue or a PR if something is not clear to modify the default configuration file.
 
 ```yml
-# Random seed. The algorithms should generate the exact same results as long as the seed does not change.
-seed: 1234
+# Defines any custom property or configuration for the current problem.
+# The config values can be retrieved at runtime, for example inside the experiment
+# See https://mork-optimization.readthedocs.io/en/latest/features/config/ for more details
+custom:
+  my-property: 'myvalue'
 
 instances:
+
+  # Loads all instances in RAM before starting each experiment.
+  # Can be disabled for example in problems where instances are huge in order to save some RAM.
+  # Warning: Disabling it reverts instance solve order to instance name (lexicographically)
+  preload: true
+
   path:
     # Default instance path for all experiments, can be overridden.
     default: 'instances'
 
     # Override default instance path only for the experiment declared in file PreliminarExperiment.java
     # If an experiment does not have a specific path the default will be used. Example:
-    PreliminarExperiment: './instances/preliminar'
+    # PreliminarExperiment: './instances/preliminar'
 
-solutions:
-  # Path where solutions will be exported (Only if a solution serializer is enabled, see below)
-  path:
-    out: 'solutions'
-  dateformat: 'yyyy-MM-dd_HH-mm-ss'
-
-errors:
-  # Path where all errors or exceptions encountered during experiment execution will be exported
-  # Experiment execution DOES NOT (usually) END if
-  # an uncontrolled exception is propagated, the error is logged, and we try to keep solving
-  path: 'errors'
-
-serializers:
-  sol-json:
-    # Enable default JSON serializer for solutions. Exports best solution of each algorithm to JSON.
-    # If you want to export solutions to a custom format, extend SolutionSerializer,
-    # NOTE: the default JSON solution serializer is automatically disabled when the SolutionSerializer class is extended.
-    enabled: false
-    # If enabled, pretty print JSON (indentation + new lines)
-    pretty: true
-
-  csv:
-    # Export results to CSV, set to false to skip serializing results to CSV
-    enabled: false
-
-    # Can use commas, semicolons, \t (tabs) or any other character to separate columns when exporting the results to CSV
-    # Note: Use only a single character
-    separator: ','
-
-    # Results folder
-    folder: 'results'
-
-    # Filename format, replacements are applied as follows
-    # yyyy: replaced with current year, ex 2020
-    # MM, dd, HH, mm, ss: replaced by month, day, hour, minute and seconds
-    # any letters [a-zA-Z] can be part of the filename as long as they are between single quotes
-    format: "'Results'_yyyy-MM-dd_HH-mm-ss.'csv'"
-
-  xlsx:
-    # Enable XLSX results serializer, set to false to skip serializing results to Excel 2007+
-    enabled: true
-
-    # When generating the pivot table, should algorithms be in rows or columns?
-    # True: Instances per row, algorithms in columns
-    # False: Algorithms in rows, instances in columns
-    algorithmsInColumns: true
-
-    # Results folder
-    folder: 'results'
-
-    # Filename format, replacements are applied as follows
-    # yyyy: replaced with current year, ex 2020
-    # MM, dd, HH, mm, ss: replaced by month, day, hour, minute and seconds
-    # letters [a-zA-Z] can be part of the filename as long as they are between single quotes
-    format: "'Results'_yyyy-MM-dd_HH-mm-ss.'xlsx'"
 
 solver:
+  # Global random seed to ensure reproducibility
+  seed: 1234
+
+  # Random generator provider, see RandomType enum for a full list of available implementations
+  random-type: default
 
   # Which experiments should be executed? .* --> All.
   # Experiment names default to the class name in which they are declared unless overridden.
   # Tip, you may use a Regex, example: Preeliminar.*
   experiments: '.*'
 
-  # Maximize or minimize objective function? True --> Maximizing, False --> Minimizing
-  maximizing: true
-
   # How many times should each experiment be repeated. Recommended a minimum of 30
   repetitions: 100
 
   # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALLELIZED
   # Valid Values: true, false
-  parallelExecutor: true
+  parallelExecutor: false
 
   # Number of workers to use if parallelExecutor is enabled
   # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
   nWorkers: -1
 
-  # Execute benchmark before starting solver?
+  # Execute benchmark before starting solver? False to skip benchmark.
   benchmark: true
 
-# Advanced configuration, do not change unless you know what you are doing!
-advanced:
-  # Block Java API methods
-  block:
-    # Collections.shuffle(RandomManager.getRandom()) should be used instead of Collections.shuffle()
-    collections-shuffle: true
-    # Block Math.random(), use RandomManager.getRandom().nextDouble()
-    math-random: true
+  # Autoconfig properties
+  ## Tree depth when using automatic configuration
+  tree-depth: 4
+  ## For each solution generated by any algorithm, ignore this millis in the area calculation.
+  ## WARNING: Any algorithm that does not report an o.f value before this limit is reached is considered invalid
+  ignore-initial-millis: 10000
+  ## Area will be measured in interval [ignoreInitialMillis, ignoreInitialMillis+intervalDurationMillis]
+  interval-duration-millis: 50000
+  # End autoconfig properties
 
-# Logging configuration
-logging:
-  level:
-    # Default logging level, do not modify unless you know what you are doing
-    root: 'info'
-    es:
-      urjc:
-        etsii:
-          # Use:
-          # - INFO:  Print only important messages
-          # - DEBUG: Show debug logs for each algorithm
-          # - TRACE: Print all debug messages, and print ALL movements when they are applied to any solution.
-          #          Note: Enabling trace mode has a big performance impact.
-          #grafo: 'DEBUG'
-          grafo: 'INFO'
+  # Enable or disable metrics tracking. Force enabled if using autoconfig.
+  metrics: false
 
-  # Save logs to file 'log.txt'
-  file:
-    name: 'log.txt'
+# Enable irace integration? Check IRACE Wiki section before enabling
+irace:
+  enabled: false
 
-  # Logging messages format
-  pattern.console: '%clr([%d{${LOG_DATEFORMAT_PATTERN:yyyy/MM/dd HH:mm:ss}}]){faint} %clr(${LOG_LEVEL_PATTERN:--%5p}) %clr(--> %-40.40logger{39}){cyan} %clr(:){faint} %m%n${LOG_EXCEPTION_CONVERSION_WORD:%wEx}'
+  # False: (EXPERIMENTAL) use GraalVM implementation, does not need R installed locally
+  # True: (RECOMMENDED) Use shell to execute R scripts, R / Rscript need to be locally installed and in path
+  shell: true
+
+  # Maximum number of algorithm executions
+  maxExperiments: 10000
+
+# Event system integrations/configuration
+event:
+  # Stop webserver after all work is done?
+  # If true, app will stop after all experiments finish executing, and front end will stop loading. (DEFAULT)
+  # If false, webserver will keep executing, and front will be available until manually stopped by the user.
+  webserver:
+    stopOnExecutionEnd: true
+
+  # Enable message notifications to any given user on experiment end. See
+  telegram:
+    # If false bot is completely disabled
+    enabled: false
+    # Token returned by @BotFather
+    token: ''
+    # Chat where we will send notifications
+    chatId: ''
+
+# Experiment execution DOES NOT (usually) END if an uncontrolled exception is propagated
+# The error is logged, and we try to keep solving
+errors:
+  # Write exceptions and errors with their context to disk?
+  errorsToFile: true
+
+  # Path where all errors or exceptions encountered during experiment execution will be exported
+  folder: 'errors'
+
+# Set default server port (change if there is multiple Mork instances running)
+server:
+  port : 8080
 ```

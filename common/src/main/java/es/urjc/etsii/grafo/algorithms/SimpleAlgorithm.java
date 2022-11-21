@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
+import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.ArrayList;
@@ -29,7 +30,6 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
 
     protected final Constructive<S,I> constructive;
     protected final List<Improver<S, I>> improvers;
-    protected final String algorithmName;
 
     /**
      * <p>Constructor for SimpleAlgorithm.</p>
@@ -54,13 +54,13 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
     /**
      * <p>Constructor for SimpleAlgorithm.</p>
      *
-     * @param algorithmName a {@link String} object.
+     * @param algorithmName Algorithm name, uniquely identifies the current algorithm. Tip: If you dont care about the name, generate a random one using {@link StringUtil#randomAlgorithmName()}
      * @param constructive a {@link Constructive} object.
      * @param improvers a {@link es.urjc.etsii.grafo.improve.Improver} object.
      */
     @SafeVarargs
     public SimpleAlgorithm(String algorithmName, Constructive<S, I> constructive, Improver<S,I>... improvers){
-        this.algorithmName = algorithmName.trim();
+        super(algorithmName);
         this.constructive = constructive;
         if(improvers != null && improvers.length >= 1){
             this.improvers = Arrays.asList(improvers);
@@ -119,11 +119,5 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
                 "c=" + constructive +
                 ", i=" + improvers +
                 '}';
-    }
-
-    /** {@inheritDoc} */
-    @Override
-    public String getShortName() {
-        return this.algorithmName.isEmpty() ? super.getShortName() : algorithmName;
     }
 }

@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.algorithms.multistart;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.StringUtil;
 
 /**
  * Multi-start algorithm builder based on Java Builder Pattern
@@ -15,7 +16,7 @@ public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Inst
     /**
      * Name of the algorithm
      */
-    private String name = "";
+    private String name = StringUtil.randomAlgorithmName();
 
     /**
      * Maximum number of iterations, set by default to 1073741823

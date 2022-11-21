@@ -27,10 +27,10 @@ https://user-images.githubusercontent.com/55482385/140910473-1fa14244-5ef9-4ec5-
 
 ## Getting started
 
-TLDR: https://rmartinsanta.github.io/mork/
-Import in your favourite IDE and start working!
+TLDR: Automatically generate a project using [https://rmartinsanta.github.io/mork/](https://rmartinsanta.github.io/mork/), 
+import in your favourite IDE and start working!
 
-See [Getting started page](https://mork-optimization.readthedocs.io/en/latest/quickstart/starting/) in the [Wiki](https://mork-optimization.readthedocs.io/en/latest/) for more details.
+See [Getting started page](https://mork-optimization.readthedocs.io/en/latest/quickstart/starting/) in the [Official Documentation](https://mork-optimization.readthedocs.io/en/latest/) for more details.
 
 
 What functionality do you need? Whether you want everything or just a specific Mork functionality, take a look at the table below and determine what you need. 

@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.annotations.IntegerParam;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
+import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,7 +36,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
      * @param neighborhood neighborhoods to use
      */
     @AutoconfigConstructor
-    public RandomMoveShake(@IntegerParam(min = 1) int ratio, RandomizableNeighborhood<?,S,I> neighborhood) {
+    public RandomMoveShake(@IntegerParam(min = 1, max = 1000) int ratio, RandomizableNeighborhood<?,S,I> neighborhood) {
         this.ratio = ratio;
         this.neighborhood = Objects.requireNonNull(neighborhood);
     }
@@ -57,6 +58,9 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
     public S shake(S solution, int k) {
         // Execute k*RATIO random moves in the given neighborhood
         for (int i = 0; i < k*ratio; i++) {
+            if(TimeControl.isTimeUp()){
+                return solution;
+            }
             var move = this.neighborhood.getRandomMove(solution);
             if(move.isPresent()){
                 move.get().execute(solution);
