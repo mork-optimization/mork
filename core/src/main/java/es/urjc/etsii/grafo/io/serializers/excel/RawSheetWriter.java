@@ -113,6 +113,20 @@ public abstract class RawSheetWriter {
         return names;
     }
 
+    protected String[] getCommonHeaders(){
+        return new String[]{
+                RawSheetCol.INSTANCE_NAME.getName(),
+                RawSheetCol.ALG_NAME.getName(),
+                RawSheetCol.ITERATION.getName(),
+                RawSheetCol.SCORE.getName(),
+                RawSheetCol.TOTAL_TIME.getName(),
+                RawSheetCol.TTB.getName(),
+                RawSheetCol.IS_BEST_KNOWN.getName(),
+                RawSheetCol.DEV_TO_BEST.getName(),
+                RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getName()
+        };
+    }
+
     /**
      * Get best result for a given instance
      *

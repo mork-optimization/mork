@@ -1,12 +1,9 @@
-package es.urjc.etsii.grafo.io.serializers;
+package es.urjc.etsii.grafo.io.serializers.excel;
 
-import es.urjc.etsii.grafo.config.SolverConfig;
+import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.io.serializers.excel.ExcelConfig;
-import es.urjc.etsii.grafo.io.serializers.excel.ExcelCustomizer;
-import es.urjc.etsii.grafo.io.serializers.excel.ExcelSerializer;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.testutil.TestHelperFactory;
 import es.urjc.etsii.grafo.testutil.TestInstance;
@@ -20,6 +17,8 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 import java.io.File;
@@ -49,55 +48,59 @@ public class ExcelSerializerTest {
         Instance.resetProperties();
     }
 
-    public ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references, InstanceManager<TestInstance> instanceManager) {
+    public ExcelSerializer<TestSolution, TestInstance> initExcel(boolean useJavaCalculation, Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references, InstanceManager<TestInstance> instanceManager) {
         var config = new ExcelConfig();
         config.setFolder(p.toFile().getAbsolutePath());
-        config.setCalculationMode(ExcelConfig.CalculationMode.AUTO);
-        var solverConfig = new SolverConfig();
+        config.setCalculationMode(useJavaCalculation? ExcelConfig.CalculationMode.JAVA: ExcelConfig.CalculationMode.EXCEL);
         Mork.setSolvingMode(true);
         return new ExcelSerializer<>(config, references, customizer, instanceManager);
     }
 
-    public ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references) {
-        return initExcel(customizer, p, references, TestHelperFactory.emptyInstanceManager());
+    public ExcelSerializer<TestSolution, TestInstance> initExcel(boolean useJavaCalculation, Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references) {
+        return initExcel(useJavaCalculation, customizer, p, references, TestHelperFactory.emptyInstanceManager());
     }
 
-    public ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p) {
-        return initExcel(customizer, p, new ArrayList<>());
+    public ExcelSerializer<TestSolution, TestInstance> initExcel(boolean useJavaCalculation, Optional<ExcelCustomizer> customizer, Path p) {
+        return initExcel(useJavaCalculation, customizer, p, new ArrayList<>());
     }
 
-    public void writeEmptyExcelParameters(Path temp, List<ReferenceResultProvider> references) {
-        var excel = initExcel(Optional.empty(), temp, references);
+    public void writeEmptyExcelParameters(boolean useJavaCalculation, Path temp, List<ReferenceResultProvider> references) {
+        var excel = initExcel(useJavaCalculation, Optional.empty(), temp, references);
         var excelPath = temp.resolve("test.xlsx");
         excel.serializeResults("TestExperiment", new ArrayList<>(), excelPath);
 
         Assertions.assertTrue(Files.exists(excelPath));
     }
 
-    @Test
-    public void writeEmptyExcel(@TempDir Path temp) throws IOException {
-        writeEmptyExcelParameters(temp, new ArrayList<>());
+    @ParameterizedTest
+    @ValueSource(booleans =  {true, false})
+    public void writeEmptyCalcExcel(boolean useJavaCalculation, @TempDir Path temp) throws IOException {
+        writeEmptyExcelParameters(useJavaCalculation, temp, new ArrayList<>());
     }
 
-    @Test
-    public void writeEmptyExcelWithReferences(@TempDir Path temp) throws IOException {
-        writeEmptyExcelParameters(temp, referencesGenerator(10, 10));
+    @ParameterizedTest
+    @ValueSource(booleans =  {true, false})
+    public void writeEmptyExcelWithReferences(boolean useJavaCalculation, @TempDir Path temp) throws IOException {
+        writeEmptyExcelParameters(useJavaCalculation, temp, referencesGenerator(10, 10));
     }
 
-    @Test
-    public void writeEmptyCSVWithInvalidReference(@TempDir Path temp) {
-        Assertions.assertDoesNotThrow(() -> writeEmptyExcelParameters(temp, referencesGenerator(Double.NaN, Double.NaN)));
+    @ParameterizedTest
+    @ValueSource(booleans =  {true, false})
+    public void writeEmptyCSVWithInvalidReference(boolean useJavaCalculation, @TempDir Path temp) {
+        Assertions.assertDoesNotThrow(() -> writeEmptyExcelParameters(useJavaCalculation, temp, referencesGenerator(Double.NaN, Double.NaN)));
     }
 
-    @Test
-    public void writeEmptyCSVInvalidPath() {
-        Assertions.assertThrows(RuntimeException.class, () -> writeEmptyExcelParameters(Path.of("/doesnotexist"), referencesGenerator(Double.NaN, Double.NaN)));
+    @ParameterizedTest
+    @ValueSource(booleans =  {true, false})
+    public void writeEmptyCSVInvalidPath(boolean useJavaCalculation) {
+        Assertions.assertThrows(RuntimeException.class, () -> writeEmptyExcelParameters(useJavaCalculation, Path.of("/doesnotexist"), referencesGenerator(Double.NaN, Double.NaN)));
     }
 
-    @Test
-    public void writeXLSXWithCustomizer(@TempDir Path temp) {
+    @ParameterizedTest
+    @ValueSource(booleans =  {true, false})
+    public void writeXLSXWithCustomizer(boolean useJavaCalculation, @TempDir Path temp) {
         var customizer = Mockito.mock(ExcelCustomizer.class);
-        var excel = initExcel(Optional.of(customizer), temp);
+        var excel = initExcel(useJavaCalculation, Optional.of(customizer), temp);
         var excelPath = temp.resolve("test2.xlsx");
 
         var data = solutionGenerator();
@@ -107,9 +110,10 @@ public class ExcelSerializerTest {
         verifyNoMoreInteractions(customizer);
     }
 
-    @Test
-    public void writeXLSXWithReferences(@TempDir Path temp) throws IOException {
-        var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10));
+    @ParameterizedTest
+    @ValueSource(booleans =  {true, false})
+    public void writeXLSXWithReferences(boolean useJavaCalculation, @TempDir Path temp) throws IOException {
+        var excel = initExcel(useJavaCalculation, Optional.empty(), temp, referencesGenerator(10.10, 10.10));
         var excelPath = temp.resolve("test2.xlsx");
 
         var data = solutionGenerator();
@@ -136,9 +140,10 @@ public class ExcelSerializerTest {
         }
     }
 
-    @Test
-    public void writeEmptyInstanceSheet(@TempDir Path temp) throws IOException {
-        var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10));
+    @ParameterizedTest
+    @ValueSource(booleans =  {true, false})
+    public void writeEmptyInstanceSheet(boolean useJavaCalculation, @TempDir Path temp) throws IOException {
+        var excel = initExcel(useJavaCalculation, Optional.empty(), temp, referencesGenerator(10.10, 10.10));
         var excelPath = temp.resolve("emptyInstanceSheet.xlsx");
         var data = solutionGenerator();
         excel.serializeResults("TestExperiment", data, excelPath);
@@ -158,11 +163,12 @@ public class ExcelSerializerTest {
         }
     }
 
-    @Test
-    public void writeInstanceSheet(@TempDir Path temp) throws IOException {
+    @ParameterizedTest
+    @ValueSource(booleans =  {true, false})
+    public void writeInstanceSheet(boolean useJavaCalculation, @TempDir Path temp) throws IOException {
         var instance = new TestInstance("writeInstanceSheetTest");
         instance.setProperty("customProperty", 1234567);
-        var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));
+        var excel = initExcel(useJavaCalculation, Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));
         var excelPath = temp.resolve("instanceSheet.xlsx");
         var data = solutionGenerator();
         excel.serializeResults("TestExperiment", data, excelPath);
@@ -187,11 +193,12 @@ public class ExcelSerializerTest {
         }
     }
 
-    @Test
-    public void writeExcelWithCustomProperties(@TempDir Path temp) throws IOException {
+    @ParameterizedTest
+    @ValueSource(booleans =  {true, false})
+    public void writeExcelWithCustomProperties(boolean useJavaCalculation, @TempDir Path temp) throws IOException {
         var instance = new TestInstance("writeInstanceSheetTest");
         instance.setProperty("customProperty", 1234567);
-        var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));
+        var excel = initExcel(useJavaCalculation, Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));
         var excelPath = temp.resolve("instanceSheet.xlsx");
         var data = solutionWithCustomPropertiesGenerator();
         excel.serializeResults("TestExperiment", data, excelPath);
@@ -230,5 +237,42 @@ public class ExcelSerializerTest {
             Assertions.assertEquals(6, secondData.getCell(prop1Index).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
             Assertions.assertEquals(2, secondData.getCell(prop2Index).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
         }
+    }
+
+    @Test
+    public void serializerMode(){
+        var config = new ExcelConfig();
+        int defaultRowThreshold = config.getRowThreshold();
+        Assertions.assertTrue(defaultRowThreshold > 0);
+
+        config.setCalculationMode(ExcelConfig.CalculationMode.JAVA);
+        var sheetWriter = ExcelSerializer.getRawSheetWriter(config, new ArrayList<>());
+        Assertions.assertTrue(sheetWriter instanceof JavaCalculatedRawSheetWriter);
+
+        config.setCalculationMode(ExcelConfig.CalculationMode.EXCEL);
+        sheetWriter = ExcelSerializer.getRawSheetWriter(config, new ArrayList<>());
+        Assertions.assertTrue(sheetWriter instanceof ExcelCalculatedRawSheetWriter);
+
+        config.setCalculationMode(ExcelConfig.CalculationMode.AUTO);
+        sheetWriter = ExcelSerializer.getRawSheetWriter(config, new ArrayList<>());
+        Assertions.assertTrue(sheetWriter instanceof ExcelCalculatedRawSheetWriter);
+
+        sheetWriter = ExcelSerializer.getRawSheetWriter(config, listOfN(1000));
+        Assertions.assertTrue(sheetWriter instanceof ExcelCalculatedRawSheetWriter);
+
+        sheetWriter = ExcelSerializer.getRawSheetWriter(config, listOfN(3000));
+        Assertions.assertTrue(sheetWriter instanceof JavaCalculatedRawSheetWriter);
+
+        sheetWriter = ExcelSerializer.getRawSheetWriter(config, listOfN(2000));
+        Assertions.assertTrue(sheetWriter instanceof ExcelCalculatedRawSheetWriter);
+    }
+
+    private List<? extends SolutionGeneratedEvent<?,?>> listOfN(int n){
+        var event = TestHelperFactory.solutionGenerated("fakeInstance", "fakeExp", "fakeAlg", -1, 2, 10, 8);
+        var list = new ArrayList<SolutionGeneratedEvent<?,?>>(n);
+        for (int i = 0; i < n; i++) {
+            list.add(event);
+        }
+        return list;
     }
 }

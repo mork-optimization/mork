@@ -29,17 +29,7 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
 
         // Create headers
         String[] customProperties = getCustomPropertyNames(results);
-        String[] commonHeaders = new String[]{
-                RawSheetCol.INSTANCE_NAME.getName(),
-                RawSheetCol.ALG_NAME.getName(),
-                RawSheetCol.ITERATION.getName(),
-                RawSheetCol.SCORE.getName(),
-                RawSheetCol.TOTAL_TIME.getName(),
-                RawSheetCol.TTB.getName(),
-                RawSheetCol.IS_BEST_KNOWN.getName(),
-                RawSheetCol.DEV_TO_BEST.getName()
-        };
-
+        String[] commonHeaders = getCommonHeaders();
         String[] headers = ArrayUtil.merge(commonHeaders, customProperties);
 
         int nColumns = headers.length;
@@ -63,6 +53,7 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
             data[i][RawSheetCol.SCORE.getIndex()] = r.getScore();
             data[i][RawSheetCol.TOTAL_TIME.getIndex()] = nanosToSecs(r.getExecutionTime());
             data[i][RawSheetCol.TTB.getIndex()] = nanosToSecs(r.getTimeToBest());
+            data[i][RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getIndex()] = bestValueForInstance;
             data[i][RawSheetCol.IS_BEST_KNOWN.getIndex()] = isBest ? 1 : 0;
             data[i][RawSheetCol.DEV_TO_BEST.getIndex()] = getPercentageDevToBest(r.getScore(), bestValueForInstance);
 
@@ -76,8 +67,8 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
         int currentRow = cutOff;
         for(String instaceName: bestValuesPerInstance.keySet()){
             for(var provider: referenceResultProviders){
-                double bestValueForInstance = bestValuesPerInstance.get(instaceName);
                 var result = provider.getValueFor(instaceName);
+                double bestValueForInstance = bestValuesPerInstance.get(instaceName);
                 double score = result.getScoreOrNan();
                 boolean isBest = Double.isFinite(score) && DoubleComparator.equals(bestValueForInstance, score);
 

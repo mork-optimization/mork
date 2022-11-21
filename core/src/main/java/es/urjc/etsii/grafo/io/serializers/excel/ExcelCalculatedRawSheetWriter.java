@@ -28,20 +28,8 @@ public class ExcelCalculatedRawSheetWriter extends RawSheetWriter {
         String[] customProperties = getCustomPropertyNames(results);
 
         // Create headers
-        String[] commonHeaders = new String[]{
-                RawSheetCol.INSTANCE_NAME.getName(),
-                RawSheetCol.ALG_NAME.getName(),
-                RawSheetCol.ITERATION.getName(),
-                RawSheetCol.SCORE.getName(),
-                RawSheetCol.TOTAL_TIME.getName(),
-                RawSheetCol.TTB.getName(),
-                RawSheetCol.IS_BEST_KNOWN.getName(),
-                RawSheetCol.DEV_TO_BEST.getName(),
-                RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getName()
-        };
-
+        String[] commonHeaders = getCommonHeaders();
         String[] headers = ArrayUtil.merge(commonHeaders, customProperties);
-
 
         int nColumns = headers.length;
         int cutOff = results.size() + 1;
