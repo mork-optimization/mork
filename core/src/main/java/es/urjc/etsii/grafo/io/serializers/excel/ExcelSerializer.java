@@ -104,7 +104,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             var rawSheet = excelBook.createSheet(RAW_SHEET);
             var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
 
-            RawSheetWriter writer = getRawSheetWriter(results);
+            RawSheetWriter writer = getRawSheetWriter(config, results);
             var area = writer.fillRawSheet(rawSheet, maximizing, results, referenceResultProviders);
             
             fillPivotSheet(pivotSheet, area, rawSheet);
@@ -208,20 +208,20 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         return properties.toArray(new Object[0][]);
     }
 
-    private RawSheetWriter getRawSheetWriter(List<? extends SolutionGeneratedEvent<S, I>> results) {
-        switch (this.config.getCalculationMode()){
+    protected static RawSheetWriter getRawSheetWriter(ExcelConfig config, List<? extends SolutionGeneratedEvent<?, ?>> results) {
+        switch (config.getCalculationMode()){
             case EXCEL:
                 return new ExcelCalculatedRawSheetWriter();
             case JAVA:
                 return new JavaCalculatedRawSheetWriter();
             case AUTO:
-                if(results.size() > this.config.getRowThreshold()){
+                if(results.size() > config.getRowThreshold()){
                     return new JavaCalculatedRawSheetWriter();
                 } else {
                     return new ExcelCalculatedRawSheetWriter();
                 }
             default:
-                throw new UnsupportedOperationException("Not implemented type: " + this.config.getCalculationMode());
+                throw new UnsupportedOperationException("Not implemented type: " + config.getCalculationMode());
         }
     }
 

@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 
 import java.lang.ref.SoftReference;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -23,20 +24,22 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
     private final double score;
     private final long executionTime;
     private final long timeToBest;
+    private final Map<String, Object> userDefinedProperties;
     private final Algorithm<S,I> algorithm;
     private final SoftReference<S> solution;
 
     /**
      * Create a new SolutionGeneratedEvent
      *
-     * @param iteration solution iteration
-     * @param solution generated solution
-     * @param experimentName experiment name
-     * @param algorithm algorithm that generated this solution
-     * @param executionTime time used to generate this solution
-     * @param timeToBest time needed ot reach the best solution. timeToBest = totalTime - timeSinceLastModification
+     * @param iteration             solution iteration
+     * @param solution              generated solution
+     * @param experimentName        experiment name
+     * @param algorithm             algorithm that generated this solution
+     * @param executionTime         time used to generate this solution
+     * @param timeToBest            time needed ot reach the best solution. timeToBest = totalTime - timeSinceLastModification
+     * @param userDefinedProperties user defined solution properties
      */
-    public SolutionGeneratedEvent(int iteration, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest) {
+    public SolutionGeneratedEvent(int iteration, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest, Map<String, Object> userDefinedProperties) {
         super();
         this.iteration = iteration;
         this.score = solution.getScore();
@@ -47,6 +50,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
         this.executionTime = executionTime;
         this.timeToBest = timeToBest;
         this.algorithmName = algorithm.getShortName();
+        this.userDefinedProperties = userDefinedProperties;
     }
 
     /**
@@ -129,5 +133,13 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
      */
     public Optional<S> getSolution() {
         return Optional.ofNullable(this.solution.get());
+    }
+
+    /**
+     * Get user defined properties
+     * @return Map where key is property name, value property value as calculated by the user provided function
+     */
+    public Map<String, Object> getUserDefinedProperties() {
+        return userDefinedProperties;
     }
 }
