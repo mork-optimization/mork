@@ -19,12 +19,14 @@ import static es.urjc.etsii.grafo.util.IOUtil.checkExists;
 
 /**
  * Class to manage instances during the solving lifecycle
+ *
  * @param <I> Instance class
  */
 @Service
 public class InstanceManager<I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(InstanceManager.class);
+    private static final int MAX_LENGTH = 300;
     protected final SoftReference<I> EMPTY = new SoftReference<>(null);
     protected final InstanceConfiguration instanceConfiguration;
     protected final InstanceImporter<I> instanceImporter;
@@ -35,8 +37,9 @@ public class InstanceManager<I extends Instance> {
 
     /**
      * Build instance manager
+     *
      * @param instanceConfiguration instance configuration
-     * @param instanceImporter instance importer
+     * @param instanceImporter      instance importer
      */
     public InstanceManager(InstanceConfiguration instanceConfiguration, InstanceImporter<I> instanceImporter) {
         this.instanceConfiguration = instanceConfiguration;
@@ -52,14 +55,14 @@ public class InstanceManager<I extends Instance> {
      * @param expName experiment name as string
      * @return Ordered list of instance identifiers, that can be later used by the getInstance method. Instances should be solved in the returned order.
      */
-    public synchronized List<String> getInstanceSolveOrder(String expName){
+    public synchronized List<String> getInstanceSolveOrder(String expName) {
         return this.solveOrderByExperiment.computeIfAbsent(expName, s -> {
             String instancePath = this.instanceConfiguration.getPath(expName);
             checkExists(instancePath);
             List<Path> instances = IOUtil.iterate(instancePath);
 
             List<String> sortedInstances;
-            if(this.instanceConfiguration.isPreload()){
+            if (this.instanceConfiguration.isPreload()) {
                 sortedInstances = validateAndSort(expName, instances);
             } else {
                 sortedInstances = lexicSort(instances);
@@ -73,7 +76,7 @@ public class InstanceManager<I extends Instance> {
         log.info("Loading all instances to check correctness...");
         List<I> instances = new ArrayList<>();
         var iterator = ProgressBar.wrap(instancePaths, Executor.getPBarBuilder().setTaskName("Instance validation"));
-        for(var path: iterator){
+        for (var path : iterator) {
             log.debug("Loading instance: {}", path);
             I instance = loadInstance(path);
             instances.add(instance);
@@ -82,16 +85,20 @@ public class InstanceManager<I extends Instance> {
         Collections.sort(instances);
         validate(instances, expName);
         sortedInstances = instances.stream().map(Instance::getPath).collect(Collectors.toList());
-        if(log.isInfoEnabled()){
+        if (log.isInfoEnabled()) {
             var basePath = Path.of(instanceConfiguration.getPath(expName)).toAbsolutePath().normalize().toString();
-            log.info("Instance validation completed, solve order: {}", sortedInstances.stream().map(path -> path.replace(basePath + File.separator, "")).toList());
+            var orderedList = sortedInstances.stream().map(path -> path.replace(basePath + File.separator, "")).toList().toString();
+            if(orderedList.length() > MAX_LENGTH){
+                orderedList = orderedList.substring(0, MAX_LENGTH - 4) + "...]";
+            }
+            log.info("Instance validation completed, solve order: {}", orderedList);
         }
         return sortedInstances;
     }
 
-    protected List<String> lexicSort(List<Path> instancePaths){
+    protected List<String> lexicSort(List<Path> instancePaths) {
         List<String> sortedInstances = new ArrayList<>();
-        for(var i: instancePaths){
+        for (var i : instancePaths) {
             sortedInstances.add(i.toAbsolutePath().toString());
         }
         Collections.sort(sortedInstances);
@@ -100,13 +107,13 @@ public class InstanceManager<I extends Instance> {
 
 
     protected void validate(List<I> instances, String expName) {
-        if(instances.isEmpty()){
+        if (instances.isEmpty()) {
             throw new IllegalArgumentException("Could not load any instance for experiment: " + expName);
         }
         Set<String> names = new HashSet<>();
-        for(var instance: instances){
+        for (var instance : instances) {
             var name = instance.getId();
-            if(names.contains(name)){
+            if (names.contains(name)) {
                 throw new IllegalArgumentException("Duplicated instance name in instance folder, check that there aren't multiple instances with name: " + name);
             }
             names.add(name);
@@ -119,10 +126,10 @@ public class InstanceManager<I extends Instance> {
      * @param p Path of instance to load
      * @return Loaded instance
      */
-    protected I getInstance(Path p){
+    protected I getInstance(Path p) {
         String absolutePath = p.toAbsolutePath().toString();
         I instance = this.cacheByPath.getOrDefault(absolutePath, EMPTY).get();
-        if(instance == null){
+        if (instance == null) {
             // Load and put in cache
             instance = loadInstance(p);
         }
@@ -130,7 +137,7 @@ public class InstanceManager<I extends Instance> {
         return instance;
     }
 
-    protected I loadInstance(Path p){
+    protected I loadInstance(Path p) {
         long startLoad = System.nanoTime();
         I instance = this.instanceImporter.importInstance(p.toFile());
         long endLoad = System.nanoTime();
@@ -144,21 +151,22 @@ public class InstanceManager<I extends Instance> {
 
     /**
      * Get instance by ID. The ID format is not guaranteed, it should be treated as an opaque constant.
+     *
      * @param instancePath instance path
      * @return Instance
      */
-    public I getInstance(String instancePath){
+    public I getInstance(String instancePath) {
         return getInstance(Path.of(instancePath));
     }
 
     /**
      * Purge instance cache
      */
-    public void purgeCache(){
+    public void purgeCache() {
         this.cacheByPath.clear();
     }
 
-    public InstanceImporter<I> getUserImporterImplementation(){
+    public InstanceImporter<I> getUserImporterImplementation() {
         return this.instanceImporter;
     }
 }

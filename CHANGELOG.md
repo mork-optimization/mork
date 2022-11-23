@@ -5,6 +5,7 @@
 - (New) Default readme to generated projects
 - (Change) Upgrade dependencies
 - (Change) Improve handling of missing ReferenceValues when comparing results
+- (Fix) Max line length in InstanceManager
 
 # v0.15.1
 - (Change) Remove autoconfig enable/disable from config files, use --autoconfig param
