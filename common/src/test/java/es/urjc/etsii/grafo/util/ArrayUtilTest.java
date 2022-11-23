@@ -399,6 +399,12 @@ class ArrayUtilTest {
         Assertions.assertEquals(0, ArrayUtil.minIndex(new double[]{0}));
     }
 
-
-    
+    @Test
+    void mergeTest(){
+        Assertions.assertArrayEquals(new String[]{"1", "2", "3", "4"}, ArrayUtil.merge(new String[]{"1", "2"}, new String[]{"3", "4"}));
+        Assertions.assertArrayEquals(new String[]{"1", "2", "3", "4"}, ArrayUtil.merge(new String[]{"1"}, new String[]{"2", "3", "4"}));
+        Assertions.assertArrayEquals(new String[]{"1", "2", "3", "4"}, ArrayUtil.merge(new String[]{}, new String[]{"1", "2", "3", "4"}));
+        Assertions.assertArrayEquals(new String[]{"", ""}, ArrayUtil.merge(new String[]{""}, new String[]{""}));
+        Assertions.assertArrayEquals(new String[]{}, ArrayUtil.merge(new String[]{}, new String[]{}));
+    }
 }

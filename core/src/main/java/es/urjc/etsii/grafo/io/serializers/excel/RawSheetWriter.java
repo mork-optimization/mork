@@ -7,6 +7,7 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -101,6 +102,30 @@ public abstract class RawSheetWriter {
         }
     }
 
+    protected String[] getCustomPropertyNames(List<? extends SolutionGeneratedEvent<?, ?>> results) {
+        var stringRef = new String[0];
+        if(results.isEmpty()){
+            return stringRef;
+        }
+        var first = results.get(0);
+        var names = first.getUserDefinedProperties().keySet().toArray(stringRef);
+        Arrays.sort(names);
+        return names;
+    }
+
+    protected String[] getCommonHeaders(){
+        return new String[]{
+                RawSheetCol.INSTANCE_NAME.getName(),
+                RawSheetCol.ALG_NAME.getName(),
+                RawSheetCol.ITERATION.getName(),
+                RawSheetCol.SCORE.getName(),
+                RawSheetCol.TOTAL_TIME.getName(),
+                RawSheetCol.TTB.getName(),
+                RawSheetCol.IS_BEST_KNOWN.getName(),
+                RawSheetCol.DEV_TO_BEST.getName(),
+                RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getName()
+        };
+    }
 
     /**
      * Get best result for a given instance

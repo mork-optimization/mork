@@ -165,7 +165,8 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
         pb.step();
         pb2.step();
         exportAllSolutions(r);
-        EventPublisher.getInstance().publishEvent(new SolutionGeneratedEvent<>(r.workUnit().i(), r.solution(), r.workUnit().experimentName(), r.workUnit().algorithm(), r.executionTime(), r.timeToTarget()));
+        var solutionGenerated = new SolutionGeneratedEvent<>(r.workUnit().i(), r.solution(), r.workUnit().experimentName(), r.workUnit().algorithm(), r.executionTime(), r.timeToTarget(), r.userDefinedProperties());
+        EventPublisher.getInstance().publishEvent(solutionGenerated);
         if(log.isDebugEnabled()){
             log.debug(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() + 1, nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
         }

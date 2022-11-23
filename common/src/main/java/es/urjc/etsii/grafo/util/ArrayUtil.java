@@ -5,6 +5,8 @@ import es.urjc.etsii.grafo.util.random.RandomManager;
 import java.lang.reflect.Array;
 import java.util.Objects;
 
+import java.util.stream.Stream;
+
 /**
  * Util methods to manipulate collections and arrays that are not part of the standard java API
  */
@@ -684,5 +686,15 @@ public class ArrayUtil {
         }
         assert index != -1;
         return index;
+    }
+
+    /**
+     * Merge arrays
+     * @param arrs arrays to merge
+     * @return array with all elements in same order
+     */
+    public static String[] merge(String[]... arrs)
+    {
+        return Stream.of(arrs).flatMap(Stream::of).toArray(String[]::new);
     }
 }

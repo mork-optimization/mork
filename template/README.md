@@ -9,7 +9,7 @@ Authors involved in this work and their respective contributions:
 
 ## Datasets
 
-Instances are categorized in different datasets inside the 'resources/instances' folder. All instances are from the [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/index.php)
+Instances are categorized in different datasets inside the 'instances' folder. All instances are from the [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/index.php) or reference to paper where they are from, etc.
 
 ## Compiling
 
@@ -25,16 +25,16 @@ To review a full list of configurable parameters, either using an application.ym
 Example: execute the IteratedGreedyExperiment using a new set of instances located inside the `newinstances` folder.
 
 ```text
-java -jar target/MyProblem.jar --instances.path.default=newinstances --solver.experiment=IteratedGreedyExperiment
+java -jar target/__RNAME__.jar --instances.path.default=newinstances --solver.experiment=IteratedGreedyExperiment
 ```
 
 ```
-java -server -jar BMSSC.jar indexfile
+java -server -jar __RNAME__.jar indexfile
 ```
 
 Example: running with only new proposed instances:
 ```
-java -server -jar BMSSC.jar resources/instances/new/index
+java -server -jar __RNAME__.jar instances/new/index
 ```
 
 ## Instance format
