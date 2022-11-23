@@ -3,7 +3,8 @@
 - (New) More methods in StringUtil + missing tests.
 - (New) Custom solution properties.
 - (New) Default readme to generated projects
-- (Change) Upgrade dependencies.
+- (Change) Upgrade dependencies
+- (Change) Improve handling of missing ReferenceValues when comparing results
 
 # v0.15.1
 - (Change) Remove autoconfig enable/disable from config files, use --autoconfig param

@@ -186,7 +186,11 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     protected Optional<Double> getOptionalReferenceValue(String instanceName){
         double best = Mork.isMaximizing()? Integer.MIN_VALUE: Integer.MAX_VALUE;
         for(var r: referenceResultProviders){
-            double score = r.getValueFor(instanceName).getScoreOrNan();
+            double score = Double.NaN;
+            var ref = r.getValueFor(instanceName);
+            if(ref != null){
+                score = ref.getScoreOrNan();
+            }
             // Ignore if not valid value
             if (Double.isFinite(score)) {
                 if(Mork.isMaximizing()){

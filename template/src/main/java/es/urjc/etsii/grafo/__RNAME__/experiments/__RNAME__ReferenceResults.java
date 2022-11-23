@@ -29,8 +29,9 @@
 //    @Override
 //    public ReferenceResult getValueFor(String instanceName) {
 //        // Return reference result if exists, empty one if not.
-//        // It is perfectly valid to have instances for which the reference values are unknown.
-//        return this.sotaResults.getOrDefault(instanceName, new ReferenceResult());
+//        // In this example, it would be valid to have instances for which the reference values are unknown.
+//        // If it is not valid, you may check if the map contains the instance, and if not, throw a RuntimeException
+//        return this.sotaResults.getOrDefault(instanceName, EMPTY_REFERENCE_RESULT);
 //    }
 //
 //    @Override

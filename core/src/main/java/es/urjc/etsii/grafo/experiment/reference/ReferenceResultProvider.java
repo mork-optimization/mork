@@ -9,6 +9,12 @@ import es.urjc.etsii.grafo.annotations.InheritedComponent;
 public abstract class ReferenceResultProvider {
 
     /**
+     * Empty reference result to be used when the given provider does not have a value for an instance,
+     * and it is valid to have instances without reference values
+     */
+    public static final ReferenceResult EMPTY_REFERENCE_RESULT = new ReferenceResult();
+
+    /**
      * Get reference f.o value for a given instance
      *
      * @param instanceName Instance name, as in Instance::getName

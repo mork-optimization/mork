@@ -126,7 +126,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             excelBook.write(outputStream);
             log.debug("XLSX created successfully");
         } catch (Exception e) {
-            throw new RuntimeException(String.format("Exception while trying to save Excel file: %s, reason: %s", f.getAbsolutePath(), e.getClass().getSimpleName()), e.getCause());
+            throw new RuntimeException(String.format("Exception while trying to save Excel file: %s, reason: %s", f.getAbsolutePath(), e.getClass().getSimpleName()), e);
         }
     }
 
