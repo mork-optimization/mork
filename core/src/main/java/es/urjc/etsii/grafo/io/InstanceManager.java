@@ -137,7 +137,7 @@ public class InstanceManager<I extends Instance> {
         return instance;
     }
 
-    protected I loadInstance(Path p) {
+    protected synchronized I loadInstance(Path p) {
         long startLoad = System.nanoTime();
         I instance = this.instanceImporter.importInstance(p.toFile());
         long endLoad = System.nanoTime();
