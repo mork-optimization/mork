@@ -82,7 +82,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
     @AutoconfigConstructor
     public VNS(
             @ProvidedParam(type = ProvidedParamType.ALGORITHM_NAME) String algorithmName,
-            @IntegerParam(min = 1) int maxK,
+            @IntegerParam(min = 1, max = 100) int maxK,
             Constructive<S, I> constructive,
             Shake<S, I> shake,
             Improver<S, I> improver

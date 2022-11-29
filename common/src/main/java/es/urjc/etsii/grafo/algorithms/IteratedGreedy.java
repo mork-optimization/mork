@@ -90,8 +90,8 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
     @AutoconfigConstructor
     public IteratedGreedy(
             @ProvidedParam(type = ProvidedParamType.ALGORITHM_NAME) String name,
-            @IntegerParam(min = 0) int maxIterations,
-            @IntegerParam(min = 1) int stopIfNotImprovedIn,
+            @IntegerParam(min = 0, max = 1_000_000) int maxIterations,
+            @IntegerParam(min = 1, max = 1_000_000) int stopIfNotImprovedIn,
             Constructive<S, I> constructive,
             Shake<S, I> destructionReconstruction,
             Improver<S, I> improver
