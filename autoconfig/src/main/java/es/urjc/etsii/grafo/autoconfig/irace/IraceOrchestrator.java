@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.service.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
@@ -36,7 +37,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.TimeUnit;
 
 import static es.urjc.etsii.grafo.solution.metrics.Metrics.BEST_OBJECTIVE_FUNCTION;
@@ -64,6 +65,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public static final String F_MIDDLEWARE = "middleware.sh";
     public static final int DEFAULT_IRACE_EXPERIMENTS = 10_000;
     public static final int MINIMUM_IRACE_EXPERIMENTS = 10_000;
+    public static final int MAX_HISTORIC_CONFIG_SIZE = 1_000;
+
 
     private final SolverConfig solverConfig;
     private final InstanceConfiguration instanceConfiguration;
@@ -74,7 +77,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final Optional<SolutionValidator<S, I>> validator;
 
     private final AlgorithmCandidateGenerator algorithmCandidateGenerator;
-    private final CopyOnWriteArrayList<IraceRuntimeConfiguration> configHistoric = new CopyOnWriteArrayList<>();
+    private final ConcurrentLinkedQueue<IraceRuntimeConfiguration> configHistoric = new ConcurrentLinkedQueue<>();
     private final boolean isAutoconfigEnabled;
     private int nIraceParameters = -1;
 
@@ -86,7 +89,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      * @param iraceIntegration            a {@link IraceIntegration} object.
      * @param instanceManager             a {@link InstanceManager} object.
      * @param solutionBuilders            a {@link List} object.
-     * @param algorithmBuilders          a {@link List} object.
+     * @param algorithmBuilders           a {@link List} object.
      * @param validator
      * @param algorithmCandidateGenerator
      */
@@ -162,7 +165,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private void extractIraceFiles(boolean isJar) {
         Path paramsPath = Path.of(F_PARAMETERS);
         try {
-            if(isAutoconfigEnabled){
+            if (isAutoconfigEnabled) {
                 var nodes = this.algorithmCandidateGenerator.buildTree(solverConfig.getTreeDepth());
                 var iraceParams = this.algorithmCandidateGenerator.toIraceParams(nodes);
                 this.nIraceParameters = iraceParams.size();
@@ -170,7 +173,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             }
 
             var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration);
-            if(!isAutoconfigEnabled){
+            if (!isAutoconfigEnabled) {
                 copyWithSubstitutions(getInputStreamFor(F_PARAMETERS, isJar), paramsPath, substitutions);
             }
             copyWithSubstitutions(getInputStreamFor(F_SCENARIO, isJar), Path.of(F_SCENARIO), substitutions);
@@ -198,7 +201,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     protected static String calculateMaxExperiments(boolean autoconfigEnabled, SolverConfig solverConfig, int nIraceParameters) {
         int maxExperiments;
         if (autoconfigEnabled) {
-            if(nIraceParameters < 1){
+            if (nIraceParameters < 1) {
                 throw new IllegalArgumentException("nIraceParameters must be positive");
             }
             maxExperiments = Math.max(MINIMUM_IRACE_EXPERIMENTS, solverConfig.getIterationsPerParameter() * nIraceParameters);
@@ -220,7 +223,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         }
     }
 
-    public List<IraceRuntimeConfiguration> getConfigHistoric() {
+    public Iterable<IraceRuntimeConfiguration> getConfigHistoric() {
         return configHistoric;
     }
 
@@ -232,6 +235,9 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      */
     public String iraceCallback(ExecuteRequest request) {
         var config = buildConfig(request, integrationKey);
+        if(configHistoric.size() == MAX_HISTORIC_CONFIG_SIZE){
+            configHistoric.remove();
+        }
         this.configHistoric.add(config);
         var instancePath = config.getInstanceName();
         var instance = instanceManager.getInstance(instancePath);
@@ -243,6 +249,15 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             return failedResult();
         }
         algorithm.setBuilder(this.solutionBuilder);
+        if (this.isAutoconfigEnabled) {
+            // Because autoconfig iterations executes between two time intervals, if the algorithm finishes
+            // but there is extra time available, keep executing the same algorithm until the timelimit is reached.
+            // If not, we could be penalizing faster simpler algorithms against more complex ones.
+            int iterations = Integer.MAX_VALUE / 2;
+            algorithm = new MultiStartAlgorithm<>(algorithm.getShortName(), algorithm, iterations, iterations, iterations);
+            algorithm.setBuilder(this.solutionBuilder);
+        }
+
         log.debug("Config {}. Built algorithm: {}", config, algorithm);
 
         // Configure randoms for reproducible experimentation
@@ -325,7 +340,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     }
 
     private void checkExecutionTime(Algorithm<S, I> algorithm, I instance) {
-        if(TimeControl.remaining() < -TimeUtil.secsToNanos(Executor.EXTRA_SECS_BEFORE_WARNING)){
+        if (TimeControl.remaining() < -TimeUtil.secsToNanos(Executor.EXTRA_SECS_BEFORE_WARNING)) {
             log.warn("Algorithm takes too long to stop after time is up in instance {}. Algorithm::toString {}", instance.getId(), algorithm);
             slowExecutions.add(new SlowExecution(TimeControl.remaining(), instance.getId(), algorithm));
         }
@@ -337,5 +352,6 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         return Collections.unmodifiableList(this.slowExecutions);
     }
 
-    public record SlowExecution(long relativeTime, String instanceName, Algorithm<?,?> algorithm){}
+    public record SlowExecution(long relativeTime, String instanceName, Algorithm<?, ?> algorithm) {
+    }
 }
