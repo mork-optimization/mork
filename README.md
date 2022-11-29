@@ -1,6 +1,5 @@
 # MORK: Metaheuristic Optimization framewoRK 
 
-[![DOI](https://zenodo.org/badge/223169907.svg)](https://zenodo.org/badge/latestdoi/223169907)
 [![Maven Central](https://maven-badges.herokuapp.com/maven-central/es.urjc.etsii.grafo/mork/badge.svg?style=square)](https://search.maven.org/artifact/es.urjc.etsii.grafo/mork) 
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=bugs)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=coverage)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=duplicated_lines_density)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork)
@@ -51,32 +50,11 @@ https://doi.org/10.1162/evco_a_00317
     eprint = {https://direct.mit.edu/evco/article-pdf/doi/10.1162/evco\_a\_00317/2057545/evco\_a\_00317.pdf},
 }
 ```
-### Ris
-```text
-Provider: Silverchair
-Database: MITPress
-Content: text/plain; charset="UTF-8"
 
-TY  - JOUR
-AU  - Martín-Santamaría, Raúl
-AU  - Cavero, Sergio
-AU  - Herrán, Alberto
-AU  - Duarte, Abraham
-AU  - Colmenar, J. Manuel
-T1  - A practical methodology for reproducible experimentation: an application to the Double-row Facility Layout Problem
-PY  - 2022
-Y1  - 2022/11/10
-DO  - 10.1162/evco_a_00317
-JO  - Evolutionary Computation
-JA  - Evol Comput
-SP  - 1
-EP  - 35
-SN  - 1063-6560
-AB  - Reproducibility of experiments is a complex task in stochastic methods such as evolutionary algorithms or metaheuristics in general. Many works from the literature give general guidelines to favor reproducibility. However, none of them provide both a practical set of steps and also software tools to help on this process. In this paper, we propose a practical methodology to favor reproducibility in optimization problems tackled with stochastic methods. This methodology is divided into three main steps, where the researcher is assisted by software tools which implement state-of-theart techniques related to this process. The methodology has been applied to study the Double Row Facility Layout Problem, where we propose a new algorithm able to obtain better results than the state-of-the-art methods. To this aim, we have also replicated the previous methods in order to complete the study with a new set of larger instances. All the produced artifacts related to the methodology and the study of the target problem are available in Zenodo.
-Y2  - 11/25/2022
-UR  - https://doi.org/10.1162/evco_a_00317
-ER  - 
-```
+### Citing artifacts
+Artifacts, docs, and source code are automatically archived in Zenodo with each release. See:
+[![DOI](https://zenodo.org/badge/223169907.svg)](https://zenodo.org/badge/latestdoi/223169907)
+ for more information.
 
 ## Contributing
 
