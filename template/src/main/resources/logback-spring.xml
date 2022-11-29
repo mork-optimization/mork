@@ -23,15 +23,15 @@
                 %clr([%d{HH:mm:ss}]){faint} %clr(%-5level) %clr(%-26.26logger{25}){cyan} %clr(:){faint} %m%n
             </pattern>
         </encoder>
-        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
-            <level>INFO</level>
-        </filter>
     </appender>
 
     <root level="info">
         <appender-ref ref="STDOUT" />
         <appender-ref ref="FILE"/>
     </root>
+
+    <logger name="es.urjc.etsii.grafo" level="INFO"/>
+    <logger name="es.urjc.etsii.grafo.executors" level="DEBUG"/>
 
     <logger name="org.apache.poi.util.XMLHelper" level="ERROR"/>
     <logger name="org.apache.catalina" level="WARN"/>
