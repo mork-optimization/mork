@@ -155,7 +155,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
             long executionTime = endTime - starTime;
             return new WorkUnitResult<>(workUnit, solution, executionTime, timeToTarget);
         } catch (Exception e) {
-            workUnit.exceptionHandler().handleException(workUnit.experimentName(), e, Optional.ofNullable(solution), instance, workUnit.algorithm(), io);
+            workUnit.exceptionHandler().handleException(workUnit.experimentName(), workUnit.i(), e, Optional.ofNullable(solution), instance, workUnit.algorithm(), io);
             EventPublisher.getInstance().publishEvent(new ErrorEvent(e));
             return null;
         }

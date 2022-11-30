@@ -28,8 +28,8 @@ public class DefaultExceptionHandler<S extends Solution<S,I>, I extends Instance
      * Handle exception that is not controlled in the user code and reaches our executor.
      * Behaviour can be customized or changed by extending the ExceptionHandler class.
      */
-    public void handleException(String experimentName, Exception e, Optional<S> sOptional, I i, Algorithm<S,I> algorithm, IOManager<S, I> io){
-        logger.severe(String.format("Error while solving instance %s with algorithm %s, skipping. Exception message: %s", i.getId(), algorithm.toString(), e.getMessage()));
+    public void handleException(String experimentName, int iteration, Exception e, Optional<S> sOptional, I i, Algorithm<S,I> algorithm, IOManager<S, I> io){
+        logger.severe(String.format("Error while solving instance %s with algorithm %s, iteration %s, skipping. Exception message: %s", i.getId(), algorithm.toString(), iteration, e.getMessage()));
         explain(e);
         String stackTrace = getStackTrace(e);
         logger.severe("Stacktrace: " + stackTrace);

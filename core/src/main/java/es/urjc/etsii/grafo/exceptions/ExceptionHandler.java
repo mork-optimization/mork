@@ -21,11 +21,12 @@ public abstract class ExceptionHandler<S extends Solution<S,I>, I extends Instan
      * What should be done when there is an unhandled exception in the user algorithm implementation?
      *
      * @param experimentName Experiment name
+     * @param iteration Iteration if known, -1 if not
      * @param e Thrown exception
      * @param s Current solution, if available
      * @param i Current instance
      * @param algorithm Current algorithm
      * @param io IOManager, to optionally persist for example exception data.
      */
-    public abstract void handleException(String experimentName, Exception e, Optional<S> s, I i, Algorithm<S,I> algorithm, IOManager<S, I> io);
+    public abstract void handleException(String experimentName, int iteration, Exception e, Optional<S> s, I i, Algorithm<S,I> algorithm, IOManager<S, I> io);
 }
