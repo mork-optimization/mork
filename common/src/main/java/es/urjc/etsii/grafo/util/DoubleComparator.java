@@ -25,7 +25,7 @@ public class DoubleComparator {
      * Change default comparator precision. Defaults to DEFAULT_EPSILON
      *
      * @param epsilon differences less than epsilon will not be counted as true differences.
-     *                See https://en.wikipedia.org/wiki/Double-precision_floating-point_format for an intro on IEE754
+     *                See <a href="https://en.wikipedia.org/wiki/Double-precision_floating-point_format">the Wikipedia page</a> for an intro on IEE754
      */
     public static void setPrecision(double epsilon){
         DoubleComparator.epsilon = epsilon;
