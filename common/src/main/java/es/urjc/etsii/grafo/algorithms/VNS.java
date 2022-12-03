@@ -13,6 +13,7 @@ import es.urjc.etsii.grafo.solution.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
+import es.urjc.etsii.grafo.util.ValidationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -146,7 +147,9 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
 
             S copy = solution.cloneSolution();
             copy = shake.shake(copy, userK);
+            ValidationUtil.assertValidScore(solution);
             copy = improver.improve(copy);
+            ValidationUtil.assertValidScore(solution);
             if (copy.isBetterThan(solution)) {
                 solution = copy;
                 internalK = 0;
