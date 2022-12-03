@@ -112,6 +112,6 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
      */
     @Override
     public void shutdown() {
-        logger.info("Shutdown executor");
+        // Do nothing, as experiments run in the main thread, just return
     }
 }

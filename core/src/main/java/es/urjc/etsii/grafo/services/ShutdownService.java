@@ -4,12 +4,13 @@ import es.urjc.etsii.grafo.events.EventAsyncConfigurer;
 import es.urjc.etsii.grafo.events.EventWebserverConfig;
 import es.urjc.etsii.grafo.events.MorkEventListener;
 import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Logger;
 
 /**
  * <p>ShutdownService class.</p>
@@ -17,7 +18,7 @@ import java.util.logging.Logger;
  */
 @Service
 public class ShutdownService {
-    private static final Logger log = Logger.getLogger(ShutdownService.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(ShutdownService.class);
 
     private final ConfigurableApplicationContext appContext;
     private final EventAsyncConfigurer eventAsyncConfigurer;
@@ -44,10 +45,10 @@ public class ShutdownService {
     @MorkEventListener
     public void onExperimentationEnd(ExecutionEndedEvent event){
         if(stopOnExperimentEnd){
-            log.info("StopOnExperimentEnd enabled, delayed stop executed.");
+            log.info("event.webserver.StopOnExperimentEnd enabled, requesting context close and exiting.");
             delayedStop(5, TimeUnit.SECONDS);
         } else {
-            log.info("StopOnExperimentEnd disabled, app must be stopped by user");
+            log.info("event.webserver.StopOnExperimentEnd disabled, app must be manually stopped by user");
         }
     }
 
@@ -61,13 +62,13 @@ public class ShutdownService {
         new Thread(() ->{
             try {
                 Thread.sleep(unit.toMillis(time));
-                log.info("Shutting down Async Executor");
+                log.debug("Shutting down Async Executor");
                 eventAsyncConfigurer.shutdownAsyncExecutor();
-                log.info("Closing context and exiting");
+                log.debug("Closing context and exiting");
                 appContext.close();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
-                log.warning(e.toString());
+                log.warn(e.toString());
             }
         }).start();
     }

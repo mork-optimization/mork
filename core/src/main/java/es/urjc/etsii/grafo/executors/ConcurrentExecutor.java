@@ -141,7 +141,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
      */
     @Override
     public void shutdown() {
-        log.info("Shutdown executor");
+        log.debug("Requesting threadpool shutdown");
         this.executor.shutdown();
     }
 }
