@@ -323,11 +323,18 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             checkExecutionTime(algorithm, instance);
             TimeControl.remove();
             var metrics = MetricsManager.getInstance();
-            score = metrics.areaUnderCurve(BEST_OBJECTIVE_FUNCTION,
-                    TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
-                    TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS)
-            );
-            score /= TimeUtil.NANOS_IN_MILLISECOND;
+            try {
+                score = metrics.areaUnderCurve(BEST_OBJECTIVE_FUNCTION,
+                        TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
+                        TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS)
+                );
+                score /= TimeUtil.NANOS_IN_MILLISECOND;
+            } catch (IllegalArgumentException e){
+                // Failure to calculate AUC --> Invalid algorithm, one cause may be algorithm too complex for instance and cannot generate results in time.
+                log.warn("Error while calculating AUC: ", e);
+                return failedResult();
+            }
+
         } else {
             score = solution.getScore();
         }
