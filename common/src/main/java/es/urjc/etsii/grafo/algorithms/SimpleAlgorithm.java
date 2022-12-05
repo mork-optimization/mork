@@ -8,6 +8,7 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.util.StringUtil;
+import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.ArrayList;
@@ -93,6 +94,9 @@ public class SimpleAlgorithm<S extends Solution<S,I>, I extends Instance> extend
      */
     protected S localSearch(S solution) {
         for (int i = 0; i < improvers.size(); i++) {
+            if(TimeControl.isTimeUp()){
+                return solution;
+            }
             Improver<S, I> ls = improvers.get(i);
             solution = ls.improve(solution);
             ValidationUtil.assertValidScore(solution);
