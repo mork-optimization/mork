@@ -65,7 +65,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
     public static <S extends Solution<S,I>, I extends Instance> void endTimeControl(Optional<TimeLimitCalculator<S, I>> timeLimitCalculator, WorkUnit<S,I> workUnit) {
         if(timeLimitCalculator.isPresent()){
             if(TimeControl.remaining() < -TimeUtil.secsToNanos(EXTRA_SECS_BEFORE_WARNING)){
-                log.warn("Algorithm takes too long to stop after time is up. Offending unit: {}", workUnit);
+                log.warn("Algorithm takes too long to stop after time is up. Instance {}, algorithm {}", workUnit.instancePath(), workUnit.algorithm());
             }
             TimeControl.remove();
         }

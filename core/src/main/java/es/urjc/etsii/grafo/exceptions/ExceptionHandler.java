@@ -29,4 +29,9 @@ public abstract class ExceptionHandler<S extends Solution<S,I>, I extends Instan
      * @param io IOManager, to optionally persist for example exception data.
      */
     public abstract void handleException(String experimentName, int iteration, Exception e, Optional<S> s, I i, Algorithm<S,I> algorithm, IOManager<S, I> io);
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "{}";
+    }
 }
