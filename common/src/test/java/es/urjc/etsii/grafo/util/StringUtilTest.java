@@ -63,6 +63,15 @@ class StringUtilTest {
     }
 
     @Test
+    void nameInvalidChars(){
+        for (int i = 0; i < 1_000; i++) {
+            String algName = StringUtil.randomAlgorithmName();
+            assertFalse(algName.contains("/"));
+            assertFalse(algName.contains("+"));
+        }
+    }
+
+    @Test
     void testSecret(){
         String secret = StringUtil.generateSecret();
         assertNotNull(secret);

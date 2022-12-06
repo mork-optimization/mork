@@ -98,7 +98,9 @@ public class StringUtil {
     }
 
     public static String randomAlgorithmName(){
-        return generateSecret(6);
+        return generateSecret(6)
+                .replace("+", "-")
+                .replace("/", "_");
     }
 
     /**
