@@ -126,7 +126,7 @@ public class InstanceManager<I extends Instance> {
      * @param p Path of instance to load
      * @return Loaded instance
      */
-    protected I getInstance(Path p) {
+    protected synchronized I getInstance(Path p) {
         String absolutePath = p.toAbsolutePath().toString();
         I instance = this.cacheByPath.getOrDefault(absolutePath, EMPTY).get();
         if (instance == null) {
