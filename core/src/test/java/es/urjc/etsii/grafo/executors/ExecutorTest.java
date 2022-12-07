@@ -11,6 +11,7 @@ import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.SolutionValidator;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.services.ValidationResult;
+import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,7 @@ class ExecutorTest {
 
     @BeforeEach
     void initMocks(){
+        Mork.setSolvingMode(false);
         var instance1 = new TestInstance("inst1");
         var referenceResult1 = new ReferenceResult();
         referenceResult1.setScore(5.0);
