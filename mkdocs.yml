@@ -5,3 +5,7 @@ plugins:
     - search
     - mermaid2
 
+markdown_extensions:
+    - admonition
+    - pymdownx.details
+    - pymdownx.superfences

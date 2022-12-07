@@ -22,6 +22,10 @@
 //            var referenceResult = new ReferenceResult();
 //            referenceResult.setScore(parts[1]);         // Change columns if necessary
 //            referenceResult.setTimeInSeconds(parts[2]); // Use .setTimeToBestInSeconds if it is a TTB instead of total time
+//            // If the value comes from an exact algorithm, you may mark it as optimal
+//            // The framework will validate that no solution improves this result, as it would be a bug
+//            // optimalValue defaults to false if not specified
+//            // referenceResult.setOptimalValue(true);
 //            sotaResults.put(parts[0], referenceResult); // Instance name is usually the first column
 //        });
 //    }
