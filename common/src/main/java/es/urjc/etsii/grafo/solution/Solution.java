@@ -29,7 +29,7 @@ public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instanc
 
     protected ArrayDeque<Move<? extends Solution<SELF, I>, I>> lastMoves = new ArrayDeque<>(MAX_DEBUG_MOVES);
 
-    private long lastModifiedTime = Integer.MIN_VALUE;
+    protected long lastModifiedTime = Integer.MIN_VALUE;
 
     /**
      * Create a solution for a given instance

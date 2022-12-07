@@ -64,6 +64,13 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
         return "TestSolution";
     }
 
+    public void setTTB(long ttb){
+        this.lastModifiedTime = ttb;
+    }
+
+    public void resetTTB(){
+        this.lastModifiedTime = Integer.MIN_VALUE;
+    }
 
 
     @Override

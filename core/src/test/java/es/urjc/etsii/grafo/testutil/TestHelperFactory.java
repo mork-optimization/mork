@@ -7,7 +7,6 @@ import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.solution.Solution;
 import org.mockito.Mockito;
 
 import java.util.*;

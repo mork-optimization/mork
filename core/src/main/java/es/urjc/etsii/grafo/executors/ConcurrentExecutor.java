@@ -100,7 +100,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
                 var instancePath = e.getKey();
                 var instanceName = instanceName(instancePath);
                 long instanceStartTime = System.nanoTime();
-                var referenceValue = getOptionalReferenceValue(instanceName);
+                var referenceValue = getOptionalReferenceValue(instanceName, false);
                 events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
                 log.debug("Running algorithms for instance: {}", instanceName);
 

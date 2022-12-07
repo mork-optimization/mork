@@ -32,6 +32,7 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.function.BiPredicate;
 
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 
@@ -42,17 +43,19 @@ import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
  * @param <I> Instance class
  */
 @InheritedComponent
-public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
+public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(Executor.class);
     public static final int EXTRA_SECS_BEFORE_WARNING = 10;
 
-    protected final Optional<SolutionValidator<S,I>> validator;
-    protected final Optional<TimeLimitCalculator<S,I>> timeLimitCalculator;
+    protected final Optional<SolutionValidator<S, I>> validator;
+    protected final Optional<TimeLimitCalculator<S, I>> timeLimitCalculator;
     protected final IOManager<S, I> io;
     protected final InstanceManager<I> instanceManager;
     protected final List<ReferenceResultProvider> referenceResultProviders;
     protected final SolverConfig solverConfig;
+    protected final BiPredicate<Double, Double> isBetter = DoubleComparator.isBetterFunction(Mork.isMaximizing());
+
 
     /**
      * If time control is enabled, remove it and check ellapsed time to see if too many time has been spent
@@ -60,11 +63,11 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
      * @param <S>                 Solution class
      * @param <I>                 Instance class
      * @param timeLimitCalculator time limit calculator if implemented
-     * @param workUnit current work unit
+     * @param workUnit            current work unit
      */
-    public static <S extends Solution<S,I>, I extends Instance> void endTimeControl(Optional<TimeLimitCalculator<S, I>> timeLimitCalculator, WorkUnit<S,I> workUnit) {
-        if(timeLimitCalculator.isPresent()){
-            if(TimeControl.remaining() < -TimeUtil.secsToNanos(EXTRA_SECS_BEFORE_WARNING)){
+    public static <S extends Solution<S, I>, I extends Instance> void endTimeControl(Optional<TimeLimitCalculator<S, I>> timeLimitCalculator, WorkUnit<S, I> workUnit) {
+        if (timeLimitCalculator.isPresent()) {
+            if (TimeControl.remaining() < -TimeUtil.secsToNanos(EXTRA_SECS_BEFORE_WARNING)) {
                 log.warn("Algorithm takes too long to stop after time is up. Instance {}, algorithm {}", workUnit.instancePath(), workUnit.algorithm());
             }
             TimeControl.remove();
@@ -90,7 +93,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
         this.timeLimitCalculator = timeLimitCalculator;
         this.referenceResultProviders = referenceResultProviders;
         this.solverConfig = solverConfig;
-        if(validator.isEmpty()){
+        if (validator.isEmpty()) {
             log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
         } else {
             log.info("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
@@ -101,7 +104,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
         this.instanceManager = instanceManager;
     }
 
-    public abstract void executeExperiment(Experiment<S,I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, long startTimestamp);
+    public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, long startTimestamp);
 
     /**
      * Finalize and destroy all resources, we have finished and are shutting down now.
@@ -113,8 +116,18 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
      *
      * @param solution Solution to check.
      */
-    public void validate(S solution){
+    public void validate(S solution) {
         ValidationUtil.positiveTTB(solution);
+        var instanceName = solution.getInstance().getId();
+        var optimalValue = this.getOptionalReferenceValue(instanceName, true);
+        if (optimalValue.isPresent()) {
+            // Check that solution score is not better than optimal value
+            double solutionScore = solution.getScore();
+            if(isBetter.test(solutionScore, optimalValue.get())){
+                throw new AssertionError("Solution score (%s) improves optimal value (%s) in ReferenceResultProvider".formatted(solutionScore, optimalValue.get()));
+            }
+        }
+        // Run user validations if used implemented them
         this.validator.ifPresent(v -> v.validate(solution));
     }
 
@@ -123,21 +136,21 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
      *
      * @param workUnit Minimum unit of work, cannot be divided further.
      */
-    protected WorkUnitResult<S,I> doWork(WorkUnit<S,I> workUnit) {
+    protected WorkUnitResult<S, I> doWork(WorkUnit<S, I> workUnit) {
         S solution = null;
         I instance = this.instanceManager.getInstance(workUnit.instancePath());
-        Algorithm<S,I> algorithm =workUnit.algorithm();
+        Algorithm<S, I> algorithm = workUnit.algorithm();
 
         try {
             // Preparate current work unit
             RandomManager.reset(workUnit.i());
-            if(this.timeLimitCalculator.isPresent()){
+            if (this.timeLimitCalculator.isPresent()) {
                 long maxDuration = this.timeLimitCalculator.get().timeLimitInMillis(instance, algorithm);
                 TimeControl.setMaxExecutionTime(maxDuration, TimeUnit.MILLISECONDS);
                 TimeControl.start();
             }
 
-            if(solverConfig.isMetrics()){
+            if (solverConfig.isMetrics()) {
                 MetricsManager.enableMetrics();
                 MetricsManager.resetMetrics();
             }
@@ -161,47 +174,47 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
         }
     }
 
-    protected void processWorkUnitResult(WorkUnitResult<S,I> r, ProgressBar pb, ProgressBar pb2){
+    protected void processWorkUnitResult(WorkUnitResult<S, I> r, ProgressBar pb, ProgressBar pb2) {
         pb.step();
         pb2.step();
         exportAllSolutions(r);
         var solutionGenerated = new SolutionGeneratedEvent<>(r.workUnit().i(), r.solution(), r.workUnit().experimentName(), r.workUnit().algorithm(), r.executionTime(), r.timeToTarget(), r.userDefinedProperties());
         EventPublisher.getInstance().publishEvent(solutionGenerated);
-        if(log.isDebugEnabled()){
+        if (log.isDebugEnabled()) {
             log.debug(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() + 1, nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
         }
     }
 
-    protected void exportAllSolutions(WorkUnitResult<S,I> r){
+    protected void exportAllSolutions(WorkUnitResult<S, I> r) {
         io.exportSolution(r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution(), String.valueOf(r.workUnit().i()), SolutionExportFrequency.ALL);
     }
 
-    protected void exportAlgorithmInstanceSolution(WorkUnitResult<S,I> r){
+    protected void exportAlgorithmInstanceSolution(WorkUnitResult<S, I> r) {
         io.exportSolution(r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution(), "bestiter", SolutionExportFrequency.BEST_PER_ALG_INSTANCE);
     }
 
-    protected void exportInstanceSolution(WorkUnitResult<S,I> r){
+    protected void exportInstanceSolution(WorkUnitResult<S, I> r) {
         io.exportSolution(r.workUnit().experimentName(), new EmptyAlgorithm<>("bestalg"), r.solution(), "bestiter", SolutionExportFrequency.BEST_PER_INSTANCE);
     }
 
-    protected Optional<Double> getOptionalReferenceValue(String instanceName){
-        double best = Mork.isMaximizing()? Integer.MIN_VALUE: Integer.MAX_VALUE;
-        for(var r: referenceResultProviders){
+    protected Optional<Double> getOptionalReferenceValue(String instanceName, boolean onlyOptimal) {
+        double best = Mork.isMaximizing() ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+        for (var r : referenceResultProviders) {
             double score = Double.NaN;
             var ref = r.getValueFor(instanceName);
-            if(ref != null){
+            if (ref != null) {
                 score = ref.getScoreOrNan();
             }
             // Ignore if not valid value
-            if (Double.isFinite(score)) {
-                if(Mork.isMaximizing()){
+            if (Double.isFinite(score) && (!onlyOptimal || ref.isOptimalValue())) {
+                if (Mork.isMaximizing()) {
                     best = Math.max(best, score);
                 } else {
                     best = Math.min(best, score);
                 }
             }
         }
-        if(best == Integer.MAX_VALUE || best == Integer.MIN_VALUE){
+        if (best == Integer.MAX_VALUE || best == Integer.MIN_VALUE) {
             return Optional.empty();
         } else {
             return Optional.of(best);
@@ -210,18 +223,19 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
 
     /**
      * Create workunits with solve order
-     * @param experiment experiment definition
-     * @param instancePaths instance name list
+     *
+     * @param experiment       experiment definition
+     * @param instancePaths    instance name list
      * @param exceptionHandler what to do if something fails inside the workunit
-     * @param repetitions how many times should we repeat the (instance, algorithm) pair
+     * @param repetitions      how many times should we repeat the (instance, algorithm) pair
      * @return Map of workunits per instance
      */
-    protected Map<String, Map<Algorithm<S,I>, List<WorkUnit<S,I>>>> getOrderedWorkUnits(Experiment<S,I> experiment, List<String> instancePaths, ExceptionHandler<S, I> exceptionHandler, int repetitions){
-        var workUnits = new LinkedHashMap<String, Map<Algorithm<S,I>, List<WorkUnit<S,I>>>>();
-        for(String instancePath: instancePaths){
-            var algWorkUnits = new LinkedHashMap<Algorithm<S,I>, List<WorkUnit<S,I>>>();
-            for(var alg: experiment.algorithms()){
-                var list = new ArrayList<WorkUnit<S,I>>();
+    protected Map<String, Map<Algorithm<S, I>, List<WorkUnit<S, I>>>> getOrderedWorkUnits(Experiment<S, I> experiment, List<String> instancePaths, ExceptionHandler<S, I> exceptionHandler, int repetitions) {
+        var workUnits = new LinkedHashMap<String, Map<Algorithm<S, I>, List<WorkUnit<S, I>>>>();
+        for (String instancePath : instancePaths) {
+            var algWorkUnits = new LinkedHashMap<Algorithm<S, I>, List<WorkUnit<S, I>>>();
+            for (var alg : experiment.algorithms()) {
+                var list = new ArrayList<WorkUnit<S, I>>();
                 for (int i = 0; i < repetitions; i++) {
                     var workUnit = new WorkUnit<>(experiment.name(), instancePath, alg, i, exceptionHandler);
                     list.add(workUnit);
@@ -233,35 +247,35 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
         return workUnits;
     }
 
-    protected boolean improves(WorkUnitResult<S,I> candidate, WorkUnitResult<S,I> best){
-        if(candidate == null){
+    protected boolean improves(WorkUnitResult<S, I> candidate, WorkUnitResult<S, I> best) {
+        if (candidate == null) {
             throw new IllegalArgumentException("Null candidate");
         }
-        if(best == null){
+        if (best == null) {
             return true;
         }
-        if(Mork.isMaximizing()){
+        if (Mork.isMaximizing()) {
             return DoubleComparator.isGreater(candidate.solution().getScore(), best.solution().getScore());
         } else {
             return DoubleComparator.isLess(candidate.solution().getScore(), best.solution().getScore());
         }
     }
 
-    public String instanceName(String instancePath){
+    public String instanceName(String instancePath) {
         return this.instanceManager.getInstance(instancePath).getId();
     }
 
-    public static ProgressBarBuilder getPBarBuilder(){
+    public static ProgressBarBuilder getPBarBuilder() {
         return new ProgressBarBuilder()
                 .setUpdateIntervalMillis(1000)
                 .continuousUpdate()
                 .setStyle(ProgressBarStyle.COLORFUL_UNICODE_BLOCK);
     }
 
-    public ProgressBar getGlobalSolvingProgressBar(Map<String, Map<Algorithm<S,I>, List<WorkUnit<S,I>>>> workUnits){
+    public ProgressBar getGlobalSolvingProgressBar(Map<String, Map<Algorithm<S, I>, List<WorkUnit<S, I>>>> workUnits) {
         int totalUnits = 0;
-        for(var v1: workUnits.values()){
-            for(var v2: v1.values()){
+        for (var v1 : workUnits.values()) {
+            for (var v2 : v1.values()) {
                 totalUnits += v2.size();
             }
         }
@@ -271,7 +285,7 @@ public abstract class Executor<S extends Solution<S,I>, I extends Instance> {
                 .build();
     }
 
-    public ProgressBar getInstanceSolvingProgressBar(int nInstanceWorkUnits){
+    public ProgressBar getInstanceSolvingProgressBar(int nInstanceWorkUnits) {
         return getPBarBuilder()
                 .setTaskName("Inst.")
                 .setInitialMax(nInstanceWorkUnits)

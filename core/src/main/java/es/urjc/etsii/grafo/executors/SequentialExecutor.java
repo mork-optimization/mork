@@ -74,7 +74,7 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                 pb2.setExtraMessage(instanceName);
                 pb2.reset();
                 long instanceStartTime = System.nanoTime();
-                var referenceValue = getOptionalReferenceValue(instanceName);
+                var referenceValue = getOptionalReferenceValue(instanceName, false);
                 events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
                 logger.debug("Running algorithms for instance: {}", instanceName);
 

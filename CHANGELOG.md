@@ -3,6 +3,7 @@
 - (New) More methods in StringUtil + missing tests.
 - (New) Custom solution properties.
 - (New) Default readme to generated projects
+- (New) Validate that no solution improves optimal value if known in any ReferenceResultProvider
 - (Change) Upgrade dependencies
 - (Change) Improve handling of missing ReferenceValues when comparing results
 - (Fix) Max line length in InstanceManager
