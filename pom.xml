@@ -48,6 +48,7 @@
         <springboot.version>2.7.5</springboot.version>
         <msurefire.version>2.22.2</msurefire.version>
         <mcompiler.version>3.10.1</mcompiler.version>
+        <mjar.version>3.2.2</mjar.version>
         <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>
         <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
         <sonar.organization>rmartinsanta</sonar.organization>
@@ -107,6 +108,18 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>${mjar.version}</version>
+                <configuration>
+                    <archive>
+                        <manifest>
+                            <addDefaultImplementationEntries>true</addDefaultImplementationEntries>
+                        </manifest>
+                    </archive>
+                </configuration>
             </plugin>
         </plugins>
     </build>
