@@ -88,8 +88,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
 
         var events = EventPublisher.getInstance();
 
-        try (var pb = getGlobalSolvingProgressBar(workUnits);
-             var pb2 = getInstanceSolvingProgressBar(experiment.algorithms().size() * solverConfig.getRepetitions())) {
+        try (var pb = getGlobalSolvingProgressBar(experimentName, workUnits)) {
             // Launch execution of all work units in parallel
             var futures = submitAll(workUnits);
 
@@ -104,8 +103,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
                 events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
                 log.debug("Running algorithms for instance: {}", instanceName);
 
-                pb2.setExtraMessage(instanceName);
-                pb2.reset();
+                pb.setExtraMessage(instanceName);
                 for (var algorithmWork : e.getValue().entrySet()) {
                     WorkUnitResult<S, I> algorithmBest = null;
                     var algorithm = algorithmWork.getKey();
@@ -113,7 +111,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
                     log.debug("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
                     for (var workUnit : algorithmWork.getValue()) {
                         var workUnitResult = ConcurrencyUtil.await(workUnit);
-                        this.processWorkUnitResult(workUnitResult, pb, pb2);
+                        this.processWorkUnitResult(workUnitResult, pb);
                         if (improves(workUnitResult, algorithmBest)) {
                             algorithmBest = workUnitResult;
                         }

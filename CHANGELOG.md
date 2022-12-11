@@ -2,11 +2,13 @@
 - (New) Generic ScatterSearch algorithm implementation.
 - (New) More methods in StringUtil + missing tests.
 - (New) Custom solution properties.
-- (New) Default readme to generated projects
+- (New) Default readme in generated projects
 - (New) Validate that no solution improves optimal value if known in any ReferenceResultProvider
+- (Change) Improve progress bar and logging
 - (Change) Upgrade dependencies
 - (Change) Improve handling of missing ReferenceValues when comparing results
 - (Fix) Max line length in InstanceManager
+- (Fix) Multiple improvements to autoconfig module
 
 # v0.15.1
 - (Change) Remove autoconfig enable/disable from config files, use --autoconfig param

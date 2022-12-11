@@ -75,7 +75,7 @@ public class InstanceManager<I extends Instance> {
         List<String> sortedInstances;
         log.info("Loading all instances to check correctness...");
         List<I> instances = new ArrayList<>();
-        var iterator = ProgressBar.wrap(instancePaths, Executor.getPBarBuilder().setTaskName("Instance validation"));
+        var iterator = ProgressBar.wrap(instancePaths, Executor.getPBarBuilder("Instance validation"));
         for (var path : iterator) {
             log.debug("Loading instance: {}", path);
             I instance = loadInstance(path);

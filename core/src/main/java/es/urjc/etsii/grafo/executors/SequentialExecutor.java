@@ -64,15 +64,13 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
         var experimentName = experiment.name();
         var workUnits = getOrderedWorkUnits(experiment, instanceNames, exceptionHandler, solverConfig.getRepetitions());
 
-        try (var pb = getGlobalSolvingProgressBar(workUnits);
-             var pb2 = getInstanceSolvingProgressBar(experiment.algorithms().size() * solverConfig.getRepetitions())) {
+        try (var pb = getGlobalSolvingProgressBar(experimentName, workUnits)) {
             // K: Instance name --> V: List of WorkUnits
             for (var instanceWork : workUnits.entrySet()) {
                 WorkUnitResult<S, I> instanceBest = null;
                 var instancePath = instanceWork.getKey();
                 var instanceName = instanceName(instancePath);
-                pb2.setExtraMessage(instanceName);
-                pb2.reset();
+                pb.setExtraMessage(instanceName);
                 long instanceStartTime = System.nanoTime();
                 var referenceValue = getOptionalReferenceValue(instanceName, false);
                 events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
@@ -85,7 +83,7 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                     logger.debug("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
                     for (var workUnit : algorithmWork.getValue()) {
                         var workUnitResult = doWork(workUnit);
-                        this.processWorkUnitResult(workUnitResult, pb, pb2);
+                        this.processWorkUnitResult(workUnitResult, pb);
                         if (improves(workUnitResult, algorithmBest)) {
                             algorithmBest = workUnitResult;
                         }
@@ -96,7 +94,6 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                     assert algorithmBest != null;
                     exportAlgorithmInstanceSolution(algorithmBest);
                     events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
-
                 }
                 assert instanceBest != null;
                 exportInstanceSolution(instanceBest);
