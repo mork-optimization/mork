@@ -69,9 +69,35 @@ inside the application.yml file.
 ### Adding custom data
 
 You may create charts, new sheets, tables, etc from within your code by extending the `ExcelCustomizer` class, 
-using the method `customize(XSSFWorkbook excelBook, AbstractEventStorage eventStorage)`. The `XSSFWorkbook` is 
-the current opened Excel file, while the `AbstractEventStorage` provides access to all event data generated during the execution (instances solved, solution data, etc).
-See [event docs](events.md) for more information about how the event system works.
+using the method `customize(XSSFWorkbook excelBook)`. The `XSSFWorkbook` is 
+the current opened Excel file.
+Any dependency can be declared in the constructor of your implementation, and it will be automatically be provided at runtime. Example:
+```java
+public class MyExcelCustomizer extends ExcelCustomizer {
+
+    private final AbstractEventStorage<MySolution, MyInstance> events;
+    public MyExcelCustomizer(AbstractEventStorage<MySolution, MyInstance> events) {
+        this.events = events;
+    }
+
+    @Override
+    public void customize(XSSFWorkbook excelBook) {
+        var sheet = excelBook.createSheet("MyCustomSheet");
+
+        var allSolutions = this.events.getEventsByType(SolutionGeneratedEvent.class).toList();
+        for(var event: allSolutions){
+            double score = event.getScore();
+            long execTime = event.getExecutionTime();
+            
+            // Do some processing and write it to the excel file!
+            sheet.createRow(); 
+            // [...]
+        }
+    }
+}
+```
+See [event docs](events.md) for more information about how the event system works. All events generated during the execution are available using an `AbstractEventStorage`.
+It is guaranteed that the customize method will be invoked **after** the default Excel sheets are generated, so you may always modify the existing data and adapt it to your needs.
 
 Mork uses Apache POI 5.0 to create the XLSX files, see the [official Javadoc](https://poi.apache.org/apidocs/index.html) for more information on how to
 do common operations such as creating new sheets and setting cell values.
