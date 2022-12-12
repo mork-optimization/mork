@@ -1,7 +1,11 @@
 package es.urjc.etsii.grafo.algorithms.multistart;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.annotations.IntegerParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
+import es.urjc.etsii.grafo.exception.IllegalAlgorithmConfigException;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.TimeControl;
@@ -48,7 +52,15 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
      * @param minIterations                 minimum number of iteration the algorithm will be run. Must be less or equatl than the maximum number of iterations.
      * @param maxIterationsWithoutImproving number of iterations the algorithm should be run without improving before stop
      */
-    protected MultiStartAlgorithm(String algorithmName, Algorithm<S, I> algorithm, int maxIterations, int minIterations, int maxIterationsWithoutImproving) {
+    //@AutoconfigConstructor // TODO temporalmente desactivado,
+    // implementado a nivel de irace orchestrator como envoltorio para el algoritmo correspondiente
+    public MultiStartAlgorithm(
+            @ProvidedParam(type = ProvidedParamType.ALGORITHM_NAME) String algorithmName,
+            Algorithm<S, I> algorithm,
+            @IntegerParam(min = 1, max = 1_000_000) int maxIterations,
+            @IntegerParam(min = 1, max = 1_000_000) int minIterations,
+            @IntegerParam(min = 1, max = 1_000_000) int maxIterationsWithoutImproving
+    ) {
         super(algorithmName);
         checkParameters(maxIterations, minIterations, maxIterationsWithoutImproving);
         this.algorithm = algorithm;
@@ -66,16 +78,16 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
      */
     private void checkParameters(int maxIterations, int minIterations, int maxIterationsWithoutImproving) {
         if (minIterations <= 0) {
-            throw new IllegalArgumentException("The minimum number should be greater than 0");
+            throw new IllegalAlgorithmConfigException("The minimum number should be greater than 0");
         }
         if (maxIterationsWithoutImproving <= 0) {
-            throw new IllegalArgumentException("The number of iterations without improving should be greater than 0");
+            throw new IllegalAlgorithmConfigException("The number of iterations without improving should be greater than 0");
         }
         if (maxIterations <= 0) {
-            throw new IllegalArgumentException("The number of iterations should be greater than 0");
+            throw new IllegalAlgorithmConfigException("The number of iterations should be greater than 0");
         }
         if (minIterations > maxIterations) {
-            throw new IllegalArgumentException("The minimum number of iterations should be lower than the maximum number of iterations");
+            throw new IllegalAlgorithmConfigException("The minimum number of iterations should be lower than the maximum number of iterations");
         }
     }
 
@@ -127,9 +139,10 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
     public String toString() {
         return "MA{" +
                 "name=" + getShortName() +
-                ", mxIter=" + maxIterations +
-                ", mnIter=" + minIterations +
-                ", mxIterWI=" + maxIterationsWithoutImproving +
+                ", maxIter=" + maxIterations +
+                ", minIter=" + minIterations +
+                ", maxIterWoutImp=" + maxIterationsWithoutImproving +
+                ", alg=" + algorithm +
                 "}";
     }
 
