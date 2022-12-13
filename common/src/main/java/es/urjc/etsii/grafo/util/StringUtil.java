@@ -9,7 +9,6 @@ import java.util.Objects;
 
 /**
  * String Utils
- *
  */
 public class StringUtil {
     private static final Charset DEFAULT_CHARSET = StandardCharsets.UTF_8;
@@ -20,18 +19,18 @@ public class StringUtil {
      * @param s String to decode
      * @return decoded string
      */
-    public static String b64decode(String s){
+    public static String b64decode(String s) {
         return b64decode(s, DEFAULT_CHARSET);
     }
 
     /**
      * Base 64 decode a string
      *
-     * @param s String to decode
+     * @param s       String to decode
      * @param charset Charset to use
      * @return decoded string
      */
-    public static String b64decode(String s, Charset charset){
+    public static String b64decode(String s, Charset charset) {
         var decoder = Base64.getDecoder();
         byte[] encodedBytes = s.getBytes(charset);
         var result = decoder.decode(encodedBytes);
@@ -44,18 +43,18 @@ public class StringUtil {
      * @param s String to encode
      * @return encoded string
      */
-    public static String b64encode(String s){
+    public static String b64encode(String s) {
         return b64encode(s, DEFAULT_CHARSET);
     }
 
     /**
      * Base 64 encode a string
      *
-     * @param s String to encode
+     * @param s       String to encode
      * @param charset Charset to use
      * @return encoded string
      */
-    public static String b64encode(String s, Charset charset){
+    public static String b64encode(String s, Charset charset) {
         byte[] bytes = s.getBytes(charset);
         return b64encode(bytes);
     }
@@ -66,7 +65,7 @@ public class StringUtil {
      * @param bytes bytes to encode
      * @return encoded string
      */
-    public static String b64encode(byte[] bytes){
+    public static String b64encode(byte[] bytes) {
         var encoder = Base64.getEncoder();
         var result = encoder.encode(bytes);
         return new String(result, DEFAULT_CHARSET);
@@ -80,7 +79,7 @@ public class StringUtil {
      */
     public static String generateSecret(int size) {
         SecureRandom sr = new SecureRandom();
-        if(size<=0) {
+        if (size <= 0) {
             throw new IllegalArgumentException("Secret size must be greater than 0");
         }
 
@@ -98,7 +97,7 @@ public class StringUtil {
         return generateSecret(16);
     }
 
-    public static String randomAlgorithmName(){
+    public static String randomAlgorithmName() {
         return generateSecret(6)
                 .replace("+", "-")
                 .replace("/", "_");
@@ -108,6 +107,7 @@ public class StringUtil {
      * Calculate the minimum number of operations required to transform one string into another.
      * In Levenshtein distance, valid operations are insert, remove and swap/replace.
      * Adapted from: <a href="https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Java">Wikibooks</a>
+     *
      * @param lhs first string
      * @param rhs second string
      * @return minimum number of operations required to transform the first string into the second.
@@ -134,21 +134,23 @@ public class StringUtil {
             newcost[0] = j;
 
             // transformation cost for each letter in s0
-            for(int i = 1; i < len0; i++) {
+            for (int i = 1; i < len0; i++) {
                 // matching current letters in both strings
                 int match = (lhs.charAt(i - 1) == rhs.charAt(j - 1)) ? 0 : 1;
 
                 // computing cost for each transformation
                 int costReplace = cost[i - 1] + match;
-                int costInsert  = cost[i] + 1;
-                int costDelete  = newcost[i - 1] + 1;
+                int costInsert = cost[i] + 1;
+                int costDelete = newcost[i - 1] + 1;
 
                 // keep minimum cost
                 newcost[i] = Math.min(Math.min(costInsert, costDelete), costReplace);
             }
 
             // swap cost/newcost arrays
-            int[] swap = cost; cost = newcost; newcost = swap;
+            int[] swap = cost;
+            cost = newcost;
+            newcost = swap;
         }
 
         // the distance is the cost for transforming all letters in both strings
@@ -159,6 +161,7 @@ public class StringUtil {
      * Calculate the minimum number of operations required to transform one array into another.
      * In Levenshtein distance, valid operations are insert, remove and swap/replace.
      * Adapted from: <a href="https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Java">Wikibooks</a>
+     *
      * @param lhs first string
      * @param rhs second string
      * @return minimum number of operations required to transform the first string into the second.
@@ -171,6 +174,7 @@ public class StringUtil {
      * Calculate the minimum number of operations required to transform one array into another.
      * In Levenshtein distance, valid operations are insert, remove and swap/replace.
      * Adapted from: <a href="https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Java">Wikibooks</a>
+     *
      * @param lhs first string
      * @param rhs second string
      * @return minimum number of operations required to transform the first string into the second.
@@ -178,11 +182,11 @@ public class StringUtil {
     public static int levenshtein(int[] lhs, int limitlhs, int[] rhs, int limitrhs) {
         Objects.requireNonNull(lhs, "First string is null");
         Objects.requireNonNull(rhs, "Second string is null");
-        if(limitlhs < 0 || limitlhs > lhs.length){
+        if (limitlhs < 0 || limitlhs > lhs.length) {
             throw new IllegalArgumentException("limitlhs index %s out of range [0, %s]".formatted(limitlhs, lhs.length));
         }
 
-        if(limitrhs < 0 || limitrhs > rhs.length){
+        if (limitrhs < 0 || limitrhs > rhs.length) {
             throw new IllegalArgumentException("limitrhs index %s out of range [0, %s]".formatted(limitrhs, rhs.length));
         }
 
@@ -204,21 +208,23 @@ public class StringUtil {
             newcost[0] = j;
 
             // transformation cost for each letter in s0
-            for(int i = 1; i < len0; i++) {
+            for (int i = 1; i < len0; i++) {
                 // matching current letters in both strings
                 int match = (lhs[i - 1] == rhs[j - 1]) ? 0 : 1;
 
                 // computing cost for each transformation
                 int costReplace = cost[i - 1] + match;
-                int costInsert  = cost[i] + 1;
-                int costDelete  = newcost[i - 1] + 1;
+                int costInsert = cost[i] + 1;
+                int costDelete = newcost[i - 1] + 1;
 
                 // keep minimum cost
                 newcost[i] = Math.min(Math.min(costInsert, costDelete), costReplace);
             }
 
             // swap cost/newcost arrays
-            int[] swap = cost; cost = newcost; newcost = swap;
+            int[] swap = cost;
+            cost = newcost;
+            newcost = swap;
         }
 
         // the distance is the cost for transforming all letters in both strings
@@ -229,21 +235,22 @@ public class StringUtil {
      * Find the longest common prefix given a list of strings.
      * WARNING: The method will sort the array given as an argument, modifying it.
      * Clone it before calling this method if this behaviour is not desired.
+     *
      * @param data Array of strings used to calculate common prefix
      * @return Longest common prefix for all strings given as argument
      */
-    public static String longestCommonPrefix(String[] data){
-        if(data.length == 0){
+    public static String longestCommonPrefix(String[] data) {
+        if (data.length == 0) {
             return "";
         }
-        if(data.length == 1){
+        if (data.length == 1) {
             return data[0];
         }
 
         Arrays.sort(data);
         int prefixLength = 0;
         String first = data[0];
-        String last = data[1];
+        String last = data[data.length - 1];
         int minLength = Math.min(first.length(), last.length());
         for (int i = 0; i < minLength; i++) {
             if (first.charAt(i) == last.charAt(i)) {
@@ -257,10 +264,11 @@ public class StringUtil {
 
     /**
      * Find the longest common suffix given a list of strings.
+     *
      * @param data Array of strings used to calculate common prefix
      * @return Longest common prefix for all strings given as argument
      */
-    public static String longestCommonSuffix(String[] data){
+    public static String longestCommonSuffix(String[] data) {
         String[] reversed = new String[data.length];
         for (int i = 0; i < data.length; i++) {
             reversed[i] = reverse(data[i]);
@@ -271,12 +279,13 @@ public class StringUtil {
 
     /**
      * Reverse string, ie, "abc" becomes "cba"
+     *
      * @param s string to reverse
      * @return reversed string
      */
-    public static String reverse(String s){
+    public static String reverse(String s) {
         char[] chars = new char[s.length()];
-        for (int i = s.length()-1, j = 0; i >= 0; i--, j++) {
+        for (int i = s.length() - 1, j = 0; i >= 0; i--, j++) {
             chars[j] = s.charAt(i);
         }
         return new String(chars);
