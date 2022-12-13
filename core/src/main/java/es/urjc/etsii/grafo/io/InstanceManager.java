@@ -3,12 +3,12 @@ package es.urjc.etsii.grafo.io;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.util.IOUtil;
+import es.urjc.etsii.grafo.util.StringUtil;
 import me.tongfei.progressbar.ProgressBar;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import java.io.File;
 import java.lang.ref.SoftReference;
 import java.nio.file.Path;
 import java.util.*;
@@ -85,16 +85,27 @@ public class InstanceManager<I extends Instance> {
         Collections.sort(instances);
         validate(instances, expName);
         sortedInstances = instances.stream().map(Instance::getPath).collect(Collectors.toList());
-        if (log.isInfoEnabled()) {
-            var basePath = Path.of(instanceConfiguration.getPath(expName)).toAbsolutePath().normalize().toString();
-            var orderedList = sortedInstances.stream().map(path -> path.replace(basePath + File.separator, "")).toList().toString();
-            if(orderedList.length() > MAX_LENGTH){
-                orderedList = orderedList.substring(0, MAX_LENGTH - 4) + "...]";
-            }
-            log.info("Instance validation completed, solve order: {}", orderedList);
-        }
+        logInstances(sortedInstances);
         return sortedInstances;
     }
+
+    private static void logInstances(List<String> sortedInstances) {
+        if (!log.isInfoEnabled()) return;
+
+        var sortedInstancesArray = sortedInstances.toArray(new String[0]);
+        var prefix = StringUtil.longestCommonPrefix(sortedInstancesArray);
+        var suffix = StringUtil.longestCommonSuffix(sortedInstancesArray);
+        var orderedList = sortedInstances
+                .stream()
+                .map(path -> path.substring(prefix.length(), path.length() - suffix.length()))
+                .toList()
+                .toString();
+        if (orderedList.length() > MAX_LENGTH) {
+            orderedList = orderedList.substring(0, MAX_LENGTH - 4) + "...]";
+        }
+        log.info("Instance validation completed, solve order: {}", orderedList);
+    }
+
 
     protected List<String> lexicSort(List<Path> instancePaths) {
         List<String> sortedInstances = new ArrayList<>();

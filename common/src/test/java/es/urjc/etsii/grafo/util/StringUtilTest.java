@@ -102,4 +102,37 @@ class StringUtilTest {
         var decoded = StringUtil.b64decode(b64);
         assertEquals(test, decoded);
     }
+
+    @Test
+    void testReverse(){
+        assertEquals("", StringUtil.reverse(""));
+        assertEquals("cba", StringUtil.reverse("abc"));
+        assertEquals("etnaparred anipla otom im", StringUtil.reverse("mi moto alpina derrapante"));
+        assertEquals("1", StringUtil.reverse("1"));
+        assertEquals("12/21", StringUtil.reverse("12/21"));
+    }
+
+    @Test
+    void testLCP(){
+        assertEquals("", StringUtil.longestCommonPrefix(new String[]{}));
+        assertEquals("", StringUtil.longestCommonPrefix(new String[]{""}));
+        assertEquals("abcdef", StringUtil.longestCommonPrefix(new String[]{"abcdef"}));
+        assertEquals("abcdef", StringUtil.longestCommonPrefix(new String[]{"abcdef", "abcdefgasd"}));
+        assertEquals("abcdef", StringUtil.longestCommonPrefix(new String[]{"abcdefasd", "abcdefgasd"}));
+        assertEquals("", StringUtil.longestCommonPrefix(new String[]{"abcdefasd", ".abcdefgasd"}));
+        assertEquals("abc", StringUtil.longestCommonPrefix(new String[]{"abcdefasd", "abcdefasd", "abcDefasd"}));
+        assertEquals("a", StringUtil.longestCommonPrefix(new String[]{"air", "ambulance", "ablation", "aeroplane"}));
+    }
+
+    @Test
+    void testLCS(){
+        assertEquals("", StringUtil.longestCommonSuffix(new String[]{}));
+        assertEquals("", StringUtil.longestCommonSuffix(new String[]{""}));
+        assertEquals("abcdef", StringUtil.longestCommonSuffix(new String[]{"abcdef"}));
+        assertEquals("abcdef", StringUtil.longestCommonSuffix(new String[]{"abcdef", "abcdef"}));
+        assertEquals("", StringUtil.longestCommonSuffix(new String[]{"abcdef", "abcdefgasd"}));
+        assertEquals(".txt", StringUtil.longestCommonSuffix(new String[]{"whatever.txt", "file2.txt"}));
+        assertEquals("abcdefgasd", StringUtil.longestCommonSuffix(new String[]{"abcdefgasd", "/abcdefgasd"}));
+    }
+
 }

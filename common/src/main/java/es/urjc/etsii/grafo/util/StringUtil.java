@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.util;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.Base64;
 import java.util.Objects;
 
@@ -222,6 +223,63 @@ public class StringUtil {
 
         // the distance is the cost for transforming all letters in both strings
         return cost[len0 - 1];
+    }
+
+    /**
+     * Find the longest common prefix given a list of strings.
+     * WARNING: The method will sort the array given as an argument, modifying it.
+     * Clone it before calling this method if this behaviour is not desired.
+     * @param data Array of strings used to calculate common prefix
+     * @return Longest common prefix for all strings given as argument
+     */
+    public static String longestCommonPrefix(String[] data){
+        if(data.length == 0){
+            return "";
+        }
+        if(data.length == 1){
+            return data[0];
+        }
+
+        Arrays.sort(data);
+        int prefixLength = 0;
+        String first = data[0];
+        String last = data[1];
+        int minLength = Math.min(first.length(), last.length());
+        for (int i = 0; i < minLength; i++) {
+            if (first.charAt(i) == last.charAt(i)) {
+                prefixLength++;
+            } else {
+                break;
+            }
+        }
+        return first.substring(0, prefixLength);
+    }
+
+    /**
+     * Find the longest common suffix given a list of strings.
+     * @param data Array of strings used to calculate common prefix
+     * @return Longest common prefix for all strings given as argument
+     */
+    public static String longestCommonSuffix(String[] data){
+        String[] reversed = new String[data.length];
+        for (int i = 0; i < data.length; i++) {
+            reversed[i] = reverse(data[i]);
+        }
+        String prefix = longestCommonPrefix(reversed);
+        return reverse(prefix);
+    }
+
+    /**
+     * Reverse string, ie, "abc" becomes "cba"
+     * @param s string to reverse
+     * @return reversed string
+     */
+    public static String reverse(String s){
+        char[] chars = new char[s.length()];
+        for (int i = s.length()-1, j = 0; i >= 0; i--, j++) {
+            chars[j] = s.charAt(i);
+        }
+        return new String(chars);
     }
 
 }

@@ -1,3 +1,7 @@
+# Developing
+- (New) StringUtil reverse, longestCommonPrefix, longestCommonSuffix
+- (New) Remove lcp and lcs from instance names
+
 # v0.16
 - (New) Generic ScatterSearch algorithm implementation.
 - (New) More methods in StringUtil + missing tests.
