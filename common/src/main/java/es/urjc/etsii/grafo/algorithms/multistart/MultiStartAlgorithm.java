@@ -99,8 +99,8 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
      */
     @Override
     public S algorithm(I instance) {
-        S best = null;
-        int iter = 0;
+        S best = this.algorithm.algorithm(instance);
+        int iter = 1;
         int iterWI = 0;
         while (!terminationCriteriaIsMet(iter, iterWI)) {
             iter++;
