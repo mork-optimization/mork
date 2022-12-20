@@ -95,11 +95,17 @@ public class InstanceManager<I extends Instance> {
         var sortedInstancesArray = sortedInstances.toArray(new String[0]);
         var prefix = StringUtil.longestCommonPrefix(sortedInstancesArray);
         var suffix = StringUtil.longestCommonSuffix(sortedInstancesArray);
-        var orderedList = sortedInstances
-                .stream()
-                .map(path -> path.substring(prefix.length(), path.length() - suffix.length()))
-                .toList()
-                .toString();
+        int bothLength = prefix.length() + suffix.length();
+        List<String> list = new ArrayList<>();
+        for (String path : sortedInstances) {
+            if(bothLength > path.length()){
+                list.add(path);
+            } else {
+                String substring = path.substring(prefix.length(), path.length() - suffix.length());
+                list.add(substring);
+            }
+        }
+        var orderedList = list.toString();
         if (orderedList.length() > MAX_LENGTH) {
             orderedList = orderedList.substring(0, MAX_LENGTH - 4) + "...]";
         }
