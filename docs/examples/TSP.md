@@ -74,18 +74,18 @@ in this folder.
 
 - 📁 **src/main**:
 - 📁 **java/es.urjc.etsii.grafo.TSP**
-  - 📁 **algorithms**: algorithmic components, i.e, constructive, local search, metaheuristics, etc.
-  - 📁 **experiments**: defines experiments to execute to test the proposed algorithms and strategies.
-  - 📁 **model**: contains the basic elements of the studied problem: solution, instance, etc.
-  - 📁 **drawing**: helper class to draw solutions in the web frontend.
+    - 📁 **algorithms**: algorithmic components, i.e, constructive, local search, metaheuristics, etc.
+    - 📁 **experiments**: defines experiments to execute to test the proposed algorithms and strategies.
+    - 📁 **model**: contains the basic elements of the studied problem: solution, instance, etc.
+    - 📁 **drawing**: helper class to draw solutions in the web frontend.
 - 📁 **resources**
-  - 📁 **irace**: irace is a software package that implements a number of automatic configuration procedures.
-  - 📁 **static**: contains files to generate a localhost web page which allow the researcher to see the
-    solution-quality convergence and the best solution found.
-  - 📝 application.yml: this file contains the global configuration of the project, such as which experiment should be
-    executed, which instances should be used, among others. For a detailed configuration description, see [MorK configuration](../features/config.md).
-- 📝 .gitignore: this file tells Git which files to ignore when pushing your project to [GitHub](https://github.com/) or any remote.
-- 📝 pom.xml: Maven configuration, contains the project description and its dependencies. 
+    - 📁 **irace**: irace is a software package that implements a number of automatic configuration procedures.
+    - 📁 **static**: contains files to generate a localhost web page which allow the researcher to see the
+      solution-quality convergence and the best solution found.
+    - 📝 application.yml: this file contains the global configuration of the project, such as which experiment should be
+      executed, which instances should be used, among others. For a detailed configuration description, see [MorK configuration](../features/config.md).
+- 📝 .gitignore: this file tells Git which files to ignore when pushing your project to [GitHub](https://github.com/) or any other remote server.
+- 📝 pom.xml: Maven configuration file, contains the project description and its dependencies. 
 
 ## 2. Our first step: reading instances
 
@@ -114,7 +114,11 @@ alphanumerical or numerical data:
 - NODE COORD SECTION :   `<integer> <real> <real>` // Node coordinates are given in this section.
 
 Notice that the five instances selected have EDGE WEIGHT TYPE = EUC_2D, which means that the distance between two
-points _i_ and _j_ is computed as follows: [_√[(ix – jx)2 + (iy – jy)2]_](https://en.wikipedia.org/wiki/Euclidean_distance).
+points _i_ and _j_ is computed using the [Euclidean distance](https://en.wikipedia.org/wiki/Euclidean_distance): 
+
+$$
+{\displaystyle d(i,j)={\sqrt {(j_{1}-i_{1})^{2}+(j_{2}-i_{2})^{2}}}.}
+$$
 
 If you are interested in a deep description of the instances to test the proposed algorithm with other type of instance,
 have a look to the [TSPLIB documentation](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp95.pdf).

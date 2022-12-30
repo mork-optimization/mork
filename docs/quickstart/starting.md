@@ -1,55 +1,46 @@
 # Getting started
 
+In this page, we will learn how to create an empty Mork project
+
 ## Requirements
+Before creating a project, you will need to have installed a recent Java SDK and an IDE.
+We recommend using the latest LTS Java version (Java 17, as of 2022), and IntelliJ as IDE, 
+either the community or professional edition.
 
-Java JDK 11 or more recent, maven.
-
-## Recommended: Using the quick start project generator
-
-Visit the following website, fill the gaps and click Download project.
-https://rmartinsanta.github.io/mork/
-
-Extract the zip and import in your favorite IDE.
-
-## Manual
-
-1. Create a new empty Maven project
-2. Configure pom.xml, use the following as a template:
-```XML
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0"
-         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-    <modelVersion>4.0.0</modelVersion>
-
-    <!-- Project name and current version, replace -->
-    <artifactId>projectname</artifactId>
-    <version>1.0-SNAPSHOT</version>
-
-    <!-- Automatic configuration, individual properties can be overridden -->
-    <parent>
-        <groupId>es.urjc.etsii.grafo</groupId>
-        <artifactId>mork-parent</artifactId>
-        <version>0.1</version> <!-- Use latest available release if possible! -->
-    </parent>
-</project>
-```
-
-3. Create your Instance and Solution classes, implement mandatory methods.
-> Tip: IDE code generation features can be used to create toString(), equals() and hashcode() methods when required.
-
-4. Create an Instance importer or use one of the existing ones. Example:
-```java
-
-```
-
-5. Create and run your first experiment!
-
-Check algorithms documentation on the following wiki page: TODO.
+!!! tip
+    Checkout [SdkMan](tips.md#managing-java-installations) for an easy way to install and manage multiple Java SDKs.
 
 
-(OPTIONAL) Implement a solution validator: A solution validator will be used to verify that all solutions are valid after the algorithm finishes executing. Can be really useful to catch invalid solutions due to bugs / implementation mistakes.
+## Creating a project
+In order to facilitate project creation, we have created a small tool which automatically initializes an empty project.
+Creating a project this way is extremely easy, visit [the tool page](https://rmartinsanta.github.io/mork/), choose a project name, 
+optionally select the Mork version you want to use (defaults to the latest stable version) and click on Generate Project
+The tool will generate a ZIP file, that can be extracted anywhere and imported in your favourite IDE.
 
-(OPTIONAL) Implement a solution exporter: If enabled in the configuration file, the custom solution exporter will be used to write best solutions to disk using a custom format. Check exporting solution data wiki page: TODO.
+![Mork project generator, available at https://rmartinsanta.github.io/mork/](generator.png)
 
-(OPTIONAL) Implement a ReferenceResultsProvider: If there are known previous values for instances, you may provide them, no matter if they are optimal values or not. Values, if provided, are used when calculating several metrics (%dev to best result, number of best results, etc.) The frontend may use it too for several graphs as a reference point to compare different approaches.
+
+## Start developing
+
+After opening the project in IntelliJ, you will see something similar to the following
+![Project view using IntelliJ](demoproject.png).
+
+!!! note inline end
+
+    Although we recommend using IntelliJ, the project is based Maven, which means it will work on any IDE, 
+    or even without one for the vim fanatics.
+
+The easiest way to start the project is by copying the instance data and following the TODO list on the IntelliJ tab. 
+The TODO list starting with `es.urjc...` provides a list with the minimum required functionality that must be implemented in order to have
+a minimal working application. 
+
+![TODO list as view using IntelliJ](demotodo.png)
+
+Double-clicking any item will take you to the relevant part code. After filling in the blanks, 
+remember to delete the no longer relevant comments.
+
+![Example TODO](demoexampletodo.png)
+
+Don't know how to continue? Need inspiration? Take a look at the Examples section,
+where you will find detailed explanations and step-by-step guides for different optimization problems. 
+For example [The Travelling Salesman Problem](../examples/TSP.md).

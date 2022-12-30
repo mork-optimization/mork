@@ -10,7 +10,8 @@ It is currently under heavy development.
 
 ## Why use it
 The idea of the project is to provide both high quality and tested componentes that can be used as is, and a developing framework to create new metaheuristic approaches for different kind of problems. A non extensive list of its current main benefits are:
-- Automatic experiment paralelization
+
+- Automatic experiment parallelization
 - Automatic results report generation
 - Guaranteed reproducibility, even in high concurrency environments, by using the provided RandomManager.
 - Can execute anywhere (at least, anywhere where Java and Docker can!). Easily build Docker containers that can execute almost anywhere.
