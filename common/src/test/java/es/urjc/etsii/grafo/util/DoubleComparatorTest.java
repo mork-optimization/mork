@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
@@ -122,12 +123,12 @@ class DoubleComparatorTest {
 
     @Test
     void testImprovesFunction(){
-        var f1 = DoubleComparator.improvesFunction(true);
+        var f1 = DoubleComparator.improvesFunction(FMode.MAXIMIZE);
         assertFalse(f1.test(0));
         assertFalse(f1.test(-0.1));
         assertTrue(f1.test(0.1));
 
-        var f2 = DoubleComparator.improvesFunction(false);
+        var f2 = DoubleComparator.improvesFunction(FMode.MINIMIZE);
         assertFalse(f2.test(0));
         assertTrue(f2.test(-0.1));
         assertFalse(f2.test(0.1));
@@ -135,12 +136,12 @@ class DoubleComparatorTest {
 
     @Test
     void testIsBetterFunction(){
-        var f1 = DoubleComparator.isBetterFunction(true);
+        var f1 = DoubleComparator.isBetterFunction(FMode.MAXIMIZE);
         assertFalse(f1.test(3.2, 3.2));
         assertFalse(f1.test(3.1, 3.2));
         assertTrue(f1.test(3.2, 3.1));
 
-        var f2 = DoubleComparator.isBetterFunction(false);
+        var f2 = DoubleComparator.isBetterFunction(FMode.MINIMIZE);
         assertFalse(f2.test(3.2, 3.2));
         assertTrue(f2.test(3.1, 3.2));
         assertFalse(f2.test(3.2, 3.1));
@@ -148,12 +149,12 @@ class DoubleComparatorTest {
 
     @Test
     void testIsBetterOrEqualsFunction(){
-        var f1 = DoubleComparator.isBetterOrEqualsFunction(true);
+        var f1 = DoubleComparator.isBetterOrEqualsFunction(FMode.MAXIMIZE);
         assertTrue(f1.test(3.2, 3.2));
         assertFalse(f1.test(3.1, 3.2));
         assertTrue(f1.test(3.2, 3.1));
 
-        var f2 = DoubleComparator.isBetterOrEqualsFunction(false);
+        var f2 = DoubleComparator.isBetterOrEqualsFunction(FMode.MINIMIZE);
         assertTrue(f2.test(3.2, 3.2));
         assertTrue(f2.test(3.1, 3.2));
         assertFalse(f2.test(3.2, 3.1));

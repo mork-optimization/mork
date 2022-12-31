@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
@@ -179,7 +180,7 @@ class AlgorithmBuilderServiceTest {
 
 
     private static class ImproverB extends Improver<TestSolution, TestInstance> {
-        protected ImproverB(boolean ofMaximize) {
+        protected ImproverB(FMode ofMaximize) {
             super(ofMaximize);
         }
 

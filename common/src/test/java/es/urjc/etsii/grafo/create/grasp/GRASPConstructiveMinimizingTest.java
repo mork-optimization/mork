@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.create.grasp;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.testutil.TestInstance;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static es.urjc.etsii.grafo.algorithms.FMode.*;
 import static org.junit.jupiter.api.Assertions.*;
 
 class GRASPConstructiveMinimizingTest {
@@ -33,16 +35,16 @@ class GRASPConstructiveMinimizingTest {
         this.instance = new TestInstance("testinstance");
         this.solution = new TestSolution(this.instance);
         this.moves = new ArrayList<>(Arrays.asList(
-                new TestMove(this.solution, -10, false),
-                new TestMove(this.solution, 0, false),
-                new TestMove(this.solution, 1, false),
-                new TestMove(this.solution, 3, false),
-                new TestMove(this.solution, 5, false),
-                new TestMove(this.solution, 7, false)
+                new TestMove(this.solution, -10, MINIMIZE),
+                new TestMove(this.solution, 0, MINIMIZE),
+                new TestMove(this.solution, 1, MINIMIZE),
+                new TestMove(this.solution, 3, MINIMIZE),
+                new TestMove(this.solution, 5, MINIMIZE),
+                new TestMove(this.solution, 7, MINIMIZE)
         ));
         this.listManager = new TestGRASPListManager(this.moves);
-        this.gr = new GreedyRandomGRASPConstructive<>(false, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
-        this.rg = new RandomGreedyGRASPConstructive<>(false, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
+        this.gr = new GreedyRandomGRASPConstructive<>(MINIMIZE, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
+        this.rg = new RandomGreedyGRASPConstructive<>(MINIMIZE, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
 
     }
 

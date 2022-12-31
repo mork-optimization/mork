@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.executors;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.exceptions.ExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
@@ -36,7 +37,7 @@ class ExecutorTest {
 
     @BeforeEach
     void initMocks(){
-        Mork.setSolvingMode(false);
+        Mork.setSolvingMode(FMode.MINIMIZE);
         var instance1 = new TestInstance("inst1");
         var referenceResult1 = new ReferenceResult();
         referenceResult1.setScore(5.0);

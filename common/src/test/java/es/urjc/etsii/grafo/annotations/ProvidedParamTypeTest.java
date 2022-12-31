@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.annotations;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.FMode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -10,8 +11,7 @@ class ProvidedParamTypeTest {
     @Test
     void isAssignable(){
         assertTrue(ProvidedParamType.UNKNOWN.isAssignableTo(Object.class));
-        assertTrue(ProvidedParamType.MAXIMIZE.isAssignableTo(Boolean.class));
-        assertTrue(ProvidedParamType.MAXIMIZE.isAssignableTo(Boolean.TYPE));
+        assertTrue(ProvidedParamType.MAXIMIZE.isAssignableTo(FMode.class));
         assertTrue(ProvidedParamType.MAXIMIZE.isAssignableTo(Object.class));
         assertTrue(ProvidedParamType.ALGORITHM_NAME.isAssignableTo(String.class));
         assertTrue(ProvidedParamType.ALGORITHM_NAME.isAssignableTo(CharSequence.class));

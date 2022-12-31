@@ -1,21 +1,22 @@
 package es.urjc.etsii.grafo.testutil;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.solution.Move;
 
 import java.util.Objects;
 
 public class TestMove extends Move<TestSolution, TestInstance> {
     private final double score;
-    private final boolean maximizing;
+    private final FMode fmode;
 
-    public TestMove(TestSolution solution, double score, boolean maximizing) {
+    public TestMove(TestSolution solution, double score, FMode fmode) {
         super(solution);
         this.score = score;
-        this.maximizing = maximizing;
+        this.fmode = fmode;
     }
 
     public TestMove(TestSolution solution, double v) {
-        this(solution, v, false);
+        this(solution, v, FMode.MINIMIZE);
     }
 
     @Override
@@ -33,7 +34,7 @@ public class TestMove extends Move<TestSolution, TestInstance> {
     public String toString() {
         return "TestMove{" +
                 "score=" + score +
-                ", maximizing=" + maximizing +
+                ", maximizing=" + fmode +
                 '}';
     }
 
@@ -42,15 +43,23 @@ public class TestMove extends Move<TestSolution, TestInstance> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         TestMove testMove = (TestMove) o;
-        return Double.compare(testMove.score, score) == 0 && maximizing == testMove.maximizing;
+        return Double.compare(testMove.score, score) == 0 && fmode == testMove.fmode;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(score, maximizing);
+        return Objects.hash(score, fmode);
     }
 
     public boolean isMaximizing() {
-        return maximizing;
+        return fmode == FMode.MAXIMIZE;
+    }
+
+    public boolean isMinimizing() {
+        return fmode == FMode.MINIMIZE;
+    }
+
+    public FMode getFmode() {
+        return fmode;
     }
 }

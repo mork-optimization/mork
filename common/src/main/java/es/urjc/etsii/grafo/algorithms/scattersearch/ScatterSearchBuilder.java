@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.algorithms.scattersearch;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
@@ -42,7 +43,7 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      * True if maximizing objective function, false otherwise.
      * Tip: Can be obtained by calling Mork.isMaximizing() or hardcoded in the experiment.
      */
-    protected Boolean maximizing;
+    protected FMode mode;
 
     /**
      * Constructive to use to create "good value" solutions
@@ -208,8 +209,19 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      * @param maximizing true if maximizing, false otherwise
      * @return builder
      */
+    @Deprecated(forRemoval = true)
     public ScatterSearchBuilder<S,I> withMaximizing(boolean maximizing){
-        this.maximizing = maximizing;
+        this.mode = maximizing == true? FMode.MAXIMIZE: FMode.MINIMIZE;
+        return this;
+    }
+
+    /**
+     * Set solving mode
+     * @param mode MAXIMIZING if maximizing, MINIMIZING if minimizing
+     * @return current builder with solving mode set
+     */
+    public ScatterSearchBuilder<S,I> withSolvingMode(FMode mode){
+        this.mode = mode;
         return this;
     }
 
@@ -222,7 +234,7 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
             throw new IllegalArgumentException("no constructive method has been configured");
         }
 
-        if(this.maximizing == null){
+        if(this.mode == null){
             throw new IllegalArgumentException("Null maximizing value");
         }
         
@@ -233,7 +245,7 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
                 constructiveDiverseValues,
                 improver,
                 combinator,
-                maximizing,
+                mode,
                 maxIterations,
                 diversityRatio,
                 solutionDistance

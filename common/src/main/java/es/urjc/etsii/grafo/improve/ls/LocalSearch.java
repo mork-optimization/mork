@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.improve.ls;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
@@ -37,21 +38,21 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
 
     protected final Neighborhood<M, S, I> neighborhood;
     protected final BiPredicate<Double, Double> fIsBetter;
-    protected final boolean fMaximize;
+    protected final FMode fMaximize;
     protected final ToDoubleFunction<M> f;
 
     /**
      * Create a new local search method using the given neighborhood
      * @param neighborhood neighborhood to use
-     * @param ofMaximize true if the problem objective function is maximizing, false otherwise
-     * @param fMaximize true if we should maximize the values returned by function f, false otherwise
+     * @param solutionMode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
+     * @param functionMode true if we should maximize the values returned by function f, false otherwise
      * @param f function used to get a double value from a move
      */
-    protected LocalSearch(boolean ofMaximize, Neighborhood<M, S, I> neighborhood, boolean fMaximize, ToDoubleFunction<M> f) {
-        super(ofMaximize);
+    protected LocalSearch(FMode solutionMode, Neighborhood<M, S, I> neighborhood, FMode functionMode, ToDoubleFunction<M> f) {
+        super(solutionMode);
         this.neighborhood = neighborhood;
-        this.fMaximize = fMaximize;
-        this.fIsBetter = DoubleComparator.isBetterFunction(fMaximize);
+        this.fMaximize = functionMode;
+        this.fIsBetter = DoubleComparator.isBetterFunction(functionMode);
         this.f = f;
     }
 
@@ -59,10 +60,10 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
      * Create a new local search method using the given neighborhood.
      * Uses the method Move::getValue as the guiding function, with fMaximize = maximize.
      * @param neighborhood neighborhood to use
-     * @param maximize true if the problem objective function is maximizing, false otherwise
+     * @param mode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
      */
-    protected LocalSearch(boolean maximize, Neighborhood<M, S, I> neighborhood) {
-        this(maximize, neighborhood, maximize, Move::getValue);
+    protected LocalSearch(FMode mode, Neighborhood<M, S, I> neighborhood) {
+        this(mode, neighborhood, mode, Move::getValue);
     }
 
     /**

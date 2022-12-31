@@ -6,6 +6,7 @@ import es.urjc.etsii.grafo.TSP.algorithms.neighborhood.SwapNeighborhood;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
@@ -35,8 +36,8 @@ public class IraceExperiment extends AlgorithmBuilder<TSPSolution, TSPInstance> 
         };
 
         return switch (localSearchStrategy) {
-            case "first" -> new LocalSearchFirstImprovement<>(false, neighborhood);
-            case "best" -> new LocalSearchBestImprovement<>(false, neighborhood);
+            case "first" -> new LocalSearchFirstImprovement<>(FMode.MINIMIZE, neighborhood);
+            case "best" -> new LocalSearchBestImprovement<>(FMode.MINIMIZE, neighborhood);
             default -> throw new IllegalArgumentException("Not implemented: " + localSearchStrategy);
         };
     }

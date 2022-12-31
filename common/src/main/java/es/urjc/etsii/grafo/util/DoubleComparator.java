@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
+
 import java.util.function.BiPredicate;
 import java.util.function.DoublePredicate;
 
@@ -200,20 +202,26 @@ public class DoubleComparator {
 
     /**
      * Returns a function reference that can evaluate for any two given numbers if the first one is strictly better than the second
-     * @param maximize true if a maximization problem, false otherwise
+     * @param mode MAXIMIZE if the values that will be compared should be maximized problem, MINIMIZE if they should be minimized
      * @return BiPredicate
      */
-    public static BiPredicate<Double, Double> isBetterFunction(boolean maximize){
-        return maximize? DoubleComparator::isGreater : DoubleComparator::isLess;
+    public static BiPredicate<Double, Double> isBetterFunction(FMode mode){
+        return switch (mode){
+            case MAXIMIZE -> DoubleComparator::isGreater;
+            case MINIMIZE -> DoubleComparator::isLess;
+        };
     }
 
     /**
      * Returns a function reference that can evaluate for any two given numbers if the first one is better than or equal to the second
-     * @param maximize true if a maximization problem, false otherwise
+     * @param mode MAXIMIZE if the values that will be compared should be maximized problem, MINIMIZE if they should be minimized
      * @return BiPredicate
      */
-    public static BiPredicate<Double, Double> isBetterOrEqualsFunction(boolean maximize){
-        return maximize? DoubleComparator::isGreaterOrEquals : DoubleComparator::isLessOrEquals;
+    public static BiPredicate<Double, Double> isBetterOrEqualsFunction(FMode mode){
+        return switch (mode){
+            case MAXIMIZE -> DoubleComparator::isGreaterOrEquals;
+            case MINIMIZE -> DoubleComparator::isLessOrEquals;
+        };
     }
 
     /**
@@ -221,7 +229,10 @@ public class DoubleComparator {
      * @param maximize true if maximizing, false otherwise
      * @return Predicate
      */
-    public static DoublePredicate improvesFunction(boolean maximize){
-        return maximize ? DoubleComparator::isPositive : DoubleComparator::isNegative;
+    public static DoublePredicate improvesFunction(FMode maximize){
+        return switch (maximize){
+            case MAXIMIZE -> DoubleComparator::isPositive;
+            case MINIMIZE -> DoubleComparator::isNegative;
+        };
     }
 }

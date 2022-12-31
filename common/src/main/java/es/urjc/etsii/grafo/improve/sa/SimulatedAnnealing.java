@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.improve.sa;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.improve.sa.cd.CoolDownControl;
 import es.urjc.etsii.grafo.improve.sa.initialt.InitialTemperatureCalculator;
@@ -49,7 +50,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
     protected final InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator;
     protected final int cycleLength;
     protected final ToDoubleFunction<M> f;
-    protected final boolean fMaximize;
+    protected final FMode fMaximize;
     protected final DoublePredicate fImproves;
 
     private record CycleResult<S>(boolean atLeastOneMove, S bestSolution, S currentSolution) {
@@ -67,8 +68,8 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
      * @param f
      * @param fMaximize
      */
-    protected SimulatedAnnealing(boolean ofMaximize, AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength, ToDoubleFunction<M> f, boolean fMaximize) {
-        super(ofMaximize);
+    protected SimulatedAnnealing(FMode fMode, AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength, ToDoubleFunction<M> f, FMode fMaximize) {
+        super(fMode);
         this.acceptanceCriteria = acceptanceCriteria;
         this.neighborhood = ps;
         this.terminationCriteria = terminationCriteria;

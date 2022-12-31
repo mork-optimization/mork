@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.create.grasp;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.testutil.TestInstance;
@@ -15,6 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+import static es.urjc.etsii.grafo.algorithms.FMode.MAXIMIZE;
 import static org.junit.jupiter.api.Assertions.*;
 
 class GRASPConstructiveMaximizingTest {
@@ -33,16 +35,16 @@ class GRASPConstructiveMaximizingTest {
         this.instance = new TestInstance("testinstance");
         this.solution = new TestSolution(this.instance);
         this.moves = new ArrayList<>(Arrays.asList(
-                new TestMove(this.solution, -10, true),
-                new TestMove(this.solution, 0, true),
-                new TestMove(this.solution, 1, true),
-                new TestMove(this.solution, 3, true),
-                new TestMove(this.solution, 5, true),
-                new TestMove(this.solution, 7, true)
+                new TestMove(this.solution, -10, MAXIMIZE),
+                new TestMove(this.solution, 0, MAXIMIZE),
+                new TestMove(this.solution, 1, MAXIMIZE),
+                new TestMove(this.solution, 3, MAXIMIZE),
+                new TestMove(this.solution, 5, MAXIMIZE),
+                new TestMove(this.solution, 7, MAXIMIZE)
         ));
         this.listManager = new TestGRASPListManager(this.moves);
-        this.gr = new GreedyRandomGRASPConstructive<>(true, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
-        this.rg = new RandomGreedyGRASPConstructive<>(true, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
+        this.gr = new GreedyRandomGRASPConstructive<>(MAXIMIZE, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
+        this.rg = new RandomGreedyGRASPConstructive<>(MAXIMIZE, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
 
     }
 

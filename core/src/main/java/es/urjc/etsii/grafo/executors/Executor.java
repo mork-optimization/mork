@@ -54,7 +54,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     protected final InstanceManager<I> instanceManager;
     protected final List<ReferenceResultProvider> referenceResultProviders;
     protected final SolverConfig solverConfig;
-    protected final BiPredicate<Double, Double> isBetter = DoubleComparator.isBetterFunction(Mork.isMaximizing());
+    protected final BiPredicate<Double, Double> isBetter = DoubleComparator.isBetterFunction(Mork.getFMode());
 
 
     /**

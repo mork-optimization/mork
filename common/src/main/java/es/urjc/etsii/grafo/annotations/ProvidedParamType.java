@@ -1,10 +1,11 @@
 package es.urjc.etsii.grafo.annotations;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import org.springframework.util.ClassUtils;
 
 public enum ProvidedParamType {
     UNKNOWN(Object.class),
-    MAXIMIZE(boolean.class),
+    MAXIMIZE(FMode.class),
     ALGORITHM_NAME(String.class);
 
     private final Class<?> providedClass;

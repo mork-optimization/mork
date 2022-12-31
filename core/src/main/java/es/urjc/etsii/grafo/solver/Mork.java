@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.solver;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.services.BannerProvider;
 import org.springframework.boot.SpringApplication;
@@ -16,16 +17,16 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @ComponentScan(basePackages = "${advanced.scan-pkgs:es.urjc.etsii}", includeFilters = @ComponentScan.Filter(InheritedComponent.class))
 public class Mork {
 
-    private static boolean maximizing;
+    private static FMode mode;
 
     /**
      * Procedure to launch the application.
      *
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
-     * @param maximize true if this is a maximization problem, false if minimizing
+     * @param mode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
      */
-    public static void start(String[] args, boolean maximize) {
-        Mork.start(null, args, maximize);
+    public static void start(String[] args, FMode mode) {
+        Mork.start(null, args, mode);
     }
 
     /**
@@ -33,12 +34,12 @@ public class Mork {
      *
      * @param pkgRoot  Custom package root for component scanning if changed from the default package
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
-     * @param maximize true if this is a maximization problem, false if minimizing
+     * @param mode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
      */
-    public static void start(String pkgRoot, String[] args, boolean maximize) {
+    public static void start(String pkgRoot, String[] args, FMode mode) {
         args = argsProcessing(args);
         configurePackageScanning(pkgRoot);
-        setSolvingMode(maximize);
+        setSolvingMode(mode);
         SpringApplication application = new SpringApplication(Mork.class);
         application.setBanner(new BannerProvider());
         application.setLogStartupInfo(false);
@@ -49,11 +50,10 @@ public class Mork {
      * Set solving mode,
      * Warning: Changing the solving mode once the solving engine has started has undefined behaviour
      *
-     * @param maximize
+     * @param mode MAXIMIZE if maximizing o.f, MINIMIZING if minimizing
      */
-    public static void setSolvingMode(boolean maximize) {
-        Mork.maximizing = maximize;
-        System.setProperty("solver.maximizing", String.valueOf(maximize));
+    public static void setSolvingMode(FMode mode) {
+        Mork.mode = mode;
     }
 
     /**
@@ -62,7 +62,20 @@ public class Mork {
      * @return true if maximizing, false if minimizing
      */
     public static boolean isMaximizing() {
-        return maximizing;
+        return mode == FMode.MAXIMIZE;
+    }
+
+    /**
+     * Solving mode
+     *
+     * @return true if minimizing, false if maximizing
+     */
+    public static boolean isMinimizing() {
+        return mode == FMode.MINIMIZE;
+    }
+
+    public static FMode getFMode(){
+        return mode;
     }
 
     private static void configurePackageScanning(String pkgRoot) {
