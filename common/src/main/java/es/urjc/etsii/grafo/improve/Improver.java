@@ -26,16 +26,16 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(Improver.class);
 
-    protected final FMode mode;
+    protected final FMode fmode;
     protected final BiPredicate<Double, Double> ofIsBetter;
 
     /**
      * Initialize common improver fields, to be called by subclasses
-     * @param mode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
+     * @param fmode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
      */
-    protected Improver(FMode mode) {
-        this.mode = mode;
-        this.ofIsBetter = DoubleComparator.isBetterFunction(mode);
+    protected Improver(FMode fmode) {
+        this.fmode = fmode;
+        this.ofIsBetter = DoubleComparator.isBetterFunction(fmode);
     }
 
     /**
@@ -81,8 +81,8 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
     }
 
     @SafeVarargs
-    public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> serial(FMode mode, Improver<S, I>... improvers){
-        return new SequentialImprover<>(mode, improvers);
+    public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> serial(FMode fmode, Improver<S, I>... improvers){
+        return new SequentialImprover<>(fmode, improvers);
     }
 
     /**
@@ -115,18 +115,18 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         private final Improver<S,I>[] improvers;
 
         @SafeVarargs
-        public SequentialImprover(FMode mode, Improver<S, I>... improvers) {
-            super(mode);
+        public SequentialImprover(FMode fmode, Improver<S, I>... improvers) {
+            super(fmode);
             this.improvers = improvers;
         }
 
         @AutoconfigConstructor
         public SequentialImprover(
-                @ProvidedParam(type = ProvidedParamType.MAXIMIZE) FMode mode,
+                @ProvidedParam(type = ProvidedParamType.MAXIMIZE) FMode fmode,
                 Improver<S, I> improverA,
                 Improver<S, I> improverB
         ) {
-            super(mode);
+            super(fmode);
             this.improvers = new Improver[]{improverA, improverB};
         }
 

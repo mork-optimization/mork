@@ -9,7 +9,6 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.List;
-import java.util.function.BiPredicate;
 
 /**
  * <p>VND class.</p>
@@ -23,10 +22,10 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
      * <p>Constructor for VND.</p>
      *
      * @param improvers a {@link List} object.
-     * @param mode a boolean.
+     * @param fmode a boolean.
      */
-    public VND(List<Improver<S, I>> improvers, FMode mode) {
-        super(mode);
+    public VND(List<Improver<S, I>> improvers, FMode fmode) {
+        super(fmode);
         this.improvers = improvers;
     }
 
@@ -36,14 +35,14 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
      * @param improver1 improver1
      * @param improver2 improver2
      * @param improver3 improver3
-     * @param mode a boolean.
+     * @param fmode a boolean.
      */
     @AutoconfigConstructor
     public VND(
-            @ProvidedParam(type = ProvidedParamType.MAXIMIZE) FMode mode,
+            @ProvidedParam(type = ProvidedParamType.MAXIMIZE) FMode fmode,
             Improver<S, I> improver1, Improver<S, I> improver2, Improver<S, I> improver3
     ) {
-        super(mode);
+        super(fmode);
         this.improvers = List.of(improver1, improver2, improver3);
     }
 
@@ -60,7 +59,7 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
                 // it cannot improve the current solution?
                 // TODO refactor this
                 currentLS++;
-            } else if (this.mode == FMode.MAXIMIZE) {
+            } else if (this.fmode == FMode.MAXIMIZE) {
                 if (DoubleComparator.isGreaterOrEquals(prev, solution.getScore())) {
                     // prev >= current, no improvement
                     currentLS++;

@@ -17,16 +17,16 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @ComponentScan(basePackages = "${advanced.scan-pkgs:es.urjc.etsii}", includeFilters = @ComponentScan.Filter(InheritedComponent.class))
 public class Mork {
 
-    private static FMode mode;
+    private static FMode fmode;
 
     /**
      * Procedure to launch the application.
      *
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
-     * @param mode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
+     * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
      */
-    public static void start(String[] args, FMode mode) {
-        Mork.start(null, args, mode);
+    public static void start(String[] args, FMode fmode) {
+        Mork.start(null, args, fmode);
     }
 
     /**
@@ -34,12 +34,12 @@ public class Mork {
      *
      * @param pkgRoot  Custom package root for component scanning if changed from the default package
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
-     * @param mode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
+     * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
      */
-    public static void start(String pkgRoot, String[] args, FMode mode) {
+    public static void start(String pkgRoot, String[] args, FMode fmode) {
         args = argsProcessing(args);
         configurePackageScanning(pkgRoot);
-        setSolvingMode(mode);
+        setSolvingMode(fmode);
         SpringApplication application = new SpringApplication(Mork.class);
         application.setBanner(new BannerProvider());
         application.setLogStartupInfo(false);
@@ -50,10 +50,10 @@ public class Mork {
      * Set solving mode,
      * Warning: Changing the solving mode once the solving engine has started has undefined behaviour
      *
-     * @param mode MAXIMIZE if maximizing o.f, MINIMIZING if minimizing
+     * @param fmode MAXIMIZE if maximizing o.f, MINIMIZING if minimizing
      */
-    public static void setSolvingMode(FMode mode) {
-        Mork.mode = mode;
+    public static void setSolvingMode(FMode fmode) {
+        Mork.fmode = fmode;
     }
 
     /**
@@ -62,7 +62,7 @@ public class Mork {
      * @return true if maximizing, false if minimizing
      */
     public static boolean isMaximizing() {
-        return mode == FMode.MAXIMIZE;
+        return fmode == FMode.MAXIMIZE;
     }
 
     /**
@@ -71,11 +71,11 @@ public class Mork {
      * @return true if minimizing, false if maximizing
      */
     public static boolean isMinimizing() {
-        return mode == FMode.MINIMIZE;
+        return fmode == FMode.MINIMIZE;
     }
 
     public static FMode getFMode(){
-        return mode;
+        return fmode;
     }
 
     private static void configurePackageScanning(String pkgRoot) {

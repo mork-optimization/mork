@@ -21,7 +21,7 @@ import static es.urjc.etsii.grafo.util.DoubleComparator.*;
 public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> {
     private Boolean greedyRandom;
     private ToDoubleFunction<M> greedyFunction = M::getValue;
-    private FMode mode;
+    private FMode fmode;
     private AlphaProvider alphaProvider;
     private String alphaType;
     private GRASPListManager<M, S, I> candidateListManager;
@@ -68,18 +68,18 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
      */
     @Deprecated(forRemoval = true)
     public GraspBuilder<M, S, I> withMaximizing(boolean maximize) {
-        this.mode = maximize ? FMode.MAXIMIZE : FMode.MINIMIZE;
+        this.fmode = maximize ? FMode.MAXIMIZE : FMode.MINIMIZE;
         return this;
     }
 
     /**
      * Should we maximize or minimize the score returned by the moves?
      *
-     * @param mode true if the greedyFunction, or the objective function of the problem if not changed using {@link GraspBuilder#withGreedyFunction(ToDoubleFunction)} )}, should maximize its score, false if minimizing
+     * @param fmode true if the greedyFunction, or the objective function of the problem if not changed using {@link GraspBuilder#withGreedyFunction(ToDoubleFunction)} )}, should maximize its score, false if minimizing
      * @return same builder with its config changed
      */
-    public GraspBuilder<M, S, I> withMode(FMode mode) {
-        this.mode = mode;
+    public GraspBuilder<M, S, I> withMode(FMode fmode) {
+        this.fmode = fmode;
         return this;
     }
 
@@ -160,14 +160,14 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
     public GRASPConstructive<M, S, I> build() {
         validate();
         if (this.greedyRandom) {
-            return new GreedyRandomGRASPConstructive<>(this.mode, this.candidateListManager, this.greedyFunction, this.alphaProvider, this.alphaType);
+            return new GreedyRandomGRASPConstructive<>(this.fmode, this.candidateListManager, this.greedyFunction, this.alphaProvider, this.alphaType);
         } else {
-            return new RandomGreedyGRASPConstructive<>(this.mode, this.candidateListManager, this.greedyFunction, this.alphaProvider, this.alphaType);
+            return new RandomGreedyGRASPConstructive<>(this.fmode, this.candidateListManager, this.greedyFunction, this.alphaProvider, this.alphaType);
         }
     }
 
     private void validate() {
-        if (this.mode == null) {
+        if (this.fmode == null) {
             throw new IllegalArgumentException("maximize parameter not configured, call GraspBuilder::withMaximize either true if maximizing the greedy function or false if minimizing");
         }
 

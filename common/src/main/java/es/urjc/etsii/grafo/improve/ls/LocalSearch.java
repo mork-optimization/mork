@@ -60,10 +60,10 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
      * Create a new local search method using the given neighborhood.
      * Uses the method Move::getValue as the guiding function, with fMaximize = maximize.
      * @param neighborhood neighborhood to use
-     * @param mode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
+     * @param fmode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
      */
-    protected LocalSearch(FMode mode, Neighborhood<M, S, I> neighborhood) {
-        this(mode, neighborhood, mode, Move::getValue);
+    protected LocalSearch(FMode fmode, Neighborhood<M, S, I> neighborhood) {
+        this(fmode, neighborhood, fmode, Move::getValue);
     }
 
     /**

@@ -26,8 +26,8 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     private static final Logger log = LoggerFactory.getLogger(RandomGreedyGRASPConstructive.class);
 
-    protected RandomGreedyGRASPConstructive(FMode mode, GRASPListManager<M, S, I> candidateListManager, ToDoubleFunction<M> greedyFunction, AlphaProvider provider, String alphaType) {
-        super(mode, candidateListManager, greedyFunction, provider, alphaType);
+    protected RandomGreedyGRASPConstructive(FMode fmode, GRASPListManager<M, S, I> candidateListManager, ToDoubleFunction<M> greedyFunction, AlphaProvider provider, String alphaType) {
+        super(fmode, candidateListManager, greedyFunction, provider, alphaType);
     }
 
     /**

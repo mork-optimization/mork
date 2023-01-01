@@ -202,11 +202,11 @@ public class DoubleComparator {
 
     /**
      * Returns a function reference that can evaluate for any two given numbers if the first one is strictly better than the second
-     * @param mode MAXIMIZE if the values that will be compared should be maximized problem, MINIMIZE if they should be minimized
+     * @param fmode MAXIMIZE if the values that will be compared should be maximized problem, MINIMIZE if they should be minimized
      * @return BiPredicate
      */
-    public static BiPredicate<Double, Double> isBetterFunction(FMode mode){
-        return switch (mode){
+    public static BiPredicate<Double, Double> isBetterFunction(FMode fmode){
+        return switch (fmode){
             case MAXIMIZE -> DoubleComparator::isGreater;
             case MINIMIZE -> DoubleComparator::isLess;
         };
@@ -214,11 +214,11 @@ public class DoubleComparator {
 
     /**
      * Returns a function reference that can evaluate for any two given numbers if the first one is better than or equal to the second
-     * @param mode MAXIMIZE if the values that will be compared should be maximized problem, MINIMIZE if they should be minimized
+     * @param fmode MAXIMIZE if the values that will be compared should be maximized problem, MINIMIZE if they should be minimized
      * @return BiPredicate
      */
-    public static BiPredicate<Double, Double> isBetterOrEqualsFunction(FMode mode){
-        return switch (mode){
+    public static BiPredicate<Double, Double> isBetterOrEqualsFunction(FMode fmode){
+        return switch (fmode){
             case MAXIMIZE -> DoubleComparator::isGreaterOrEquals;
             case MINIMIZE -> DoubleComparator::isLessOrEquals;
         };

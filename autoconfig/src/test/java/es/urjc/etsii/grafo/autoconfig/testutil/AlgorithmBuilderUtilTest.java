@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.testutil;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.FakeGRASPConstructive;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
@@ -63,7 +64,7 @@ class AlgorithmBuilderUtilTest {
     @Test
     void buildGrasp(){
         Map<String, Object> params = Map.of(
-                "maximize", false,
+                "fmode", FMode.MINIMIZE,
                 "alpha", 0.75,
                 "candidateListManager", new GRASPListManager<TestMove, TestSolution, TestInstance>() {
                     @Override

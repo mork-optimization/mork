@@ -43,7 +43,7 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      * True if maximizing objective function, false otherwise.
      * Tip: Can be obtained by calling Mork.isMaximizing() or hardcoded in the experiment.
      */
-    protected FMode mode;
+    protected FMode fmode;
 
     /**
      * Constructive to use to create "good value" solutions
@@ -211,17 +211,17 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      */
     @Deprecated(forRemoval = true)
     public ScatterSearchBuilder<S,I> withMaximizing(boolean maximizing){
-        this.mode = maximizing == true? FMode.MAXIMIZE: FMode.MINIMIZE;
+        this.fmode = maximizing == true? FMode.MAXIMIZE: FMode.MINIMIZE;
         return this;
     }
 
     /**
      * Set solving mode
-     * @param mode MAXIMIZING if maximizing, MINIMIZING if minimizing
+     * @param fmode MAXIMIZING if maximizing, MINIMIZING if minimizing
      * @return current builder with solving mode set
      */
-    public ScatterSearchBuilder<S,I> withSolvingMode(FMode mode){
-        this.mode = mode;
+    public ScatterSearchBuilder<S,I> withSolvingMode(FMode fmode){
+        this.fmode = fmode;
         return this;
     }
 
@@ -234,7 +234,7 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
             throw new IllegalArgumentException("no constructive method has been configured");
         }
 
-        if(this.mode == null){
+        if(this.fmode == null){
             throw new IllegalArgumentException("Null maximizing value");
         }
         
@@ -245,7 +245,7 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
                 constructiveDiverseValues,
                 improver,
                 combinator,
-                mode,
+                fmode,
                 maxIterations,
                 diversityRatio,
                 solutionDistance

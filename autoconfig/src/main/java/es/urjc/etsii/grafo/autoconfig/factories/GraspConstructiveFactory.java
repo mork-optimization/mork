@@ -15,7 +15,7 @@ public abstract class GraspConstructiveFactory extends AlgorithmComponentFactory
 
     public GraspBuilder initBuilder(Map<String, Object> params) {
         var graspBuilder = new GraspBuilder();
-        graspBuilder.withMode((FMode) params.get("mode"));
+        graspBuilder.withMode((FMode) params.get("fmode"));
         if(params.containsKey("alphaMin") && params.containsKey("alphaMax")){
             graspBuilder.withAlphaInRange((double) params.get("alphaMin"), (double) params.get("alphaMax"));
         } else if(params.containsKey("alpha")){
