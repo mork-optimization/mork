@@ -2,12 +2,8 @@ package es.urjc.etsii.grafo.autoconfig;
 
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
-import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
-import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
-import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
-import es.urjc.etsii.grafo.solver.Mork;
-import es.urjc.etsii.grafo.util.StringUtil;
+import es.urjc.etsii.grafo.autoconfig.fill.ParameterProvider;
 import org.apache.commons.lang3.ClassUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,10 +11,7 @@ import org.slf4j.LoggerFactory;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Parameter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 /**
  * Magic (based on reflection) util methods to create instances of algorithm components at runtime
@@ -26,19 +19,21 @@ import java.util.Map;
 public class AlgorithmBuilderUtil {
     private static final Logger log = LoggerFactory.getLogger(AlgorithmBuilderUtil.class);
 
-    private record UNKNOWNCLASS(){}
+    private record UNKNOWNCLASS() {
+    }
 
     /**
-     * Build algorithm component reflectively
+     * Build algorithm component given a set of parameters
+     *
      * @param clazz Algorithm component class
-     * @param args arguments for the constructor
+     * @param args  arguments for the constructor
      * @return instance if class built with the given params
      */
-    public static Object build(Class<?> clazz, Map<String, Object> args){
+    public static Object build(Class<?> clazz, Map<String, Object> args, List<ParameterProvider> paramProviders) {
         Map<String, Class<?>> argTypes = new HashMap<>();
-        args.forEach((k, v) -> argTypes.put(k, v == null? UNKNOWNCLASS.class: v.getClass()));
-        var constructor = findConstructor(clazz, argTypes);
-        if(constructor == null){
+        args.forEach((k, v) -> argTypes.put(k, v == null ? UNKNOWNCLASS.class : v.getClass()));
+        var constructor = findConstructor(clazz, argTypes, paramProviders);
+        if (constructor == null) {
             throw new AlgorithmParsingException(String.format("Failed to find constructor method in class %s for params %s, types %s", clazz.getSimpleName(), args, argTypes));
         }
         var cParams = constructor.getParameters();
@@ -46,12 +41,15 @@ public class AlgorithmBuilderUtil {
 
         for (int i = 0; i < cParams.length; i++) {
             var nextParamName = cParams[i].getName();
-            if(args.containsKey(nextParamName)){
-                // Either the value is in our map
-                params[i] = args.get(nextParamName);
+            var nextParamType = cParams[i].getType();
+            // Either the value is in our map
+            if (args.containsKey(nextParamName)) {
+                var value = args.get(nextParamName);
+                params[i] = prepareParameterValue(value, nextParamType);
+
             } else {
                 // Or it is a provided value
-                params[i] = getProvidedValue(cParams[i]);
+                params[i] = getProvidedValue(cParams[i], paramProviders);
             }
         }
         try {
@@ -61,105 +59,149 @@ public class AlgorithmBuilderUtil {
         }
     }
 
-    public static Object getProvidedValue(Parameter p){
-        if(!p.isAnnotationPresent(ProvidedParam.class)){
+    public static Object getProvidedValue(Parameter p, List<ParameterProvider> paramProviders) {
+        if (!p.isAnnotationPresent(ProvidedParam.class)) {
             throw new IllegalArgumentException(String.format("Parameter %s not annotated with @ProvidedParam", p));
         }
-
-        var provided = p.getAnnotation(ProvidedParam.class);
-        return getProvidedValue(provided.type());
+        return getProvidedValue(p.getType(), p.getName(), paramProviders);
     }
 
-    public static Object getProvidedValue(ComponentParameter p){
-        if(p.getType() != ParameterType.PROVIDED){
-            throw new IllegalArgumentException("Expected PROVIDED type, component parameter is: " + p.getType());
+    public static Object getProvidedValue(Class<?> pType, String pName, List<ParameterProvider> paramProviders) {
+        for(var provider: paramProviders){
+            if(provider.provides(pType, pName)){
+                return provider.getValue(pType, pName);
+            }
         }
-        var providedParamType = (ProvidedParamType) p.getValues()[0];
-        return getProvidedValue(providedParamType);
+        throw new IllegalArgumentException("No providers available for p {type=%s, name=%s}, list %s".formatted(pType, pName, paramProviders));
     }
 
-    public static Object getProvidedValue(ProvidedParamType type){
-        return switch (type){
-            case UNKNOWN -> throw new IllegalArgumentException("Parameter declared as provided but provided type is UNKNOWN");
-            case MAXIMIZE -> Mork.isMaximizing();
-            case ALGORITHM_NAME -> StringUtil.randomAlgorithmName();
-        };
-    }
 
     /**
      * Find a constructor method in the target class that accepts the given combination of parameter (name, type) in any order.
      * Autoboxing and widening are allowed, example from int to double, or int to Integer.
+     *
      * @param clazz target class
-     * @param args argument map
+     * @param mandatoryParams  argument map of all parameters that must be used
+     * @param optionalParams  argument map of all parameters that might be used if necessary
+     * @param <T>   Constructor for class T
      * @return Constructor if found one that matches the given parameters, null if no constructor matches
-     * @param <T> Constructor for class T
      */
     @SuppressWarnings("unchecked")
-    public static <T> Constructor<T> findConstructor(Class<T> clazz, Map<String, Class<?>> args){
+    public static <T> Constructor<T> findConstructor(Class<T> clazz, Map<String, Class<?>> mandatoryParams, List<ParameterProvider> optionalParams) {
         var constructors = clazz.getConstructors();
 
-        for(var c: constructors){
-            boolean matches = doParamsMatch(c, args);
-            if(matches){
-                log.debug("Found matching constructor {} for args {}", c, args);
+        for (var c : constructors) {
+            boolean matches = doParamsMatch(c, mandatoryParams, optionalParams);
+            if (matches) {
+                log.debug("Found matching constructor {} for mandatoryParams {}", c, mandatoryParams);
                 return (Constructor<T>) c;
             }
         }
-        log.debug("Failed to to found a matching constructor for class {} and args {}, detected constructors: {}", clazz.getSimpleName(), args, constructors);
+        log.debug("Failed to to found a matching constructor for class {} and mandatoryParams {}, detected constructors: {}", clazz.getSimpleName(), mandatoryParams, constructors);
         return null;
     }
 
     /**
      * Analyze an algorithm component class to find which constructor is annotated with @AutoconfigConstructor
+     *
      * @param algComponentClass Algorithm component to analyze
      * @return constructor annotated with @AutoconfigConstructor if present, null otherwise
      */
-    public static Constructor<?> findAutoconfigConstructor(Class<?> algComponentClass){
+    public static Constructor<?> findAutoconfigConstructor(Class<?> algComponentClass) {
         var constructors = algComponentClass.getConstructors();
-        for(var c: constructors){
+        for (var c : constructors) {
             var annotation = c.getAnnotation(AutoconfigConstructor.class);
-            if(annotation != null){
+            if (annotation != null) {
                 return c;
             }
         }
         return null;
     }
 
-    private static boolean doParamsMatch(Constructor<?> c, Map<String, Class<?>> params) {
-        var unfilteredParams = c.getParameters();
+    private static boolean doParamsMatch(Constructor<?> c, Map<String, Class<?>> mandatoryParams, List<ParameterProvider> paramsProviders) {
+        Set<String> unusedMandatoryParams = new HashSet<>(mandatoryParams.keySet());
 
-        // Skip all params annotated with @ProvidedParam
-        List<Parameter> filteredParams = new ArrayList<>(unfilteredParams.length);
-        for(var p: unfilteredParams){
-            if (!p.isAnnotationPresent(ProvidedParam.class)) {
-                filteredParams.add(p);
+        // Check if all parameters for the current constructor are either in our parameter map or as provided params
+        for (var cp : c.getParameters()) {
+            String cpName = cp.getName();
+            var cpClass = cp.getType();
+
+            if(mandatoryParams.containsKey(cpName)){
+                var expectedTypeIfMandatory = mandatoryParams.get(cpName);
+
+                // Check that if the parameter has the same name, the types are compatible
+                if(!isAssignable(expectedTypeIfMandatory, cpClass)){
+                    log.debug("Constructor {} ignored, arg {} with type {} is not assignable to {}, params {}; provided params {}", c, cpName, expectedTypeIfMandatory, cpClass, mandatoryParams, paramsProviders);
+                    return false;
+                }
+                // Parameter is valid, mark it
+                unusedMandatoryParams.remove(cpName);
+
+            } else if(cp.isAnnotationPresent(ProvidedParam.class)){
+                // Value must be in at least one provider
+                int countProviders = 0;
+                for(var provider: paramsProviders){
+                    if (provider.provides(cpClass, cpName)) {
+                        countProviders++;
+
+                    }
+                }
+                if(countProviders > 1){
+                    log.debug("NOTE: Parameter type {}, name {} is provided my multiple: {}", cpClass, cpName, paramsProviders);
+                }
+                if(countProviders == 0){
+                    return false;
+                }
+
+            } else {
+                // Parameter is not in available values, and is not provided by any provider, ignore constructor
+                log.debug("Constructor {} ignored, arg {} does not exist either in params {}; provided params {}", c, cpName, mandatoryParams, paramsProviders);
+                return false;
             }
         }
 
-        if(filteredParams.size() != params.size()){
-            log.debug("Constructor {} ignored, args size mismatch, |params|={}", c, params.size());
+        if(!unusedMandatoryParams.isEmpty()){
+            log.debug("Constructor {} ignored, unused mandatory args {}, args {}, provided params {}", c, unusedMandatoryParams, mandatoryParams, paramsProviders);
             return false;
         }
-
-        // Check if all parameters for the current constructor are in our parameter map
-        for(var p: filteredParams){
-            String cParamName = p.getName();
-            var cParamClass = p.getType();
-            if(!params.containsKey(cParamName)){
-                log.debug("Constructor {} ignored, arg {} does not exist in map {}", c, cParamName, params);
-                return false;
-            }
-            var parsedType = params.get(cParamName);
-            if(parsedType == UNKNOWNCLASS.class && !cParamClass.isPrimitive()){
-                // Null values do not have a known class, but can be used as any parameter as long as it is not a primitive type
-                continue;
-            }
-            if(!ClassUtils.isAssignable(parsedType, cParamClass)){
-                log.debug("Constructor {} ignored, arg {} with type {} is not assignable to {}, map {}", c, cParamName, parsedType, cParamClass, params);
-                return false;
-            }
-        }
+        log.debug("Constructor {} matches", c);
         return true;
     }
 
+    public static boolean isAssignable(Class<?> origin, Class<?> target){
+        // Null values do not have a known class, but can be used as any parameter
+        // IF AND ONLY IF the target class is not a primitive type
+        if (origin == UNKNOWNCLASS.class && !target.isPrimitive()){
+            return true;
+        }
+
+        // If the origin class is number like, it can always be promoted to a Double
+        if(ClassUtils.isAssignable(origin, Number.class) && target == Double.class){
+            return true;
+        }
+
+        // If the origin class is a string and the target is an enum type, assume the enum contains the string
+        if(ClassUtils.isAssignable(origin, String.class) && target.isEnum()){
+            return true;
+        }
+
+        // For all remaining types, use Apache Lang3 with autoboxing checks enabled
+        return ClassUtils.isAssignable(origin, target, true);
+    }
+
+    public static Object prepareParameterValue(Object value, Class<?> target){
+        // If the origin class is number like, promote to Double
+        if(value instanceof Number n && target == Double.class){
+            return n.doubleValue();
+        }
+
+        // If the origin class is a string and the target is an enum type, assume the enum contains the string
+        if(value instanceof String s && target.isEnum()){
+            //noinspection unchecked
+            return Enum.valueOf((Class<Enum>)target, s);
+        }
+
+        // Return as is if no special handling is implemented
+        return value;
+    }
 }

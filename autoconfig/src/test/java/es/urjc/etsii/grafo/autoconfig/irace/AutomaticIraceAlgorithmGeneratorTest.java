@@ -16,7 +16,7 @@ class AutomaticIraceAlgorithmGeneratorTest {
     static void setUp(){
         var config = new SolverConfig();
         config.setTreeDepth(4);
-        var inventory = new AlgorithmInventoryService(new DefaultFilterStrategy(), List.of());
+        var inventory = new AlgorithmInventoryService(new DefaultFilterStrategy(), List.of(), List.of());
         inventory.runComponentDiscovery("es.urjc.etsii.grafo");
         var candidateGenerator = new AlgorithmCandidateGenerator(inventory);
         var builderService = new AlgorithmBuilderService(inventory);

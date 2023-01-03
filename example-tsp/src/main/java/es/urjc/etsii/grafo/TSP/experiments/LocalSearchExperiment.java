@@ -6,6 +6,7 @@ import es.urjc.etsii.grafo.TSP.algorithms.neighborhood.SwapNeighborhood;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.experiment.AbstractExperiment;
 import es.urjc.etsii.grafo.improve.ls.LocalSearchBestImprovement;
@@ -22,16 +23,16 @@ public class LocalSearchExperiment extends AbstractExperiment<TSPSolution, TSPIn
 
         var algorithms = new ArrayList<Algorithm<TSPSolution, TSPInstance>>();
 
-        boolean maximize = Mork.isMaximizing();
+        FMode fmode = Mork.getFMode();
         algorithms.add(new SimpleAlgorithm<>("Random", new TSPRandomConstructive()));
         algorithms.add(new SimpleAlgorithm<>("RandomFIInsert", new TSPRandomConstructive(),
-                new LocalSearchFirstImprovement<>(maximize, new InsertNeighborhood())));
+                new LocalSearchFirstImprovement<>(fmode, new InsertNeighborhood())));
         algorithms.add(new SimpleAlgorithm<>("RandomBIInsert", new TSPRandomConstructive(),
-                new LocalSearchBestImprovement<>(maximize, new InsertNeighborhood())));
+                new LocalSearchBestImprovement<>(fmode, new InsertNeighborhood())));
         algorithms.add(new SimpleAlgorithm<>("RandomFISwap", new TSPRandomConstructive(),
-                new LocalSearchFirstImprovement<>(maximize, new SwapNeighborhood())));
+                new LocalSearchFirstImprovement<>(fmode, new SwapNeighborhood())));
         algorithms.add(new SimpleAlgorithm<>("RandomBISwap", new TSPRandomConstructive(),
-                new LocalSearchBestImprovement<>(maximize, new SwapNeighborhood())));
+                new LocalSearchBestImprovement<>(fmode, new SwapNeighborhood())));
 
         return algorithms;
     }

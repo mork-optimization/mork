@@ -7,19 +7,21 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Map;
 
+import static es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE;
+
 class GraspConstructiveFactoryTest {
 
     private final GRGraspConstructiveFactory grfactory = new GRGraspConstructiveFactory();
     private final RGGraspConstructiveFactory rgfactory = new RGGraspConstructiveFactory();
 
     private final Map<String, Object> fixedAlpha = Map.of(
-            "maximize", false,
+            "fmode", MINIMIZE,
             "alpha", 0.2d,
             "candidateListManager", GRASPListManager.nul()
     );
 
     private final Map<String, Object> alphaRange = Map.of(
-            "maximize", false,
+            "fmode", MINIMIZE,
             "alphaMin", 0.1d,
             "alphaMax", 0.3d,
             "candidateListManager", GRASPListManager.nul()

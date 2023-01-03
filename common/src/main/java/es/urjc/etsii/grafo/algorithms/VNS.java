@@ -3,7 +3,6 @@ package es.urjc.etsii.grafo.algorithms;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.IntegerParam;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
-import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
@@ -82,7 +81,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      */
     @AutoconfigConstructor
     public VNS(
-            @ProvidedParam(type = ProvidedParamType.ALGORITHM_NAME) String algorithmName,
+            @ProvidedParam String algorithmName,
             @IntegerParam(min = 1, max = 100) int maxK,
             Constructive<S, I> constructive,
             Shake<S, I> shake,

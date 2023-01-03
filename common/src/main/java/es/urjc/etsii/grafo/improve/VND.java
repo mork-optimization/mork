@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.improve;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
-import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.DoubleComparator;
@@ -21,10 +21,10 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
      * <p>Constructor for VND.</p>
      *
      * @param improvers a {@link List} object.
-     * @param maximize a boolean.
+     * @param fmode a boolean.
      */
-    public VND(List<Improver<S, I>> improvers, boolean maximize) {
-        super(maximize);
+    public VND(List<Improver<S, I>> improvers, FMode fmode) {
+        super(fmode);
         this.improvers = improvers;
     }
 
@@ -34,14 +34,14 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
      * @param improver1 improver1
      * @param improver2 improver2
      * @param improver3 improver3
-     * @param maximize a boolean.
+     * @param fmode a boolean.
      */
     @AutoconfigConstructor
     public VND(
-            @ProvidedParam(type = ProvidedParamType.MAXIMIZE) boolean maximize,
+            @ProvidedParam FMode fmode,
             Improver<S, I> improver1, Improver<S, I> improver2, Improver<S, I> improver3
     ) {
-        super(maximize);
+        super(fmode);
         this.improvers = List.of(improver1, improver2, improver3);
     }
 
@@ -56,8 +56,9 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
             if(currentLS == 0){
                 // Why repeat when improver stops when
                 // it cannot improve the current solution?
+                // TODO refactor this
                 currentLS++;
-            } else if (this.ofMaximize) {
+            } else if (this.fmode == FMode.MAXIMIZE) {
                 if (DoubleComparator.isGreaterOrEquals(prev, solution.getScore())) {
                     // prev >= current, no improvement
                     currentLS++;

@@ -1,9 +1,9 @@
 package es.urjc.etsii.grafo.improve;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
-import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
@@ -25,12 +25,16 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(Improver.class);
 
-    protected final boolean ofMaximize;
+    protected final FMode fmode;
     protected final BiPredicate<Double, Double> ofIsBetter;
 
-    protected Improver(boolean ofMaximize) {
-        this.ofMaximize = ofMaximize;
-        this.ofIsBetter = DoubleComparator.isBetterFunction(ofMaximize);
+    /**
+     * Initialize common improver fields, to be called by subclasses
+     * @param fmode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
+     */
+    protected Improver(FMode fmode) {
+        this.fmode = fmode;
+        this.ofIsBetter = DoubleComparator.isBetterFunction(fmode);
     }
 
     /**
@@ -76,8 +80,8 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
     }
 
     @SafeVarargs
-    public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> serial(boolean maximize, Improver<S, I>... improvers){
-        return new SequentialImprover<>(maximize, improvers);
+    public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> serial(FMode fmode, Improver<S, I>... improvers){
+        return new SequentialImprover<>(fmode, improvers);
     }
 
     /**
@@ -90,7 +94,7 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
         @AutoconfigConstructor
         public NullImprover() {
-            super(false); // It does not matter as it does nothing
+            super(FMode.MINIMIZE); // It does not matter as it does nothing
         }
 
         @Override
@@ -110,18 +114,18 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         private final Improver<S,I>[] improvers;
 
         @SafeVarargs
-        public SequentialImprover(boolean maximize, Improver<S, I>... improvers) {
-            super(maximize);
+        public SequentialImprover(FMode fmode, Improver<S, I>... improvers) {
+            super(fmode);
             this.improvers = improvers;
         }
 
         @AutoconfigConstructor
         public SequentialImprover(
-                @ProvidedParam(type = ProvidedParamType.MAXIMIZE) boolean maximize,
+                @ProvidedParam FMode fmode,
                 Improver<S, I> improverA,
                 Improver<S, I> improverB
         ) {
-            super(maximize);
+            super(fmode);
             this.improvers = new Improver[]{improverA, improverB};
         }
 

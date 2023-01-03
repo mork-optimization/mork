@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.create.grasp;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -21,8 +22,8 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     private static final Logger log = LoggerFactory.getLogger(GreedyRandomGRASPConstructive.class);
 
-    protected GreedyRandomGRASPConstructive(boolean maximize, GRASPListManager<M, S, I> candidateListManager, ToDoubleFunction<M> greedyFunction, AlphaProvider provider, String alphaType) {
-        super(maximize, candidateListManager, greedyFunction, provider, alphaType);
+    protected GreedyRandomGRASPConstructive(FMode fmode, GRASPListManager<M, S, I> candidateListManager, ToDoubleFunction<M> greedyFunction, AlphaProvider provider, String alphaType) {
+        super(fmode, candidateListManager, greedyFunction, provider, alphaType);
     }
 
     /**
@@ -40,7 +41,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
         int[] validIndexes = new int[cl.size()];
         int next = 0;
 
-        double limit = maximizing ?
+        double limit = this.fmode == FMode.MAXIMIZE ?
                 max + alpha * (min - max) :
                 min + alpha * (max - min);
 
@@ -81,7 +82,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
         return "GRGRASP{" +
                 "a='" + alphaType + '\'' +
                 ", l=" + candidateListManager +
-                ", max=" + maximizing +
+                ", mode=" + fmode +
                 ", g=" + greedyFunction +
                 '}';
     }

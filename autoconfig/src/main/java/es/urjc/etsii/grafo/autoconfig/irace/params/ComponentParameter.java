@@ -48,7 +48,7 @@ public class ComponentParameter {
     }
 
     public static ComponentParameter from(String name, Class<?> javaType, ProvidedParam p) {
-        return new ComponentParameter(name, javaType, PROVIDED, new Object[]{p.type()});
+        return new ComponentParameter(name, javaType, PROVIDED, new Object[0]);
     }
 
     public static ComponentParameter from(String name, Class<?> javaType, Collection<Class<?>> candidates) {

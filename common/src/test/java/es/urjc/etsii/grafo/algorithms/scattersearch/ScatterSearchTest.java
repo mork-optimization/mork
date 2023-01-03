@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.algorithms.scattersearch;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.testutil.TestInstance;
@@ -52,9 +53,9 @@ class ScatterSearchTest {
         assertEquals(newImprover, builder.improver);
 
         // Maximize
-        assertNull(builder.maximizing);
-        builder.withMaximizing(false);
-        assertEquals(false, builder.maximizing);
+        assertNull(builder.fmode);
+        builder.withSolvingMode(FMode.MINIMIZE);
+        assertEquals(FMode.MINIMIZE, builder.fmode);
 
         // Refset size
         builder.withRefsetSize(50);

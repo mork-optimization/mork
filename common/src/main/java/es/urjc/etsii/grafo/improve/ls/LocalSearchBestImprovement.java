@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.improve.ls;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
-import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -26,26 +26,26 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
 
     /**
      * Create a new local search method using the given neighborhood.
-     * Uses the method Move::getValue as the guiding function, with fMaximize = maximize.
+     * Uses the method Move::getValue as the guiding function, with fMaximize = fmode.
      * @param neighborhood neighborhood to use
-     * @param maximize true if the problem objective function is maximizing, false otherwise
+     * @param fmode MAXIMIZE if the problem objective function is maximizing, MINIMIZE if minimizing
      */
     @AutoconfigConstructor
     public LocalSearchBestImprovement(
-            @ProvidedParam(type = ProvidedParamType.MAXIMIZE) boolean maximize,
+            @ProvidedParam FMode fmode,
             Neighborhood<M, S, I> neighborhood
     ) {
-        super(maximize, neighborhood);
+        super(fmode, neighborhood);
     }
 
     /**
      * Create a new local search method using the given neighborhood
      * @param neighborhood neighborhood to use
-     * @param ofMaximize true if the problem objective function is maximizing, false otherwise
-     * @param fMaximize true if we should maximize the values returned by function f, false otherwise
+     * @param ofMaximize MAXIMIZE if the problem objective function is maximizing, MINIMIZE otherwise
+     * @param fMaximize MAXIMIZE if we should maximize the values returned by function f, MINIMIZE if not
      * @param f function used to get a double value from a move
      */
-    protected LocalSearchBestImprovement(boolean ofMaximize, Neighborhood<M, S, I> neighborhood, boolean fMaximize, ToDoubleFunction<M> f) {
+    protected LocalSearchBestImprovement(FMode ofMaximize, Neighborhood<M, S, I> neighborhood, FMode fMaximize, ToDoubleFunction<M> f) {
         super(ofMaximize, neighborhood, fMaximize, f);
     }
 

@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.improve.sa;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.improve.sa.cd.CoolDownControl;
 import es.urjc.etsii.grafo.improve.sa.cd.ExponentialCoolDown;
 import es.urjc.etsii.grafo.improve.sa.initialt.ConstantInitialTemperature;
@@ -27,9 +28,9 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     private TerminationCriteria<M, S, I> terminationCriteria;
     private CoolDownControl<M, S, I> coolDownControl;
     private int cycleLength = 1;
-    private Boolean ofMaximize;
+    private FMode ofMaximize;
     private ToDoubleFunction<M> f;
-    private boolean fMaximize;
+    private FMode fMaximize;
 
     /**
      * Neighborhood for the Simulated Annealing.
@@ -166,8 +167,20 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * @param maximize true if maximizing, false if minimizing
      * @return simulated annealing builder
      */
+    @Deprecated(forRemoval = true)
     public SimulatedAnnealingBuilder<M,S,I> withMaximizing(boolean maximize) {
-        this.ofMaximize = maximize;
+        this.ofMaximize = maximize? FMode.MAXIMIZE: FMode.MINIMIZE;
+        return this;
+    }
+
+    /**
+     * Is this a maximization or minimization problem?
+     *
+     * @param fMode MAXIMIZE if maximizing, MINIMIZE if minimizing
+     * @return simulated annealing builder
+     */
+    public SimulatedAnnealingBuilder<M,S,I> withMode(FMode fMode) {
+        this.ofMaximize = fMode;
         return this;
     }
 
@@ -176,9 +189,9 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      *
      * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withEvalFunction(ToDoubleFunction<M> f, boolean maximize) {
+    public SimulatedAnnealingBuilder<M,S,I> withEvalFunction(ToDoubleFunction<M> f, FMode fmode) {
         this.f = f;
-        this.fMaximize = maximize;
+        this.fMaximize = fmode;
         return this;
     }
 

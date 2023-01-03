@@ -9,7 +9,7 @@ import java.util.Collections;
 class AlgorithmCandidateGeneratorTest {
     @Test
     void basic(){
-        var inventoryService = new AlgorithmInventoryService(new DefaultFilterStrategy(), TestUtil.getTestFactories());
+        var inventoryService = new AlgorithmInventoryService(new DefaultFilterStrategy(), TestUtil.getTestFactories(), TestUtil.getTestProviders());
         inventoryService.runComponentDiscovery("es.urjc.etsii");
         var candidateGenerator = new AlgorithmCandidateGenerator(inventoryService);
         var roots = candidateGenerator.buildTree(4);

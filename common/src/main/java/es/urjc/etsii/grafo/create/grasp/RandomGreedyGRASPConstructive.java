@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.create.grasp;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -25,8 +26,8 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     private static final Logger log = LoggerFactory.getLogger(RandomGreedyGRASPConstructive.class);
 
-    protected RandomGreedyGRASPConstructive(boolean maximize, GRASPListManager<M, S, I> candidateListManager, ToDoubleFunction<M> greedyFunction, AlphaProvider provider, String alphaType) {
-        super(maximize, candidateListManager, greedyFunction, provider, alphaType);
+    protected RandomGreedyGRASPConstructive(FMode fmode, GRASPListManager<M, S, I> candidateListManager, ToDoubleFunction<M> greedyFunction, AlphaProvider provider, String alphaType) {
+        super(fmode, candidateListManager, greedyFunction, provider, alphaType);
     }
 
     /**
@@ -73,7 +74,7 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
         return "RGGRASP{" +
                 "a='" + alphaType + '\'' +
                 ", l=" + candidateListManager +
-                ", max=" + maximizing +
+                ", mode=" + this.fmode +
                 ", g=" + greedyFunction +
                 '}';
     }

@@ -2,10 +2,12 @@ package es.urjc.etsii.morktests;
 
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.orchestrator.UserExperimentOrchestrator;
 import es.urjc.etsii.grafo.solver.Mork;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,6 +25,10 @@ import java.io.IOException;
 @DirtiesContext
 class ConcurrentTest {
 
+    @BeforeAll
+    public static void before(){
+        Mork.setSolvingMode(FMode.MINIMIZE);
+    }
     private static Logger log = LoggerFactory.getLogger(ConcurrentTest.class);
 
     @Autowired

@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.algorithms.scattersearch;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.*;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
@@ -56,14 +57,14 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
      */
     @AutoconfigConstructor
     public ScatterSearch(
-            @ProvidedParam(type = ProvidedParamType.ALGORITHM_NAME) String name,
+            @ProvidedParam String name,
             @RealParam(min = 1, max = 10) double initialRatio,
             @IntegerParam(min = 10, max = 30) int refsetSize,
             Constructive<S, I> constructiveGoodValues,
             Constructive<S, I> constructiveGoodDiversity,
             Improver<S, I> improver,
             SolutionCombinator<S, I> combinator,
-            @ProvidedParam(type = ProvidedParamType.MAXIMIZE) boolean maximizing,
+            @ProvidedParam FMode fmode,
             @IntegerParam(min = 1) int maxIterations,
             @RealParam(min = 0, max = 1) double diversityRatio,
             SolutionDistance<S, I> solutionDistance
@@ -87,7 +88,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
         this.constructiveGoodDiversity = Objects.requireNonNull(constructiveGoodDiversity);
         this.improver = Objects.requireNonNull(improver);
         this.combinator = Objects.requireNonNull(combinator);
-        this.isBetterFunction = DoubleComparator.isBetterFunction(maximizing);
+        this.isBetterFunction = DoubleComparator.isBetterFunction(fmode);
         this.softRestartEnabled = true;
         this.maxIterations = maxIterations;
         this.ratio = diversityRatio;
@@ -95,7 +96,10 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
 
         Comparator<S> compareByScore = Comparator.comparing(Solution::getScore);
         // Comparator orders from less to more by default, if maximizing reverse ordering
-        this.bestValueSort = maximizing ? compareByScore.reversed() : compareByScore;
+        this.bestValueSort = switch (fmode){
+            case MAXIMIZE -> compareByScore.reversed();
+            case MINIMIZE -> compareByScore;
+        };
     }
 
     protected RefSet<S, I> initializeRefset(Class<?> clazz, I instance) {
