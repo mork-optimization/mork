@@ -5,8 +5,7 @@ import java.util.*;
 /**
  * Fast integer set implementation compatible with Java Collections API.
  * Should be used when int range is known and not extremely big.
- * Collection is always backed by an static array.
- * TODO Bitmasks?
+ * Collection is always backed by a static array.
  */
 public class IntSet extends AbstractSet<Integer> {
 

@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.util;
+package es.urjc.etsii.grafo.util.collections;
 
 import es.urjc.etsii.grafo.util.collections.DisjointSet;
 import org.junit.jupiter.api.Assertions;

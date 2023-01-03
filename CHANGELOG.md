@@ -2,6 +2,7 @@
 - (New) StringUtil reverse, longestCommonPrefix, longestCommonSuffix
 - (New) Remove lcp and lcs from instance names
 - (New) Autoconfig: Add Enum types compatibility
+- (New) BitSet implementation compatible with JDK APIs
 - (Breaking change) maximize as a boolean has been changed in all algorithm components to FMode.MINIMIZE and FMode.MAXIMIZE
 - (Fix) #107 Autoconfig: Cannot assign integer values to double parameters in algorithm components
 
