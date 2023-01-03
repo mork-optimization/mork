@@ -25,7 +25,7 @@ class AlgorithmBuilderServiceTest {
 
     @BeforeAll
     static void initialize(){
-        algComponent = new AlgorithmInventoryService(new DefaultFilterStrategy(), TestUtil.getTestFactories());
+        algComponent = new AlgorithmInventoryService(new DefaultFilterStrategy(), TestUtil.getTestFactories(), TestUtil.getTestProviders());
         algComponent.runComponentDiscovery("es.urjc.etsii");
         builderService = new AlgorithmBuilderService(algComponent);
     }
@@ -44,7 +44,7 @@ class AlgorithmBuilderServiceTest {
         SimpleAlgorithm{
             constructive=FakeGRASPConstructive{
                 alpha=0.5,
-                maximize=false,
+                fmode="MINIMIZE",
                 candidateListManager=NullGraspListManager{}
             },
             improver=null
@@ -60,7 +60,7 @@ class AlgorithmBuilderServiceTest {
         SimpleAlgorithm{
             constructive=FakeGRASPConstructive{
                 alpha=null,
-                maximize=false,
+                fmode="MINIMIZE",
                 candidateListManager=NullGraspListManager{}
             },
             improver=null
@@ -108,7 +108,7 @@ class AlgorithmBuilderServiceTest {
         String alg = """
         GraspConstructive{
             alpha=0.2,
-            maximize=false,
+            fmode="MINIMIZE",
             candidateListManager=NullGraspListManager{}
         }
         """;
@@ -121,11 +121,10 @@ class AlgorithmBuilderServiceTest {
         String alg = """
         GraspConstructive{
             alpha=0.2,
-            maximize=false,
+            fmode="MINIMIZE",
             candidateListManager=NullGraspListManager{}
         }
         """;
-        var component =
         Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmFromString(alg));
     }
 
@@ -134,7 +133,7 @@ class AlgorithmBuilderServiceTest {
         String alg = """
         GRASP{
             alpha=0.2,
-            maximize=false,
+            fmode="MINIMIZE",
             candidateListManager=NullGraspListManager{}
         }
         """;
@@ -148,7 +147,7 @@ class AlgorithmBuilderServiceTest {
         GRASP{
             minAlpha=0.2,
             maxAlpha=0.4,
-            maximize=false,
+            fmode="MINIMIZE",
             candidateListManager=NullGraspListManager{}
         }
         """;
@@ -161,7 +160,7 @@ class AlgorithmBuilderServiceTest {
         String alg = """
         GRASP{
             alpha=-0.9,
-            maximize=false,
+            fmode="MINIMIZE",
             candidateListManager=NullGraspListManager{}
         }
         """;
@@ -172,7 +171,7 @@ class AlgorithmBuilderServiceTest {
     void failUsingAliasMissingCL(){
         String alg = """
         GRASP{
-            maximize=false
+            fmode="MINIMIZE"
         }
         """;
         Assertions.assertThrows(NullPointerException.class, () -> builderService.buildAlgorithmComponentFromString(alg));

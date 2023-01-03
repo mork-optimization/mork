@@ -57,14 +57,14 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
      */
     @AutoconfigConstructor
     public ScatterSearch(
-            @ProvidedParam(type = ProvidedParamType.ALGORITHM_NAME) String name,
+            @ProvidedParam String name,
             @RealParam(min = 1, max = 10) double initialRatio,
             @IntegerParam(min = 10, max = 30) int refsetSize,
             Constructive<S, I> constructiveGoodValues,
             Constructive<S, I> constructiveGoodDiversity,
             Improver<S, I> improver,
             SolutionCombinator<S, I> combinator,
-            @ProvidedParam(type = ProvidedParamType.MAXIMIZE) FMode fmode,
+            @ProvidedParam FMode fmode,
             @IntegerParam(min = 1) int maxIterations,
             @RealParam(min = 0, max = 1) double diversityRatio,
             SolutionDistance<S, I> solutionDistance

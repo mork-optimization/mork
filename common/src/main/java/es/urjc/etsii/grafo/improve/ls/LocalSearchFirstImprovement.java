@@ -3,7 +3,6 @@ package es.urjc.etsii.grafo.improve.ls;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
-import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -32,7 +31,7 @@ public class LocalSearchFirstImprovement<M extends Move<S, I>, S extends Solutio
      */
     @AutoconfigConstructor
     public LocalSearchFirstImprovement(
-            @ProvidedParam(type = ProvidedParamType.MAXIMIZE) FMode fmode,
+            @ProvidedParam FMode fmode,
             Neighborhood<M, S, I> neighborhood
     ) {
         super(fmode, neighborhood);

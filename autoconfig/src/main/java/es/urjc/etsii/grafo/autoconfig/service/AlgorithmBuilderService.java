@@ -42,8 +42,8 @@ public class AlgorithmBuilderService {
             var factory = inventory.factories().get(name);
             var factoryParams = new HashMap<>(params);
             for(var p: factory.getRequiredParameters()){
-                if(p.getType() == ParameterType.PROVIDED){
-                    factoryParams.put(p.getName(), AlgorithmBuilderUtil.getProvidedValue(p));
+                if(p.getType() == ParameterType.PROVIDED && !params.containsKey(p.getName())){
+                    factoryParams.put(p.getName(), AlgorithmBuilderUtil.getProvidedValue(p.getJavaType(), p.getName(), inventory.paramProviders()));
                 }
             }
             return factory.buildComponent(factoryParams);
@@ -55,12 +55,13 @@ public class AlgorithmBuilderService {
             throw new AlgorithmParsingException(String.format("Unknown component: %s, known components: %s, aliases: %s, factories: %s", name, inventory.componentByName().keySet(), inventory.aliases().keySet(), inventory.factories().keySet()));
         }
         var clazz = inventory.componentByName().get(name);
-        return AlgorithmBuilderUtil.build(clazz, params);
+        return AlgorithmBuilderUtil.build(clazz, params, inventory.paramProviders());
     }
 
     /**
      * Build any algorithm from the given string description. Must follow the format: Component{param1=value1, ...}.
      * Any component can be a parameter too, example: Alg{constructive=GRASP{alpha=1}, ls=MyLS{}}
+     * @throws AlgorithmParsingException if the built component is not a valid algorithm
      * @param s String description
      * @return Built component
      */

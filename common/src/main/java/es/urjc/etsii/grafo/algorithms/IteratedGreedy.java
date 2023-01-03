@@ -3,7 +3,6 @@ package es.urjc.etsii.grafo.algorithms;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.IntegerParam;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
-import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.Reconstructive;
 import es.urjc.etsii.grafo.improve.Improver;
@@ -89,7 +88,7 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
      */
     @AutoconfigConstructor
     public IteratedGreedy(
-            @ProvidedParam(type = ProvidedParamType.ALGORITHM_NAME) String name,
+            @ProvidedParam String name,
             @IntegerParam(min = 0, max = 1_000_000) int maxIterations,
             @IntegerParam(min = 1, max = 1_000_000) int stopIfNotImprovedIn,
             Constructive<S, I> constructive,

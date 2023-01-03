@@ -3,7 +3,6 @@ package es.urjc.etsii.grafo.algorithms.multistart;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.IntegerParam;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
-import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.exception.IllegalAlgorithmConfigException;
 import es.urjc.etsii.grafo.io.Instance;
@@ -55,7 +54,7 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
     //@AutoconfigConstructor // TODO temporalmente desactivado,
     // implementado a nivel de irace orchestrator como envoltorio para el algoritmo correspondiente
     public MultiStartAlgorithm(
-            @ProvidedParam(type = ProvidedParamType.ALGORITHM_NAME) String algorithmName,
+            @ProvidedParam String algorithmName,
             Algorithm<S, I> algorithm,
             @IntegerParam(min = 1, max = 1_000_000) int maxIterations,
             @IntegerParam(min = 1, max = 1_000_000) int minIterations,

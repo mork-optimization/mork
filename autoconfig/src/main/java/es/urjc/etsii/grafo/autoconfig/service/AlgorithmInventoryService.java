@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
+import es.urjc.etsii.grafo.autoconfig.fill.ParameterProvider;
 import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
 import es.urjc.etsii.grafo.autoconfig.service.filter.InventoryFilterStrategy;
 import es.urjc.etsii.grafo.util.ClassUtil;
@@ -14,6 +15,7 @@ import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static java.util.Collections.unmodifiableList;
 import static java.util.Collections.unmodifiableMap;
 
 /**
@@ -25,6 +27,7 @@ import static java.util.Collections.unmodifiableMap;
 public class AlgorithmInventoryService {
     private static final Logger log = LoggerFactory.getLogger(AlgorithmInventoryService.class);
     private final InventoryFilterStrategy filterStrategy;
+    private final List<ParameterProvider> paramProviders;
 
     protected Map<Class<?>, Collection<Class<?>>> componentsByType = new HashMap<>();
     protected Map<String, Class<?>> componentByName = new HashMap<>();
@@ -34,8 +37,9 @@ public class AlgorithmInventoryService {
     @Value("${advanced.scan-pkgs:es.urjc.etsii}")
     protected String pkgs;
 
-    public AlgorithmInventoryService(InventoryFilterStrategy filterStrategy, List<AlgorithmComponentFactory> factoryList) {
+    public AlgorithmInventoryService(InventoryFilterStrategy filterStrategy, List<AlgorithmComponentFactory> factoryList, List<ParameterProvider> paramProviders) {
         this.filterStrategy = filterStrategy;
+        this.paramProviders = paramProviders;
         for(var f: factoryList){
             this.registerFactory(f);
         }
@@ -152,14 +156,16 @@ public class AlgorithmInventoryService {
      * @return unmodifiable algorithm inventory. Do not attempt to modify its data structures
      */
     public AlgorithmInventory getInventory(){
-        return new AlgorithmInventory(unmodifiableMap(componentsByType), unmodifiableMap(componentByName), unmodifiableMap(aliases), unmodifiableMap(factories));
+        return new AlgorithmInventory(unmodifiableMap(componentsByType), unmodifiableMap(componentByName), unmodifiableMap(aliases), unmodifiableMap(factories), unmodifiableList(paramProviders));
     }
 
     public record AlgorithmInventory (
             Map<Class<?>, Collection<Class<?>>> componentsByType,
             Map<String, Class<?>> componentByName,
             Map<String, String> aliases,
-            Map<String, AlgorithmComponentFactory> factories
+            Map<String, AlgorithmComponentFactory> factories,
+
+            List<ParameterProvider> paramProviders
     ){
         /**
          * Get all detected algorithm components
@@ -173,4 +179,5 @@ public class AlgorithmInventoryService {
     public AlgorithmComponentFactory getFactoryFor(Class<?> clazz){
         return this.factories.get(clazz.getSimpleName());
     }
+
 }

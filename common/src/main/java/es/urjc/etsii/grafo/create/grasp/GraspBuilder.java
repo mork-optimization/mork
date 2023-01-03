@@ -168,7 +168,7 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
 
     private void validate() {
         if (this.fmode == null) {
-            throw new IllegalArgumentException("maximize parameter not configured, call GraspBuilder::withMaximize either true if maximizing the greedy function or false if minimizing");
+            throw new IllegalArgumentException("fmode parameter not configured, call GraspBuilder::withMode either FMode.MAXIMIZE if maximizing the greedy function or FMode.MINIMIZE if minimizing");
         }
 
         if (this.greedyRandom == null) {

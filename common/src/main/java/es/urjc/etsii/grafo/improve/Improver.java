@@ -4,7 +4,6 @@ import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
-import es.urjc.etsii.grafo.annotations.ProvidedParamType;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
@@ -122,7 +121,7 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
         @AutoconfigConstructor
         public SequentialImprover(
-                @ProvidedParam(type = ProvidedParamType.MAXIMIZE) FMode fmode,
+                @ProvidedParam FMode fmode,
                 Improver<S, I> improverA,
                 Improver<S, I> improverB
         ) {
