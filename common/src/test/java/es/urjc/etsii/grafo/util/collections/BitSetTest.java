@@ -7,6 +7,7 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.Arrays;
 
+import static java.lang.Integer.valueOf;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class BitSetTest {
@@ -38,9 +39,39 @@ public class BitSetTest {
         assertFalse(set.add(2));
     }
 
+    @Test
+    void addTestJDK(){
+        BitSet set = new BitSet(100);
+        assertTrue(set.add(valueOf(1)));
+        assertFalse(set.add(valueOf(1)));
+
+        assertTrue(set.add(valueOf(2)));
+        assertFalse(set.add(valueOf(2)));
+
+        assertFalse(set.add(valueOf(1)));
+
+        assertTrue(set.add(valueOf(10)));
+        assertTrue(set.add(valueOf(12)));
+        assertTrue(set.add(valueOf(14)));
+        assertFalse(set.add(valueOf(10)));
+        assertFalse(set.add(valueOf(12)));
+        assertFalse(set.add(valueOf(14)));
+
+        assertFalse(set.add(valueOf(2)));
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {0, 5, 20})
     void contains(int n){
+        BitSet set = new BitSet(100);
+        assertFalse(set.contains(n));
+        set.add(n);
+        assertTrue(set.contains(n));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 5, 20})
+    void containsJDK(Integer n){
         BitSet set = new BitSet(100);
         assertFalse(set.contains(n));
         set.add(n);
@@ -54,6 +85,15 @@ public class BitSetTest {
         assertFalse(set.remove(n));
         set.add(n);
         assertTrue(set.remove(n));
+    }
+
+    @ParameterizedTest
+    @ValueSource(ints = {0, 5, 20})
+    void removeJDK(Integer n){
+        BitSet set = new BitSet(100);
+        assertFalse(set.remove((Object) n));
+        set.add(n);
+        assertTrue(set.remove((Object) n));
     }
 
     @ParameterizedTest

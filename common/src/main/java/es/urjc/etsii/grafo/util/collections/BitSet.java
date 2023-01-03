@@ -1,8 +1,5 @@
 package es.urjc.etsii.grafo.util.collections;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.LongBuffer;
 import java.util.*;
 import java.util.function.IntConsumer;
 import java.util.stream.Stream;
@@ -27,7 +24,8 @@ public class BitSet extends AbstractSet<Integer> {
     /**
      * The internal field corresponding to the serialField "bits".
      */
-    private long[] words;
+    private final long[] words;
+    private final int capacity;
 
 
     /**
@@ -42,161 +40,41 @@ public class BitSet extends AbstractSet<Integer> {
      * represent bits with indices in the range {@code 0} through
      * {@code nbits-1}. All bits are initially {@code false}.
      *
-     * @param nbits the initial size of the bit set
+     * @param nElements the initial size of the bit set
      * @throws NegativeArraySizeException if the specified initial size
      *                                    is negative
      */
-    public BitSet(int nbits) {
+    public BitSet(int nElements) {
         // nbits can't be negative; size 0 is OK
-        if (nbits < 0)
-            throw new NegativeArraySizeException("nbits < 0: " + nbits);
+        if (nElements < 0)
+            throw new NegativeArraySizeException("nbits < 0: " + nElements);
 
-        initWords(nbits);
+        this.capacity = nElements;
+        this.words = new long[wordIndex(nElements - 1) + 1];
     }
 
-    private void initWords(int nbits) {
-        words = new long[wordIndex(nbits - 1) + 1];
+    public BitSet(BitSet other){
+        this.words = other.words.clone();
+        this.capacity = other.capacity;
     }
 
-    /**
-     * Creates a bit set using words as the internal representation.
-     * The last word (if there is one) must be non-zero.
-     */
-    private BitSet(long[] words) {
-        this.words = words;
-    }
-
-    /**
-     * Returns a new bit set containing all the bits in the given long array.
-     *
-     * <p>More precisely,
-     * <br>{@code BitSet.valueOf(longs).get(n) == ((longs[n/64] & (1L<<(n%64))) != 0)}
-     * <br>for all {@code n < 64 * longs.length}.
-     *
-     * <p>This method is equivalent to
-     * {@code BitSet.valueOf(LongBuffer.wrap(longs))}.
-     *
-     * @param longs a long array containing a little-endian representation
-     *              of a sequence of bits to be used as the initial bits of the
-     *              new bit set
-     * @return a {@code BitSet} containing all the bits in the long array
-     * @since 1.7
-     */
-    public static BitSet valueOf(long[] longs) {
-        int n;
-        for (n = longs.length; n > 0 && longs[n - 1] == 0; n--)
-            ;
-        return new BitSet(Arrays.copyOf(longs, n));
+    public BitSet(int nElements, Collection<Integer> other){
+        if(other instanceof BitSet set){
+            this.words = set.words.clone();
+            this.capacity = set.capacity;
+        } else {
+            this.capacity = nElements;
+            this.words = new long[wordIndex(nElements - 1) + 1];
+            this.addAll(other);
+        }
     }
 
     /**
-     * Returns a new bit set containing all the bits in the given long
-     * buffer between its position and limit.
-     *
-     * <p>More precisely,
-     * <br>{@code BitSet.valueOf(lb).get(n) == ((lb.get(lb.position()+n/64) & (1L<<(n%64))) != 0)}
-     * <br>for all {@code n < 64 * lb.remaining()}.
-     *
-     * <p>The long buffer is not modified by this method, and no
-     * reference to the buffer is retained by the bit set.
-     *
-     * @param lb a long buffer containing a little-endian representation
-     *           of a sequence of bits between its position and limit, to be
-     *           used as the initial bits of the new bit set
-     * @return a {@code BitSet} containing all the bits in the buffer in the
-     * specified range
-     * @since 1.7
+     * BitSet can contain elements in range [0, capacity). Get the upper bound.
+     * @return capacity, as initialized in constructor method
      */
-    public static BitSet valueOf(LongBuffer lb) {
-        lb = lb.slice();
-        int n;
-        for (n = lb.remaining(); n > 0 && lb.get(n - 1) == 0; n--)
-            ;
-        long[] words = new long[n];
-        lb.get(words);
-        return new BitSet(words);
-    }
-
-    /**
-     * Returns a new bit set containing all the bits in the given byte array.
-     *
-     * <p>More precisely,
-     * <br>{@code BitSet.valueOf(bytes).get(n) == ((bytes[n/8] & (1<<(n%8))) != 0)}
-     * <br>for all {@code n <  8 * bytes.length}.
-     *
-     * <p>This method is equivalent to
-     * {@code BitSet.valueOf(ByteBuffer.wrap(bytes))}.
-     *
-     * @param bytes a byte array containing a little-endian
-     *              representation of a sequence of bits to be used as the
-     *              initial bits of the new bit set
-     * @return a {@code BitSet} containing all the bits in the byte array
-     * @since 1.7
-     */
-    public static BitSet valueOf(byte[] bytes) {
-        return BitSet.valueOf(ByteBuffer.wrap(bytes));
-    }
-
-    /**
-     * Returns a new bit set containing all the bits in the given byte
-     * buffer between its position and limit.
-     *
-     * <p>More precisely,
-     * <br>{@code BitSet.valueOf(bb).get(n) == ((bb.get(bb.position()+n/8) & (1<<(n%8))) != 0)}
-     * <br>for all {@code n < 8 * bb.remaining()}.
-     *
-     * <p>The byte buffer is not modified by this method, and no
-     * reference to the buffer is retained by the bit set.
-     *
-     * @param bb a byte buffer containing a little-endian representation
-     *           of a sequence of bits between its position and limit, to be
-     *           used as the initial bits of the new bit set
-     * @return a {@code BitSet} containing all the bits in the buffer in the
-     * specified range
-     * @since 1.7
-     */
-    public static BitSet valueOf(ByteBuffer bb) {
-        bb = bb.slice().order(ByteOrder.LITTLE_ENDIAN);
-        int n;
-        for (n = bb.remaining(); n > 0 && bb.get(n - 1) == 0; n--)
-            ;
-        long[] words = new long[(n + 7) / 8];
-        bb.limit(n);
-        int i = 0;
-        while (bb.remaining() >= 8)
-            words[i++] = bb.getLong();
-        for (int remaining = bb.remaining(), j = 0; j < remaining; j++)
-            words[i] |= (bb.get() & 0xffL) << (8 * j);
-        return new BitSet(words);
-    }
-
-    /**
-     * Returns a new byte array containing all the bits in this bit set.
-     *
-     * <p>More precisely, if
-     * <br>{@code byte[] bytes = s.toByteArray();}
-     * <br>then {@code bytes.length == (s.length()+7)/8} and
-     * <br>{@code s.get(n) == ((bytes[n/8] & (1<<(n%8))) != 0)}
-     * <br>for all {@code n < 8 * bytes.length}.
-     *
-     * @return a byte array containing a little-endian representation
-     * of all the bits in this bit set
-     * @since 1.7
-     */
-    public byte[] toByteArray() {
-        int n = words.length;
-        if (n == 0)
-            return new byte[0];
-        int len = 8 * (n - 1);
-        for (long x = words[n - 1]; x != 0; x >>>= 8)
-            len++;
-        byte[] bytes = new byte[len];
-        ByteBuffer bb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
-        for (int i = 0; i < n - 1; i++)
-            bb.putLong(words[i]);
-        for (long x = words[n - 1]; x != 0; x >>>= 8)
-            bb.put((byte) (x & 0xff));
-        return bytes;
+    public int getCapacity() {
+        return capacity;
     }
 
     /**
@@ -729,6 +607,7 @@ public class BitSet extends AbstractSet<Integer> {
      *
      * @return the hash code value for this bit set
      */
+    @Override
     public int hashCode() {
         long h = 1234;
         for (int i = this.words.length; --i >= 0; )
@@ -783,13 +662,7 @@ public class BitSet extends AbstractSet<Integer> {
      * @see #size()
      */
     public Object clone() {
-        try {
-            BitSet result = (BitSet) super.clone();
-            result.words = words.clone();
-            return result;
-        } catch (CloneNotSupportedException e) {
-            throw new InternalError(e);
-        }
+        return new BitSet(this);
     }
 
 
@@ -817,7 +690,6 @@ public class BitSet extends AbstractSet<Integer> {
      * @return a string representation of this bit set
      */
     public String toString() {
-
         final int MAX_INITIAL_CAPACITY = Integer.MAX_VALUE - 8;
         int numBits = (words.length > 128) ?
                 size() : words.length * BITS_PER_WORD;
@@ -845,6 +717,67 @@ public class BitSet extends AbstractSet<Integer> {
         return b.toString();
     }
 
+    @Override
+    public boolean add(Integer integer) {
+        return add((int) integer);
+    }
+
+    @Override
+    public boolean remove(Object o) {
+        return remove((int) o);
+    }
+
+    @Override
+    public boolean contains(Object o) {
+        return this.get((int) o);
+    }
+
+    @Override
+    public Spliterator<Integer> spliterator() {
+        return new BitSetSpliterator(0, -1, 0, true);
+    }
+
+    @Override
+    public boolean removeAll(Collection<?> c) {
+        if(c instanceof BitSet set){
+            long before = Arrays.hashCode(this.words);
+            this.andNot(set);
+            long after = Arrays.hashCode(this.words);
+            return before != after;
+        } else {
+            return super.removeAll(c);
+        }
+    }
+
+    @Override
+    public boolean containsAll(Collection<?> c) {
+        if(c instanceof BitSet set){
+            for (int i = 0; i < this.words.length; i++) {
+                long a = this.words[i];
+                long b = set.words[i];
+                boolean contained = (a & b) == a;
+                if(!contained){
+                    return false; // short
+                }
+            }
+            return true;
+        } else {
+            return super.containsAll(c);
+        }
+    }
+
+    @Override
+    public boolean retainAll(Collection<?> c) {
+        if(c instanceof BitSet set){
+            long before = Arrays.hashCode(this.words);
+            this.and(set);
+            long after = Arrays.hashCode(this.words);
+            return before != after;
+        } else {
+            return super.retainAll(c);
+        }
+    }
+
     /**
      * Returns a stream of indices for which this {@code BitSet}
      * contains a bit in the set state. The indices are returned
@@ -861,148 +794,149 @@ public class BitSet extends AbstractSet<Integer> {
      * @since 1.8
      */
     public Stream<Integer> stream() {
-        class BitSetSpliterator implements Spliterator.OfInt {
-            private int index; // current bit index for a set bit
-            private int fence; // -1 until used; then one past last bit index
-            private int est;   // size estimate
-            private boolean root; // true if root and not split
-            // root == true then size estimate is accurate
-            // index == -1 or index >= fence if fully traversed
-            // Special case when the max bit set is Integer.MAX_VALUE
+        return StreamSupport.intStream(new BitSetSpliterator(0, -1, 0, true), false).boxed();
+    }
 
-            BitSetSpliterator(int origin, int fence, int est, boolean root) {
-                this.index = origin;
-                this.fence = fence;
-                this.est = est;
-                this.root = root;
+    class BitSetSpliterator implements Spliterator.OfInt {
+        private int index; // current bit index for a set bit
+        private int fence; // -1 until used; then one past last bit index
+        private int est;   // size estimate
+        private boolean root; // true if root and not split
+        // root == true then size estimate is accurate
+        // index == -1 or index >= fence if fully traversed
+        // Special case when the max bit set is Integer.MAX_VALUE
+
+        BitSetSpliterator(int origin, int fence, int est, boolean root) {
+            this.index = origin;
+            this.fence = fence;
+            this.est = est;
+            this.root = root;
+        }
+
+        private int getFence() {
+            int hi;
+            if ((hi = fence) < 0) {
+                // Round up fence to maximum cardinality for allocated words
+                // This is sufficient and cheap for sequential access
+                // When splitting this value is lowered
+                hi = fence = (words.length >= wordIndex(Integer.MAX_VALUE))
+                        ? Integer.MAX_VALUE
+                        : words.length << ADDRESS_BITS_PER_WORD;
+                est = size();
+                index = nextSetBit(0);
             }
+            return hi;
+        }
 
-            private int getFence() {
-                int hi;
-                if ((hi = fence) < 0) {
-                    // Round up fence to maximum cardinality for allocated words
-                    // This is sufficient and cheap for sequential access
-                    // When splitting this value is lowered
-                    hi = fence = (words.length >= wordIndex(Integer.MAX_VALUE))
-                            ? Integer.MAX_VALUE
-                            : words.length << ADDRESS_BITS_PER_WORD;
-                    est = size();
-                    index = nextSetBit(0);
-                }
-                return hi;
-            }
+        @Override
+        public boolean tryAdvance(IntConsumer action) {
+            Objects.requireNonNull(action);
 
-            @Override
-            public boolean tryAdvance(IntConsumer action) {
-                Objects.requireNonNull(action);
-
-                int hi = getFence();
-                int i = index;
-                if (i < 0 || i >= hi) {
-                    // Check if there is a final bit set for Integer.MAX_VALUE
-                    if (i == Integer.MAX_VALUE && hi == Integer.MAX_VALUE) {
-                        index = -1;
-                        action.accept(Integer.MAX_VALUE);
-                        return true;
-                    }
-                    return false;
-                }
-
-                index = nextSetBit(i + 1, wordIndex(hi - 1));
-                action.accept(i);
-                return true;
-            }
-
-            @Override
-            public void forEachRemaining(IntConsumer action) {
-                Objects.requireNonNull(action);
-
-                int hi = getFence();
-                int i = index;
-                index = -1;
-
-                if (i >= 0 && i < hi) {
-                    action.accept(i++);
-
-                    int u = wordIndex(i);      // next lower word bound
-                    int v = wordIndex(hi - 1); // upper word bound
-
-                    words_loop:
-                    for (; u <= v && i <= hi; u++, i = u << ADDRESS_BITS_PER_WORD) {
-                        long word = words[u] & (WORD_MASK << i);
-                        while (word != 0) {
-                            i = (u << ADDRESS_BITS_PER_WORD) + Long.numberOfTrailingZeros(word);
-                            if (i >= hi) {
-                                // Break out of outer loop to ensure check of
-                                // Integer.MAX_VALUE bit set
-                                break words_loop;
-                            }
-
-                            // Flip the set bit
-                            word &= ~(1L << i);
-
-                            action.accept(i);
-                        }
-                    }
-                }
-
+            int hi = getFence();
+            int i = index;
+            if (i < 0 || i >= hi) {
                 // Check if there is a final bit set for Integer.MAX_VALUE
                 if (i == Integer.MAX_VALUE && hi == Integer.MAX_VALUE) {
+                    index = -1;
                     action.accept(Integer.MAX_VALUE);
+                    return true;
+                }
+                return false;
+            }
+
+            index = nextSetBit(i + 1, wordIndex(hi - 1));
+            action.accept(i);
+            return true;
+        }
+
+        @Override
+        public void forEachRemaining(IntConsumer action) {
+            Objects.requireNonNull(action);
+
+            int hi = getFence();
+            int i = index;
+            index = -1;
+
+            if (i >= 0 && i < hi) {
+                action.accept(i++);
+
+                int u = wordIndex(i);      // next lower word bound
+                int v = wordIndex(hi - 1); // upper word bound
+
+                words_loop:
+                for (; u <= v && i <= hi; u++, i = u << ADDRESS_BITS_PER_WORD) {
+                    long word = words[u] & (WORD_MASK << i);
+                    while (word != 0) {
+                        i = (u << ADDRESS_BITS_PER_WORD) + Long.numberOfTrailingZeros(word);
+                        if (i >= hi) {
+                            // Break out of outer loop to ensure check of
+                            // Integer.MAX_VALUE bit set
+                            break words_loop;
+                        }
+
+                        // Flip the set bit
+                        word &= ~(1L << i);
+
+                        action.accept(i);
+                    }
                 }
             }
 
-            @Override
-            public OfInt trySplit() {
-                int hi = getFence();
-                int lo = index;
-                if (lo < 0) {
-                    return null;
-                }
-
-                // Lower the fence to be the upper bound of last bit set
-                // The index is the first bit set, thus this spliterator
-                // covers one bit and cannot be split, or two or more
-                // bits
-                hi = fence = (hi < Integer.MAX_VALUE || !get(Integer.MAX_VALUE))
-                        ? previousSetBit(hi - 1) + 1
-                        : Integer.MAX_VALUE;
-
-                // Find the mid point
-                int mid = (lo + hi) >>> 1;
-                if (lo >= mid) {
-                    return null;
-                }
-
-                // Raise the index of this spliterator to be the next set bit
-                // from the mid point
-                index = nextSetBit(mid, wordIndex(hi - 1));
-                root = false;
-
-                // Don't lower the fence (mid point) of the returned spliterator,
-                // traversal or further splitting will do that work
-                return new BitSetSpliterator(lo, mid, est >>>= 1, false);
-            }
-
-            @Override
-            public long estimateSize() {
-                getFence(); // force init
-                return est;
-            }
-
-            @Override
-            public int characteristics() {
-                // Only sized when root and not split
-                return (root ? Spliterator.SIZED : 0) |
-                        Spliterator.ORDERED | Spliterator.DISTINCT | Spliterator.SORTED;
-            }
-
-            @Override
-            public Comparator<? super Integer> getComparator() {
-                return null;
+            // Check if there is a final bit set for Integer.MAX_VALUE
+            if (i == Integer.MAX_VALUE && hi == Integer.MAX_VALUE) {
+                action.accept(Integer.MAX_VALUE);
             }
         }
-        return StreamSupport.intStream(new BitSetSpliterator(0, -1, 0, true), false).boxed();
+
+        @Override
+        public OfInt trySplit() {
+            int hi = getFence();
+            int lo = index;
+            if (lo < 0) {
+                return null;
+            }
+
+            // Lower the fence to be the upper bound of last bit set
+            // The index is the first bit set, thus this spliterator
+            // covers one bit and cannot be split, or two or more
+            // bits
+            hi = fence = (hi < Integer.MAX_VALUE || !get(Integer.MAX_VALUE))
+                    ? previousSetBit(hi - 1) + 1
+                    : Integer.MAX_VALUE;
+
+            // Find the mid point
+            int mid = (lo + hi) >>> 1;
+            if (lo >= mid) {
+                return null;
+            }
+
+            // Raise the index of this spliterator to be the next set bit
+            // from the mid point
+            index = nextSetBit(mid, wordIndex(hi - 1));
+            root = false;
+
+            // Don't lower the fence (mid point) of the returned spliterator,
+            // traversal or further splitting will do that work
+            return new BitSetSpliterator(lo, mid, est >>>= 1, false);
+        }
+
+        @Override
+        public long estimateSize() {
+            getFence(); // force init
+            return est;
+        }
+
+        @Override
+        public int characteristics() {
+            // Only sized when root and not split
+            return (root ? Spliterator.SIZED : 0) |
+                    Spliterator.ORDERED | Spliterator.DISTINCT | Spliterator.SORTED;
+        }
+
+        @Override
+        public Comparator<? super Integer> getComparator() {
+            return null;
+        }
     }
 
     /**
@@ -1072,5 +1006,4 @@ public class BitSet extends AbstractSet<Integer> {
             BitSet.this.remove(currentPosition);
         }
     }
-
 }
