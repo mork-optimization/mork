@@ -9,6 +9,70 @@ import java.util.stream.StreamSupport;
  * Fast integer set implementation based on JDK BitSet class
  */
 public class BitSet extends AbstractSet<Integer> {
+
+    /**
+     * Initialize a new bitset with the given numbers
+     * @param maxSize biggest number that may be stored in set
+     * @param numbers numbers initially stored in set
+     * @return new set
+     */
+    public static BitSet of(int maxSize, int... numbers){
+        var set = new BitSet(maxSize);
+        for(int n: numbers){
+            set.add(n);
+        }
+        return set;
+    }
+
+    /**
+     * Returns the intersection between two sets as a new set
+     * @param a First set
+     * @param b Second set
+     * @return New set, original sets are not modified
+     */
+    public static BitSet intersection(BitSet a, BitSet b){
+        var r = new BitSet(a);
+        r.and(b); // Keep elements in R that are in B too
+        return r;
+    }
+
+    /**
+     * Returns the union between two sets as a new set
+     * @param a First set
+     * @param b Second set
+     * @return New set, original sets are not modified
+     */
+    public static BitSet union(BitSet a, BitSet b){
+        var r = new BitSet(a);
+        r.or(b); // Keep elements in R that are in B too
+        return r;
+    }
+
+    /**
+     * Returns the difference between two sets as a new set.
+     * @param a First set
+     * @param b Second set
+     * @return New set, with all elements in set A removing those that are in set B
+     */
+    public static BitSet difference(BitSet a, BitSet b){
+        var r = new BitSet(a);
+        r.andNot(b); // Keep elements in R that are in B too
+        return r;
+    }
+
+    /**
+     * Returns the symmetric difference between two sets as a new set
+     * @param a First set
+     * @param b Second set
+     * @return New set, original sets are not modified
+     */
+    public static BitSet symmetricDifference(BitSet a, BitSet b){
+        var r = new BitSet(a);
+        r.xor(b); // Keep elements in R that are in B too
+        return r;
+    }
+
+
     /*
      * BitSets are packed into arrays of "words."  Currently a word is
      * a long, which consists of 64 bits, requiring 6 address bits.
@@ -40,7 +104,7 @@ public class BitSet extends AbstractSet<Integer> {
      * represent bits with indices in the range {@code 0} through
      * {@code nbits-1}. All bits are initially {@code false}.
      *
-     * @param nElements the initial size of the bit set
+     * @param nElements the initial size of the bit set. Will be rounded to the nearest multiple of 64.
      * @throws NegativeArraySizeException if the specified initial size
      *                                    is negative
      */
@@ -49,8 +113,9 @@ public class BitSet extends AbstractSet<Integer> {
         if (nElements < 0)
             throw new NegativeArraySizeException("nbits < 0: " + nElements);
 
-        this.capacity = nElements;
-        this.words = new long[wordIndex(nElements - 1) + 1];
+        int nWords = wordIndex(nElements - 1) + 1;
+        this.capacity = nWords * BITS_PER_WORD;
+        this.words = new long[nWords];
     }
 
     public BitSet(BitSet other){
@@ -63,8 +128,9 @@ public class BitSet extends AbstractSet<Integer> {
             this.words = set.words.clone();
             this.capacity = set.capacity;
         } else {
-            this.capacity = nElements;
-            this.words = new long[wordIndex(nElements - 1) + 1];
+            int nWords = wordIndex(nElements - 1) + 1;
+            this.capacity = nWords * BITS_PER_WORD;
+            this.words = new long[nWords];
             this.addAll(other);
         }
     }
@@ -518,7 +584,7 @@ public class BitSet extends AbstractSet<Integer> {
             return;
         checkSameSize(set);
 
-        // Perform logical AND on words in common
+        // Perform logical AND for each word
         for (int i = 0; i < this.words.length; i++)
             words[i] &= set.words[i];
 
@@ -538,7 +604,7 @@ public class BitSet extends AbstractSet<Integer> {
             return;
         checkSameSize(set);
 
-        // Perform logical OR on words in common
+        // Perform logical OR on all words
         for (int i = 0; i < this.words.length; i++)
             words[i] |= set.words[i];
 
@@ -561,7 +627,7 @@ public class BitSet extends AbstractSet<Integer> {
     public void xor(BitSet set) {
         checkSameSize(set);
 
-        // Perform logical XOR on words in common
+        // Perform logical XOR on all words
         for (int i = 0; i < this.words.length; i++)
             words[i] ^= set.words[i];
     }
@@ -577,7 +643,7 @@ public class BitSet extends AbstractSet<Integer> {
     public void andNot(BitSet set) {
         checkSameSize(set);
 
-        // Perform logical (a & !b) on words in common
+        // Perform logical (a & !b) on all words
         for (int i = 0; i < this.words.length; i++) {
             words[i] &= ~set.words[i];
         }
@@ -609,11 +675,7 @@ public class BitSet extends AbstractSet<Integer> {
      */
     @Override
     public int hashCode() {
-        long h = 1234;
-        for (int i = this.words.length; --i >= 0; )
-            h ^= words[i] * (i + 1);
-
-        return (int) ((h >> 32) ^ h);
+        return Arrays.hashCode(this.words);
     }
 
     @Override
@@ -755,7 +817,7 @@ public class BitSet extends AbstractSet<Integer> {
             for (int i = 0; i < this.words.length; i++) {
                 long a = this.words[i];
                 long b = set.words[i];
-                boolean contained = (a & b) == a;
+                boolean contained = (a & b) == b;
                 if(!contained){
                     return false; // short
                 }
