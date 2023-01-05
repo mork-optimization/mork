@@ -270,12 +270,12 @@ public class BitSetTest {
 
         assertThrows(IndexOutOfBoundsException.class, () -> set.add(-1, 1));
         assertThrows(IndexOutOfBoundsException.class, () -> set.add(1, size *2));
-        assertThrows(IndexOutOfBoundsException.class, () -> set.add(size*2, size*2));
+        assertThrows(IndexOutOfBoundsException.class, () -> set.add(size*2, size*4));
         assertThrows(IndexOutOfBoundsException.class, () -> set.add(6, 5));
 
         assertThrows(IndexOutOfBoundsException.class, () -> set.remove(-1, 1));
         assertThrows(IndexOutOfBoundsException.class, () -> set.remove(1, size *2));
-        assertThrows(IndexOutOfBoundsException.class, () -> set.remove(size*2, size *2));
+        assertThrows(IndexOutOfBoundsException.class, () -> set.remove(size*2, size*4));
         assertThrows(IndexOutOfBoundsException.class, () -> set.remove(6, 5));
     }
 
