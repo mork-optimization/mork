@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.config;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.socket.config.WebSocketMessageBrokerStats;
 
-import javax.annotation.PostConstruct;
+import jakarta.annotation.PostConstruct;
 
 @Configuration
 public class DisableWebsocketLogging {
