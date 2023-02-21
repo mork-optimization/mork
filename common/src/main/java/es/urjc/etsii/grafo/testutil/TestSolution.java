@@ -2,11 +2,18 @@ package es.urjc.etsii.grafo.testutil;
 
 import es.urjc.etsii.grafo.solution.Solution;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.function.Function;
 
 public class TestSolution extends Solution<TestSolution, TestInstance> {
+
+    public static TestSolution[] from(TestInstance instance, double... scores) {
+        var solutions = new TestSolution[scores.length];
+        for (int i = 0; i < scores.length; i++) {
+            solutions[i] = new TestSolution(instance, scores[i]);
+        }
+        return solutions;
+    }
 
     protected double score;
 
@@ -78,4 +85,16 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
         return this.properties;
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        TestSolution that = (TestSolution) o;
+        return Double.compare(that.score, score) == 0 && Objects.equals(properties, that.properties);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(score, properties);
+    }
 }

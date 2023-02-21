@@ -138,7 +138,7 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      * @return builder
      */
     public ScatterSearchBuilder<S,I> withRefsetSize(int size){
-        if(size < 0 || size > 1_000_000){
+        if(size < 2 || size > 1_000_000){
             throw new IllegalArgumentException("Refset size must be in range [1, 999_999]");
         }
         this.refsetSize = size;
@@ -152,7 +152,7 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      * @return builder
      */
     public ScatterSearchBuilder<S,I> withDiversity(double ratio){
-        if(ratio < 0 || ratio > 1){
+        if(ratio < 0 || ratio > 1 || !Double.isFinite(ratio)){
             throw new IllegalArgumentException("Diversity ratio must be in range [0, 1]");
         }
         this.diversityRatio = ratio;
@@ -165,10 +165,11 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      * @return builder
      */
     public ScatterSearchBuilder<S,I> withName(String name){
-        this.name = Objects.requireNonNull(name).trim();
-        if(this.name.isEmpty()){
+        name = Objects.requireNonNull(name).trim();
+        if(name.isEmpty()){
             throw new IllegalArgumentException("Empty algorithm name");
         }
+        this.name = name;
         return this;
     }
 
@@ -183,8 +184,8 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      * @return builder
      */
     public ScatterSearchBuilder<S,I> withInitialRatio(double ratio){
-        if(ratio < 1){
-            throw new IllegalArgumentException("Ratio must be >0");
+        if(ratio < 1 || ratio > 1_000_000){
+            throw new IllegalArgumentException("Ratio must be >0 and <1_000_000");
         }
         this.initialRatio = ratio;
         return this;
@@ -201,17 +202,6 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
             throw new IllegalArgumentException("maxIterations must be >0");
         }
         this.maxIterations = maxIterations;
-        return this;
-    }
-
-    /**
-     * Configure if problem objective function is maximizing or minimizing
-     * @param maximizing true if maximizing, false otherwise
-     * @return builder
-     */
-    @Deprecated(forRemoval = true)
-    public ScatterSearchBuilder<S,I> withMaximizing(boolean maximizing){
-        this.fmode = maximizing == true? FMode.MAXIMIZE: FMode.MINIMIZE;
         return this;
     }
 
