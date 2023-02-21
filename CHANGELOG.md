@@ -4,6 +4,8 @@
 - (New) Autoconfig: Add Enum types compatibility
 - (New) BitSet implementation compatible with JDK APIs
 - (Breaking change) maximize as a boolean has been changed in all algorithm components to FMode.MINIMIZE and FMode.MAXIMIZE
+- (Change): Update all dependencies
+- (Change): Improve ScatterSearch internals: refactor code and improve performance, implement missing unit tests
 - (Fix) #107 Autoconfig: Cannot assign integer values to double parameters in algorithm components
 
 # v0.16
