@@ -17,6 +17,8 @@ import java.lang.reflect.Array;
 import java.util.*;
 import java.util.function.BiPredicate;
 
+import static java.util.Comparator.comparingDouble;
+
 public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends Algorithm<S, I> {
 
     private static final Logger log = LoggerFactory.getLogger(ScatterSearch.class);
@@ -44,16 +46,17 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
     private final boolean softRestartEnabled;
 
     /**
-     * @param initialRatio
+     * @param initialRatio              During refset initialization, create initialRefset size * INITIAL_RATIO solutions,
+     *                                  to ensure we have enough non repeated and diverse solutions
      * @param refsetSize                Number of solutions to keep in refset
      * @param constructiveGoodValues    Method used to generate the initial refset
-     * @param constructiveGoodDiversity
+     * @param constructiveGoodDiversity Method used to generate diverse solutions
      * @param improver                  Method to improve any given solution, such as a local search
      * @param combinator                Creates a solution as a combination of two different solutions
      * @param diversityRatio            Porcentage of diverse solution to use relaive to the refset size.
      *                                  0 means use only best value criteria, 1 use only diversity criteria,
      *                                  0.5 half the refset uses diversity criteria, the other half best value criteria.
-     * @param solutionDistance          How to calculate distance between a given set of solutions
+     * @param solutionDistance          How to calculate distance between a given set of solutions. See {@link SolutionDistance} for more details.
      */
     @AutoconfigConstructor
     public ScatterSearch(
@@ -70,17 +73,6 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
             SolutionDistance<S, I> solutionDistance
     ) {
         super(name);
-        if(initialRatio < 1){
-            throw new IllegalArgumentException("initialRatio must be > 0");
-        }
-
-        if(diversityRatio < 0 || diversityRatio > 1){
-            throw new IllegalArgumentException("Diversity ratio must be in range [0, 1]");
-        }
-
-        if(refsetSize < 2){
-            throw new IllegalArgumentException("Refset size should be least 2, configured: " + refsetSize);
-        }
 
         this.initialRatio = initialRatio;
         this.refsetSize = refsetSize;
@@ -96,120 +88,98 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
 
         Comparator<S> compareByScore = Comparator.comparing(Solution::getScore);
         // Comparator orders from less to more by default, if maximizing reverse ordering
-        this.bestValueSort = switch (fmode){
+        this.bestValueSort = switch (fmode) {
             case MAXIMIZE -> compareByScore.reversed();
             case MINIMIZE -> compareByScore;
         };
     }
 
     protected RefSet<S, I> initializeRefset(Class<?> clazz, I instance) {
-        int solutionsByDiversity = (int) (refsetSize * ratio);
-        int solutionsByScore = refsetSize - solutionsByDiversity;
+        int nSolutionsByDiversity = (int) (refsetSize * ratio);
+        int nSolutionsByScore = refsetSize - nSolutionsByDiversity;
 
-        var initialSolutions = initializeSolutions(instance, (int)(refsetSize * initialRatio), false);
-        initialSolutions.sort(bestValueSort);
-
-        // Copy pointers to best solutions only
         Set<S> alreadyUsed = new HashSet<>();
         S[] initialRefsetArray = (S[]) Array.newInstance(clazz, refsetSize);
+
+        var initialSolutions = initializeSolutions(instance, (int) (nSolutionsByScore * initialRatio), false);
+        initialSolutions.addAll(initializeSolutions(instance, (int) (nSolutionsByDiversity * initialRatio), true));
+        initialSolutions.sort(bestValueSort);
+
         int assignedSolutionsByScore = 0;
-        int i;
-        for (i = 0; i < initialSolutions.size(); i++) {
-            S initialSolution = initialSolutions.get(i);
+        for (S initialSolution : initialSolutions) {
             if (!alreadyUsed.contains(initialSolution)) {
                 alreadyUsed.add(initialSolution);
                 initialRefsetArray[assignedSolutionsByScore++] = initialSolution;
             }
-            if (assignedSolutionsByScore == solutionsByScore) {
+            if (assignedSolutionsByScore == nSolutionsByScore) {
                 break; // Completed refset fill by solution score
             }
         }
 
         // Force fill using diversity if there are too many duplicates
-        if(assignedSolutionsByScore < solutionsByScore){
-            log.debug("Failed to fill refsef using best values, currently {} assigned of {} with {} initial solutions, probably due to duplicates, more solutions are being automatically generated", assignedSolutionsByScore, refsetSize, initialSolutions.size());
-            int forcedIter = 0;
-            while(assignedSolutionsByScore < solutionsByScore){
-                var initialSolution = this.initializeSolution(instance, true);
-                if(!alreadyUsed.contains(initialSolution)){
-                    alreadyUsed.add(initialSolution);
-                    initialRefsetArray[assignedSolutionsByScore] = initialSolution;
-                    assignedSolutionsByScore++;
-                }
-                forcedIter++;
-                if(forcedIter == ERROR_INIT_ITER_THRESHOLD){
-                    log.warn("TOO MANY ITERATIONS: Failed to fill refsef using best values, currently {} assigned of {} with {} initial solutions, debug what is happening", assignedSolutionsByScore, refsetSize, initialSolutions.size());
+        forceFill(instance, alreadyUsed, initialRefsetArray, 0, assignedSolutionsByScore, nSolutionsByScore, initialSolutions.size());
+
+        if (nSolutionsByDiversity > 0) {
+            record SolutionDistancePair<S extends Solution<S,I>, I extends Instance>(S solution, double distance){}
+
+            var unusedSolutions = new ArrayList<SolutionDistancePair<S, I>>();
+            for (var solution : initialSolutions) {
+                if (!alreadyUsed.contains(solution)) {
+                    double distance = minDistanceToSolList(solution, initialRefsetArray);
+                    unusedSolutions.add(new SolutionDistancePair<>(solution, distance));
                 }
             }
-        }
 
-        var filtered = new ArrayList<S>();
-        for(var solution: initialSolutions){
-            if(!alreadyUsed.contains(solution)){
-                filtered.add(solution);
-            }
-        }
+            int assignedSolutionsByDiversity = 0;
+            // Add solutionsByDiversity number of solutions
 
-        int assignedSolutionsByDiversity = 0;
+            for (int i = 0; i < nSolutionsByDiversity; i++) {
+                if(unusedSolutions.isEmpty()) break;
+                unusedSolutions.sort(comparingDouble(SolutionDistancePair::distance));
 
-        double[] minDistances = new double[filtered.size()];
-        boolean[] usedIndexes = new boolean[filtered.size()];
+                // Most diverse solution is last in the array, as it will have the maximum min distance
+                var chosenPair = unusedSolutions.remove(unusedSolutions.size() - 1);
 
-        // Calculate initial minimum distances for all candidate solutions
-        for (int j = 0; j < filtered.size(); j++) {
-            minDistances[j] = minDistanceToSolList(filtered.get(j), initialRefsetArray);
-        }
+                initialRefsetArray[nSolutionsByScore + assignedSolutionsByDiversity] = chosenPair.solution;
+                assignedSolutionsByDiversity++;
 
-        // Add solutionsByDiversity number of solutions
-        for (int j = 0; j < solutionsByDiversity; j++) {
-            // Find index with minimum value that is not already used
-            double max = Integer.MIN_VALUE;
-            int bestIndex = -1;
-            for (int k = 0; k < filtered.size(); k++) {
-                if(usedIndexes[k]) continue;
-                if(minDistances[k] > max){
-                    max = minDistances[k];
-                    bestIndex = k;
+                // Fast update all minimum distance values, minimum distance can only decrease with currently added solution
+                var newUnused = new ArrayList<SolutionDistancePair<S, I>>();
+                for(var pair: unusedSolutions){
+                    double distanceToNewSolution = this.solutionDistance.distances(pair.solution, chosenPair.solution);
+                    double newMinimumDistance = Math.min(distanceToNewSolution, pair.distance);
+                    newUnused.add(new SolutionDistancePair<>(pair.solution, newMinimumDistance));
                 }
+                unusedSolutions = newUnused;
             }
-            // Add chosen solution
-            if(max == Integer.MIN_VALUE || bestIndex == -1){
-                break; // No valid solution by diversity found, break and let the force fill repair the refset
-            }
-            var chosenSolution = filtered.get(bestIndex);
-            usedIndexes[bestIndex] = true;
-            initialRefsetArray[solutionsByScore + assignedSolutionsByDiversity] = chosenSolution;
-            assignedSolutionsByDiversity++;
 
-            // Fast update all minimum values, minimum distance can only decrease with currently added solution
-            for (int k = 0; k < filtered.size(); k++) {
-                if(usedIndexes[k]) continue;
-                double distanceToNewSolution = this.solutionDistance.distances(filtered.get(k), chosenSolution);
-                minDistances[k] = Math.min(minDistances[k], distanceToNewSolution);
-            }
+            // Force fill if there are missing solutions not chosen by diversity
+            forceFill(instance, alreadyUsed, initialRefsetArray, nSolutionsByScore, assignedSolutionsByDiversity, nSolutionsByDiversity, initialSolutions.size());
         }
-
-        // Force fill if there are missing solutions not chosen by diversity
-        if(assignedSolutionsByDiversity < solutionsByDiversity){
-            log.debug("Failed to fill refsef by diversity, currently {} assigned of {} with {} initial solutions, probably due to duplicates, more solutions are being automatically generated", assignedSolutionsByDiversity, refsetSize, initialSolutions.size());
-            int forcedIter = 0;
-            while(assignedSolutionsByDiversity < solutionsByDiversity){
-                var initialSolution = this.initializeSolution(instance, true);
-                if(!alreadyUsed.contains(initialSolution)){
-                    alreadyUsed.add(initialSolution);
-                    initialRefsetArray[solutionsByScore + assignedSolutionsByDiversity] = initialSolution;
-                    assignedSolutionsByDiversity++;
-                }
-                forcedIter++;
-                if(forcedIter == ERROR_INIT_ITER_THRESHOLD){
-                    log.warn("TOO MANY ITERATIONS: Failed to fill refsef using best values, currently {} assigned of {} with {} initial solutions, debug what is happening", assignedSolutionsByDiversity, refsetSize, initialSolutions.size());
-                }
-            }
-        }
-
 
         Arrays.sort(initialRefsetArray, this.bestValueSort);
-        return new RefSet<>(initialRefsetArray, solutionsByScore, solutionsByDiversity);
+        return new RefSet<>(initialRefsetArray, nSolutionsByScore, nSolutionsByDiversity);
+    }
+
+    protected void forceFill(I instance, Set<S> alreadyUsed, S[] initialRefsetArray, int offset, int assignedSolutions, int nRequiredSolutions, int nInitialSolutions) {
+        if (assignedSolutions < nRequiredSolutions) {
+            log.debug("Failed to fill refsef {}, currently {} assigned of {} with {} initial solutions, probably due to duplicates, more solutions are being automatically generated",
+                    offset == 0 ? "by best value" : "by diversity", assignedSolutions, refsetSize, nInitialSolutions);
+            int forcedIter = 0;
+            while (assignedSolutions < nRequiredSolutions) {
+                var initialSolution = this.initializeSolution(instance, true);
+                if (!alreadyUsed.contains(initialSolution)) {
+                    alreadyUsed.add(initialSolution);
+                    initialRefsetArray[offset + assignedSolutions] = initialSolution;
+                    assignedSolutions++;
+                }
+                forcedIter++;
+                if (forcedIter == ERROR_INIT_ITER_THRESHOLD) {
+                    log.warn("TOO MANY ITERATIONS: Failed to fill refsef {}, currently {} assigned of {} with {} initial solutions, debug what is happening",
+                            offset == 0 ? "by best value" : "by diversity", assignedSolutions, refsetSize, nInitialSolutions);
+                }
+            }
+        }
     }
 
     protected RefSet<S, I> softRestart(Class<?> clazz, I instance, RefSet<S, I> current) {
@@ -223,16 +193,17 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
      * Try to insert the given solution in the refset. If the solution is better than all in refset it is always inserted.
      * if it is better than some, replace the nearest solution to given solution, and keep refset sorted
      * If the solution is worse than all in refset, the refset remains unchanged
-     * @param refset Reference Set
+     *
+     * @param refset   Reference Set
      * @param solution Solution to try to insert in refset
      */
     protected void replaceWorstNearest(RefSet<S, I> refset, S solution) {
         int i = 0;
-        while (i < refset.solutions.length && !this.isBetterFunction.test(solution.getScore(), refset.solutions[i].getScore())){
+        while (i < refset.solutions.length && !this.isBetterFunction.test(solution.getScore(), refset.solutions[i].getScore())) {
             // Might be speed up using binary search, but for small arrays it is not worth it
             i++;
         }
-        if(i >= refset.solutions.length){
+        if (i >= refset.solutions.length) {
             // Best is the worst in new refset, strange but may happen, return
             return;
         }
@@ -240,9 +211,9 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
         // Find nearest element
         double min = Double.MAX_VALUE;
         int idx = -1;
-        for(int j = i; j < refset.solutions.length; j++){
+        for (int j = i; j < refset.solutions.length; j++) {
             double distance = this.solutionDistance.distances(solution, refset.solutions[j]);
-            if(distance < min){
+            if (distance < min) {
                 idx = j;
                 min = distance;
             }
@@ -292,18 +263,18 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
         return refset.solutions[0];
     }
 
-    private void debugStatus(int iterations, RefSet<S, I> refsets, Set<S> newSet, Set<S> insertedSolutions) {
+    protected void debugStatus(int iterations, RefSet<S, I> refsets, Set<S> newSet, Set<S> insertedSolutions) {
         if (!log.isDebugEnabled()) {
             return;
         }
-        log.debug("{}. refset=[{},{}], |newSols|={}, |insertedSols|={}", iterations, refsets.solutions[0].getScore(), refsets.solutions[refsets.solutions.length-1].getScore(), newSet.size(), insertedSolutions.size());
+        log.debug("{}. refset=[{},{}], |newSols|={}, |insertedSols|={}", iterations, refsets.solutions[0].getScore(), refsets.solutions[refsets.solutions.length - 1].getScore(), newSet.size(), insertedSolutions.size());
         log.trace("{}. Current refset: {}, newSols: {}, mergeByValue: {}", iterations, refsets, newSet, insertedSolutions);
     }
 
-    private double minDistanceToSolList(S referenceSolution, S[] initialDiverseSolutions) {
+    protected double minDistanceToSolList(S referenceSolution, S[] initialDiverseSolutions) {
         double min = Double.MAX_VALUE;
         for (var solution : initialDiverseSolutions) {
-            if(solution == null) break;
+            if (solution == null) break;
             double v = this.solutionDistance.distances(referenceSolution, solution);
             min = Math.min(min, v);
         }
@@ -321,9 +292,9 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
         return initialSolutions;
     }
 
-    protected S initializeSolution(I instance, boolean diverse){
+    protected S initializeSolution(I instance, boolean diverse) {
         var solution = this.newSolution(instance);
-        if(diverse){
+        if (diverse) {
             solution = this.constructiveGoodDiversity.construct(solution);
         } else {
             solution = this.constructiveGoodValues.construct(solution);
@@ -339,13 +310,13 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
         var sortedNewSolutions = new ArrayList<>(newSolutions);
         sortedNewSolutions.sort(this.bestValueSort);
 
-        for(var solution: sortedNewSolutions){
-            if(!(this.isBetterFunction.test(solution.getScore(), worstValue))){
+        for (var solution : sortedNewSolutions) {
+            if (!(this.isBetterFunction.test(solution.getScore(), worstValue))) {
                 // Solution is worse than the worst solution in refset
                 break; // as newSolutions are ordered by value, if the current one is worse, all remaining must be worse too
             }
 
-            if(refset.isInRefset(solution)){
+            if (refset.isInRefset(solution)) {
                 // Solution hash matched solution in current refset, ignore
                 continue;
             }
@@ -355,7 +326,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
             worstValue = refset.solutions[refset.solutions.length - 1].getScore();
         }
 
-        if(insertedElements.size() > refset.solutions.length){
+        if (insertedElements.size() > refset.solutions.length) {
             throw new IllegalStateException("Bug detected");
         }
         return insertedElements;
