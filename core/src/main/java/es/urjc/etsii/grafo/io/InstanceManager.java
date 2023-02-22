@@ -159,6 +159,9 @@ public class InstanceManager<I extends Instance> {
         I instance = this.instanceImporter.importInstance(p.toFile());
         long endLoad = System.nanoTime();
         instance.setProperty(Instance.LOAD_TIME_NANOS, endLoad - startLoad);
+        for(var e: instance.customProperties().entrySet()){
+            instance.setProperty(e.getKey(), e.getValue());
+        }
         String absPath = p.toAbsolutePath().toString();
         instance.setPath(absPath);
 

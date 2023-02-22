@@ -137,4 +137,12 @@ public abstract class Instance implements Comparable<Instance>{
                 "id='" + id + '\'' +
                 '}';
     }
+
+    /**
+     * Define custom properties for the instance
+     * @return Map of properties, with each entry containing the property name and its value
+     */
+    public Map<String, Object> customProperties(){
+        return Map.of();
+    }
 }

@@ -2,6 +2,9 @@ package es.urjc.etsii.grafo.__RNAME__.model;
 
 import es.urjc.etsii.grafo.solution.Solution;
 
+import java.util.Map;
+import java.util.function.Function;
+
 public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Instance> {
 
     /**
@@ -93,4 +96,18 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
         // Calling toString to a solution should NEVER change or update any of its fields
         throw new UnsupportedOperationException("__RNAME__Solution::toString not implemented yet");
     }
+
+//    /**
+//     * Optionally provide a way to calculate custom solution properties
+//     * @return a map with the property names as keys,
+//     * and a function to calculate the property value given the solution as value
+//     */
+//    @Override
+//    public Map<String, Function<__RNAME__Solution, Object>> customProperties() {
+//        var properties = super.customProperties();
+//        // . Examples:
+//        // properties.put("myCustomPropertyName", s -> s.getScore());
+//        // properties.put("myCustomProperty2Name", __RNAME__Solution::getScore);
+//        return properties;
+//    }
 }
