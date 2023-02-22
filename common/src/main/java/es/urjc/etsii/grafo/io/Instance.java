@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.io;
 
 import java.util.*;
+import java.util.function.Function;
 
 /**
  * Base instance class. All instance subclasses must be immutable after construction
@@ -136,5 +137,13 @@ public abstract class Instance implements Comparable<Instance>{
         return this.getClass().getSimpleName() + "{" +
                 "id='" + id + '\'' +
                 '}';
+    }
+
+    /**
+     * Define custom properties for the instance
+     * @return Map of properties, with each entry containing the property name and its value
+     */
+    public Map<String, Object> customProperties(){
+        return Map.of();
     }
 }

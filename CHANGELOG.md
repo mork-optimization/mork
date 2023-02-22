@@ -3,6 +3,7 @@
 - (New) Remove lcp and lcs from instance names
 - (New) Autoconfig: Add Enum types compatibility
 - (New) BitSet implementation compatible with JDK APIs
+- (New) Implement #102: Instance custom properties
 - (Breaking change) maximize as a boolean has been changed in all algorithm components to FMode.MINIMIZE and FMode.MAXIMIZE
 - (Change): Update all dependencies
 - (Change): Improve ScatterSearch internals: refactor code and improve performance, implement missing unit tests
