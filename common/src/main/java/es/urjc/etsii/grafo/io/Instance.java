@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.io;
 
 import java.util.*;
-import java.util.function.Function;
 
 /**
  * Base instance class. All instance subclasses must be immutable after construction
