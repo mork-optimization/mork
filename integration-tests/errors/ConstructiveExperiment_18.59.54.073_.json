@@ -1,0 +1,95 @@
+{
+  "Error" : {
+    "cause" : null,
+    "stackTrace" : [ {
+      "classLoaderName" : "app",
+      "moduleName" : null,
+      "moduleVersion" : null,
+      "methodName" : "initializeSolution",
+      "fileName" : "TestSolutionBuilder.java",
+      "lineNumber" : 5,
+      "nativeMethod" : false,
+      "className" : "es.urjc.etsii.grafo.testutil.TestSolutionBuilder"
+    }, {
+      "classLoaderName" : "app",
+      "moduleName" : null,
+      "moduleVersion" : null,
+      "methodName" : "newSolution",
+      "fileName" : "Algorithm.java",
+      "lineNumber" : 55,
+      "nativeMethod" : false,
+      "className" : "es.urjc.etsii.grafo.algorithms.Algorithm"
+    }, {
+      "classLoaderName" : "app",
+      "moduleName" : null,
+      "moduleVersion" : null,
+      "methodName" : "algorithm",
+      "fileName" : "SimpleAlgorithm.java",
+      "lineNumber" : 80,
+      "nativeMethod" : false,
+      "className" : "es.urjc.etsii.grafo.algorithms.SimpleAlgorithm"
+    }, {
+      "classLoaderName" : "app",
+      "moduleName" : null,
+      "moduleVersion" : null,
+      "methodName" : "doWork",
+      "fileName" : "Executor.java",
+      "lineNumber" : 160,
+      "nativeMethod" : false,
+      "className" : "es.urjc.etsii.grafo.executors.Executor"
+    }, {
+      "classLoaderName" : "app",
+      "moduleName" : null,
+      "moduleVersion" : null,
+      "methodName" : "lambda$submitAll$0",
+      "fileName" : "ConcurrentExecutor.java",
+      "lineNumber" : 70,
+      "nativeMethod" : false,
+      "className" : "es.urjc.etsii.grafo.executors.ConcurrentExecutor"
+    }, {
+      "classLoaderName" : null,
+      "moduleName" : "java.base",
+      "moduleVersion" : "17.0.4.1",
+      "methodName" : "run",
+      "fileName" : "FutureTask.java",
+      "lineNumber" : 264,
+      "nativeMethod" : false,
+      "className" : "java.util.concurrent.FutureTask"
+    }, {
+      "classLoaderName" : null,
+      "moduleName" : "java.base",
+      "moduleVersion" : "17.0.4.1",
+      "methodName" : "runWorker",
+      "fileName" : "ThreadPoolExecutor.java",
+      "lineNumber" : 1136,
+      "nativeMethod" : false,
+      "className" : "java.util.concurrent.ThreadPoolExecutor"
+    }, {
+      "classLoaderName" : null,
+      "moduleName" : "java.base",
+      "moduleVersion" : "17.0.4.1",
+      "methodName" : "run",
+      "fileName" : "ThreadPoolExecutor.java",
+      "lineNumber" : 635,
+      "nativeMethod" : false,
+      "className" : "java.util.concurrent.ThreadPoolExecutor$Worker"
+    }, {
+      "classLoaderName" : null,
+      "moduleName" : "java.base",
+      "moduleVersion" : "17.0.4.1",
+      "methodName" : "run",
+      "fileName" : "Thread.java",
+      "lineNumber" : 833,
+      "nativeMethod" : false,
+      "className" : "java.lang.Thread"
+    } ],
+    "message" : "class es.urjc.etsii.grafo.TSP.model.TSPInstance cannot be cast to class es.urjc.etsii.grafo.testutil.TestInstance (es.urjc.etsii.grafo.TSP.model.TSPInstance and es.urjc.etsii.grafo.testutil.TestInstance are in unnamed module of loader 'app')",
+    "suppressed" : [ ],
+    "localizedMessage" : "class es.urjc.etsii.grafo.TSP.model.TSPInstance cannot be cast to class es.urjc.etsii.grafo.testutil.TestInstance (es.urjc.etsii.grafo.TSP.model.TSPInstance and es.urjc.etsii.grafo.testutil.TestInstance are in unnamed module of loader 'app')"
+  },
+  "InstanceName" : "berlin52",
+  "Algorithm" : {
+    "shortName" : "Simple"
+  },
+  "StackTrace" : "java.lang.ClassCastException: class es.urjc.etsii.grafo.TSP.model.TSPInstance cannot be cast to class es.urjc.etsii.grafo.testutil.TestInstance (es.urjc.etsii.grafo.TSP.model.TSPInstance and es.urjc.etsii.grafo.testutil.TestInstance are in unnamed module of loader 'app')\n\tat es.urjc.etsii.grafo.testutil.TestSolutionBuilder.initializeSolution(TestSolutionBuilder.java:5)\n\tat es.urjc.etsii.grafo.algorithms.Algorithm.newSolution(Algorithm.java:55)\n\tat es.urjc.etsii.grafo.algorithms.SimpleAlgorithm.algorithm(SimpleAlgorithm.java:80)\n\tat es.urjc.etsii.grafo.executors.Executor.doWork(Executor.java:160)\n\tat es.urjc.etsii.grafo.executors.ConcurrentExecutor.lambda$submitAll$0(ConcurrentExecutor.java:70)\n\tat java.base/java.util.concurrent.FutureTask.run(FutureTask.java:264)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1136)\n\tat java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:635)\n\tat java.base/java.lang.Thread.run(Thread.java:833)\n"
+}

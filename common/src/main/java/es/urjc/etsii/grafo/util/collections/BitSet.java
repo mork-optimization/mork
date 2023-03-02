@@ -37,6 +37,18 @@ public class BitSet extends AbstractSet<Integer> {
     }
 
     /**
+     * Returns a new BitSet containing all elements in range [0, n] except those present in the given set.
+     * @param a set
+     * @return New set, original set is not modified
+     */
+    public static BitSet not(BitSet a){
+        var r = new BitSet(a.capacity);
+        r.add(0, a.capacity);
+        r.xor(a);
+        return r;
+    }
+
+    /**
      * Returns the union between two sets as a new set
      * @param a First set
      * @param b Second set
@@ -110,11 +122,12 @@ public class BitSet extends AbstractSet<Integer> {
      */
     public BitSet(int nElements) {
         // nbits can't be negative; size 0 is OK
-        if (nElements < 0)
+        if (nElements < 0) {
             throw new NegativeArraySizeException("nbits < 0: " + nElements);
+        }
 
         int nWords = wordIndex(nElements - 1) + 1;
-        this.capacity = nWords * BITS_PER_WORD;
+        this.capacity = nElements;
         this.words = new long[nWords];
     }
 
@@ -129,7 +142,7 @@ public class BitSet extends AbstractSet<Integer> {
             this.capacity = set.capacity;
         } else {
             int nWords = wordIndex(nElements - 1) + 1;
-            this.capacity = nWords * BITS_PER_WORD;
+            this.capacity = nElements;
             this.words = new long[nWords];
             this.addAll(other);
         }
@@ -146,14 +159,14 @@ public class BitSet extends AbstractSet<Integer> {
     /**
      * Checks that fromIndex ... toIndex is a valid range of bit indices.
      */
-    private static void checkRange(int fromIndex, int toIndex) {
-        if (fromIndex < 0)
-            throw new IndexOutOfBoundsException("fromIndex < 0: " + fromIndex);
-        if (toIndex < 0)
-            throw new IndexOutOfBoundsException("toIndex < 0: " + toIndex);
-        if (fromIndex > toIndex)
-            throw new IndexOutOfBoundsException("fromIndex: " + fromIndex +
-                    " > toIndex: " + toIndex);
+    private void checkRange(int fromIndex, int toIndex) {
+        checkCapacity(fromIndex);
+        if (toIndex < 0 || toIndex > this.capacity) {
+            throw new IndexOutOfBoundsException("Invalid operation, breaks capacity constraint: 0 <= %s <= %s".formatted(fromIndex, capacity));
+        }
+        if (fromIndex > toIndex) {
+            throw new IndexOutOfBoundsException("fromIndex: %s  > toIndex: %s".formatted(fromIndex, toIndex));
+        }
     }
 
     /**
@@ -165,8 +178,7 @@ public class BitSet extends AbstractSet<Integer> {
      * @since 1.4
      */
     public void flip(int bitIndex) {
-        if (bitIndex < 0)
-            throw new IndexOutOfBoundsException("bitIndex < 0: " + bitIndex);
+        checkCapacity(bitIndex);
 
         int wordIndex = wordIndex(bitIndex);
         words[wordIndex] ^= (1L << bitIndex);
@@ -187,8 +199,9 @@ public class BitSet extends AbstractSet<Integer> {
     public void flip(int fromIndex, int toIndex) {
         checkRange(fromIndex, toIndex);
 
-        if (fromIndex == toIndex)
+        if (fromIndex == toIndex) {
             return;
+        }
 
         int startWordIndex = wordIndex(fromIndex);
         int endWordIndex = wordIndex(toIndex - 1);
@@ -204,8 +217,9 @@ public class BitSet extends AbstractSet<Integer> {
             words[startWordIndex] ^= firstWordMask;
 
             // Handle intermediate words, if any
-            for (int i = startWordIndex + 1; i < endWordIndex; i++)
+            for (int i = startWordIndex + 1; i < endWordIndex; i++) {
                 words[i] ^= WORD_MASK;
+            }
 
             // Handle last word
             words[endWordIndex] ^= lastWordMask;
@@ -220,8 +234,7 @@ public class BitSet extends AbstractSet<Integer> {
      * @since 1.0
      */
     public boolean add(int bitIndex) {
-        if (bitIndex < 0)
-            throw new IndexOutOfBoundsException("bitIndex < 0: " + bitIndex);
+        checkCapacity(bitIndex);
 
         int wordIndex = wordIndex(bitIndex);
         var t = 1L << bitIndex;
@@ -244,8 +257,8 @@ public class BitSet extends AbstractSet<Integer> {
      * Sets the bits from the specified {@code fromIndex} (inclusive) to the
      * specified {@code toIndex} (exclusive) to {@code true}.
      *
-     * @param fromIndex index of the first bit to be set
-     * @param toIndex   index after the last bit to be set
+     * @param fromIndex index of the first bit to be set, inclusive
+     * @param toIndex   index after the last bit to be set, exclusive
      * @throws IndexOutOfBoundsException if {@code fromIndex} is negative,
      *                                   or {@code toIndex} is negative, or {@code fromIndex} is
      *                                   larger than {@code toIndex}
@@ -254,8 +267,9 @@ public class BitSet extends AbstractSet<Integer> {
     public void add(int fromIndex, int toIndex) {
         checkRange(fromIndex, toIndex);
 
-        if (fromIndex == toIndex)
+        if (fromIndex == toIndex) {
             return;
+        }
 
         // Increase capacity if necessary
         int startWordIndex = wordIndex(fromIndex);
@@ -272,8 +286,9 @@ public class BitSet extends AbstractSet<Integer> {
             words[startWordIndex] |= firstWordMask;
 
             // Handle intermediate words, if any
-            for (int i = startWordIndex + 1; i < endWordIndex; i++)
+            for (int i = startWordIndex + 1; i < endWordIndex; i++) {
                 words[i] = WORD_MASK;
+            }
 
             // Handle last word (restores invariants)
             words[endWordIndex] |= lastWordMask;
@@ -288,13 +303,9 @@ public class BitSet extends AbstractSet<Integer> {
      * @since 1.0
      */
     public boolean remove(int bitIndex) {
-        if (bitIndex < 0)
-            throw new IndexOutOfBoundsException("bitIndex < 0: " + bitIndex);
+        checkCapacity(bitIndex);
 
         int wordIndex = wordIndex(bitIndex);
-        if (wordIndex >= words.length)
-            throw new IndexOutOfBoundsException("bitIndex %s > size %s: ".formatted(bitIndex, words.length));
-
         var t = 1L << bitIndex;
         boolean contains = (words[wordIndex] & t) != 0;
         words[wordIndex] &= ~t;
@@ -315,16 +326,12 @@ public class BitSet extends AbstractSet<Integer> {
     public void remove(int fromIndex, int toIndex) {
         checkRange(fromIndex, toIndex);
 
-        if (fromIndex == toIndex)
+        if (fromIndex == toIndex) {
             return;
+        }
 
         int startWordIndex = wordIndex(fromIndex);
-        if (startWordIndex >= words.length)
-            throw new IndexOutOfBoundsException("startWordIndex %s > size %s: ".formatted(startWordIndex, words.length));
-
         int endWordIndex = wordIndex(toIndex - 1);
-        if (endWordIndex >= words.length)
-            throw new IndexOutOfBoundsException("startWordIndex %s > size %s: ".formatted(startWordIndex, words.length));
 
         long firstWordMask = WORD_MASK << fromIndex;
         long lastWordMask = WORD_MASK >>> -toIndex;
@@ -337,8 +344,9 @@ public class BitSet extends AbstractSet<Integer> {
             words[startWordIndex] &= ~firstWordMask;
 
             // Handle intermediate words, if any
-            for (int i = startWordIndex + 1; i < endWordIndex; i++)
+            for (int i = startWordIndex + 1; i < endWordIndex; i++) {
                 words[i] = 0;
+            }
 
             // Handle last word
             words[endWordIndex] &= ~lastWordMask;
@@ -365,13 +373,9 @@ public class BitSet extends AbstractSet<Integer> {
      * @throws IndexOutOfBoundsException if the specified index is negative
      */
     public boolean get(int bitIndex) {
-        if (bitIndex < 0)
-            throw new IndexOutOfBoundsException("bitIndex < 0: " + bitIndex);
+        checkCapacity(bitIndex);
 
         int wordIndex = wordIndex(bitIndex);
-        if (wordIndex >= this.words.length) {
-            throw new IndexOutOfBoundsException("bitIndex %s > size %s: ".formatted(wordIndex, this.words.length));
-        }
         return ((words[wordIndex] & (1L << bitIndex)) != 0);
     }
 
@@ -398,21 +402,25 @@ public class BitSet extends AbstractSet<Integer> {
      * @since 1.4
      */
     public int nextSetBit(int fromIndex) {
-        if (fromIndex < 0)
-            throw new IndexOutOfBoundsException("fromIndex < 0: " + fromIndex);
+        checkCapacity(fromIndex);
 
         int wordIndex = wordIndex(fromIndex);
-        if (wordIndex >= this.words.length) {
-            throw new IndexOutOfBoundsException("bitIndex %s > size %s: ".formatted(wordIndex, this.words.length));
-        }
         long word = words[wordIndex] & (WORD_MASK << fromIndex);
 
         while (true) {
-            if (word != 0)
+            if (word != 0) {
                 return (wordIndex * BITS_PER_WORD) + Long.numberOfTrailingZeros(word);
-            if (++wordIndex == this.words.length)
+            }
+            if (++wordIndex == this.words.length) {
                 return -1;
+            }
             word = words[wordIndex];
+        }
+    }
+
+    private void checkCapacity(int idx) {
+        if (idx < 0 || idx >= this.capacity) {
+            throw new IndexOutOfBoundsException("Invalid operation, breaks capacity constraint: 0 <= %s < %s".formatted(idx, capacity));
         }
     }
 
@@ -427,24 +435,18 @@ public class BitSet extends AbstractSet<Integer> {
      * @since 1.4
      */
     public int nextClearBit(int fromIndex) {
-        // Neither spec nor implementation handle bitsets of maximal length.
-        // See 4816253.
-        if (fromIndex < 0)
-            throw new IndexOutOfBoundsException("fromIndex < 0: " + fromIndex);
-
+        checkCapacity(fromIndex);
 
         int wordIndex = wordIndex(fromIndex);
-        if (wordIndex >= this.words.length) {
-            throw new IndexOutOfBoundsException("bitIndex %s > size %s: ".formatted(wordIndex, this.words.length));
-        }
-
         long word = ~words[wordIndex] & (WORD_MASK << fromIndex);
 
         while (true) {
-            if (word != 0)
+            if (word != 0) {
                 return (wordIndex * BITS_PER_WORD) + Long.numberOfTrailingZeros(word);
-            if (++wordIndex == this.words.length)
+            }
+            if (++wordIndex == this.words.length) {
                 return -1;
+            }
             word = ~words[wordIndex];
         }
     }
@@ -471,24 +473,18 @@ public class BitSet extends AbstractSet<Integer> {
      * @since 1.7
      */
     public int previousSetBit(int fromIndex) {
-        if (fromIndex < 0) {
-            if (fromIndex == -1)
-                return -1;
-            throw new IndexOutOfBoundsException(
-                    "fromIndex < -1: " + fromIndex);
-        }
+        checkCapacity(fromIndex);
 
         int u = wordIndex(fromIndex);
-        if (u >= this.words.length)
-            return -1;
-
         long word = words[u] & (WORD_MASK >>> -(fromIndex + 1));
 
         while (true) {
-            if (word != 0)
+            if (word != 0) {
                 return (u + 1) * BITS_PER_WORD - 1 - Long.numberOfLeadingZeros(word);
-            if (u-- == 0)
+            }
+            if (u-- == 0) {
                 return -1;
+            }
             word = words[u];
         }
     }
@@ -507,25 +503,18 @@ public class BitSet extends AbstractSet<Integer> {
      * @since 1.7
      */
     public int previousClearBit(int fromIndex) {
-        if (fromIndex < 0) {
-            if (fromIndex == -1)
-                return -1;
-            throw new IndexOutOfBoundsException(
-                    "fromIndex < -1: " + fromIndex);
-        }
-
+        checkCapacity(fromIndex);
 
         int u = wordIndex(fromIndex);
-        if (u >= this.words.length)
-            return -1;
-
         long word = ~words[u] & (WORD_MASK >>> -(fromIndex + 1));
 
         while (true) {
-            if (word != 0)
+            if (word != 0) {
                 return (u + 1) * BITS_PER_WORD - 1 - Long.numberOfLeadingZeros(word);
-            if (u-- == 0)
+            }
+            if (u-- == 0) {
                 return -1;
+            }
             word = ~words[u];
         }
     }
@@ -552,9 +541,11 @@ public class BitSet extends AbstractSet<Integer> {
      */
     public boolean intersects(BitSet set) {
         checkSameSize(set);
-        for (int i = this.words.length - 1; i >= 0; i--)
-            if ((words[i] & set.words[i]) != 0)
+        for (int i = this.words.length - 1; i >= 0; i--) {
+            if ((words[i] & set.words[i]) != 0) {
                 return true;
+            }
+        }
         return false;
     }
 
@@ -566,7 +557,9 @@ public class BitSet extends AbstractSet<Integer> {
      */
     public int size() {
         int sum = 0;
-        for (long word : words) sum += Long.bitCount(word);
+        for (long word : words) {
+            sum += Long.bitCount(word);
+        }
         return sum;
     }
 
@@ -580,14 +573,15 @@ public class BitSet extends AbstractSet<Integer> {
      * @param set a bit set
      */
     public void and(BitSet set) {
-        if (this == set)
+        if (this == set) {
             return;
+        }
         checkSameSize(set);
 
         // Perform logical AND for each word
-        for (int i = 0; i < this.words.length; i++)
+        for (int i = 0; i < this.words.length; i++) {
             words[i] &= set.words[i];
-
+        }
     }
 
     /**
@@ -600,13 +594,15 @@ public class BitSet extends AbstractSet<Integer> {
      * @param set a bit set
      */
     public void or(BitSet set) {
-        if (this == set)
+        if (this == set) {
             return;
+        }
         checkSameSize(set);
 
         // Perform logical OR on all words
-        for (int i = 0; i < this.words.length; i++)
+        for (int i = 0; i < this.words.length; i++) {
             words[i] |= set.words[i];
+        }
 
     }
 
@@ -628,8 +624,13 @@ public class BitSet extends AbstractSet<Integer> {
         checkSameSize(set);
 
         // Perform logical XOR on all words
-        for (int i = 0; i < this.words.length; i++)
+        for (int i = 0; i < this.words.length; i++) {
             words[i] ^= set.words[i];
+        }
+
+        // Clear bits outside capacity range
+        long lastWordMask = WORD_MASK >>> -capacity;
+        words[words.length-1] &= lastWordMask;
     }
 
     /**
@@ -647,12 +648,20 @@ public class BitSet extends AbstractSet<Integer> {
         for (int i = 0; i < this.words.length; i++) {
             words[i] &= ~set.words[i];
         }
+
+        // Clear bits outside capacity range
+        long lastWordMask = WORD_MASK >>> -capacity;
+        words[words.length-1] &= lastWordMask;
     }
 
     public void checkSameSize(BitSet set) {
-        if (this.words.length != set.words.length) {
-            throw new IllegalArgumentException("Different size sets, current %s, other %s".formatted(this.words.length, set.words.length));
+        if (this.capacity != set.capacity) {
+            throw new IllegalArgumentException("Different size capacity, current %s, other %s".formatted(this.words.length, set.words.length));
         }
+//
+//        if (this.words.length != set.words.length) {
+//            throw new IllegalArgumentException("Different size sets, current %s, other %s".formatted(this.words.length, set.words.length));
+//        }
     }
 
     /**
@@ -698,18 +707,23 @@ public class BitSet extends AbstractSet<Integer> {
      * @see #size()
      */
     public boolean equals(Object obj) {
-        if (!(obj instanceof BitSet set))
+        if (!(obj instanceof BitSet set)) {
             return false;
-        if (this == obj)
+        }
+        if (this == obj) {
             return true;
+        }
 
-        if (words.length != set.words.length)
+        if (words.length != set.words.length) {
             return false;
+        }
 
         // Check words in use by both BitSets
-        for (int i = 0; i < words.length; i++)
-            if (words[i] != set.words[i])
+        for (int i = 0; i < words.length; i++) {
+            if (words[i] != set.words[i]) {
                 return false;
+            }
+        }
 
         return true;
     }
@@ -760,21 +774,13 @@ public class BitSet extends AbstractSet<Integer> {
                 6 * numBits + 2 : MAX_INITIAL_CAPACITY;
         StringBuilder b = new StringBuilder(initialCapacity);
         b.append('{');
-
-        int i = nextSetBit(0);
-        if (i != -1) {
-            b.append(i);
-            while (true) {
-                if (++i < 0) break;
-                if ((i = nextSetBit(i)) < 0) break;
-                int endOfRun = nextClearBit(i);
-                do {
-                    b.append(", ").append(i);
-                }
-                while (++i != endOfRun);
-            }
+        var iterator = this.iterator();
+        if(iterator.hasNext()){
+            b.append(iterator.next());
         }
-
+        while (iterator.hasNext()){
+            b.append(", ").append(iterator.next());
+        }
         b.append('}');
         return b.toString();
     }
@@ -963,7 +969,7 @@ public class BitSet extends AbstractSet<Integer> {
             // covers one bit and cannot be split, or two or more
             // bits
             hi = fence = (hi < Integer.MAX_VALUE || !get(Integer.MAX_VALUE))
-                    ? previousSetBit(hi - 1) + 1
+                    ? previousSetBit(Math.min(capacity-1,hi - 1)) + 1
                     : Integer.MAX_VALUE;
 
             // Find the mid point
@@ -1015,57 +1021,47 @@ public class BitSet extends AbstractSet<Integer> {
     private int nextSetBit(int fromIndex, int toWordIndex) {
         int u = wordIndex(fromIndex);
         // Check if out of bounds
-        if (u > toWordIndex)
+        if (u > toWordIndex) {
             return -1;
+        }
 
         long word = words[u] & (WORD_MASK << fromIndex);
 
         while (true) {
-            if (word != 0)
+            if (word != 0) {
                 return (u * BITS_PER_WORD) + Long.numberOfTrailingZeros(word);
+            }
             // Check if out of bounds
-            if (++u > toWordIndex)
+            if (++u > toWordIndex) {
                 return -1;
+            }
             word = words[u];
         }
     }
 
     private class BitSetIterator implements Iterator<Integer> {
 
-        public BitSetIterator() {
-            currentUsed = false;
-            currentPosition = nextSetBit(0);
-        }
-
-        private boolean currentUsed;
-        private int currentPosition;
+        private int lastReturned = -1;
+        private int nextIdx = nextSetBit(0);
 
         @Override
         public boolean hasNext() {
-            if (!currentUsed) {
-                return true;
-            }
-
-            currentPosition = nextSetBit(currentPosition + 1);
-            if(currentPosition == -1) {
-                return false;
-            }
-            currentUsed = false;
-            return true;
+            return nextIdx != -1;
         }
 
         @Override
         public Integer next() {
-            if (currentUsed) {
-                throw new NoSuchElementException("Called next() without calling hashNext() first");
+            if(nextIdx == -1){
+                throw new NoSuchElementException("CurrentState{lastReturned=%s, nextIdx=%s}".formatted(lastReturned, nextIdx));
             }
-            currentUsed = true;
-            return currentPosition;
+            lastReturned = nextIdx;
+            nextIdx = nextIdx == capacity -1? -1: nextSetBit(nextIdx + 1);
+            return lastReturned;
         }
 
         @Override
         public void remove() {
-            BitSet.this.remove(currentPosition);
+            BitSet.this.remove(lastReturned);
         }
     }
 }

@@ -145,7 +145,7 @@ public class BitSetTest {
     }
 
     @Test
-    void iterator(){
+    void testIterator(){
         BitSet set = new BitSet(100);
         var list = Arrays.asList(1,2,3,4,6,7,8,9,10);
         set.addAll(list);
@@ -294,6 +294,17 @@ public class BitSetTest {
     }
 
     @Test
+    void testNot(){
+        var set1 = BitSet.of(100, 1, 7, 9);
+        var set2 = BitSet.not(set1);
+        assertEquals(3, set1.size());
+        assertEquals(100 - set1.size(), set2.size());
+        for(var i: set1){
+            assertEquals(set1.contains(i), !set2.contains(i));
+        }
+    }
+
+    @Test
     void testCloneSet(){
         int size = 1000;
         var set1 = new BitSet(size);
@@ -382,15 +393,15 @@ public class BitSetTest {
     void testCapacity(){
         assertThrows(NegativeArraySizeException.class, () -> new BitSet(-1));
         assertEquals(0, new BitSet(0).getCapacity());
-        assertEquals(64, new BitSet(1).getCapacity());
-        assertEquals(64, new BitSet(2).getCapacity());
+        assertEquals(1, new BitSet(1).getCapacity());
+        assertEquals(2, new BitSet(2).getCapacity());
         assertEquals(64, new BitSet(64).getCapacity());
-        assertEquals(64, new BitSet(63).getCapacity());
-        assertEquals(64, new BitSet(47).getCapacity());
-        assertEquals(128, new BitSet(65).getCapacity());
-        assertEquals(128, new BitSet(127).getCapacity());
+        assertEquals(63, new BitSet(63).getCapacity());
+        assertEquals(47, new BitSet(47).getCapacity());
+        assertEquals(65, new BitSet(65).getCapacity());
+        assertEquals(127, new BitSet(127).getCapacity());
         assertEquals(128, new BitSet(128).getCapacity());
-        assertEquals(192, new BitSet(129).getCapacity());
+        assertEquals(129, new BitSet(129).getCapacity());
     }
 
     @Test
@@ -551,13 +562,12 @@ public class BitSetTest {
         int size = 1024;
         var set = of(size, 1, 2, 4, 6, 8);
 
-        assertEquals(-1, set.previousSetBit(-1));
-        assertEquals(-1, set.previousClearBit(-1));
-        assertEquals(-1, set.previousSetBit(size*2));
-        assertEquals(-1, set.previousClearBit(size*2));
-
         assertThrows(IndexOutOfBoundsException.class, () -> set.previousSetBit(-2));
+        assertThrows(IndexOutOfBoundsException.class, () -> set.previousSetBit(-1));
+        assertThrows(IndexOutOfBoundsException.class, () -> set.previousSetBit(size*2));
         assertThrows(IndexOutOfBoundsException.class, () -> set.previousClearBit(-2));
+        assertThrows(IndexOutOfBoundsException.class, () -> set.previousClearBit(-1));
+        assertThrows(IndexOutOfBoundsException.class, () -> set.previousClearBit(size*2));
 
         assertThrows(IndexOutOfBoundsException.class, () -> set.nextSetBit(-1));
         assertThrows(IndexOutOfBoundsException.class, () -> set.nextSetBit(-2));
@@ -568,5 +578,21 @@ public class BitSetTest {
         assertThrows(IndexOutOfBoundsException.class, () -> set.nextClearBit(size*2));
     }
 
+    @Test
+    void validateCapacityBehavior(){
+        var set1 = new BitSet(6);
+        assertThrows(IndexOutOfBoundsException.class, () -> set1.add(7));
+        assertThrows(IndexOutOfBoundsException.class, () -> set1.remove(7));
+        assertThrows(IndexOutOfBoundsException.class, () -> set1.get(7));
+    }
 
+    @Test
+    void testXor(){
+        var set1 = BitSet.of(10, 1, 5, 8);
+        var set2 = BitSet.of(10, 2, 4, 5);
+        var expectedSet3 = BitSet.of(10, 1, 2, 4, 8);
+        set1.xor(set2);
+
+        assertEquals(expectedSet3, set1);
+    }
 }
