@@ -6,6 +6,9 @@
 # Log file
 *.log
 
+# Errors folder
+error
+
 # BlueJ files
 *.ctxt
 
