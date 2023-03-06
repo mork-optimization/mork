@@ -3,8 +3,7 @@ package es.urjc.etsii.grafo.annotations;
 import java.lang.annotation.*;
 
 /**
- * Declares how to generate values for a primitive parameter (int, double, etc) using the same strategies as Irace.
- * See section 5.1.1 Parameter Types in the official irace manual for more details
+ * Specifies additional restrictions when resolving algorithm components to available implementations
  */
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
@@ -12,8 +11,8 @@ import java.lang.annotation.*;
 public @interface ComponentParam {
 
     /**
-     * Disallowed classes for recursive components
-     * @return disallowe classes
+     * Disallowed classes for recursive components. All derived classes from the disallowed list will be disallowed too.
+     * @return disallowed classes
      */
     Class<?>[] disallowed() default {};
 }
