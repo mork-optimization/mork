@@ -2,10 +2,10 @@ package es.urjc.etsii.grafo.improve;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.ComponentParam;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.List;
 
@@ -39,7 +39,9 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
     @AutoconfigConstructor
     public VND(
             @ProvidedParam FMode fmode,
-            Improver<S, I> improver1, Improver<S, I> improver2, Improver<S, I> improver3
+            @ComponentParam(disallowed = {VND.class}) Improver<S,I> improver1,
+            @ComponentParam(disallowed = {VND.class}) Improver<S,I> improver2,
+            @ComponentParam(disallowed = {VND.class}) Improver<S,I> improver3
     ) {
         super(fmode);
         this.improvers = List.of(improver1, improver2, improver3);
@@ -48,30 +50,16 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
     /** {@inheritDoc} */
     @Override
     protected S _improve(S solution) {
-        int currentLS = 0;
-        while(currentLS < improvers.size()){
-            double prev = solution.getScore();
-            var ls = improvers.get(currentLS);
-            solution = ls.improve(solution);
-            if(currentLS == 0){
-                // Why repeat when improver stops when
-                // it cannot improve the current solution?
-                // TODO refactor this
-                currentLS++;
-            } else if (this.fmode == FMode.MAXIMIZE) {
-                if (DoubleComparator.isGreaterOrEquals(prev, solution.getScore())) {
-                    // prev >= current, no improvement
-                    currentLS++;
-                } else {
-                    currentLS = 0;
-                }
+        int index = 0;
+        while(index < improvers.size()){
+            double scoreBeforeImprover = solution.getScore();
+            var improver = improvers.get(index);
+            solution = improver.improve(solution);
+
+            if(ofIsBetter.test(solution.getScore(), scoreBeforeImprover)){
+                index = 0;
             } else {
-                if (DoubleComparator.isLessOrEquals(prev, solution.getScore())) {
-                    // prev <= current, no improvement
-                    currentLS++;
-                } else {
-                    currentLS = 0;
-                }
+                index++;
             }
         }
         return solution;
