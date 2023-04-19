@@ -1,11 +1,13 @@
 package es.urjc.etsii.morktests;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.events.AbstractEventStorage;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.solver.RunOnStart;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.NoSuchBeanDefinitionException;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,6 +30,11 @@ class SmokeTest {
 
     @Autowired
     private ApplicationContext applicationContext;
+
+    @BeforeAll
+    public static void before(){
+        Mork.setSolvingMode(FMode.MINIMIZE);
+    }
 
     @Test
     void checkInjected(){
