@@ -59,7 +59,7 @@
             ${project.basedir}/../integration-tests/target/site/jacoco-aggregate/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
         <sonar.language>java</sonar.language>
-        <graalvm.version>22.3.1</graalvm.version>
+        <graalvm.version>22.3.2</graalvm.version>
     </properties>
 
     <distributionManagement>
