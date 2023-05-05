@@ -81,14 +81,17 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
         this.fImproves = DoubleComparator.improvesFunction(fMaximize);
     }
 
+    protected boolean shouldEnd(S best, double currentTemperature, int currentIteration){
+        return TimeControl.isTimeUp() || terminationCriteria.terminate(best, neighborhood, currentTemperature, currentIteration);
+    }
     @Override
     protected S _improve(S solution) {
         S best = solution.cloneSolution();
         double currentTemperature = this.initialTemperatureCalculator.initial(best, neighborhood);
         log.debug("Initial temperature: {}", currentTemperature);
         int currentIteration = 0;
-        while (!TimeControl.isTimeUp() && !terminationCriteria.terminate(best, neighborhood, currentTemperature, currentIteration)) {
-            CycleResult<S> cycleResult = doCycle(neighborhood, solution, best, currentTemperature);
+        while (!shouldEnd(best,currentTemperature,currentIteration)) {
+            CycleResult<S> cycleResult = doCycle(neighborhood, solution, best, currentTemperature,currentIteration);
             best = cycleResult.bestSolution;
             solution = cycleResult.currentSolution;
             if (!cycleResult.atLeastOneMove) {
@@ -107,54 +110,21 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
 
     /**
      * Does a cycle with the same temperature. Always works on the same solution.
-     * Slow implementation as a fallback, when {@link SimulatedAnnealing#doCycle(RandomizableNeighborhood, Solution, Solution, double)} is not possible.
-     *
-     * @param solution           current working solution
-     * @param best               best solution found until now
-     * @param currentTemperature current temperature
-     * @return best solution found, remember that you should NOT use the returned solution
-     */
-    protected CycleResult<S> doCycleSlow(Neighborhood<M, S, I> neighborhood, S solution, S best, double currentTemperature) {
-        boolean atLeastOne = false;
-        for (int i = 0; i < this.cycleLength; i++) {
-            boolean executed = false;
-            var currentMoves = getMoves(neighborhood, solution);
-            for (M move : currentMoves) {
-                double score = f.applyAsDouble(move);
-                if (fImproves.test(score) || acceptanceCriteria.accept(move, currentTemperature)) {
-                    atLeastOne = true;
-                    move.execute(solution);
-                    executed = true;
-                    if (solution.isBetterThan(best)) {
-                        best = solution.cloneSolution();
-                    }
-                    break;
-                }
-            }
-            if (!executed) {
-                log.debug("Breaking cycle at {}/{}", i, this.cycleLength);
-                return new CycleResult<>(atLeastOne, best, solution);
-            }
-        }
-        return new CycleResult<>(atLeastOne, best, solution);
-    }
-
-    /**
-     * Does a cycle with the same temperature. Always works on the same solution.
      * Fast implementation that can only be used if the {@link Neighborhood} implements {@link RandomizableNeighborhood}.
      *
      * @param solution           current working solution
      * @param best               best solution found until now
      * @param currentTemperature current temperature
+     * @param currentIteration   current iteration
      * @return best solution found, remember that you should NOT use the returned solution
      */
-    protected CycleResult<S> doCycle(RandomizableNeighborhood<M, S, I> neighborhood, S solution, S best, double currentTemperature) {
+    protected CycleResult<S> doCycle(RandomizableNeighborhood<M, S, I> neighborhood, S solution, S best, double currentTemperature, int currentIteration) {
         boolean atLeastOne = false;
-        for (int i = 0; i < this.cycleLength; i++) {
+        for (int i = 0; i < this.cycleLength && !shouldEnd(best,currentTemperature,currentIteration); i++) {
             int fails = 0;
             int maxRetries = 3;
             Set<M> testedMoves = new HashSet<>();
-            while (fails < maxRetries) {
+            while (fails < maxRetries && !shouldEnd(best,currentTemperature,currentIteration)) {
                 Optional<M> optionalMove = neighborhood.getRandomMove(solution);
                 if (optionalMove.isEmpty()) {
                     fails++;
