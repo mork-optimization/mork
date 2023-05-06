@@ -50,8 +50,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
     protected final InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator;
     protected final int cycleLength;
     protected final ToDoubleFunction<M> f;
-    protected final FMode fMaximize;
-    protected final DoublePredicate fImproves;
+    protected final FMode fmode;
 
     private record CycleResult<S>(boolean atLeastOneMove, S bestSolution, S currentSolution) {
     }
@@ -66,9 +65,9 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
      * @param coolDownControl
      * @param cycleLength
      * @param f
-     * @param fMaximize
+     * @param fmode
      */
-    protected SimulatedAnnealing(FMode fMode, AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength, ToDoubleFunction<M> f, FMode fMaximize) {
+    protected SimulatedAnnealing(FMode fMode, AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength, ToDoubleFunction<M> f, FMode fmode) {
         super(fMode);
         this.acceptanceCriteria = acceptanceCriteria;
         this.neighborhood = ps;
@@ -77,8 +76,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
         this.initialTemperatureCalculator = initialTemperatureCalculator;
         this.cycleLength = cycleLength;
         this.f = f;
-        this.fMaximize = fMaximize;
-        this.fImproves = DoubleComparator.improvesFunction(fMaximize);
+        this.fmode = fmode;
     }
 
     @Override
@@ -121,7 +119,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
             var currentMoves = getMoves(neighborhood, solution);
             for (M move : currentMoves) {
                 double score = f.applyAsDouble(move);
-                if (fImproves.test(score) || acceptanceCriteria.accept(move, currentTemperature)) {
+                if (fmode.improves(score) || acceptanceCriteria.accept(move, currentTemperature)) {
                     atLeastOne = true;
                     move.execute(solution);
                     executed = true;
@@ -167,7 +165,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
                 }
                 testedMoves.add(move);
                 double score = f.applyAsDouble(move);
-                if (fImproves.test(score) || acceptanceCriteria.accept(move, currentTemperature)) {
+                if (fmode.improves(score) || acceptanceCriteria.accept(move, currentTemperature)) {
                     atLeastOne = true;
                     move.execute(solution);
                     if (solution.isBetterThan(best)) {

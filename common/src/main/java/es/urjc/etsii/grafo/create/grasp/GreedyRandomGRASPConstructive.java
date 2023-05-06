@@ -48,7 +48,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
         for (int i = 0, clSize = cl.size(); i < clSize; i++) {
             M move = cl.get(i);
             double value = greedyFunction.applyAsDouble(move);
-            if (isBetterOrEquals.test(value, limit)) {
+            if (fmode.isBetterOrEqual(value, limit)) {
                 validIndexes[next++] = i;
             }
         }

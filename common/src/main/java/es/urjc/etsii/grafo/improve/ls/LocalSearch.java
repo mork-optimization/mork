@@ -8,12 +8,10 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.function.BiPredicate;
 import java.util.function.ToDoubleFunction;
 
 /**
@@ -37,23 +35,21 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
     private static final int WARN_LIMIT = 100_000;
 
     protected final Neighborhood<M, S, I> neighborhood;
-    protected final BiPredicate<Double, Double> fIsBetter;
-    protected final FMode fMaximize;
+    protected final FMode alternativeFMode;
     protected final ToDoubleFunction<M> f;
 
     /**
      * Create a new local search method using the given neighborhood
      * @param neighborhood neighborhood to use
      * @param solutionMode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
-     * @param functionMode true if we should maximize the values returned by function f, false otherwise
-     * @param f function used to get a double value from a move
+     * @param alternativeFMode true if we should maximize the values returned by function f, false otherwise
+     * @param alternativeF function used to get a double value from a move
      */
-    protected LocalSearch(FMode solutionMode, Neighborhood<M, S, I> neighborhood, FMode functionMode, ToDoubleFunction<M> f) {
+    protected LocalSearch(FMode solutionMode, Neighborhood<M, S, I> neighborhood, FMode alternativeFMode, ToDoubleFunction<M> alternativeF) {
         super(solutionMode);
         this.neighborhood = neighborhood;
-        this.fMaximize = functionMode;
-        this.fIsBetter = DoubleComparator.isBetterFunction(functionMode);
-        this.f = f;
+        this.alternativeFMode = alternativeFMode;
+        this.f = alternativeF;
     }
 
     /**
@@ -104,7 +100,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
         double scoreBefore = solution.getScore();
         move.execute(solution);
         double scoreAfter = solution.getScore();
-        if(this.ofIsBetter.test(scoreAfter, scoreBefore)){
+        if(this.ofmode.isBetter(scoreAfter, scoreBefore)){
             MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, scoreAfter);
         }
         return true;
@@ -121,7 +117,6 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
 
     protected boolean improves(M move){
         double score = this.f.applyAsDouble(move);
-        return this.fIsBetter.test(score, 0.0);
+        return this.alternativeFMode.improves(score);
     }
-
 }

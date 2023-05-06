@@ -1,9 +1,10 @@
 package es.urjc.etsii.grafo.util;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import static es.urjc.etsii.grafo.algorithms.FMode.MAXIMIZE;
+import static es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE;
 import static org.junit.jupiter.api.Assertions.*;
 
 class DoubleComparatorTest {
@@ -123,41 +124,35 @@ class DoubleComparatorTest {
 
     @Test
     void testImprovesFunction(){
-        var f1 = DoubleComparator.improvesFunction(FMode.MAXIMIZE);
-        assertFalse(f1.test(0));
-        assertFalse(f1.test(-0.1));
-        assertTrue(f1.test(0.1));
+        assertFalse(MAXIMIZE.improves(0));
+        assertFalse(MAXIMIZE.improves(-0.1));
+        assertTrue(MAXIMIZE.improves(0.1));
 
-        var f2 = DoubleComparator.improvesFunction(FMode.MINIMIZE);
-        assertFalse(f2.test(0));
-        assertTrue(f2.test(-0.1));
-        assertFalse(f2.test(0.1));
+        assertFalse(MINIMIZE.improves(0));
+        assertTrue(MINIMIZE.improves(-0.1));
+        assertFalse(MINIMIZE.improves(0.1));
     }
 
     @Test
     void testIsBetterFunction(){
-        var f1 = DoubleComparator.isBetterFunction(FMode.MAXIMIZE);
-        assertFalse(f1.test(3.2, 3.2));
-        assertFalse(f1.test(3.1, 3.2));
-        assertTrue(f1.test(3.2, 3.1));
+        assertFalse(MAXIMIZE.isBetter(3.2, 3.2));
+        assertFalse(MAXIMIZE.isBetter(3.1, 3.2));
+        assertTrue(MAXIMIZE.isBetter(3.2, 3.1));
 
-        var f2 = DoubleComparator.isBetterFunction(FMode.MINIMIZE);
-        assertFalse(f2.test(3.2, 3.2));
-        assertTrue(f2.test(3.1, 3.2));
-        assertFalse(f2.test(3.2, 3.1));
+        assertFalse(MINIMIZE.isBetter(3.2, 3.2));
+        assertTrue(MINIMIZE.isBetter(3.1, 3.2));
+        assertFalse(MINIMIZE.isBetter(3.2, 3.1));
     }
 
     @Test
     void testIsBetterOrEqualsFunction(){
-        var f1 = DoubleComparator.isBetterOrEqualsFunction(FMode.MAXIMIZE);
-        assertTrue(f1.test(3.2, 3.2));
-        assertFalse(f1.test(3.1, 3.2));
-        assertTrue(f1.test(3.2, 3.1));
+        assertTrue(MAXIMIZE.isBetterOrEqual(3.2, 3.2));
+        assertFalse(MAXIMIZE.isBetterOrEqual(3.1, 3.2));
+        assertTrue(MAXIMIZE.isBetterOrEqual(3.2, 3.1));
 
-        var f2 = DoubleComparator.isBetterOrEqualsFunction(FMode.MINIMIZE);
-        assertTrue(f2.test(3.2, 3.2));
-        assertTrue(f2.test(3.1, 3.2));
-        assertFalse(f2.test(3.2, 3.1));
+        assertTrue(MINIMIZE.isBetterOrEqual(3.2, 3.2));
+        assertTrue(MINIMIZE.isBetterOrEqual(3.1, 3.2));
+        assertFalse(MINIMIZE.isBetterOrEqual(3.2, 3.1));
     }
 
     @Test

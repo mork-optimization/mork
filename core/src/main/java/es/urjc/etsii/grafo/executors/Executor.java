@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.executors;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.EmptyAlgorithm;
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.EventPublisher;
@@ -54,7 +55,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     protected final InstanceManager<I> instanceManager;
     protected final List<ReferenceResultProvider> referenceResultProviders;
     protected final SolverConfig solverConfig;
-    protected final BiPredicate<Double, Double> isBetter = DoubleComparator.isBetterFunction(Mork.getFMode());
+    protected final FMode ofmode = Mork.getFMode();
 
 
     /**
@@ -123,7 +124,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         if (optimalValue.isPresent()) {
             // Check that solution score is not better than optimal value
             double solutionScore = solution.getScore();
-            if(isBetter.test(solutionScore, optimalValue.get())){
+            if(ofmode.isBetter(solutionScore, optimalValue.get())){
                 throw new AssertionError("Solution score (%s) improves optimal value (%s) in ReferenceResultProvider".formatted(solutionScore, optimalValue.get()));
             }
         }

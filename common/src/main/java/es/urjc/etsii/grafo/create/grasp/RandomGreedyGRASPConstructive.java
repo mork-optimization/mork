@@ -52,7 +52,7 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
             return r.nextInt(cl.size());
         }
 
-        M best = CollectionUtil.getBest(rcl, greedyFunction, isBetter);
+        M best = CollectionUtil.getBest(rcl, greedyFunction, fmode::isBetter);
         double bestValue = greedyFunction.applyAsDouble(best);
         assert best != null : "null best with RCL:" + rcl;
 

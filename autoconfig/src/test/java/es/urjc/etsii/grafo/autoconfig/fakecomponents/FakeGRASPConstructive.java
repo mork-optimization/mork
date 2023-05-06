@@ -27,7 +27,7 @@ public class FakeGRASPConstructive<M extends Move<S,I>, S extends Solution<S,I>,
      */
     protected final GRASPListManager<M, S, I> candidateListManager;
     private final AlphaProvider alphaProvider;
-    private final BiPredicate<Double, Double> isBetter;
+    private final FMode ofmode;
 
     /**
      * GRASP Constructor, mantains a fixed alpha value
@@ -35,12 +35,12 @@ public class FakeGRASPConstructive<M extends Move<S,I>, S extends Solution<S,I>,
      *
      * @param alpha      Randomness, adjusts the candidate list size.
      *                   Takes values between [0,1] being 1 → totally random, 0 → full greedy.
-     * @param fmode MAXIMIZE if we are maximizing the score, MINIMIZE if minimizing
+     * @param ofmode MAXIMIZE if we are maximizing the score, MINIMIZE if minimizing
      * @param candidateListManager list manager, implemented by the user
      */
-    public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double alpha, FMode fmode) {
+    public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double alpha, FMode ofmode) {
         this.candidateListManager = candidateListManager;
-        this.isBetter = DoubleComparator.isBetterFunction(fmode);
+        this.ofmode = ofmode;
         assert isGreaterOrEquals(alpha, 0) && isLessOrEquals(alpha, 1);
 
         randomType = String.format("FIXED{a=%.2f}", alpha);
@@ -53,12 +53,12 @@ public class FakeGRASPConstructive<M extends Move<S,I>, S extends Solution<S,I>,
      *
      * @param minAlpha   minimum value for the random alpha
      * @param maxAlpha   maximum value for the random alpha
-     * @param fmode MAXIMIZE if we are maximizing the score, MINIMIZE if minimizing
+     * @param ofmode MAXIMIZE if we are maximizing the score, MINIMIZE if minimizing
      * @param candidateListManager Candidate List Manager
      */
-    public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, FMode fmode) {
+    public FakeGRASPConstructive(GRASPListManager<M, S, I> candidateListManager, double minAlpha, double maxAlpha, FMode ofmode) {
         this.candidateListManager = candidateListManager;
-        this.isBetter = DoubleComparator.isBetterFunction(fmode);
+        this.ofmode = ofmode;
         assert isGreaterOrEquals(minAlpha, 0) && isLessOrEquals(minAlpha, 1);
         assert isGreaterOrEquals(maxAlpha, 0) && isLessOrEquals(maxAlpha, 1);
         assert isGreater(maxAlpha, minAlpha);
