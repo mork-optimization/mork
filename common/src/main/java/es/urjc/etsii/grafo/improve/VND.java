@@ -56,7 +56,7 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
             var improver = improvers.get(index);
             solution = improver.improve(solution);
 
-            if(ofIsBetter.test(solution.getScore(), scoreBeforeImprover)){
+            if(ofmode.isBetter(solution.getScore(), scoreBeforeImprover)){
                 index = 0;
             } else {
                 index++;

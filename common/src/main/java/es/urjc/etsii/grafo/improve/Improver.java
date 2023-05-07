@@ -8,11 +8,8 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.function.BiPredicate;
 
 /**
  * Any method that improves a given solution is called an Improver. The classical example, but not limited to, is a local search.
@@ -25,16 +22,14 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(Improver.class);
 
-    protected final FMode fmode;
-    protected final BiPredicate<Double, Double> ofIsBetter;
+    protected final FMode ofmode;
 
     /**
      * Initialize common improver fields, to be called by subclasses
-     * @param fmode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
+     * @param ofmode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
      */
-    protected Improver(FMode fmode) {
-        this.fmode = fmode;
-        this.ofIsBetter = DoubleComparator.isBetterFunction(fmode);
+    protected Improver(FMode ofmode) {
+        this.ofmode = ofmode;
     }
 
     /**
@@ -59,10 +54,10 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
         // Log, verify and store
         log.debug("Done in {}: {} --> {}", elapsedMillis, initialScore, endScore);
-        if(ofIsBetter.test(initialScore, endScore)){
+        if(ofmode.isBetter(initialScore, endScore)){
             throw new IllegalStateException(String.format("Score has worsened after executing an improvement method: %s --> %s", initialScore, endScore));
         }
-        if(ofIsBetter.test(endScore, initialScore)){
+        if(ofmode.isBetter(endScore, initialScore)){
             MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, endScore);
         }
         return improvedSolution;

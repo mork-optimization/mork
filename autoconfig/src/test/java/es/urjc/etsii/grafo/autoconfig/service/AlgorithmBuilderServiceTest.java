@@ -44,7 +44,7 @@ class AlgorithmBuilderServiceTest {
         SimpleAlgorithm{
             constructive=FakeGRASPConstructive{
                 alpha=0.5,
-                fmode="MINIMIZE",
+                ofmode="MINIMIZE",
                 candidateListManager=NullGraspListManager{}
             },
             improver=null

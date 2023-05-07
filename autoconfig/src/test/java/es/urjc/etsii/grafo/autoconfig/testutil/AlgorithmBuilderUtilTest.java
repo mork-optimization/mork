@@ -83,7 +83,7 @@ class AlgorithmBuilderUtilTest {
     @Test
     void buildGraspExplicitFMode(){
         Map<String, Object> params = Map.of(
-                "fmode", FMode.MINIMIZE,
+                "ofmode", FMode.MINIMIZE,
                 "alpha", 0.75,
                 "candidateListManager", getCLManager());
         var greedyRandom = AlgorithmBuilderUtil.build(FakeGRASPConstructive.class, params, List.of());

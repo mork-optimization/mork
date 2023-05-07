@@ -18,9 +18,6 @@ public abstract class GRASPConstructive<M extends Move<S, I>, S extends Solution
     protected final GRASPListManager<M, S, I> candidateListManager;
     protected final AlphaProvider alphaProvider;
     protected final ToDoubleFunction<M> greedyFunction;
-    // A move is better than another one when its greedy function is greater if maximizing or less than if minimizing
-    protected final BiPredicate<Double, Double> isBetter;
-    protected final BiPredicate<Double, Double> isBetterOrEquals;
 
     /**
      * Should we maximize or minimize
@@ -33,8 +30,6 @@ public abstract class GRASPConstructive<M extends Move<S, I>, S extends Solution
         this.alphaProvider = provider;
         this.alphaType = alphaType;
         this.fmode = fmode;
-        this.isBetter = DoubleComparator.isBetterFunction(this.fmode);
-        this.isBetterOrEquals = DoubleComparator.isBetterOrEqualsFunction(this.fmode);
     }
 
     /**

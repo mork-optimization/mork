@@ -9,16 +9,15 @@ import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
-import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.*;
-import java.util.function.DoublePredicate;
+import java.util.HashSet;
+import java.util.Optional;
+import java.util.Set;
 import java.util.function.ToDoubleFunction;
-import java.util.stream.Collectors;
 
 /**
  * Simulated annealing (SA) is a metaheuristic whose name comes from annealing in metallurgy.
@@ -50,8 +49,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
     protected final InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator;
     protected final int cycleLength;
     protected final ToDoubleFunction<M> f;
-    protected final FMode fMaximize;
-    protected final DoublePredicate fImproves;
+    protected final FMode fmode;
 
     private record CycleResult<S>(boolean atLeastOneMove, S bestSolution, S currentSolution) {
     }
@@ -66,9 +64,9 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
      * @param coolDownControl
      * @param cycleLength
      * @param f
-     * @param fMaximize
+     * @param fmode
      */
-    protected SimulatedAnnealing(FMode fMode, AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength, ToDoubleFunction<M> f, FMode fMaximize) {
+    protected SimulatedAnnealing(FMode fMode, AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength, ToDoubleFunction<M> f, FMode fmode) {
         super(fMode);
         this.acceptanceCriteria = acceptanceCriteria;
         this.neighborhood = ps;
@@ -77,13 +75,13 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
         this.initialTemperatureCalculator = initialTemperatureCalculator;
         this.cycleLength = cycleLength;
         this.f = f;
-        this.fMaximize = fMaximize;
-        this.fImproves = DoubleComparator.improvesFunction(fMaximize);
+        this.fmode = fmode;
     }
 
     protected boolean shouldEnd(S best, double currentTemperature, int currentIteration){
         return TimeControl.isTimeUp() || terminationCriteria.terminate(best, neighborhood, currentTemperature, currentIteration);
     }
+
     @Override
     protected S _improve(S solution) {
         S best = solution.cloneSolution();
@@ -137,7 +135,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
                 }
                 testedMoves.add(move);
                 double score = f.applyAsDouble(move);
-                if (fImproves.test(score) || acceptanceCriteria.accept(move, currentTemperature)) {
+                if (fmode.improves(score) || acceptanceCriteria.accept(move, currentTemperature)) {
                     atLeastOne = true;
                     move.execute(solution);
                     if (solution.isBetterThan(best)) {
@@ -152,17 +150,5 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
             }
         }
         return new CycleResult<>(atLeastOne, best, solution);
-    }
-
-    private Collection<M> getMoves(Neighborhood<M, S, I> neighborhood, S solution) {
-        List<M> moves;
-        var result = neighborhood.explore(solution);
-        if (result.sized()) {
-            moves = result.moves().collect(Collectors.toCollection(() -> new ArrayList<>(result.size())));
-        } else {
-            moves = result.moves().toList();
-        }
-        CollectionUtil.shuffle(moves);
-        return moves;
     }
 }

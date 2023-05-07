@@ -39,11 +39,10 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
     private final Improver<S, I> improver;
     private final SolutionCombinator<S, I> combinator;
     private final int maxIterations;
-    private final Comparator<S> bestValueSort;
     private final double ratio;
-    private final BiPredicate<Double, Double> isBetterFunction;
     private final SolutionDistance<S, I> solutionDistance;
     private final boolean softRestartEnabled;
+    private final FMode fmode;
 
     /**
      * @param initialRatio              During refset initialization, create initialRefset size * INITIAL_RATIO solutions,
@@ -80,18 +79,11 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
         this.constructiveGoodDiversity = Objects.requireNonNull(constructiveGoodDiversity);
         this.improver = Objects.requireNonNull(improver);
         this.combinator = Objects.requireNonNull(combinator);
-        this.isBetterFunction = DoubleComparator.isBetterFunction(fmode);
+        this.fmode = fmode;
         this.softRestartEnabled = true;
         this.maxIterations = maxIterations;
         this.ratio = diversityRatio;
         this.solutionDistance = Objects.requireNonNull(solutionDistance);
-
-        Comparator<S> compareByScore = Comparator.comparing(Solution::getScore);
-        // Comparator orders from less to more by default, if maximizing reverse ordering
-        this.bestValueSort = switch (fmode) {
-            case MAXIMIZE -> compareByScore.reversed();
-            case MINIMIZE -> compareByScore;
-        };
     }
 
     protected RefSet<S, I> initializeRefset(Class<?> clazz, I instance) {
@@ -103,7 +95,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
 
         var initialSolutions = initializeSolutions(instance, (int) (nSolutionsByScore * initialRatio), false);
         initialSolutions.addAll(initializeSolutions(instance, (int) (nSolutionsByDiversity * initialRatio), true));
-        initialSolutions.sort(bestValueSort);
+        initialSolutions.sort(fmode.comparator());
 
         int assignedSolutionsByScore = 0;
         for (S initialSolution : initialSolutions) {
@@ -157,7 +149,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
             forceFill(instance, alreadyUsed, initialRefsetArray, nSolutionsByScore, assignedSolutionsByDiversity, nSolutionsByDiversity, initialSolutions.size());
         }
 
-        Arrays.sort(initialRefsetArray, this.bestValueSort);
+        Arrays.sort(initialRefsetArray, fmode.comparator());
         return new RefSet<>(initialRefsetArray, nSolutionsByScore, nSolutionsByDiversity);
     }
 
@@ -199,7 +191,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
      */
     protected void replaceWorstNearest(RefSet<S, I> refset, S solution) {
         int i = 0;
-        while (i < refset.solutions.length && !this.isBetterFunction.test(solution.getScore(), refset.solutions[i].getScore())) {
+        while (i < refset.solutions.length && !fmode.isBetter(solution.getScore(), refset.solutions[i].getScore())) {
             // Might be speed up using binary search, but for small arrays it is not worth it
             i++;
         }
@@ -308,10 +300,10 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
         Set<S> insertedElements = new HashSet<>();
 
         var sortedNewSolutions = new ArrayList<>(newSolutions);
-        sortedNewSolutions.sort(this.bestValueSort);
+        sortedNewSolutions.sort(fmode.comparator());
 
         for (var solution : sortedNewSolutions) {
-            if (!(this.isBetterFunction.test(solution.getScore(), worstValue))) {
+            if (!(fmode.isBetter(solution.getScore(), worstValue))) {
                 // Solution is worse than the worst solution in refset
                 break; // as newSolutions are ordered by value, if the current one is worse, all remaining must be worse too
             }
@@ -343,12 +335,5 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
                 ", impr=" + improver +
                 ", maxIter=" + maxIterations +
                 '}';
-    }
-
-    protected record Pair<S extends Solution<S, I>, I extends Instance>(double score, S solution) {
-        @Override
-        public String toString() {
-            return Double.toString(score);
-        }
     }
 }
