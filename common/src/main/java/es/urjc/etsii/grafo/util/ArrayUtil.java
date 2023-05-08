@@ -476,7 +476,7 @@ public class ArrayUtil {
      * @return sum of all numbers
      */
     public static double sum(double[] data) {
-        int sum = 0;
+        double sum = 0;
         for (double i : data) {
             sum += i;
         }

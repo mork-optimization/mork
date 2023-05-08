@@ -283,6 +283,7 @@ class ArrayUtilTest {
     void testSumDouble(){
         Assertions.assertEquals(5D, ArrayUtil.sum(new double[]{2, 3}), 0.001);
         Assertions.assertEquals(-1D, ArrayUtil.sum(new double[]{-2, 1}), 0.001);
+        Assertions.assertEquals(0.2, ArrayUtil.sum(new double[]{0.1, 0.1}), 0.001);
     }
 
     @Test
