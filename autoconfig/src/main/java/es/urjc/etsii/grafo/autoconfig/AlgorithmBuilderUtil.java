@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.fill.ParameterProvider;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 import org.apache.commons.lang3.ClassUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,7 +127,7 @@ public class AlgorithmBuilderUtil {
         } else {
             log.debug("Found constructors {} for mandatoryParams {}, optionalParams {}", rankedConstructors, mandatoryParams, optionalParams);
             var rc = rankedConstructors.get(0);
-            switch (rc.matchType){
+            switch (rc.matchType) {
                 case NO_MATCH:
                     log.debug("Failed to find a matching constructor for class {}; mandatoryParams {}; optionalParams {}", clazz.getSimpleName(), mandatoryParams, optionalParams);
                     return null;
@@ -230,9 +231,9 @@ public class AlgorithmBuilderUtil {
             return new RankedConstructor<>(MatchType.NO_MATCH, c);
         }
 
-        if(allNamesMatch && allAssignable){
+        if (allNamesMatch && allAssignable) {
             return new RankedConstructor<>(MatchType.NAMES_TYPES_MATCH, c);
-        } else if(allNamesMatch){
+        } else if (allNamesMatch) {
             return new RankedConstructor<>(MatchType.NAMES_MATCH, c);
         } else {
             return new RankedConstructor<>(MatchType.NO_MATCH, c);
@@ -261,18 +262,83 @@ public class AlgorithmBuilderUtil {
     }
 
     public static Object prepareParameterValue(Object value, Class<?> target) {
-        // If the origin class is number like, promote to Double
-        if (value instanceof Number n && target == Double.class) {
-            return n.doubleValue();
+        // If the origin class is number like, transform to correct type only if no conversion loss occurs
+        if (value instanceof Number n) {
+            return prepareNumericParameterValue(n, target);
         }
 
-        // If the origin class is a string and the target is an enum type, assume the enum contains the string
-        if (value instanceof String s && target.isEnum()) {
-            //noinspection unchecked
-            return Enum.valueOf((Class<Enum>) target, s);
+        if(value instanceof String s){
+            return prepareStringParameterValue(s, target);
         }
+
 
         // Return as is if no special handling is implemented
         return value;
     }
+
+    private static Object prepareStringParameterValue(String s, Class<?> target) {
+        // If the origin class is a string and the target is number like,
+        // try to parse to double and perform appropriate numeric conversion
+        if (ClassUtils.isAssignable(target, Number.class)) {
+            Double doubleValue = Double.parseDouble(s);
+            return prepareNumericParameterValue(doubleValue, target);
+        }
+
+        // If the origin class is a string and the target is an enum type, assume the enum contains the string
+        if (target.isEnum()) {
+            //noinspection unchecked
+            return Enum.valueOf((Class<Enum>) target, s);
+        }
+
+        // If the origin class is a string and the target is a boolean like value, try to parse as boolean
+        if (target == Boolean.class || target == boolean.class) {
+            return Boolean.parseBoolean(s);
+        }
+
+        // If no specific string conversion exists return as is and hope for the best
+        return s;
+    }
+
+    public static Object prepareNumericParameterValue(Number value, Class<?> target) {
+        double doubleValue = value.doubleValue();
+        if (target == Double.class || target == double.class) {
+            return doubleValue;
+        }
+        if (target == Float.class || target == float.class) {
+            float floatValue = value.floatValue();
+            checkLoss(floatValue, doubleValue);
+            return floatValue;
+        }
+        if (target == Long.class || target == long.class) {
+            long longValue = value.longValue();
+            checkLoss(longValue, doubleValue);
+            return longValue;
+        }
+        if (target == Integer.class || target == int.class) {
+            int intValue = value.intValue();
+            checkLoss(intValue, doubleValue);
+            return intValue;
+        }
+        if (target == Short.class || target == short.class) {
+            short shortValue = value.shortValue();
+            checkLoss(shortValue, doubleValue);
+            return shortValue;
+        }
+        if (target == Byte.class || target == byte.class) {
+            byte byteValue = value.byteValue();
+            checkLoss(byteValue, doubleValue);
+            return byteValue;
+        }
+        if (target == String.class) {
+            return value.toString();
+        }
+        throw new IllegalArgumentException("Cannot transform numeric value %s to type %s".formatted(value, target));
+    }
+
+    public static void checkLoss(double value, double reference) {
+        if (!DoubleComparator.equals(value, reference)) {
+            throw new IllegalArgumentException("Loss of precision detected with numbers %s and %s".formatted(value, reference));
+        }
+    }
+
 }
