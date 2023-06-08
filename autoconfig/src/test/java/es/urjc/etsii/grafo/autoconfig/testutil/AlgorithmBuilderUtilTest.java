@@ -5,12 +5,16 @@ import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.FakeGRASPConstructive;
 import es.urjc.etsii.grafo.autoconfig.fill.FModeParam;
+import es.urjc.etsii.grafo.autoconfig.testutil.findautoconfig.Has0;
+import es.urjc.etsii.grafo.autoconfig.testutil.findautoconfig.Has1;
+import es.urjc.etsii.grafo.autoconfig.testutil.findautoconfig.Has2;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Constructor;
 import java.util.List;
 import java.util.Map;
 
@@ -66,7 +70,7 @@ class AlgorithmBuilderUtilTest {
         assertNull(constructor);
     }
 
-    GRASPListManager<TestMove, TestSolution, TestInstance> getCLManager(){
+    GRASPListManager<TestMove, TestSolution, TestInstance> getCLManager() {
         return new GRASPListManager<>() {
             @Override
             public List<TestMove> buildInitialCandidateList(TestSolution solution) {
@@ -81,7 +85,7 @@ class AlgorithmBuilderUtilTest {
     }
 
     @Test
-    void buildGraspExplicitFMode(){
+    void buildGraspExplicitFMode() {
         Map<String, Object> params = Map.of(
                 "ofmode", FMode.MINIMIZE,
                 "alpha", 0.75,
@@ -91,7 +95,7 @@ class AlgorithmBuilderUtilTest {
     }
 
     @Test
-    void buildGraspNoFMode(){
+    void buildGraspNoFMode() {
         Map<String, Object> params = Map.of(
                 "alpha", 0.75,
                 "candidateListManager", getCLManager());
@@ -99,7 +103,7 @@ class AlgorithmBuilderUtilTest {
     }
 
     @Test
-    void buildGraspProvidedFMode(){
+    void buildGraspProvidedFMode() {
         Map<String, Object> params = Map.of(
                 "alpha", 0.75,
                 "candidateListManager", getCLManager());
@@ -107,7 +111,7 @@ class AlgorithmBuilderUtilTest {
     }
 
     @Test
-    void isAssignableTest(){
+    void isAssignableTest() {
         assertTrue(isAssignable(Integer.class, Double.class));
         assertTrue(isAssignable(Number.class, Double.class));
         assertTrue(isAssignable(Long.class, Double.class));
@@ -123,7 +127,7 @@ class AlgorithmBuilderUtilTest {
     }
 
     @Test
-    void prepareParameterTest(){
+    void prepareParameterTest() {
         assertEquals(FakeEnum.A, prepareParameterValue("A", FakeEnum.class));
         assertEquals(FakeEnum.B, prepareParameterValue("B", FakeEnum.class));
         assertEquals(FakeEnum.C, prepareParameterValue("C", FakeEnum.class));
@@ -144,6 +148,14 @@ class AlgorithmBuilderUtilTest {
 
         assertEquals(Integer.class, prepareParameterValue(3, Integer.class).getClass());
         assertEquals(3, prepareParameterValue(3, Integer.class));
+    }
+
+    @Test
+    public void findAutoconfigConstructors() throws NoSuchMethodException {
+        assertNull(AlgorithmBuilderUtil.findAutoconfigConstructor(Has0.class));
+        Constructor<?> c = Has1.class.getConstructor(int.class);
+        assertEquals(c, AlgorithmBuilderUtil.findAutoconfigConstructor(Has1.class));
+        assertThrows(IllegalArgumentException.class, () -> AlgorithmBuilderUtil.findAutoconfigConstructor(Has2.class));
     }
 
     private enum FakeEnum {

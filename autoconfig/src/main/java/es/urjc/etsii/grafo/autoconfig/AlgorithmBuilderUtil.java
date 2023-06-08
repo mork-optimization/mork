@@ -104,18 +104,33 @@ public class AlgorithmBuilderUtil {
     /**
      * Analyze an algorithm component class to find which constructor is annotated with @AutoconfigConstructor
      *
-     * @param algComponentClass Algorithm component to analyze
+     * @param clazz Algorithm component to analyze
      * @return constructor annotated with @AutoconfigConstructor if present, null otherwise
      */
-    public static Constructor<?> findAutoconfigConstructor(Class<?> algComponentClass) {
-        var constructors = algComponentClass.getConstructors();
+    @SuppressWarnings("unchecked")
+    public static <T> Constructor<T> findAutoconfigConstructor(Class<T> clazz) {
+        Constructor<T>[] constructors = (Constructor<T>[]) clazz.getConstructors();
+        var autoconfigConstructors = new ArrayList<Constructor<T>>();
         for (var c : constructors) {
             var annotation = c.getAnnotation(AutoconfigConstructor.class);
             if (annotation != null) {
-                return c;
+                autoconfigConstructors.add(c);
             }
         }
-        return null;
+        switch (autoconfigConstructors.size()) {
+            case 0 -> {
+                log.debug("No constructor annotated with @AutoconfigConstructor found for class {}", clazz.getSimpleName());
+                return null;
+            }
+            case 1 -> {
+                log.debug("Found constructor annotated with @AutoconfigConstructor for class {}: {}", clazz.getSimpleName(), autoconfigConstructors.get(0));
+                return autoconfigConstructors.get(0);
+            }
+            default -> {
+                log.debug("Found multiple constructors annotated with @AutoconfigConstructor for class {}: {}", clazz.getSimpleName(), autoconfigConstructors);
+                throw new IllegalArgumentException("Multiple constructors annotated with @AutoconfigConstructor found for class " + clazz.getSimpleName());
+            }
+        }
     }
 
     private static boolean doParamsMatch(Constructor<?> c, Map<String, Class<?>> mandatoryParams, List<ParameterProvider> paramsProviders) {
