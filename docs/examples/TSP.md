@@ -38,7 +38,7 @@ and [st70](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp). Have a q
 
 ### 1.3 Using the quick start project generator
 
-Go to *[https://rmartinsanta.github.io/mork/](https://rmartinsanta.github.io/mork/)*, set "TSP" in the Project Name field
+Go to *[https://generator.mork-optimization.com/](https://generator.mork-optimization.com/)*, set "TSP" in the Project Name field
 and click on generate your project. In a few seconds you will be able to download your project. Then, extract the zip
 file and import it in your favorite IDE.
 

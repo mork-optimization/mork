@@ -32,7 +32,7 @@ https://user-images.githubusercontent.com/55482385/140910473-1fa14244-5ef9-4ec5-
 
 ## Getting started
 
-TLDR: Automatically generate a project using [https://rmartinsanta.github.io/mork/](https://rmartinsanta.github.io/mork/), 
+TLDR: Automatically generate a project using [https://generator.mork-optimization.com/](https://generator.mork-optimization.com/), 
 import in your favourite IDE and start working!
 
 See [Getting started page](https://mork-optimization.readthedocs.io/en/latest/quickstart/starting/) in the [Official Documentation](https://mork-optimization.readthedocs.io/en/latest/) for more details.
