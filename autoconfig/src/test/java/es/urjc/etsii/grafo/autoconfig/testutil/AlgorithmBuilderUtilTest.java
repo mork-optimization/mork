@@ -341,7 +341,7 @@ class AlgorithmBuilderUtilTest {
     }
 
     @Test
-    public void findAutoconfigConstructors() throws NoSuchMethodException {
+    void findAutoconfigConstructors() throws NoSuchMethodException {
         assertNull(AlgorithmBuilderUtil.findAutoconfigConstructor(Has0.class));
         Constructor<?> c = Has1.class.getConstructor(int.class);
         assertEquals(c, AlgorithmBuilderUtil.findAutoconfigConstructor(Has1.class));

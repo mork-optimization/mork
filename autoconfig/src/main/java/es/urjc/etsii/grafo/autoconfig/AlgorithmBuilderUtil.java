@@ -20,7 +20,10 @@ import java.util.*;
 public class AlgorithmBuilderUtil {
     private static final Logger log = LoggerFactory.getLogger(AlgorithmBuilderUtil.class);
 
-    private record UNKNOWNCLASS() {
+    private record UNKNOWNCLASS() {}
+
+    private AlgorithmBuilderUtil() {
+        // Static class
     }
 
     /**
@@ -201,12 +204,7 @@ public class AlgorithmBuilderUtil {
 
             } else if (cp.isAnnotationPresent(ProvidedParam.class)) {
                 // Value must be in at least one provider
-                int countProviders = 0;
-                for (var provider : paramsProviders) {
-                    if (provider.provides(cpClass, cpName)) {
-                        countProviders++;
-                    }
-                }
+                int countProviders = countProviders(paramsProviders, cpName, cpClass);
                 if (countProviders > 1) {
                     debugMsgs.add(String.format("Warning: Parameter %s with type %s is provided my multiple providers: %s", cpName, cpClass, paramsProviders));
                 }
@@ -238,6 +236,16 @@ public class AlgorithmBuilderUtil {
         } else {
             return new RankedConstructor<>(MatchType.NO_MATCH, c);
         }
+    }
+
+    private static int countProviders(List<ParameterProvider> paramsProviders, String cpName, Class<?> cpClass) {
+        int countProviders = 0;
+        for (var provider : paramsProviders) {
+            if (provider.provides(cpClass, cpName)) {
+                countProviders++;
+            }
+        }
+        return countProviders;
     }
 
     public static boolean isAssignable(Class<?> origin, Class<?> target) {
