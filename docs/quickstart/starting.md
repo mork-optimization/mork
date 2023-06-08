@@ -13,11 +13,11 @@ either the community or professional edition.
 
 ## Creating a project
 In order to facilitate project creation, we have created a small tool which automatically initializes an empty project.
-Creating a project this way is extremely easy, visit [the tool page](https://rmartinsanta.github.io/mork/), choose a project name, 
+Creating a project this way is extremely easy, visit [the tool page](https://generator.mork-optimization.com/), choose a project name, 
 optionally select the Mork version you want to use (defaults to the latest stable version) and click on Generate Project
 The tool will generate a ZIP file, that can be extracted anywhere and imported in your favourite IDE.
 
-![Mork project generator, available at https://rmartinsanta.github.io/mork/](generator.png)
+![Mork project generator, available at https://generator.mork-optimization.com/](generator.png)
 
 
 ## Start developing
