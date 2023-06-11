@@ -29,6 +29,7 @@ import es.urjc.etsii.grafo.util.TimeUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.context.annotation.Profile;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
@@ -59,10 +60,10 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public static final String K_PARALLEL = "__PARALLEL__";
     public static final String K_MAX_EXP = "__MAX_EXPERIMENTS__";
     public static final String K_SEED = "__SEED__";
+    public static final String K_PORT = "__PORT__";
     public static final String F_PARAMETERS = "parameters.txt";
     public static final String F_SCENARIO = "scenario.txt";
     public static final String F_FORBIDDEN = "forbidden.txt";
-    public static final String F_MIDDLEWARE = "middleware.sh";
     public static final int DEFAULT_IRACE_EXPERIMENTS = 10_000;
     public static final int MINIMUM_IRACE_EXPERIMENTS = 10_000;
     public static final int MAX_HISTORIC_CONFIG_SIZE = 1_000;
@@ -71,6 +72,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final SolverConfig solverConfig;
     private final InstanceConfiguration instanceConfiguration;
     private final IraceIntegration iraceIntegration;
+    private final ServerProperties serverProperties;
     private final SolutionBuilder<S, I> solutionBuilder;
     private final AlgorithmBuilder<S, I> algorithmBuilder;
     private final InstanceManager<I> instanceManager;
@@ -96,6 +98,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public IraceOrchestrator(
             Environment env,
             SolverConfig solverConfig,
+            ServerProperties serverProperties,
             InstanceConfiguration instanceConfiguration, IraceIntegration iraceIntegration,
             InstanceManager<I> instanceManager,
             List<SolutionBuilder<S, I>> solutionBuilders,
@@ -105,6 +108,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     ) {
         this.solverConfig = solverConfig;
         this.instanceConfiguration = instanceConfiguration;
+        this.serverProperties = serverProperties;
         this.iraceIntegration = iraceIntegration;
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         this.instanceManager = instanceManager;
@@ -172,14 +176,12 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 Files.write(paramsPath, iraceParams);
             }
 
-            var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration);
+            var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration, serverProperties);
             if (!isAutoconfigEnabled) {
                 copyWithSubstitutions(getInputStreamFor(F_PARAMETERS, isJar), paramsPath, substitutions);
             }
             copyWithSubstitutions(getInputStreamFor(F_SCENARIO, isJar), Path.of(F_SCENARIO), substitutions);
             copyWithSubstitutions(getInputStreamFor(F_FORBIDDEN, isJar), Path.of(F_FORBIDDEN), substitutions);
-            copyWithSubstitutions(getInputStreamFor(F_MIDDLEWARE, isJar), Path.of(F_MIDDLEWARE), substitutions);
-            markAsExecutable(F_MIDDLEWARE);
         } catch (IOException e) {
             throw new RuntimeException("Failed extracting irace config files", e);
         }
@@ -187,14 +189,15 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
     private final String integrationKey = StringUtil.generateSecret();
 
-    private Map<String, String> getSubstitutions(String integrationKey, SolverConfig solverConfig, InstanceConfiguration instanceConfiguration) {
+    private Map<String, String> getSubstitutions(String integrationKey, SolverConfig solverConfig, InstanceConfiguration instanceConfiguration, ServerProperties server) {
         return Map.of(
                 K_INTEGRATION_KEY, integrationKey,
                 K_INSTANCES_PATH, instanceConfiguration.getPath("irace"),
                 K_TARGET_RUNNER, "./middleware.sh",
                 K_PARALLEL, nParallel(solverConfig),
                 K_MAX_EXP, calculateMaxExperiments(isAutoconfigEnabled, solverConfig, nIraceParameters),
-                K_SEED, String.valueOf(solverConfig.getSeed())
+                K_SEED, String.valueOf(solverConfig.getSeed()),
+                K_PORT, String.valueOf(server.getPort())
         );
     }
 
