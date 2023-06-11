@@ -19,12 +19,11 @@ public class IraceExperiment extends AlgorithmBuilder<TSPSolution, TSPInstance> 
 
     @Override
     public Algorithm<TSPSolution, TSPInstance> buildFromConfig(AlgorithmConfiguration config) {
-
         var localSearchName = config.getValue("localsearch").orElseThrow();
         var localSearchStrategy = config.getValue("localSearchStrategy").orElseThrow();
         var localSearch = buildLocalSearch(localSearchName, localSearchStrategy);
         var constructive = new TSPRandomConstructive();
-        return new SimpleAlgorithm<>(constructive, localSearch);
+        return new SimpleAlgorithm<>("IraceAlg", constructive, localSearch);
     }
 
     private LocalSearch<? extends Move<TSPSolution, TSPInstance>, TSPSolution, TSPInstance> buildLocalSearch(String localSearchName, String localSearchStrategy) {

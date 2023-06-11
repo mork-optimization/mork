@@ -4,7 +4,7 @@ import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.autoconfig.fill.ParameterProvider;
 import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
 import es.urjc.etsii.grafo.autoconfig.service.filter.InventoryFilterStrategy;
-import es.urjc.etsii.grafo.util.ClassUtil;
+import es.urjc.etsii.grafo.util.ReflectionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -115,7 +115,7 @@ public class AlgorithmInventoryService {
         var types = new ArrayList<Class<?>>();
         var failedValidationSet = new HashSet<String>();
         for(var pkg: pkgs.split(",")){
-            types.addAll(ClassUtil.findTypesByAnnotation(pkg, AlgorithmComponent.class));
+            types.addAll(ReflectionUtil.findTypesByAnnotation(pkg, AlgorithmComponent.class));
         }
         for(var type: types){
             if(!isAccesible(type)){
@@ -145,7 +145,7 @@ public class AlgorithmInventoryService {
 
     private static void classify(Map<Class<?>, Collection<Class<?>>> componentsByType, Class<?> initialType) {
         for (Class<?> type = initialType; type != null; type = type.getSuperclass()){
-            if(!ClassUtil.isObjectClass(type)){
+            if(!ReflectionUtil.isObjectClass(type)){
                 componentsByType.computeIfAbsent(type, a -> new HashSet<>()).add(initialType);
             }
         }

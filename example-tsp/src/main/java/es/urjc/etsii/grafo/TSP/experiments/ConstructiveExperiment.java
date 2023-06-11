@@ -17,7 +17,7 @@ public class ConstructiveExperiment extends AbstractExperiment<TSPSolution, TSPI
 
         var algorithms = new ArrayList<Algorithm<TSPSolution, TSPInstance>>();
 
-        algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive()));
+        algorithms.add(new SimpleAlgorithm<>("Random", new TSPRandomConstructive()));
 
         return algorithms;
     }

@@ -28,34 +28,33 @@ public class ConstructiveExperiment extends AbstractExperiment<__RNAME__Solution
     public List<Algorithm<__RNAME__Solution, __RNAME__Instance>> getAlgorithms() {
         // In this experiment we will compare a random constructive with several GRASP constructive configurations
         // TODO: Using this experiment as an example, after first test define your own experiments.
-        boolean maximizing = Mork.isMaximizing();
         var algorithms = new ArrayList<Algorithm<__RNAME__Solution, __RNAME__Instance>>();
         var graspListManager = new __RNAME__ListManager();
         double[] alphaValues = {0d, 0.25d, 0.5d, 0.75d, 1d};
 
         // Add random constructive to list of algorithms to test
         // SimpleAlgorithm executes the given constructive and the (optional) local search methods once.
-        algorithms.add(new SimpleAlgorithm<>(new __RNAME__RandomConstructive()));
+        algorithms.add(new SimpleAlgorithm<>("Random", new __RNAME__RandomConstructive()));
 
         // Add GRASP constructive methods to experiment
         // if the alpha parameter is not given --> random alpha in range [0,1] for each construction
         var graspBuilder = new GraspBuilder<__RNAME__ListManager.__RNAME__GRASPMove, __RNAME__Solution, __RNAME__Instance>()
-                //.withGreedyFunction()     // Optional, uncomment if a custom greedy function is used instead of the default
-                .withMaximizing(maximizing)   // Change maximizing to either true or false if a greedy function is specified
+                //.withGreedyFunction()     // Optional, uncomment if a custom greedy function is used instead of the default (move get value)
+                .withMode(Mork.getFMode())   // Change FMode to either MAXIMIZE or MINIMIZE, can be different from problem f.o, for example when using a custom greedy function
                 .withListManager(graspListManager);
 
         // Create variants using greedy random strategy
         graspBuilder.withStrategyGreedyRandom();
-        algorithms.add(new SimpleAlgorithm<>(graspBuilder.withAlphaRandom().build()));
+        algorithms.add(new SimpleAlgorithm<>("GR-Random", graspBuilder.withAlphaRandom().build()));
         for (double alpha : alphaValues) {
-            algorithms.add(new SimpleAlgorithm<>(graspBuilder.withAlphaValue(alpha).build()));
+            algorithms.add(new SimpleAlgorithm<>("GR-"+alpha, graspBuilder.withAlphaValue(alpha).build()));
         }
 
         // Create variants using random greedy strategy
         graspBuilder.withStrategyRandomGreedy();
-        algorithms.add(new SimpleAlgorithm<>(graspBuilder.withAlphaRandom().build()));
+        algorithms.add(new SimpleAlgorithm<>("RG-Random", graspBuilder.withAlphaRandom().build()));
         for (double alpha : alphaValues) {
-            algorithms.add(new SimpleAlgorithm<>(graspBuilder.withAlphaValue(alpha).build()));
+            algorithms.add(new SimpleAlgorithm<>("RG-"+alpha, graspBuilder.withAlphaValue(alpha).build()));
         }
 
         return algorithms;
