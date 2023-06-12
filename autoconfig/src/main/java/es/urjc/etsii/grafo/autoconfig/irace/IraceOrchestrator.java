@@ -22,10 +22,7 @@ import es.urjc.etsii.grafo.services.SolutionValidator;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solver.Mork;
-import es.urjc.etsii.grafo.util.IOUtil;
-import es.urjc.etsii.grafo.util.StringUtil;
-import es.urjc.etsii.grafo.util.TimeControl;
-import es.urjc.etsii.grafo.util.TimeUtil;
+import es.urjc.etsii.grafo.util.*;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -80,6 +77,10 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
     private final AlgorithmCandidateGenerator algorithmCandidateGenerator;
     private final ConcurrentLinkedQueue<IraceRuntimeConfiguration> configHistoric = new ConcurrentLinkedQueue<>();
+    private final List<SlowExecution> slowExecutions = Collections.synchronizedList(new ArrayList<>());
+    private final List<String> rejectedThings = Collections.synchronizedList(new ArrayList<>());
+
+
     private final boolean isAutoconfigEnabled;
     private int nIraceParameters = -1;
 
@@ -249,7 +250,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             algorithm = this.algorithmBuilder.buildFromConfig(config.getAlgorithmConfig());
         } catch (IllegalAlgorithmConfigException e) {
             log.debug("Invalid config, reason {}, config: {}", e.getMessage(), config);
-            return failedResult();
+            this.rejectedThings.add(config.toString());
+            return new ExecuteResponse();
         }
         algorithm.setBuilder(this.solutionBuilder);
         if (this.isAutoconfigEnabled) {
@@ -334,8 +336,9 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 score /= TimeUtil.NANOS_IN_MILLISECOND;
             } catch (IllegalArgumentException e){
                 // Failure to calculate AUC --> Invalid algorithm, one cause may be algorithm too complex for instance and cannot generate results in time.
-                log.warn("Error while calculating AUC: ", e);
-                return failedResult();
+                log.debug("Error while calculating AUC: ", e);
+                this.rejectedThings.add(algorithm.toString());
+                return new ExecuteResponse();
             }
 
         } else {
@@ -346,7 +349,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         }
         double elapsedSeconds = TimeUtil.nanosToSecs(endTime - startTime);
         log.debug("IRACE Iteration: {} {}", score, elapsedSeconds);
-        return String.format("%s %s", score, elapsedSeconds);
+        return new ExecuteResponse(score, elapsedSeconds);
     }
 
     private void checkExecutionTime(Algorithm<S, I> algorithm, I instance) {
@@ -356,10 +359,16 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         }
     }
 
-    private final List<SlowExecution> slowExecutions = Collections.synchronizedList(new ArrayList<>());
-
     public List<SlowExecution> getSlowRuns() {
         return Collections.unmodifiableList(this.slowExecutions);
+    }
+
+    public String getIntegrationKey() {
+        return this.integrationKey;
+    }
+
+    public List<Object> getRejected() {
+        return Collections.unmodifiableList(this.rejectedThings);
     }
 
     public record SlowExecution(long relativeTime, String instanceName, Algorithm<?, ?> algorithm) {
