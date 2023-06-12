@@ -1,20 +1,25 @@
+personal_lib_path <- Sys.getenv("R_LIBS_USER")
+if (!dir.exists(personal_lib_path)) {
+  dir.create(personal_lib_path, recursive = TRUE)
+}
+
 if (!require("irace")) {
-  install.packages("irace", type = "source", repos = "http://cran.us.r-project.org")
+  install.packages("irace", type = "source", repos = "http://cran.us.r-project.org", lib = personal_lib_path)
   library("irace")
 }
 
 if (!require("httr")) {
-  install.packages("httr", type = "source", repos = "http://cran.us.r-project.org")
+  install.packages("httr", type = "source", repos = "http://cran.us.r-project.org", lib = personal_lib_path)
   library("httr")
 }
 
 if (!require("rjson")) {
-  install.packages("rjson", type = "source", repos = "http://cran.us.r-project.org")
+  install.packages("rjson", type = "source", repos = "http://cran.us.r-project.org", lib = personal_lib_path)
   library("rjson")
 }
 
 if (!require("base64enc")) {
-  install.packages("base64enc", type = "source", repos = "http://cran.us.r-project.org")
+  install.packages("base64enc", type = "source", repos = "http://cran.us.r-project.org", lib = personal_lib_path)
   library("base64enc")
 }
 
