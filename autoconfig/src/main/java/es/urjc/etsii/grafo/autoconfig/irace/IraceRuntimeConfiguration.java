@@ -29,6 +29,10 @@ public class IraceRuntimeConfiguration {
         this.seed = seed;
     }
 
+    public IraceRuntimeConfiguration(String name, int instanceId, int seed, String instance, AlgorithmConfiguration algorithmConfiguration) {
+        this(name, String.valueOf(instanceId), String.valueOf(seed), instance, algorithmConfiguration);
+    }
+
     public AlgorithmConfiguration getAlgorithmConfig() {
         return algorithmConfiguration;
     }

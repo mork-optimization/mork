@@ -36,31 +36,7 @@ trainInstancesDir = "__INSTANCES_PATH__"
 
 ## The script called for each configuration that launches the program to be
 ## tuned.  See templates/target-runner.tmpl
-targetRunner = function(experiment, scenario) {
-  configuration.id <- experiment$id.configuration
-  instance.id <- experiment$id.instance
-  seed <- experiment$seed
-  configuration <- experiment$configuration
-  instance <- experiment$instance
-  switches <- experiment$switches
-  bound <- experiment$bound
-  integration_key <- "__INTEGRATION_KEY__"
-
-  cmdline <- paste(configuration.id, instance.id, seed, instance, bound,
-                  buildCommandLine(configuration, switches))
-  enc_cmdline <- base64encode(charToRaw(cmdline))
-  data <- paste0('{"config":"', enc_cmdline, '", "key":"', integration_key, '"}')
-  h <- new_handle()
-  handle_setopt(h, customrequest = "POST")
-  handle_setheaders("Content-Type"="application/json")
-  handle_setopt(postfields = data)
-  req <- curl_fetch_memory("http://127.0.0.1:__PORT__/execute", handle = h)
-
-  v.output <- parse.output(req$content, verbose = (debugLevel >= 2))
-  cost <- v.output[1]
-  time <- v.output[2]
-  return(list(cost = cost, time = time))
-}
+targetRunner = "middleware.sh"
 
 ## Number of times to retry a call to target-runner if the call failed.
 # targetRunnerRetries = 0

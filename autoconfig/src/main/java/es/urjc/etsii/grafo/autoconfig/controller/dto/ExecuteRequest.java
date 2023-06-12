@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.controller.dto;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.util.Objects;
 
 /**

@@ -150,10 +150,13 @@ public class SolverConfig {
 
     /**
      * <p>Getter for the field <code>nWorkers</code>.</p>
-     *
+     * If nWorkers was set to 0 or a negative value, returns availableProcessors() / 2
      * @return a int.
      */
     public int getnWorkers() {
+        if (nWorkers < 1) {
+            return Runtime.getRuntime().availableProcessors() / 2;
+        }
         return nWorkers;
     }
 

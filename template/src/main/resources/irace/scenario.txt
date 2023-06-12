@@ -37,34 +37,29 @@ trainInstancesDir = "__INSTANCES_PATH__"
 ## The script called for each configuration that launches the program to be
 ## tuned.  See templates/target-runner.tmpl
 targetRunner <- function(experiment, scenario) {
-  configuration.id <- experiment$id.configuration
-  instance.id <- experiment$id.instance
-  seed <- experiment$seed
-  configuration <- experiment$configuration
-  instance <- experiment$instance
-  switches <- experiment$switches
-  bound <- experiment$bound
-  integration_key <- "__INTEGRATION_KEY__"
-  url <- "http://127.0.0.1:__PORT__/execute"
-  cmdline <- paste(configuration.id, instance.id, seed, instance, bound,
-                   buildCommandLine(configuration, switches))
-  enc_cmdline <- base64encode(charToRaw(cmdline))
-  data <- paste0('{"config":"', enc_cmdline, '", "key":"', integration_key, '"}')
-
-  h <- new_handle()
-  handle_setheaders(h, "Content-Type" = "application/json")
-  handle_setopt(h, customrequest = "POST")
-  handle_setopt(h, postfields = data)
-  print("Lets go curl")
-  print(url)
-  req <- curl_fetch_memory(url, handle = h)
-
-  print("This is the response")
-  print(req$content)
-  v.output <- parse.output(req$content, verbose = (debugLevel >= 2))
-  cost <- v.output[1]
-  time <- v.output[2]
-  return(list(cost = cost, time = time))
+  #
+  # configuration.id <- experiment$id.configuration
+  # instance.id <- experiment$id.instance
+  # seed <- experiment$seed
+  # configuration <- experiment$configuration
+  # instance <- experiment$instance
+  # switches <- experiment$switches
+  # bound <- experiment$bound
+  # integration_key <- "__INTEGRATION_KEY__"
+  # url <- "http://127.0.0.1:__PORT__/execute"
+  # cmdline <- paste(configuration.id, instance.id, seed, instance, bound,
+  #                  buildCommandLine(configuration, switches))
+  # enc_cmdline <- base64encode(charToRaw(cmdline))
+  # data <- paste0('{"config":"', enc_cmdline, '", "key":"', integration_key, '"}')
+  #
+  # response <- POST(url, content_type_json(), body = data)
+  # text_response <- content(response, as = "text")
+  #
+  # v.output <- parse.output(text_response, verbose = FALSE)
+  # cost <- v.output[1]
+  # time <- v.output[2]
+  # return(list(cost = cost, time = time))
+  stop("targetRunner should never be called, targetRunnerParallel is responsible for handling the experiment")
 }
 
 ## Number of times to retry a call to target-runner if the call failed.
@@ -81,7 +76,25 @@ targetRunner <- function(experiment, scenario) {
 ## such that each of its elements will be the argument to one call of
 ## target.runner, and scenario will also be passed to every call. See
 ## help(target.runner.default) for details.
-# targetRunnerParallel = NULL
+targetRunnerParallel <- function(experiments, exec.target.runner, scenario, target.runner) {
+
+  integration_key <- "__INTEGRATION_KEY__"
+  url <- "http://127.0.0.1:__PORT__/batchExecute"
+
+  enc_cmdline <- base64encode(charToRaw(toJSON(experiments)))
+  data <- paste0('{"config":"', enc_cmdline, '", "key":"', integration_key, '"}')
+
+  response <- POST(url, content_type_json(), body = data)
+  parsed_response <- content(response, as = "parsed")
+  for (i in 1:length(parsed_response)) {
+    if (parsed_response[[i]]$cost == "NaN") {
+      parsed_response[[i]]$cost <- Inf
+      parsed_response[[i]]$time <- 0
+    }
+  }
+
+  return(parsed_response)
+}
 
 ## Optional script that provides a numeric value for each configuration.
 ## See templates/target-evaluator.tmpl
@@ -167,8 +180,10 @@ seed = __SEED__
 
 ## Number of calls to targetRunner to execute in parallel. Less than 2
 ## means calls to targetRunner are sequentially executed.
-#parallel = __PARALLEL__
-parallel = 1
+# parallel = __PARALLEL__
+# Use an absurdly high number to avoid Irace being the bottleneck.
+# Parallelism is automatically controlled by the Mork Execution Controller.
+parallel = 1000000
 
 ## Enable/disable load-balancing when executing experiments in
 ## parallel. Load-balancing makes better use of computing resources, but

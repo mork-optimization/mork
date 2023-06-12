@@ -61,7 +61,7 @@ public class AutoconfigDebugController {
 
         var config = cmdline.startsWith("ROOT")?
                 new IraceRuntimeConfiguration("Unknown", "Unknown", "Unknown", "Unknown", new AlgorithmConfiguration(cmdline.split("\\s+"))):
-                IraceOrchestrator.toIraceRuntimeConfig(cmdline);
+                IraceUtil.toIraceRuntimeConfig(cmdline);
         var algorithmString = this.algorithmGenerator.asParseableAlgorithm(config.getAlgorithmConfig());
         return Map.of("config", config, "algorithmString", algorithmString);
     }

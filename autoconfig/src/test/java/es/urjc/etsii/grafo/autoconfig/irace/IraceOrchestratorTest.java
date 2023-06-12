@@ -1,6 +1,9 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
+import es.urjc.etsii.grafo.autoconfig.controller.ExecutionController;
+import es.urjc.etsii.grafo.autoconfig.controller.IraceUtil;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteRequest;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -34,7 +37,7 @@ class IraceOrchestratorTest {
     @Test
     void testToIraceRuntimeConfig(){
         String exampleCmdLine = "testConfig1 2 1234567 /Users/rmartin/IdeaProjects/DRFP/instances/benchmark/40-02.txt   ROOT=VNS ROOT_VNS.constructive=DRFPRandomConstructive ROOT_VNS.improver=NullImprover ROOT_VNS.maxK=429922341 ROOT_VNS.shake=DestroyRebuild ROOT_VNS.shake_DestroyRebuild.constructive=DRFPRandomConstructive ROOT_VNS.shake_DestroyRebuild.destructive=NullDestructive";
-        var parsedConfig = IraceOrchestrator.toIraceRuntimeConfig(exampleCmdLine);
+        var parsedConfig = IraceUtil.toIraceRuntimeConfig(exampleCmdLine);
         Assertions.assertEquals("testConfig1", parsedConfig.getCandidateConfiguration());
         Assertions.assertEquals("2", parsedConfig.getInstanceId());
         Assertions.assertEquals("1234567", parsedConfig.getSeed());
@@ -51,14 +54,14 @@ class IraceOrchestratorTest {
         var incorrectKey = "Password123";
         var correctRequest = new ExecuteRequest(correctKey, encodedCofig);
         var incorrectRequest = new ExecuteRequest(incorrectKey, encodedCofig);
-        Assertions.assertThrows(IllegalArgumentException.class, () -> IraceOrchestrator.buildConfig(incorrectRequest, correctKey));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> ExecutionController.validateAndPrepare(incorrectRequest, correctKey));
 
-        Assertions.assertDoesNotThrow(() -> IraceOrchestrator.buildConfig(correctRequest, correctKey));
+        Assertions.assertDoesNotThrow(() -> ExecutionController.validateAndPrepare(correctRequest, correctKey));
     }
 
     @Test
     void testFailedResult(){
-        var result = IraceOrchestrator.failedResult().split("\\s+");
+        var result = new ExecuteResponse().toIraceResultString().split("\\s+");
         Assertions.assertEquals(2, result.length); // Score, time
         Assertions.assertDoesNotThrow(() -> Double.parseDouble(result[1])); // Time is parseable as double
         Assertions.assertEquals("Inf", result[0]); // Score as "Inf" following the Irace manual

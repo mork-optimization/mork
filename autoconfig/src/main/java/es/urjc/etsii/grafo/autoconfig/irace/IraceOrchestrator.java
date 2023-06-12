@@ -2,7 +2,9 @@ package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithm;
-import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteRequest;
+import es.urjc.etsii.grafo.autoconfig.controller.IraceUtil;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
 import es.urjc.etsii.grafo.autoconfig.service.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
@@ -36,6 +38,8 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
 import static es.urjc.etsii.grafo.solution.metrics.Metrics.BEST_OBJECTIVE_FUNCTION;
@@ -218,9 +222,6 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     protected static String nParallel(SolverConfig solverConfig) {
         if (solverConfig.isParallelExecutor()) {
             int n = solverConfig.getnWorkers();
-            if (n < 1) {
-                n = Runtime.getRuntime().availableProcessors() / 2;
-            }
             return String.valueOf(n);
         } else {
             return "1";
@@ -234,25 +235,38 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     /**
      * <p>iraceCallback.</p>
      *
-     * @param request a {@link ExecuteRequest} object.
      * @return a double.
      */
-    public String iraceCallback(ExecuteRequest request) {
-        var config = buildConfig(request, integrationKey);
-        if(configHistoric.size() == MAX_HISTORIC_CONFIG_SIZE){
-            configHistoric.remove();
-        }
-        this.configHistoric.add(config);
-        var instancePath = config.getInstanceName();
-        var instance = instanceManager.getInstance(instancePath);
-        Algorithm<S, I> algorithm = null;
+    public ExecuteResponse iraceSingleCallback(IraceRuntimeConfiguration config) {
+        storeConfig(config);
+        var instance = instanceManager.getInstance(config.getInstanceName());
+        Algorithm<S, I> algorithm;
         try {
-            algorithm = this.algorithmBuilder.buildFromConfig(config.getAlgorithmConfig());
+            algorithm = buildAlgorithm(config);
         } catch (IllegalAlgorithmConfigException e) {
             log.debug("Invalid config, reason {}, config: {}", e.getMessage(), config);
             this.rejectedThings.add(config.toString());
             return new ExecuteResponse();
         }
+
+        log.debug("Config {}. Built algorithm: {}", config, algorithm);
+        // Configure randoms for reproducible experimentation
+        long seed = Long.parseLong(config.getSeed());
+        RandomManager.localConfiguration(this.solverConfig.getRandomType(), seed);
+
+        // Execute
+        return singleExecution(algorithm, instance);
+    }
+
+    private synchronized void storeConfig(IraceRuntimeConfiguration config) {
+        if (configHistoric.size() == MAX_HISTORIC_CONFIG_SIZE) {
+            configHistoric.remove();
+        }
+        this.configHistoric.add(config);
+    }
+
+    private Algorithm<S, I> buildAlgorithm(IraceRuntimeConfiguration config) {
+        Algorithm<S, I> algorithm = this.algorithmBuilder.buildFromConfig(config.getAlgorithmConfig());
         algorithm.setBuilder(this.solutionBuilder);
         if (this.isAutoconfigEnabled) {
             // Because autoconfig iterations executes between two time intervals, if the algorithm finishes
@@ -262,51 +276,32 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             algorithm = new MultiStartAlgorithm<>(algorithm.getShortName(), algorithm, iterations, iterations, iterations);
             algorithm.setBuilder(this.solutionBuilder);
         }
-
-        log.debug("Config {}. Built algorithm: {}", config, algorithm);
-
-        // Configure randoms for reproducible experimentation
-        long seed = Long.parseLong(config.getSeed());
-        RandomManager.localConfiguration(this.solverConfig.getRandomType(), seed);
-
-        // Execute
-        String result = singleExecution(algorithm, instance);
-        return result;
+        return algorithm;
     }
 
-    protected static String failedResult() {
-//        double score = Mork.isMaximizing()? Integer.MIN_VALUE: Integer.MAX_VALUE;
-//        double time = 0;
-//        return "%s %s".formatted(score, time);
-
-        // Translate failures so Irace understands what has happened
-        // See "10.8 Unreliable target algorithms and immediate rejection" of the Irace Manual for full details
-        return "Inf 0";
-    }
-
-    protected static IraceRuntimeConfiguration buildConfig(ExecuteRequest request, String integrationKey) {
-        if (!request.getKey().equals(integrationKey)) {
-            throw new IllegalArgumentException(String.format("Invalid integration key, got %s", request.getKey()));
+    public List<ExecuteResponse> iraceMultiCallback(List<IraceExecuteConfig> configs) {
+        if (this.solverConfig.isParallelExecutor()) {
+            var executor = Executors.newFixedThreadPool(this.solverConfig.getnWorkers());
+            var futures = new ArrayList<Future<ExecuteResponse>>();
+            for (IraceExecuteConfig config : configs) {
+                futures.add(executor.submit(() -> {
+                    var iraceConfig = IraceUtil.toIraceRuntimeConfig(config);
+                    return iraceSingleCallback(iraceConfig);
+                }));
+            }
+            executor.shutdown();
+            return ConcurrencyUtil.awaitAll(futures);
+        } else {
+            var results = new ArrayList<ExecuteResponse>();
+            for (IraceExecuteConfig config : configs) {
+                var iraceConfig = IraceUtil.toIraceRuntimeConfig(config);
+                results.add(iraceSingleCallback(iraceConfig));
+            }
+            return results;
         }
-        String decoded = StringUtil.b64decode(request.getConfig());
-        return toIraceRuntimeConfig(decoded);
     }
 
-    public static IraceRuntimeConfiguration toIraceRuntimeConfig(String commandline) {
-        String[] args = commandline.split("\\s+");
-
-        String candidateConfiguration = args[0];
-        String instanceId = args[1];
-        String seed = args[2];
-        String instance = args[3];
-
-        String[] algParams = Arrays.copyOfRange(args, 4, args.length);
-
-        return new IraceRuntimeConfiguration(candidateConfiguration, instanceId, seed, instance, new AlgorithmConfiguration(algParams));
-    }
-
-
-    private String singleExecution(Algorithm<S, I> algorithm, I instance) {
+    private ExecuteResponse singleExecution(Algorithm<S, I> algorithm, I instance) {
         long maxExecTime = this.solverConfig.getIgnoreInitialMillis() + this.solverConfig.getIntervalDurationMillis();
         if (isAutoconfigEnabled) {
             MetricsManager.enableMetrics();
@@ -334,7 +329,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                         TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS)
                 );
                 score /= TimeUtil.NANOS_IN_MILLISECOND;
-            } catch (IllegalArgumentException e){
+            } catch (IllegalArgumentException e) {
                 // Failure to calculate AUC --> Invalid algorithm, one cause may be algorithm too complex for instance and cannot generate results in time.
                 log.debug("Error while calculating AUC: ", e);
                 this.rejectedThings.add(algorithm.toString());
@@ -372,5 +367,11 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     }
 
     public record SlowExecution(long relativeTime, String instanceName, Algorithm<?, ?> algorithm) {
+    }
+
+    public record ExecutionResult(double score, double time) {
+        public ExecutionResult(double score, long time) {
+            this(score, TimeUtil.nanosToSecs(time));
+        }
     }
 }
