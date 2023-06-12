@@ -47,11 +47,13 @@ class AlgorithmBuilderServiceTest {
                 ofmode="MINIMIZE",
                 candidateListManager=NullGraspListManager{}
             },
-            improver=null
+            improver=null,
+            algorithmName="trickyNullAlg"
         }
         """;
         var algorithm = builderService.buildAlgorithmFromString(alg);
         Assertions.assertNotNull(algorithm);
+        Assertions.assertEquals("trickyNullAlg", algorithm.getShortName());
     }
 
     @Test

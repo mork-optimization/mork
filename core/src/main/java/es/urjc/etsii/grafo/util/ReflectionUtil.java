@@ -11,10 +11,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-public class ClassUtil {
+public class ReflectionUtil {
 
     // Based on the work by: https://gist.github.com/jrichardsz/a34480c1bcc31c45da730c48c4f41331
-    private static final Logger log = LoggerFactory.getLogger(ClassUtil.class);
+    private static final Logger log = LoggerFactory.getLogger(ReflectionUtil.class);
 
     public static List<Class<?>> findTypesByAnnotation(String packageName, Class<? extends Annotation> clazz) {
         var result = new ArrayList<Class<?>>();
