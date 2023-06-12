@@ -9,7 +9,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
 import static es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator.DEFAULT_IRACE_EXPERIMENTS;
-import static es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator.MINIMUM_IRACE_EXPERIMENTS;
 
 class IraceOrchestratorTest {
     @Test
@@ -28,10 +27,10 @@ class IraceOrchestratorTest {
     void testCalculateMaxExperiments(){
         var config = new SolverConfig();
         Assertions.assertEquals(String.valueOf(DEFAULT_IRACE_EXPERIMENTS), IraceOrchestrator.calculateMaxExperiments(false, config, -1));
-        config.setIterationsPerParameter(10);
+        config.setExperimentsPerParameter(10);
         Assertions.assertThrows(IllegalArgumentException.class, () -> IraceOrchestrator.calculateMaxExperiments(true, config, -1));
         Assertions.assertEquals("100000", IraceOrchestrator.calculateMaxExperiments(true, config, 10_000));
-        Assertions.assertEquals(String.valueOf(MINIMUM_IRACE_EXPERIMENTS), IraceOrchestrator.calculateMaxExperiments(true, config, 10));
+        Assertions.assertEquals(String.valueOf(config.getMinimumNumberOfExperiments()), IraceOrchestrator.calculateMaxExperiments(true, config, 10));
     }
 
     @Test

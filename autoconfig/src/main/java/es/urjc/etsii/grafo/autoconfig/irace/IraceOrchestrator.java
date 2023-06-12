@@ -66,7 +66,6 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public static final String F_SCENARIO = "scenario.txt";
     public static final String F_FORBIDDEN = "forbidden.txt";
     public static final int DEFAULT_IRACE_EXPERIMENTS = 10_000;
-    public static final int MINIMUM_IRACE_EXPERIMENTS = 10_000;
     public static final int MAX_HISTORIC_CONFIG_SIZE = 1_000;
 
 
@@ -212,7 +211,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             if (nIraceParameters < 1) {
                 throw new IllegalArgumentException("nIraceParameters must be positive");
             }
-            maxExperiments = Math.max(MINIMUM_IRACE_EXPERIMENTS, solverConfig.getIterationsPerParameter() * nIraceParameters);
+            maxExperiments = Math.max(solverConfig.getMinimumNumberOfExperiments(), solverConfig.getExperimentsPerParameter() * nIraceParameters);
         } else {
             maxExperiments = DEFAULT_IRACE_EXPERIMENTS; // 10k experiments by default if not specified otherwise
         }

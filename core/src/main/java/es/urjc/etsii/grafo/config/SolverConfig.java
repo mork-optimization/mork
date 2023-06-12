@@ -68,7 +68,12 @@ public class SolverConfig {
      * Determine irace execution budget dynamically depending on the number of parameters to tune.
      * Used only when autoconfig is enabled, for each 50 params uses 10k executions
      */
-    private int iterationsPerParameter = 200; // 50 params --> 10k
+    private int experimentsPerParameter = 200; // 50 params --> 10k
+
+    /**
+     * Minimum number of tuning experiments to run, even if there are few parameters.
+     */
+    private int minimumNumberOfExperiments = 10000;
 
     /**
      * Metrics tracking
@@ -245,11 +250,18 @@ public class SolverConfig {
         this.intervalDurationMillis = intervalDurationMillis;
     }
 
-    public int getIterationsPerParameter() {
-        return iterationsPerParameter;
+    public int getExperimentsPerParameter() {
+        return experimentsPerParameter;
+    }
+    public void setExperimentsPerParameter(int experimentsPerParameter) {
+        this.experimentsPerParameter = experimentsPerParameter;
     }
 
-    public void setIterationsPerParameter(int iterationsPerParameter) {
-        this.iterationsPerParameter = iterationsPerParameter;
+    public int getMinimumNumberOfExperiments() {
+        return minimumNumberOfExperiments;
+    }
+
+    public void setMinimumNumberOfExperiments(int minimumNumberOfExperiments) {
+        this.minimumNumberOfExperiments = minimumNumberOfExperiments;
     }
 }
