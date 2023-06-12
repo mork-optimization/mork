@@ -58,7 +58,7 @@ solver:
   # Number of experiments to run for each parameter, decrease from default of 200 for faster integration testing
   experiments-per-parameter: 40
   # Decrease minimum number of experiments from default of 10.000 for faster integration testing
-  minimum-numer-of-experiments: 1000
+  minimum-number-of-experiments: 1000
 
   # End autoconfig properties
 

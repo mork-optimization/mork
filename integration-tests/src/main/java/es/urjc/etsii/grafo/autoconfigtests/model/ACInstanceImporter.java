@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig.model;
+package es.urjc.etsii.grafo.autoconfigtests.model;
 
 import es.urjc.etsii.grafo.io.InstanceImporter;
 

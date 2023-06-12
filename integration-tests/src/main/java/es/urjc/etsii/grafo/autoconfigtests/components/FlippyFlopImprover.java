@@ -1,12 +1,12 @@
-package es.urjc.etsii.grafo.autoconfig.components;
+package es.urjc.etsii.grafo.autoconfigtests.components;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.CategoricalParam;
 import es.urjc.etsii.grafo.annotations.OrdinalParam;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
-import es.urjc.etsii.grafo.autoconfig.model.ACInstance;
-import es.urjc.etsii.grafo.autoconfig.model.ACSolution;
+import es.urjc.etsii.grafo.autoconfigtests.model.ACInstance;
+import es.urjc.etsii.grafo.autoconfigtests.model.ACSolution;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 
