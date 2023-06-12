@@ -10,7 +10,7 @@ public class FasterInvertedConstructive extends Constructive<ACSolution, ACInsta
 
     public double sumThis;
     @AutoconfigConstructor
-    public FasterInvertedConstructive(@RealParam(min = -10, max = 10) double sumThis) {
+    public FasterInvertedConstructive(@RealParam(min = -50, max = 50) double sumThis) {
         this.sumThis = sumThis;
     }
 
