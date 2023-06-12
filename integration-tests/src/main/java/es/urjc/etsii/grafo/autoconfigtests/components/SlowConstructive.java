@@ -21,10 +21,10 @@ public class SlowConstructive extends Constructive<ACSolution, ACInstance> {
 
     @Override
     public ACSolution construct(ACSolution solution) {
-        ConcurrencyUtil.sleep(1, TimeUnit.MILLISECONDS); // Simulate slow constructive, estaba en 1
         solution.setScore(sumThis);
         solution.notifyUpdate();
         MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, solution.getScore());
+        ConcurrencyUtil.sleep(5, TimeUnit.MILLISECONDS); // Simulate slow constructive, take time from the improver method
         return solution;
     }
 }
