@@ -1,4 +1,4 @@
-package es.urjc.etsii.morktests;
+package es.urjc.etsii.tsptests;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.events.AbstractEventStorage;

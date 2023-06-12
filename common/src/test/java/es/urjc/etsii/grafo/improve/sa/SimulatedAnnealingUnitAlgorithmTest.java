@@ -205,7 +205,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
 
     @Test
     void checkStopByMaxTime() {
-        CoolDownControl coolDownControl = new ExponentialCoolDown<>(0.9);
+        CoolDownControl coolDownControl = new ExponentialCoolDown<>(0.99);
         AcceptanceCriteria acceptanceCriteria = new MetropolisAcceptanceCriteria<>();
         TerminationCriteria terminationCriteria = (solution, neighborhood, currentTemperature, iteration) -> iteration == Integer.MAX_VALUE;
         InitialTemperatureCalculator initialTemperatureCalculator = (ignored1, ignored2) -> Integer.MAX_VALUE;

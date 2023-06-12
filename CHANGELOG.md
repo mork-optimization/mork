@@ -1,13 +1,16 @@
 # Developing
+- (New) Autoconfig module: automatically build and test algorithms, using Irace as the parameter optimizer.
 - (New) StringUtil reverse, longestCommonPrefix, longestCommonSuffix
 - (New) Remove lcp and lcs from instance names
-- (New) Autoconfig: Add Enum types compatibility
 - (New) BitSet implementation compatible with JDK APIs
 - (New) Implement #102: Instance custom properties
 - (Breaking change) maximize as a boolean has been changed in all algorithm components to FMode.MINIMIZE and FMode.MAXIMIZE
 - (Change): Update all dependencies
 - (Change): Improve ScatterSearch internals: refactor code and improve performance, implement missing unit tests
 - (Fix) #107 Autoconfig: Cannot assign integer values to double parameters in algorithm components
+- (Fix) #158: Add TimeControl to SimmulatedAnnealing @isaaclo97
+- (Fix) #163: ArrayUtil sum method truncates double values in some cases @JavierYuste
+- (Fix) #180: Improve types conversions in Autoconfig module
 
 # v0.16
 - (New) Generic ScatterSearch algorithm implementation.
