@@ -91,7 +91,7 @@
         <dependency>
             <groupId>org.telegram</groupId>
             <artifactId>telegrambots</artifactId>
-            <version>6.5.0</version>
+            <version>6.7.0</version>
         </dependency>
 
         <!-- Progress bar library -->
