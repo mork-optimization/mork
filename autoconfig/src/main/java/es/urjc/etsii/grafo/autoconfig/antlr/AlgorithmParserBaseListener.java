@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig.antlr;// Generated from java-escape by ANTLR 4.11.1
+package es.urjc.etsii.grafo.autoconfig.antlr;// Generated from AlgorithmParser.g4 by ANTLR 4.13.0
 
 import org.antlr.v4.runtime.ParserRuleContext;
 import org.antlr.v4.runtime.tree.ErrorNode;
