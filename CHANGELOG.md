@@ -10,7 +10,10 @@
 - (Fix) #107 Autoconfig: Cannot assign integer values to double parameters in algorithm components
 - (Fix) #158: Add TimeControl to SimmulatedAnnealing @isaaclo97
 - (Fix) #163: ArrayUtil sum method truncates double values in some cases @JavierYuste
-- (Fix) #180: Improve types conversions in Autoconfig module
+- (Fix) #180 Autoconfig: Improve type conversions for algorithm components
+- (Fix) #169 Autoconfig: Remove middleware.sh and improve parallelism 
+- (Fix) #172: Update URL for the project generator
+- And many more small fixes and improvements
 
 # v0.16
 - (New) Generic ScatterSearch algorithm implementation.
