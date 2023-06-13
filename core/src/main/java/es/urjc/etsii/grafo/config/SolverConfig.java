@@ -76,6 +76,13 @@ public class SolverConfig {
     private int minimumNumberOfExperiments = 10000;
 
     /**
+     * Restart algorithms during autoconfig tuning if they finish before the allocated computational budget is consumed.
+     * Otherwise, if the algorithm finishes before the budget is consumed, the remaining time is wasted,
+     * and faster algorithms may be considered worse.
+     */
+    private boolean autorestart = true;
+
+    /**
      * Metrics tracking
      */
     private boolean metrics = false;
@@ -263,5 +270,13 @@ public class SolverConfig {
 
     public void setMinimumNumberOfExperiments(int minimumNumberOfExperiments) {
         this.minimumNumberOfExperiments = minimumNumberOfExperiments;
+    }
+
+    public boolean isAutorestart() {
+        return autorestart;
+    }
+
+    public void setAutorestart(boolean autorestart) {
+        this.autorestart = autorestart;
     }
 }
