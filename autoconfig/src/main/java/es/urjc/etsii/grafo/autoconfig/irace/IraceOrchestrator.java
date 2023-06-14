@@ -267,7 +267,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private Algorithm<S, I> buildAlgorithm(IraceRuntimeConfiguration config) {
         Algorithm<S, I> algorithm = this.algorithmBuilder.buildFromConfig(config.getAlgorithmConfig());
         algorithm.setBuilder(this.solutionBuilder);
-        if (this.isAutoconfigEnabled) {
+        if (this.isAutoconfigEnabled && this.solverConfig.isAutorestart()) {
             // Because autoconfig iterations executes between two time intervals, if the algorithm finishes
             // but there is extra time available, keep executing the same algorithm until the timelimit is reached.
             // If not, we could be penalizing faster simpler algorithms against more complex ones.
