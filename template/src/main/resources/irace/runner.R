@@ -6,7 +6,7 @@ if (!dir.exists(personal_lib_path)) {
 
 if (!require("irace")) {
   install.packages("irace", type = "source", repos = "http://cran.us.r-project.org")
-  library("irace", lib.loc=)
+  library("irace")
 }
 
 if (!require("httr")) {
