@@ -119,8 +119,19 @@ public class Mork {
             };
         }
 
-        // By default, active profile is user-experiment, unless overridden
-        result[result.length-1] = "--spring.profiles.default=user-experiment";
+        boolean profileSet = false;
+        for(var arg: result){
+            if(arg != null && arg.startsWith("--spring.profiles.active=")){
+                profileSet = true;
+                break;
+            }
+        }
+        // Default profile
+        if(!profileSet){
+            result[result.length-1] = "--spring.profiles.active=user-experiment";
+        } else {
+            result[result.length-1] = "";
+        }
         return result;
     }
 }
