@@ -7,6 +7,7 @@
 - (Breaking change) maximize as a boolean has been changed in all algorithm components to FMode.MINIMIZE and FMode.MAXIMIZE
 - (Change): Update all dependencies
 - (Change): Improve ScatterSearch internals: refactor code and improve performance, implement missing unit tests
+- (Change): Improve Docker builds: simplify and use multistage
 - (Fix) #107 Autoconfig: Cannot assign integer values to double parameters in algorithm components
 - (Fix) #158: Add TimeControl to SimmulatedAnnealing @isaaclo97
 - (Fix) #163: ArrayUtil sum method truncates double values in some cases @JavierYuste
