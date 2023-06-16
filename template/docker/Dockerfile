@@ -14,11 +14,12 @@ FROM eclipse-temurin:17-alpine as run
 
 # Remember to add extra files if needed by your project
 COPY instances /instances
+COPY *.csv *.tsv /
 COPY --from=build /root/.m2 /root/.m2
 COPY --from=build /build/app.jar /app.jar
 
 CMD [\
-"/usr/bin/java",\
+"java",\
 "--add-opens", "java.base/java.util=ALL-UNNAMED",\
 "--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED",\
 "--add-opens", "java.base/java.lang=ALL-UNNAMED",\
