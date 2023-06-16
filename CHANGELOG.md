@@ -1,4 +1,7 @@
 # Developing
+- Coming soon!
+
+# v0.17
 - (New) Autoconfig module: automatically build and test algorithms, using Irace as the parameter optimizer.
 - (New) StringUtil reverse, longestCommonPrefix, longestCommonSuffix
 - (New) Remove lcp and lcs from instance names
