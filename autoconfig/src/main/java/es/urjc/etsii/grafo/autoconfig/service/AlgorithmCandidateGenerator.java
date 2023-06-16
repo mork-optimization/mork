@@ -5,10 +5,13 @@ import es.urjc.etsii.grafo.annotations.*;
 import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
+import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
 import java.util.*;
 
@@ -24,7 +27,7 @@ public class AlgorithmCandidateGenerator {
 
     public AlgorithmCandidateGenerator(AlgorithmInventoryService inventoryService) {
         this.inventoryService = inventoryService;
-        this.paramInfo = analyzeParametersRecursively();
+        this.paramInfo = analyzeParameters();
         log.info("Components available for autoconfig: {}", paramInfo.keySet().stream().map(Class::getSimpleName).sorted().toList());
     }
 
@@ -36,7 +39,7 @@ public class AlgorithmCandidateGenerator {
      * Analyze algorithm components recursively, starting from all algorithm classes, and extract parameter information
      * @return parameter info for each component
      */
-    protected Map<Class<?>, List<ComponentParameter>> analyzeParametersRecursively(){
+    protected Map<Class<?>, List<ComponentParameter>> analyzeParameters(){
         var inventory = this.inventoryService.getInventory();
         var algClasses = inventory.componentsByType().get(Algorithm.class);
         var byType = inventory.componentsByType();
@@ -54,56 +57,65 @@ public class AlgorithmCandidateGenerator {
             var factory = this.inventoryService.getFactoryFor(currentComponentClass);
             if(factory != null){
                 // First strategy: using a factory
-                var params = factory.getRequiredParameters();
-                for(var cp: params){
-                    if(cp.recursive()){
-                        var candidates = byType.get(cp.getJavaType());
-                        cp.setValues(candidates.toArray());
-                        // Parameter has a known algorithm component type, for example Improver<S,I>
-                        // Add all implementations to the exploration queue
-                        for(var candidate: candidates){
-                            if(notVisited.contains(candidate)){
-                                notVisited.remove(candidate);
-                                queue.add(candidate);
-                            }
-                        }
-                    }
-                }
+                List<ComponentParameter> params = analyzeParametersFactory(byType, queue, notVisited, factory);
                 result.put(currentComponentClass, params);
-
             } else {
-
                 // Second strategy: use autoconfig constructor
                 var constructor = AlgorithmBuilderUtil.findAutoconfigConstructor(currentComponentClass);
                 if(constructor == null){
                     log.debug("Skipping component {}, could not find constructor annotated with @AutoconfigConstructor", currentComponentClass.getSimpleName());
                     continue;
                 }
-                var componentParameters = new ArrayList<ComponentParameter>();
-                for(Parameter p: constructor.getParameters()){
-                    var cp = toComponentParameter(byType, p);
-                    if(cp == null){
-                        throw new IllegalArgumentException(String.format("Unknown parameter in constructor %s --> (%s %s). Fix: missing annotation, or no valid algorithm component found that implements the given type", constructor, p.getType(), p.getName()));
-                    }
-                    componentParameters.add(cp);
-                    if(cp.recursive()){
-                        // Parameter has a known algorithm component type, for example Improver<S,I>
-                        // Add all implementations to the exploration queue
-                        for(var candidate: byType.get(p.getType())){
-                            if(notVisited.contains(candidate)){
-                                notVisited.remove(candidate);
-                                queue.add(candidate);
-                            }
-                        }
-                    }
-                }
-                result.put(currentComponentClass, componentParameters);
+                analyzeParametersConstructor(byType, queue, notVisited, constructor)
+                    .ifPresent(cp -> result.put(currentComponentClass, cp));
             }
         }
         if(!notVisited.isEmpty()){
             log.debug("Ignored components because they are not reachable from any algorithms: {}", notVisited);
         }
         return result;
+    }
+
+    private Optional<ArrayList<ComponentParameter>> analyzeParametersConstructor(Map<Class<?>, Collection<Class<?>>> byType, Queue<Class<?>> queue, Set<Class<?>> notVisited, Constructor<?> constructor) {
+        var componentParameters = new ArrayList<ComponentParameter>();
+        for(Parameter p: constructor.getParameters()){
+            var cp = toComponentParameter(byType, p);
+            if(cp == null){
+                log.debug("Constructor {} ignored because parameter {} with type {} is not annotated and it is not a known type", constructor, p.getName(), p.getType());
+                return Optional.empty();
+            }
+            componentParameters.add(cp);
+            if(cp.recursive()){
+                // Parameter has a known algorithm component type, for example Improver<S,I>
+                // Add all implementations to the exploration queue
+                for(var candidate: byType.get(p.getType())){
+                    if(notVisited.contains(candidate)){
+                        notVisited.remove(candidate);
+                        queue.add(candidate);
+                    }
+                }
+            }
+        }
+        return Optional.of(componentParameters);
+    }
+
+    private static List<ComponentParameter> analyzeParametersFactory(Map<Class<?>, Collection<Class<?>>> byType, Queue<Class<?>> queue, Set<Class<?>> notVisited, AlgorithmComponentFactory factory) {
+        var params = factory.getRequiredParameters();
+        for(var cp: params){
+            if(cp.recursive()){
+                var candidates = byType.get(cp.getJavaType());
+                cp.setValues(candidates.toArray());
+                // Parameter has a known algorithm component type, for example Improver<S,I>
+                // Add all implementations to the exploration queue
+                for(var candidate: candidates){
+                    if(notVisited.contains(candidate)){
+                        notVisited.remove(candidate);
+                        queue.add(candidate);
+                    }
+                }
+            }
+        }
+        return params;
     }
 
     protected ComponentParameter toComponentParameter(Map<Class<?>, Collection<Class<?>>> types, Parameter p){

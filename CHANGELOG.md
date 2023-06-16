@@ -14,6 +14,7 @@
 - (Fix) #180 Autoconfig: Improve type conversions for algorithm components
 - (Fix) #169 Autoconfig: Remove middleware.sh and improve parallelism 
 - (Fix) #172: Update URL for the project generator
+- (Fix) #130: Remove mandatory implementation of all component types in algorithm components
 - And many more small fixes and improvements
 
 # v0.16
