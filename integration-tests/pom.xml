@@ -3,31 +3,31 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>integration-tests</artifactId>
-    <version>0.17-SNAPSHOT</version>
+    <version>0.17</version>
     <packaging>jar</packaging>
     <name>Integration tests</name>
 
     <parent>
         <groupId>es.urjc.etsii.grafo</groupId>
         <artifactId>mork-parent</artifactId>
-        <version>0.17-SNAPSHOT</version>
+        <version>0.17</version>
     </parent>
 
     <dependencies>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>autoconfig</artifactId>
-            <version>0.17-SNAPSHOT</version>
+            <version>0.17</version>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork-common</artifactId>
-            <version>0.17-SNAPSHOT</version>
+            <version>0.17</version>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork</artifactId>
-            <version>0.17-SNAPSHOT</version>
+            <version>0.17</version>
         </dependency>
 
         <dependency>
