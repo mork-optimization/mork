@@ -737,7 +737,7 @@ public class BitSet extends AbstractSet<Integer> {
      * @return a clone of this bit set
      * @see #size()
      */
-    public Object clone() {
+    public BitSet clone() {
         return new BitSet(this);
     }
 
