@@ -32,7 +32,7 @@ class UserExperimentOrchestratorTest {
     private TestData getTestData(int repetitions, int nInstances, int nAlgorithms){
         List<Algorithm<TestSolution, TestInstance>> algorithms = new ArrayList<>();
         for (int i = 0; i < nAlgorithms; i++) {
-            algorithms.add(new SimpleAlgorithm<>(new NullConstructive(), Improver.nul()));
+            algorithms.add(new SimpleAlgorithm<>("Test-"+i, new NullConstructive(), Improver.nul()));
         }
 
         List<String> instances = new ArrayList<>();

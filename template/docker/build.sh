@@ -1,9 +1,12 @@
 #!/bin/sh
 if [ "$#" -ne 1 ]; then
-    echo "Usage: $0 username/projectname"
+    echo "Usage: $0 username/__RNAME__"
     exit 1
 fi
 
-cd "$(dirname "$0")/../" || { echo "Invalid project structure"; exit 1; }
-mvn clean package -DskipTests
+folder=${PWD##*/}
+if [ "$folder" = "docker" ]; then
+    cd ..
+fi
+
 docker build -t "$1:latest" -f docker/Dockerfile .

@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig.antlr;// Generated from java-escape by ANTLR 4.11.1
+package es.urjc.etsii.grafo.autoconfig.antlr;// Generated from AlgorithmLexer.g4 by ANTLR 4.13.0
 
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.atn.ATN;
@@ -9,7 +9,7 @@ import org.antlr.v4.runtime.dfa.DFA;
 
 @SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast", "CheckReturnValue"})
 public class AlgorithmLexer extends Lexer {
-	static { RuntimeMetaData.checkVersion("4.11.1", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.13.0", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =

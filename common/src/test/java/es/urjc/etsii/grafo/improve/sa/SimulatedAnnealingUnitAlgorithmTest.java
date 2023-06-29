@@ -161,7 +161,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                         .withMaximizing(true)
                         .withNeighborhood(randomizableNeighborhood)
                         .build();
-        SimpleAlgorithm simpleAlgorithm = new SimpleAlgorithm<>(constructive, sa);
+        SimpleAlgorithm simpleAlgorithm = new SimpleAlgorithm<>("Test", constructive, sa);
         simpleAlgorithm.setBuilder(new SolutionBuilder() {
             @Override
             public Solution initializeSolution(Instance instance) {
@@ -192,7 +192,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                 .withMaximizing(true)
                 .withNeighborhood(randomizableNeighborhood)
                 .build();
-        SimpleAlgorithm simpleAlgorithm = new SimpleAlgorithm<>(constructive, sa);
+        SimpleAlgorithm simpleAlgorithm = new SimpleAlgorithm<>("Test", constructive, sa);
         simpleAlgorithm.setBuilder(new SolutionBuilder() {
             @Override
             public Solution initializeSolution(Instance instance) {
@@ -205,7 +205,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
 
     @Test
     void checkStopByMaxTime() {
-        CoolDownControl coolDownControl = new ExponentialCoolDown<>(0.9);
+        CoolDownControl coolDownControl = new ExponentialCoolDown<>(0.99);
         AcceptanceCriteria acceptanceCriteria = new MetropolisAcceptanceCriteria<>();
         TerminationCriteria terminationCriteria = (solution, neighborhood, currentTemperature, iteration) -> iteration == Integer.MAX_VALUE;
         InitialTemperatureCalculator initialTemperatureCalculator = (ignored1, ignored2) -> Integer.MAX_VALUE;
@@ -223,7 +223,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                 .withMaximizing(true)
                 .withNeighborhood(randomizableNeighborhood)
                 .build();
-        SimpleAlgorithm simpleAlgorithm = new SimpleAlgorithm<>(constructive, sa);
+        SimpleAlgorithm simpleAlgorithm = new SimpleAlgorithm<>("Test", constructive, sa);
         simpleAlgorithm.setBuilder(new SolutionBuilder<TestSolution, TestInstance>() {
             @Override
             public TestSolution initializeSolution(TestInstance instance) {

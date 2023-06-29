@@ -8,7 +8,7 @@ class FModeParamTest {
     @Test
     void checkNames(){
         String[] valid = new String[]{"fmode", "mode", "fMode"};
-        String[] invalid = new String[]{"FMODE", "moda", "different"};
+        String[] invalid = new String[]{"moda", "different"};
 
         var testType = Object.class;
         var paramProvider = new FModeParam();

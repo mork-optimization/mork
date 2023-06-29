@@ -1,15 +1,29 @@
-FROM azul/zulu-openjdk-alpine:17-jre-headless
+FROM maven:3-eclipse-temurin-17 as build
+RUN mkdir /build
+WORKDIR /build
+COPY ./pom.xml pom.xml
+
+# fetch all dependencies
+RUN mvn dependency:go-offline -B
+
+# copy sources and compile
+COPY ./src src
+RUN mvn clean package -B && cp target/__RNAME__-*.jar app.jar
+
+FROM eclipse-temurin:17-alpine as run
 
 # Remember to add extra files if needed by your project
 COPY instances /instances
-COPY target/__RNAME__*.jar /app.jar
+COPY *.csv *.tsv /
+COPY --from=build /root/.m2 /root/.m2
+COPY --from=build /build/app.jar /app.jar
 
 CMD [\
-"/usr/bin/java",\
+"java",\
 "--add-opens", "java.base/java.util=ALL-UNNAMED",\
 "--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED",\
 "--add-opens", "java.base/java.lang=ALL-UNNAMED",\
-# Set memory usage
-"-Xmx1G", "-Xms1G",\
+# TODO Set memory usage, default to 4 GB
+"-Xmx4G", "-Xms4G",\
 "-jar", "/app.jar"\
 ]

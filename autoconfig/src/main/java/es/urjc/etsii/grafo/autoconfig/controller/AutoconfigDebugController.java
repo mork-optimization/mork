@@ -15,6 +15,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -60,7 +61,7 @@ public class AutoconfigDebugController {
 
         var config = cmdline.startsWith("ROOT")?
                 new IraceRuntimeConfiguration("Unknown", "Unknown", "Unknown", "Unknown", new AlgorithmConfiguration(cmdline.split("\\s+"))):
-                IraceOrchestrator.toIraceRuntimeConfig(cmdline);
+                IraceUtil.toIraceRuntimeConfig(cmdline);
         var algorithmString = this.algorithmGenerator.asParseableAlgorithm(config.getAlgorithmConfig());
         return Map.of("config", config, "algorithmString", algorithmString);
     }
@@ -80,5 +81,9 @@ public class AutoconfigDebugController {
         return this.orchestrator.getConfigHistoric();
     }
 
+    @GetMapping("/auto/debug/rejected")
+    public List<Object> getRejected(){
+        return this.orchestrator.getRejected();
+    }
 
 }

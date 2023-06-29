@@ -4,9 +4,11 @@ import java.util.*;
 
 /**
  * Fast integer set implementation compatible with Java Collections API.
- * Should be used when int range is known and not extremely big.
+ * Should be used when int range is known and not huge.
  * Collection is always backed by a static array.
+ * Deprecated since its functionality is superseded by {@link BitSet}
  */
+@Deprecated(forRemoval = true)
 public class IntSet extends AbstractSet<Integer> {
 
     private int size;

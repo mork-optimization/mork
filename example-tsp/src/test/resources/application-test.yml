@@ -224,3 +224,4 @@ solver.parallelExecutor: false
 spring.config.activate.on-profile: testconcurrent
 solver.parallelExecutor: true
 solver.nWorkers: -1
+

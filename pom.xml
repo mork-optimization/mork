@@ -8,7 +8,7 @@
 
     <groupId>es.urjc.etsii.grafo</groupId>
     <artifactId>mork-parent</artifactId>
-    <version>0.17-SNAPSHOT</version>
+    <version>0.18-SNAPSHOT</version>
     <packaging>pom</packaging>
     <modules>
         <module>core</module>
@@ -45,8 +45,8 @@
         <maven.compiler.target>17</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jackson.version>2.15.2</jackson.version>
-        <springboot.version>3.1.0</springboot.version>
-        <msurefire.version>3.1.0</msurefire.version>
+        <springboot.version>3.1.1</springboot.version>
+        <msurefire.version>3.1.2</msurefire.version>
         <mcompiler.version>3.11.0</mcompiler.version>
         <mjar.version>3.3.0</mjar.version>
         <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>
@@ -59,7 +59,7 @@
             ${project.basedir}/../integration-tests/target/site/jacoco-aggregate/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
         <sonar.language>java</sonar.language>
-        <graalvm.version>22.3.2</graalvm.version>
+        <graalvm.version>23.0.0</graalvm.version>
     </properties>
 
     <distributionManagement>

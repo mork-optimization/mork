@@ -51,11 +51,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
      */
     public ConcurrentExecutor(SolverConfig solverConfig, Optional<SolutionValidator<S, I>> validator, Optional<TimeLimitCalculator<S, I>> timeLimitCalculator, IOManager<S, I> io, InstanceManager<I> instanceManager, List<ReferenceResultProvider> referenceResultProviders) {
         super(validator, timeLimitCalculator, io, instanceManager, referenceResultProviders, solverConfig);
-        if (solverConfig.getnWorkers() == -1) {
-            this.nWorkers = Runtime.getRuntime().availableProcessors() / 2;
-        } else {
-            this.nWorkers = solverConfig.getnWorkers();
-        }
+        this.nWorkers = solverConfig.getnWorkers();
         this.executor = Executors.newFixedThreadPool(this.nWorkers);
     }
 

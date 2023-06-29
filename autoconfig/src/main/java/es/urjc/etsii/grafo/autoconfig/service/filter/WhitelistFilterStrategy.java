@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.service.filter;
 
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
-import es.urjc.etsii.grafo.util.ClassUtil;
+import es.urjc.etsii.grafo.util.ReflectionUtil;
 
 import java.util.Set;
 
@@ -21,6 +21,6 @@ public abstract class WhitelistFilterStrategy implements InventoryFilterStrategy
 
     @Override
     public boolean include(Class<?> clazz) {
-        return ClassUtil.hierarchyContainsAny(clazz, whitelistedClasses);
+        return ReflectionUtil.hierarchyContainsAny(clazz, whitelistedClasses);
     }
 }

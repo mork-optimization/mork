@@ -30,6 +30,19 @@ public class Mork {
     }
 
     /**
+     * Procedure to launch the application, alias to start, fails if mode is not specified
+     *
+     * @param args     command line arguments, normally the parameter "String[] args" in the main method
+     */
+    public static void main(String[] args) {
+        if(Mork.fmode == null){
+            throw new IllegalStateException("FMode not set");
+        }
+        Mork.start(null, args, Mork.fmode);
+    }
+
+
+    /**
      * Procedure to launch the application.
      *
      * @param pkgRoot  Custom package root for component scanning if changed from the default package
@@ -106,8 +119,19 @@ public class Mork {
             };
         }
 
-        // By default, active profile is user-experiment, unless overridden
-        result[result.length-1] = "--spring.profiles.default=user-experiment";
+        boolean profileSet = false;
+        for(var arg: result){
+            if(arg != null && arg.startsWith("--spring.profiles.active=")){
+                profileSet = true;
+                break;
+            }
+        }
+        // Default profile
+        if(!profileSet){
+            result[result.length-1] = "--spring.profiles.active=user-experiment";
+        } else {
+            result[result.length-1] = "";
+        }
         return result;
     }
 }

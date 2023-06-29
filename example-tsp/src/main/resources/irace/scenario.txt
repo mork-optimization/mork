@@ -36,7 +36,7 @@ trainInstancesDir = "__INSTANCES_PATH__"
 
 ## The script called for each configuration that launches the program to be
 ## tuned.  See templates/target-runner.tmpl
-targetRunner = "__TARGET_RUNNER__"
+targetRunner = "middleware.sh"
 
 ## Number of times to retry a call to target-runner if the call failed.
 # targetRunnerRetries = 0
@@ -102,7 +102,7 @@ testType = "t-test"
 
 ## Specifies how many instances are seen before the first elimination
 ## test. It must be a multiple of eachTest.
-firstTest = 5
+firstTest =5
 
 ## Specifies how many instances are seen between elimination tests.
 # eachTest = 1
@@ -168,7 +168,7 @@ parallel = __PARALLEL__
 
 ## File containing a list of logical expressions that cannot be true
 ## for any evaluated configuration. If empty or NULL, do not use a file.
-forbiddenFile = "./forbidden.txt"
+forbiddenFile="./forbidden.txt"
 
 ## Enable/disable elitist irace.
 # elitist = 1
