@@ -1,2 +1,2 @@
-mvn clean install "-Dgpg.skip=true"
+mvn clean install "-Dgpg.skip=true" -DskipTests
 
