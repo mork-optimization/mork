@@ -150,7 +150,9 @@ class ScatterSearchTest {
         int refsetSize = 10;
         int ratio = 5; // Total 50 generated solutions
         double byDiversityRatio = 0.2;
-        var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood, constructiveDiverse, Improver.nul(), new CombinatorTestHelper(), FMode.MINIMIZE, 100, byDiversityRatio, new DistanceTestHelper());
+        var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood, constructiveDiverse,
+                Improver.nul(), new CombinatorTestHelper(), FMode.MINIMIZE, 100, byDiversityRatio,
+                new DistanceTestHelper(), true);
         sc.setBuilder(new TestSolutionBuilder());
         var inst = new TestInstance("TestInstance");
         var refset = sc.initializeRefset(TestSolution.class, inst);
@@ -167,7 +169,9 @@ class ScatterSearchTest {
         int refsetSize = 10;
         int ratio = 5; // Total 50 generated solutions
         double byDiversityRatio = 0;
-        var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood, constructiveDiverse, Improver.nul(), new CombinatorTestHelper(), FMode.MINIMIZE, 100, byDiversityRatio, new DistanceTestHelper());
+        var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood,
+                constructiveDiverse, Improver.nul(), new CombinatorTestHelper(),
+                FMode.MINIMIZE, 100, byDiversityRatio, new DistanceTestHelper(), true);
         sc.setBuilder(new TestSolutionBuilder());
         var inst = new TestInstance("TestInstance");
         var refset = sc.initializeRefset(TestSolution.class, inst);
@@ -184,7 +188,9 @@ class ScatterSearchTest {
         int refsetSize = 10;
         int ratio = 5; // Total 50 generated solutions
         double byDiversityRatio = 0.2;
-        var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood, constructiveDiverse, Improver.nul(), new CombinatorTestHelper(), FMode.MINIMIZE, 100, byDiversityRatio, new DistanceTestHelper());
+        var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood,
+                constructiveDiverse, Improver.nul(), new CombinatorTestHelper(),
+                FMode.MINIMIZE, 100, byDiversityRatio, new DistanceTestHelper(), true);
         sc.setBuilder(new TestSolutionBuilder());
         var inst = new TestInstance("TestInstance");
 
@@ -215,7 +221,9 @@ class ScatterSearchTest {
         int refsetSize = 10;
         int ratio = 5; // Total 50 generated solutions
         double byDiversityRatio = 0;
-        var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood, constructiveDiverse, Improver.nul(), new CombinatorTestHelper(), FMode.MAXIMIZE, 100, byDiversityRatio, new DistanceTestHelper());
+        var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood,
+                constructiveDiverse, Improver.nul(), new CombinatorTestHelper(),
+                FMode.MAXIMIZE, 100, byDiversityRatio, new DistanceTestHelper(), true);
         sc.setBuilder(new TestSolutionBuilder());
         var inst = new TestInstance("TestInstance");
 
@@ -243,7 +251,9 @@ class ScatterSearchTest {
         int ratio = 5; // Total 50 generated solutions
         double byDiversityRatio = 0.2;
         var c = new ScatterSearchTestConstructive();
-        var sc = new ScatterSearch<>("Test", ratio, refsetSize, c, c, Improver.nul(), new CombinatorTestHelper(), FMode.MINIMIZE, 100, byDiversityRatio, new DistanceTestHelper());
+        var sc = new ScatterSearch<>("Test", ratio, refsetSize, c, c, Improver.nul(),
+                new CombinatorTestHelper(), FMode.MINIMIZE, 100, byDiversityRatio,
+                new DistanceTestHelper(), true);
         var inst = new TestInstance("TestInstance");
 
         // As we are minimizing, values
@@ -268,7 +278,10 @@ class ScatterSearchTest {
         int refsetSize = 10;
         int ratio = 5; // Total 50 generated solutions
         double byDiversityRatio = 0;
-        var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood, constructiveDiverse, Improver.nul(), new CombinatorTestHelper(), FMode.MAXIMIZE, 100, byDiversityRatio, new DistanceTestHelper());
+        var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood,
+                constructiveDiverse, Improver.nul(), new CombinatorTestHelper(),
+                FMode.MAXIMIZE, 100, byDiversityRatio, new DistanceTestHelper(), true
+        );
         sc.setBuilder(new TestSolutionBuilder());
         var solution = sc.algorithm(new TestInstance("TestInstance"));
         assertTrue(solution.getScore() > 10e20);

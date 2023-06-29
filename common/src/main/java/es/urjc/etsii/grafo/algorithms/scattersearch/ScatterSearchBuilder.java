@@ -70,6 +70,8 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      */
     protected SolutionDistance<S, I> solutionDistance;
 
+    protected boolean softRestartEnabled = false;
+
     /**
      * Create a new Scatter Search Builder. After configuring the parameters, call ref build()
      */
@@ -216,6 +218,19 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
     }
 
     /**
+     * Enable or disable soft restart. If soft restart is disabled,
+     * the algorithm ends when the reference set converges, otherwise,
+     * part of the refset is discarded and new solutions are inserted.
+     * If not configured, defaults to false.
+     * @param enabled MAXIMIZING if maximizing, MINIMIZING if minimizing
+     * @return current builder with soft restart set.
+     */
+    public ScatterSearchBuilder<S,I> withSoftRestart(boolean enabled){
+        this.softRestartEnabled = enabled;
+        return this;
+    }
+
+    /**
      * Build a Scatter Search algorithm with the configured parameters of this builder
      * @return New instance of Scatter Search algorithm. Same builder can generate multiple algorithm instances.
      */
@@ -238,7 +253,8 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
                 fmode,
                 maxIterations,
                 diversityRatio,
-                solutionDistance
+                solutionDistance,
+                softRestartEnabled
         );
     }
 }

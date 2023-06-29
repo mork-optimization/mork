@@ -69,7 +69,8 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
             @ProvidedParam FMode fmode,
             @IntegerParam(min = 1) int maxIterations,
             @RealParam(min = 0, max = 1) double diversityRatio,
-            SolutionDistance<S, I> solutionDistance
+            SolutionDistance<S, I> solutionDistance,
+            @CategoricalParam(strings = {"true", "false"}) boolean softRestartEnabled
     ) {
         super(name);
 
@@ -80,7 +81,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
         this.improver = Objects.requireNonNull(improver);
         this.combinator = Objects.requireNonNull(combinator);
         this.fmode = fmode;
-        this.softRestartEnabled = true;
+        this.softRestartEnabled = softRestartEnabled;
         this.maxIterations = maxIterations;
         this.ratio = diversityRatio;
         this.solutionDistance = Objects.requireNonNull(solutionDistance);
