@@ -59,7 +59,7 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S, I>, I extends I
         var f = new File(folder, suggestedFilename);
         if (config.isEnabled()) {
             try {
-                writer.writeValue(f, result.solution());
+                writer.writeValue(f, result);
             } catch (IOException e) {
                 throw new RuntimeException("IOException while writing to file: " + f.getAbsolutePath(), e);
             }
