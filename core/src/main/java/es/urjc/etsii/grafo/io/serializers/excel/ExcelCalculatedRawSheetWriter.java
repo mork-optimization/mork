@@ -55,11 +55,11 @@ public class ExcelCalculatedRawSheetWriter extends RawSheetWriter {
             data[i][RawSheetCol.IS_BEST_KNOWN.getIndex()] = String.format("IF(%s%s=%s%s,1,0)", RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex, RawSheetCol.SCORE.getExcelColIndex(), excelRowIndex);
             data[i][RawSheetCol.DEV_TO_BEST.getIndex()] = String.format("ABS(%s%s-%s%s)/%s%s", RawSheetCol.SCORE.getExcelColIndex(), excelRowIndex, RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex, RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex(), excelRowIndex);
 
-            var userProps = r.getUserDefinedProperties();
-            for (int j = 0; j < customProperties.length; j++) {
-                var propName = customProperties[j];
-                data[i][commonHeaders.length + j] = userProps.get(propName);
-            }
+//            var userProps = r.getUserDefinedProperties();
+//            for (int j = 0; j < customProperties.length; j++) {
+//                var propName = customProperties[j];
+//                data[i][commonHeaders.length + j] = userProps.get(propName);
+//            }
         }
 
         int currentRow = cutOff;

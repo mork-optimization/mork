@@ -7,7 +7,7 @@ import es.urjc.etsii.grafo.events.types.AlgorithmProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.AlgorithmProcessingStartedEvent;
 import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.InstanceProcessingStartedEvent;
-import es.urjc.etsii.grafo.exceptions.ExceptionHandler;
+import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
@@ -49,8 +49,16 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
      * @param validator    Solution validator
      * @param io           IOManager
      */
-    public ConcurrentExecutor(SolverConfig solverConfig, Optional<SolutionValidator<S, I>> validator, Optional<TimeLimitCalculator<S, I>> timeLimitCalculator, IOManager<S, I> io, InstanceManager<I> instanceManager, List<ReferenceResultProvider> referenceResultProviders) {
-        super(validator, timeLimitCalculator, io, instanceManager, referenceResultProviders, solverConfig);
+    public ConcurrentExecutor(
+            SolverConfig solverConfig,
+            Optional<SolutionValidator<S, I>> validator,
+            Optional<TimeLimitCalculator<S, I>> timeLimitCalculator,
+            IOManager<S, I> io,
+            InstanceManager<I> instanceManager,
+            List<ReferenceResultProvider> referenceResultProviders,
+            List<ExceptionHandler<S,I>> exceptionHandlers
+    ) {
+        super(validator, timeLimitCalculator, io, instanceManager, referenceResultProviders, solverConfig, exceptionHandlers);
         this.nWorkers = solverConfig.getnWorkers();
         this.executor = Executors.newFixedThreadPool(this.nWorkers);
     }
@@ -77,10 +85,10 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
      * {@inheritDoc}
      */
     @Override
-    public void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, long startTimestamp) {
+    public void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, long startTimestamp) {
         var algorithms = experiment.algorithms();
         var experimentName = experiment.name();
-        var workUnits = getOrderedWorkUnits(experiment, instanceNames, exceptionHandler, solverConfig.getRepetitions());
+        var workUnits = getOrderedWorkUnits(experiment, instanceNames, solverConfig.getRepetitions());
 
         var events = EventPublisher.getInstance();
 

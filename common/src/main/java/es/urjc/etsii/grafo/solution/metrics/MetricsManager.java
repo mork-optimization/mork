@@ -1,5 +1,9 @@
 package es.urjc.etsii.grafo.solution.metrics;
 
+import java.util.HashMap;
+import java.util.Map;
+import java.util.TreeSet;
+
 /**
  * Manages metrics instances. Example usage:
  * - Call {@link MetricsManager#resetMetrics()} to initialize a new instance of empty metrics
@@ -107,5 +111,14 @@ public final class MetricsManager {
         }
         var metrics = getInstance();
         metrics.addDatapoint(name, value);
+    }
+
+    public static Map<String, TreeSet<TimeValue>> rawMetrics() {
+//        var copy = new HashMap<String, TreeSet<TimeValue>>();
+//        for(var e: localMetrics.get().metricValues.entrySet()){
+//            copy.put(e.getKey(), new TreeSet<>(e.getValue()));
+//        }
+//        return copy;
+        return localMetrics.get().metricValues; // copy may be unnecessary, todo validate and delete commented code
     }
 }

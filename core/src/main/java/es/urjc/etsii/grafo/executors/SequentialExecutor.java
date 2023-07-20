@@ -6,7 +6,7 @@ import es.urjc.etsii.grafo.events.types.AlgorithmProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.AlgorithmProcessingStartedEvent;
 import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.InstanceProcessingStartedEvent;
-import es.urjc.etsii.grafo.exceptions.ExceptionHandler;
+import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
@@ -48,21 +48,22 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
             IOManager<S, I> io,
             InstanceManager<I> instanceManager,
             List<ReferenceResultProvider> referenceResultProviders,
-            SolverConfig solverConfig
+            SolverConfig solverConfig,
+            List<ExceptionHandler<S,I>> exceptionHandlers
     ) {
-        super(validator, timeLimitCalculator, io, instanceManager, referenceResultProviders, solverConfig);
+        super(validator, timeLimitCalculator, io, instanceManager, referenceResultProviders, solverConfig, exceptionHandlers);
     }
 
     /**
      * {@inheritDoc}
      */
     @Override
-    public void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, long startTimestamp) {
+    public void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, long startTimestamp) {
         var events = EventPublisher.getInstance();
 
         var algorithms = experiment.algorithms();
         var experimentName = experiment.name();
-        var workUnits = getOrderedWorkUnits(experiment, instanceNames, exceptionHandler, solverConfig.getRepetitions());
+        var workUnits = getOrderedWorkUnits(experiment, instanceNames, solverConfig.getRepetitions());
 
         try (var pb = getGlobalSolvingProgressBar(experimentName, workUnits)) {
             // K: Instance name --> V: List of WorkUnits

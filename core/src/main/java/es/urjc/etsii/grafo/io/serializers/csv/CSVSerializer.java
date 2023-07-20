@@ -95,13 +95,14 @@ public class CSVSerializer<S extends Solution<S, I>, I extends Instance> extends
      * @param time
      * @param ttb
      */
-    private record CSVRow(String instanceName, String algorithmName, int iteration, double score, long time, long ttb) {
+    private record CSVRow(String instanceName, String algorithmName, String iteration, double score, long time, long ttb) {
         public CSVRow(SolutionGeneratedEvent<?, ?> event) {
             this(event.getInstanceName(), event.getAlgorithmName(), event.getIteration(), event.getScore(), event.getExecutionTime(), event.getTimeToBest());
         }
 
         public CSVRow(String instanceName, String algorithmName, ReferenceResult referenceValue) {
-            this(instanceName, algorithmName, 0, referenceValue.getScoreOrNan(), referenceValue.getTimeInNanos(), referenceValue.getTimeToBestInNanos());
+            // TODO revisar este 0 para iteracion, me huele raro
+            this(instanceName, algorithmName, "0", referenceValue.getScoreOrNan(), referenceValue.getTimeInNanos(), referenceValue.getTimeToBestInNanos());
         }
     }
 

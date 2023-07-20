@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.executors;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.config.SolverConfig;
-import es.urjc.etsii.grafo.exceptions.ExceptionHandler;
+import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
@@ -26,6 +26,13 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 class ExecutorTest {
+
+    private static class NopExceptionHandler extends ExceptionHandler<TestSolution, TestInstance> {
+
+        @Override
+        public void handleException(String experimentName, int iteration, Exception e, Optional<TestSolution> testSolution, TestInstance testInstance, Algorithm<TestSolution, TestInstance> algorithm) {
+        }
+    }
 
     ReferenceResultProvider referenceResultProvider;
     InstanceManager<TestInstance> instanceManager;
@@ -66,8 +73,8 @@ class ExecutorTest {
                 this.ioManager,
                 this.instanceManager,
                 List.of(this.referenceResultProvider),
-                new SolverConfig() // Not relevant for this test? leave with default values
-        );
+                new SolverConfig(), // Not relevant for this test? leave with default values
+                List.of(new NopExceptionHandler()));
     }
 
     @Test
@@ -115,19 +122,28 @@ class ExecutorTest {
     public static class TestExecutor extends Executor<TestSolution, TestInstance>{
         /**
          * Fill common values used by all executors
-         * @param testSolutionTestInstanceSolutionValidator   solution validator if available
-         * @param testSolutionTestInstanceTimeLimitCalculator time limit calculator if exists
+         * @param solutionValidator   solution validator if available
+         * @param timeLimitCalculator time limit calculator if exists
          * @param io                                          IO manager
          * @param instanceManager
          * @param referenceResultProviders                    list of all reference value providers implementations
          * @param solverConfig
          */
-        protected TestExecutor(Optional<SolutionValidator<TestSolution, TestInstance>> testSolutionTestInstanceSolutionValidator, Optional<TimeLimitCalculator<TestSolution, TestInstance>> testSolutionTestInstanceTimeLimitCalculator, IOManager<TestSolution, TestInstance> io, InstanceManager<TestInstance> instanceManager, List<ReferenceResultProvider> referenceResultProviders, SolverConfig solverConfig) {
-            super(testSolutionTestInstanceSolutionValidator, testSolutionTestInstanceTimeLimitCalculator, io, instanceManager, referenceResultProviders, solverConfig);
+        protected TestExecutor(
+                Optional<SolutionValidator<TestSolution, TestInstance>> solutionValidator,
+                Optional<TimeLimitCalculator<TestSolution, TestInstance>> timeLimitCalculator,
+                IOManager<TestSolution, TestInstance> io, InstanceManager<TestInstance> instanceManager,
+                List<ReferenceResultProvider> referenceResultProviders,
+                SolverConfig solverConfig,
+                List<ExceptionHandler<TestSolution, TestInstance>> exceptionHandlers
+
+        ) {
+            super(solutionValidator, timeLimitCalculator,
+                    io, instanceManager, referenceResultProviders, solverConfig, exceptionHandlers);
         }
 
         @Override
-        public void executeExperiment(Experiment<TestSolution, TestInstance> experiment, List<String> instanceNames, ExceptionHandler<TestSolution, TestInstance> exceptionHandler, long startTimestamp) {
+        public void executeExperiment(Experiment<TestSolution, TestInstance> experiment, List<String> instanceNames, long startTimestamp) {
 
         }
 

@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.exceptions;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.exception.InvalidRandomException;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.services.IOManager;
@@ -19,8 +20,14 @@ import java.util.logging.Logger;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-public class DefaultExceptionHandler<S extends Solution<S,I>, I extends Instance> extends ExceptionHandler<S,I>{
+public class DefaultExceptionHandler<S extends Solution<S,I>, I extends Instance> extends ExceptionHandler<S,I> {
     private static final Logger logger = Logger.getLogger(DefaultExceptionHandler.class.getName());
+
+    private final IOManager<S,I> io;
+
+    public DefaultExceptionHandler(IOManager<S, I> io) {
+        this.io = io;
+    }
 
     /**
      * {@inheritDoc}
@@ -28,7 +35,7 @@ public class DefaultExceptionHandler<S extends Solution<S,I>, I extends Instance
      * Handle exception that is not controlled in the user code and reaches our executor.
      * Behaviour can be customized or changed by extending the ExceptionHandler class.
      */
-    public void handleException(String experimentName, int iteration, Exception e, Optional<S> sOptional, I i, Algorithm<S,I> algorithm, IOManager<S, I> io){
+    public void handleException(String experimentName, int iteration, Exception e, Optional<S> sOptional, I i, Algorithm<S,I> algorithm){
         logger.severe(String.format("Error while solving instance %s with algorithm %s, iteration %s, skipping. Exception message: %s", i.getId(), algorithm.toString(), iteration, e.getMessage()));
         explain(e);
         String stackTrace = getStackTrace(e);

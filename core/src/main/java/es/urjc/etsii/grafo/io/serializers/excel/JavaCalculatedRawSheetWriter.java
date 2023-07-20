@@ -57,11 +57,11 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
             data[i][RawSheetCol.IS_BEST_KNOWN.getIndex()] = isBest ? 1 : 0;
             data[i][RawSheetCol.DEV_TO_BEST.getIndex()] = getPercentageDevToBest(r.getScore(), bestValueForInstance);
 
-            var userProps = r.getUserDefinedProperties();
-            for (int j = 0; j < customProperties.length; j++) {
-                var propName = customProperties[j];
-                data[i][commonHeaders.length + j] = userProps.get(propName);
-            }
+//            var userProps = r.getUserDefinedProperties();
+//            for (int j = 0; j < customProperties.length; j++) {
+//                var propName = customProperties[j];
+//                data[i][commonHeaders.length + j] = userProps.get(propName);
+//            }
         }
 
         int currentRow = cutOff;
