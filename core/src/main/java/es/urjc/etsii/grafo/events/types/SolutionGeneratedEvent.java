@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.events.types;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solution.metrics.TimeValue;
+import es.urjc.etsii.grafo.metrics.TimeValue;
 
 import java.lang.ref.SoftReference;
 import java.util.Map;

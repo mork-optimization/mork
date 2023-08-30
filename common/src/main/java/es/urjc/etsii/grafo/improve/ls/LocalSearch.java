@@ -3,10 +3,11 @@ package es.urjc.etsii.grafo.improve.ls;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.metrics.BestObjective;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solution.metrics.Metrics;
-import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
+import es.urjc.etsii.grafo.metrics.Metrics;
+import es.urjc.etsii.grafo.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
@@ -101,7 +102,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
         move.execute(solution);
         double scoreAfter = solution.getScore();
         if(this.ofmode.isBetter(scoreAfter, scoreBefore)){
-            MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, scoreAfter);
+                BestObjective.add(solution.getScore());
         }
         return true;
     }

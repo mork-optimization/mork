@@ -3,15 +3,12 @@ package es.urjc.etsii.grafo.testutil;
 import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
-import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.solution.metrics.TimeValue;
 import org.mockito.Mockito;
 
 import java.util.*;
-import java.util.function.Function;
 
 import static org.mockito.ArgumentMatchers.anyString;
 

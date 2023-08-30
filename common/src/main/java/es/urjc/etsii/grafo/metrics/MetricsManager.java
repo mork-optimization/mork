@@ -1,16 +1,17 @@
-package es.urjc.etsii.grafo.solution.metrics;
+package es.urjc.etsii.grafo.metrics;
 
-import java.util.HashMap;
+import es.urjc.etsii.grafo.algorithms.FMode;
+
 import java.util.Map;
 import java.util.TreeSet;
 
 /**
  * Manages metrics instances. Example usage:
  * - Call {@link MetricsManager#resetMetrics()} to initialize a new instance of empty metrics
- * - Run the algorithm. Any algorithm component can get the current metrics instance using {@link MetricsManager#getInstance()}, and add data points to it using {@link Metrics#addDatapoint(String, double)}.
+ * - Run the algorithm. Any algorithm component can get the current metrics instance using {@link MetricsManager#getInstance()}, and add data points to it using {@link AbstractMetric#addDatapoint(double, long)}.
  * - Do something with the metrics after the algorithm finishes, for example merging (see below).
  * - Reset metrics before the next algorithm start executing.
- *
+ * <p>
  * Note that metrics are always ThreadLocal, which means that every thread works on its own independent copy.
  * Metrics are always disabled by default, and must be enabled by either the framework or manually by the user
  * Tip: Metrics from different threads can later be merged using {@link Metrics#merge(Metrics...)}
@@ -19,6 +20,7 @@ public final class MetricsManager {
 
     private static ThreadLocal<Metrics> localMetrics = new ThreadLocal<>();
     private static volatile boolean enabled = false;
+    private static FMode fmode;
 
     private MetricsManager(){}
 
@@ -84,41 +86,29 @@ public final class MetricsManager {
         return enabled;
     }
 
-    /**
-     * Register the "value" for a metric named "name" has happened at the given "absoluteTime"
-     * If the metrics are not enabled, does nothing
-     * @param name         metric name, for example "numberOfNodesAssigned". See public fields such as {@link Metrics#OBJECTIVE_FUNCTION}
-     * @param value        value for the given metric
-     * @param absoluteTime ¿when was the value retrieved or calculated? Use System.nanoTime() or equivalent
-     */
-    public static void addDatapoint(String name, double value, long absoluteTime){
-        if(!areMetricsEnabled()){
-            return;
-        }
-        var metrics = getInstance();
-        metrics.addDatapoint(name, value, absoluteTime);
+
+    public static void setSolvingMode(FMode fmode) {
+        MetricsManager.fmode = fmode;
+    }
+
+    public static FMode getFMode(){
+        return fmode;
     }
 
     /**
-     * Register the "value" for a metric named "name" has happened at the given "absoluteTime"
-     * If the metrics are not enabled, does nothing
-     * @param name         metric name, for example "numberOfNodesAssigned". See public fields such as {@link Metrics#OBJECTIVE_FUNCTION}
-     * @param value        value for the given metric
+     * Get all metric data generated in current context.
+     * The map is not copied for performance, it should NEVER be modified.
+     * @return raw metric data
      */
-    public static void addDatapoint(String name, double value){
-        if(!areMetricsEnabled()){
-            return;
-        }
-        var metrics = getInstance();
-        metrics.addDatapoint(name, value);
+    public static Map<String, AbstractMetric> getAllMetricData(){
+        return getInstance().metrics;
     }
 
-    public static Map<String, TreeSet<TimeValue>> rawMetrics() {
-//        var copy = new HashMap<String, TreeSet<TimeValue>>();
-//        for(var e: localMetrics.get().metricValues.entrySet()){
-//            copy.put(e.getKey(), new TreeSet<>(e.getValue()));
-//        }
-//        return copy;
-        return localMetrics.get().metricValues; // copy may be unnecessary, todo validate and delete commented code
+    public AbstractMetric getMetric(String name){
+        var metrics = getInstance().metrics;
+        if(!metrics.containsKey(name)){
+            throw new IllegalArgumentException("Unknown metric: " + name);
+        }
+        return metrics.get(name);
     }
 }

@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.solution.metrics;
+package es.urjc.etsii.grafo.metrics;
 
 /**
  * Pairs of (timeMoment, value)

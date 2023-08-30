@@ -1,5 +1,7 @@
 # Developing
-- Coming soon!
+- Metrics refactor: simplify, modularize and make extensible. 
+Example: `MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, score)` --> `BestObjective.add(score)`
+- Minor changes and improvements
 
 # v0.17
 - (New) Autoconfig module: automatically build and test algorithms, using Irace as the parameter optimizer.

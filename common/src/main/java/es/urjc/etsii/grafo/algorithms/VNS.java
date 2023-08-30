@@ -6,10 +6,11 @@ import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.metrics.BestObjective;
 import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solution.metrics.Metrics;
-import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
+import es.urjc.etsii.grafo.metrics.Metrics;
+import es.urjc.etsii.grafo.metrics.MetricsManager;
 import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.ValidationUtil;
@@ -35,7 +36,7 @@ import org.slf4j.LoggerFactory;
  *      }
  * }
  * </pre>
- *
+ * <p>
  * More information can be found in:
  * Hansen P., Mladenović N. (2018) Variable Neighborhood Search.
  * In: Martí R., Pardalos P., Resende M. (eds) Handbook of Heuristics.
@@ -77,7 +78,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * @param algorithmName Algorithm name, example "VNS1-GRASP". Uniquely identifies the current algorithm. Tip: If you dont care about the name, generate a random one using {@link StringUtil#randomAlgorithmName()}
      * @param shake         Perturbation method
      * @param constructive  Constructive method
-     * @param improver     List of improvers/local searches
+     * @param improver      List of improvers/local searches
      */
     @AutoconfigConstructor
     public VNS(
@@ -95,9 +96,9 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      *
      * @param algorithmName Algorithm name, example: "VNSWithRandomConstructive"
      * @param kMapper       k value provider, @see VNS.KMapper
-     * @param shake        Perturbation method
+     * @param shake         Perturbation method
      * @param constructive  Constructive method
-     * @param improver     List of improvers/local searches
+     * @param improver      List of improvers/local searches
      */
     public VNS(String algorithmName, KMapper<S, I> kMapper, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
         super(algorithmName);
@@ -130,9 +131,9 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
     public S algorithm(I instance) {
         var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
-        MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, solution.getScore());
+        BestObjective.add(solution.getScore());
         solution = improver.improve(solution);
-        MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, solution.getScore());
+        BestObjective.add(solution.getScore());
 
         int internalK = 0;
         // While stop not request OR k in range. k check is done and breaks inside loop
@@ -152,7 +153,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
             if (copy.isBetterThan(solution)) {
                 solution = copy;
                 internalK = 0;
-                MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, solution.getScore());
+                BestObjective.add(solution.getScore());
             } else {
                 internalK++;
             }
@@ -164,8 +165,8 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * Print the current status of the VNS procedure, i.e., the current iteration the best solution.
      *
      * @param internalK my value of K, starts at 0 and increments by 1
-     * @param mappedK external K value used for custom shake methods
-     * @param solution     solution
+     * @param mappedK   external K value used for custom shake methods
+     * @param solution  solution
      */
     private void printStatus(int internalK, int mappedK, S solution) {
         log.debug("{}:{} -> \t{}", internalK, mappedK, solution);
@@ -216,7 +217,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
         int mapK(S solution, int originalK);
     }
 
-    private static <S extends Solution<S,I>, I extends Instance> KMapper<S,I> getDefaultKMapper(int maxK){
+    private static <S extends Solution<S, I>, I extends Instance> KMapper<S, I> getDefaultKMapper(int maxK) {
         return (solution, originalK) -> originalK >= maxK ? KMapper.STOPNOW : originalK;
     }
 }

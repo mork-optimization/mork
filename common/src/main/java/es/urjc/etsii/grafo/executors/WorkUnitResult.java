@@ -3,9 +3,8 @@ package es.urjc.etsii.grafo.executors;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solution.metrics.TimeValue;
+import es.urjc.etsii.grafo.metrics.TimeValue;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.TreeSet;
 

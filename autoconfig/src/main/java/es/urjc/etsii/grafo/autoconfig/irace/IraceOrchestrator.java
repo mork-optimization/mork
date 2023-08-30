@@ -22,7 +22,7 @@ import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.services.SolutionValidator;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
+import es.urjc.etsii.grafo.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.*;
 import es.urjc.etsii.grafo.util.random.RandomManager;
@@ -42,7 +42,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static es.urjc.etsii.grafo.solution.metrics.Metrics.BEST_OBJECTIVE_FUNCTION;
+import static es.urjc.etsii.grafo.metrics.Metrics.BEST_OBJECTIVE_FUNCTION;
 import static es.urjc.etsii.grafo.util.IOUtil.*;
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 

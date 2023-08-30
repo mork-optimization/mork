@@ -5,8 +5,8 @@ import es.urjc.etsii.grafo.annotations.IntegerParam;
 import es.urjc.etsii.grafo.autoconfigtests.model.ACInstance;
 import es.urjc.etsii.grafo.autoconfigtests.model.ACSolution;
 import es.urjc.etsii.grafo.create.Constructive;
-import es.urjc.etsii.grafo.solution.metrics.Metrics;
-import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
+import es.urjc.etsii.grafo.metrics.Metrics;
+import es.urjc.etsii.grafo.metrics.MetricsManager;
 import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 
 import java.util.concurrent.TimeUnit;

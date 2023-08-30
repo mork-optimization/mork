@@ -19,7 +19,7 @@ import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.SolutionValidator;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
+import es.urjc.etsii.grafo.metrics.MetricsManager;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.TimeControl;

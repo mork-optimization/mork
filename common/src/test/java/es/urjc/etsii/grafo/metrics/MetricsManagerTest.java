@@ -1,8 +1,9 @@
-package es.urjc.etsii.grafo.solution.metrics;
+package es.urjc.etsii.grafo.metrics;
 
+import es.urjc.etsii.grafo.metrics.MetricsManager;
 import org.junit.jupiter.api.Test;
 
-import static es.urjc.etsii.grafo.solution.metrics.MetricsManager.areMetricsEnabled;
+import static es.urjc.etsii.grafo.metrics.MetricsManager.areMetricsEnabled;
 import static org.junit.jupiter.api.Assertions.*;
 
 class MetricsManagerTest {
