@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.improve.sa;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
@@ -61,7 +62,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                         .withCycleLength(10)
                         .withTerminationCriteriaCustom(terminationCriteria)
                         .withInitialTempFunction(initialTemperatureCalculator)
-                        .withMaximizing(true)
+                        .withMode(FMode.MAXIMIZE)
                         .withNeighborhood(randomizableNeighborhood)
                         .build());
 
@@ -72,7 +73,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                         .withCycleLength(-1)
                         .withTerminationCriteriaCustom(terminationCriteria)
                         .withInitialTempFunction(initialTemperatureCalculator)
-                        .withMaximizing(true)
+                        .withMode(FMode.MAXIMIZE)
                         .withNeighborhood(randomizableNeighborhood)
                         .build());
 
@@ -82,7 +83,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                         .withCycleLength(10)
                         .withTerminationCriteriaCustom(terminationCriteria)
                         .withInitialTempFunction(initialTemperatureCalculator)
-                        .withMaximizing(true)
+                        .withMode(FMode.MAXIMIZE)
                         .withNeighborhood(randomizableNeighborhood)
                         .build());
 
@@ -92,7 +93,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                         .withCycleLength(10)
                         .withTerminationCriteriaCustom(terminationCriteria)
                         .withInitialTempFunction(initialTemperatureCalculator)
-                        .withMaximizing(true)
+                        .withMode(FMode.MAXIMIZE)
                         .withNeighborhood(randomizableNeighborhood)
                         .build());
         Assertions.assertThrows(IllegalArgumentException.class, () ->
@@ -101,7 +102,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                         .withAcceptanceCriteriaCustom(acceptanceCriteria)
                         .withCycleLength(10)
                         .withInitialTempFunction(initialTemperatureCalculator)
-                        .withMaximizing(true)
+                        .withMode(FMode.MAXIMIZE)
                         .withNeighborhood(randomizableNeighborhood)
                         .build());
         Assertions.assertThrows(IllegalArgumentException.class, () ->
@@ -110,16 +111,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                         .withAcceptanceCriteriaCustom(acceptanceCriteria)
                         .withCycleLength(10)
                         .withTerminationCriteriaCustom(terminationCriteria)
-                        .withMaximizing(true)
-                        .withNeighborhood(randomizableNeighborhood)
-                        .build());
-        Assertions.assertThrows(IllegalArgumentException.class, () ->
-                new SimulatedAnnealingBuilder<>()
-                        .withCoolDownCustom(coolDownControl)
-                        .withAcceptanceCriteriaCustom(acceptanceCriteria)
-                        .withCycleLength(10)
-                        .withTerminationCriteriaCustom(terminationCriteria)
-                        .withInitialTempFunction(initialTemperatureCalculator)
+                        .withMode(FMode.MAXIMIZE)
                         .withNeighborhood(randomizableNeighborhood)
                         .build());
         Assertions.assertThrows(IllegalArgumentException.class, () ->
@@ -129,7 +121,16 @@ class SimulatedAnnealingUnitAlgorithmTest {
                         .withCycleLength(10)
                         .withTerminationCriteriaCustom(terminationCriteria)
                         .withInitialTempFunction(initialTemperatureCalculator)
-                        .withMaximizing(true)
+                        .withNeighborhood(randomizableNeighborhood)
+                        .build());
+        Assertions.assertThrows(IllegalArgumentException.class, () ->
+                new SimulatedAnnealingBuilder<>()
+                        .withCoolDownCustom(coolDownControl)
+                        .withAcceptanceCriteriaCustom(acceptanceCriteria)
+                        .withCycleLength(10)
+                        .withTerminationCriteriaCustom(terminationCriteria)
+                        .withInitialTempFunction(initialTemperatureCalculator)
+                        .withMode(FMode.MAXIMIZE)
                         .build());
 
         Assertions.assertDoesNotThrow(() ->
@@ -138,7 +139,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                         .withAcceptanceCriteriaCustom(acceptanceCriteria)
                         .withTerminationCriteriaCustom(terminationCriteria)
                         .withInitialTempFunction(initialTemperatureCalculator)
-                        .withMaximizing(true)
+                        .withMode(FMode.MAXIMIZE)
                         .withNeighborhood(randomizableNeighborhood)
                         .build());
 
@@ -158,7 +159,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                         .withCycleLength(10)
                         .withTerminationCriteriaCustom(terminationCriteria)
                         .withInitialTempFunction(initialTemperatureCalculator)
-                        .withMaximizing(true)
+                .withMode(FMode.MAXIMIZE)
                         .withNeighborhood(randomizableNeighborhood)
                         .build();
         SimpleAlgorithm simpleAlgorithm = new SimpleAlgorithm<>("Test", constructive, sa);
@@ -189,7 +190,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                 .withCycleLength(10)
                 .withTerminationCriteriaCustom(terminationCriteria)
                 .withInitialTempFunction(initialTemperatureCalculator)
-                .withMaximizing(true)
+                .withMode(FMode.MAXIMIZE)
                 .withNeighborhood(randomizableNeighborhood)
                 .build();
         SimpleAlgorithm simpleAlgorithm = new SimpleAlgorithm<>("Test", constructive, sa);
@@ -220,7 +221,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                 .withCycleLength(10)
                 .withTerminationCriteriaCustom(terminationCriteria)
                 .withInitialTempFunction(initialTemperatureCalculator)
-                .withMaximizing(true)
+                .withMode(FMode.MAXIMIZE)
                 .withNeighborhood(randomizableNeighborhood)
                 .build();
         SimpleAlgorithm simpleAlgorithm = new SimpleAlgorithm<>("Test", constructive, sa);
