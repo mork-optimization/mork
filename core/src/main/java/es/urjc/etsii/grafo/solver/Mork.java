@@ -112,6 +112,7 @@ public class Mork {
         String[] result = new String[args.length+1];
         for (int i = 0; i < args.length; i++) {
             result[i] = switch (args[i].trim()) {
+                case "--instance-selector" -> "--spring.profiles.active=instance-selector";
                 case "--irace" -> "--spring.profiles.active=irace";
                 case "--autoconfig" -> "--spring.profiles.active=autoconfig";
                 case "--util" -> "--spring.profiles.active=util";

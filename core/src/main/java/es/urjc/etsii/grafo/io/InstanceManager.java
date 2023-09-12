@@ -49,20 +49,25 @@ public class InstanceManager<I extends Instance> {
     }
 
 
+    public synchronized List<String> getInstanceSolveOrder(String expName) {
+        return getInstanceSolveOrder(expName, this.instanceConfiguration.isPreload());
+    }
+
     /**
      * Get which instances have to be solved for a given experiment
      *
      * @param expName experiment name as string
+     * @param preload if true load instances to use comparator to sort them, if false uses lexicograph sort by path name
      * @return Ordered list of instance identifiers, that can be later used by the getInstance method. Instances should be solved in the returned order.
      */
-    public synchronized List<String> getInstanceSolveOrder(String expName) {
+    public synchronized List<String> getInstanceSolveOrder(String expName, boolean preload) {
         return this.solveOrderByExperiment.computeIfAbsent(expName, s -> {
             String instancePath = this.instanceConfiguration.getPath(expName);
             checkExists(instancePath);
             List<Path> instances = IOUtil.iterate(instancePath);
 
             List<String> sortedInstances;
-            if (this.instanceConfiguration.isPreload()) {
+            if (preload) {
                 sortedInstances = validateAndSort(expName, instances);
             } else {
                 sortedInstances = lexicSort(instances);
@@ -138,7 +143,7 @@ public class InstanceManager<I extends Instance> {
     }
 
     /**
-     * Returns an instance given a path, does not cache it.
+     * Returns an instance given a path
      *
      * @param p Path of instance to load
      * @return Loaded instance
