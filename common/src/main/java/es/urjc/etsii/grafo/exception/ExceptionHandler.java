@@ -1,9 +1,8 @@
-package es.urjc.etsii.grafo.exceptions;
+package es.urjc.etsii.grafo.exception;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.solution.Solution;
 
 import java.util.Optional;
@@ -11,7 +10,6 @@ import java.util.Optional;
 /**
  * Abstract class to provide behaviour when an uncontrolled exception reaches executor code.
  *
- * @see DefaultExceptionHandler for an example implementation
  * @param <S> Solution class
  * @param <I> Instance class
  */
@@ -28,7 +26,7 @@ public abstract class ExceptionHandler<S extends Solution<S,I>, I extends Instan
      * @param algorithm Current algorithm
      * @param io IOManager, to optionally persist for example exception data.
      */
-    public abstract void handleException(String experimentName, int iteration, Exception e, Optional<S> s, I i, Algorithm<S,I> algorithm, IOManager<S, I> io);
+    public abstract void handleException(String experimentName, int iteration, Exception e, Optional<S> s, I i, Algorithm<S,I> algorithm);
 
     @Override
     public String toString() {

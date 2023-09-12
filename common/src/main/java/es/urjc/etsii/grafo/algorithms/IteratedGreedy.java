@@ -7,12 +7,12 @@ import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.Reconstructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.metrics.BestObjective;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.shake.DestroyRebuild;
 import es.urjc.etsii.grafo.shake.Destructive;
 import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solution.metrics.Metrics;
-import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
@@ -149,7 +149,7 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
     public S algorithm(I instance) {
         S solution = this.newSolution(instance);
         solution = this.constructive.construct(solution);
-        MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, solution.getScore());
+        Metrics.add(BestObjective.class, solution.getScore());
         if(TimeControl.isTimeUp()){
             return solution;
         }
@@ -176,7 +176,7 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
             } else {
                 solution = copy;
                 logger.debug("Improved at iteration {}: {} - {}", i, solution.getScore(), solution);
-                MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, solution.getScore());
+                Metrics.add(BestObjective.class, solution.getScore());
                 iterationsWithoutImprovement = 0;
             }
         }

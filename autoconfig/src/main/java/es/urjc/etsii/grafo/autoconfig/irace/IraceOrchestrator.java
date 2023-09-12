@@ -18,11 +18,13 @@ import es.urjc.etsii.grafo.exception.IllegalAlgorithmConfigException;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.metrics.BestObjective;
+import es.urjc.etsii.grafo.metrics.MetricUtil;
 import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.services.SolutionValidator;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.*;
 import es.urjc.etsii.grafo.util.random.RandomManager;
@@ -42,7 +44,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static es.urjc.etsii.grafo.solution.metrics.Metrics.BEST_OBJECTIVE_FUNCTION;
 import static es.urjc.etsii.grafo.util.IOUtil.*;
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 
@@ -303,8 +304,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private ExecuteResponse singleExecution(Algorithm<S, I> algorithm, I instance) {
         long maxExecTime = this.solverConfig.getIgnoreInitialMillis() + this.solverConfig.getIntervalDurationMillis();
         if (isAutoconfigEnabled) {
-            MetricsManager.enableMetrics();
-            MetricsManager.resetMetrics();
+            Metrics.enableMetrics();
+            Metrics.resetMetrics();
             TimeControl.setMaxExecutionTime(maxExecTime, TimeUnit.MILLISECONDS);
             TimeControl.start();
         }
@@ -321,9 +322,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         if (isAutoconfigEnabled) {
             checkExecutionTime(algorithm, instance);
             TimeControl.remove();
-            var metrics = MetricsManager.getInstance();
             try {
-                score = metrics.areaUnderCurve(BEST_OBJECTIVE_FUNCTION,
+                score = MetricUtil.areaUnderCurve(BestObjective.class,
                         TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
                         TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS)
                 );
@@ -366,11 +366,5 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     }
 
     public record SlowExecution(long relativeTime, String instanceName, Algorithm<?, ?> algorithm) {
-    }
-
-    public record ExecutionResult(double score, double time) {
-        public ExecutionResult(double score, long time) {
-            this(score, TimeUtil.nanosToSecs(time));
-        }
     }
 }

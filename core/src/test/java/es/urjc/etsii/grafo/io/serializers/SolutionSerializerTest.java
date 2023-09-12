@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.io.serializers;
 
+import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSerializerConfigUtils;
 import es.urjc.etsii.grafo.testutil.TestSolution;
@@ -18,19 +19,28 @@ import java.util.ArrayList;
 
 public class SolutionSerializerTest {
 
+    private static class TestSerializer extends SolutionSerializer<TestSolution, TestInstance> {
+        /**
+         * Create a new solution serializer with the given config
+         *
+         * @param config Common solution serializer configuration
+         */
+        protected TestSerializer(AbstractSolutionSerializerConfig config) {
+            super(config);
+        }
+
+        @Override
+        public void export(BufferedWriter writer, WorkUnitResult<TestSolution, TestInstance> result) throws IOException {
+            writer.write(result.solution().toString());
+        }
+    }
     /**
      * Create a new solution serializer with the given config
      *
      * @param config
      */
     public static SolutionSerializer<TestSolution, TestInstance> initSerializer(TestSolutionSerializerConfig config) {
-        SolutionSerializer<TestSolution, TestInstance> serializer = new SolutionSerializer<TestSolution, TestInstance>(config) {
-            @Override
-            public void export(BufferedWriter writer, TestSolution testSolution) throws IOException {
-                writer.write(testSolution.toString());
-
-            }
-        };
+        SolutionSerializer<TestSolution, TestInstance> serializer = new TestSerializer(config);
         return serializer;
     }
 

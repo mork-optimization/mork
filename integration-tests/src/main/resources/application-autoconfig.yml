@@ -1,6 +1,0 @@
-instances.path.default: 'instancesautoconfig'
-solver.parallelExecutor: true
-solver.nWorkers: -1
-solver.tree-depth: 4
-solver.ignore-initial-millis: 10
-solver.interval-duration-millis: 100

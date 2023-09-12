@@ -5,9 +5,9 @@ import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.metrics.BestObjective;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solution.metrics.Metrics;
-import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -57,9 +57,8 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         if(ofmode.isBetter(initialScore, endScore)){
             throw new IllegalStateException(String.format("Score has worsened after executing an improvement method: %s --> %s", initialScore, endScore));
         }
-        if(ofmode.isBetter(endScore, initialScore)){
-            MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, endScore);
-        }
+        Metrics.add(BestObjective.class, solution.getScore());
+
         return improvedSolution;
     }
 

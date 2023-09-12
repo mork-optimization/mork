@@ -5,11 +5,7 @@ import es.urjc.etsii.grafo.solver.Mork;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.io.File;
 import java.io.IOException;
@@ -33,7 +29,6 @@ public class IraceIntegrationTest {
     }
 
     @Test
-    //@Disabled
     void launchAutoconfig(){
         Mork.start(new String[]{"--autoconfig"}, FMode.MAXIMIZE);
     }

@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.io.serializers.json;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.fasterxml.jackson.databind.SerializationFeature;
+import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -44,7 +45,7 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S, I>, I extends I
      * JSON export method. Exports the given solution to the provided file in JSON format.
      */
     @Override
-    public void export(BufferedWriter writer, S solution) {
+    public void export(BufferedWriter writer, WorkUnitResult<S,I> result) {
         throw new UnsupportedOperationException();
     }
 
@@ -54,11 +55,11 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S, I>, I extends I
      * JSON export method. Exports the given solution to the provided file in JSON format.
      */
     @Override
-    public void export(String folder, String suggestedFilename, S solution) {
+    public void export(String folder, String suggestedFilename, WorkUnitResult<S,I> result) {
         var f = new File(folder, suggestedFilename);
         if (config.isEnabled()) {
             try {
-                writer.writeValue(f, solution);
+                writer.writeValue(f, result);
             } catch (IOException e) {
                 throw new RuntimeException("IOException while writing to file: " + f.getAbsolutePath(), e);
             }

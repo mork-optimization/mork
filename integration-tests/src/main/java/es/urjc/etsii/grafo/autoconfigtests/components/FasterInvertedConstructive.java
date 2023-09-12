@@ -5,6 +5,8 @@ import es.urjc.etsii.grafo.annotations.RealParam;
 import es.urjc.etsii.grafo.autoconfigtests.model.ACInstance;
 import es.urjc.etsii.grafo.autoconfigtests.model.ACSolution;
 import es.urjc.etsii.grafo.create.Constructive;
+import es.urjc.etsii.grafo.metrics.BestObjective;
+import es.urjc.etsii.grafo.metrics.Metrics;
 
 public class FasterInvertedConstructive extends Constructive<ACSolution, ACInstance> {
 
@@ -16,8 +18,9 @@ public class FasterInvertedConstructive extends Constructive<ACSolution, ACInsta
 
     @Override
     public ACSolution construct(ACSolution solution) {
-        solution.setScore(-sumThis); // REVERSED
+        solution.setMultiplier(-sumThis); // REVERSED
         solution.notifyUpdate();
+        Metrics.add(BestObjective.class, solution.getScore());
         return solution;
     }
 }

@@ -103,14 +103,16 @@ public abstract class RawSheetWriter {
     }
 
     protected String[] getCustomPropertyNames(List<? extends SolutionGeneratedEvent<?, ?>> results) {
-        var stringRef = new String[0];
-        if(results.isEmpty()){
-            return stringRef;
-        }
-        var first = results.get(0);
-        var names = first.getUserDefinedProperties().keySet().toArray(stringRef);
-        Arrays.sort(names);
-        return names;
+//        var stringRef = new String[0];
+//        if(results.isEmpty()){
+//            return stringRef;
+//        }
+//        var first = results.get(0);
+//        var names = first.getUserDefinedProperties().keySet().toArray(stringRef);
+//        Arrays.sort(names);
+//        return names;
+
+        return new String[0];
     }
 
     protected String[] getCommonHeaders(){

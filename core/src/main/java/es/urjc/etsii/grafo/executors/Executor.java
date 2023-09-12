@@ -8,7 +8,8 @@ import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.EventPublisher;
 import es.urjc.etsii.grafo.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
-import es.urjc.etsii.grafo.exceptions.ExceptionHandler;
+import es.urjc.etsii.grafo.exception.ExceptionHandler;
+import es.urjc.etsii.grafo.exceptions.DefaultExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
@@ -18,7 +19,7 @@ import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.SolutionValidator;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solution.metrics.MetricsManager;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.TimeControl;
@@ -33,8 +34,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.function.BiPredicate;
 
+import static es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator.decideImplementation;
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 
 /**
@@ -56,6 +57,9 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     protected final List<ReferenceResultProvider> referenceResultProviders;
     protected final SolverConfig solverConfig;
     protected final FMode ofmode = Mork.getFMode();
+
+    private final ExceptionHandler<S, I> exceptionHandler;
+
 
 
     /**
@@ -82,6 +86,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
      * @param timeLimitCalculator      time limit calculator if exists
      * @param io                       IO manager
      * @param referenceResultProviders list of all reference value providers implementations
+     * @param exceptionHandlers list of exception handlers available
      */
     protected Executor(
             Optional<SolutionValidator<S, I>> validator,
@@ -89,11 +94,13 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             IOManager<S, I> io,
             InstanceManager<I> instanceManager,
             List<ReferenceResultProvider> referenceResultProviders,
-            SolverConfig solverConfig
-    ) {
+            SolverConfig solverConfig,
+            List<ExceptionHandler<S, I>> exceptionHandlers) {
         this.timeLimitCalculator = timeLimitCalculator;
         this.referenceResultProviders = referenceResultProviders;
         this.solverConfig = solverConfig;
+        this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
+
         if (validator.isEmpty()) {
             log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
         } else {
@@ -105,7 +112,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         this.instanceManager = instanceManager;
     }
 
-    public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, ExceptionHandler<S, I> exceptionHandler, long startTimestamp);
+    public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, long startTimestamp);
 
     /**
      * Finalize and destroy all resources, we have finished and are shutting down now.
@@ -152,8 +159,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             }
 
             if (solverConfig.isMetrics()) {
-                MetricsManager.enableMetrics();
-                MetricsManager.resetMetrics();
+                Metrics.enableMetrics();
+                Metrics.resetMetrics();
             }
 
             // Do real work
@@ -167,9 +174,10 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long executionTime = endTime - starTime;
-            return new WorkUnitResult<>(workUnit, solution, executionTime, timeToTarget);
+            var metrics = Metrics.areMetricsEnabled()? Metrics.getCurrentThreadMetrics() : null;
+            return new WorkUnitResult<>(workUnit, solution, executionTime, timeToTarget, metrics);
         } catch (Exception e) {
-            workUnit.exceptionHandler().handleException(workUnit.experimentName(), workUnit.i(), e, Optional.ofNullable(solution), instance, workUnit.algorithm(), io);
+            exceptionHandler.handleException(workUnit.experimentName(), workUnit.i(), e, Optional.ofNullable(solution), instance, workUnit.algorithm());
             EventPublisher.getInstance().publishEvent(new ErrorEvent(e));
             return null;
         }
@@ -177,24 +185,24 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
     protected void processWorkUnitResult(WorkUnitResult<S, I> r, ProgressBar pb) {
         pb.step();
-        exportAllSolutions(r);
-        var solutionGenerated = new SolutionGeneratedEvent<>(r.workUnit().i(), r.solution(), r.workUnit().experimentName(), r.workUnit().algorithm(), r.executionTime(), r.timeToTarget(), r.userDefinedProperties());
+        io.exportSolution(r, SolutionExportFrequency.ALL);
+        var solutionGenerated = new SolutionGeneratedEvent<>(r.iteration(), r.solution(), r.experimentName(), r.algorithm(), r.executionTime(), r.timeToTarget(), r.metrics());
         EventPublisher.getInstance().publishEvent(solutionGenerated);
         if (log.isDebugEnabled()) {
-            log.debug(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.workUnit().i() + 1, nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
+            log.debug(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.iteration(), nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
         }
     }
 
-    protected void exportAllSolutions(WorkUnitResult<S, I> r) {
-        io.exportSolution(r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution(), String.valueOf(r.workUnit().i()), SolutionExportFrequency.ALL);
-    }
-
     protected void exportAlgorithmInstanceSolution(WorkUnitResult<S, I> r) {
-        io.exportSolution(r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution(), "bestiter", SolutionExportFrequency.BEST_PER_ALG_INSTANCE);
+        // replace best iteration number with generic text to avoid overwriting the corresponding work unit result
+        var modifiedWorkUnit = new WorkUnitResult<>(r.experimentName(), r.algorithm(), "bestiter", r.solution(), r.executionTime(), r.timeToTarget(), r.metrics());
+        io.exportSolution(modifiedWorkUnit, SolutionExportFrequency.BEST_PER_ALG_INSTANCE);
     }
 
     protected void exportInstanceSolution(WorkUnitResult<S, I> r) {
-        io.exportSolution(r.workUnit().experimentName(), new EmptyAlgorithm<>("bestalg"), r.solution(), "bestiter", SolutionExportFrequency.BEST_PER_INSTANCE);
+        // replace best iteration number and algorithm name with generic text to avoid overwriting the corresponding work unit result
+        var modifiedWorkUnit = new WorkUnitResult<>(r.experimentName(), new EmptyAlgorithm<>("bestalg"), "bestiter", r.solution(), r.executionTime(), r.timeToTarget(), r.metrics());
+        io.exportSolution(modifiedWorkUnit, SolutionExportFrequency.BEST_PER_INSTANCE);
     }
 
     protected Optional<Double> getOptionalReferenceValue(String instanceName, boolean onlyOptimal) {
@@ -226,18 +234,17 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
      *
      * @param experiment       experiment definition
      * @param instancePaths    instance name list
-     * @param exceptionHandler what to do if something fails inside the workunit
      * @param repetitions      how many times should we repeat the (instance, algorithm) pair
      * @return Map of workunits per instance
      */
-    protected Map<String, Map<Algorithm<S, I>, List<WorkUnit<S, I>>>> getOrderedWorkUnits(Experiment<S, I> experiment, List<String> instancePaths, ExceptionHandler<S, I> exceptionHandler, int repetitions) {
+    protected Map<String, Map<Algorithm<S, I>, List<WorkUnit<S, I>>>> getOrderedWorkUnits(Experiment<S, I> experiment, List<String> instancePaths, int repetitions) {
         var workUnits = new LinkedHashMap<String, Map<Algorithm<S, I>, List<WorkUnit<S, I>>>>();
         for (String instancePath : instancePaths) {
             var algWorkUnits = new LinkedHashMap<Algorithm<S, I>, List<WorkUnit<S, I>>>();
             for (var alg : experiment.algorithms()) {
                 var list = new ArrayList<WorkUnit<S, I>>();
                 for (int i = 0; i < repetitions; i++) {
-                    var workUnit = new WorkUnit<>(experiment.name(), instancePath, alg, i, exceptionHandler);
+                    var workUnit = new WorkUnit<>(experiment.name(), instancePath, alg, i);
                     list.add(workUnit);
                 }
                 algWorkUnits.put(alg, list);

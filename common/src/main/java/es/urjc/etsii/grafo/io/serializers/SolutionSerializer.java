@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.io.serializers;
 
-import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
+import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.TimeUtil;
@@ -51,18 +51,18 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
 
     /**
      * Write a solution to disk.
-     *
-     * @param experimentName current experiment name
-     * @param alg            algorithm that generated this solution
-     * @param solution              solution to serialize to disk
+     * @param r result of execution
      */
-    public final void exportSolution(String experimentName, Algorithm<S, I> alg, S solution, String iterationId) {
-        log.debug("Exporting solution for (exp, instance, algorithm) = ({}, {}, {}) using {}", experimentName, solution.getInstance().getId(), alg.getShortName(), this.getClass().getSimpleName());
-        String filename = getFilename(experimentName, solution.getInstance().getId(), alg.getShortName(), iterationId);
+    public final void exportSolution(WorkUnitResult<S,I> r) {
+        var solution = r.solution();
+        var instance = solution.getInstance();
+        // r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution(), String.valueOf(r.workUnit().i())
+        log.debug("Exporting solution for (exp, instance, algorithm) = ({}, {}, {}) using {}", r.experimentName(), instance.getId(), r.algorithm().getShortName(), this.getClass().getSimpleName());
+        String filename = getFilename(r.experimentName(), instance.getId(), r.algorithm().getShortName(), r.iteration());
         var solutionFolder = this.config.getFolder();
         createFolder(solutionFolder);
         long start = System.nanoTime();
-        this.export(solutionFolder, filename, solution);
+        this.export(solutionFolder, filename, r);
         long elapsed = System.nanoTime() - start;
         if(elapsed > WARN_THRESHOLD && !warnedSlow){
             log.warn("Slow serialization detected in {}, last execution took {} ms. Consider using a faster format, or use an async event listener to improve performance", this.getClass().getSimpleName(), elapsed / TimeUtil.NANOS_IN_MILLISECOND);
@@ -87,12 +87,12 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      *
      * @param folder Folder where solutions should be stored according to the configuration
      * @param suggestedFilename Suggested filename, can be ignored by the implementation
-     * @param solution Solution to export
+     * @param result result to export, contains solution and extra data
      */
-    public void export(String folder, String suggestedFilename, S solution) {
+    public void export(String folder, String suggestedFilename, WorkUnitResult<S,I> result) {
         var f = new File(folder, suggestedFilename);
         try (var bw = new BufferedWriter(new FileWriter(f))) {
-            this.export(bw, solution);
+            this.export(bw, result);
         } catch (IOException e) {
             log.warn("IOException exporting solution, skipping.", e);
         }
@@ -104,10 +104,10 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      * the given solution export is skipped.
      *
      * @param writer Output, write data here
-     * @param solution      Solution to export
+     * @param result      Solution to export
      * @throws IOException exception thrown in case something goes wrong
      */
-    public abstract void export(BufferedWriter writer, S solution) throws IOException;
+    public abstract void export(BufferedWriter writer, WorkUnitResult<S,I> result) throws IOException;
 
     public AbstractSolutionSerializerConfig getConfig() {
         return config;

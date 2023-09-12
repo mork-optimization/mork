@@ -49,7 +49,7 @@ public class PatchMathRandom {
             makeNonFinal(internalRandom);
             internalRandom.set(null, new FailRandom());
             log.info("Math.random() patched successfully");
-        } catch (NoSuchFieldException | IllegalAccessException | ClassNotFoundException | InaccessibleObjectException e) {
+        } catch (NoSuchFieldException | IllegalAccessException | ClassNotFoundException | InaccessibleObjectException | UnsupportedOperationException e) {
             // Log as warning, but do not stop application when failing to patch, it is not critical
             log.warn("Failed to patch Math.random(), probably due to missing opens, see: https://mork-optimization.readthedocs.io/en/latest/quickstart/troubleshooting/. Cause: {}", e.getMessage());
         }

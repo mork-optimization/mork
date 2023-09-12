@@ -8,7 +8,7 @@ import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentStartedEvent;
 import es.urjc.etsii.grafo.exception.ResourceLimitException;
 import es.urjc.etsii.grafo.exceptions.DefaultExceptionHandler;
-import es.urjc.etsii.grafo.exceptions.ExceptionHandler;
+import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.experiment.Experiment;
 import es.urjc.etsii.grafo.experiment.ExperimentManager;
@@ -39,7 +39,6 @@ public class UserExperimentOrchestrator<S extends Solution<S, I>, I extends Inst
 
     private final InstanceManager<I> instanceManager;
     private final ExperimentManager<S, I> experimentManager;
-    private final ExceptionHandler<S, I> exceptionHandler;
     private final Executor<S, I> executor;
     private final SolverConfig solverConfig;
 
@@ -49,20 +48,17 @@ public class UserExperimentOrchestrator<S extends Solution<S, I>, I extends Inst
      * @param solverConfig      a {@link SolverConfig} object.
      * @param instanceManager   a {@link InstanceManager} object.
      * @param experimentManager a {@link ExperimentManager} object.
-     * @param exceptionHandlers a {@link List} object.
      * @param executor          a {@link Executor} object.
      */
     public UserExperimentOrchestrator(
             SolverConfig solverConfig,
             InstanceManager<I> instanceManager,
             ExperimentManager<S, I> experimentManager,
-            List<ExceptionHandler<S, I>> exceptionHandlers,
             Executor<S, I> executor
     ) {
         this.solverConfig = solverConfig;
         this.instanceManager = instanceManager;
         this.experimentManager = experimentManager;
-        this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
         this.executor = executor;
     }
 
@@ -104,7 +100,7 @@ public class UserExperimentOrchestrator<S extends Solution<S, I>, I extends Inst
         var instancePaths = instanceManager.getInstanceSolveOrder(experiment.name());
         verifyWorkloadLimit(solverConfig, instancePaths, experiment.algorithms());
         EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(experiment.name(), instancePaths));
-        executor.executeExperiment(experiment, instancePaths, exceptionHandler, startTimestamp);
+        executor.executeExperiment(experiment, instancePaths, startTimestamp);
         long experimentExecutionTime = System.nanoTime() - startTime;
         EventPublisher.getInstance().publishEvent(new ExperimentEndedEvent(experiment.name(), experimentExecutionTime, startTimestamp));
         log.info("Finished running experiment: {}", experiment.name());

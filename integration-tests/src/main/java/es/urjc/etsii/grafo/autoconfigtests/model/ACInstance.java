@@ -19,4 +19,8 @@ public class ACInstance extends Instance{
     public String getContent() {
         return content;
     }
+
+    public int length() {
+        return content.length();
+    }
 }
