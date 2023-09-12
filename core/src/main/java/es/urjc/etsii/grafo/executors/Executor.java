@@ -19,7 +19,7 @@ import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.SolutionValidator;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.metrics.MetricsManager;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.TimeControl;
@@ -159,8 +159,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             }
 
             if (solverConfig.isMetrics()) {
-                MetricsManager.enableMetrics();
-                MetricsManager.resetMetrics();
+                Metrics.enableMetrics();
+                Metrics.resetMetrics();
             }
 
             // Do real work
@@ -174,7 +174,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
             long timeToTarget = solution.getLastModifiedTime() - starTime;
             long executionTime = endTime - starTime;
-            return new WorkUnitResult<>(workUnit, solution, executionTime, timeToTarget, MetricsManager.rawMetrics());
+            var metrics = Metrics.areMetricsEnabled()? Metrics.getCurrentThreadMetrics() : null;
+            return new WorkUnitResult<>(workUnit, solution, executionTime, timeToTarget, metrics);
         } catch (Exception e) {
             exceptionHandler.handleException(workUnit.experimentName(), workUnit.i(), e, Optional.ofNullable(solution), instance, workUnit.algorithm());
             EventPublisher.getInstance().publishEvent(new ErrorEvent(e));

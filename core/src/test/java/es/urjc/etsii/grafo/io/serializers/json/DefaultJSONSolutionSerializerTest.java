@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.EmptyAlgorithm;
 import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
+import es.urjc.etsii.grafo.metrics.MetricsStorage;
 import es.urjc.etsii.grafo.testutil.TestAssertions;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
@@ -60,7 +61,7 @@ class DefaultJSONSolutionSerializerTest {
         var serializer = new DefaultJSONSolutionSerializer<TestSolution, TestInstance>(config);
         TestAssertions.toStringImpl(serializer);
         Assertions.assertTrue(serializer.isEnabled());
-        var wur = new WorkUnitResult<>("testExperiment", this.algorithm, "bestIteration", this.solution, -1, -1, new HashMap<>());
+        var wur = new WorkUnitResult<>("testExperiment", this.algorithm, "bestIteration", this.solution, -1, -1, new MetricsStorage());
         Assertions.assertThrows(UnsupportedOperationException.class, () -> serializer.export(new BufferedWriter(new StringWriter()), wur));
         serializer.exportSolution(wur);
         var paths = Files.list(this.tempDir).toList();

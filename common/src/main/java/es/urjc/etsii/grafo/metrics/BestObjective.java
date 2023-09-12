@@ -3,29 +3,39 @@ package es.urjc.etsii.grafo.metrics;
 import es.urjc.etsii.grafo.algorithms.FMode;
 
 public class BestObjective extends AbstractMetric {
-    private static final String NAME = BestObjective.class.getSimpleName();
-    private double bestKnownValue;
 
     private final FMode fMode;
 
-    public BestObjective() {
-        this.fMode = MetricsManager.getFMode();
+    public BestObjective(long referenceInstant) {
+        super(referenceInstant);
+        this.fMode = Metrics.getFMode();
     }
 
     @Override
-    public void addDatapoint(double value, long absoluteTime) {
-        if(fMode.isBetter(value, bestKnownValue)){
-            bestKnownValue = value;
-            super.addDatapoint(value, absoluteTime);
+    public void add(long instant, double value) {
+        var t = new TimeValue(instant, value);
+        // Datapoint is inserted only if it improves the curve
+        var previous = this.values.floor(t);
+        if(previous == null){
+            super.add(instant, value);
+        } else if(fMode.isBetter(value, previous.value())){
+            // Remove all points that are worse than the new one
+            for (var iterator = this.values.tailSet(previous, false).iterator(); iterator.hasNext(); ) {
+                var tv = iterator.next();
+                if (fMode.isBetterOrEqual(value, tv.value())) {
+                    iterator.remove();
+                } else {
+                    break;
+                }
+            }
+            super.add(instant, value);
         }
     }
 
-    public static void add(double value) {
-        BestObjective.add(value, System.nanoTime());
-    }
-    public static void add(double value, long absoluteTime) {
-        if(!MetricsManager.areMetricsEnabled()) return;
-        var metrics = MetricsManager.getInstance();
-        metrics.addDatapoint(NAME, BestObjective::new, value, absoluteTime);
+    @Override
+    public void add(double value) {
+        if(values.isEmpty() || fMode.isBetter(value, values.last().value())){
+            super.add(value);
+        }
     }
 }

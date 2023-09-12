@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>%clr([%d{HH:mm:ss}]){faint} %clr(%-5level) %clr(%-26.26logger{25}){cyan} %clr(:){faint} %m%n</pattern>
+        </encoder>
+        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
+            <level>INFO</level>
+        </filter>
+    </appender>
+
+
+    <!--    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">-->
+    <!--        <file>log.txt</file>-->
+    <!--        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">-->
+    <!--            <fileNamePattern>log-%d{yyyy-MM-dd}.%i}.gz</fileNamePattern>-->
+    <!--            <maxFileSize>${LOGBACK_ROLLINGPOLICY_MAX_FILE_SIZE:-10MB}</maxFileSize>-->
+    <!--        </rollingPolicy>-->
+    <!--        <encoder>-->
+    <!--            <pattern>-->
+    <!--                %clr([%d{HH:mm:ss}]){faint} %clr(%-5level) %clr(%-26.26logger{25}){cyan} %clr(:){faint} %m%n-->
+    <!--            </pattern>-->
+    <!--        </encoder>-->
+    <!--        <filter class="ch.qos.logback.classic.filter.ThresholdFilter">-->
+    <!--            <level>TRACE</level>-->
+    <!--        </filter>-->
+    <!--    </appender>-->
+
+    <root level="debug">
+        <appender-ref ref="STDOUT" />
+        <!--        <appender-ref ref="FILE"/>-->
+    </root>
+
+    <logger name="org.apache.poi.util.XMLHelper" level="ERROR"/>
+    <logger name="org.apache.catalina" level="WARN"/>
+    <logger name="org.springframework" level="WARN"/>
+
+</configuration>

@@ -7,10 +7,9 @@ import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.metrics.BestObjective;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.metrics.Metrics;
-import es.urjc.etsii.grafo.metrics.MetricsManager;
 import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.ValidationUtil;
@@ -131,9 +130,9 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
     public S algorithm(I instance) {
         var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
-        BestObjective.add(solution.getScore());
+        Metrics.add(BestObjective.class, solution.getScore());
         solution = improver.improve(solution);
-        BestObjective.add(solution.getScore());
+        Metrics.add(BestObjective.class, solution.getScore());
 
         int internalK = 0;
         // While stop not request OR k in range. k check is done and breaks inside loop
@@ -153,7 +152,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
             if (copy.isBetterThan(solution)) {
                 solution = copy;
                 internalK = 0;
-                BestObjective.add(solution.getScore());
+                Metrics.add(BestObjective.class, solution.getScore());
             } else {
                 internalK++;
             }

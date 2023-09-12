@@ -1,19 +1,61 @@
 package es.urjc.etsii.grafo.metrics;
 
 public class MetricUtil {
+
     /**
      * Calculate the area delimited between y = 0 and the given metric, in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]
-     * Should be extremely fast, with O(n) complexity, being N the number of data points for the given metric
-     * @param metric metric instance
-     * @param skipNanos ignore any datapoint whose timestamp is less than (referenceTime+skipNanos)
+     * Should be extremely fast, with O(n) complexity, being N the number of data points for the given metric.
+     * @param metricType metric type
+     * @param skipNanos ignore any datapoint whose timestamp is less than (referenceTime+skipNanos).
      * @param duration  pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
      * @return area calculation as a double value
+     * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
      */
-    public double areaUnderCurve(AbstractMetric metric, long skipNanos, long duration) {
+    public static double areaUnderCurve(Class<? extends AbstractMetric> metricType, long skipNanos, long duration) {
+        return areaUnderCurve(metricType.getSimpleName(), skipNanos, duration);
+    }
+
+    /**
+     * Calculate the area delimited between y = 0 and the given metric, in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]
+     * Should be extremely fast, with O(n) complexity, being N the number of data points for the given metric.
+     * @param metricName metric name
+     * @param skipNanos ignore any datapoint whose timestamp is less than (referenceTime+skipNanos).
+     * @param duration  pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
+     * @return area calculation as a double value
+     * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
+     */
+    public static double areaUnderCurve(String metricName, long skipNanos, long duration) {
+        return areaUnderCurve(Metrics.get(metricName), skipNanos, duration);
+    }
+
+    /**
+     * Calculate the area delimited between y = 0 and the given metric, in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]
+     * Should be extremely fast, with O(n) complexity, being N the number of data points for the given metric.
+     * @param metric metric instance
+     * @param skipNanos ignore any datapoint whose timestamp is less than (referenceTime+skipNanos).
+     * @param duration  pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
+     * @return area calculation as a double value
+     * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
+     */
+    public static double areaUnderCurve(AbstractMetric metric, long skipNanos, long duration) {
+        return areaUnderCurve(metric, skipNanos, duration, false);
+    }
+
+    /**
+     * Calculate the area delimited between y = 0 and the given metric, in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]
+     * Should be extremely fast, with O(n) complexity, being N the number of data points for the given metric.
+     * @param metric metric instance
+     * @param skipNanos ignore any datapoint whose timestamp is less than (referenceTime+skipNanos).
+     * @param duration  pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
+     * @param logScale Scale y values using natural logarithm
+     * @return area calculation as a double value
+     * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
+     */
+    public static double areaUnderCurve(AbstractMetric metric, long skipNanos, long duration, boolean logScale) {
         var set = metric.values;
         var name = metric.getName();
         if (set.isEmpty()) {
-            throw new IllegalArgumentException("Cannot calculate hypervolume if there are no datapoints, for metric " + name);
+            throw new IllegalArgumentException("Cannot calculate area under curve if there are no values recorded for metric " + name);
         }
 
         var startInterval = new TimeValue(skipNanos, -1);
@@ -35,15 +77,19 @@ public class MetricUtil {
 
         // While the time is lower than endTime, add to area the square delimited by time horizontally and value vertically
         for (var tv : filteredSet) {
-            if (tv.timeElapsed() > endTime) {
+            if (tv.instant() > endTime) {
                 break;
             }
-            area += (tv.timeElapsed() - lastTime) * lastValue;
+            // Calculate area of current rectangle
+            var height = logScale? Math.log(lastValue): lastValue;
+            area += (tv.instant() - lastTime) * height;
+            // Advance limit
             lastValue = tv.value();
-            lastTime = tv.timeElapsed();
+            lastTime = tv.instant();
         }
-        // Complete the area until the cutoff mark, the points may have ended earlier in time
-        area += (endTime - lastTime) * lastValue;
+        // Complete the area until the right cutoff mark
+        var height = logScale? Math.log(lastValue): lastValue;
+        area += (endTime - lastTime) * height;
 
         return area;
     }

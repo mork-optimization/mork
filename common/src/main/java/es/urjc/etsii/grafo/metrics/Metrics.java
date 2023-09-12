@@ -1,103 +1,210 @@
 package es.urjc.etsii.grafo.metrics;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
+
 import java.util.*;
-import java.util.function.Supplier;
+import java.util.function.Function;
 
 /**
- * Stores metrics of different things that are happening while solving.
- * THIS CLASS IS NOT THREAD SAFE
+ * Manages metrics instances. Example usage:
+ * - Call {@link Metrics#resetMetrics()} to initialize a new instance of empty metrics
+ * - Run the algorithm. Any algorithm component can get the current metrics instance using {@link Metrics#getCurrentThreadMetrics()}, and add data points to it using {@link AbstractMetric#addDatapoint(double, long)}.
+ * - Do something with the metrics after the algorithm finishes, for example merging (see below).
+ * - Reset metrics before the next algorithm start executing.
+ * <p>
+ * Note that metrics are always ThreadLocal, which means that every thread works on its own independent copy.
+ * Metrics are always disabled by default, and must be enabled by either the framework or manually by the user
+ * Metrics from different threads can later be merged using {@link Metrics#merge(MetricsStorage...)}
  */
-public class Metrics {
+public final class Metrics {
 
-    protected final Map<String, AbstractMetric> metrics;
-    protected final Map<String, Supplier<? extends AbstractMetric>> suppliers;
-    protected final long referenceTime;
+    private static final Map<String, Function<Long, ? extends AbstractMetric>> initializers = new HashMap<>();
+    private static ThreadLocal<MetricsStorage> localMetrics = new ThreadLocal<>();
+    private static volatile boolean enabled = false;
+    private static FMode fmode;
 
-    /**
-     * Create a new metrics instance
-     *
-     * @param referenceTime all data points will be relative to this time, use the returned value of System.nanoTime()
-     */
-    protected Metrics(long referenceTime) {
-        this.metrics = new HashMap<>();
-        this.suppliers = new HashMap<>();
-        this.referenceTime = referenceTime;
-    }
+    private Metrics(){}
 
     /**
-     * Create a new metrics instance taking the current nanoTime as a reference point
+     * Get metrics collected by the current thread.
+     * @return metrics instance for the current thread
+     * @throws IllegalStateException if the metrics have not been initialized for the current thread, or if the metrics are disabled
      */
-    protected Metrics() {
-        this(System.nanoTime());
-    }
-
-    /**
-     * Register the "value" for a metric named "name" has happened at the current time, measured using System.nanoTime().
-     *
-     * @param name  metric name, for example "numberOfNodesAssigned".
-     * @param initializeMetric Method that initializes the metric if it does not exist yet
-     * @param value value for the given metric
-     */
-    public void addDatapoint(String name, Supplier<? extends AbstractMetric> initializeMetric, double value) {
-        addDatapoint(name, initializeMetric, value, System.nanoTime());
-    }
-
-    /**
-     * Register the "value" for a metric named "name" has happened at the given "absoluteTime"
-     *
-     * @param name             metric name, for example "numberOfNodesAssigned".
-     * @param initializeMetric
-     * @param value            value for the given metric
-     * @param absoluteTime     ¿when was the value retrieved or calculated? Use System.nanoTime() or equivalent
-     */
-    public void addDatapoint(String name, Supplier<? extends AbstractMetric> initializeMetric, double value, long absoluteTime) {
-        if (absoluteTime < this.referenceTime) {
-            throw new IllegalArgumentException(String.format("Alg. start time (%s) is greater than the given time (%s)", this.referenceTime, absoluteTime));
+    public static MetricsStorage getCurrentThreadMetrics(){
+        checkEnabled();
+        MetricsStorage metricsStorage = localMetrics.get();
+        if(metricsStorage == null){
+            throw new IllegalStateException("Called Metrics::getCurrentThreadMetrics before Metrics::resetMetrics");
         }
-        long nanosSinceAlgStarted = absoluteTime - this.referenceTime;
-        if(!this.metrics.containsKey(name)){
-            this.metrics.put(name, initializeMetric.get());
-            this.suppliers.put(name, initializeMetric);
-        }
-        this.metrics.get(name).addDatapoint(value, nanosSinceAlgStarted);
+        return metricsStorage;
     }
 
-    // TODO reimplement merge metrics
-//    /**
-//     * Merge several metrics instances.
-//     * For example, if metrics A was created at 5, and metrics B reference time is 10,
-//     * the returned metrics will have 5 as reference point and all data points from metrics B will have their timeElapsed incremented by 5.
-//     *
-//     * @param metrics metric instances
-//     * @return new metric instance containing the data of all the metrics provided, with time corrected as necessary.
-//     */
-//    public static Metrics merge(Metrics... metrics) {
-//        return merge(Arrays.asList(metrics));
-//    }
-//
-//    /**
-//     * Merge several metrics instances.
-//     * For example, if metrics A was created at 5, and metrics B reference time is 10,
-//     * the returned metrics will have 5 as reference point and all data points from metrics B will have their timeElapsed incremented by 5.
-//     *
-//     * @param metrics metric instances
-//     * @return new metric instance containing the data of all the metrics provided, with time corrected as necessary.
-//     */
-//    public static Metrics merge(Iterable<Metrics> metrics) {
-//        long minTime = Long.MAX_VALUE;
-//        for (var m : metrics) {
-//            minTime = Math.min(minTime, m.referenceTime);
-//        }
-//        var newMetric = new Metrics(minTime);
-//        for (var m : metrics) {
-//            for (var e : m.metrics.entrySet()) {
-//                String name = e.getKey();
-//                for (var timeValue : e.getValue()) {
-//                    newMetric.addDatapoint(name, timeValue.value(), timeValue.timeElapsed() + m.referenceTime);
-//                }
-//            }
-//        }
-//        return newMetric;
-//    }
+    private static void checkEnabled() {
+        if(!enabled){
+            throw new IllegalStateException("Metrics are disabled, enable them first");
+        }
+    }
+
+    /**
+     * Initialize a new metrics object for use in the current thread
+     * @throws IllegalStateException if the metrics are disabled
+     */
+    public static void resetMetrics(){
+        checkEnabled();
+        localMetrics.set(new MetricsStorage());
+    }
+
+    /**
+     * Initialize a new metrics object for use in the current thread
+     * @throws IllegalStateException if the metrics are disabled
+     * @param referenceTime reference time, see {@link MetricsStorage#MetricsStorage(long)} for a more detailed explanation.
+     */
+    public static void resetMetrics(long referenceTime){
+        checkEnabled();
+        localMetrics.set(new MetricsStorage(referenceTime));
+    }
+
+    /**
+     * Enable metrics
+     */
+    public static void enableMetrics(){
+        enabled = true;
+    }
+
+    /**
+     * Disable metrics and empty all internal data structures
+     */
+    public static void disableMetrics(){
+        localMetrics.remove();
+        initializers.clear();
+        enabled = false;
+    }
+
+    /**
+     * Return true if metrics are enabled, false otherwise.
+     * @return true if metrics are enabled, false otherwise
+     */
+    public static boolean areMetricsEnabled(){
+        return enabled;
+    }
+
+
+    public static void setSolvingMode(FMode fmode) {
+        Metrics.fmode = fmode;
+    }
+
+    public static FMode getFMode(){
+        return fmode;
+    }
+
+    public static <T extends AbstractMetric> T get(String metricName){
+        var storage = getCurrentThreadMetrics();
+        if(!storage.metrics.containsKey(metricName)){
+            // If initializer is present create, else fail because user forgot to register their custom metric
+            if(initializers.containsKey(metricName)){
+                storage.metrics.put(metricName, initializers.get(metricName).apply(storage.referenceNanoTime));
+            } else {
+                throw new IllegalArgumentException("Unregistered metric: %s, did you forgot to register it?".formatted(metricName));
+            }
+        }
+        // guaranteed to have correct type? recheck
+        return (T) storage.metrics.get(metricName);
+    }
+    public static <T extends AbstractMetric> T get(Class<T> metric){
+        return get(metric.getSimpleName());
+    }
+
+    /**
+     * Register a new metric so the framework automatically tracks it
+     * @param metricName metric name
+     * @param initializer method to initialize the given metric
+     * @param <T> metric type
+     */
+    public static <T extends AbstractMetric> void register(String metricName, Function<Long, T> initializer){
+        if(initializers.containsKey(metricName)){
+            throw new IllegalArgumentException("Metric already registered: %s".formatted(metricName));
+        }
+        initializers.put(metricName, initializer);
+    }
+
+    /**
+     * Register a new metric so the framework automatically tracks it
+     * @param metric metric implementation to track, must extend AbstractMetric
+     * @param initializer Method used to initialize the given metric
+     * @param <T> Metric type
+     */
+    public static <T extends AbstractMetric> void register(Class<T> metric, Function<Long, T> initializer){
+        register(metric.getSimpleName(), initializer);
+    }
+
+
+    /**
+     * Merge several metrics instances.
+     * All data points will be translated to the lowest reference point
+     * For example, if metrics A was created at 5, and metrics B reference time is 10,
+     * the returned metrics will have 5 as reference point and all data points from metrics
+     * B will have their instant incremented by 5.
+     * @param metrics metrics to merge
+     * @return new metric instance containing the data of all the metrics provided, with time corrected as necessary.
+     */
+    public static MetricsStorage merge(MetricsStorage... metrics) {
+        return merge(Arrays.asList(metrics));
+    }
+
+    /**
+     * Merge several metrics instances.
+     * For example, if metrics A was created at 5, and metrics B reference time is 10,
+     * the returned metrics will have 5 as reference point and all data points from metrics B will have their instant incremented by 5.
+     *
+     * @param metrics metric instances
+     * @return new metric instance containing the data of all the metrics provided, with time corrected as necessary.
+     */
+    public static MetricsStorage merge(Iterable<MetricsStorage> metrics){
+        Map<String, List<TimeValue>> grouped = new HashMap<>();
+        for (var storage : metrics) {
+            for(var metricName: storage.metrics.keySet()){
+                grouped.computeIfAbsent(metricName, k -> new ArrayList<>());
+                var list = grouped.get(metricName);
+                list.addAll(storage.metrics.get(metricName).values);
+            }
+        }
+        for(var e: grouped.entrySet()){
+            Collections.sort(e.getValue());
+        }
+        var newStorage = new MetricsStorage(MetricsStorage.NO_REF);
+        for(var e: grouped.entrySet()){
+            var metricName = e.getKey();
+            var newMetric = initializers.get(metricName).apply(MetricsStorage.NO_REF);
+            for(var tv: e.getValue()){
+                newMetric.add(tv.instant(), tv.value());
+            }
+            newStorage.metrics.put(metricName, newMetric);
+        }
+
+        return newStorage;
+    }
+
+    public static void add(String metricName, double value){
+        if(areMetricsEnabled()){
+            get(metricName).add(value);
+        }
+    }
+    public static <T extends AbstractMetric> void add(Class<T> metricType, double value){
+        if(areMetricsEnabled()){
+            get(metricType).add(value);
+        }
+    }
+
+    public static void add(String metricName, long instant, double value){
+        if(areMetricsEnabled()){
+            get(metricName).add(instant, value);
+        }
+    }
+    public static <T extends AbstractMetric> void add(Class<T> metricType, long instant, double value){
+        if(areMetricsEnabled()){
+            get(metricType).add(instant, value);
+        }
+    }
+
 
 }

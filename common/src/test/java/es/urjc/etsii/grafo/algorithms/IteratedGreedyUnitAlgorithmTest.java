@@ -3,11 +3,13 @@ package es.urjc.etsii.grafo.algorithms;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.improve.Improver;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -23,6 +25,11 @@ class IteratedGreedyUnitAlgorithmTest {
     private Shake<TestSolution, TestInstance> mockitoShake;
     Constructive<TestSolution, TestInstance> nullConstructive = Constructive.nul();
     Improver<TestSolution, TestInstance> nullImprover = Improver.nul();
+
+    @BeforeAll
+    public static void init(){
+        Metrics.disableMetrics();
+    }
 
     @SuppressWarnings("unchecked")
     @BeforeEach

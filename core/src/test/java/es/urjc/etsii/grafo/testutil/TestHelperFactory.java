@@ -6,6 +6,7 @@ import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.metrics.MetricsStorage;
 import org.mockito.Mockito;
 
 import java.util.*;
@@ -16,7 +17,7 @@ public class TestHelperFactory {
     public static SolutionGeneratedEvent<TestSolution, TestInstance> solutionGenerated(String instanceName, String expName, String algName, int iter, double score, long time, long ttb){
         var solution = new TestSolution(new TestInstance(instanceName), score);
         var algorithm = new TestAlgorithm(algName);
-        return new SolutionGeneratedEvent<>(String.valueOf(iter), solution, expName, algorithm, time, ttb, new HashMap<>());
+        return new SolutionGeneratedEvent<>(String.valueOf(iter), solution, expName, algorithm, time, ttb, new MetricsStorage());
     }
 
 //    public static SolutionGeneratedEvent<TestSolution, TestInstance> solutionGenerated(String instanceName, String expName, String algName, int iter, double score, long time, long ttb, Map<String, TreeSet<TimeValue>> properties){

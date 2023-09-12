@@ -2,7 +2,6 @@ package es.urjc.etsii.grafo.solver;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
-import es.urjc.etsii.grafo.metrics.MetricsManager;
 import es.urjc.etsii.grafo.services.BannerProvider;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -68,7 +67,6 @@ public class Mork {
      */
     public static void setSolvingMode(FMode fmode) {
         Mork.fmode = fmode;
-        MetricsManager.setSolvingMode(fmode);
     }
 
     /**

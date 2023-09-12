@@ -4,6 +4,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.ClassPathScanningCandidateComponentProvider;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
+import org.springframework.core.type.filter.AssignableTypeFilter;
+import org.springframework.core.type.filter.TypeFilter;
 import org.springframework.util.ClassUtils;
 
 import java.lang.annotation.Annotation;
@@ -16,14 +18,22 @@ public class ReflectionUtil {
     // Based on the work by: https://gist.github.com/jrichardsz/a34480c1bcc31c45da730c48c4f41331
     private static final Logger log = LoggerFactory.getLogger(ReflectionUtil.class);
 
-    public static List<Class<?>> findTypesByAnnotation(String packageName, Class<? extends Annotation> clazz) {
-        var result = new ArrayList<Class<?>>();
+    public static <T> List<Class<T>> findTypesByAnnotation(String packageName, Class<? extends Annotation> clazz) {
+        return findTypesByFilter(packageName, new AnnotationTypeFilter(clazz));
+    }
+
+    public static <T> List<Class<T>> findTypesBySuper(String packageName, Class<T> clazz){
+        return findTypesByFilter(packageName, new AssignableTypeFilter(clazz));
+    }
+
+    public static <T> List<Class<T>> findTypesByFilter(String packageName, TypeFilter filter){
+        var result = new ArrayList<Class<T>>();
         var provider = new ClassPathScanningCandidateComponentProvider(false);
-        provider.addIncludeFilter(new AnnotationTypeFilter(clazz));
+        provider.addIncludeFilter(filter);
         for (var candidateBean : provider.findCandidateComponents(packageName)) {
             try {
                 var candidateClass = Class.forName(candidateBean.getBeanClassName());
-                result.add(candidateClass);
+                result.add((Class<T>) candidateClass);
             } catch (ClassNotFoundException e) {
                 log.warn("Could not resolve class object for bean definition", e);
             }
