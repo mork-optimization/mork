@@ -1,6 +1,17 @@
 # Developing
-- Metrics refactor: simplify, modularize and make extensible. 
-Example: `MetricsManager.addDatapoint(Metrics.BEST_OBJECTIVE_FUNCTION, score)` --> `BestObjective.add(score)`
+- Metrics refactor: simplify, modularize and make easy to extend by using the AbstractMetric class.
+  Example, adding a new datapoint NOW to the best objective metric, changed from: 
+  ```java
+  if(scores actually improves best value) {
+    Metrics.add(Metrics.BEST_OBJECTIVE_FUNCTION, score);
+  }
+  ```
+  to simply
+  ```java 
+  Metrics.add(BestObjective.class, score);
+  ```
+  and the metric internally will only add the point if it actually improves the score. To implement any custom metric, 
+  just extend the `AbstractMetric` class.
 - Minor changes and improvements
 
 # v0.17
