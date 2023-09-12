@@ -1,4 +1,6 @@
 # Developing
+- Instance selector: any Mork executable can now be invoked with the "--instance-selector" switch that will 
+generate the necessary data to perform automatic preliminary instances selection.
 - Metrics refactor: simplify, modularize and make easy to extend by using the AbstractMetric class.
   Example, adding a new datapoint NOW to the best objective metric, changed from: 
   ```java
