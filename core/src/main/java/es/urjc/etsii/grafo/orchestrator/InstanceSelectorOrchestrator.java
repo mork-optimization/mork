@@ -58,7 +58,7 @@ public class InstanceSelectorOrchestrator<I extends Instance> extends AbstractOr
         Object[][] instanceProperties = null;
         int nProperties = -1;
 
-        try(var pb = Executor.getPBarBuilder("Instance validation").setInitialMax(instanceIDs.size()).build()){
+        try(var pb = Executor.getPBarBuilder("Instance analysis").setInitialMax(instanceIDs.size()).build()){
             for (int row = 0; row < instanceIDs.size(); row++) {
                 var id = instanceIDs.get(row);
                 pb.setExtraMessage(id);
