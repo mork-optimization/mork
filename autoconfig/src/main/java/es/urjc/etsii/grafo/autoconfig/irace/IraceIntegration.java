@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.logging.Logger;
 
-import static es.urjc.etsii.grafo.util.IOUtil.getInputStreamFor;
+import static es.urjc.etsii.grafo.util.IOUtil.getInputStreamForIrace;
 
 /**
  * <p>IraceIntegration class.</p>
@@ -37,7 +37,7 @@ public class IraceIntegration {
      */
     public void runIrace(boolean isJAR){
         try {
-            var inputStream = getInputStreamFor("runner.R", isJAR);
+            var inputStream = getInputStreamForIrace("runner.R", isJAR);
             runner.execute(inputStream);
         } catch (IOException e) {
             throw new IllegalStateException("Cannot load R runner", e);

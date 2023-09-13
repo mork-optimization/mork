@@ -13,6 +13,12 @@ import java.util.Map;
 public class InstanceConfiguration {
     private Map<String, String> path;
 
+    private String forSelection;
+
+    private double preliminarPercentage = 0.15;
+
+    private String preliminarOutputPath = "output";
+
     private boolean preload = true;
 
     /**
@@ -53,5 +59,29 @@ public class InstanceConfiguration {
      */
     public void setPreload(boolean preload) {
         this.preload = preload;
+    }
+
+    public String getForSelection() {
+        return forSelection;
+    }
+
+    public void setForSelection(String forSelection) {
+        this.forSelection = forSelection;
+    }
+
+    public double getPreliminarPercentage() {
+        return preliminarPercentage;
+    }
+
+    public void setPreliminarPercentage(double preliminarPercentage) {
+        this.preliminarPercentage = preliminarPercentage;
+    }
+
+    public String getPreliminarOutputPath() {
+        return preliminarOutputPath;
+    }
+
+    public void setPreliminarOutputPath(String preliminarOutputPath) {
+        this.preliminarOutputPath = preliminarOutputPath;
     }
 }

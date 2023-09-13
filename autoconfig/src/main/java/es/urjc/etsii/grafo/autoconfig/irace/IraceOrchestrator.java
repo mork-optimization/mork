@@ -20,11 +20,11 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.metrics.BestObjective;
 import es.urjc.etsii.grafo.metrics.MetricUtil;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.services.SolutionValidator;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.*;
 import es.urjc.etsii.grafo.util.random.RandomManager;
@@ -44,7 +44,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 
-import static es.urjc.etsii.grafo.util.IOUtil.*;
+import static es.urjc.etsii.grafo.util.IOUtil.copyWithSubstitutions;
+import static es.urjc.etsii.grafo.util.IOUtil.getInputStreamForIrace;
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 
 /**
@@ -183,10 +184,10 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
             var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration, serverProperties);
             if (!isAutoconfigEnabled) {
-                copyWithSubstitutions(getInputStreamFor(F_PARAMETERS, isJar), paramsPath, substitutions);
+                copyWithSubstitutions(getInputStreamForIrace(F_PARAMETERS, isJar), paramsPath, substitutions);
             }
-            copyWithSubstitutions(getInputStreamFor(F_SCENARIO, isJar), Path.of(F_SCENARIO), substitutions);
-            copyWithSubstitutions(getInputStreamFor(F_FORBIDDEN, isJar), Path.of(F_FORBIDDEN), substitutions);
+            copyWithSubstitutions(getInputStreamForIrace(F_SCENARIO, isJar), Path.of(F_SCENARIO), substitutions);
+            copyWithSubstitutions(getInputStreamForIrace(F_FORBIDDEN, isJar), Path.of(F_FORBIDDEN), substitutions);
         } catch (IOException e) {
             throw new RuntimeException("Failed extracting irace config files", e);
         }

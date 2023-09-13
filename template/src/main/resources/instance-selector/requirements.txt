@@ -1,0 +1,7 @@
+sklearn
+pandas
+numpy
+matplotlib
+seaborn
+yellowbrick
+argparse

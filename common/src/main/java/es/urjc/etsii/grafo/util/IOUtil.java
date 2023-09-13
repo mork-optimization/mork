@@ -74,7 +74,7 @@ public class IOUtil {
      * @return InputStream to the resource given as a parameter
      * @throws java.io.IOException if anything goes wrong
      */
-    public static InputStream getInputStreamFor(String s, boolean isJar) throws IOException {
+    public static InputStream getInputStreamForIrace(String s, boolean isJar) throws IOException {
         if(isJar){
             return IOUtil.class.getResourceAsStream("/BOOT-INF/classes/irace/" + s);
             //return ResourceUtils.getFile("classpath:irace/" + s).toPath();
@@ -82,6 +82,28 @@ public class IOUtil {
             return new FileInputStream(new File("src/main/resources/irace/", s));
         }
     }
+
+    /**
+     * Get input stream for the given path
+     *
+     * @param path path to resource
+     * @param target where to copy the resource
+     * @param isJar true if the resource is inside a JAR file, false otherwise
+     * @return InputStream to the resource given as a parameter
+     * @throws java.io.IOException if anything goes wrong
+     */
+    public static void extractResource(String path, String target, boolean isJar, boolean autodelete) throws IOException {
+        var inStream = isJar ?
+                IOUtil.class.getResourceAsStream("/BOOT-INF/classes/" + path) :
+                new FileInputStream(new File("src/main/resources/", path));
+        var pTarget = Path.of(target);
+        Files.write(pTarget, inStream.readAllBytes());
+        if(autodelete){
+            pTarget.toFile().deleteOnExit();
+        }
+    }
+
+
 
     /**
      * Mark a file as executable

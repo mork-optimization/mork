@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.orchestrator;
 
+import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import org.junit.jupiter.api.AfterAll;
@@ -18,7 +19,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
-class InstanceSelectorOrchestratorTest {
+class InstanceSelectorTest {
 
     private TestInstance instanceA = new TestInstance("instanceA", Map.of("size", 100, "ble", -7.1, "ignore", "ignored"));
     private TestInstance instanceB = new TestInstance("instanceB", Map.of("ble", -5.1123, "ignore", "ignored", "size", 6));
@@ -28,9 +29,9 @@ class InstanceSelectorOrchestratorTest {
         when(mock.getInstanceSolveOrder(anyString(), eq(false))).thenReturn(List.of("instanceA", "instanceB"));
         when(mock.getInstance(anyString())).thenReturn(instanceA, instanceB);
 
-        var selector = new InstanceSelectorOrchestrator<>(mock);
+        var selector = new InstanceSelector<>(mock, new InstanceConfiguration()); // The Python part is not actually tested!
         selector.run();
-        var p = Path.of(InstanceSelectorOrchestrator.DEFAULT_OUTPUT_PATH);
+        var p = Path.of(InstanceSelector.DEFAULT_OUTPUT_PATH);
         var f = p.toFile();
         assertTrue(f.isFile());
         var lines = Files.readAllLines(p);
@@ -43,7 +44,7 @@ class InstanceSelectorOrchestratorTest {
     @AfterAll
     public static void deleteTempFiles(){
         try {
-            new File(InstanceSelectorOrchestrator.DEFAULT_OUTPUT_PATH).delete();
+            new File(InstanceSelector.DEFAULT_OUTPUT_PATH).delete();
         } catch (Exception ignored){}
     }
 }
