@@ -93,11 +93,13 @@ public class IOUtil {
      * @throws java.io.IOException if anything goes wrong
      */
     public static void extractResource(String path, String target, boolean isJar, boolean autodelete) throws IOException {
-        var inStream = isJar ?
+        Path pTarget;
+        try (var inStream = isJar ?
                 IOUtil.class.getResourceAsStream("/BOOT-INF/classes/" + path) :
-                new FileInputStream(new File("src/main/resources/", path));
-        var pTarget = Path.of(target);
-        Files.write(pTarget, inStream.readAllBytes());
+                Files.newInputStream(new File("src/main/resources/", path).toPath())) {
+            pTarget = Path.of(target);
+            Files.write(pTarget, inStream.readAllBytes());
+        }
         if(autodelete){
             pTarget.toFile().deleteOnExit();
         }
