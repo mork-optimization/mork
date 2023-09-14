@@ -1,18 +1,23 @@
 package es.urjc.etsii.grafo.orchestrator;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
+import es.urjc.etsii.grafo.events.EventPublisher;
+import es.urjc.etsii.grafo.io.InstanceImporter;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.context.ApplicationEventPublisher;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -20,25 +25,44 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 class InstanceSelectorTest {
+    private static Object tryParse(String s){
+        try {
+            return Double.parseDouble(s);
+        } catch (NumberFormatException e){
+            return s;
+        }
+    }
 
-    private TestInstance instanceA = new TestInstance("instanceA", Map.of("size", 100, "ble", -7.1, "ignore", "ignored"));
-    private TestInstance instanceB = new TestInstance("instanceB", Map.of("ble", -5.1123, "ignore", "ignored", "size", 6));
+    private class TestInstanceImporter extends InstanceImporter<TestInstance> {
+        @Override
+        public TestInstance importInstance(BufferedReader reader, String filename) {
+            Map<String, Object> map = reader.lines()
+                    .map(s -> s.split(","))
+                    .collect(Collectors.toMap(s -> s[0], s -> tryParse(s[1])));
+            return new TestInstance(filename, map);
+        }
+    }
     @Test
     public void checkCSV() throws IOException {
-        InstanceManager<TestInstance> mock = Mockito.mock(InstanceManager.class);
-        when(mock.getInstanceSolveOrder(anyString(), eq(false))).thenReturn(List.of("instanceA", "instanceB"));
-        when(mock.getInstance(anyString())).thenReturn(instanceA, instanceB);
+        var config = new InstanceConfiguration();
+        config.setPath(Map.of("default", "src/test/resources/instances"));
+        var instanceManager = new InstanceManager<>(config, new TestInstanceImporter());
+        var eventMock = Mockito.mock(ApplicationEventPublisher.class);
+        new EventPublisher(eventMock);
 
-        var selector = new InstanceSelector<>(mock, new InstanceConfiguration()); // The Python part is not actually tested!
+        var selector = new InstanceSelector<>(instanceManager, config); // The Python part is not actually tested!
         selector.run();
         var p = Path.of(InstanceSelector.DEFAULT_OUTPUT_PATH);
         var f = p.toFile();
         assertTrue(f.isFile());
         var lines = Files.readAllLines(p);
-        assertEquals(3, lines.size());
-        assertArrayEquals(new String[]{"id", "ble", "size"}, lines.get(0).split(","));
-        assertArrayEquals(new String[]{"instanceA", "-7.1", "100.0"}, lines.get(1).split(","));
-        assertArrayEquals(new String[]{"instanceB", "-5.1123", "6.0"}, lines.get(2).split(","));
+        assertEquals(6, lines.size());
+        assertArrayEquals(new String[]{"id", "awesomeness", "ble", "random", "size"}, lines.get(0).split(","));
+        assertArrayEquals(new String[]{"instanceA.txt", "1.0", "-7.1", "346.0", "100.0"}, lines.get(1).split(","));
+        assertArrayEquals(new String[]{"instanceB.txt", "2.0", "-5.1123", "132768.0","6.0"}, lines.get(2).split(","));
+        assertArrayEquals(new String[]{"instanceC.txt", "3.0", "0.1123", "4129.0","121111.0"}, lines.get(3).split(","));
+        assertArrayEquals(new String[]{"instanceD.txt", "4.0", "0.0", "918624.0","0.0"}, lines.get(4).split(","));
+        assertArrayEquals(new String[]{"instanceE.txt", "5.0", "0.1123", "-123.0","-121111.0"}, lines.get(5).split(","));
     }
 
     @AfterAll

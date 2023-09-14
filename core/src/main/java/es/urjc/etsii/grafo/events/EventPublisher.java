@@ -30,7 +30,7 @@ public class EventPublisher {
      *
      * @param publisher Spring ApplicationEventPublisher
      */
-    protected EventPublisher(ApplicationEventPublisher publisher) {
+    public EventPublisher(ApplicationEventPublisher publisher) {
         eventQueue = new ArrayBlockingQueue<>(MAX_QUEUE_SIZE);
         var eventInterceptor = new EventInterceptor(eventQueue, publisher);
         new Thread(eventInterceptor).start();
