@@ -12,7 +12,7 @@ java -jar MyProblem.jar --instance-selector
 
 **Demo**
 <video controls style="width: 100%">
-<source src="/features/instance-selection.mp4" type="video/mp4">
+<source src="instance-selection.mp4" type="video/mp4">
 </video>
 
 ## Requirements
