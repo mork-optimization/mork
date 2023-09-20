@@ -41,6 +41,10 @@ public class InstanceSelector<I extends Instance> extends AbstractOrchestrator {
     public void run(String... args) {
         long start = System.nanoTime();
         try {
+            String path = instanceConfiguration.getForSelection();
+            if (path != null && !path.isBlank()) {
+                instanceConfiguration.getPaths().put("default", path);
+            }
             var instanceIDs = this.instanceManager.getInstanceSolveOrder("default", false);
             EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Mork.getFMode(), List.of("Instance selection")));
             var properties = instancesToPropertyMatrix(instanceIDs);
