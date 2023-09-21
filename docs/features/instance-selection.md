@@ -10,6 +10,9 @@ Any JAR file built con Mork v0.18 or later, can be invoked as follows:
 java -jar MyProblem.jar --instance-selector
 ```
 
+Selected instances are copied to the output folder, 
+along some diagrams explaining the decisions taken along the process.
+
 **Demo**
 <video controls style="width: 100%">
 <source src="../instance-selection.mp4" type="video/mp4">
@@ -93,7 +96,7 @@ calculating the correlation between each pair of properties, and exporting it to
 Then, characteristics are standardized and the PCA (Principal Component Analysis) method is used to reduce
 the dimensionality of the characteristics set. 
 To decide how many components should be used, we select the minimum number of components whose accumulated
-explained variance ratio is greater than a configured preset, normally 90%, and the pca.pdf is generated 
+explained variance ratio is greater than a configured preset, normally 90%, and the `$output/pca.pdf` is generated 
 containing a diagram detailing this step.
 ![PCA](pca.png)
 
@@ -103,7 +106,7 @@ Because the number of clusters is not known in advance, we use the elbow method 
 The elbow method is based on the fact that the distortion score for each clustering try will decrease as we increase
 the number of clusters, with diminishing returns. 
 We select the number of clusters where the slope of the curve has a significant change, visually, the elbow of the curve.
-The diagram `kElbow.pdf` and `pairPlots.pdf` are generated. Te first one explains the decisions taken in this step for the current user execution, with a content similar to the following:
+The diagram `$output/kElbow.pdf` and `$output/pairPlots.pdf` are generated. Te first one explains the decisions taken in this step for the current user execution, with a content similar to the following:
 ![kElbow](kElbow.png)
 
 While the second one can be used to visually validate the quality of the clustering:
