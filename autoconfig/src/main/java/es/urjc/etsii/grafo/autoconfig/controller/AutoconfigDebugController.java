@@ -4,14 +4,14 @@ import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
-import es.urjc.etsii.grafo.autoconfig.service.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.autoconfig.service.AlgorithmInventoryService;
+import es.urjc.etsii.grafo.autoconfig.service.generator.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.config.SolverConfig;
+import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-import jakarta.servlet.http.HttpServletRequest;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
@@ -39,7 +39,7 @@ public class AutoconfigDebugController {
 
     @GetMapping("/auto/debug/tree")
     public Object getTree(){
-        return this.candidateGenerator.buildTree(solverConfig.getTreeDepth());
+        return this.candidateGenerator.buildTree(solverConfig.getTreeDepth(), solverConfig.getMaxDerivationRepetition());
     }
 
     @GetMapping("/auto/debug/params")

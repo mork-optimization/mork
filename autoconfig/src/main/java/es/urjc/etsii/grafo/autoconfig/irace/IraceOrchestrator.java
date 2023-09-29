@@ -5,7 +5,7 @@ import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.controller.IraceUtil;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
-import es.urjc.etsii.grafo.autoconfig.service.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.service.generator.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
@@ -176,7 +176,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         Path paramsPath = Path.of(F_PARAMETERS);
         try {
             if (isAutoconfigEnabled) {
-                var nodes = this.algorithmCandidateGenerator.buildTree(solverConfig.getTreeDepth());
+                var nodes = this.algorithmCandidateGenerator.buildTree(solverConfig.getTreeDepth(), solverConfig.getMaxDerivationRepetition());
                 var iraceParams = this.algorithmCandidateGenerator.toIraceParams(nodes);
                 this.nIraceParameters = iraceParams.size();
                 Files.write(paramsPath, iraceParams);

@@ -1,11 +1,14 @@
-package es.urjc.etsii.grafo.autoconfig.testutil;
+package es.urjc.etsii.grafo.autoconfig.fakecomponents;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.IntegerParam;
+import es.urjc.etsii.grafo.annotations.RealParam;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.StringUtil;
 
-public class AlgorithmA extends Algorithm<TestSolution, TestInstance> {
+public class TestAlgorithmA extends Algorithm<TestSolution, TestInstance> {
 
     private final int tetha;
     private final double alpha;
@@ -16,25 +19,26 @@ public class AlgorithmA extends Algorithm<TestSolution, TestInstance> {
     }
 
 
-    public AlgorithmA() {
+    public TestAlgorithmA() {
         this(0, 0);
     }
 
-    public AlgorithmA(double alpha) {
+    public TestAlgorithmA(double alpha) {
         this(0, alpha);
     }
 
-    public AlgorithmA(int tetha, double alpha) {
+    @AutoconfigConstructor
+    public TestAlgorithmA(@IntegerParam(min = -5, max = 5) int tetha, @RealParam(min = 0, max = 1) double alpha) {
         super(StringUtil.randomAlgorithmName());
         this.tetha = tetha;
         this.alpha = alpha;
     }
 
-    public AlgorithmA(int tetha, String alpha) {
+    public TestAlgorithmA(int tetha, String alpha) {
         this(tetha, Double.parseDouble(alpha));
     }
 
-    public AlgorithmA(int tetha) {
+    public TestAlgorithmA(int tetha) {
         this(tetha, 0);
     }
 
