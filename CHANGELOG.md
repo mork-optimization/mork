@@ -1,7 +1,9 @@
 # Developing
-- Instance selector: any Mork executable can now be invoked with the "--instance-selector" switch that will 
+- (New) Property `solver.max-derivation-repetition` allows restricting algorithms generated from the grammar by 
+limiting the number of time any derivation can be applied. Refactor algorithm generator in autoconfig module.
+- (New) Instance selector: any Mork executable can now be invoked with the "--instance-selector" switch that will 
 generate the necessary data to perform automatic preliminary instances selection.
-- Metrics refactor: simplify, modularize and make easy to extend by using the AbstractMetric class.
+- (New) Metrics refactor: simplify, modularize and make easy to extend by using the AbstractMetric class.
   Example, adding a new datapoint NOW to the best objective metric, changed from: 
   ```java
   if(scores actually improves best value) {
@@ -14,7 +16,8 @@ generate the necessary data to perform automatic preliminary instances selection
   ```
   and the metric internally will only add the point if it actually improves the score. To implement any custom metric, 
   just extend the `AbstractMetric` class.
-- Minor changes and improvements
+- (Change) Minor bugfixes and improvements
+- (Change) Upgrade dependencies
 
 # v0.17
 - (New) Autoconfig module: automatically build and test algorithms, using Irace as the parameter optimizer.
