@@ -3,7 +3,8 @@ package es.urjc.etsii.grafo.autoconfig.irace;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.service.AlgorithmBuilderService;
-import es.urjc.etsii.grafo.autoconfig.service.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.service.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.service.generator.TreeNode;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -13,15 +14,15 @@ import java.util.regex.Pattern;
 
 public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instance> extends AlgorithmBuilder<S,I> {
 
-    private final List<AlgorithmCandidateGenerator.Node> algorithmCandidateTree;
+    private final List<TreeNode> algorithmCandidateTree;
     private final AlgorithmBuilderService algorithmBuilder;
 
     public AutomaticAlgorithmBuilder(SolverConfig solverConfig, AlgorithmCandidateGenerator candidateGenerator, AlgorithmBuilderService algorithmBuilder) {
         this.algorithmBuilder = algorithmBuilder;
-        this.algorithmCandidateTree = candidateGenerator.buildTree(solverConfig.getTreeDepth());
+        this.algorithmCandidateTree = candidateGenerator.buildTree(solverConfig.getTreeDepth(), solverConfig.getMaxDerivationRepetition());
     }
 
-    public List<AlgorithmCandidateGenerator.Node> getAlgorithmCandidateTree() {
+    public List<TreeNode> getAlgorithmCandidateTree() {
         return Collections.unmodifiableList(algorithmCandidateTree);
     }
 

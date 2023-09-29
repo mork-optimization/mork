@@ -1,9 +1,9 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.autoconfig.service.AlgorithmBuilderService;
-import es.urjc.etsii.grafo.autoconfig.service.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.autoconfig.service.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.service.filter.DefaultFilterStrategy;
+import es.urjc.etsii.grafo.autoconfig.service.generator.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import org.junit.jupiter.api.BeforeAll;
 

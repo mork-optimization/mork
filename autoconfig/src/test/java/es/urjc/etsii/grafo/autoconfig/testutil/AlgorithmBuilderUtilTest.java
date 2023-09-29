@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.FakeGRASPConstructive;
+import es.urjc.etsii.grafo.autoconfig.fakecomponents.TestAlgorithmA;
 import es.urjc.etsii.grafo.autoconfig.fill.FModeParam;
 import es.urjc.etsii.grafo.autoconfig.testutil.findautoconfig.Has0;
 import es.urjc.etsii.grafo.autoconfig.testutil.findautoconfig.Has1;
@@ -31,7 +32,7 @@ class AlgorithmBuilderUtilTest {
                 "tetha", int.class
         );
 
-        var constructor = AlgorithmBuilderUtil.findConstructor(AlgorithmA.class, params, List.of());
+        var constructor = AlgorithmBuilderUtil.findConstructor(TestAlgorithmA.class, params, List.of());
         assertNotNull(constructor);
         assertDoesNotThrow(() -> constructor.newInstance(0, "0"));
     }
@@ -42,7 +43,7 @@ class AlgorithmBuilderUtilTest {
                 "alpha", byte.class
         );
 
-        var constructor = AlgorithmBuilderUtil.findConstructor(AlgorithmA.class, params, List.of());
+        var constructor = AlgorithmBuilderUtil.findConstructor(TestAlgorithmA.class, params, List.of());
         assertNotNull(constructor);
         var cParams = constructor.getParameters();
         assertEquals(1, cParams.length);
@@ -55,7 +56,7 @@ class AlgorithmBuilderUtilTest {
         Map<String, Class<?>> params = Map.of(
         );
 
-        var constructor = AlgorithmBuilderUtil.findConstructor(AlgorithmA.class, params, List.of());
+        var constructor = AlgorithmBuilderUtil.findConstructor(TestAlgorithmA.class, params, List.of());
         assertNotNull(constructor);
         assertDoesNotThrow(() -> constructor.newInstance());
     }
@@ -66,7 +67,7 @@ class AlgorithmBuilderUtilTest {
                 "alpha", String.class
         );
 
-        var constructor = AlgorithmBuilderUtil.findConstructor(AlgorithmA.class, params, List.of());
+        var constructor = AlgorithmBuilderUtil.findConstructor(TestAlgorithmA.class, params, List.of());
         assertNotNull(constructor);
     }
 
@@ -76,7 +77,7 @@ class AlgorithmBuilderUtilTest {
                 "alfa", double.class
         );
 
-        var constructor = AlgorithmBuilderUtil.findConstructor(AlgorithmA.class, params, List.of());
+        var constructor = AlgorithmBuilderUtil.findConstructor(TestAlgorithmA.class, params, List.of());
         assertNull(constructor);
     }
 
