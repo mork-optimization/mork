@@ -76,7 +76,7 @@ class AlgorithmBuilderServiceTest {
         // Fail because component is known
         Assertions.assertThrows(IllegalArgumentException.class, () -> algComponent.registerAlias("AlgorithmA", "Any"));
 
-        algComponent.registerAlias("A", "AlgorithmA");
+        algComponent.registerAlias("A", "TestAlgorithmA");
         var factoryB = new AlgorithmComponentFactory() {
             @Override
             public Object buildComponent(Map<String, Object> params) {
