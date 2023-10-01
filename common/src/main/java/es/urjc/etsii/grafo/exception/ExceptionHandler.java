@@ -24,7 +24,6 @@ public abstract class ExceptionHandler<S extends Solution<S,I>, I extends Instan
      * @param s Current solution, if available
      * @param i Current instance
      * @param algorithm Current algorithm
-     * @param io IOManager, to optionally persist for example exception data.
      */
     public abstract void handleException(String experimentName, int iteration, Exception e, Optional<S> s, I i, Algorithm<S,I> algorithm);
 

@@ -2,9 +2,20 @@ package es.urjc.etsii.grafo.metrics;
 
 import java.util.TreeSet;
 
+/**
+ * Base class to represent metrics
+ */
 public abstract class AbstractMetric {
+
+    /**
+     * Data structure to store sorted time-value pairs
+     */
     protected final TreeSet<TimeValue> values;
-    private final long referenceNanoTime;
+
+    /**
+     * Reference instant to relativize all other times
+     */
+    protected final long referenceNanoTime;
 
     protected AbstractMetric(long referenceNanoTime) {
         this.referenceNanoTime = referenceNanoTime;

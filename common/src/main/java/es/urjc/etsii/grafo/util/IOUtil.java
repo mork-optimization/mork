@@ -89,7 +89,6 @@ public class IOUtil {
      * @param path path to resource
      * @param target where to copy the resource
      * @param isJar true if the resource is inside a JAR file, false otherwise
-     * @return InputStream to the resource given as a parameter
      * @throws java.io.IOException if anything goes wrong
      */
     public static void extractResource(String path, String target, boolean isJar, boolean autodelete) throws IOException {

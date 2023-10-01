@@ -3,7 +3,10 @@ package es.urjc.etsii.grafo.util;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.*;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -93,6 +96,11 @@ public class ConcurrencyUtil {
         return futures.map(ConcurrencyUtil::await).collect(Collectors.toList());
     }
 
+    /**
+     * Sleep without having to deal with InterruptedException
+     * @param time time to sleep
+     * @param unit unit of time
+     */
     public static void sleep(int time, TimeUnit unit){
         try {
             Thread.sleep(unit.toMillis(time));

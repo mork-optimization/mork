@@ -75,10 +75,19 @@ public class BenchmarkUtil {
         return cached.score();
     }
 
+    /**
+     * Tries to parse an existing benchmark file
+     * @return null if file does not exist or failed to parse the file
+     */
     public static BenchmarkCache parseCache() {
         return parseCache(new File(BENCH_FILE));
     }
 
+    /**
+     * Tries to parse an existing benchmark file
+     * @param f file containing cached benchmark data
+     * @return null if file does not exist or failed to parse the file
+     */
     public static BenchmarkCache parseCache(File f) {
         if(!f.exists()) return null;
 
@@ -95,9 +104,20 @@ public class BenchmarkUtil {
         }
     }
 
+    /**
+     * Benchmark cache
+     * @param info system info
+     * @param score benchmark score
+     */
     public record BenchmarkCache(SystemInfo info, double score) {
     }
 
+    /**
+     * System info
+     * @param nProcessors number of processors
+     * @param vmVersion java virtual machine version
+     * @param javaVersion version of the java code, as configured in the compiler
+     */
     public record SystemInfo(int nProcessors, String vmVersion, String javaVersion) {
         private SystemInfo() {
             this(Runtime.getRuntime().availableProcessors(), System.getProperty("java.vm.version"), System.getProperty("java.runtime.version"));

@@ -8,7 +8,7 @@ import java.util.function.Function;
 /**
  * Manages metrics instances. Example usage:
  * - Call {@link Metrics#resetMetrics()} to initialize a new instance of empty metrics
- * - Run the algorithm. Any algorithm component can get the current metrics instance using {@link Metrics#getCurrentThreadMetrics()}, and add data points to it using {@link AbstractMetric#addDatapoint(double, long)}.
+ * - Run the algorithm. Any algorithm component can get the current metrics instance using {@link Metrics#getCurrentThreadMetrics()}, and add data points to it using {@link AbstractMetric#add(long, double)}.
  * - Do something with the metrics after the algorithm finishes, for example merging (see below).
  * - Reset metrics before the next algorithm start executing.
  * <p>

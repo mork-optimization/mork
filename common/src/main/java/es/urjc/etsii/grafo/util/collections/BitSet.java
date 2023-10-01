@@ -230,8 +230,8 @@ public class BitSet extends AbstractSet<Integer> {
      * Sets the bit at the specified index to {@code true}.
      *
      * @param bitIndex a bit index
+     * @return true if an element was added, false if the set was not modified
      * @throws IndexOutOfBoundsException if the specified index is negative
-     * @since 1.0
      */
     public boolean add(int bitIndex) {
         checkCapacity(bitIndex);
@@ -299,8 +299,8 @@ public class BitSet extends AbstractSet<Integer> {
      * Sets the bit specified by the index to {@code false}.
      *
      * @param bitIndex the index of the bit to be cleared
+     * @return true if an element was removed, false if the set was not modified
      * @throws IndexOutOfBoundsException if the specified index is negative
-     * @since 1.0
      */
     public boolean remove(int bitIndex) {
         checkCapacity(bitIndex);
