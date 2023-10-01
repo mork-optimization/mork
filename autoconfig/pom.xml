@@ -3,21 +3,21 @@
   <modelVersion>4.0.0</modelVersion>
 
   <artifactId>autoconfig</artifactId>
-  <version>0.18-SNAPSHOT</version>
+  <version>0.18</version>
   <name>autoconfig</name>
   <description>Autoconfig module for Mork, allows to automatically select best parameters configuration and test different algorithm components combinations without user input</description>
 
   <parent>
     <artifactId>mork-parent</artifactId>
     <groupId>es.urjc.etsii.grafo</groupId>
-    <version>0.18-SNAPSHOT</version>
+    <version>0.18</version>
   </parent>
 
   <dependencies>
     <dependency>
       <groupId>es.urjc.etsii.grafo</groupId>
       <artifactId>mork</artifactId>
-      <version>0.18-SNAPSHOT</version>
+      <version>0.18</version>
     </dependency>
 
     <dependency>
