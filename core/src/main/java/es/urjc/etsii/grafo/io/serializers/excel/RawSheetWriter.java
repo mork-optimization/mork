@@ -7,7 +7,6 @@ import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -85,16 +84,12 @@ public abstract class RawSheetWriter {
                 cell.getSheet().setArrayFormula(parts[0], CellRangeAddress.valueOf(parts[1]));
                 break;
             case VALUE:
-                if (d instanceof Double) {
-                    cell.setCellValue((double) d);
-                } else if (d instanceof String) {
-                    cell.setCellValue((String) d);
-                } else if (d instanceof Integer) {
-                    cell.setCellValue((int) d);
-                } else if (d instanceof Long) {
-                    cell.setCellValue((long) d);
-                } else if (d instanceof Float) {
-                    cell.setCellValue((float) d);
+                if (d instanceof Number n) {
+                    cell.setCellValue(n.doubleValue());
+                } else if (d instanceof String s) {
+                    cell.setCellValue(s);
+                } else if (d instanceof Boolean b) {
+                    cell.setCellValue(b);
                 } else {
                     throw new IllegalArgumentException("Invalid datatype: " + d.getClass().getSimpleName());
                 }

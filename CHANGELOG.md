@@ -1,4 +1,7 @@
 # Developing
+- (Fix) Cannot export boolean instance properties to Excel sheets
+
+# v0.18
 - (New) Property `solver.max-derivation-repetition` allows restricting algorithms generated from the grammar by 
 limiting the number of time any derivation can be applied. Refactor algorithm generator in autoconfig module.
 - (New) Instance selector: any Mork executable can now be invoked with the "--instance-selector" switch that will 
