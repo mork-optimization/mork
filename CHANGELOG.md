@@ -1,5 +1,6 @@
 # Developing
 - (Fix) Cannot export boolean instance properties to Excel sheets
+- (New) Java 21 compatibility. After extended testing, Java 21 will become the minimum required version.
 
 # v0.18
 - (New) Property `solver.max-derivation-repetition` allows restricting algorithms generated from the grammar by 
