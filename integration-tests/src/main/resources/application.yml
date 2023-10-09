@@ -67,7 +67,7 @@ solver:
   # Even if they execute for a longer time, their improvements to the objective function will not be considered.
   interval-duration-millis: 50
   # Scale o.f AUC using natural logarithm
-  log-scale-area: true
+  log-scale-area: false
   #### End autoconfig properties
 
   # Enable or disable metrics tracking. Force enabled if using autoconfig.

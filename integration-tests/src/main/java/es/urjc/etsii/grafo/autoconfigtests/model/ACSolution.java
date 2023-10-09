@@ -28,12 +28,12 @@ public class ACSolution extends Solution<ACSolution, ACInstance> {
 
     @Override
     public double getScore() {
-        return this.multiplier * getInstance().length();
+        return Math.max(0, this.multiplier * getInstance().length());
     }
 
     @Override
     public double recalculateScore() {
-        return this.multiplier * getInstance().length();
+        return Math.max(0, this.multiplier * getInstance().length());
     }
 
     @Override
