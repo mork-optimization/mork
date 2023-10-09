@@ -82,18 +82,25 @@ class MetricsStorageTest {
     void areaUnderCurve(){
         Metrics.resetMetrics(10);
         // calculate area between 15 and 35, or in other words, ignore first 5 nanoseconds, duration 30
-        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(TestMetric.class, 5, 30));
+        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(TestMetric.class, 5, 30, false));
+        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(TestMetric.class, 5, 30, true));
         assertDoesNotThrow(() -> Metrics.add(TestMetric.class, 11, 5));
         assertDoesNotThrow(() -> Metrics.add(TestMetric.class, 21, 2));
         assertDoesNotThrow(() -> Metrics.add(TestMetric.class, 31, 1));
         assertDoesNotThrow(() -> Metrics.add(TestMetric.class, 41, 0.5));
-        assertThrows(ArithmeticException.class, () -> MetricUtil.areaUnderCurve(TestMetric.class, 5, Long.MAX_VALUE));
-        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(TestMetric.class, 0, 30));
-        double area1 = MetricUtil.areaUnderCurve(TestMetric.class, 1, 35);
-        double area2 = MetricUtil.areaUnderCurve(TestMetric.class, 6, 40);
+        assertThrows(ArithmeticException.class, () -> MetricUtil.areaUnderCurve(TestMetric.class, 5, Long.MAX_VALUE, false));
+        assertThrows(ArithmeticException.class, () -> MetricUtil.areaUnderCurve(TestMetric.class, 5, Long.MAX_VALUE, true));
+        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(TestMetric.class, 0, 30, false));
+        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(TestMetric.class, 0, 30, true));
+        double area1 = MetricUtil.areaUnderCurve(TestMetric.class, 1, 35, false);
+        double area1log = MetricUtil.areaUnderCurve(TestMetric.class, 1, 35, true);
+        double area2 = MetricUtil.areaUnderCurve(TestMetric.class, 6, 40, false);
+        double area2log = MetricUtil.areaUnderCurve(TestMetric.class, 6, 40, true);
         double expected1 = 50 + 20 + 10 + 2.5, expected2 = 25 + 20 + 10 + 7.5;
         assertEquals(expected1, area1);
+        assertEquals(Math.log(expected1), area1log);
         assertEquals(expected2, area2);
+        assertEquals(Math.log(expected2), area2log);
     }
 
 }

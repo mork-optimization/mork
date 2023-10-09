@@ -33,7 +33,9 @@ public class SolverConfig {
     private int repetitions = 1;
 
     /**
-     *
+     * Chooses the executo for all experiments. True to use the ConcurrentExecutor, false to use sequential executor.
+     * @see es.urjc.etsii.grafo.executors.SequentialExecutor
+     * @see es.urjc.etsii.grafo.executors.ConcurrentExecutor
      */
     private boolean parallelExecutor = false;
 
@@ -70,6 +72,11 @@ public class SolverConfig {
      * Used only when autoconfig is enabled, for each 50 params uses 10k executions
      */
     private int experimentsPerParameter = 200; // 50 params --> 10k
+
+    /**
+     * Scale area under curve when using autoconfig procedure using natural logarithm
+     */
+    private boolean logScaleArea = true;
 
     /**
      * Minimum number of tuning experiments to run, even if there are few parameters.
@@ -287,5 +294,21 @@ public class SolverConfig {
 
     public void setMaxDerivationRepetition(int maxDerivationRepetition) {
         this.maxDerivationRepetition = maxDerivationRepetition;
+    }
+
+    /**
+     * Scale area under curve using natural logarithm
+     * @return true if area should be scaled, false to keep value as is
+     */
+    public boolean isLogScaleArea() {
+        return logScaleArea;
+    }
+
+    /**
+     * Scale area under curve using natural logarithm
+     * @param logScaleArea true if area should be scaled, false to keep value as is
+     */
+    public void setLogScaleArea(boolean logScaleArea) {
+        this.logScaleArea = logScaleArea;
     }
 }

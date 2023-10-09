@@ -303,7 +303,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     }
 
     private ExecuteResponse singleExecution(Algorithm<S, I> algorithm, I instance) {
-        long maxExecTime = this.solverConfig.getIgnoreInitialMillis() + this.solverConfig.getIntervalDurationMillis();
+        long maxExecTime = solverConfig.getIgnoreInitialMillis() + solverConfig.getIntervalDurationMillis();
         if (isAutoconfigEnabled) {
             Metrics.enableMetrics();
             Metrics.resetMetrics();
@@ -326,9 +326,14 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             try {
                 score = MetricUtil.areaUnderCurve(BestObjective.class,
                         TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
-                        TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS)
+                        TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
+                        solverConfig.isLogScaleArea()
                 );
-                score /= TimeUtil.NANOS_IN_MILLISECOND;
+                if(!solverConfig.isLogScaleArea()){
+                    // If not using log scaling, divide by NANOS_IN_MILLISECOND to get an acceptable range
+                    score /= TimeUtil.NANOS_IN_MILLISECOND;
+                }
+
             } catch (IllegalArgumentException e) {
                 // Failure to calculate AUC --> Invalid algorithm, one cause may be algorithm too complex for instance and cannot generate results in time.
                 log.debug("Error while calculating AUC: ", e);

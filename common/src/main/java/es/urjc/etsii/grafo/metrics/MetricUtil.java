@@ -1,53 +1,47 @@
 package es.urjc.etsii.grafo.metrics;
 
+import es.urjc.etsii.grafo.util.DoubleComparator;
+
 public class MetricUtil {
 
     /**
      * Calculate the area delimited between y = 0 and the given metric, in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]
      * Should be extremely fast, with O(n) complexity, being N the number of data points for the given metric.
+     *
      * @param metricType metric type
-     * @param skipNanos ignore any datapoint whose timestamp is less than (referenceTime+skipNanos).
-     * @param duration  pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
+     * @param skipNanos  ignore any datapoint whose timestamp is less than (referenceTime+skipNanos).
+     * @param duration   pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
+     * @param logScale   Scale area under curve using natural logarithm
      * @return area calculation as a double value
      * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
      */
-    public static double areaUnderCurve(Class<? extends AbstractMetric> metricType, long skipNanos, long duration) {
-        return areaUnderCurve(metricType.getSimpleName(), skipNanos, duration);
+    public static double areaUnderCurve(Class<? extends AbstractMetric> metricType, long skipNanos, long duration, boolean logScale) {
+        return areaUnderCurve(metricType.getSimpleName(), skipNanos, duration, logScale);
     }
 
     /**
      * Calculate the area delimited between y = 0 and the given metric, in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]
      * Should be extremely fast, with O(n) complexity, being N the number of data points for the given metric.
+     *
      * @param metricName metric name
-     * @param skipNanos ignore any datapoint whose timestamp is less than (referenceTime+skipNanos).
-     * @param duration  pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
+     * @param skipNanos  ignore any datapoint whose timestamp is less than (referenceTime+skipNanos).
+     * @param duration   pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
+     * @param logScale   Scale area under curve using natural logarithm
      * @return area calculation as a double value
      * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
      */
-    public static double areaUnderCurve(String metricName, long skipNanos, long duration) {
-        return areaUnderCurve(Metrics.get(metricName), skipNanos, duration);
+    public static double areaUnderCurve(String metricName, long skipNanos, long duration, boolean logScale) {
+        return areaUnderCurve(Metrics.get(metricName), skipNanos, duration, logScale);
     }
 
     /**
      * Calculate the area delimited between y = 0 and the given metric, in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]
      * Should be extremely fast, with O(n) complexity, being N the number of data points for the given metric.
-     * @param metric metric instance
+     *
+     * @param metric    metric instance
      * @param skipNanos ignore any datapoint whose timestamp is less than (referenceTime+skipNanos).
      * @param duration  pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
-     * @return area calculation as a double value
-     * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
-     */
-    public static double areaUnderCurve(AbstractMetric metric, long skipNanos, long duration) {
-        return areaUnderCurve(metric, skipNanos, duration, false);
-    }
-
-    /**
-     * Calculate the area delimited between y = 0 and the given metric, in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]
-     * Should be extremely fast, with O(n) complexity, being N the number of data points for the given metric.
-     * @param metric metric instance
-     * @param skipNanos ignore any datapoint whose timestamp is less than (referenceTime+skipNanos).
-     * @param duration  pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
-     * @param logScale Scale y values using natural logarithm
+     * @param logScale  Scale area under curve using natural logarithm
      * @return area calculation as a double value
      * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
      */
@@ -81,16 +75,28 @@ public class MetricUtil {
                 break;
             }
             // Calculate area of current rectangle
-            var height = logScale? Math.log(lastValue): lastValue;
+            var height = lastValue;
+            if(DoubleComparator.isNegative(height)){
+                throw new IllegalArgumentException("Negative f.o value detected in metric " + name + " at time " + tv.instant() + " with value " + height);
+            }
             area += (tv.instant() - lastTime) * height;
             // Advance limit
             lastValue = tv.value();
             lastTime = tv.instant();
         }
         // Complete the area until the right cutoff mark
-        var height = logScale? Math.log(lastValue): lastValue;
+        var height = lastValue;
         area += (endTime - lastTime) * height;
 
-        return area;
+        if(!logScale){
+            return area;
+        }
+        if(area > 0){
+            return Math.log(area);
+        }
+        if(area < 0 || !Double.isFinite(area)){
+            throw new IllegalArgumentException("Cannot calculate AUC for metric " + name + ", invalid result: " + area);
+        }
+        throw new AssertionError("Should be impossible to reach");
     }
 }
