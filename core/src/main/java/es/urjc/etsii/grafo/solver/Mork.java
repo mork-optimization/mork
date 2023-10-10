@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.solver;
 
+import com.fasterxml.jackson.core.StreamReadConstraints;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.services.BannerProvider;
@@ -52,11 +53,20 @@ public class Mork {
     public static void start(String pkgRoot, String[] args, FMode fmode) {
         args = argsProcessing(args);
         configurePackageScanning(pkgRoot);
+        configureDeserialization();
         setSolvingMode(fmode);
         SpringApplication application = new SpringApplication(Mork.class);
         application.setBanner(new BannerProvider());
         application.setLogStartupInfo(false);
         application.run(args);
+    }
+
+    /**
+     * Configure JSON deserialization to allow reading very long strings, required by the current autoconfig implementation
+     */
+    private static void configureDeserialization() {
+        var morkReadConstraints = StreamReadConstraints.builder().maxStringLength(Integer.MAX_VALUE).build();
+        StreamReadConstraints.overrideDefaultStreamReadConstraints(morkReadConstraints);
     }
 
     /**
