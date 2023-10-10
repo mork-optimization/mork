@@ -1,11 +1,13 @@
 package es.urjc.etsii.grafo.autoconfig.controller;
 
+import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
 import es.urjc.etsii.grafo.autoconfig.service.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.service.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.service.generator.TreeNode;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Profile;
@@ -14,9 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -39,7 +39,28 @@ public class AutoconfigDebugController {
 
     @GetMapping("/auto/debug/tree")
     public Object getTree(){
-        return this.candidateGenerator.buildTree(solverConfig.getTreeDepth(), solverConfig.getMaxDerivationRepetition());
+        var tree = this.candidateGenerator.buildTree(solverConfig.getTreeDepth(), solverConfig.getMaxDerivationRepetition());
+        var map = new HashMap<String, List<TreeNode>>();
+        map.put("ROOT", tree);
+        var rootNode = new TreeNode("", Algorithm.class, map);
+        return TreeNodeStats.fromNode(rootNode);
+    }
+
+    record TreeNodeStats(String paramName, Class<?> clazz, int totalChildrenNodes, Map<String, List<TreeNodeStats>> children){
+        public static TreeNodeStats fromNode(TreeNode node){
+            int count = 1;
+            var map = new HashMap<String, List<TreeNodeStats>>();
+            for(var e: node.children().entrySet()){
+                var list = new ArrayList<TreeNodeStats>();
+                for(var n: e.getValue()){
+                    var nodeStat = fromNode(n);
+                    count += nodeStat.totalChildrenNodes;
+                    list.add(nodeStat);
+                }
+                map.put(e.getKey(), list);
+            }
+            return new TreeNodeStats(node.paramName(), node.clazz(), count, map);
+        }
     }
 
     @GetMapping("/auto/debug/params")
