@@ -1,9 +1,10 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
-import es.urjc.etsii.grafo.autoconfig.service.AlgorithmBuilderService;
-import es.urjc.etsii.grafo.autoconfig.service.AlgorithmInventoryService;
-import es.urjc.etsii.grafo.autoconfig.service.filter.DefaultFilterStrategy;
-import es.urjc.etsii.grafo.autoconfig.service.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
+import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.generator.DefaultExplorationFilter;
+import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
+import es.urjc.etsii.grafo.autoconfig.inventory.DefaultInventoryFilter;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import org.junit.jupiter.api.BeforeAll;
 
@@ -16,9 +17,9 @@ class AutomaticIraceAlgorithmGeneratorTest {
     static void setUp(){
         var config = new SolverConfig();
         config.setTreeDepth(4);
-        var inventory = new AlgorithmInventoryService(new DefaultFilterStrategy(), List.of(), List.of());
+        var inventory = new AlgorithmInventoryService(new DefaultInventoryFilter(), List.of(), List.of());
         inventory.runComponentDiscovery("es.urjc.etsii.grafo");
-        var candidateGenerator = new AlgorithmCandidateGenerator(inventory);
+        var candidateGenerator = new AlgorithmCandidateGenerator(inventory, new DefaultExplorationFilter());
         var builderService = new AlgorithmBuilderService(inventory);
         generator = new AutomaticAlgorithmBuilder<>(config, candidateGenerator, builderService);
     }

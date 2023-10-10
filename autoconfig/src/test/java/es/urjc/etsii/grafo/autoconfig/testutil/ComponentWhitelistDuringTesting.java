@@ -4,7 +4,7 @@ import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.algorithms.VNS;
 import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.*;
-import es.urjc.etsii.grafo.autoconfig.service.filter.WhitelistFilterStrategy;
+import es.urjc.etsii.grafo.autoconfig.inventory.WhitelistInventoryFilter;
 import es.urjc.etsii.grafo.create.grasp.GreedyRandomGRASPConstructive;
 import es.urjc.etsii.grafo.create.grasp.RandomGreedyGRASPConstructive;
 import es.urjc.etsii.grafo.improve.Improver;
@@ -15,7 +15,7 @@ import es.urjc.etsii.grafo.shake.Shake;
 
 import java.util.Set;
 
-public class ComponentWhitelistDuringTesting extends WhitelistFilterStrategy {
+public class ComponentWhitelistDuringTesting extends WhitelistInventoryFilter {
     @Override
     public Set<Class<?>> getWhitelist() {
         // List of components that will be considered while executing tests in the autoconfig module

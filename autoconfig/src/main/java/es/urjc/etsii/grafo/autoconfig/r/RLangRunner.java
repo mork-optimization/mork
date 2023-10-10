@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig.irace.runners;
+package es.urjc.etsii.grafo.autoconfig.r;
 
 import java.io.BufferedReader;
 import java.io.IOException;

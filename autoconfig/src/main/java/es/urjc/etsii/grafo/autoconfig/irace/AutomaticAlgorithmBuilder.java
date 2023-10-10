@@ -1,10 +1,11 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
+import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
-import es.urjc.etsii.grafo.autoconfig.service.AlgorithmBuilderService;
-import es.urjc.etsii.grafo.autoconfig.service.generator.AlgorithmCandidateGenerator;
-import es.urjc.etsii.grafo.autoconfig.service.generator.TreeNode;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;

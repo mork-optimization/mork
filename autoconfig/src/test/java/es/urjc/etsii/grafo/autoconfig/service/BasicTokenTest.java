@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;

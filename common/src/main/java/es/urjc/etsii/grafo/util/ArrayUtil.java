@@ -4,7 +4,6 @@ import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.lang.reflect.Array;
 import java.util.Objects;
-
 import java.util.stream.Stream;
 
 /**
@@ -696,5 +695,49 @@ public class ArrayUtil {
     public static String[] merge(String[]... arrs)
     {
         return Stream.of(arrs).flatMap(Stream::of).toArray(String[]::new);
+    }
+
+    // TODO std optional as boolean
+    private record IntStats(int min, int max, int sum, double avg, double std) {}
+    private record DoubleStats(double min, double max, double sum, double avg, double std) {}
+
+    private IntStats stats(int[] data){
+        int min = Integer.MAX_VALUE;
+        int max = Integer.MIN_VALUE;
+        int sum = 0;
+
+        for (int n : data) {
+            if (n < min) min = n;
+            if (n > max) max = n;
+            sum = Math.addExact(sum, n);
+        }
+
+        double avg = (double) sum / data.length;
+        double std = 0;
+        for(int n: data){
+            std += Math.pow(n - avg, 2);
+        }
+        std = Math.sqrt(std / data.length);
+        return new IntStats(min, max, sum, avg, std);
+    }
+
+    private DoubleStats stats(double[] data){
+        double min = Integer.MAX_VALUE;
+        double max = Integer.MIN_VALUE;
+        double sum = 0;
+
+        for (double n : data) {
+            if (n < min) min = n;
+            if (n > max) max = n;
+            sum += n;
+        }
+
+        double avg = sum / data.length;
+        double std = 0;
+        for(double n: data){
+            std += Math.pow(n - avg, 2);
+        }
+        std = Math.sqrt(std / data.length);
+        return new DoubleStats(min, max, sum, avg, std);
     }
 }

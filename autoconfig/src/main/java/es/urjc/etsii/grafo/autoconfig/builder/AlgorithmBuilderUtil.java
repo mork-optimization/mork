@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig;
+package es.urjc.etsii.grafo.autoconfig.builder;
 
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;

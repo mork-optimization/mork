@@ -8,7 +8,7 @@ import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
-import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmBuilder;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.improve.ls.LocalSearch;
 import es.urjc.etsii.grafo.improve.ls.LocalSearchBestImprovement;

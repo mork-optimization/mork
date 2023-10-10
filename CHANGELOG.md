@@ -1,6 +1,12 @@
 # Developing
 - (Fix) Cannot export boolean instance properties to Excel sheets
 - (New) Java 21 compatibility. After extended testing, Java 21 will become the minimum required version.
+- (New) Autoconfig: /auto/debug/tree display accumulated tree sizes
+- (Fix) Autoconfig: JSON deserialization limit 
+- (New) Autoconfig: configurable relationship blocks
+- (Breaking) Reorganized Autoconfig classes, reimporting them in existing projects may be necessary if upgrading the Mork version.
+- (Fix) Metrics: throw exception during AUC calculation if metric has negative values
+- (New) Metrics: add parameter to optionally calculate natural log of metric AUC.
 
 # v0.18
 - (New) Property `solver.max-derivation-repetition` allows restricting algorithms generated from the grammar by 

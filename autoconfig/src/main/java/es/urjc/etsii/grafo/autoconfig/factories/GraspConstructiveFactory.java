@@ -1,10 +1,10 @@
 package es.urjc.etsii.grafo.autoconfig.factories;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
-import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderUtil;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmComponentFactory;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
-import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
 import es.urjc.etsii.grafo.create.grasp.GraspBuilder;
 

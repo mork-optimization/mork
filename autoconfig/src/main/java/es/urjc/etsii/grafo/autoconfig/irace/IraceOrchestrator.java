@@ -2,10 +2,11 @@ package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithm;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.controller.IraceUtil;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
-import es.urjc.etsii.grafo.autoconfig.service.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;

@@ -1,10 +1,12 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmComponentFactory;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
+import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
+import es.urjc.etsii.grafo.autoconfig.inventory.DefaultInventoryFilter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
-import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
-import es.urjc.etsii.grafo.autoconfig.service.filter.DefaultFilterStrategy;
 import es.urjc.etsii.grafo.autoconfig.testutil.TestUtil;
 import es.urjc.etsii.grafo.create.grasp.GRASPConstructive;
 import es.urjc.etsii.grafo.improve.Improver;
@@ -25,7 +27,7 @@ class AlgorithmBuilderServiceTest {
 
     @BeforeAll
     static void initialize(){
-        algComponent = new AlgorithmInventoryService(new DefaultFilterStrategy(), TestUtil.getTestFactories(), TestUtil.getTestProviders());
+        algComponent = new AlgorithmInventoryService(new DefaultInventoryFilter(), TestUtil.getTestFactories(), TestUtil.getTestProviders());
         algComponent.runComponentDiscovery("es.urjc.etsii");
         builderService = new AlgorithmBuilderService(algComponent);
     }

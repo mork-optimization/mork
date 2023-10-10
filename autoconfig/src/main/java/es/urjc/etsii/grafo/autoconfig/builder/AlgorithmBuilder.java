@@ -1,7 +1,8 @@
-package es.urjc.etsii.grafo.autoconfig.irace;
+package es.urjc.etsii.grafo.autoconfig.builder;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
+import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 

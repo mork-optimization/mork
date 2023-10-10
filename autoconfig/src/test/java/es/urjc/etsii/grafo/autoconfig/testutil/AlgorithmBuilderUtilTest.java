@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.testutil;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
-import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.FakeGRASPConstructive;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.TestAlgorithmA;
@@ -19,8 +19,8 @@ import java.lang.reflect.Constructor;
 import java.util.List;
 import java.util.Map;
 
-import static es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil.isAssignable;
-import static es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil.prepareParameterValue;
+import static es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderUtil.isAssignable;
+import static es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderUtil.prepareParameterValue;
 import static org.junit.jupiter.api.Assertions.*;
 
 class AlgorithmBuilderUtilTest {

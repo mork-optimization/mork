@@ -1,7 +1,9 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
-import es.urjc.etsii.grafo.autoconfig.service.generator.AlgorithmCandidateGenerator;
-import es.urjc.etsii.grafo.autoconfig.service.generator.TreeNode;
+import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.generator.DefaultExplorationFilter;
+import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
+import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.testutil.ComponentWhitelistDuringTesting;
 import es.urjc.etsii.grafo.autoconfig.testutil.TestUtil;
 import org.junit.jupiter.api.Assertions;
@@ -25,7 +27,7 @@ class AlgorithmCandidateGeneratorTest {
     static void setup(){
         inventoryService = new AlgorithmInventoryService(new ComponentWhitelistDuringTesting(), TestUtil.getTestFactories(), TestUtil.getTestProviders());
         inventoryService.runComponentDiscovery("es.urjc.etsii");
-        candidateGenerator = new AlgorithmCandidateGenerator(inventoryService);
+        candidateGenerator = new AlgorithmCandidateGenerator(inventoryService, new DefaultExplorationFilter());
         // Components that should never be considered for autoconfig, either because they are not in the whitelist,
         // or they are in the whitelist but they are not autoconfigurable
         forbiddenComponents = Set.of("MultiStartAlgorithm", "VND", "FakeGRASPConstructive");

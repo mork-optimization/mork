@@ -1,6 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
-import es.urjc.etsii.grafo.autoconfig.irace.runners.RLangRunner;
+import es.urjc.etsii.grafo.autoconfig.r.RLangRunner;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 

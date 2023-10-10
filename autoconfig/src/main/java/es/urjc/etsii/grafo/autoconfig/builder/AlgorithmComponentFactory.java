@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig.service.factories;
+package es.urjc.etsii.grafo.autoconfig.builder;
 
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;

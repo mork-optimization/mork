@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig.service.generator;
+package es.urjc.etsii.grafo.autoconfig.generator;
 
 import java.util.ArrayDeque;
 import java.util.HashMap;
@@ -10,12 +10,12 @@ import java.util.HashMap;
  * @param branch current branch, represented as a list of component implementation names
  * @param derivationCounter counts how many times each derivation rule has been applied in the current branch
  */
-public record TreeContext(int maxDepth, int maxRepeat, ArrayDeque<String> branch, HashMap<Derivation, Integer> derivationCounter) {
+public record TreeContext(int maxDepth, int maxRepeat, ArrayDeque<Class<?>> branch, HashMap<Derivation, Integer> derivationCounter) {
     public TreeContext(int maxDepth, int maxRepeatDerivation) {
         this(maxDepth, maxRepeatDerivation, new ArrayDeque<>(), new HashMap<>());
     }
 
-    public void push(String component){
+    public void push(Class<?> component){
         branch.push(component);
     }
 

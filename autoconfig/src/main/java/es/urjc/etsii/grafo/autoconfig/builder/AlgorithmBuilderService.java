@@ -1,12 +1,11 @@
-package es.urjc.etsii.grafo.autoconfig.service;
+package es.urjc.etsii.grafo.autoconfig.builder;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
-import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderListener;
-import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.BailErrorStrategy;
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmLexer;
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmParser;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
+import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;

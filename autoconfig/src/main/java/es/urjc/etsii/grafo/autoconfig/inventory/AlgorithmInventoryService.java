@@ -1,16 +1,15 @@
-package es.urjc.etsii.grafo.autoconfig.service;
+package es.urjc.etsii.grafo.autoconfig.inventory;
 
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmComponentFactory;
 import es.urjc.etsii.grafo.autoconfig.fill.ParameterProvider;
-import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
-import es.urjc.etsii.grafo.autoconfig.service.filter.InventoryFilterStrategy;
 import es.urjc.etsii.grafo.util.ReflectionUtil;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
 import java.lang.reflect.Modifier;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -26,7 +25,7 @@ import static java.util.Collections.unmodifiableMap;
 @Service
 public class AlgorithmInventoryService {
     private static final Logger log = LoggerFactory.getLogger(AlgorithmInventoryService.class);
-    private final InventoryFilterStrategy filterStrategy;
+    private final IInventoryFilter filterStrategy;
     private final List<ParameterProvider> paramProviders;
 
     protected Map<Class<?>, Collection<Class<?>>> componentsByType = new HashMap<>();
@@ -37,7 +36,7 @@ public class AlgorithmInventoryService {
     @Value("${advanced.scan-pkgs:es.urjc.etsii}")
     protected String pkgs;
 
-    public AlgorithmInventoryService(InventoryFilterStrategy filterStrategy, List<AlgorithmComponentFactory> factoryList, List<ParameterProvider> paramProviders) {
+    public AlgorithmInventoryService(IInventoryFilter filterStrategy, List<AlgorithmComponentFactory> factoryList, List<ParameterProvider> paramProviders) {
         this.filterStrategy = filterStrategy;
         this.paramProviders = paramProviders;
         for(var f: factoryList){

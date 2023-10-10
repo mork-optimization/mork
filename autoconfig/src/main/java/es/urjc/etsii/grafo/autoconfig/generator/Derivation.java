@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig.service.generator;
+package es.urjc.etsii.grafo.autoconfig.generator;
 
 /**
  * Represents a derivation rule in the autoconfig grammar

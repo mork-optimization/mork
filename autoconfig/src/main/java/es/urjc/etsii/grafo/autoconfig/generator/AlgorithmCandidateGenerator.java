@@ -1,12 +1,12 @@
-package es.urjc.etsii.grafo.autoconfig.service.generator;
+package es.urjc.etsii.grafo.autoconfig.generator;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.*;
-import es.urjc.etsii.grafo.autoconfig.AlgorithmBuilderUtil;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderUtil;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmComponentFactory;
+import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
-import es.urjc.etsii.grafo.autoconfig.service.AlgorithmInventoryService;
-import es.urjc.etsii.grafo.autoconfig.service.factories.AlgorithmComponentFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -22,11 +22,13 @@ public class AlgorithmCandidateGenerator {
     private static final Set<Class<?>> collectedClasses = Set.of(List.class, ArrayList.class, Set.class, HashSet.class, Collection.class);
 
     private final AlgorithmInventoryService inventoryService;
+    private final IExplorationFilter explorationFilter;
     private final Logger log = LoggerFactory.getLogger(AlgorithmCandidateGenerator.class);
     private final Map<Class<?>, List<ComponentParameter>> paramInfo;
 
-    public AlgorithmCandidateGenerator(AlgorithmInventoryService inventoryService) {
+    public AlgorithmCandidateGenerator(AlgorithmInventoryService inventoryService, IExplorationFilter explorationFilter) {
         this.inventoryService = inventoryService;
+        this.explorationFilter = explorationFilter;
         this.paramInfo = analyzeParameters();
         log.info("Components available for autoconfig: {}", paramInfo.keySet().stream().map(Class::getSimpleName).sorted().toList());
     }
@@ -245,12 +247,16 @@ public class AlgorithmCandidateGenerator {
     }
 
     protected TreeNode recursiveBuildTree(String currentParamName, Class<?> currentComponent, TreeContext context) {
-        var params = this.paramInfo.get(currentComponent);
-        if (params == null) {
-            log.debug("Ignoring component {} due to null params, context {}", currentComponent, context);
+        if(explorationFilter.reject(context, currentComponent)){
+            log.trace("Ignoring component {} due to filter. Context: {}", currentComponent, context);
             return null;
         }
-        context.push(currentComponent.getSimpleName());
+        var params = this.paramInfo.get(currentComponent);
+        if (params == null) {
+            log.trace("Ignoring component {} due to null params, context {}", currentComponent, context);
+            return null;
+        }
+        context.push(currentComponent);
         var allChildren = new HashMap<String, List<TreeNode>>();
         for (var p : params) {
             if (p.recursive()) {

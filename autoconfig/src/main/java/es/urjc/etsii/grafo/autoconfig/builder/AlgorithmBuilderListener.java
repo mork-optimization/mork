@@ -1,8 +1,7 @@
-package es.urjc.etsii.grafo.autoconfig;
+package es.urjc.etsii.grafo.autoconfig.builder;
 
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmParser;
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmParserBaseListener;
-import es.urjc.etsii.grafo.autoconfig.service.AlgorithmBuilderService;
 
 import java.util.ArrayDeque;
 import java.util.Deque;

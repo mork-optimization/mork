@@ -1,13 +1,13 @@
 package es.urjc.etsii.grafo.autoconfig.controller;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
+import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
-import es.urjc.etsii.grafo.autoconfig.service.AlgorithmInventoryService;
-import es.urjc.etsii.grafo.autoconfig.service.generator.AlgorithmCandidateGenerator;
-import es.urjc.etsii.grafo.autoconfig.service.generator.TreeNode;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Profile;
