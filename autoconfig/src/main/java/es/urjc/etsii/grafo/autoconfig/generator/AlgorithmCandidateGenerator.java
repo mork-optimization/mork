@@ -30,7 +30,7 @@ public class AlgorithmCandidateGenerator {
         this.inventoryService = inventoryService;
         this.explorationFilter = explorationFilter;
         this.paramInfo = analyzeParameters();
-        log.info("Components available for autoconfig: {}", paramInfo.keySet().stream().map(Class::getSimpleName).sorted().toList());
+        log.debug("Components available for autoconfig: {}", paramInfo.keySet().stream().map(Class::getSimpleName).sorted().toList());
     }
 
     protected boolean isValidParamName(String name) {

@@ -75,7 +75,6 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                 long instanceStartTime = System.nanoTime();
                 var referenceValue = getOptionalReferenceValue(instanceName, false);
                 events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
-                logger.debug("Running algorithms for instance: {}", instanceName);
 
                 for (var algorithmWork : instanceWork.getValue().entrySet()) {
                     WorkUnitResult<S, I> algorithmBest = null;

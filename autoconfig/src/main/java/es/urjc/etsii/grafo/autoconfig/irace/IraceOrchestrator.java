@@ -113,23 +113,24 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             Optional<SolutionValidator<S, I>> validator,
             AlgorithmCandidateGenerator algorithmCandidateGenerator
     ) {
+        log.info("Starting tuning engine...");
         this.solverConfig = solverConfig;
         this.instanceConfiguration = instanceConfiguration;
         this.serverProperties = serverProperties;
         this.iraceIntegration = iraceIntegration;
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         this.instanceManager = instanceManager;
-        log.info("Using SolutionBuilder implementation: {}", this.solutionBuilder.getClass().getSimpleName());
+        log.debug("Using SolutionBuilder implementation: {}", this.solutionBuilder.getClass().getSimpleName());
 
         this.algorithmBuilder = decideImplementation(algorithmBuilders, AutomaticAlgorithmBuilder.class);
-        log.info("Using AlgorithmBuilder implementation: {}", this.algorithmBuilder.getClass().getSimpleName());
+        log.debug("Using AlgorithmBuilder implementation: {}", this.algorithmBuilder.getClass().getSimpleName());
 
         this.algorithmCandidateGenerator = algorithmCandidateGenerator;
 
         if (validator.isEmpty()) {
             log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
         } else {
-            log.info("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
+            log.debug("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
         }
 
         this.validator = validator;
@@ -142,7 +143,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      */
     @Override
     public void run(String... args) {
-        log.info("App started in IRACE mode, ready to start solving!");
+        log.info("Ready to start!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
         EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Mork.isMaximizing(), experimentName));

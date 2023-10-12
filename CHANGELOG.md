@@ -7,6 +7,7 @@
 - (Breaking) Reorganized Autoconfig classes, reimporting them in existing projects may be necessary if upgrading the Mork version.
 - (Fix) Metrics: throw exception during AUC calculation if metric has negative values
 - (New) Metrics: add parameter to optionally calculate natural log of metric AUC.
+- (New) Logging: improve default logging configuration
 
 # v0.18
 - (New) Property `solver.max-derivation-repetition` allows restricting algorithms generated from the grammar by 

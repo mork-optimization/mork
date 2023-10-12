@@ -51,8 +51,8 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
         var experimentPattern = solverConfig.getExperiments();
         experimentFilter = Pattern.compile(experimentPattern);
         var solutionBuilder = UserExperimentOrchestrator.decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
-        log.info("Using SolutionBuilder implementation: "+solutionBuilder.getClass().getSimpleName());
-        log.info("Using ReferenceResultProviders: " + referenceResultProviders);
+        log.debug("Using SolutionBuilder implementation: "+solutionBuilder.getClass().getSimpleName());
+        log.debug("Using ReferenceResultProviders: " + referenceResultProviders);
 
         for (var experiment : experimentImplementations) {
             String experimentName = experiment.getName();
@@ -73,7 +73,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
             if(experimentImplementations.isEmpty()){
                 log.error("No experiment definitions found. Experiments are defined by extending AbstractExperiment<S, I>, see the docs for more information.");
             } else {
-                log.error("Experiment definitions found, but none passed filters. Verify that 'solver.experiments={}' is correct.", experimentPattern);
+                log.error("Experiment found, but none passed filters. Verify that 'solver.experiments={}' is correct. Experiments detected: {}", experimentPattern, experimentImplementations.stream().map(AbstractExperiment::getName).toList());
             }
         }
     }

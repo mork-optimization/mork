@@ -15,11 +15,11 @@ import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.SolutionValidator;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.TimeControl;
@@ -274,7 +274,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
     public static ProgressBarBuilder getPBarBuilder(String taskname) {
         return new ProgressBarBuilder()
-                .setUpdateIntervalMillis(50)
+                .setUpdateIntervalMillis(10)
                 .continuousUpdate()
                 .setTaskName(taskname)
                 .setStyle(ProgressBarStyle.COLORFUL_UNICODE_BAR);

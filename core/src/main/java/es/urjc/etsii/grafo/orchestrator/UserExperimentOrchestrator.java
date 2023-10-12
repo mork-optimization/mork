@@ -7,8 +7,6 @@ import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentStartedEvent;
 import es.urjc.etsii.grafo.exception.ResourceLimitException;
-import es.urjc.etsii.grafo.exceptions.DefaultExceptionHandler;
-import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.experiment.Experiment;
 import es.urjc.etsii.grafo.experiment.ExperimentManager;
@@ -77,9 +75,11 @@ public class UserExperimentOrchestrator<S extends Solution<S, I>, I extends Inst
     @Override
     public void run(String... args) {
         runBenchmark();
-        log.info("App started, ready to start solving!");
+        log.info("Ready to start solving!");
         var experiments = this.experimentManager.getExperiments();
-        log.info("Experiments to execute: {}", experiments.keySet());
+        if(experiments.size() > 1){
+            log.info("Experiments to execute: {}", experiments.keySet());
+        }
         EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Mork.isMaximizing(), new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
         try {

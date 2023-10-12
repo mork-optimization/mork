@@ -134,7 +134,6 @@ public class AlgorithmInventoryService {
         if(!failedValidationSet.isEmpty()){
             throw new IllegalArgumentException("Invalid component names detected: " + failedValidationSet);
         }
-        log.info("Algorithm components found: {}", componentByName.keySet());
         log.debug("Classified algorithm components: {}", componentsByType);
     }
 
