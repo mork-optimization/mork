@@ -30,7 +30,7 @@
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <!-- We can filter the logs printed to the console, for example to print only INFO
             and above to the console but keep DEBUG or TRACE to the file. By default filters TRACE logs -->
-            <level>DEBUG</level>
+            <level>INFO</level>
         </filter>
     </appender>
 
