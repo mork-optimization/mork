@@ -57,8 +57,8 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
         var solution = r.solution();
         var instance = solution.getInstance();
         // r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution(), String.valueOf(r.workUnit().i())
-        log.debug("Exporting solution for (exp, instance, algorithm) = ({}, {}, {}) using {}", r.experimentName(), instance.getId(), r.algorithm().getShortName(), this.getClass().getSimpleName());
-        String filename = getFilename(r.experimentName(), instance.getId(), r.algorithm().getShortName(), r.iteration());
+        log.debug("Exporting solution for (exp, instance, algorithm) = ({}, {}, {}) using {}", r.experimentName(), instance.getId(), r.algorithm().getName(), this.getClass().getSimpleName());
+        String filename = getFilename(r.experimentName(), instance.getId(), r.algorithm().getName(), r.iteration());
         var solutionFolder = this.config.getFolder();
         createFolder(solutionFolder);
         long start = System.nanoTime();

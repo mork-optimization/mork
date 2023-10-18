@@ -137,7 +137,7 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
     @Override
     public String toString() {
         return "MA{" +
-                "name=" + getShortName() +
+                "name=" + getName() +
                 ", maxIter=" + maxIterations +
                 ", minIter=" + minIterations +
                 ", maxIterWoutImp=" + maxIterationsWithoutImproving +

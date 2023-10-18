@@ -80,7 +80,7 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                     WorkUnitResult<S, I> algorithmBest = null;
                     var algorithm = algorithmWork.getKey();
                     events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
-                    logger.debug("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
+                    logger.debug("Running algorithm {} for instance {}", algorithm.getName(), instanceName);
                     for (var workUnit : algorithmWork.getValue()) {
                         var workUnitResult = doWork(workUnit);
                         this.processWorkUnitResult(workUnitResult, pb);

@@ -15,7 +15,7 @@ public class EmptyAlgorithm<S extends Solution<S,I>, I extends Instance> extends
     }
 
     @Override
-    public String getShortName() {
+    public String getName() {
         return this.name;
     }
 

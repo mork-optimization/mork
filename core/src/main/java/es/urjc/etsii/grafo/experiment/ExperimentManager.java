@@ -117,7 +117,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
             toStrings.add(toString);
 
             // Same check for Algorithm::getShortName
-            var shortName = algorithm.getShortName();
+            var shortName = algorithm.getName();
             if(shortName.length() > MAX_SHORTNAME_LENGTH){
                 throw new IllegalArgumentException(String.format("Algorithms shortnames cannot be longer than %s chars. Bad algorithm: %s - %s", MAX_SHORTNAME_LENGTH, shortName, algorithm));
             }

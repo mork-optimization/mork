@@ -18,7 +18,7 @@ import java.util.Objects;
 public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
 
     private SolutionBuilder<S,I> builder;
-    private final String algorithmName;
+    private String algorithmName;
 
     /**
      * Initialize common algorithm fields
@@ -29,12 +29,21 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
     }
 
     /**
-     * Current algorithm short name, must be unique per execution. Truncated to Algorithm.SHORTNAME_MAXLENGTH characters
+     * Algorithm name, uniquely identifies the algorithm inside an experiment
      *
-     * @return Should include parameter configuration if same algorithm is used with different parameters
+     * @return algorithm name
      */
-    public String getShortName(){
+    public String getName(){
         return this.algorithmName;
+    }
+
+    /**
+     * Algorithm name
+     *
+     * @param algorithmName must uniquely identify the algorithm inside an experiment
+     */
+    public void setName(String algorithmName){
+        this.algorithmName = algorithmName;
     }
 
     /**

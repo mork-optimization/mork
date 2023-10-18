@@ -55,7 +55,7 @@ class AlgorithmBuilderServiceTest {
         """;
         var algorithm = builderService.buildAlgorithmFromString(alg);
         Assertions.assertNotNull(algorithm);
-        Assertions.assertEquals("trickyNullAlg", algorithm.getShortName());
+        Assertions.assertEquals("trickyNullAlg", algorithm.getName());
     }
 
     @Test

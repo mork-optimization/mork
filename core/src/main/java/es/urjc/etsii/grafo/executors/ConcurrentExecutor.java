@@ -111,7 +111,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
                     WorkUnitResult<S, I> algorithmBest = null;
                     var algorithm = algorithmWork.getKey();
                     events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
-                    log.debug("Running algorithm {} for instance {}", algorithm.getShortName(), instanceName);
+                    log.debug("Running algorithm {} for instance {}", algorithm.getName(), instanceName);
                     for (var workUnit : algorithmWork.getValue()) {
                         var workUnitResult = ConcurrencyUtil.await(workUnit);
                         this.processWorkUnitResult(workUnitResult, pb);

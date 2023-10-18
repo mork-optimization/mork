@@ -276,7 +276,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             // but there is extra time available, keep executing the same algorithm until the timelimit is reached.
             // If not, we could be penalizing faster simpler algorithms against more complex ones.
             int iterations = Integer.MAX_VALUE / 2;
-            algorithm = new MultiStartAlgorithm<>(algorithm.getShortName(), algorithm, iterations, iterations, iterations);
+            algorithm = new MultiStartAlgorithm<>(algorithm.getName(), algorithm, iterations, iterations, iterations);
             algorithm.setBuilder(this.solutionBuilder);
         }
         return algorithm;

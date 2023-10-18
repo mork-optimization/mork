@@ -15,7 +15,7 @@ class EmptyAlgorithmTest {
     void testName(){
         var name = "myTestName";
         var alg = new EmptyAlgorithm<>(name);
-        Assertions.assertEquals(name, alg.getShortName());
+        Assertions.assertEquals(name, alg.getName());
         Assertions.assertTrue(alg.toString().contains(name));
     }
 

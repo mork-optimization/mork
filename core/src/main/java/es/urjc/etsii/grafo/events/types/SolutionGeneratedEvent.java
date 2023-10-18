@@ -49,7 +49,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
         this.algorithm = algorithm;
         this.executionTime = executionTime;
         this.timeToBest = timeToBest;
-        this.algorithmName = algorithm.getShortName();
+        this.algorithmName = algorithm.getName();
         this.metrics = metrics;
     }
 
