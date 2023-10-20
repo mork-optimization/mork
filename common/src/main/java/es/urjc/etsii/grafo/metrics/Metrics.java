@@ -19,7 +19,7 @@ import java.util.function.Function;
 public final class Metrics {
 
     private static final Map<String, Function<Long, ? extends AbstractMetric>> initializers = new HashMap<>();
-    private static ThreadLocal<MetricsStorage> localMetrics = new ThreadLocal<>();
+    private static InheritableThreadLocal<MetricsStorage> localMetrics = new InheritableThreadLocal<>();
     private static volatile boolean enabled = false;
     private static FMode fmode;
 

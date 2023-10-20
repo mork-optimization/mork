@@ -11,10 +11,17 @@ import java.util.random.RandomGeneratorFactory;
  */
 public final class RandomManager {
 
+    private static class RandomThreadLocal extends InheritableThreadLocal<RandomGenerator.JumpableGenerator> {
+        @Override
+        protected RandomGenerator.JumpableGenerator childValue(RandomGenerator.JumpableGenerator parentValue) {
+            return (RandomGenerator.JumpableGenerator) parentValue.copyAndJump();
+        }
+    }
+
     private static final Logger logger = Logger.getLogger(RandomManager.class.getName());
 
     // If the RandomManager is called before Spring starts, static methods will throw a NPE.
-    private static ThreadLocal<RandomGenerator> localRandom;
+    private static RandomThreadLocal localRandom;
     private static long[] seeds;
     private static boolean initialized = false;
     private static RandomType randomType;
@@ -39,7 +46,7 @@ public final class RandomManager {
      * @param iteration Algorithm iteration current thread is going to execute.
      */
     public static void reset(int iteration){
-        localRandom.set(RandomGeneratorFactory.of(RandomManager.randomType.getJavaName()).create(seeds[iteration]));
+        localConfiguration(RandomManager.randomType, seeds[iteration]);
     }
 
     /**
@@ -57,7 +64,7 @@ public final class RandomManager {
             seeds[i] = initRandom.nextLong();
         }
         logger.fine("Using seeds = " + Arrays.toString(seeds));
-        localRandom = ThreadLocal.withInitial(() -> {throw new IllegalStateException("");});
+        localRandom = new RandomThreadLocal();
         initialized = true;
     }
 
@@ -67,7 +74,12 @@ public final class RandomManager {
      * @param seed random seed
      */
     public static void localConfiguration(RandomType randomType, long seed){
-        localRandom.set(RandomGeneratorFactory.of(randomType.getJavaName()).create(seed));
+        var rnd = RandomGeneratorFactory.of(randomType.getJavaName()).create(seed);
+        if(rnd instanceof RandomGenerator.JumpableGenerator jumpableGenerator){
+            localRandom.set(jumpableGenerator);
+        } else {
+            throw new IllegalArgumentException("RandomGenerator %s is not of type JumpableGenerator".formatted(randomType));
+        }
     }
 
     /**

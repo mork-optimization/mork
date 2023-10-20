@@ -274,7 +274,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
     public static ProgressBarBuilder getPBarBuilder(String taskname) {
         return new ProgressBarBuilder()
-                .setUpdateIntervalMillis(10)
+                .setUpdateIntervalMillis(100)
                 .continuousUpdate()
                 .setTaskName(taskname)
                 .setStyle(ProgressBarStyle.COLORFUL_UNICODE_BAR);

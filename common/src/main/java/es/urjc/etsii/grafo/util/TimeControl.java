@@ -9,7 +9,20 @@ import java.util.concurrent.TimeUnit;
  */
 public class TimeControl {
 
-    private static final ThreadLocal<TimeStatus> timeStatus = ThreadLocal.withInitial(TimeStatus::new);
+    private static class TimeStatusThreadLocal extends InheritableThreadLocal<TimeStatus> {
+        @Override
+        protected TimeStatus initialValue() {
+            return new TimeStatus();
+        }
+
+        @Override
+        protected TimeStatus childValue(TimeStatus parentValue) {
+            // A child thread should inherit the time control restrictions of the parent thread
+            return parentValue; 
+        }
+    }
+    
+    private static final TimeStatusThreadLocal timeStatus = new TimeStatusThreadLocal();
 
     private TimeControl(){}
 

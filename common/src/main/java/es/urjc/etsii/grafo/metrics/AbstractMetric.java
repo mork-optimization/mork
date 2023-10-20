@@ -30,7 +30,7 @@ public abstract class AbstractMetric {
         return this.getClass().getSimpleName();
     }
 
-    public void add(long instant, double value){
+    public synchronized void add(long instant, double value){
         values.add(new TimeValue(instant- referenceNanoTime, value));
     }
 

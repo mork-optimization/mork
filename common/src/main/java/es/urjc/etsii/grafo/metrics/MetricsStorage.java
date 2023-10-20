@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.metrics;
 
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Stores metrics of different things that are happening while solving.
@@ -19,7 +19,7 @@ public class MetricsStorage {
      * @param referenceNanoTime all data points will be relative to this time, use the returned value of System.nanoTime()
      */
     public MetricsStorage(long referenceNanoTime) {
-        this.metrics = new HashMap<>();
+        this.metrics = new ConcurrentHashMap<>();
         this.referenceNanoTime = referenceNanoTime;
     }
 
