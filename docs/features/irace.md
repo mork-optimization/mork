@@ -52,11 +52,11 @@ Please read the complete set of steps before proceeding.
 
 ## Configuring dynamic algorithm generation
 
-In a normal experiment, algorithm configurations are defined inside an experiment. When using Irace, algorithms must be build dynamically to match the different configurations Irace wants to test.
+In a normal experiment, algorithm configurations are defined inside an experiment. When using Irace, algorithms must be dynamically built to match the different configurations Irace wants to test.
 
- 1. Create a new Java class that extends `IraceAlgorithmGenerator`.
- 2. Override the method`buildAlgorithm`. Note that this method returns a single `Algorithm` object, unlike the other experiments where a list of experiments is returned.
- 3.  The `buildAlgorithm` method receives an `IraceConfiguration` object as an input parameter. This parameter is used to determine the configuration of the algorithm to be tuned. To access the value of each of the parameters that configure the algorithm the method `getValue` is used.
+ 1. Create a new Java class that extends `AlgorithmBuilder`.
+ 2. Override the method`buildFromConfig`. Note that this method returns a single `Algorithm` object, unlike the other experiments where a list of experiments is returned.
+ 3.  The `buildFromConfig` method receives an `AlgorithmConfiguration` object as an input parameter. This parameter is used to determine the configuration of the algorithm to be tuned. To access the value of each of the parameters that configure the algorithm the method `getValue` is used.
 Note that this method returns an Optional<String> if a default value is not provided, given the fact that Irace may supply a given parameter only in certain configurations (Conditional parameters can be defined inside the parameters.txt file, for example only provide an alpha value if a GRASP like constructive is used).
 
 **Tip**: If you are certain a given parameter is always present, use `configuration.get("parameterName").orElseThrow()`. If for whatever reason the parameter is NOT present, an Exception will be thrown.
