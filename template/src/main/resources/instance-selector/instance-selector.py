@@ -39,7 +39,7 @@ def load_df(path: str) -> DataFrame:
 
 def prepare_df(df: DataFrame) -> DataFrame:
     cloned = df.drop(["id"], axis=1)
-    preprocessing.scale(cloned, copy=False)
+    cloned = pd.DataFrame(preprocessing.scale(cloned), columns=cloned.columns)
     return cloned
 
 
