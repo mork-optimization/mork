@@ -11,8 +11,8 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.ValidationUtil;
-
-import java.util.logging.Logger;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Example simple algorithm, executes:
@@ -24,12 +24,10 @@ import java.util.logging.Logger;
  * @param <I> Instance class
  */
 public class SimpleAlgorithm<S extends Solution<S, I>, I extends Instance> extends Algorithm<S, I> {
-
-    private static Logger log = Logger.getLogger(SimpleAlgorithm.class.getName());
+    private static Logger log = LoggerFactory.getLogger(SimpleAlgorithm.class.getName());
 
     protected final Constructive<S, I> constructive;
     protected final Improver<S, I> improver;
-
 
     /**
      * <p>Constructor for SimpleAlgorithm.</p>
@@ -97,7 +95,7 @@ public class SimpleAlgorithm<S extends Solution<S, I>, I extends Instance> exten
      * @param solution a S object.
      */
     protected void printStatus(String phase, S solution) {
-        log.fine(() -> String.format("\t\t%s: %s", phase, solution));
+        log.debug("\t\t{}: {}", phase, solution);
     }
 
     /**
