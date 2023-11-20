@@ -173,6 +173,15 @@ public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instanc
     }
 
     /**
+     * <p>Getter for the field <code>version</code>.</p>
+     *
+     * @return a long.
+     */
+    public long getVersion() {
+        return this.version;
+    }
+
+    /**
      * Define custom properties for the solution
      * @return Map of properties, where the key is the property name and the value is how to calculate the property value
      */
