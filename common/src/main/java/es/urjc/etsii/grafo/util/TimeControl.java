@@ -61,8 +61,11 @@ public class TimeControl {
      */
     public static boolean isTimeUp(){
         var t = timeStatus.get();
+        if(!t.enabled()){
+            return false;
+        }
         var current = System.nanoTime();
-        return t.enabled() && (current - t.start() > t.duration());
+        return (current - t.start() > t.duration());
     }
 
     /**
