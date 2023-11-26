@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.util;
 import es.urjc.etsii.grafo.testutil.TestCommonUtils;
 import es.urjc.etsii.grafo.util.random.RandomType;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -11,6 +12,11 @@ import java.util.HashSet;
 import java.util.LinkedList;
 
 class CollectionUtilTest {
+
+    @BeforeEach
+    public void initDefaultRandom(){
+        TestCommonUtils.initRandom(RandomType.DEFAULT, 0, 1);
+    }
 
     @Test
     void reverseFragmentTest() {
@@ -41,8 +47,6 @@ class CollectionUtilTest {
 
     @Test
     void pickRandomFromSetTest() {
-        RandomType type = RandomType.LEGACY;
-        TestCommonUtils.initRandom(type, 0, 1);
         var set = new HashSet<>(Arrays.asList(0, 1, 2, 3, 4, 5));
         for (int i = 0; i < 100; i++) {
             int n = CollectionUtil.pickRandom(set);
@@ -53,8 +57,6 @@ class CollectionUtilTest {
 
     @Test
     void pickRandomFromListTest() {
-        RandomType type = RandomType.LEGACY;
-        var initializeRandom = TestCommonUtils.initRandom(type, 0, 1);
         var list = new ArrayList<>(Arrays.asList(0, 1, 2, 3, 4, 5));
         for (int i = 0; i < 100; i++) {
             int n = CollectionUtil.pickRandom(list);
