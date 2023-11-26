@@ -44,4 +44,8 @@ public abstract class AbstractMetric {
     public TreeSet<TimeValue> getValues() {
         return values;
     }
+
+    public long getReferenceNanoTime() {
+        return referenceNanoTime;
+    }
 }
