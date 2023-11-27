@@ -45,14 +45,14 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jackson.version>2.15.2</jackson.version>
-        <springboot.version>3.1.4</springboot.version>
-        <mockito.version>5.6.0</mockito.version>
-        <byte-buddy.version>1.14.9</byte-buddy.version>
-        <msurefire.version>3.1.2</msurefire.version>
+        <jackson.version>2.16.0</jackson.version>
+        <springboot.version>3.2.0</springboot.version>
+        <mockito.version>5.7.0</mockito.version>
+        <byte-buddy.version>1.14.10</byte-buddy.version>
+        <msurefire.version>3.2.2</msurefire.version>
         <mcompiler.version>3.11.0</mcompiler.version>
         <msource.version>3.3.0</msource.version>
-        <mjavadoc.version>3.6.0</mjavadoc.version>
+        <mjavadoc.version>3.6.2</mjavadoc.version>
         <mjar.version>3.3.0</mjar.version>
         <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>
         <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
@@ -64,7 +64,7 @@
             ${project.basedir}/../integration-tests/target/site/jacoco-aggregate/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
         <sonar.language>java</sonar.language>
-        <graalvm.version>23.1.0</graalvm.version>
+        <graalvm.version>23.1.1</graalvm.version>
     </properties>
 
     <distributionManagement>
