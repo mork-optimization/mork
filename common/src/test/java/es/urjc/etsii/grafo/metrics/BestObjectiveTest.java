@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.metrics;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
-import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -9,8 +9,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class BestObjectiveTest {
 
-    @BeforeAll
-    public static void setup(){
+    @BeforeEach
+    public void setup(){
         Metrics.enableMetrics();
         Metrics.setSolvingMode(FMode.MINIMIZE);
     }
