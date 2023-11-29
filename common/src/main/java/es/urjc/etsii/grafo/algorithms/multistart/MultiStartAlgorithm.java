@@ -100,6 +100,7 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
     public S algorithm(I instance) {
         S best = this.algorithm.algorithm(instance);
         int iter = 1;
+        printStatus(iter, best);
         int iterWI = 0;
         while (!terminationCriteriaIsMet(iter, iterWI)) {
             iter++;
@@ -109,7 +110,6 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
                 best = solution;
                 iterWI = 0;
             }
-
             printStatus(iter, best);
         }
 
