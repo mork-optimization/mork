@@ -195,13 +195,13 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
     protected void exportAlgorithmInstanceSolution(WorkUnitResult<S, I> r) {
         // replace best iteration number with generic text to avoid overwriting the corresponding work unit result
-        var modifiedWorkUnit = new WorkUnitResult<>(r.experimentName(), r.algorithm(), "bestiter", r.solution(), r.executionTime(), r.timeToTarget(), r.metrics());
+        var modifiedWorkUnit = new WorkUnitResult<>(r.experimentName(), r.instancePath(), r.algorithm(), "bestiter", r.solution(), r.executionTime(), r.timeToTarget(), r.metrics());
         io.exportSolution(modifiedWorkUnit, SolutionExportFrequency.BEST_PER_ALG_INSTANCE);
     }
 
     protected void exportInstanceSolution(WorkUnitResult<S, I> r) {
         // replace best iteration number and algorithm name with generic text to avoid overwriting the corresponding work unit result
-        var modifiedWorkUnit = new WorkUnitResult<>(r.experimentName(), new EmptyAlgorithm<>("bestalg"), "bestiter", r.solution(), r.executionTime(), r.timeToTarget(), r.metrics());
+        var modifiedWorkUnit = new WorkUnitResult<>(r.experimentName(), r.instancePath(), new EmptyAlgorithm<>("bestalg"), "bestiter", r.solution(), r.executionTime(), r.timeToTarget(), r.metrics());
         io.exportSolution(modifiedWorkUnit, SolutionExportFrequency.BEST_PER_INSTANCE);
     }
 
