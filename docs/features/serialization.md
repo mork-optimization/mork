@@ -190,10 +190,12 @@ for example if you want to export the solution as an image, you may leave it emp
 
 ## Metrics
 
-Mork is able to gather the evolution of the objective function on each execution. This way, once an algorithm has finished and
-produced a solution, it is possible to analyze how the objective function has changed in the execution.
+Mork is able to gather different metrics along the execution of an algorithm.
 
-This feature requieres the JSON serializer to be enabled.
+A predefined metric in all Mork available algorithms is `BestObjective`, which records the evolution of the 
+objective function on each run. This way, once an algorithm has finished and produced a solution, it is possible
+to analyze how the objective function has changed in the execution in the exported solution. This feature requieres 
+the JSON serializer to be enabled.
 
 In order to activate the metrics, the corresponding parameter has to be enabled in the application.yml file:
 ```yml
@@ -237,3 +239,11 @@ Once the execution has finished, the JSON file containing the solution descripti
     "referenceNanoTime" : 821070987037541
   }
 ```
+
+If a newly created algorithm wants to use this metric, the following command has to be included after the best solution
+is updated:
+```java
+Metrics.add(BestObjective.class, solution.getScore());
+```
+where `solution` is the best solution managed by the algorithm.
+
