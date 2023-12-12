@@ -187,3 +187,53 @@ public class YourProblemSolutionSerializerConfig extends SolutionSerializer<Your
 Note: If the method `export(BufferedWriter writer, YourSolutionType solution)` does not provide enough flexibility, 
 for example if you want to export the solution as an image, you may leave it empty and override 
 `export(File f, DRFPSolution drfpSolution)` instead.
+
+## Metrics
+
+Mork is able to gather the evolution of the objective function on each execution. This way, once an algorithm has finished and
+produced a solution, it is possible to analyze how the objective function has changed in the execution.
+
+This feature requieres the JSON serializer to be enabled.
+
+In order to activate the metrics, the corresponding parameter has to be enabled in the application.yml file:
+```yml
+solver:
+
+  #[...]
+
+  # Enable or disable metrics tracking. Force enabled if using autoconfig.
+  metrics: true
+
+  #[...]
+
+```
+
+Once the execution has finished, the JSON file containing the solution description will also include values in the metrics section. For each defined metric, it will show the timestamp and the new value. The default metric is `BestObjective`, which watches the objective function value of the best solution. An example of this report follows:
+```json
+"executionTime" : 9670583917,
+  "timeToTarget" : 9572068250,
+  "metrics" : {
+    "metrics" : {
+      "BestObjective" : {
+        "values" : [ {
+          "instant" : 180894167,
+          "value" : 44704.0
+        }, {
+          "instant" : 4650119875,
+          "value" : 447.0
+        },  {
+          "instant" : 8874177375,
+          "value" : 280.0
+        }, {
+          "instant" : 9006580125,
+          "value" : 277.0
+        }, {
+          "instant" : 9572100250,
+          "value" : 251.0
+        } ],
+        "name" : "BestObjective"
+      }
+    },
+    "referenceNanoTime" : 821070987037541
+  }
+```
