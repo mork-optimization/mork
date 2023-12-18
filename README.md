@@ -8,8 +8,9 @@
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=bugs)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=coverage)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=duplicated_lines_density)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork)
 
+<!--
 ![mork-nobg]()
-
+-->
 
 ## What
 Mork is a framework for developing approaches for NP-Hard problems using the JVM. 
