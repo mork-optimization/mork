@@ -2,9 +2,6 @@ package es.urjc.etsii.grafo.__RNAME__.model;
 
 import es.urjc.etsii.grafo.solution.Solution;
 
-import java.util.Map;
-import java.util.function.Function;
-
 public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Instance> {
 
     /**
@@ -40,7 +37,7 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
     protected boolean _isBetterThan(__RNAME__Solution other) {
         // TODO given two solutions, is the current solution STRICTLY better than the other?
         // Example implementation for a maximization problem:
-        // return DoubleComparator.isGreaterThan(this.getScore(), other.getScore());
+        // return DoubleComparator.isGreater(this.getScore(), other.getScore());
         throw new UnsupportedOperationException("__RNAME__Solution::isBetterThan not implemented yet");
     }
 
@@ -104,10 +101,9 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
 //     */
 //    @Override
 //    public Map<String, Function<__RNAME__Solution, Object>> customProperties() {
-//        var properties = super.customProperties();
-//        // . Examples:
-//        // properties.put("myCustomPropertyName", s -> s.getScore());
-//        // properties.put("myCustomProperty2Name", __RNAME__Solution::getScore);
+//        var properties = new HashMap<String, Function<__RNAME__Solution, Object>>();
+//        properties.put("myCustomPropertyName", s -> s.getScore());
+//        properties.put("myCustomProperty2Name", __RNAME__Solution::getScore);
 //        return properties;
 //    }
 }

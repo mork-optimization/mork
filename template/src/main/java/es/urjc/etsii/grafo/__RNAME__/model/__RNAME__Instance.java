@@ -2,14 +2,16 @@ package es.urjc.etsii.grafo.__RNAME__.model;
 
 import es.urjc.etsii.grafo.io.Instance;
 
-import java.util.Comparator;
-import java.util.Map;
-
 public class __RNAME__Instance extends Instance {
 
     public __RNAME__Instance(String name){
         super(name);
         // TODO Add all required fields and parameters
+
+        // TODO Optional: declare instance properties
+//        properties.put("MyInstancePropertyName", 7);
+//        properties.put("MyInstanceProperty2Name", "Hello world");
+
     }
 
 
@@ -23,17 +25,5 @@ public class __RNAME__Instance extends Instance {
 //    public int compareTo(Instance other) {
 //        var otherInstance = (__RNAME__Instance) other;
 //        return Integer.compare(this.size, otherInstance.size);
-//    }
-
-//    /**
-//     * Define custom properties for the instance
-//     * @return Map of properties, with each entry containing the property name and its value
-//     */
-//    @Override
-//    public Map<String, Object> customProperties() {
-//        var properties =  super.customProperties();
-//        properties.put("MyInstancePropertyName", 7);
-//        properties.put("MyInstanceProperty2Name", "Hello world");
-//        return properties;
 //    }
 }

@@ -28,19 +28,17 @@ Example: execute the IteratedGreedyExperiment using a new set of instances locat
 java -jar target/__RNAME__.jar --instances.path.default=newinstances --solver.experiment=IteratedGreedyExperiment
 ```
 
+Example: running experiments with a new set of instances organized inside the `new` folder, disabling parallelization:
 ```
-java -server -jar __RNAME__.jar indexfile
+java -jar __RNAME__.jar --instances.path.default=new --solver.parallelExecutor=false 
 ```
 
-Example: running with only new proposed instances:
-```
-java -server -jar __RNAME__.jar instances/new/index
-```
+For a full list of configurable parameters, see the [configuration section of the Mork documentation](https://docs.mork-optimization.com/en/latest/features/config/).
+
 
 ## Instance format
 
 Explain instance format so other users may easily use them even if not using your code.
-
 
 ## Cite
 
