@@ -1,10 +1,5 @@
 package es.urjc.etsii.grafo.util;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
-
-import java.util.function.BiPredicate;
-import java.util.function.DoublePredicate;
-
 /**
  * Helper methods to perform comparisons between doubles (or floats)
  * DANGER: DoubleComparator VIOLATES COMPARISON CONTRACT, DO NOT USE IN SORTS
