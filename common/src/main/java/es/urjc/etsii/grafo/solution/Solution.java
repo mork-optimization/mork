@@ -164,18 +164,21 @@ public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instanc
     }
 
     /**
-     * <p>Getter for the field <code>lastModifiedTime</code>.</p>
-     *
-     * @return a long.
+     * When was the last time the current solution was modified.
+     * Has no meaning when used independently, must be used along a reference time (for example, to calculate the TTB, substracting the time at which the current solution was built)
+     * @return reference time, in nano seconds.
      */
     public long getLastModifiedTime() {
         return lastModifiedTime;
     }
 
     /**
-     * <p>Getter for the field <code>version</code>.</p>
+     * Get current solution version. 
+     * This is an internal ID kept by the framework, which tracks how many times the current solution has been modified.
+     * While it currently equals the number of moves that has been applied to the current solution, 
+     * such behaviour can change in future framework versions and should not be relied on.
      *
-     * @return a long.
+     * @return current solution version.
      */
     public long getVersion() {
         return this.version;
