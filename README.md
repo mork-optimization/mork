@@ -8,8 +8,6 @@
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=bugs)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=coverage)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=duplicated_lines_density)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork)
 
-![mork-nobg]()
-
 
 ## What
 Mork is a framework for developing approaches for NP-Hard problems using the JVM. 
@@ -83,3 +81,9 @@ The current development version is a Maven project structured in the following m
 
 Remember depending on your needs when developing approaches using Mork you may easily add/remove module dependencies in the `pom.xml` file.
 
+
+## Powered by Mork
+
+Below is a list of repositories leveraging Mork to tackle optimization problems.
+
+- [Strategic oscillation tabu search for improved hierarchical graph drawing (S. Cavero, E. G. Pardo, F. Glover, and R. Martí, 2024)](https://github.com/scaverod/SOS-TS-GraphDrawing). [Link to the published paper](https://doi.org/10.1016/j.eswa.2023.122668). 
