@@ -83,3 +83,9 @@ The current development version is a Maven project structured in the following m
 
 Remember depending on your needs when developing approaches using Mork you may easily add/remove module dependencies in the `pom.xml` file.
 
+
+## Powered by Mork
+
+Below is a list of repositories leveraging Mork to tackle optimization problems.
+
+- [Strategic oscillation tabu search for improved hierarchical graph drawing (S. Cavero, E. G. Pardo, F. Glover, and R. Martí, 2024)](https://github.com/scaverod/SOS-TS-GraphDrawing). [Link to the published paper](https://doi.org/10.1016/j.eswa.2023.122668). 
