@@ -169,7 +169,7 @@ public class YourProblemSolutionSerializerConfig extends SolutionSerializer<Your
     }
 
     @Override
-    public void export(BufferedWriter writer, YourSolutionType solution) throws IOException {
+    public void export(BufferedWriter writer, WorkUnitResult<YourSolutionType, YourInstanceType> result) throws IOException {
         var data = solution.getSolutionData();
         StringBuilder sb = new StringBuilder();
         for(var row: data){
@@ -184,9 +184,9 @@ public class YourProblemSolutionSerializerConfig extends SolutionSerializer<Your
 }
 ```
 
-Note: If the method `export(BufferedWriter writer, YourSolutionType solution)` does not provide enough flexibility, 
+Note: If the method `export(BufferedWriter writer, WorkUnitResult<YourSolutionType, YourInstanceType> result)` does not provide enough flexibility, 
 for example if you want to export the solution as an image, you may leave it empty and override 
-`export(File f, DRFPSolution drfpSolution)` instead.
+`export(File f, WorkUnitResult<YourSolutionType, YourInstanceType> result)` instead.
 
 ## Metrics
 
