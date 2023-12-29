@@ -99,7 +99,7 @@ public class MyExcelCustomizer extends ExcelCustomizer {
 See [event docs](events.md) for more information about how the event system works. All events generated during the execution are available using an `AbstractEventStorage`.
 It is guaranteed that the customize method will be invoked **after** the default Excel sheets are generated, so you may always modify the existing data and adapt it to your needs.
 
-Mork uses Apache POI 5.0 to create the XLSX files, see the [official Javadoc](https://poi.apache.org/apidocs/index.html) for more information on how to
+Mork uses Apache POI 5 to create the XLSX files, see the [official Javadoc](https://poi.apache.org/apidocs/index.html) for more information on how to
 do common operations such as creating new sheets and setting cell values.
 
 ## Solution serialization 
@@ -194,10 +194,11 @@ Mork is able to gather different metrics along the execution of an algorithm.
 
 A predefined metric in all Mork available algorithms is `BestObjective`, which records the evolution of the 
 objective function on each run. This way, once an algorithm has finished and produced a solution, it is possible
-to analyze how the objective function has changed in the execution in the exported solution. This feature requieres 
-the JSON serializer to be enabled.
+to analyze how the objective function has changed during the execution of any given algorithm. 
+The default JSON serializer saves the metrics along the exported solution if enabled. When using a custom serializer, you control which metrics are saved if any.
+All metrics data can be accessed from the export method inside your serializer class, using the provided `WorkUnitResult` as an argument.
 
-In order to activate the metrics, the corresponding parameter has to be enabled in the application.yml file:
+Remember that metrics may not be enabled by default, the corresponding configuration parameter can be found in the application.yml file:
 ```yml
 solver:
 
@@ -210,7 +211,8 @@ solver:
 
 ```
 
-Once the execution has finished, the JSON file containing the solution description will also include values in the metrics section. For each defined metric, it will show the timestamp and the new value. The default metric is `BestObjective`, which watches the objective function value of the best solution. An example of this report follows:
+If using the default JSON serializer, once the execution has finished, the JSON file containing the solution description will also include values in the metrics section. For each defined metric, it will show pairs of (time, value). All time values are in nanoseconds, and represent the ellapsed time since the experiment started in nanoseconds. The default metric is `BestObjective`, which watches the objective function value of the best solution. An example of this report follows:
+
 ```json
 "executionTime" : 9670583917,
   "timeToTarget" : 9572068250,
@@ -240,8 +242,7 @@ Once the execution has finished, the JSON file containing the solution descripti
   }
 ```
 
-If a newly created algorithm wants to use this metric, the following command has to be included after the best solution
-is updated:
+All algorithms implemented in Mork register the changes to the objective function. If you create new algorithm components, and want to add new datapoints to the BestObjective metric, or in general, to any metric, an statement similar to the following can be included where appropiate, for example each time the best solution is updated:
 ```java
 Metrics.add(BestObjective.class, solution.getScore());
 ```
