@@ -18,7 +18,6 @@ import java.io.IOException;
 import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.stream.Collectors;
 
 class DefaultJSONSolutionSerializerTest {
@@ -61,7 +60,7 @@ class DefaultJSONSolutionSerializerTest {
         var serializer = new DefaultJSONSolutionSerializer<TestSolution, TestInstance>(config);
         TestAssertions.toStringImpl(serializer);
         Assertions.assertTrue(serializer.isEnabled());
-        var wur = new WorkUnitResult<>("testExperiment", this.algorithm, "bestIteration", this.solution, -1, -1, new MetricsStorage());
+        var wur = new WorkUnitResult<>("testExperiment", this.solution.getInstance().getId(), this.algorithm, "bestIteration", this.solution, -1, -1, new MetricsStorage());
         Assertions.assertThrows(UnsupportedOperationException.class, () -> serializer.export(new BufferedWriter(new StringWriter()), wur));
         serializer.exportSolution(wur);
         var paths = Files.list(this.tempDir).toList();
