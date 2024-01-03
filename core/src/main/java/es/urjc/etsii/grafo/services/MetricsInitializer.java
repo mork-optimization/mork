@@ -46,7 +46,7 @@ public class MetricsInitializer {
             Constructor<? extends AbstractMetric> constructor = clazz.getConstructor(long.class);
             return reftime -> (T) construct(constructor, reftime);
         } catch (NoSuchMethodException e) {
-            throw new RuntimeException("Metric %s does not have a constructor that receives a single reference time", e);
+            throw new RuntimeException("Metric " + clazz.getSimpleName() + " does not have a PUBLIC constructor that receives a single reference time (long)", e);
         }
     }
 
