@@ -86,4 +86,8 @@ Remember depending on your needs when developing approaches using Mork you may e
 
 Below is a list of repositories leveraging Mork to tackle optimization problems.
 
+- [An Efficient Fixed Set Search for the Covering Location with Interconnected Facilities Problem (I. Lozano-Osorio, J. Sánchez-Oro, A. Martínez-Gavara, AD. López-Sánchez, and A. Duarte, 2023)](https://grafo.etsii.urjc.es/CPIF-MIC). [Link to the published paper](https://doi.org/10.1007/978-3-031-26504-4_37).
+- Multi-Round Influence Maximization: A Variable Neighborhood Search Approach (I. Lozano-Osorio, J. Sánchez-Oro, and A. Duarte, 2023). [Link to the published paper](https://doi.org/10.1007/978-3-031-34500-5_9).
+- [Dynamic Path Relinking for the Target Set Selection problem (I. Lozano-Osorio, A. Oliva-García, and J. Sánchez-Oro, 2023)](https://grafo.etsii.urjc.es/TSS). [Link to the published paper](https://doi.org/10.1016/j.knosys.2023.110827).
+- [An efficient and effective GRASP algorithm for the Budget Influence Maximization Problem (I. Lozano-Osorio, J. Sánchez-Oro, and A. Duarte 2023)](https://grafo.etsii.urjc.es/BIMP). [Link to the published paper](https://doi.org/10.1007/s12652-023-04680-z).   
 - [Strategic oscillation tabu search for improved hierarchical graph drawing (S. Cavero, E. G. Pardo, F. Glover, and R. Martí, 2024)](https://github.com/scaverod/SOS-TS-GraphDrawing). [Link to the published paper](https://doi.org/10.1016/j.eswa.2023.122668). 
