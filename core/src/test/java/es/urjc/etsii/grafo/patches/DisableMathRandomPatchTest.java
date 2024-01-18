@@ -3,8 +3,6 @@ package es.urjc.etsii.grafo.patches;
 import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.exception.InvalidRandomException;
 import org.junit.jupiter.api.*;
-import org.junit.jupiter.api.condition.EnabledForJreRange;
-import org.junit.jupiter.api.condition.JRE;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 class DisableMathRandomPatchTest {
@@ -22,7 +20,6 @@ class DisableMathRandomPatchTest {
 
     @Order(2)
     @Test
-    @EnabledForJreRange(min = JRE.JAVA_8, max = JRE.JAVA_17)
     void testMathRandomPatchEnabled(){
         BlockConfig config = new BlockConfig();
         config.setBlockMathRandom(true);

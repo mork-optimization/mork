@@ -6,6 +6,7 @@
 - (New) Autoconfig: configurable relationship blocks
 - (Breaking) Reorganized Autoconfig classes, reimporting them in existing projects may be necessary if upgrading the Mork version.
 - (Fix) Metrics: throw exception during AUC calculation if metric has negative values
+- (Fix) Math.random() patch, enable its test
 - (New) Metrics: add parameter to optionally calculate natural log of metric AUC.
 - (New) Logging: improve default logging configuration
 - (New) Add Algorithm::setName to allow changing the algorithm name after creation, util for example for algorithms built by the autoconfig components
