@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.patches;
 
 import es.urjc.etsii.grafo.config.BlockConfig;
+import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-import jakarta.annotation.PostConstruct;
 import java.lang.reflect.InaccessibleObjectException;
 import java.util.Collections;
 
@@ -35,7 +35,7 @@ public class PatchCollections {
     @PostConstruct
     public void patch(){
         if(!isEnabled){
-            log.info("Skipping Collections.shuffle() patch");
+            log.debug("Skipping Collections.shuffle() patch");
             return;
         }
 
@@ -43,7 +43,7 @@ public class PatchCollections {
             var internalRandom = Collections.class.getDeclaredField("r");
             internalRandom.setAccessible(true);
             internalRandom.set(null, new FailRandom());
-            log.info("Collections.shuffle() patched successfully");
+            log.debug("Collections.shuffle() patched successfully");
         } catch (NoSuchFieldException | InaccessibleObjectException | IllegalAccessException | UnsupportedOperationException e){
             // Log as warning, but do not stop application when failing to patch, it is not critical
             log.warn("Failed to patch Collections.shuffle(), probably due to missing opens, see: https://mork-optimization.readthedocs.io/en/latest/quickstart/troubleshooting/. Cause: {}", e.getMessage());

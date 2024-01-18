@@ -35,7 +35,7 @@ public class PatchMathRandom {
     @PostConstruct
     public void patch(){
         if(!isEnabled){
-            log.info("Skipping Math.random() patch");
+            log.debug("Skipping Math.random() patch");
             return;
         }
 
@@ -47,7 +47,7 @@ public class PatchMathRandom {
             var base = unsafe.staticFieldBase(internalRandomField);
             var offset = unsafe.staticFieldOffset(internalRandomField);
             unsafe.putObject(base, offset, new FailRandom());
-            log.info("Math.random() patched successfully");
+            log.debug("Math.random() patched successfully");
         } catch (NoSuchFieldException | ClassNotFoundException | InaccessibleObjectException | UnsupportedOperationException e) {
             // Log as warning, but do not stop application when failing to patch, it is not critical
             log.warn("Failed to patch Math.random(), probably due to missing opens, see: https://mork-optimization.readthedocs.io/en/latest/quickstart/troubleshooting/. Cause: {}", e.getMessage());
