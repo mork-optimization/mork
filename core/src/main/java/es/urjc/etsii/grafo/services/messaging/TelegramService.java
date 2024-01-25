@@ -110,37 +110,19 @@ public class TelegramService extends AbstractEventListener {
         private final String chatId;
 
         /**
-         * bot's token for communicating with the Telegram server
-         */
-        private final String token;
-
-        /**
          * Constructor
          *
          * @param chatId  chat id
-         * @param token   token
          * @param options options
          */
         private MorkTelegramBot(String chatId, String token, DefaultBotOptions options) {
-            super(options);
+            super(options, token);
             this.chatId = chatId;
-            this.token = token;
         }
 
         @Override
         public String getBotUsername() {
             return "MorkTelegramIntegration";
-        }
-
-
-        /**
-         * This method returns the bot's token for communicating with the Telegram server
-         *
-         * @return the bot's token
-         */
-        @Override
-        public String getBotToken() {
-            return token;
         }
 
         /**
