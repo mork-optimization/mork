@@ -8,14 +8,12 @@ import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ArrayUtil;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.lang.reflect.Array;
 import java.util.*;
-import java.util.function.BiPredicate;
 
 import static java.util.Comparator.comparingDouble;
 
@@ -92,6 +90,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
         int nSolutionsByScore = refsetSize - nSolutionsByDiversity;
 
         Set<S> alreadyUsed = new HashSet<>();
+        @SuppressWarnings("unchecked")
         S[] initialRefsetArray = (S[]) Array.newInstance(clazz, refsetSize);
 
         var initialSolutions = initializeSolutions(instance, (int) (nSolutionsByScore * initialRatio), false);

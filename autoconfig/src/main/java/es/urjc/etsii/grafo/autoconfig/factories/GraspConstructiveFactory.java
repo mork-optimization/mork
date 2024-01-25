@@ -13,6 +13,8 @@ import java.util.Map;
 
 public abstract class GraspConstructiveFactory extends AlgorithmComponentFactory {
 
+    // We use raw types because the actual implementation types are user provided
+    @SuppressWarnings({"rawtypes", "unchecked"})
     public GraspBuilder initBuilder(Map<String, Object> params) {
         var graspBuilder = new GraspBuilder();
         var fmode = AlgorithmBuilderUtil.prepareParameterValue(params.get("fmode"), FMode.class);

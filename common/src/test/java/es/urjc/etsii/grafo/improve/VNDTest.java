@@ -33,6 +33,7 @@ public class VNDTest {
         Metrics.disableMetrics();
     }
 
+    @SuppressWarnings("unchecked")
     @BeforeEach
     void prepareMocks(){
         calls = new ArrayList<>();

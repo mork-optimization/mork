@@ -11,7 +11,7 @@ import java.util.logging.Logger;
  *
  * @see es.urjc.etsii.grafo.solution.neighborhood.Neighborhood
  */
-public abstract class LazyMove<S extends Solution<S,I>, I extends Instance> extends Move<S,I>{
+public abstract class LazyMove<M extends LazyMove<M,S,I>, S extends Solution<S,I>, I extends Instance> extends Move<S,I>{
 
     private static final Logger logger = Logger.getLogger(LazyMove.class.getName());
 
@@ -31,6 +31,6 @@ public abstract class LazyMove<S extends Solution<S,I>, I extends Instance> exte
      *                and where data will be picked for the current move
      * @return the next move in this generator sequence if there is a next move, null otherwise
      */
-    public abstract LazyMove<S, I> next(S solution);
+    public abstract M next(S solution);
 
 }

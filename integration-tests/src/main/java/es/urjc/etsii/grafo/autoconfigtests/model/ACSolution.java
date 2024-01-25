@@ -3,12 +3,19 @@ package es.urjc.etsii.grafo.autoconfigtests.model;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
+/**
+ * Test solution to validate autoconfig behaviour, each component will add or remove some arbitrary quantity from its score
+ */
 public class ACSolution extends Solution<ACSolution, ACInstance> {
 
     double multiplier = 1;
 
-    public ACSolution(ACInstance ins) {
-        super(ins);
+    /**
+     * Build a new solution to validate the autoconfig behaviour
+     * @param instance test instance
+     */
+    public ACSolution(ACInstance instance) {
+        super(instance);
     }
 
     public ACSolution(ACSolution other) {

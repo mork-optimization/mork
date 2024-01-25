@@ -60,9 +60,9 @@ public class ExploreResult<M extends Move<S, I>, S extends Solution<S, I>, I ext
      * @param move move list
      * @param size upperbound neighborhood size for the current solution
      */
-    public static <M extends LazyMove<S, I>, S extends Solution<S, I>, I extends Instance> ExploreResult<M,S,I> fromLazyMove(S solution, M move, int size){
+    public static <M extends LazyMove<M, S, I>, S extends Solution<S, I>, I extends Instance> ExploreResult<M,S,I> fromLazyMove(S solution, M move, int size){
         return new ExploreResult<>(
-                Stream.iterate(move, Objects::nonNull, m -> (M) m.next(solution)),
+                Stream.iterate(move, Objects::nonNull, m -> m.next(solution)),
                 size
         );
     }
@@ -73,7 +73,7 @@ public class ExploreResult<M extends Move<S, I>, S extends Solution<S, I>, I ext
      * @param solution current solution
      * @param move move
      */
-    public static <M extends LazyMove<S, I>, S extends Solution<S, I>, I extends Instance> ExploreResult<M,S,I> fromLazyMove(S solution, M move){
+    public static <M extends LazyMove<M, S, I>, S extends Solution<S, I>, I extends Instance> ExploreResult<M,S,I> fromLazyMove(S solution, M move){
         return fromLazyMove(solution, move, Neighborhood.UNKNOWN_SIZE);
     }
 
@@ -126,12 +126,10 @@ public class ExploreResult<M extends Move<S, I>, S extends Solution<S, I>, I ext
     }
 
     @Override
-    public boolean equals(Object obj) {
-        if (obj == this) return true;
-        if (obj == null || obj.getClass() != this.getClass()) return false;
-        var that = (ExploreResult) obj;
-        return Objects.equals(this.moves, that.moves) &&
-                this.size == that.size;
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (!(o instanceof ExploreResult<?, ?, ?> that)) return false;
+        return size == that.size && Objects.equals(moves, that.moves);
     }
 
     @Override

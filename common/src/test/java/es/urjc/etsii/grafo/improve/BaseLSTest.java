@@ -16,6 +16,7 @@ import static org.mockito.Mockito.when;
 
 public class BaseLSTest {
 
+    @SuppressWarnings("unchecked")
     protected Neighborhood<TestMove, TestSolution, TestInstance> getNeighborhoodMock(FMode fmode, double[] values, TestSolution solution){
         List<TestMove> moves = new ArrayList<>();
         for(double d: values){

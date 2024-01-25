@@ -29,6 +29,7 @@ class EmptyAlgorithmTest {
     @Test
     void doesReturn(){
         var alg = new EmptyAlgorithm<TestSolution, TestInstance>("whatever");
+        @SuppressWarnings("unchecked")
         SolutionBuilder<TestSolution, TestInstance> builder = Mockito.mock(SolutionBuilder.class);
         var instance = new TestInstance("testinstance");
         var solution = new TestSolution(instance);

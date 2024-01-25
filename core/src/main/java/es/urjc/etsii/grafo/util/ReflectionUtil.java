@@ -26,6 +26,7 @@ public class ReflectionUtil {
         return findTypesByFilter(packageName, new AssignableTypeFilter(clazz));
     }
 
+    @SuppressWarnings("unchecked")
     public static <T> List<Class<T>> findTypesByFilter(String packageName, TypeFilter filter){
         var result = new ArrayList<Class<T>>();
         var provider = new ClassPathScanningCandidateComponentProvider(false);
@@ -65,6 +66,7 @@ public class ReflectionUtil {
             }
         }
         // Check interfaces too
+        assert clazz != null;
         for(var interf: ClassUtils.getAllInterfacesForClass(clazz)){
             if(set.contains(interf)){
                 return true;

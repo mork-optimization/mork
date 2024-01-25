@@ -29,6 +29,8 @@ import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.*;
 
+
+@SuppressWarnings({"rawtypes", "unchecked"})
 class SimulatedAnnealingUnitAlgorithmTest {
 
     private final TestInstance testInstance = new TestInstance("testinstance");

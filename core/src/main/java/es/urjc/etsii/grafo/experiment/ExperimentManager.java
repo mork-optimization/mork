@@ -27,7 +27,7 @@ import java.util.regex.Pattern;
 public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
 
     private static final int MAX_SHORTNAME_LENGTH = 30;
-    private Pattern experimentFilter;
+    private final Pattern experimentFilter;
 
     private static final Logger log = LoggerFactory.getLogger(UserExperimentOrchestrator.class);
 
@@ -44,8 +44,9 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
      * @param experimentImplementations list of experiments
      * @param solverConfig              solver configuration
      * @param solutionBuilders          solution builder
-     * @param referenceResultProviders
+     * @param referenceResultProviders  reference result providers
      */
+    @SuppressWarnings({"unchecked"})
     public ExperimentManager(List<AbstractExperiment<S, I>> experimentImplementations, SolverConfig solverConfig, List<SolutionBuilder<S, I>> solutionBuilders, List<ReferenceResultProvider> referenceResultProviders) {
         this.referenceResultProviders = validateReferenceResultProviders(referenceResultProviders);
         var experimentPattern = solverConfig.getExperiments();

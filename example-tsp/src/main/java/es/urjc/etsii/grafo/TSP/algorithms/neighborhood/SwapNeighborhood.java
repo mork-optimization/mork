@@ -18,7 +18,7 @@ public class SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TS
         return ExploreResult.fromLazyMove(solution, new SwapMove(solution, initialVertex, initialVertex, (initialVertex + 1) % solution.getInstance().numberOfLocations()));
     }
 
-    public static class SwapMove extends LazyMove<TSPSolution, TSPInstance> {
+    public static class SwapMove extends LazyMove<SwapMove, TSPSolution, TSPInstance> {
 
         final int initialPi;
         final int nLocations;
@@ -44,7 +44,7 @@ public class SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TS
 
 
         @Override
-        public LazyMove<TSPSolution, TSPInstance> next(TSPSolution solution) {
+        public SwapMove next(TSPSolution solution) {
             var nextPj = (pj + 1) % nLocations;
             var nextPi = pi;
             if (nextPj == initialPi) {

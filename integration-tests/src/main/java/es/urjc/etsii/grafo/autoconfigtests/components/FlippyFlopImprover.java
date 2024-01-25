@@ -14,13 +14,17 @@ import es.urjc.etsii.grafo.util.TimeControl;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Test improver used to validate the autoconfig mode
+ */
 public class FlippyFlopImprover extends Improver<ACSolution, ACInstance> {
     private final boolean enabled;
     private final int sleepy;
 
     /**
-     * Initialize common improver fields, to be called by subclasses
-     *
+     * Build a test improver used to validate autoconfig behaviour.
+     * @param enabled enables or disables the improvement. Autoconfig should choose to enable it.
+     * @param sleepy how much time to sleep between improvements. Autoconfig should minimize this value.
      * @param ofmode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
      */
     @AutoconfigConstructor

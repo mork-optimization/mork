@@ -114,6 +114,7 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         }
 
         @AutoconfigConstructor
+        @SuppressWarnings("unchecked")
         public SequentialImprover(
                 @ProvidedParam FMode fmode,
                 Improver<S, I> improverA,

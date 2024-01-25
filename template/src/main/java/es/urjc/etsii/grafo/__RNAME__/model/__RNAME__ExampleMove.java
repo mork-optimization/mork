@@ -3,15 +3,15 @@ package es.urjc.etsii.grafo.__RNAME__.model;
 import es.urjc.etsii.grafo.solution.LazyMove;
 
 /**
- * Base class for all movements for the __RNAME__ problem. All movements should extend this class.
+ * Example movement class. Can be an insert, a swap, anything that modifies the solution state
  */
-public abstract class __RNAME__BaseMove extends LazyMove<__RNAME__Solution, __RNAME__Instance> {
+public abstract class __RNAME__ExampleMove extends LazyMove<__RNAME__ExampleMove, __RNAME__Solution, __RNAME__Instance> {
 
     /**
      * Move constructor
      * @param solution solution
      */
-    public __RNAME__BaseMove(__RNAME__Solution solution) {
+    public __RNAME__ExampleMove(__RNAME__Solution solution) {
         super(solution);
     }
 
@@ -44,7 +44,7 @@ public abstract class __RNAME__BaseMove extends LazyMove<__RNAME__Solution, __RN
      * @return the next move in this generator sequence if there is a next move, return null to signal end of sequence.
      */
     @Override
-    public LazyMove<__RNAME__Solution, __RNAME__Instance> next(__RNAME__Solution solution) {
+    public __RNAME__ExampleMove next(__RNAME__Solution solution) {
         throw new UnsupportedOperationException("Not implemented");
     }
 

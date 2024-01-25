@@ -193,6 +193,7 @@
                 </executions>
                 <configuration>
                     <source>${java.version}</source>
+                    <doclint>all,-missing</doclint>
                 </configuration>
             </plugin>
             <plugin>

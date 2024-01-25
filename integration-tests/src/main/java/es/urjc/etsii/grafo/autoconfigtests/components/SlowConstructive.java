@@ -11,9 +11,12 @@ import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 
 import java.util.concurrent.TimeUnit;
 
+/**
+ * Test constructive method used to validate the behaviour of the autoconfig mode
+ */
 public class SlowConstructive extends Constructive<ACSolution, ACInstance> {
 
-    public int sumThis;
+    private final int sumThis;
     @AutoconfigConstructor
     public SlowConstructive(@IntegerParam(min = -10, max = 10) int sumThis) {
         this.sumThis = sumThis;

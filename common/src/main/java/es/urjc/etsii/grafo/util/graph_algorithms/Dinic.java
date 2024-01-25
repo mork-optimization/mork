@@ -32,6 +32,7 @@ public class Dinic {
      *
      * @param N graph size
      */
+    @SuppressWarnings("unchecked") // due to required (HashSet<Edge>[]) cast
     public Dinic(int N) {
 
         // s is the source, t is the sink, add these as last two nodes.
@@ -41,7 +42,7 @@ public class Dinic {
         blocked = new boolean[n];
         dist = new int[n];
         q = new ArrayDeque<>();
-        adj = new HashSet[n];
+        adj = (HashSet<Edge>[]) new HashSet[n];
         for(int i = 0; i < n; ++i)
             adj[i] = new HashSet<>();
     }

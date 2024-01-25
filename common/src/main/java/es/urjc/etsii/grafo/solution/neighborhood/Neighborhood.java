@@ -106,6 +106,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
      * @param <S> Solution type
      * @param <I> Instance type
      */
+    @SafeVarargs
     public static <M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> RandomizableNeighborhood<M, S, I> random(boolean balanced, RandomizableNeighborhood<M, S, I>... neighborhoods) {
         return new RandomFromNeighborhood<>(balanced, neighborhoods);
     }

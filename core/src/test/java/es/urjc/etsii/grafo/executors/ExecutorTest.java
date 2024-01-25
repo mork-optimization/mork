@@ -25,6 +25,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+@SuppressWarnings("unchecked")
 class ExecutorTest {
 
     private static class NopExceptionHandler extends ExceptionHandler<TestSolution, TestInstance> {
@@ -125,9 +126,9 @@ class ExecutorTest {
          * @param solutionValidator   solution validator if available
          * @param timeLimitCalculator time limit calculator if exists
          * @param io                                          IO manager
-         * @param instanceManager
+         * @param instanceManager   instance manager
          * @param referenceResultProviders                    list of all reference value providers implementations
-         * @param solverConfig
+         * @param solverConfig  solver configuration
          */
         protected TestExecutor(
                 Optional<SolutionValidator<TestSolution, TestInstance>> solutionValidator,

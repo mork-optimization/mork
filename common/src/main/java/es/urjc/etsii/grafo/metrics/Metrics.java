@@ -97,6 +97,7 @@ public final class Metrics {
         return fmode;
     }
 
+    @SuppressWarnings("unchecked")
     public static <T extends AbstractMetric> T get(String metricName){
         var storage = getCurrentThreadMetrics();
         if(!storage.metrics.containsKey(metricName)){
@@ -107,7 +108,7 @@ public final class Metrics {
                 throw new IllegalArgumentException("Unregistered metric: %s, did you forgot to register it?".formatted(metricName));
             }
         }
-        // guaranteed to have correct type? recheck
+        // user is responsible for ensuring that the metric name corresponds with the expected type
         return (T) storage.metrics.get(metricName);
     }
     public static <T extends AbstractMetric> T get(Class<T> metric){

@@ -88,6 +88,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
      * @param referenceResultProviders list of all reference value providers implementations
      * @param exceptionHandlers list of exception handlers available
      */
+    @SuppressWarnings({"unchecked"}) // due to current decideImplementation required cast
     protected Executor(
             Optional<SolutionValidator<S, I>> validator,
             Optional<TimeLimitCalculator<S, I>> timeLimitCalculator,
