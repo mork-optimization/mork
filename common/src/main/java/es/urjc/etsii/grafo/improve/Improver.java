@@ -74,6 +74,7 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
     }
 
     @SafeVarargs
+    @SuppressWarnings("varargs")
     public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> serial(FMode fmode, Improver<S, I>... improvers){
         return new SequentialImprover<>(fmode, improvers);
     }
@@ -108,13 +109,14 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         private final Improver<S,I>[] improvers;
 
         @SafeVarargs
+        @SuppressWarnings("varargs")
         public SequentialImprover(FMode fmode, Improver<S, I>... improvers) {
             super(fmode);
             this.improvers = improvers;
         }
 
         @AutoconfigConstructor
-        @SuppressWarnings("unchecked")
+        @SuppressWarnings({"unchecked", "rawtype"})
         public SequentialImprover(
                 @ProvidedParam FMode fmode,
                 Improver<S, I> improverA,

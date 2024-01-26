@@ -67,6 +67,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
      * @return a new neighborhood which returns the moves from each neighborhood as a sequence
      */
     @SafeVarargs
+    @SuppressWarnings("varargs")
     public static <M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> Neighborhood<M, S, I> concat(Neighborhood<M, S, I>... neighborhoods) {
         return new ConcatNeighborhood<>(neighborhoods);
     }
@@ -81,6 +82,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
      * @return a new neighborhood which returns the moves from each neighborhood alternating between them
      */
     @SafeVarargs
+    @SuppressWarnings("varargs")
     public static <M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> Neighborhood<M, S, I> interleave(Neighborhood<M, S, I>... neighborhoods) {
         return new InterleavedNeighborhood<>(neighborhoods);
     }
@@ -107,6 +109,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
      * @param <I> Instance type
      */
     @SafeVarargs
+    @SuppressWarnings("varargs")
     public static <M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> RandomizableNeighborhood<M, S, I> random(boolean balanced, RandomizableNeighborhood<M, S, I>... neighborhoods) {
         return new RandomFromNeighborhood<>(balanced, neighborhoods);
     }
@@ -210,8 +213,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
     private abstract static class DerivedNeighborhood<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends Neighborhood<M, S, I> {
         final Neighborhood<M, S, I>[] neighborhoods;
 
-        @SafeVarargs
-        public DerivedNeighborhood(Neighborhood<M, S, I>... neighborhoods) {
+        public DerivedNeighborhood(Neighborhood<M, S, I>[] neighborhoods) {
             this.neighborhoods = Objects.requireNonNull(neighborhoods);
         }
 
@@ -230,6 +232,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
     private static class ConcatNeighborhood<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends DerivedNeighborhood<M, S, I> {
 
         @SafeVarargs
+        @SuppressWarnings("varargs")
         private ConcatNeighborhood(Neighborhood<M, S, I>... neighborhoods) {
             super(neighborhoods);
         }
@@ -260,6 +263,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
     private static class InterleavedNeighborhood<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends DerivedNeighborhood<M, S, I> {
 
         @SafeVarargs
+        @SuppressWarnings("varargs")
         private InterleavedNeighborhood(Neighborhood<M, S, I>... neighborhoods) {
             super(neighborhoods);
         }
@@ -286,7 +290,7 @@ public abstract class Neighborhood<M extends Move<S, I>, S extends Solution<S, I
             }
 
             return new ExploreResult<>(StreamSupport.stream(new Spliterators.AbstractSpliterator<>(totalSize, ch) {
-                List<Spliterator<? extends M>> spliterators = sps;
+                final List<Spliterator<? extends M>> spliterators = sps;
                 int lastIndex = 0;
 
                 @Override

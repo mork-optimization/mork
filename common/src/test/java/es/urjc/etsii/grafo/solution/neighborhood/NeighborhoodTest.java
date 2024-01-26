@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.stream.Stream;
 
+@SuppressWarnings("unchecked")
 public class NeighborhoodTest {
 
     TestSolution solution;

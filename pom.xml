@@ -203,6 +203,7 @@
                 <configuration>
                     <compilerArgs>
                         <arg>-parameters</arg>
+                        <arg>-Xlint:all,-this-escape</arg>
                     </compilerArgs>
                 </configuration>
             </plugin>

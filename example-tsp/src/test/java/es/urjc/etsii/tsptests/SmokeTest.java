@@ -26,7 +26,7 @@ class SmokeTest {
     private Executor<?, ?> executor;
 
     @Autowired
-    private AbstractEventStorage abstractEventStorage;
+    private AbstractEventStorage<?,?> abstractEventStorage;
 
     @Autowired
     private ApplicationContext applicationContext;

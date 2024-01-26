@@ -23,7 +23,7 @@ public class DotGenerator {
     /**
      * Common features for all files.
      * Layout is set as "neato", other layout as "dot", "fdp", "sfdp" "twopi" or "circo" can be selected.
-     * More information: https://www.graphviz.org
+     * More information: <a href="https://www.graphviz.org">Graphviz website</a>
      */
     private static final String header = """
             digraph G {
@@ -35,9 +35,9 @@ public class DotGenerator {
      */
     private static final String footer = "\n}";
 
-    private final AbstractEventStorage eventStorage;
+    private final AbstractEventStorage<?,?> eventStorage;
 
-    public DotGenerator(MemoryEventStorage eventStorage) {
+    public DotGenerator(MemoryEventStorage<?,?> eventStorage) {
         this.eventStorage = eventStorage;
     }
 
@@ -102,7 +102,7 @@ public class DotGenerator {
     @GetMapping("/api/generategraph/{eventId}")
     public String getSolutionAsDotString(@PathVariable int eventId) throws IOException {
         var event =  eventStorage.getEvent(eventId);
-        if(event instanceof SolutionGeneratedEvent solutionGeneratedEvent && solutionGeneratedEvent.getSolution().isPresent()){
+        if(event instanceof SolutionGeneratedEvent<?,?> solutionGeneratedEvent && solutionGeneratedEvent.getSolution().isPresent()){
             var solution = (TSPSolution) solutionGeneratedEvent.getSolution().get();
             var viz = Graphviz.fromString(generateDotDiagram(solution));
             BufferedImage image = viz.render(Format.PNG).toImage();

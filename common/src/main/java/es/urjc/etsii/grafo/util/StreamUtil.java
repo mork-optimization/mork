@@ -16,6 +16,7 @@ public class StreamUtil {
      * @return A single stream containing all the given streams
      */
     @SafeVarargs
+    @SuppressWarnings("varargs")
     public static <T> Stream<T> merge(Stream<T>... streams){
         return Arrays.stream(streams).flatMap(s -> s);
     }

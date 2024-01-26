@@ -6,7 +6,10 @@ package es.urjc.etsii.grafo.util.graph_algorithms;
 // Commented and Edited by Arup Guha on 3/6/2017 for COP 4516
 // Code for Dinic's Network Flow Algorithm
 
-import java.util.*;
+import java.util.ArrayDeque;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Objects;
 
 /**
  * Dinic's algorithm for the maxflow problem.
@@ -32,7 +35,7 @@ public class Dinic {
      *
      * @param N graph size
      */
-    @SuppressWarnings("unchecked") // due to required (HashSet<Edge>[]) cast
+    @SuppressWarnings({"unchecked", "rawtypes"}) // due to required (HashSet<Edge>[]) cast
     public Dinic(int N) {
 
         // s is the source, t is the sink, add these as last two nodes.

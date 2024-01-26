@@ -313,7 +313,7 @@ public class BitSetTest {
         for (int i = 0; i < size; i++) {
             set1.add(r.nextInt(size));
         }
-        var set2 = (BitSet) set1.clone();
+        var set2 = set1.clone();
         assertEquals(set1, set2);
         assertEquals(set1.hashCode(), set2.hashCode());
 
