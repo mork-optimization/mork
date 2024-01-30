@@ -70,7 +70,7 @@ public abstract class Instance implements Comparable<Instance>{
     public Object getProperty(String key){
         Object property = this.properties.get(key);
         if(property == null){
-            throw new IllegalArgumentException("Invalid property %s, check that the property has been set on instance load");
+            throw new IllegalArgumentException("Invalid property %s, check that the property has been set on instance load".formatted(key));
         }
         return property;
     }
