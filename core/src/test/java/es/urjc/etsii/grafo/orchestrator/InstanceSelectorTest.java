@@ -6,6 +6,7 @@ import es.urjc.etsii.grafo.io.InstanceImporter;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.context.ApplicationEventPublisher;
@@ -21,6 +22,12 @@ import java.util.stream.Collectors;
 import static org.junit.jupiter.api.Assertions.*;
 
 class InstanceSelectorTest {
+
+    @BeforeAll
+    public static void resetProps(){
+        TestInstance.resetProperties();
+    }
+
     private static Object tryParse(String s){
         try {
             return Double.parseDouble(s);
