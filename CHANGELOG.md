@@ -2,6 +2,7 @@
 - (Fix) Cannot export boolean instance properties to Excel sheets
 - (New) Java 21 compatibility. After extended testing, Java 21 will become the minimum required version.
 - (New) Autoconfig: /auto/debug/tree display accumulated tree sizes
+- (New) Allow usage of Java 21+ preview APIs by default, such as ScopedValues and string templates
 - (Fix) Autoconfig: JSON deserialization limit 
 - (New) Autoconfig: configurable relationship blocks
 - (Breaking) Reorganized Autoconfig classes, reimporting them in existing projects may be necessary if upgrading the Mork version.
