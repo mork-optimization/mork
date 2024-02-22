@@ -284,16 +284,17 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
     public List<ExecuteResponse> iraceMultiCallback(List<IraceExecuteConfig> configs) {
         if (this.solverConfig.isParallelExecutor()) {
-            var executor = Executors.newFixedThreadPool(this.solverConfig.getnWorkers());
-            var futures = new ArrayList<Future<ExecuteResponse>>();
-            for (IraceExecuteConfig config : configs) {
-                futures.add(executor.submit(() -> {
-                    var iraceConfig = IraceUtil.toIraceRuntimeConfig(config);
-                    return iraceSingleCallback(iraceConfig);
-                }));
+            try(var executor = Executors.newFixedThreadPool(this.solverConfig.getnWorkers())){
+                var futures = new ArrayList<Future<ExecuteResponse>>();
+                for (IraceExecuteConfig config : configs) {
+                    futures.add(executor.submit(() -> {
+                        var iraceConfig = IraceUtil.toIraceRuntimeConfig(config);
+                        return iraceSingleCallback(iraceConfig);
+                    }));
+                }
+                executor.shutdown();
+                return ConcurrencyUtil.awaitAll(futures);
             }
-            executor.shutdown();
-            return ConcurrencyUtil.awaitAll(futures);
         } else {
             var results = new ArrayList<ExecuteResponse>();
             for (IraceExecuteConfig config : configs) {

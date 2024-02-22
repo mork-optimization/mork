@@ -20,7 +20,7 @@ public class BestObjective extends AbstractMetric {
     }
 
     @Override
-    public void add(long instant, double value) {
+    public synchronized void add(long instant, double value) {
         var t = new TimeValue(instant, value);
         // Datapoint is inserted only if it improves the curve
         var previous = this.values.floor(t);
