@@ -23,7 +23,9 @@ The idea of the project is to provide both high quality and tested componentes t
 - Automatic benchmarking and optional timings adjustment.
 - Nice web interface to visualize solution quality and experiment progress.
 
-https://user-images.githubusercontent.com/55482385/140910473-1fa14244-5ef9-4ec5-9cf6-1139578f4151.mov
+<video width="100%" autoplay>
+  <source src="https://user-images.githubusercontent.com/55482385/140910473-1fa14244-5ef9-4ec5-9cf6-1139578f4151.mov" type="video/mp4">
+</video>
 
 - And more!
 
