@@ -16,6 +16,8 @@ import es.urjc.etsii.grafo.util.ValidationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.function.BiFunction;
+
 /**
  * Variable neighborhood search (VNS) is a metaheuristic for solving combinatorial
  * and global optimization problems. Its basic idea is the systematic change of
@@ -137,7 +139,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
         int internalK = 0;
         // While stop not request OR k in range. k check is done and breaks inside loop
         while (!TimeControl.isTimeUp()) {
-            int userK = kMapper.mapK(solution, internalK);
+            int userK = kMapper.apply(solution, internalK);
             if (userK == KMapper.STOPNOW) {
                 printStatus(internalK, KMapper.STOPNOW, solution);
                 break;
@@ -188,7 +190,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * Calculates K value for each VNS step.
      */
     @FunctionalInterface
-    public interface KMapper<S extends Solution<S, I>, I extends Instance> {
+    public interface KMapper<S extends Solution<S, I>, I extends Instance> extends BiFunction<S, Integer, Integer> {
         int STOPNOW = -1;
 
         /**
@@ -213,7 +215,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
          * @param originalK Current k strength. Starts in 0 and increments by 1 each time the solution does not improve.
          * @return K value to use. Return KMapper.STOPNOW to stop when the VNS should terminate
          */
-        int mapK(S solution, int originalK);
+        Integer apply(S solution, Integer originalK);
     }
 
     private static <S extends Solution<S, I>, I extends Instance> KMapper<S, I> getDefaultKMapper(int maxK) {
