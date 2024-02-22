@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.StreamReadConstraints;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.services.BannerProvider;
+import es.urjc.etsii.grafo.util.ExceptionUtil;
+import org.slf4j.Logger;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
@@ -18,6 +20,7 @@ import org.springframework.scheduling.annotation.EnableAsync;
 @ComponentScan(basePackages = "${advanced.scan-pkgs:es.urjc.etsii}", includeFilters = @ComponentScan.Filter(InheritedComponent.class))
 public class Mork {
 
+    private static final Logger log = org.slf4j.LoggerFactory.getLogger(Mork.class);
     private static FMode fmode;
 
     /**
@@ -58,7 +61,13 @@ public class Mork {
         SpringApplication application = new SpringApplication(Mork.class);
         application.setBanner(new BannerProvider());
         application.setLogStartupInfo(false);
-        application.run(args);
+        try {
+            application.run(args);
+        } catch (Exception e) {
+            var rootCause = ExceptionUtil.getRootCause(e);
+            log.error("%s: %s".formatted(rootCause.getClass().getSimpleName(), rootCause.getMessage()));
+            log.info("Unhandled exception: ", e);
+        }
     }
 
     /**
