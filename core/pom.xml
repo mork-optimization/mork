@@ -3,21 +3,21 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>mork</artifactId>
-    <version>0.19</version>
+    <version>0.20-SNAPSHOT</version>
     <name>Mork Core</name>
     <description>Metaheuristic Optimization framewoRK</description>
 
     <parent>
         <artifactId>mork-parent</artifactId>
         <groupId>es.urjc.etsii.grafo</groupId>
-        <version>0.19</version>
+        <version>0.20-SNAPSHOT</version>
     </parent>
 
     <dependencies>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork-common</artifactId>
-            <version>0.19</version>
+            <version>0.20-SNAPSHOT</version>
         </dependency>
 
         <dependency>

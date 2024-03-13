@@ -8,7 +8,7 @@
 
     <groupId>es.urjc.etsii.grafo</groupId>
     <artifactId>mork-parent</artifactId>
-    <version>0.19</version>
+    <version>0.20-SNAPSHOT</version>
     <packaging>pom</packaging>
     <modules>
         <module>core</module>
@@ -37,7 +37,7 @@
         <connection>scm:git:git://github.com/rmartinsanta/mork.git</connection>
         <developerConnection>scm:git:https://github.com/rmartinsanta/mork</developerConnection>
         <url>https://github.com/rmartinsanta/mork/tree/master</url>
-        <tag>mork-parent-0.19</tag>
+        <tag>HEAD</tag>
     </scm>
     <properties>
         <java.version>21</java.version>
@@ -90,13 +90,13 @@
             <dependency>
                 <groupId>es.urjc.etsii.grafo</groupId>
                 <artifactId>mork</artifactId>
-                <version>0.19</version>
+                <version>0.20-SNAPSHOT</version>
             </dependency>
 
             <dependency>
                 <groupId>es.urjc.etsii.grafo</groupId>
                 <artifactId>autoconfig</artifactId>
-                <version>0.19</version>
+                <version>0.20-SNAPSHOT</version>
             </dependency>
 
             <dependency>
