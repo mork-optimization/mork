@@ -1,4 +1,7 @@
 # Developing
+- More coming soon!
+
+# v0.19
 - (Fix) Cannot export boolean instance properties to Excel sheets
 - (New) Java 21 compatibility. After extended testing, Java 21 will become the minimum required version.
 - (New) Autoconfig: /auto/debug/tree display accumulated tree sizes
