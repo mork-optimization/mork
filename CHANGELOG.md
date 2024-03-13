@@ -10,7 +10,7 @@
 - (Fix) Math.random() patch, enable its test
 - (New) Metrics: add parameter to optionally calculate natural log of metric AUC.
 - (New) Logging: improve default logging configuration
-- (New) Add Algorithm::setName to allow changing the algorithm name after creation, util for example for algorithms built by the autoconfig components
+- (New) Add Algorithm::setName to allow changing the algorithm name after creation, util for example for algorithms built by the autoconfig components. In any case, this method should never be called after the algorithm has started.
 - (New) AbstractMetric::getReferenceNanoTime to get current reference nano time
 - Various small bug fixes and improvements
 
