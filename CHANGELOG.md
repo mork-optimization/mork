@@ -1,4 +1,5 @@
 # Developing
+- (New) Add support for 7Z and ZIP compressed instances, with no configuration required.
 - More coming soon!
 
 # v0.19

@@ -10,7 +10,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.lang.ref.SoftReference;
-import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -64,7 +63,7 @@ public class InstanceManager<I extends Instance> {
         return this.solveOrderByExperiment.computeIfAbsent(expName, s -> {
             String instancePath = this.instanceConfiguration.getPath(expName);
             checkExists(instancePath);
-            List<Path> instances = IOUtil.iterate(instancePath);
+            List<String> instances = IOUtil.iterate(instancePath);
 
             List<String> sortedInstances;
             if (preload) {
@@ -76,7 +75,7 @@ public class InstanceManager<I extends Instance> {
         });
     }
 
-    protected List<String> validateAndSort(String expName, List<Path> instancePaths) {
+    protected List<String> validateAndSort(String expName, List<String> instancePaths) {
         List<String> sortedInstances;
         log.info("Loading all instances to check correctness...");
         List<I> instances = new ArrayList<>();
@@ -118,11 +117,8 @@ public class InstanceManager<I extends Instance> {
     }
 
 
-    protected List<String> lexicSort(List<Path> instancePaths) {
-        List<String> sortedInstances = new ArrayList<>();
-        for (var i : instancePaths) {
-            sortedInstances.add(i.toAbsolutePath().toString());
-        }
+    protected List<String> lexicSort(List<String> instancePaths) {
+        List<String> sortedInstances = new ArrayList<>(instancePaths);
         Collections.sort(sortedInstances);
         return sortedInstances;
     }
@@ -145,43 +141,31 @@ public class InstanceManager<I extends Instance> {
     /**
      * Returns an instance given a path
      *
-     * @param p Path of instance to load
+     * @param path Path of instance to load
      * @return Loaded instance
      */
-    protected synchronized I getInstance(Path p) {
-        String absolutePath = p.toAbsolutePath().toString();
-        I instance = this.cacheByPath.getOrDefault(absolutePath, EMPTY).get();
+    public synchronized I getInstance(String path) {
+        I instance = this.cacheByPath.getOrDefault(path, EMPTY).get();
         if (instance == null) {
             // Load and put in cache
-            instance = loadInstance(p);
+            instance = loadInstance(path);
         }
 
         return instance;
     }
 
-    protected synchronized I loadInstance(Path p) {
+    protected synchronized I loadInstance(String path) {
         long startLoad = System.nanoTime();
-        I instance = this.instanceImporter.importInstance(p.toFile());
+        I instance = this.instanceImporter.importInstance(path);
         long endLoad = System.nanoTime();
         instance.setProperty(Instance.LOAD_TIME_NANOS, endLoad - startLoad);
         for(var e: instance.customProperties().entrySet()){
             instance.setProperty(e.getKey(), e.getValue());
         }
-        String absPath = p.toAbsolutePath().toString();
-        instance.setPath(absPath);
+        instance.setPath(path);
 
-        this.cacheByPath.put(absPath, new SoftReference<>(instance));
+        this.cacheByPath.put(path, new SoftReference<>(instance));
         return instance;
-    }
-
-    /**
-     * Get instance by ID. The ID format is not guaranteed, it should be treated as an opaque constant.
-     *
-     * @param instancePath instance path
-     * @return Instance
-     */
-    public I getInstance(String instancePath) {
-        return getInstance(Path.of(instancePath));
     }
 
     /**

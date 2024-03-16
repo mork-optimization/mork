@@ -124,6 +124,13 @@
             </exclusions>
         </dependency>
 
+        <!-- Support for 7z files -->
+        <dependency>
+            <groupId>org.tukaani</groupId>
+            <artifactId>xz</artifactId>
+            <version>1.9</version>
+        </dependency>
+
     </dependencies>
 
     <build>
