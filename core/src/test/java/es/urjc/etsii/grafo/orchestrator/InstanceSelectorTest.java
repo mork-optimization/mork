@@ -2,22 +2,20 @@ package es.urjc.etsii.grafo.orchestrator;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.events.EventPublisher;
-import es.urjc.etsii.grafo.io.InstanceImporter;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestInstanceImporter;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.context.ApplicationEventPublisher;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -28,23 +26,6 @@ class InstanceSelectorTest {
         TestInstance.resetProperties();
     }
 
-    private static Object tryParse(String s){
-        try {
-            return Double.parseDouble(s);
-        } catch (NumberFormatException e){
-            return s;
-        }
-    }
-
-    private class TestInstanceImporter extends InstanceImporter<TestInstance> {
-        @Override
-        public TestInstance importInstance(BufferedReader reader, String filename) {
-            Map<String, Object> map = reader.lines()
-                    .map(s -> s.split(","))
-                    .collect(Collectors.toMap(s -> s[0], s -> tryParse(s[1])));
-            return new TestInstance(filename, map);
-        }
-    }
     @Test
     public void checkCSV() throws IOException {
         var config = new InstanceConfiguration();
@@ -61,12 +42,12 @@ class InstanceSelectorTest {
         var lines = Files.readAllLines(p);
         assertEquals(7, lines.size());
         assertArrayEquals(new String[]{"id", "awesomeness", "ble", "random", "size"}, lines.get(0).split(","));
-        assertArrayEquals(new String[]{"instanceA.txt", "1.0", "-7.1", "346.0", "100.0"}, lines.get(1).split(","));
-        assertArrayEquals(new String[]{"instanceB.txt", "2.0", "-5.1123", "132768.0","6.0"}, lines.get(2).split(","));
-        assertArrayEquals(new String[]{"instanceC.txt", "3.0", "0.1123", "4129.0","121111.0"}, lines.get(3).split(","));
-        assertArrayEquals(new String[]{"instanceD.txt", "4.0", "0.0", "918624.0","0.0"}, lines.get(4).split(","));
-        assertArrayEquals(new String[]{"instanceE.txt", "5.0", "0.1123", "-123.0","-121111.0"}, lines.get(5).split(","));
-        assertArrayEquals(new String[]{"instanceF.txt", "6.0", "0.1123", "-123.0","-121111.0"}, lines.get(6).split(","));
+        assertArrayEquals(new String[]{"instanceA", "1.0", "-7.1", "346.0", "100.0"}, lines.get(1).split(","));
+        assertArrayEquals(new String[]{"instanceB", "2.0", "-5.1123", "132768.0","6.0"}, lines.get(2).split(","));
+        assertArrayEquals(new String[]{"instanceC", "3.0", "0.1123", "4129.0","121111.0"}, lines.get(3).split(","));
+        assertArrayEquals(new String[]{"instanceD", "4.0", "0.0", "918624.0","0.0"}, lines.get(4).split(","));
+        assertArrayEquals(new String[]{"instanceE", "5.0", "0.1123", "-123.0","-121111.0"}, lines.get(5).split(","));
+        assertArrayEquals(new String[]{"instanceF", "6.0", "0.1123", "-123.0","-121111.0"}, lines.get(6).split(","));
     }
 
     @AfterAll

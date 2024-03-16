@@ -8,7 +8,7 @@ import java.io.IOException;
 public class __RNAME__InstanceImporter extends InstanceImporter<__RNAME__Instance> {
 
     @Override
-    public __RNAME__Instance importInstance(BufferedReader reader, String filename) throws IOException {
+    public __RNAME__Instance importInstance(BufferedReader reader, String suggestedName) throws IOException {
         // Create and return instance object from file data
         // TODO parse all data from the given reader however I want
 
@@ -16,7 +16,7 @@ public class __RNAME__InstanceImporter extends InstanceImporter<__RNAME__Instanc
         // Scanner sc = new Scanner(reader);
 
         // Call instance constructor when we have parsed all the data
-        var instance = new __RNAME__Instance(filename);
+        var instance = new __RNAME__Instance(suggestedName);
 
         // IMPORTANT! Remember that instance data must be immutable from this point
         return instance;

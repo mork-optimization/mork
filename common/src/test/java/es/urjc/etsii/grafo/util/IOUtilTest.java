@@ -6,8 +6,8 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.util.HashSet;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 public class IOUtilTest {
 
@@ -88,7 +88,7 @@ public class IOUtilTest {
             tempDir.resolve(s).toFile().createNewFile();
         }
 
-        var list = IOUtil.iterate(tempDir.toString()).stream().map(p -> p.toAbsolutePath().toString()).collect(Collectors.toSet());
+        var list = new HashSet<>(IOUtil.iterate(tempDir.toString()));
         for(var s: invalidFiles){
             for(var t: list){
                 Assertions.assertFalse(t.endsWith(s));
