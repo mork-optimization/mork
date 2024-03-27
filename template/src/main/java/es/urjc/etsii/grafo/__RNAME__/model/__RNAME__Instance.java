@@ -9,8 +9,8 @@ public class __RNAME__Instance extends Instance {
         // TODO Add all required fields and parameters
 
         // TODO Optional: declare instance properties
-//        properties.put("MyInstancePropertyName", 7);
-//        properties.put("MyInstanceProperty2Name", "Hello world");
+//        setProperty("MyInstancePropertyName", 7);
+//        setProperty("MyInstanceProperty2Name", "Hello world");
 
     }
 
