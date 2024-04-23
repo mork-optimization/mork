@@ -10,12 +10,12 @@ public class AbstractSerializerConfig {
     /**
      * The serializer is enabled
      */
-    private boolean enabled;
+    private boolean enabled = false;
 
     /**
      * Path where solutions will be exported
      */
-    private String folder;
+    private String folder = "";
 
     /**
      * String formatter for current date using in solution filename
@@ -28,6 +28,9 @@ public class AbstractSerializerConfig {
      * @return filename format as a string
      */
     public String getFormat() {
+        if(format == null || format.isEmpty()){
+            throw new IllegalArgumentException("Format cannot be empty, please configure a valid format for serializer " + this.getClass().getSimpleName());
+        }
         return format;
     }
 
