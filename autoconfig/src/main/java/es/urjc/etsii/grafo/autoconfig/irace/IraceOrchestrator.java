@@ -308,14 +308,20 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private ExecuteResponse singleExecution(Algorithm<S, I> algorithm, I instance) {
         long maxExecTime = solverConfig.getIgnoreInitialMillis() + solverConfig.getIntervalDurationMillis();
         if (isAutoconfigEnabled) {
+            // Autoconfig requires metrics to be enabled to track algorithm performance
             Metrics.enableMetrics();
-            Metrics.resetMetrics();
             TimeControl.setMaxExecutionTime(maxExecTime, TimeUnit.MILLISECONDS);
             TimeControl.start();
         }
 
-        long startTime = System.nanoTime();
+        if(Metrics.areMetricsEnabled()){
+            // If metrics are enabled, reset them before each execution
+            // This is independent of the autoconfig configuration because users
+            // may request metrics to be enabled when manually running Irace
+            Metrics.resetMetrics();
+        }
 
+        long startTime = System.nanoTime();
         var solution = algorithm.algorithm(instance);
         long endTime = System.nanoTime();
 
