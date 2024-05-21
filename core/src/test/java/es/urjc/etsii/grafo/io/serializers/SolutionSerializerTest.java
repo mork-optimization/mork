@@ -51,7 +51,7 @@ public class SolutionSerializerTest {
     @Test
     void getNameTest(@TempDir Path temp) {
         ArrayList<String[]> values = new ArrayList<>();
-        values.add(new String[]{"", "experiment_instance_alg_0_"});
+        values.add(new String[]{"'a'", "experiment_instance_alg_0_a"});
         values.add(new String[]{"'Result'", "experiment_instance_alg_0_Result"});
         values.add(new String[]{"'Result'yyyy", "experiment_instance_alg_0_Result" + LocalDate.now().getYear()});
         values.add(new String[]{"'Result'-yyyy", "experiment_instance_alg_0_Result-" + LocalDate.now().getYear()});
