@@ -65,7 +65,11 @@ public class SolutionSerializerTest {
             Assertions.assertEquals(name, value[1]);
         }
 
-
+        Assertions.assertThrows(IllegalArgumentException.class, () ->
+                SolutionSerializerTest.initSerializer(
+                        TestSerializerConfigUtils.createSol(true, SolutionExportFrequency.ALL, temp, "")
+                ).getFilename("experiment", "instance", "alg", "0")
+        );
     }
 
     @Test
