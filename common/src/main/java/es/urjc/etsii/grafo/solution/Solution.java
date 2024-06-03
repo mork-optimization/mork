@@ -58,7 +58,14 @@ public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instanc
      * <p>notifyUpdate.</p>
      */
     public void notifyUpdate() {
-        this.lastModifiedTime = System.nanoTime();
+        notifyUpdate(System.nanoTime());
+    }
+
+    /**
+     * <p>notifyUpdate.</p>
+     */
+    public void notifyUpdate(long when) {
+        this.lastModifiedTime = when;
     }
 
     /**
@@ -69,6 +76,19 @@ public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instanc
      */
     public List<Move<? extends Solution<SELF, I>, I>> lastExecutesMoves(){
         return new ArrayList<>(this.lastMoves);
+    }
+
+    /**
+     * Generate a string representation of the chain of moves used to reach the current solution state.
+     * @return string representation, each move is separated by a new line
+     */
+    public String lastExecutesMovesAsString(){
+        var sb = new StringBuilder();
+        for (var move : lastExecutesMoves()) {
+            String string = move.toString();
+            sb.append('\n').append(string);
+        }
+        return sb.toString();
     }
 
     /**

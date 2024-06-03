@@ -1,5 +1,8 @@
 # Developing
 - (New) Add support for 7Z and ZIP compressed instances, with no configuration required.
+- (New) Added Solution::notifyUpdate(long), the difference with the existing Solution::notifyUpdate() is that users may notify that the solution was last updated at a different time
+- (New) Added Solution::lastExecutesMovesAsString(): generate a string representation of the last executed moves, useful when something goes wrong.
+- (Fix) #239: Metrics tracking did not work in some circumstances when autoconfig was disabled but Irace was manually enabled.
 - More coming soon!
 
 # v0.19

@@ -21,7 +21,7 @@ public class ValidationUtil {
      */
     public static <S extends Solution<S,I>, I extends Instance> void assertValidScore(S solution){
         assert DoubleComparator.equals(solution.getScore(), solution.recalculateScore()) :
-                String.format("Score mismatch, getScore() %s, recalculateScore() %s. Review your incremental score calculation.", solution.getScore(), solution.recalculateScore());
+                String.format("Score mismatch, getScore() %s, recalculateScore() %s. Review your incremental score calculation. Last applied moves: %s", solution.getScore(), solution.recalculateScore(), solution.lastExecutesMovesAsString());
     }
 
     /**
@@ -56,7 +56,7 @@ public class ValidationUtil {
         if(DoubleComparator.equals(diff, expected)){
             return true;
         } else {
-            throw new AssertionError(String.format("Score change validation failed: %s - %s = %s != %s, current move: %s, solution state with move applied: %s", newScore, old, diff, expected, move, solution));
+            throw new AssertionError(String.format("Score change validation failed: %s - %s = %s != %s, current move: %s, solution state with move applied: %s. Last applied moves: %s", newScore, old, diff, expected, move, solution, solution.lastExecutesMovesAsString()));
         }
     }
 }
