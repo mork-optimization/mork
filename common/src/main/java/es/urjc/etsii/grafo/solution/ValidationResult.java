@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.services;
+package es.urjc.etsii.grafo.solution;
 
 import es.urjc.etsii.grafo.exception.InvalidSolutionException;
 

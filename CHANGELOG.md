@@ -3,6 +3,7 @@
 - (New) Added Solution::notifyUpdate(long), the difference with the existing Solution::notifyUpdate() is that users may notify that the solution was last updated at a different time
 - (New) Added Solution::lastExecutesMovesAsString(): generate a string representation of the last executed moves, useful when something goes wrong.
 - (Fix) #239: Metrics tracking did not work in some circumstances when autoconfig was disabled but Irace was manually enabled.
+- (Fix) Always execute user provided solution validator after each (instance, algorithm, repetition) if the validator is available
 - More coming soon!
 
 # v0.19

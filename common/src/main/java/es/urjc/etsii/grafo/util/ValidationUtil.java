@@ -3,8 +3,10 @@ package es.urjc.etsii.grafo.util;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solution.SolutionValidator;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.RandomAccess;
 
 /**
@@ -58,5 +60,19 @@ public class ValidationUtil {
         } else {
             throw new AssertionError(String.format("Score change validation failed: %s - %s = %s != %s, current move: %s, solution state with move applied: %s. Last applied moves: %s", newScore, old, diff, expected, move, solution, solution.lastExecutesMovesAsString()));
         }
+    }
+
+    /**
+     * Run user provided validations if the user has implemented them
+     * @param solution to validate
+     */
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+    public static <S extends Solution<S,I>, I extends Instance> void runUserValidation(Optional<SolutionValidator<S, I>> optValidator, S solution){
+        if(optValidator.isEmpty()){
+            return;
+        }
+        var validator = optValidator.get();
+        var result = validator.validate(solution);
+        result.throwIfFail();
     }
 }

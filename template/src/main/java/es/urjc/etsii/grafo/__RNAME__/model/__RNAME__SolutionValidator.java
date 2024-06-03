@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.__RNAME__.model;
 
-import es.urjc.etsii.grafo.services.SolutionValidator;
-import es.urjc.etsii.grafo.services.ValidationResult;
+import es.urjc.etsii.grafo.solution.SolutionValidator;
+import es.urjc.etsii.grafo.solution.ValidationResult;
 
 /**
  * Validate that a solution is valid for the __RNAME__ problem.
