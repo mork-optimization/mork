@@ -7,6 +7,16 @@ import java.io.IOException;
 
 public class __RNAME__InstanceImporter extends InstanceImporter<__RNAME__Instance> {
 
+    /**
+     * Load instance from file. This method is called by the framework when a new instance is being loaded.
+     * Note that instance load time is never considered in the total execution time.
+     * @param reader Input buffer, managed by the framework.
+     * @param suggestedName Suggested filename for the instance, can be ignored.
+     *                      By default, the suggested filename is built by removing the path and extension info.
+     *                      For example, for the path "instances/TSP/TSP-1.txt", the suggestedName would be "TSP-1"
+     * @return immutable instance
+     * @throws IOException If an error is encountered while the instance is being parsed
+     */
     @Override
     public __RNAME__Instance importInstance(BufferedReader reader, String suggestedName) throws IOException {
         // Create and return instance object from file data

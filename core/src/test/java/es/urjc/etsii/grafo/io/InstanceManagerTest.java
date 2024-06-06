@@ -10,10 +10,12 @@ import org.junit.jupiter.api.io.TempDir;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 class InstanceManagerTest {
@@ -23,6 +25,8 @@ class InstanceManagerTest {
     String instancePath;
     File instance1File;
     File instance2File;
+    File instance3File;
+    File indexFile;
 
     @SuppressWarnings("unchecked")
     @BeforeEach
@@ -32,6 +36,11 @@ class InstanceManagerTest {
         instance1File.createNewFile();
         instance2File = new File(tempFolder, "TestInstance2");
         instance2File.createNewFile();
+        instance3File = new File(tempFolder, "TestInstance3");
+        instance3File.createNewFile();
+
+        indexFile = new File(tempFolder, "instances.index");
+        Files.writeString(indexFile.toPath(), "TestInstance3\nTestInstance1");
 
         var instance1 = new TestInstance("TestInstance1");
         instance1.setPath(instance1File.getAbsolutePath());
@@ -39,9 +48,18 @@ class InstanceManagerTest {
         var instance2 = new TestInstance("TestInstance2");
         instance2.setPath(instance2File.getAbsolutePath());
 
+        var instance3 = new TestInstance("TestInstance3");
+        instance3.setPath(instance3File.getAbsolutePath());
+
         instanceImporter = mock(InstanceImporter.class);
+
+
         when(instanceImporter.importInstance(instance1File.getAbsolutePath())).thenReturn(instance1);
         when(instanceImporter.importInstance(instance2File.getAbsolutePath())).thenReturn(instance2);
+        when(instanceImporter.importInstance(instance3File.getAbsolutePath())).thenReturn(instance3);
+
+        // If the instance manager requests to load a non-existing instance, or the index file, throw an exception
+        when(instanceImporter.importInstance(indexFile.getAbsolutePath())).thenThrow(RuntimeException.class);
     }
 
     private InstanceManager<TestInstance> buildManager(boolean preload, String instancePath){
@@ -60,31 +78,43 @@ class InstanceManagerTest {
         var manager = buildManager(false, instancePath);
         var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
         verifyNoInteractions(instanceImporter);
-        Assertions.assertEquals(instances.get(0), instance1File.getAbsolutePath());
-        Assertions.assertEquals(instances.get(1), instance2File.getAbsolutePath());
+        assertEquals(instances.get(0), instance1File.getAbsolutePath());
+        assertEquals(instances.get(1), instance2File.getAbsolutePath());
     }
 
     @Test
     void testCustomOrder(){
         var manager = buildManager(true, instancePath);
         var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
-        verify(instanceImporter, times(2)).importInstance(any());
-        Assertions.assertEquals(instances.get(1), instance1File.getAbsolutePath());
-        Assertions.assertEquals(instances.get(0), instance2File.getAbsolutePath());
+        verify(instanceImporter, times(3)).importInstance(any());
+        assertEquals(instances.get(2), instance1File.getAbsolutePath());
+        assertEquals(instances.get(1), instance2File.getAbsolutePath());
+        assertEquals(instances.get(0), instance3File.getAbsolutePath());
+    }
+
+    @Test
+    void testIndexFileOrdered(){
+        var manager = buildManager(true, indexFile.getAbsolutePath());
+        var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
+        // there are 3 instances in the folder, but only instance3 and 1 should have been loaded
+        assertEquals(2, instances.size());
+        verify(instanceImporter, times(1)).importInstance(instance1File.getAbsolutePath());
+        verify(instanceImporter, times(1)).importInstance(instance3File.getAbsolutePath());
+        verifyNoMoreInteractions(instanceImporter);
     }
 
     @Test
     void checkCache(){
         var manager = buildManager(true, instancePath);
         var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
-        verify(instanceImporter, times(2)).importInstance(any());
+        verify(instanceImporter, times(3)).importInstance(any());
         manager.getInstance(instances.get(0));
         manager.getInstance(instances.get(1));
-        verify(instanceImporter, times(2)).importInstance(any());
+        verify(instanceImporter, times(3)).importInstance(any());
         manager.purgeCache();
         manager.getInstance(instances.get(0));
         manager.getInstance(instances.get(1));
-        verify(instanceImporter, times(4)).importInstance(any());
+        verify(instanceImporter, times(5)).importInstance(any());
     }
 
     @Test
@@ -110,7 +140,7 @@ class InstanceManagerTest {
     @Test
     void validateTest(){
         var manager = buildManager(false, instancePath);
-        Assertions.assertEquals(instanceImporter, manager.getUserImporterImplementation());
+        assertEquals(instanceImporter, manager.getUserImporterImplementation());
         Assertions.assertThrows(IllegalArgumentException.class, () -> manager.validate(new ArrayList<>(), TEST_EXPERIMENT));
         Assertions.assertThrows(IllegalArgumentException.class, () -> manager.validate(List.of(
                 new TestInstance("Instance 1"), new TestInstance("Instance 2"), new TestInstance("Instance 1")
@@ -122,7 +152,7 @@ class InstanceManagerTest {
         var path = "src/test/resources/instances";
         var manager = buildManager(false, path, new TestInstanceImporter());
         var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
-        Assertions.assertEquals(6, instances.size());
+        assertEquals(6, instances.size());
     }
 
     @Test
@@ -130,7 +160,7 @@ class InstanceManagerTest {
         var path = "src/test/resources/instzip";
         var manager = buildManager(false, path, new TestInstanceImporter());
         var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
-        Assertions.assertEquals(6, instances.size());
+        assertEquals(6, instances.size());
     }
 
     @Test
@@ -138,7 +168,7 @@ class InstanceManagerTest {
         var path = "src/test/resources/inst7z";
         var manager = buildManager(false, path, new TestInstanceImporter());
         var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
-        Assertions.assertEquals(6, instances.size());
+        assertEquals(6, instances.size());
         for(var s: instances){
             var instance = manager.getInstance(s);
             Assertions.assertNotNull(instance);

@@ -9,7 +9,11 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.ref.SoftReference;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
@@ -26,6 +30,8 @@ public class InstanceManager<I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(InstanceManager.class);
     private static final int MAX_LENGTH = 300;
+    public static final String INDEX_SUFFIX = ".index";
+
     protected final SoftReference<I> EMPTY = new SoftReference<>(null);
     protected final InstanceConfiguration instanceConfiguration;
     protected final InstanceImporter<I> instanceImporter;
@@ -63,16 +69,51 @@ public class InstanceManager<I extends Instance> {
         return this.solveOrderByExperiment.computeIfAbsent(expName, s -> {
             String instancePath = this.instanceConfiguration.getPath(expName);
             checkExists(instancePath);
-            List<String> instances = IOUtil.iterate(instancePath);
+            List<String> instances = isIndexFile(instancePath)?
+                    listIndexFile(instancePath):
+                    listNormalFile(instancePath);
 
-            List<String> sortedInstances;
-            if (preload) {
-                sortedInstances = validateAndSort(expName, instances);
-            } else {
-                sortedInstances = lexicSort(instances);
-            }
+            List<String> sortedInstances = preload?
+                    validateAndSort(expName, instances):
+                    lexicSort(instances);
             return sortedInstances;
         });
+    }
+
+    private List<String> listNormalFile(String instancePath) {
+        List<String> files = IOUtil.iterate(instancePath);
+        for (var iterator = files.iterator(); iterator.hasNext(); ) {
+            var f = iterator.next();
+            if (f.endsWith(INDEX_SUFFIX)) {
+                log.info("Ignoring index file: {}", f);
+                iterator.remove();
+            }
+        }
+        return files;
+    }
+
+    private List<String> listIndexFile(String instancePath) {
+        Path indexFile = Path.of(instancePath);
+        var parentPath = indexFile.getParent();
+        try (var stream = Files.lines(indexFile)){
+            return stream
+                    .filter(p -> !p.startsWith("#"))
+                    .filter(p -> !p.isBlank())
+                    .map(Path::of)
+                    .map(parentPath::resolve)
+                    .map(Path::toAbsolutePath)
+                    .map(Path::toString)
+                    .map(IOUtil::checkExists)
+                    .toList();
+        } catch (IOException e){
+            throw new RuntimeException(e);
+        }
+    }
+
+    private boolean isIndexFile(String instancePath) {
+        var file = new File(instancePath);
+        log.debug("Not an index file: {}", instancePath);
+        return file.isFile() && instancePath.endsWith(INDEX_SUFFIX);
     }
 
     protected List<String> validateAndSort(String expName, List<String> instancePaths) {

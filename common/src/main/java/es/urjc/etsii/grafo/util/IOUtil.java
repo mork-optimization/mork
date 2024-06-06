@@ -46,11 +46,12 @@ public class IOUtil {
      *
      * @param path path to check
      */
-    public static void checkExists(String path) {
-        File dir = new File(path);
-        if (!dir.exists()) {
-            throw new IllegalArgumentException("Path does not exist or not a folder: " + dir.getAbsolutePath());
+    public static String checkExists(String path) {
+        File file = new File(path);
+        if (!file.exists()) {
+            throw new IllegalArgumentException("Path does not exist: " + file.getAbsolutePath());
         }
+        return path;
     }
 
     /**
