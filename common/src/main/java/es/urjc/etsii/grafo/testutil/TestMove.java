@@ -20,9 +20,9 @@ public class TestMove extends Move<TestSolution, TestInstance> {
     }
 
     @Override
-    protected boolean _execute(TestSolution solution) {
+    protected TestSolution _execute(TestSolution solution) {
         solution.score += this.score;
-        return true;
+        return solution;
     }
 
     @Override
