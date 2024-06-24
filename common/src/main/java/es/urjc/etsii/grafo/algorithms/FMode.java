@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.algorithms;
 
+import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
@@ -30,7 +31,13 @@ public enum FMode {
 
         @Override
         public Comparator<Solution<?,?>> comparator() {
-            Comparator<Solution<?,?>> c = Comparator.comparing(Solution::getScore);
+            Comparator<Solution<?,?>> c = Comparator.comparingDouble(Solution::getScore);
+            return c.reversed();
+        }
+
+        @Override
+        public Comparator<Move<?, ?>> comparatorMove() {
+            Comparator<Move<?,?>> c = Comparator.comparingDouble(Move::getValue);
             return c.reversed();
         }
     },
@@ -56,7 +63,13 @@ public enum FMode {
 
         @Override
         public Comparator<Solution<?,?>> comparator() {
-            return Comparator.comparing(Solution::getScore);
+            return Comparator.comparingDouble(Solution::getScore);
+        }
+
+
+        @Override
+        public Comparator<Move<?, ?>> comparatorMove() {
+            return Comparator.comparingDouble(Move::getValue);
         }
     };
 
@@ -88,4 +101,10 @@ public enum FMode {
      * @return a new comparator
      */
     public abstract Comparator<Solution<?,?>> comparator();
+
+    /**
+     * Returns a comparator that sorts moves from best to worst
+     * @return a new comparator
+     */
+    public abstract Comparator<Move<?,?>> comparatorMove();
 }
