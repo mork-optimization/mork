@@ -99,32 +99,6 @@ public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instanc
      */
     public abstract SELF cloneSolution();
 
-    /**
-     * Check if this solution is STRICTLY better than the given solution.
-     * If they are equivalent this method must return false.
-     *
-     * @param other a different solution to compare
-     * @return true if and only if the current solution is strictly better than the given solution
-     */
-    public boolean isBetterThan(SELF other){
-        if(other == null){
-            return true;
-        }
-        if(this == other){
-            return false;
-        }
-        return _isBetterThan(other);
-    }
-
-    /**
-     * Check if this solution is STRICTLY better than the given solution.
-     * If they are equivalent this method must return false.
-     * This method must be implemented by all subclasses
-     *
-     * @param other a different solution to compare
-     * @return true if and only if the current solution is strictly better than the given solution
-     */
-    protected abstract boolean _isBetterThan(SELF other);
 
     /**
      * Get the current solution score.
@@ -163,24 +137,6 @@ public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instanc
     @JsonIgnore
     public I getInstance() {
         return ins;
-    }
-
-    /**
-     * <p>getBest.</p>
-     *
-     * @param solutions a {@link Iterable} object.
-     * @param <I> a I object.
-     * @param <S> a S object.
-     * @return a S object.
-     */
-    public static <I extends Instance, S extends Solution<S, I>> S getBest(Iterable<S> solutions) {
-        S best = null;
-        for (S solution : solutions) {
-            if(solution.isBetterThan(best)){
-                best = solution;
-            }
-        }
-        return best;
     }
 
     /**

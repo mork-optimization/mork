@@ -53,12 +53,6 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
     }
 
     @Override
-    protected boolean _isBetterThan(TestSolution other) {
-        return false;
-    }
-
-
-    @Override
     public double getScore() {
         return this.score;
     }
