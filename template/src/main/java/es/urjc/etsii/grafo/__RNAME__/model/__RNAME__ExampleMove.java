@@ -18,12 +18,16 @@ public abstract class __RNAME__ExampleMove extends LazyMove<__RNAME__ExampleMove
     /**
      * Executes the proposed move,
      * to be implemented by each move type.
+     * It is up to the implementation to decide if the original solution is modified
+     * in place or a new one is created by cloning the original solution and then applying the changes.
+     * <p></p>
+     * This method should be idempotent, i.e. calling it multiple times with the same solution
+     * should return the same result
      * @param solution Solution where this move will be applied to.
-     * @return true if the solution has changed,
-     * false if for any reason the movement is not applied or the solution does not change after executing the move
+     * @return modified solution
      */
     @Override
-    protected abstract boolean _execute(__RNAME__Solution solution);
+    protected abstract __RNAME__Solution _execute(__RNAME__Solution solution);
 
     /**
      * Get the movement value, represents how much does the move changes the f.o of a solution if executed

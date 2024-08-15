@@ -19,22 +19,14 @@ import java.util.Set;
 @SuppressWarnings("unchecked")
 public class ReflectiveSolutionBuilder<S extends Solution<S, I>, I extends Instance> extends SolutionBuilder<S, I> {
 
-    private final Class<S> solClass;
+    private final Set<Class<S>> solClasses;
     private Constructor<S> constructor;
 
     /**
      * <p>Constructor for ReflectiveSolutionBuilder.</p>
      */
     public ReflectiveSolutionBuilder() {
-        Set<Class<S>> set = findSolutionCandidates(getPkgsToScan());
-        if (set.isEmpty()) {
-            throw new RuntimeException("Cannot find any class extending Solution<S,I>");
-        }
-        if (set.size() > 1) {
-            throw new RuntimeException(String.format("Found multiple classes extending Solution<S,I> (%s), provide only one or extend the class SolutionBuilder and implement the required method", set));
-        }
-
-        solClass = set.iterator().next();
+        this.solClasses = findSolutionCandidates(getPkgsToScan());
     }
 
     /**
@@ -60,12 +52,20 @@ public class ReflectiveSolutionBuilder<S extends Solution<S, I>, I extends Insta
      * @param i Instance class, get constructor by correct type
      */
     private synchronized void initializeConstructorReference(I i) {
+        if (solClasses.isEmpty()) {
+            throw new RuntimeException("Cannot find any class extending Solution<S,I>");
+        }
+        if (solClasses.size() > 1) {
+            throw new RuntimeException(String.format("Found multiple classes extending Solution<S,I> (%s), provide only one or extend the class SolutionBuilder and implement the required method", solClasses));
+        }
+
+        var solClass = solClasses.iterator().next();
         if (constructor != null) return;
 
         try {
-            constructor = this.solClass.getConstructor(i.getClass());
+            constructor = solClass.getConstructor(i.getClass());
         } catch (NoSuchMethodException e) {
-            throw new RuntimeException("Could not found Solution constructor Solution(Instance)");
+            throw new RuntimeException("Could not found constructor method %s(Instance)".formatted(solClass.getSimpleName()));
         }
     }
 

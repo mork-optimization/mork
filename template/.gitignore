@@ -1,5 +1,5 @@
 .idea
-log.txt
+log*
 errors
 target
 __RNAME__.iml

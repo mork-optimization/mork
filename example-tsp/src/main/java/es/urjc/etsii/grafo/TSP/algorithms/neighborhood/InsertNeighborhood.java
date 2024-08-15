@@ -46,9 +46,9 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
         }
 
         @Override
-        protected boolean _execute(TSPSolution solution) {
+        protected TSPSolution _execute(TSPSolution solution) {
             solution.insertLocationAtPiInPj(pi, pj);
-            return true;
+            return solution;
         }
 
         @Override

@@ -3,11 +3,27 @@ package es.urjc.etsii.grafo.testutil;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.solution.Move;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
 
 public class TestMove extends Move<TestSolution, TestInstance> {
     private final double score;
     private final FMode fmode;
+
+    public static List<TestMove> generateSeq(int... data){
+        return generateSeq("TestInstance", data);
+    }
+
+    public static List<TestMove> generateSeq(String instanceName, int... data){
+        var testInstance = new TestInstance(instanceName);
+        var testSolution = new TestSolution(testInstance);
+        var moves = new ArrayList<TestMove>();
+        for(var i: data){
+            moves.add(new TestMove(testSolution, i));
+        }
+        return moves;
+    }
 
     public TestMove(TestSolution solution, double score, FMode fmode) {
         super(solution);
@@ -20,9 +36,9 @@ public class TestMove extends Move<TestSolution, TestInstance> {
     }
 
     @Override
-    protected boolean _execute(TestSolution solution) {
+    protected TestSolution _execute(TestSolution solution) {
         solution.score += this.score;
-        return true;
+        return solution;
     }
 
     @Override

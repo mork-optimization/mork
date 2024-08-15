@@ -58,9 +58,9 @@ public class SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TS
         }
 
         @Override
-        protected boolean _execute(TSPSolution solution) {
+        protected TSPSolution _execute(TSPSolution solution) {
             solution.swapLocationOrder(pi, pj);
-            return true;
+            return solution;
         }
 
         @Override

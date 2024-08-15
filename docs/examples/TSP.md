@@ -541,7 +541,7 @@ insert move receive tree parameters: the solution and two integers: the position
 in a desired position. Regardless of the type of movement intended (Eager or Lazy), the following methods have to be
 implemented:
 
-- `boolean _execute()`: execute the move, return false if the move is not applied for any reason, or the solution does not change
+- `TSPSolution _execute()`: execute the move, returning the modified solution. In our case, the solution will be modified in place.
 - `double getValue()`: this procedure calculates the difference between the value of the solution that would be obtained
   if the movement were carried out, and the value of the current target solution. This method does NOT perform the
   movement, the solution (and its structures) must not change.
@@ -556,7 +556,7 @@ The easiest implementation of this class is depicted below.
      this.pj = pj;  
     }  
       
-    protected boolean _execute() {  
+    protected TSPSolution _execute() {  
       this.getSolution().insertLocationAtPiInPj(pi, pj);  
       return true;
     }  
@@ -581,7 +581,7 @@ neighborhood we will need to build an exhaustive stream to iterate over it. We w
 to define a Lazy Neighborhood. This move, exchange the position in the route of two locations, and can be easily
 explained through the following picture.
 
-![enter image description here](https://raw.githubusercontent.com/nickbalestra/nickbalestra.github.io/master/assets/images/swap-in-place.png)
+![Swap in place](https://raw.githubusercontent.com/nickbalestra/nickbalestra.github.io/master/assets/images/swap-in-place.png)
 
 The main difference between this neighborhood and the previous one is the way in which the movements are defined. In
 this case, instead of generating a list of movements, we will define a Stream. The general idea of this neighborhood is that given a movement, 

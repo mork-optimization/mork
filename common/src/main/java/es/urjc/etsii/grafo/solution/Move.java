@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.solution;
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,7 +43,7 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
     /**
      * Executes the proposed move
      */
-    public final boolean execute(S solution) {
+    public final S execute(S solution) {
         if(logger.isTraceEnabled()){
             logger.trace(this.toString());
         }
@@ -57,25 +56,20 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
         return executeDirect(solution);
     }
 
-    private boolean executeDirect(S solution){
-        boolean changed = _execute(solution);
-        if (changed) {
-            // Some moves may not affect the optimal score
-            solution.notifyUpdate();
-        }
+    private S executeDirect(S solution){
+        S newSolution = _execute(solution);
+        solution.notifyUpdate();
         solution.version++;
-        return changed;
+        return newSolution;
     }
 
-    private boolean executeAsserts(S solution){
+    private S executeAsserts(S solution){
         assert saveLastMove(solution, this);
         double prevScore = solution.getScore();
-        boolean changed = executeDirect(solution);
-        assert changed || DoubleComparator.equals(prevScore, solution.getScore()) :
-                String.format("Solution score changed but execute() returned false, from %s to %s after applying move %s", prevScore, solution.getScore(), this);
+        S newSolution = executeDirect(solution);
         assert ValidationUtil.scoreUpdate(solution, prevScore, this);
         ValidationUtil.assertValidScore(solution);
-        return changed;
+        return newSolution;
     }
 
     /**
@@ -100,7 +94,7 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
      * Executes the proposed move,
      * to be implemented by each move type
      */
-    protected abstract boolean _execute(S solution);
+    protected abstract S _execute(S solution);
 
     /**
      * Get the movement value, represents how much does the move changes the f.o of a solution if executed

@@ -2,10 +2,16 @@ package es.urjc.etsii.grafo.testutil;
 
 import es.urjc.etsii.grafo.solution.Solution;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
 import java.util.function.Function;
 
 public class TestSolution extends Solution<TestSolution, TestInstance> {
+
+    public static TestSolution[] from(double... scores) {
+        return from(new TestInstance("TestInstance"), scores);
+    }
 
     public static TestSolution[] from(TestInstance instance, double... scores) {
         var solutions = new TestSolution[scores.length];
@@ -57,7 +63,7 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
         return this.score;
     }
 
-    public void setScore(double score){
+    public void setScore(double score) {
         this.score = score;
     }
 
@@ -71,11 +77,11 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
         return "TestSolution";
     }
 
-    public void setTTB(long ttb){
+    public void setTTB(long ttb) {
         this.lastModifiedTime = ttb;
     }
 
-    public void resetTTB(){
+    public void resetTTB() {
         this.lastModifiedTime = Integer.MIN_VALUE;
     }
 

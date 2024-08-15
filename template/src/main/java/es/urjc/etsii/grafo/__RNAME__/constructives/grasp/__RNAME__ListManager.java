@@ -46,10 +46,13 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
         }
 
         @Override
-        protected boolean _execute(__RNAME__Solution solution) {
+        protected __RNAME__Solution _execute(__RNAME__Solution solution) {
             // TODO Apply changes to solution when this method is called
-            // Return true if the solution is modified,
-            // false if the solution is the same, or for any reason the movement is not executed
+            // Return the modified solutions.
+            // It is up to the implementation to decide if the original solution is modified
+            // in place or a new one is created by cloning the original solution and then applying the changes.
+            // This method should be idempotent, i.e. calling it multiple times with the same solution
+            // should return the same result
             throw new UnsupportedOperationException("_execute() in __RNAME__ListManager not implemented yet");
         }
 

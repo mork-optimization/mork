@@ -4,30 +4,30 @@
 
     <!-- Project name and current version -->
     <artifactId>TSP</artifactId>
-    <version>0.20-SNAPSHOT</version>
+    <version>0.21-SNAPSHOT</version>
 
     <!-- Automatic configuration, can be overridden -->
     <parent>
         <groupId>es.urjc.etsii.grafo</groupId>
         <artifactId>mork-parent</artifactId>
-        <version>0.20-SNAPSHOT</version>
+        <version>0.21-SNAPSHOT</version>
     </parent>
 
     <dependencies>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork</artifactId>
-            <version>0.20-SNAPSHOT</version>
+            <version>0.21-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork-common</artifactId>
-            <version>0.20-SNAPSHOT</version>
+            <version>0.21-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>autoconfig</artifactId>
-            <version>0.20-SNAPSHOT</version>
+            <version>0.21-SNAPSHOT</version>
         </dependency>
 
         <dependency>
