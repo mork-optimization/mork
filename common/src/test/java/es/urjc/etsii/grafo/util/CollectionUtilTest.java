@@ -1,15 +1,15 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.testutil.TestCommonUtils;
 import es.urjc.etsii.grafo.util.random.RandomType;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.LinkedList;
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class CollectionUtilTest {
 
@@ -22,12 +22,12 @@ class CollectionUtilTest {
     void reverseFragmentTest() {
         var list = Arrays.asList(0, 1, 2, 3, 4, 5);
         CollectionUtil.reverseFragment(list, 0, 3);
-        Assertions.assertEquals(list, Arrays.asList(3, 2, 1, 0, 4, 5));
+        assertEquals(list, Arrays.asList(3, 2, 1, 0, 4, 5));
         CollectionUtil.reverseFragment(list, 0, 3);
-        Assertions.assertEquals(list, Arrays.asList(0, 1, 2, 3, 4, 5));
+        assertEquals(list, Arrays.asList(0, 1, 2, 3, 4, 5));
 
         CollectionUtil.reverseFragment(list, 3, list.size() - 1);
-        Assertions.assertEquals(list, Arrays.asList(0, 1, 2, 5, 4, 3));
+        assertEquals(list, Arrays.asList(0, 1, 2, 5, 4, 3));
 
         // index is inclusive, bounds checks
         Assertions.assertThrows(AssertionError.class, () -> CollectionUtil.reverseFragment(list, 0, list.size()));
@@ -42,7 +42,7 @@ class CollectionUtilTest {
     void reverseTest() {
         var list = Arrays.asList(0, 1, 2, 3, 4, 5);
         CollectionUtil.reverse(list);
-        Assertions.assertEquals(list, Arrays.asList(5, 4, 3, 2, 1, 0));
+        assertEquals(list, Arrays.asList(5, 4, 3, 2, 1, 0));
     }
 
     @Test
@@ -104,20 +104,20 @@ class CollectionUtilTest {
 
         var expectedEmptyOutput = new ArrayList<Integer>();
 
-        Assertions.assertEquals(expectedOutput, CollectionUtil.generateIntegerList(start, end));
-        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(start, start));
-        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(end, start));
-        Assertions.assertEquals(expectedOutput, CollectionUtil.generateIntegerList(end));
-        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(start));
+        assertEquals(expectedOutput, CollectionUtil.generateIntegerList(start, end));
+        assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(start, start));
+        assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(end, start));
+        assertEquals(expectedOutput, CollectionUtil.generateIntegerList(end));
+        assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(start));
 
         start = 50;
         expectedOutput = new ArrayList<>();
         for (int i = start; i < end; i++) {
             expectedOutput.add(i);
         }
-        Assertions.assertEquals(expectedOutput, CollectionUtil.generateIntegerList(start, end));
-        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(start, start));
-        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(end, start));
+        assertEquals(expectedOutput, CollectionUtil.generateIntegerList(start, end));
+        assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(start, start));
+        assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(end, start));
 
 
         start = -25;
@@ -126,8 +126,15 @@ class CollectionUtilTest {
         for (int i = start; i < end; i++) {
             expectedOutput.add(i);
         }
-        Assertions.assertEquals(expectedOutput, CollectionUtil.generateIntegerList(start, end));
-        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(start, start));
-        Assertions.assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(end, start));
+        assertEquals(expectedOutput, CollectionUtil.generateIntegerList(start, end));
+        assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(start, start));
+        assertEquals(expectedEmptyOutput, CollectionUtil.generateIntegerList(end, start));
+    }
+
+    @Test
+    void getBestTest(){
+        List<Integer> items = Arrays.asList(3, 2, -3, 1, 5, 4);
+        assertEquals(5, CollectionUtil.getBest(items, Number::doubleValue, FMode.MAXIMIZE));
+        assertEquals(-3, CollectionUtil.getBest(items, Number::doubleValue, FMode.MINIMIZE));
     }
 }

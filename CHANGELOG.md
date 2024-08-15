@@ -1,5 +1,5 @@
 # Developing
-- More coming soon!
+- Added CollectionUtil::getBest(Iterable,ToDoubleFunction)
 
 # v0.20
 - (New) Add support for 7Z and ZIP compressed instances, with no configuration required.
