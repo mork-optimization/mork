@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.*;
@@ -240,7 +241,7 @@ public class CollectionUtil {
      * @return best element in the list
      * @param <T> generic type
      */
-    public static <T> T getBest(List<T> list, ToDoubleFunction<T> f, BiPredicate<Double, Double> isBetter){
+    public static <T> T getBest(Iterable<T> list, ToDoubleFunction<T> f, BiPredicate<Double, Double> isBetter){
         T best = null;
         double bestScore = Double.NaN;
         for(var move: list){
@@ -256,5 +257,17 @@ public class CollectionUtil {
             }
         }
         return best;
+    }
+
+    /**
+     * Return best element from list
+     * @param list list of elements
+     * @param f function to map an element to a score
+     * @param fmode are we minimizing or maximizing the value
+     * @return best element in the list
+     * @param <T> generic type
+     */
+    public static <T> T getBest(Iterable<T> list, ToDoubleFunction<T> f, FMode fmode){
+        return getBest(list, f, fmode::isBetter);
     }
 }

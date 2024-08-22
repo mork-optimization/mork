@@ -1,12 +1,15 @@
 # Developing
+- Added CollectionUtil::getBest(Iterable,ToDoubleFunction)
+
+# v0.20
 - (New) Add support for 7Z and ZIP compressed instances, with no configuration required.
 - (New) Add support for instance index files, for more info see the docs, inside the Features -> Instance Manager section.
 - (New) Added Solution::notifyUpdate(long), the difference with the existing Solution::notifyUpdate() is that users may notify that the solution was last updated at a different time
 - (New) Added Solution::lastExecutesMovesAsString(): generate a string representation of the last executed moves, useful when something goes wrong.
 - (New) Added FMode::comparatorMove(): returns a comparator that sorts moves from best to worse, taking into account if we are maximizing or minimizing.
 - (Fix) #239: Metrics tracking did not work in some circumstances when autoconfig was disabled but Irace was manually enabled.
+- (Fix) #257: Delay ReflectiveSolutionBuilder initialization, in case the user provides a custom SolutionBuilder implementation.
 - (Fix) Always execute user provided solution validator after each (instance, algorithm, repetition) if the validator is available
-- More coming soon!
 
 # v0.19
 - (Fix) Cannot export boolean instance properties to Excel sheets

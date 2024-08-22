@@ -1,10 +1,11 @@
 // TODO Optional: Uncomment and configure the reference results to use when comparing our algorithms during experimentation
 //package es.urjc.etsii.grafo.__RNAME__.experiments;
 //
-//import es.urjc.etsii.grafo.solver.services.reference.ReferenceResult;
-//import es.urjc.etsii.grafo.solver.services.reference.ReferenceResultProvider;
 //
-//import java.io.IOException;
+// import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
+// import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
+//
+// import java.io.IOException;
 //import java.nio.file.Files;
 //import java.nio.file.Path;
 //import java.util.HashMap;

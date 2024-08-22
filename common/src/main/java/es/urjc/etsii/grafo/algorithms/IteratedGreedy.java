@@ -162,12 +162,11 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
             }
             S copy = solution.cloneSolution();
             copy = this.destructionReconstruction.shake(copy, 1);
-            if(copy != null){
-                copy = ls(copy);
-            }
+            copy = ls(copy);
+
 
             // Analyze result
-            if(copy == null || !copy.isBetterThan(solution)){
+            if(!copy.isBetterThan(solution)){
                 iterationsWithoutImprovement++;
                 if (iterationsWithoutImprovement >= this.stopIfNotImprovedIn) {
                     logger.debug("Not improved after {} iterations, stopping in iteration {}. Current score {} - {}", stopIfNotImprovedIn, i, solution.getScore(), solution);

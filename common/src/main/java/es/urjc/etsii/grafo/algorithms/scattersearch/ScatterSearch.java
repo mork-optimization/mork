@@ -167,8 +167,8 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
                 }
                 forcedIter++;
                 if (forcedIter == ERROR_INIT_ITER_THRESHOLD) {
-                    log.warn("TOO MANY ITERATIONS: Failed to fill refsef {}, currently {} assigned of {} with {} initial solutions, debug what is happening",
-                            offset == 0 ? "by best value" : "by diversity", assignedSolutions, refsetSize, nInitialSolutions);
+                    log.warn("TOO MANY ITERATIONS: Failed to fill refsef {}, currently {} assigned of {} with {} initial solutions, debug what is happening. Problematic instance?: {}",
+                            offset == 0 ? "by best value" : "by diversity", assignedSolutions, refsetSize, nInitialSolutions, instance.getId());
                 }
             }
         }

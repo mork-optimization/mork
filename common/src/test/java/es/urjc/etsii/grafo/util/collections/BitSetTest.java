@@ -156,6 +156,22 @@ public class BitSetTest {
         assertEquals(set.size(), list.size());
     }
 
+    @Test
+    void testIteratorRemove(){
+        BitSet set = new BitSet(100);
+        set.addAll(Arrays.asList(1,2,3,4,6,7,8,9,10,99));
+        for (var iterator = set.iterator(); iterator.hasNext(); ) {
+            int integer = iterator.next();
+            if(integer == 4 || integer == 1 || integer == 99){
+                iterator.remove();
+            }
+        }
+
+        var correct = new BitSet(100);
+        correct.addAll(Arrays.asList(2,3,6,7,8,9,10));
+        assertEquals(correct, set);
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {-1, -50, Integer.MIN_VALUE, Integer.MAX_VALUE, 1000, 64})
     void addOutOfRange(int n){
