@@ -12,6 +12,7 @@ import java.util.logging.Logger;
  */
 public abstract class RLangRunner {
     private static final Logger log = Logger.getLogger(RLangRunner.class.getName());
+    private static final String R_ERROR_MARK = "Error";
 
     /**
      * Drain a given stream to logs
@@ -20,13 +21,18 @@ public abstract class RLangRunner {
      * @param stream stream to drain
      * @throws java.io.IOException if something goes wrong
      */
-    protected void drainStream(Level level, InputStream stream) throws IOException {
+    protected boolean drainStream(Level level, InputStream stream) throws IOException {
+        boolean errored = false;
         try (var br = new BufferedReader(new InputStreamReader(stream))) {
             String line;
             while((line = br.readLine()) != null){
+                if(line.contains(R_ERROR_MARK)){
+                    errored = true;
+                }
                 log.log(level, line);
             }
         }
+        return errored;
     }
 
     /**

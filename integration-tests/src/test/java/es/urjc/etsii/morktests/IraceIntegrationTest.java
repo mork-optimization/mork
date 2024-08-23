@@ -10,6 +10,8 @@ import org.junit.jupiter.api.Test;
 import java.io.File;
 import java.io.IOException;
 
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 //@SpringBootTest(useMainMethod = SpringBootTest.UseMainMethod.ALWAYS, classes = {Mork.class}, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT) //
 //@ActiveProfiles(profiles = {"autoconfig"})
 //@DirtiesContext
@@ -30,6 +32,7 @@ public class IraceIntegrationTest {
 
     @Test
     void launchAutoconfig(){
-        Mork.start(new String[]{"--autoconfig"}, FMode.MAXIMIZE);
+        var success = Mork.start(new String[]{"--autoconfig"}, FMode.MAXIMIZE);
+        assertTrue(success);
     }
 }

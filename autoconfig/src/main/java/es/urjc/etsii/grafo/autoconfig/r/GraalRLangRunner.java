@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.r;
 
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.PolyglotException;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
 import org.springframework.stereotype.Service;
 
@@ -29,28 +30,29 @@ public class GraalRLangRunner extends RLangRunner {
 
             // Map R outputs to input streams to use them later
             var out = new PipedOutputStream();
-            var err = new PipedOutputStream();
             var out_in = new PipedInputStream(out);
-            var err_in = new PipedInputStream(err);
 
             // Build and launch
             var contextBuilder = Context.newBuilder(R_LANG)
                     .option("R.PrintErrorStacktracesToFile", "true")
                     .allowAllAccess(true)
                     .out(out)
-                    .err(err);
+                    .err(out);
 
             // Execute R script inside the JVM in a new thread
             new Thread(() -> {
                 try (Context polyglot = contextBuilder.build()){
                     polyglot.eval(R_LANG, script);
+                } catch (PolyglotException e){
+                    log.log(Level.SEVERE, "Error executing R code", e);
                 }
             }).start();
 
             // Send irace output to our logs in real time
-            drainStream(Level.INFO, out_in);
-            log.info("IRACE Error Stream: ");
-            drainStream(Level.WARNING, err_in);
+            var containsErrors = drainStream(Level.INFO, out_in);
+            if(containsErrors){
+                throw new RuntimeException("Error executing R code, review logs");
+            }
 
         } catch (IOException e) {
             throw new RuntimeException(e);

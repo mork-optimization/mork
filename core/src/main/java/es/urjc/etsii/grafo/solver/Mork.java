@@ -29,8 +29,8 @@ public class Mork {
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
      * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
      */
-    public static void start(String[] args, FMode fmode) {
-        Mork.start(null, args, fmode);
+    public static boolean start(String[] args, FMode fmode) {
+        return Mork.start(null, args, fmode);
     }
 
     /**
@@ -38,11 +38,11 @@ public class Mork {
      *
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
      */
-    public static void main(String[] args) {
+    public static boolean main(String[] args) {
         if(Mork.fmode == null){
             throw new IllegalStateException("FMode not set");
         }
-        Mork.start(null, args, Mork.fmode);
+        return Mork.start(null, args, Mork.fmode);
     }
 
 
@@ -53,7 +53,7 @@ public class Mork {
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
      * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
      */
-    public static void start(String pkgRoot, String[] args, FMode fmode) {
+    public static boolean start(String pkgRoot, String[] args, FMode fmode) {
         args = argsProcessing(args);
         configurePackageScanning(pkgRoot);
         configureDeserialization();
@@ -63,10 +63,12 @@ public class Mork {
         application.setLogStartupInfo(false);
         try {
             application.run(args);
+            return true;
         } catch (Exception e) {
             var rootCause = ExceptionUtil.getRootCause(e);
             log.error("%s: %s".formatted(rootCause.getClass().getSimpleName(), rootCause.getMessage()));
             log.info("Unhandled exception: ", e);
+            return false;
         }
     }
 
