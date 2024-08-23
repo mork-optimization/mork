@@ -26,4 +26,4 @@ if (!require("base64enc")) {
 
 scenario <- readScenario(filename = "scenario.txt", scenario = defaultScenario())
 checkIraceScenario(scenario = scenario)
-irace.main(scenario = scenario)
+irace_main(scenario = scenario)

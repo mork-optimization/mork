@@ -76,7 +76,7 @@ targetRunner <- function(experiment, scenario) {
 ## such that each of its elements will be the argument to one call of
 ## target.runner, and scenario will also be passed to every call. See
 ## help(target.runner.default) for details.
-targetRunnerParallel <- function(experiments, exec.target.runner, scenario, target.runner) {
+targetRunnerParallel <- function(experiments, exec_target_runner, scenario, target_runner) {
 
   integration_key <- "__INTEGRATION_KEY__"
   url <- "http://127.0.0.1:__PORT__/batchExecute"
