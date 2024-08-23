@@ -94,7 +94,7 @@ If you want to keep a copy of the original solution, clone it by using the `Solu
 
 
 ## Implementing components
-This section assumes that you have already created a Mork project. If you have not, please visit the [Getting started](../quickstart/starting.md) section.
+This section assumes that you have already created a Mork project. If you have not, please visit the [Getting started](../../quickstart/starting.md) section.
 In order to create a custom algorithm, you will need to create a new class that extends the `Algorithm` class.
 For example, the following code implements an algorithm that creates `n` solutions,
 and applies an improver method to the best solution found during the construction phase. 
@@ -175,7 +175,7 @@ public class MyAlgorithm<S extends Solution<S, I>, I extends Instance> extends A
 !!! info
     Algorithms should avoid containing problem specific behaviour, delegating it to the appropriate components.
 
-The process is similar for any component type. See the [TSP example](../examples/TSP.md) for a guided tutorial on solving your first optimization problem using Mork.
+The process is similar for any component type. See the [TSP example](../../examples/TSP.md) for a guided tutorial on solving your first optimization problem using Mork.
 
 
 ## Advanced
