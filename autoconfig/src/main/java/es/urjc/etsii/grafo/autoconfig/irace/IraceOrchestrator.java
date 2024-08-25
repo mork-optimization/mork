@@ -67,7 +67,13 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public static final String K_PORT = "__PORT__";
     public static final String F_PARAMETERS = "parameters.txt";
     public static final String F_SCENARIO = "scenario.txt";
-    public static final String F_FORBIDDEN = "forbidden.txt";
+    private final String IRACE_PARAM_EPILOGUE = """
+            
+            [global]
+            digits = 2
+            """;
+
+
     public static final int DEFAULT_IRACE_EXPERIMENTS = 10_000;
     public static final int MAX_HISTORIC_CONFIG_SIZE = 1_000;
 
@@ -88,6 +94,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
 
     private final boolean isAutoconfigEnabled;
+    private final boolean isFollower;
     private int nIraceParameters = -1;
 
     /**
@@ -135,6 +142,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
         this.validator = validator;
         this.isAutoconfigEnabled = Arrays.asList(env.getActiveProfiles()).contains("autoconfig");
+        this.isFollower = Arrays.asList(env.getActiveProfiles()).contains("follower");
     }
 
 
@@ -143,6 +151,12 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      */
     @Override
     public void run(String... args) {
+        if(isFollower){
+            this.integrationKey = solverConfig.getIntegrationKey();
+            log.info("Mork is running in follower mode, waiting for commands...");
+            return;
+        }
+
         log.info("Ready to start!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
@@ -181,7 +195,12 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 var nodes = this.algorithmCandidateGenerator.buildTree(solverConfig.getTreeDepth(), solverConfig.getMaxDerivationRepetition());
                 var iraceParams = this.algorithmCandidateGenerator.toIraceParams(nodes);
                 this.nIraceParameters = iraceParams.size();
-                Files.write(paramsPath, iraceParams);
+                var sb = new StringBuilder();
+                for (var p : iraceParams) {
+                    sb.append(p).append("\n");
+                }
+                sb.append(IRACE_PARAM_EPILOGUE);
+                Files.writeString(paramsPath, sb.toString());
             }
 
             var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration, serverProperties);
@@ -189,13 +208,12 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 copyWithSubstitutions(getInputStreamForIrace(F_PARAMETERS, isJar), paramsPath, substitutions);
             }
             copyWithSubstitutions(getInputStreamForIrace(F_SCENARIO, isJar), Path.of(F_SCENARIO), substitutions);
-            copyWithSubstitutions(getInputStreamForIrace(F_FORBIDDEN, isJar), Path.of(F_FORBIDDEN), substitutions);
         } catch (IOException e) {
             throw new RuntimeException("Failed extracting irace config files", e);
         }
     }
 
-    private final String integrationKey = StringUtil.generateSecret();
+    private String integrationKey = StringUtil.generateSecret();
 
     private Map<String, String> getSubstitutions(String integrationKey, SolverConfig solverConfig, InstanceConfiguration instanceConfiguration, ServerProperties server) {
         return Map.of(
@@ -380,6 +398,5 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         return Collections.unmodifiableList(this.rejectedThings);
     }
 
-    public record SlowExecution(long relativeTime, String instanceName, Algorithm<?, ?> algorithm) {
-    }
+    public record SlowExecution(long relativeTime, String instanceName, Algorithm<?, ?> algorithm) {}
 }

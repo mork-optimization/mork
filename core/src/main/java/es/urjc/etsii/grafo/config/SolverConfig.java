@@ -71,7 +71,12 @@ public class SolverConfig {
      * Determine irace execution budget dynamically depending on the number of parameters to tune.
      * Used only when autoconfig is enabled, for each 50 params uses 10k executions
      */
-    private int experimentsPerParameter = 200; // 50 params --> 10k
+    private int experimentsPerParameter = 200; // 50 params --> 10k\
+
+    /**
+     * Integration key for the execution controller when running in follower mode.
+     */
+    private String integrationKey;
 
     /**
      * Scale area under curve when using autoconfig procedure using natural logarithm
@@ -310,5 +315,21 @@ public class SolverConfig {
      */
     public void setLogScaleArea(boolean logScaleArea) {
         this.logScaleArea = logScaleArea;
+    }
+
+    /**
+     * Integration key for the execution controller when running in follower mode.
+     * @return integration key as a String
+     */
+    public String getIntegrationKey() {
+        return integrationKey;
+    }
+
+    /**
+     * Integration key for the execution controller when running in follower mode.
+     * @param integrationKey integration key as a String
+     */
+    public void setIntegrationKey(String integrationKey) {
+        this.integrationKey = integrationKey;
     }
 }

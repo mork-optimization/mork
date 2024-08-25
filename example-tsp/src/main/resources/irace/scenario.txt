@@ -36,7 +36,31 @@ trainInstancesDir = "__INSTANCES_PATH__"
 
 ## The script called for each configuration that launches the program to be
 ## tuned.  See templates/target-runner.tmpl
-targetRunner = "middleware.sh"
+targetRunner <- function(experiment, scenario) {
+  #
+  # configuration.id <- experiment$id.configuration
+  # instance.id <- experiment$id.instance
+  # seed <- experiment$seed
+  # configuration <- experiment$configuration
+  # instance <- experiment$instance
+  # switches <- experiment$switches
+  # bound <- experiment$bound
+  # integration_key <- "__INTEGRATION_KEY__"
+  # url <- "http://127.0.0.1:__PORT__/execute"
+  # cmdline <- paste(configuration.id, instance.id, seed, instance, bound,
+  #                  buildCommandLine(configuration, switches))
+  # enc_cmdline <- base64encode(charToRaw(cmdline))
+  # data <- paste0('{"config":"', enc_cmdline, '", "key":"', integration_key, '"}')
+  #
+  # response <- POST(url, content_type_json(), body = data)
+  # text_response <- content(response, as = "text")
+  #
+  # v.output <- parse.output(text_response, verbose = FALSE)
+  # cost <- v.output[1]
+  # time <- v.output[2]
+  # return(list(cost = cost, time = time))
+  stop("targetRunner should never be called, targetRunnerParallel is responsible for handling the experiment")
+}
 
 ## Number of times to retry a call to target-runner if the call failed.
 # targetRunnerRetries = 0
@@ -52,7 +76,25 @@ targetRunner = "middleware.sh"
 ## such that each of its elements will be the argument to one call of
 ## target.runner, and scenario will also be passed to every call. See
 ## help(target.runner.default) for details.
-# targetRunnerParallel = NULL
+targetRunnerParallel <- function(experiments, exec_target_runner, scenario, target_runner) {
+
+  integration_key <- "__INTEGRATION_KEY__"
+  url <- "http://127.0.0.1:__PORT__/batchExecute"
+
+  enc_cmdline <- base64encode(charToRaw(toJSON(experiments)))
+  data <- paste0('{"config":"', enc_cmdline, '", "key":"', integration_key, '"}')
+
+  response <- POST(url, content_type_json(), body = data)
+  parsed_response <- content(response, as = "parsed")
+  for (i in 1:length(parsed_response)) {
+    if (parsed_response[[i]]$cost == "NaN") {
+      parsed_response[[i]]$cost <- Inf
+      parsed_response[[i]]$time <- 0
+    }
+  }
+
+  return(parsed_response)
+}
 
 ## Optional script that provides a numeric value for each configuration.
 ## See templates/target-evaluator.tmpl
@@ -60,7 +102,7 @@ targetRunner = "middleware.sh"
 
 ## The maximum number of runs (invocations of targetRunner) that will
 ## performed. It determines the (maximum) budget of experiments for the tuning.
-maxExperiments = __MAX_EXPERIMENTS__
+maxExperiments =__MAX_EXPERIMENTS__
 
 ## Directory where testing instances are located, either absolute or relative
 ## to current directory.
@@ -75,10 +117,6 @@ maxExperiments = __MAX_EXPERIMENTS__
 
 ## Enable/disable testing the elite configurations found at each iteration.
 # testIterationElites = 0
-
-## Indicates the number of decimal places to be considered for the
-## real parameters.
-digits = 2
 
 ## A value of 0 silences all debug messages. Higher values provide
 ## more verbose debug messages.
@@ -138,7 +176,10 @@ seed = __SEED__
 
 ## Number of calls to targetRunner to execute in parallel. Less than 2
 ## means calls to targetRunner are sequentially executed.
-parallel = __PARALLEL__
+# parallel = __PARALLEL__
+# Use an absurdly high number to avoid Irace being the bottleneck.
+# Parallelism is automatically controlled by the Mork Execution Controller.
+parallel = 1000000
 
 ## Enable/disable load-balancing when executing experiments in
 ## parallel. Load-balancing makes better use of computing resources, but
@@ -165,10 +206,6 @@ parallel = __PARALLEL__
 ## absolute path or relative to the current directory. If empty or
 ## NULL, recovery is not performed.
 # recoveryFile = ""
-
-## File containing a list of logical expressions that cannot be true
-## for any evaluated configuration. If empty or NULL, do not use a file.
-forbiddenFile="./forbidden.txt"
 
 ## Enable/disable elitist irace.
 # elitist = 1

@@ -136,6 +136,7 @@ public class Mork {
                 case "--instance-selector" -> "--spring.profiles.active=instance-selector";
                 case "--irace" -> "--spring.profiles.active=irace";
                 case "--autoconfig" -> "--spring.profiles.active=autoconfig";
+                case "--follower" -> "--spring.profiles.active=follower";
                 case "--util" -> "--spring.profiles.active=util";
                 default -> args[i];
             };

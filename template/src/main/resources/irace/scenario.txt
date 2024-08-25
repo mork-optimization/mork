@@ -118,10 +118,6 @@ maxExperiments =__MAX_EXPERIMENTS__
 ## Enable/disable testing the elite configurations found at each iteration.
 # testIterationElites = 0
 
-## Indicates the number of decimal places to be considered for the
-## real parameters.
-digits = 2
-
 ## A value of 0 silences all debug messages. Higher values provide
 ## more verbose debug messages.
 # debugLevel = 0
@@ -210,10 +206,6 @@ parallel = 1000000
 ## absolute path or relative to the current directory. If empty or
 ## NULL, recovery is not performed.
 # recoveryFile = ""
-
-## File containing a list of logical expressions that cannot be true
-## for any evaluated configuration. If empty or NULL, do not use a file.
-forbiddenFile="./forbidden.txt"
 
 ## Enable/disable elitist irace.
 # elitist = 1
