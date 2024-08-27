@@ -1,13 +1,13 @@
 package es.urjc.etsii.grafo.create.grasp;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.Objects;
-import java.util.function.ToDoubleFunction;
 
 import static es.urjc.etsii.grafo.util.DoubleComparator.*;
 
@@ -20,8 +20,7 @@ import static es.urjc.etsii.grafo.util.DoubleComparator.*;
  */
 public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> {
     private Boolean greedyRandom;
-    private ToDoubleFunction<M> greedyFunction = M::getValue;
-    private FMode fmode;
+    private Objective<M,S,I> objective = Context.getMainObjective();
     private AlphaProvider alphaProvider;
     private String alphaType;
     private GRASPListManager<M, S, I> candidateListManager;
@@ -51,35 +50,11 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
     /**
      * Greedy function used to evaluate the score of each move. If not changed, uses {@link Move#getValue()} by default
      *
-     * @param greedyFunction function to evaluate the move score, recieves a movement and must return a double value.
-     *                       Remember to call {@link GraspBuilder#withMaximizing(boolean)} if the greedy function does not follow the same criteria as the objective function.
+     * @param objective objective function to use
      * @return same builder with its config changed
      */
-    public GraspBuilder<M, S, I> withGreedyFunction(ToDoubleFunction<M> greedyFunction) {
-        this.greedyFunction = greedyFunction;
-        return this;
-    }
-
-    /**
-     * Should we maximize or minimize the score returned by the moves?
-     *
-     * @param maximize true if the greedyFunction, or the objective function of the problem if not changed using {@link GraspBuilder#withGreedyFunction(ToDoubleFunction)} )}, should maximize its score, false if minimizing
-     * @return same builder with its config changed
-     */
-    @Deprecated(forRemoval = true)
-    public GraspBuilder<M, S, I> withMaximizing(boolean maximize) {
-        this.fmode = maximize ? FMode.MAXIMIZE : FMode.MINIMIZE;
-        return this;
-    }
-
-    /**
-     * Should we maximize or minimize the score returned by the moves?
-     *
-     * @param fmode true if the greedyFunction, or the objective function of the problem if not changed using {@link GraspBuilder#withGreedyFunction(ToDoubleFunction)} )}, should maximize its score, false if minimizing
-     * @return same builder with its config changed
-     */
-    public GraspBuilder<M, S, I> withMode(FMode fmode) {
-        this.fmode = fmode;
+    public GraspBuilder<M, S, I> withObjective(Objective<M,S,I> objective) {
+        this.objective = objective;
         return this;
     }
 
@@ -160,15 +135,15 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
     public GRASPConstructive<M, S, I> build() {
         validate();
         if (this.greedyRandom) {
-            return new GreedyRandomGRASPConstructive<>(this.fmode, this.candidateListManager, this.greedyFunction, this.alphaProvider, this.alphaType);
+            return new GreedyRandomGRASPConstructive<>(this.objective, this.candidateListManager, this.alphaProvider, this.alphaType);
         } else {
-            return new RandomGreedyGRASPConstructive<>(this.fmode, this.candidateListManager, this.greedyFunction, this.alphaProvider, this.alphaType);
+            return new RandomGreedyGRASPConstructive<>(this.objective, this.candidateListManager,  this.alphaProvider, this.alphaType);
         }
     }
 
     private void validate() {
-        if (this.fmode == null) {
-            throw new IllegalArgumentException("fmode parameter not configured, call GraspBuilder::withMode either FMode.MAXIMIZE if maximizing the greedy function or FMode.MINIMIZE if minimizing");
+        if (this.objective == null) {
+            throw new IllegalArgumentException("objective not configured, call GraspBuilder::withObjective");
         }
 
         if (this.greedyRandom == null) {
@@ -178,6 +153,5 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
         if (this.alphaType == null || this.alphaProvider == null) {
             throw new IllegalArgumentException("alpha not configured, call any GraspBuilder::withAlpha* method to set either a fixed value, random...");
         }
-
     }
 }

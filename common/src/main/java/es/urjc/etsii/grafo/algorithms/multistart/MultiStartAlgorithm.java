@@ -6,7 +6,9 @@ import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.exception.IllegalAlgorithmConfigException;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,6 +45,11 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
     protected final int maxIterationsWithoutImproving;
 
     /**
+     * Objective to optimize in the multistart algorithm
+     */
+    protected final Objective<?,S,I> objective;
+
+    /**
      * Use the {@link MultiStartAlgorithmBuilder} class to generate a MultiStart Algorithm
      *
      * @param algorithmName                 algorithm name
@@ -51,10 +58,10 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
      * @param minIterations                 minimum number of iteration the algorithm will be run. Must be less or equatl than the maximum number of iterations.
      * @param maxIterationsWithoutImproving number of iterations the algorithm should be run without improving before stop
      */
-    //@AutoconfigConstructor // TODO temporalmente desactivado,
-    // implementado a nivel de irace orchestrator como envoltorio para el algoritmo correspondiente
+    // always used in autoconfig context, wrapping the generated algorithms, because we may have free time at the end of the run
     public MultiStartAlgorithm(
             @ProvidedParam String algorithmName,
+            Objective<?,S,I> objective,
             Algorithm<S, I> algorithm,
             @IntegerParam(min = 1, max = 1_000_000) int maxIterations,
             @IntegerParam(min = 1, max = 1_000_000) int minIterations,
@@ -62,10 +69,21 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
     ) {
         super(algorithmName);
         checkParameters(maxIterations, minIterations, maxIterationsWithoutImproving);
+        this.objective = objective;
         this.algorithm = algorithm;
         this.maxIterations = maxIterations;
         this.minIterations = minIterations;
         this.maxIterationsWithoutImproving = maxIterationsWithoutImproving;
+    }
+
+    public MultiStartAlgorithm(
+            @ProvidedParam String algorithmName,
+            Algorithm<S, I> algorithm,
+            @IntegerParam(min = 1, max = 1_000_000) int maxIterations,
+            @IntegerParam(min = 1, max = 1_000_000) int minIterations,
+            @IntegerParam(min = 1, max = 1_000_000) int maxIterationsWithoutImproving
+    ){
+        this(algorithmName, Context.getMainObjective(), algorithm, maxIterations, minIterations, maxIterationsWithoutImproving);
     }
 
     /**
@@ -106,7 +124,7 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
             iter++;
             iterWI++;
             S solution = this.algorithm.algorithm(instance);
-            if(solution.isBetterThan(best)){
+            if (objective.isBetter(solution, best)) {
                 best = solution;
                 iterWI = 0;
             }

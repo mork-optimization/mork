@@ -15,6 +15,16 @@ public enum FMode {
      */
     MAXIMIZE {
         @Override
+        public double best(double a, double b) {
+            return Math.max(a, b);
+        }
+
+        @Override
+        public double getBadValue() {
+            return Long.MIN_VALUE;
+        }
+
+        @Override
         public boolean isBetter(double a, double b) {
             return DoubleComparator.isGreater(a, b);
         }
@@ -47,6 +57,16 @@ public enum FMode {
      */
     MINIMIZE {
         @Override
+        public double best(double a, double b) {
+            return Math.min(a, b);
+        }
+
+        @Override
+        public double getBadValue() {
+            return Long.MAX_VALUE;
+        }
+
+        @Override
         public boolean isBetter(double a, double b) {
             return DoubleComparator.isLess(a, b);
         }
@@ -72,6 +92,21 @@ public enum FMode {
             return Comparator.comparingDouble(Move::getValue);
         }
     };
+
+    /**
+     * Get the best value between two values
+     * @param a value
+     * @param b value
+     * @return the best value between a and b
+     */
+    public abstract double best(double a, double b);
+
+    /**
+     * Get a really bad value for this mode, so any other value is better than this one.
+     * Useful for example for giving an initial value to the "bestValue" variable when looping through solutions
+     * @return a really big value if minimizing, a negative number if maximizing.
+     */
+    public abstract double getBadValue();
 
     /**
      * Compare two scores

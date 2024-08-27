@@ -2,7 +2,6 @@ package es.urjc.etsii.grafo.executors;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.EmptyAlgorithm;
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.EventPublisher;
@@ -20,12 +19,10 @@ import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
-import es.urjc.etsii.grafo.solver.Mork;
-import es.urjc.etsii.grafo.util.DoubleComparator;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.TimeUtil;
 import es.urjc.etsii.grafo.util.ValidationUtil;
-import es.urjc.etsii.grafo.util.random.RandomManager;
 import me.tongfei.progressbar.ProgressBar;
 import me.tongfei.progressbar.ProgressBarBuilder;
 import me.tongfei.progressbar.ProgressBarStyle;
@@ -56,7 +53,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     protected final InstanceManager<I> instanceManager;
     protected final List<ReferenceResultProvider> referenceResultProviders;
     protected final SolverConfig solverConfig;
-    protected final FMode ofmode = Mork.getFMode();
+    protected final Objective<?,S,I> mainObjective = Context.getMainObjective();
 
     private final ExceptionHandler<S, I> exceptionHandler;
 
@@ -132,7 +129,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         if (optimalValue.isPresent()) {
             // Check that solution score is not better than optimal value
             double solutionScore = solution.getScore();
-            if(ofmode.isBetter(solutionScore, optimalValue.get())){
+            if(mainObjective.isBetter(solutionScore, optimalValue.get())){
                 throw new AssertionError("Solution score (%s) improves optimal value (%s) in ReferenceResultProvider".formatted(solutionScore, optimalValue.get()));
             }
         }
@@ -151,7 +148,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
         try {
             // Preparate current work unit
-            RandomManager.reset(workUnit.i());
+            Context.Configurator.resetRandom(solverConfig, workUnit.i());
             if (this.timeLimitCalculator.isPresent()) {
                 long maxDuration = this.timeLimitCalculator.get().timeLimitInMillis(instance, algorithm);
                 TimeControl.setMaxExecutionTime(maxDuration, TimeUnit.MILLISECONDS);
@@ -206,7 +203,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     }
 
     protected Optional<Double> getOptionalReferenceValue(String instanceName, boolean onlyOptimal) {
-        double best = Mork.isMaximizing() ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+        var fmode = Context.getMainObjective().getFMode();
+        double best = fmode.getBadValue();
         for (var r : referenceResultProviders) {
             double score = Double.NaN;
             var ref = r.getValueFor(instanceName);
@@ -215,11 +213,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             }
             // Ignore if not valid value
             if (Double.isFinite(score) && (!onlyOptimal || ref.isOptimalValue())) {
-                if (Mork.isMaximizing()) {
-                    best = Math.max(best, score);
-                } else {
-                    best = Math.min(best, score);
-                }
+                best = fmode.best(best, score);
             }
         }
         if (best == Integer.MAX_VALUE || best == Integer.MIN_VALUE) {
@@ -261,11 +255,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         if (best == null) {
             return true;
         }
-        if (Mork.isMaximizing()) {
-            return DoubleComparator.isGreater(candidate.solution().getScore(), best.solution().getScore());
-        } else {
-            return DoubleComparator.isLess(candidate.solution().getScore(), best.solution().getScore());
-        }
+        return Context.getMainObjective().isBetter(candidate.solution(), best.solution());
     }
 
     public String instanceName(String instancePath) {

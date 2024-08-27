@@ -8,6 +8,7 @@ import es.urjc.etsii.grafo.services.BannerProvider;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.springframework.boot.SpringApplication;
@@ -28,7 +29,8 @@ public class Mork {
 
     /**
      * Procedure to launch the application.
-     *
+     * Deprecated: Use the version with the objectives parameter instead
+     * @see Mork#start(String, String[], Objective[])
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
      * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
      */
@@ -38,15 +40,25 @@ public class Mork {
 
     /**
      * Procedure to launch the application.
-     *
+     * Deprecated: Use the version with the objectives parameter instead
+     * @see Mork#start(String, String[], Objective[])
+     * @param pkgRoot  Custom package root for component scanning if changed from the default package
+     *                 (es.urjc.etsii)
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
      * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
      */
+    @Deprecated
     public static <S extends Solution<S,I>, I extends Instance> void start(String pkgRoot, String[] args, FMode fmode) {
         Mork.start(pkgRoot, args, Objective.of(fmode, S::getScore, Move::getValue));
     }
 
-    public static <S extends Solution<S,I>, I extends Instance> void start(String[] args, Objective<S,I>... objectives){
+    /**
+     * Procedure to launch the application.
+     *
+     * @param args     command line arguments, normally the parameter "String[] args" in the main method
+     * @param objectives List of objectives to track
+     */
+    public static <S extends Solution<S,I>, I extends Instance> void start(String[] args, Objective<M,S,I>... objectives){
         Mork.start(null, args, objectives);
     }
 
@@ -61,7 +73,8 @@ public class Mork {
         args = argsProcessing(args);
         configurePackageScanning(pkgRoot);
         configureDeserialization();
-        setObjectives(objectives);
+        Context.Configurator.initialize();
+        Context.Configurator.setObjectives(objectives);
         SpringApplication application = new SpringApplication(Mork.class);
         application.setBanner(new BannerProvider());
         application.setLogStartupInfo(false);
@@ -88,8 +101,9 @@ public class Mork {
      *
      * @param objectives List of objectives to track
      */
-    public static <S extends Solution<S,I>, I extends Instance> void setObjectives(Objective<S,I> objectives) {
-        throw new IllegalArgumentException();
+    @SafeVarargs
+    public static <S extends Solution<S,I>, I extends Instance> void setObjectives(Objective<M,S,I>... objectives) {
+
     }
 
     private static void configurePackageScanning(String pkgRoot) {

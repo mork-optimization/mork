@@ -15,33 +15,115 @@ import java.util.function.ToDoubleFunction;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-public abstract class Objective<S extends Solution<S,I>, I extends Instance> {
+public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> {
 
-    public static <S extends Solution<S,I>, I extends Instance> Objective<S,I> ofMinimizing(ToDoubleFunction<S> evaluateSolution, ToDoubleFunction<Move<S,I>> evaluateMove){
-        return new SimpleObjective<>(FMode.MINIMIZE, evaluateSolution, evaluateMove);
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> ofMinimizing(String name, ToDoubleFunction<S> evaluateSolution, ToDoubleFunction<M> evaluateMove){
+        return new SimpleObjective<>(name, FMode.MINIMIZE, evaluateSolution, evaluateMove);
     }
 
-    public static <S extends Solution<S,I>, I extends Instance> Objective<S,I> ofMaximizing(ToDoubleFunction<S> evaluateSolution, ToDoubleFunction<Move<S,I>> evaluateMove){
-        return new SimpleObjective<>(FMode.MAXIMIZE, evaluateSolution, evaluateMove);
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> ofMaximizing(String name, ToDoubleFunction<S> evaluateSolution, ToDoubleFunction<M> evaluateMove){
+        return new SimpleObjective<>(name, FMode.MAXIMIZE, evaluateSolution, evaluateMove);
     }
 
-    public static <S extends Solution<S,I>, I extends Instance> Objective<S,I> of(FMode fMode, ToDoubleFunction<S> evaluateSolution, ToDoubleFunction<Move<S,I>> evaluateMove){
-        return new SimpleObjective<>(fMode, evaluateSolution, evaluateMove);
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> of(String name, FMode fMode, ToDoubleFunction<S> evaluateSolution, ToDoubleFunction<M> evaluateMove){
+        return new SimpleObjective<>(name, fMode, evaluateSolution, evaluateMove);
     }
 
     public abstract double evaluate(S solution);
-    public abstract double evaluate(Move<S,I> move);
+    public abstract double evaluate(M move);
     public abstract FMode getFMode();
     public abstract String getName();
 
+    public boolean isBetterOrEquals(S a, double b){
+        return getFMode().isBetterOrEqual(evaluate(a), b);
+    }
 
-    public static class SimpleObjective<S extends Solution<S,I>, I extends Instance> extends Objective<S, I> {
+    public boolean isBetterOrEqual(S a, S b){
+        return getFMode().isBetterOrEqual(evaluate(a), evaluate(b));
+    }
+
+    public boolean isBetterOrEqual(double a, double b){
+        return getFMode().isBetterOrEqual(a, b);
+    }
+
+    public boolean isBetter(S a, double b){
+        return isBetter(evaluate(a), b);
+    }
+
+    public boolean isBetter(S a, S b){
+        return isBetter(evaluate(a), evaluate(b));
+    }
+
+    public boolean isBetter(double a, double b){
+        return getFMode().isBetter(a, b);
+    }
+
+    public double getBadValue(){
+        return getFMode().getBadValue();
+    }
+
+    public boolean improves(double a){
+        return getFMode().improves(a);
+    }
+
+    public S getBestSolution(Iterable<S> list){
+        S best = null;
+        double bestScore = Double.NaN;
+        for(var solution: list){
+            if(best == null){
+                best = solution;
+                bestScore = evaluate(solution);
+            } else {
+                double currentScore = evaluate(solution);
+                if(isBetter(currentScore, bestScore)){
+                    best = solution;
+                    bestScore = currentScore;
+                }
+            }
+        }
+        return best;
+    }
+
+
+    public M getBestMove(Iterable<M> list){
+        M best = null;
+        double bestScore = Double.NaN;
+        for(var move: list){
+            if(best == null){
+                best = move;
+                bestScore = evaluate(move);
+            } else {
+                double currentScore = evaluate(move);
+                if(isBetter(currentScore, bestScore)){
+                    best = move;
+                    bestScore = currentScore;
+                }
+            }
+        }
+        return best;
+    }
+
+    public M getBestMove(M m1, M m2){
+        double score1 = evaluate(m1);
+        double score2 = evaluate(m2);
+        return isBetter(score2, score1) ? m2 : m1;
+    }
+
+    public S getBestSolution(S s1, S s2){
+        double score1 = evaluate(s1);
+        double score2 = evaluate(s2);
+        return isBetter(score2, score1) ? s2 : s1;
+    }
+
+    public static class SimpleObjective<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> extends Objective<M, S, I> {
 
         private final ToDoubleFunction<S> evaluateSolution;
-        private final ToDoubleFunction<Move<S,I>> evaluateMove;
+        private final ToDoubleFunction<M> evaluateMove;
         private final FMode fMode;
+        private final String name;
 
-        public SimpleObjective(FMode fMode, ToDoubleFunction<S> evaluateSolution, ToDoubleFunction<Move<S, I>> evaluateMove) {
+        public SimpleObjective(String name, FMode fMode, ToDoubleFunction<S> evaluateSolution, ToDoubleFunction<M> evaluateMove) {
+            this.name = name;
             this.evaluateSolution = evaluateSolution;
             this.evaluateMove = evaluateMove;
             this.fMode = fMode;
@@ -53,7 +135,7 @@ public abstract class Objective<S extends Solution<S,I>, I extends Instance> {
         }
 
         @Override
-        public double evaluate(Move<S,I> move) {
+        public double evaluate(M move) {
             return this.evaluateMove.applyAsDouble(move);
         }
 
@@ -64,7 +146,7 @@ public abstract class Objective<S extends Solution<S,I>, I extends Instance> {
 
         @Override
         public String getName() {
-            return this.getClass().getSimpleName();
+            return this.name;
         }
     }
 }

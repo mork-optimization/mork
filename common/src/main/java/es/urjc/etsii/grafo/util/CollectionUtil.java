@@ -1,11 +1,8 @@
 package es.urjc.etsii.grafo.util;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.*;
-import java.util.function.BiPredicate;
-import java.util.function.ToDoubleFunction;
 import java.util.random.RandomGenerator;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -233,41 +230,4 @@ public class CollectionUtil {
         return generateIntegerList(0, end);
     }
 
-    /**
-     * Return best element from list
-     * @param list list of elements
-     * @param f function to map an element to a score
-     * @param isBetter function to compare two scores and returns which one is better
-     * @return best element in the list
-     * @param <T> generic type
-     */
-    public static <T> T getBest(Iterable<T> list, ToDoubleFunction<T> f, BiPredicate<Double, Double> isBetter){
-        T best = null;
-        double bestScore = Double.NaN;
-        for(var move: list){
-            if(best == null){
-                best = move;
-                bestScore = f.applyAsDouble(move);
-            } else {
-                double currentScore = f.applyAsDouble(move);
-                if(isBetter.test(currentScore, bestScore)){
-                    best = move;
-                    bestScore = currentScore;
-                }
-            }
-        }
-        return best;
-    }
-
-    /**
-     * Return best element from list
-     * @param list list of elements
-     * @param f function to map an element to a score
-     * @param fmode are we minimizing or maximizing the value
-     * @return best element in the list
-     * @param <T> generic type
-     */
-    public static <T> T getBest(Iterable<T> list, ToDoubleFunction<T> f, FMode fmode){
-        return getBest(list, f, fmode::isBetter);
-    }
 }

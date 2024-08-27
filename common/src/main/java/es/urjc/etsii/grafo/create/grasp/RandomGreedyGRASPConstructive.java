@@ -1,10 +1,9 @@
 package es.urjc.etsii.grafo.create.grasp;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
@@ -13,7 +12,6 @@ import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
-import java.util.function.ToDoubleFunction;
 
 /**
  * GRASP Constructive method
@@ -26,8 +24,8 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     private static final Logger log = LoggerFactory.getLogger(RandomGreedyGRASPConstructive.class);
 
-    protected RandomGreedyGRASPConstructive(FMode fmode, GRASPListManager<M, S, I> candidateListManager, ToDoubleFunction<M> greedyFunction, AlphaProvider provider, String alphaType) {
-        super(fmode, candidateListManager, greedyFunction, provider, alphaType);
+    protected RandomGreedyGRASPConstructive(Objective<M,S,I> objective, GRASPListManager<M, S, I> candidateListManager, AlphaProvider provider, String alphaType) {
+        super(objective, candidateListManager, provider, alphaType);
     }
 
     /**
@@ -52,15 +50,15 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
             return r.nextInt(cl.size());
         }
 
-        M best = CollectionUtil.getBest(rcl, greedyFunction, fmode::isBetter);
-        double bestValue = greedyFunction.applyAsDouble(best);
+        M best = objective.getBestMove(rcl);
+        double bestValue = objective.evaluate(best);
         assert best != null : "null best with RCL:" + rcl;
 
         // Choose a random from all the items with equal best score
         log.debug("Best score found: {}", bestValue);
         var besties = new ArrayList<M>(cl.size());
         for (M m : rcl) {
-            if (DoubleComparator.equals(greedyFunction.applyAsDouble(m), bestValue)) {
+            if (DoubleComparator.equals(objective.evaluate(m), bestValue)) {
                 besties.add(m);
             }
         }
@@ -74,8 +72,7 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
         return "RGGRASP{" +
                 "a='" + alphaType + '\'' +
                 ", l=" + candidateListManager +
-                ", mode=" + this.fmode +
-                ", g=" + greedyFunction +
+                ", obj=" + this.objective.getName() +
                 '}';
     }
 }

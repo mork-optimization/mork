@@ -15,7 +15,8 @@ class CollectionUtilTest {
 
     @BeforeEach
     public void initDefaultRandom(){
-        TestCommonUtils.initRandom(RandomType.DEFAULT, 0, 1);
+        var config = TestCommonUtils.solverConfig(RandomType.DEFAULT, 0, 1);
+        TestCommonUtils.initRandom(config);
     }
 
     @Test
