@@ -38,18 +38,6 @@ public class Mork {
         return Mork.start(null, args, fmode);
     }
 
-    /**
-     * Procedure to launch the application, alias to start, fails if mode is not specified
-     *
-     * @param args     command line arguments, normally the parameter "String[] args" in the main method
-     */
-    public static boolean main(String[] args) {
-        if(Mork.fmode == null){
-            throw new IllegalStateException("FMode not set");
-        }
-        Mork.start(null, args, Mork.fmode);
-    }
-
 
     /**
      * Procedure to launch the application.
@@ -61,8 +49,8 @@ public class Mork {
      * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
      */
     @Deprecated
-    public static <S extends Solution<S,I>, I extends Instance> void start(String pkgRoot, String[] args, FMode fmode) {
-        Mork.start(pkgRoot, args, Objective.of("Default", fmode, S::getScore, Move::getValue));
+    public static <S extends Solution<S,I>, I extends Instance> boolean start(String pkgRoot, String[] args, FMode fmode) {
+        return Mork.start(pkgRoot, args, Objective.of("Default", fmode, S::getScore, Move::getValue));
     }
 
     /**
@@ -109,30 +97,12 @@ public class Mork {
         StreamReadConstraints.overrideDefaultStreamReadConstraints(morkReadConstraints);
     }
 
-    /**
-     * Set solving mode
-     * Warning: Changing the objectives after the solving engine has started has undefined behaviour
-     *
-     * @param objectives List of objectives to track
-     */
-    @SafeVarargs
-    public static <S extends Solution<S,I>, I extends Instance> void setObjectives(Objective<?,S,I>... objectives) {
-
-
     private static void configurePackageScanning(String pkgRoot) {
         String pkgs = "es.urjc.etsii";
         if (pkgRoot != null) {
             pkgs += "," + pkgRoot;
         }
         System.setProperty("advanced.scan-pkgs", pkgs);
-    }
-
-    private static boolean setProperty(String k, String v) {
-        if (System.getProperty(k) != null) {
-            return false;
-        }
-        System.setProperty(k, v);
-        return true;
     }
 
     private static String[] argsProcessing(String[] args) {
