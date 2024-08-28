@@ -39,7 +39,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
      * @param timeToBest            time needed ot reach the best solution. timeToBest = totalTime - timeSinceLastModification
      * @param metrics both framework calculated and user defined metrics
      */
-    public SolutionGeneratedEvent(String iteration, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest, MetricsStorage metrics) {
+    public SolutionGeneratedEvent(boolean success, String iteration, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest, MetricsStorage metrics) {
         super();
         this.iteration = iteration;
         this.score = solution.getScore();
