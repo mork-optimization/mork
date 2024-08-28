@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmComponentFactory;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
@@ -10,8 +9,10 @@ import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.testutil.TestUtil;
 import es.urjc.etsii.grafo.create.grasp.GRASPConstructive;
 import es.urjc.etsii.grafo.improve.Improver;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -24,9 +25,10 @@ class AlgorithmBuilderServiceTest {
 
     static AlgorithmInventoryService algComponent;
     static AlgorithmBuilderService builderService;
-
+    static Objective<?,?,?> defaultMinimize = Objective.ofDefaultMinimize();
     @BeforeAll
     static void initialize(){
+        Context.Configurator.setObjectives(defaultMinimize);
         algComponent = new AlgorithmInventoryService(new DefaultInventoryFilter(), TestUtil.getTestFactories(), TestUtil.getTestProviders());
         algComponent.runComponentDiscovery("es.urjc.etsii");
         builderService = new AlgorithmBuilderService(algComponent);
@@ -46,16 +48,32 @@ class AlgorithmBuilderServiceTest {
         SimpleAlgorithm{
             constructive=FakeGRASPConstructive{
                 alpha=0.5,
-                ofmode="MINIMIZE",
+                objective="%s",
+                candidateListManager=NullGraspListManager{}
+            },
+            improver=null,
+            algorithmName="trickyNullAlg"
+        }
+        """.formatted(defaultMinimize.getName());
+        var algorithm = builderService.buildAlgorithmFromString(alg);
+        Assertions.assertNotNull(algorithm);
+        Assertions.assertEquals("trickyNullAlg", algorithm.getName());
+    }
+
+    @Test
+    public void sameButMissingObjective() {
+        String alg = """
+        SimpleAlgorithm{
+            constructive=FakeGRASPConstructive{
+                alpha=0.5,
+                objective="ThisObjectiveDoesNotExist",
                 candidateListManager=NullGraspListManager{}
             },
             improver=null,
             algorithmName="trickyNullAlg"
         }
         """;
-        var algorithm = builderService.buildAlgorithmFromString(alg);
-        Assertions.assertNotNull(algorithm);
-        Assertions.assertEquals("trickyNullAlg", algorithm.getName());
+        Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmFromString(alg));
     }
 
     @Test
@@ -64,13 +82,13 @@ class AlgorithmBuilderServiceTest {
         SimpleAlgorithm{
             constructive=FakeGRASPConstructive{
                 alpha=null,
-                fmode="MINIMIZE",
+                objective="%s",
                 candidateListManager=NullGraspListManager{}
             },
             improver=null
         }
-        """;
-        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmFromString(alg));
+        """.formatted(defaultMinimize.getName());
+        Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmFromString(alg));
     }
 
     @Test
@@ -112,10 +130,10 @@ class AlgorithmBuilderServiceTest {
         String alg = """
         GraspConstructive{
             alpha=0.2,
-            fmode="MINIMIZE",
+            objective="%s",
             candidateListManager=NullGraspListManager{}
         }
-        """;
+        """.formatted(defaultMinimize.getName());
         var component = builderService.buildAlgorithmComponentFromString(alg);
         Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
@@ -125,11 +143,23 @@ class AlgorithmBuilderServiceTest {
         String alg = """
         GraspConstructive{
             alpha=0.2,
-            fmode="MINIMIZE",
+            objective="%s",
+            candidateListManager=NullGraspListManager{}
+        }
+        """.formatted(defaultMinimize.getName());
+        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmFromString(alg));
+    }
+
+    @Test
+    void failInvalidObjBuilder(){
+        String alg = """
+        GraspConstructive{
+            alpha=0.2,
+            objective="Asereje",
             candidateListManager=NullGraspListManager{}
         }
         """;
-        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmFromString(alg));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmFromString(alg));
     }
 
     @Test
@@ -137,10 +167,10 @@ class AlgorithmBuilderServiceTest {
         String alg = """
         GRASP{
             alpha=0.2,
-            fmode="MINIMIZE",
+            objective="%s",
             candidateListManager=NullGraspListManager{}
         }
-        """;
+        """.formatted(defaultMinimize.getName());
         var component = builderService.buildAlgorithmComponentFromString(alg);
         Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
@@ -151,10 +181,10 @@ class AlgorithmBuilderServiceTest {
         GRASP{
             minAlpha=0.2,
             maxAlpha=0.4,
-            fmode="MINIMIZE",
+            objective="%s",
             candidateListManager=NullGraspListManager{}
         }
-        """;
+        """.formatted(defaultMinimize.getName());;
         var component = builderService.buildAlgorithmComponentFromString(alg);
         Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
@@ -164,10 +194,10 @@ class AlgorithmBuilderServiceTest {
         String alg = """
         GRASP{
             alpha=-0.9,
-            fmode="MINIMIZE",
+            objective="%s",
             candidateListManager=NullGraspListManager{}
         }
-        """;
+        """.formatted(defaultMinimize.getName());;
         Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
     }
 
@@ -175,16 +205,16 @@ class AlgorithmBuilderServiceTest {
     void failUsingAliasMissingCL(){
         String alg = """
         GRASP{
-            fmode="MINIMIZE"
+            objective="%s"
         }
-        """;
+        """.formatted(defaultMinimize.getName());;
         Assertions.assertThrows(NullPointerException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
     }
 
 
     private static class ImproverB extends Improver<TestSolution, TestInstance> {
-        protected ImproverB(FMode ofMaximize) {
-            super(ofMaximize);
+        protected ImproverB(Objective<?, TestSolution, TestInstance> objective) {
+            super(objective);
         }
 
         @Override

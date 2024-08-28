@@ -8,7 +8,6 @@ import es.urjc.etsii.grafo.exception.IllegalAlgorithmConfigException;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -74,16 +73,6 @@ public class MultiStartAlgorithm<S extends Solution<S,I>, I extends Instance> ex
         this.maxIterations = maxIterations;
         this.minIterations = minIterations;
         this.maxIterationsWithoutImproving = maxIterationsWithoutImproving;
-    }
-
-    public MultiStartAlgorithm(
-            @ProvidedParam String algorithmName,
-            Algorithm<S, I> algorithm,
-            @IntegerParam(min = 1, max = 1_000_000) int maxIterations,
-            @IntegerParam(min = 1, max = 1_000_000) int minIterations,
-            @IntegerParam(min = 1, max = 1_000_000) int maxIterationsWithoutImproving
-    ){
-        this(algorithmName, Context.getMainObjective(), algorithm, maxIterations, minIterations, maxIterationsWithoutImproving);
     }
 
     /**

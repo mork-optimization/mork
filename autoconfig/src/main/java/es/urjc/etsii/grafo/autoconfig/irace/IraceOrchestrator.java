@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.controller.IraceUtil;
@@ -19,16 +20,14 @@ import es.urjc.etsii.grafo.exception.IllegalAlgorithmConfigException;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.metrics.BestObjective;
+import es.urjc.etsii.grafo.metrics.DeclaredObjective;
 import es.urjc.etsii.grafo.metrics.MetricUtil;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
-import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.*;
-import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
@@ -146,7 +145,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         log.info("Ready to start!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
-        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Mork.isMaximizing(), experimentName));
+        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectives(), experimentName));
         try {
             launchIrace();
         } finally {
@@ -255,7 +254,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         log.debug("Config {}. Built algorithm: {}", config, algorithm);
         // Configure randoms for reproducible experimentation
         long seed = Long.parseLong(config.getSeed());
-        RandomManager.localConfiguration(this.solverConfig.getRandomType(), seed);
+        Context.Configurator.resetRandom(solverConfig.getRandomType(), seed);
 
         // Execute
         return singleExecution(algorithm, instance);
@@ -276,7 +275,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             // but there is extra time available, keep executing the same algorithm until the timelimit is reached.
             // If not, we could be penalizing faster simpler algorithms against more complex ones.
             int iterations = Integer.MAX_VALUE / 2;
-            algorithm = new MultiStartAlgorithm<>(algorithm.getName(), algorithm, iterations, iterations, iterations);
+            algorithm = new MultiStartAlgorithm<>(algorithm.getName(), Context.getMainObjective(), algorithm, iterations, iterations, iterations);
             algorithm.setBuilder(this.solutionBuilder);
         }
         return algorithm;
@@ -333,7 +332,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             checkExecutionTime(algorithm, instance);
             TimeControl.remove();
             try {
-                score = MetricUtil.areaUnderCurve(BestObjective.class,
+                score = MetricUtil.areaUnderCurve(DeclaredObjective.class,
                         TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
                         TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
                         solverConfig.isLogScaleArea()
@@ -353,9 +352,11 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         } else {
             score = solution.getScore();
         }
-        if (Mork.isMaximizing()) {
+
+        if (Context.getMainObjective().getFMode() == FMode.MAXIMIZE) {
             score *= -1; // Irace only minimizes. Applies to area under the metric curve too.
         }
+
         double elapsedSeconds = TimeUtil.nanosToSecs(endTime - startTime);
         log.debug("IRACE Iteration: {} {}", score, elapsedSeconds);
         return new ExecuteResponse(score, elapsedSeconds);

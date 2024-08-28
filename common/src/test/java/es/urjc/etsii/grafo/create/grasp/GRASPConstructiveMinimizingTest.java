@@ -1,13 +1,13 @@
 package es.urjc.etsii.grafo.create.grasp;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.testutil.TestCommonUtils;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.DoubleComparator;
-import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.random.RandomType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +16,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import static es.urjc.etsii.grafo.algorithms.FMode.*;
+import static es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE;
 import static org.junit.jupiter.api.Assertions.*;
 
 class GRASPConstructiveMinimizingTest {
@@ -30,8 +30,8 @@ class GRASPConstructiveMinimizingTest {
 
     @BeforeEach
     void setUp(){
-        RandomManager.globalConfiguration(RandomType.DEFAULT, 0, 1);
-        RandomManager.localConfiguration(RandomType.DEFAULT, 0);
+        var config = TestCommonUtils.solverConfig(RandomType.DEFAULT, 0, 1);
+        TestCommonUtils.initRandom(config);
         this.instance = new TestInstance("testinstance");
         this.solution = new TestSolution(this.instance);
         this.moves = new ArrayList<>(Arrays.asList(
@@ -43,8 +43,8 @@ class GRASPConstructiveMinimizingTest {
                 new TestMove(this.solution, 7, MINIMIZE)
         ));
         this.listManager = new TestGRASPListManager(this.moves);
-        this.gr = new GreedyRandomGRASPConstructive<>(MINIMIZE, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
-        this.rg = new RandomGreedyGRASPConstructive<>(MINIMIZE, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
+        this.gr = new GreedyRandomGRASPConstructive<>(Objective.ofDefaultMinimize(), listManager, ()  -> 0, "Fixed{0}");
+        this.rg = new RandomGreedyGRASPConstructive<>(Objective.ofDefaultMinimize(), listManager, ()  -> 0, "Fixed{0}");
 
     }
 

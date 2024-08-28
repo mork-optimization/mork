@@ -29,6 +29,18 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
         return new SimpleObjective<>(name, fMode, evaluateSolution, evaluateMove);
     }
 
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> ofDefault(FMode fmode){
+        return of("Default", fmode, Solution::getScore, Move::getValue);
+    }
+
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> ofDefaultMaximize(){
+        return of("DefaultMaximize", FMode.MAXIMIZE, Solution::getScore, Move::getValue);
+    }
+
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> ofDefaultMinimize(){
+        return of("DefaultMinimize", FMode.MINIMIZE, Solution::getScore, Move::getValue);
+    }
+
     public abstract double evaluate(S solution);
     public abstract double evaluate(M move);
     public abstract FMode getFMode();

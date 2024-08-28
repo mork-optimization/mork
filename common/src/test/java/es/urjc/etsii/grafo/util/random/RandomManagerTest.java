@@ -16,6 +16,7 @@ public class RandomManagerTest {
     public void initializationTest(){
         int initialseed = 123456, repetitions = 10;
         var config = TestCommonUtils.solverConfig(RandomType.DEFAULT, initialseed, repetitions);
+        TestCommonUtils.initRandom(config);
 
         var myRandom = RandomManager.getRandom();
 
@@ -81,7 +82,6 @@ public class RandomManagerTest {
      */
     @Test
     @Order(4)
-    @Disabled("Change available random generators, all must implement JumpableGenerator")
     public void allAvailable(){
         for(var type: RandomType.values()){
             Assertions.assertDoesNotThrow(() -> {

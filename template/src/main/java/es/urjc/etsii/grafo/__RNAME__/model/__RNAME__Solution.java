@@ -33,14 +33,6 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
         return new __RNAME__Solution(this);
     }
 
-    @Override
-    protected boolean _isBetterThan(__RNAME__Solution other) {
-        // TODO given two solutions, is the current solution STRICTLY better than the other?
-        // Example implementation for a maximization problem:
-        // return DoubleComparator.isGreater(this.getScore(), other.getScore());
-        throw new UnsupportedOperationException("__RNAME__Solution::isBetterThan not implemented yet");
-    }
-
     /**
      * Get the current solution score.
      * The difference between this method and recalculateScore is that

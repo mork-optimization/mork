@@ -35,7 +35,7 @@ public class Mork {
      * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
      */
     public static <S extends Solution<S,I>, I extends Instance> void start(String[] args, FMode fmode) {
-        Mork.start(null, args, Objective.of(fmode, S::getScore, Move::getValue));
+        Mork.start(null, args, Objective.of("Default", fmode, S::getScore, Move::getValue));
     }
 
     /**
@@ -49,7 +49,7 @@ public class Mork {
      */
     @Deprecated
     public static <S extends Solution<S,I>, I extends Instance> void start(String pkgRoot, String[] args, FMode fmode) {
-        Mork.start(pkgRoot, args, Objective.of(fmode, S::getScore, Move::getValue));
+        Mork.start(pkgRoot, args, Objective.of("Default", fmode, S::getScore, Move::getValue));
     }
 
     /**
@@ -58,7 +58,7 @@ public class Mork {
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
      * @param objectives List of objectives to track
      */
-    public static <S extends Solution<S,I>, I extends Instance> void start(String[] args, Objective<M,S,I>... objectives){
+    public static <S extends Solution<S,I>, I extends Instance> void start(String[] args, Objective<?,S,I>... objectives){
         Mork.start(null, args, objectives);
     }
 
@@ -69,11 +69,10 @@ public class Mork {
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
      * @param objectives List of objectives to track
      */
-    public static void start(String pkgRoot, String[] args, Objective<?, ?>... objectives) {
+    public static void start(String pkgRoot, String[] args, Objective<?, ?, ?>... objectives) {
         args = argsProcessing(args);
         configurePackageScanning(pkgRoot);
         configureDeserialization();
-        Context.Configurator.initialize();
         Context.Configurator.setObjectives(objectives);
         SpringApplication application = new SpringApplication(Mork.class);
         application.setBanner(new BannerProvider());
@@ -102,7 +101,7 @@ public class Mork {
      * @param objectives List of objectives to track
      */
     @SafeVarargs
-    public static <S extends Solution<S,I>, I extends Instance> void setObjectives(Objective<M,S,I>... objectives) {
+    public static <S extends Solution<S,I>, I extends Instance> void setObjectives(Objective<?,S,I>... objectives) {
 
     }
 

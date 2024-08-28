@@ -6,7 +6,7 @@ import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.metrics.BestObjective;
+import es.urjc.etsii.grafo.metrics.DeclaredObjective;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Objective;
@@ -140,9 +140,9 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
     public S algorithm(I instance) {
         var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
-        Metrics.add(BestObjective.class, solution.getScore());
+        Metrics.add(DeclaredObjective.class, solution.getScore());
         solution = improver.improve(solution);
-        Metrics.add(BestObjective.class, solution.getScore());
+        Metrics.add(DeclaredObjective.class, solution.getScore());
 
         int internalK = 0;
         // While stop not request OR k in range. k check is done and breaks inside loop
@@ -162,7 +162,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
             if (objective.isBetter(copy, solution)) {
                 solution = copy;
                 internalK = 0;
-                Metrics.add(BestObjective.class, solution.getScore());
+                Metrics.add(DeclaredObjective.class, solution.getScore());
             } else {
                 internalK++;
             }

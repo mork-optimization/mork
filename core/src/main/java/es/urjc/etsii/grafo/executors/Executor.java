@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.executors;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.EmptyAlgorithm;
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.EventPublisher;
@@ -17,6 +18,7 @@ import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.util.Context;
@@ -111,6 +113,11 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     }
 
     public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, long startTimestamp);
+
+    /**
+     * Allocate resources and prepare for execution
+     */
+    public abstract void startup();
 
     /**
      * Finalize and destroy all resources, we have finished and are shutting down now.
@@ -216,7 +223,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
                 best = fmode.best(best, score);
             }
         }
-        if (best == Integer.MAX_VALUE || best == Integer.MIN_VALUE) {
+        if (best == FMode.MAXIMIZE.getBadValue() || best == FMode.MINIMIZE.getBadValue()) {
             return Optional.empty();
         } else {
             return Optional.of(best);
@@ -255,7 +262,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         if (best == null) {
             return true;
         }
-        return Context.getMainObjective().isBetter(candidate.solution(), best.solution());
+        Objective<?, S, I> objective = Context.getMainObjective();
+        return objective.isBetter(candidate.solution(), best.solution());
     }
 
     public String instanceName(String instancePath) {

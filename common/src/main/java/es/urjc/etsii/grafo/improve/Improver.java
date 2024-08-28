@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.improve;
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.metrics.BestObjective;
+import es.urjc.etsii.grafo.metrics.DeclaredObjective;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -57,7 +57,7 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         if(objective.isBetter(initialScore, endScore)){
             throw new IllegalStateException(String.format("Score has worsened after executing an improvement method: %s --> %s", initialScore, endScore));
         }
-        Metrics.add(BestObjective.class, solution.getScore());
+        Metrics.add(DeclaredObjective.class, solution.getScore());
 
         return improvedSolution;
     }

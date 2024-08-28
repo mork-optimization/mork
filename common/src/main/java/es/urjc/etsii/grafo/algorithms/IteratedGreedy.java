@@ -7,7 +7,7 @@ import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.Reconstructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.metrics.BestObjective;
+import es.urjc.etsii.grafo.metrics.DeclaredObjective;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.shake.DestroyRebuild;
 import es.urjc.etsii.grafo.shake.Destructive;
@@ -90,7 +90,6 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
      * @param destructionReconstruction destruction and reconstruction procedures
      * @param improver improving procedures. Could be 0 or more.
      */
-    @AutoconfigConstructor
     public IteratedGreedy(
             String name,
             Objective<?,S,I> objective,
@@ -167,7 +166,7 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
     public S algorithm(I instance) {
         S solution = this.newSolution(instance);
         solution = this.constructive.construct(solution);
-        Metrics.add(BestObjective.class, solution.getScore());
+        Metrics.add(DeclaredObjective.class, solution.getScore());
         if(TimeControl.isTimeUp()){
             return solution;
         }
@@ -193,7 +192,7 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
             } else {
                 solution = copy;
                 logger.debug("Improved at iteration {}: {} - {}", i, solution.getScore(), solution);
-                Metrics.add(BestObjective.class, solution.getScore());
+                Metrics.add(DeclaredObjective.class, solution.getScore());
                 iterationsWithoutImprovement = 0;
             }
         }

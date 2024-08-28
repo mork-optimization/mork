@@ -4,14 +4,14 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class FModeParamTest {
+class ObjectiveParamProviderTest {
     @Test
     void checkNames(){
-        String[] valid = new String[]{"fmode", "mode", "fMode"};
-        String[] invalid = new String[]{"moda", "different"};
+        String[] valid = new String[]{"objective"};
+        String[] invalid = new String[]{"moda", "different", "fmode", "mode", "fMode"};
 
         var testType = Object.class;
-        var paramProvider = new FModeParam();
+        var paramProvider = new ObjectiveParamProvider();
 
         for(String s: valid){
             assertTrue(paramProvider.provides(testType, s));

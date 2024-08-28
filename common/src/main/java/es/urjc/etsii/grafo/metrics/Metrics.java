@@ -1,7 +1,5 @@
 package es.urjc.etsii.grafo.metrics;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
-
 import java.util.*;
 import java.util.function.Function;
 
@@ -21,7 +19,6 @@ public final class Metrics {
     private static final Map<String, Function<Long, ? extends AbstractMetric>> initializers = new HashMap<>();
     private static InheritableThreadLocal<MetricsStorage> localMetrics = new InheritableThreadLocal<>();
     private static volatile boolean enabled = false;
-    private static FMode fmode;
 
     private Metrics(){}
 
@@ -86,15 +83,6 @@ public final class Metrics {
      */
     public static boolean areMetricsEnabled(){
         return enabled;
-    }
-
-
-    public static void setSolvingMode(FMode fmode) {
-        Metrics.fmode = fmode;
-    }
-
-    public static FMode getFMode(){
-        return fmode;
     }
 
     @SuppressWarnings("unchecked")

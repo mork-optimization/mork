@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.improve.ls;
 
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.metrics.BestObjective;
+import es.urjc.etsii.grafo.metrics.DeclaredObjective;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Objective;
@@ -93,7 +93,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
 
         // Execute move, save metric if improved, and ask for another iteration
         move.execute(solution);
-        Metrics.add(BestObjective.class, solution.getScore());
+        Metrics.add(DeclaredObjective.class, solution.getScore());
 
         return true;
     }

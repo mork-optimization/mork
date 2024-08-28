@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.executors;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
@@ -10,11 +9,12 @@ import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.solution.ValidationResult;
-import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -45,7 +45,7 @@ class ExecutorTest {
 
     @BeforeEach
     void initMocks(){
-        Mork.setSolvingMode(FMode.MINIMIZE);
+        Context.Configurator.setObjectives(Objective.ofDefaultMinimize());
         var instance1 = new TestInstance("inst1");
         var referenceResult1 = new ReferenceResult();
         referenceResult1.setScore(5.0);
@@ -62,7 +62,7 @@ class ExecutorTest {
         this.ioManager = mock(IOManager.class);
 
         when(instanceManager.getInstance("inst1")).thenReturn(instance1);
-        when(referenceResultProvider.getProviderName()).thenReturn("TestProvider");
+        when(referenceResultProvider.getProviderName()).thenReturn("MockedProvider");
         when(referenceResultProvider.getValueFor("inst1")).thenReturn(referenceResult1);
         when(referenceResultProvider.getValueFor("inst2")).thenReturn(referenceResult2);
         when(validator.validate(any(TestSolution.class))).thenReturn(ValidationResult.ok());
@@ -146,6 +146,11 @@ class ExecutorTest {
         @Override
         public void executeExperiment(Experiment<TestSolution, TestInstance> experiment, List<String> instanceNames, long startTimestamp) {
 
+        }
+
+        @Override
+        public void startup() {
+            // No resources to initialize
         }
 
         @Override

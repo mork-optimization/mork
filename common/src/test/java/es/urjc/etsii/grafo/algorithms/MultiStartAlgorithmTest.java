@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.algorithms;
 
 import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithmBuilder;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.TimeControl;
@@ -42,22 +43,32 @@ class MultiStartAlgorithmTest {
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(_maxNumberOfIterations)
+                .withObjective(Objective.ofDefaultMaximize())
                 .build(algorithm));
 
         Assertions.assertThrows(IllegalArgumentException.class, () -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMinIterations(_minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
+                .withObjective(Objective.ofDefaultMaximize())
                 .build(algorithm));
 
         Assertions.assertThrows(IllegalArgumentException.class, () -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(_maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
+                .withObjective(Objective.ofDefaultMaximize())
                 .build(algorithm));
 
         Assertions.assertThrows(IllegalArgumentException.class, () -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(_maxIterWithoutImprovement)
+                .withMinIterations(minNumberOfIterations)
+                .withMaxIterations(maxNumberOfIterations)
+                .withObjective(Objective.ofDefaultMaximize())
+                .build(algorithm));
+
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
+                .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
                 .build(algorithm));
@@ -66,6 +77,7 @@ class MultiStartAlgorithmTest {
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
+                .withObjective(Objective.ofDefaultMaximize())
                 .build(algorithm));
 
         Assertions.assertThrows(IllegalArgumentException.class, () -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
@@ -76,6 +88,13 @@ class MultiStartAlgorithmTest {
         Assertions.assertDoesNotThrow(() -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMinIterations(50)
                 .withMaxIterations(50)
+                .withObjective(Objective.ofDefaultMaximize())
+                .build(algorithm));
+
+        Assertions.assertDoesNotThrow(() -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
+                .withMinIterations(50)
+                .withMaxIterations(50)
+                .withObjective(Objective.ofDefaultMinimize())
                 .build(algorithm));
 
     }
@@ -89,6 +108,7 @@ class MultiStartAlgorithmTest {
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
+                .withObjective(Objective.ofDefaultMaximize())
                 .build(algorithm);
         multistart.algorithm(testInstance);
         verify(algorithm, atLeast(minNumberOfIterations)).algorithm(testInstance);
@@ -103,6 +123,7 @@ class MultiStartAlgorithmTest {
                 .withMaxIterationsWithoutImproving(1)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
+                .withObjective(Objective.ofDefaultMaximize())
                 .build(algorithm);
         multistart.algorithm(testInstance);
         verify(algorithm, times(minNumberOfIterations)).algorithm(testInstance);
@@ -117,6 +138,7 @@ class MultiStartAlgorithmTest {
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
+                .withObjective(Objective.ofDefaultMaximize())
                 .build(algorithm);
         multistart.algorithm(testInstance);
         verify(algorithm, times(maxNumberOfIterations)).algorithm(testInstance);
@@ -133,6 +155,7 @@ class MultiStartAlgorithmTest {
         var multistart = new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMaxIterations(maxNumberOfIterations)
+                .withObjective(Objective.ofDefaultMaximize())
                 .build(algorithm);
         long startTime = System.nanoTime();
         multistart.algorithm(testInstance);
@@ -148,6 +171,7 @@ class MultiStartAlgorithmTest {
         int maxIterWithoutImprovement = 1;
         var multistart = new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
+                .withObjective(Objective.ofDefaultMaximize())
                 .build(algorithm);
         multistart.algorithm(testInstance);
         // Execute twice: First solution is null, improves, second time does not improve, end
@@ -158,6 +182,7 @@ class MultiStartAlgorithmTest {
     void checkSetsBuilder(){
         var multistart = new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
                 .withMaxIterationsWithoutImproving(100)
+                .withObjective(Objective.ofDefaultMaximize())
                 .build(algorithm);
         SolutionBuilder<TestSolution, TestInstance> builder = new SolutionBuilder<>() {
             @Override

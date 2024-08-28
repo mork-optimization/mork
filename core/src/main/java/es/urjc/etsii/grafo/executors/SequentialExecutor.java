@@ -104,6 +104,11 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
 
     }
 
+    @Override
+    public void startup() {
+        // Do nothing, as experiments run in the main thread, just return
+    }
+
     /**
      * {@inheritDoc}
      */

@@ -722,8 +722,8 @@ public class ArrayUtil {
     }
 
     private DoubleStats stats(double[] data){
-        double min = Integer.MAX_VALUE;
-        double max = Integer.MIN_VALUE;
+        double min = Double.MAX_VALUE;
+        double max = -Double.MAX_VALUE;
         double sum = 0;
 
         for (double n : data) {

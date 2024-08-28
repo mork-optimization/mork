@@ -37,7 +37,7 @@ public class LocalSearchFirstImprovement<M extends Move<S, I>, S extends Solutio
      * @param neighborhood neighborhood to use
      * @param objective objective function to optimize
      */
-    protected LocalSearchFirstImprovement(Objective<M,S,I> objective, Neighborhood<M, S, I> neighborhood) {
+    public LocalSearchFirstImprovement(Objective<M,S,I> objective, Neighborhood<M, S, I> neighborhood) {
         super(objective, neighborhood);
     }
 
