@@ -4,8 +4,14 @@ if (!dir.exists(personal_lib_path)) {
 }
 .libPaths(personal_lib_path)
 
+if (!require("remotes")) {
+  install.packages("remotes", type = "source", repos = "http://cran.us.r-project.org")
+  library("remotes")
+}
+
 if (!require("irace")) {
-  install.packages("irace", type = "source", repos = "http://cran.us.r-project.org")
+  # install.packages("irace", type = "source", repos = "http://cran.us.r-project.org")
+  remotes::install_github("MLopez-Ibanez/irace@4704dd631622a0979a36c715cdd9ae9fc1d4b7ca", upgrade=FALSE
   library("irace")
 }
 
