@@ -17,6 +17,7 @@
         <module>common</module>
         <module>autoconfig</module>
         <module>integration-tests</module>
+        <module>aggregate-report</module>
     </modules>
 
     <licenses>
@@ -61,7 +62,7 @@
         <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
         <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
         <sonar.coverage.jacoco.xmlReportPaths>
-            ${project.basedir}/../integration-tests/target/site/jacoco-aggregate/jacoco.xml
+            ${project.basedir}/aggregate-report/target/site/jacoco-aggregate/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
         <sonar.language>java</sonar.language>
     </properties>
@@ -125,7 +126,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${msurefire.version}</version>
                 <configuration>
-                    <argLine>--enable-preview</argLine>
+                    <argLine>${argLine} --enable-preview</argLine>
                 </configuration>
             </plugin>
             <plugin>
@@ -136,13 +137,6 @@
                     <execution>
                         <goals>
                             <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>jacoco-report-aggregate</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>report-aggregate</goal>
                         </goals>
                     </execution>
                 </executions>
