@@ -62,7 +62,7 @@
         <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
         <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
         <sonar.coverage.jacoco.xmlReportPaths>
-            ${project.basedir}/aggregate-report/target/site/jacoco-aggregate/jacoco.xml
+            ${project.basedir}/../aggregate-report/target/site/jacoco-aggregate/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
         <sonar.language>java</sonar.language>
     </properties>
