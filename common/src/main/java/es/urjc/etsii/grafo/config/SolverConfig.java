@@ -15,7 +15,7 @@ public class SolverConfig {
     /**
      * Global random seed to ensure reproducibility
      */
-    private int seed = 1234;
+    private long seed = 1234;
 
     /**
      * Random generator to use
@@ -106,7 +106,7 @@ public class SolverConfig {
      *
      * @return a int.
      */
-    public int getSeed() {
+    public long getSeed() {
         return seed;
     }
 
@@ -115,7 +115,7 @@ public class SolverConfig {
      *
      * @param seed a int.
      */
-    public void setSeed(int seed) {
+    public void setSeed(long seed) {
         this.seed = seed;
     }
 

@@ -20,7 +20,7 @@ public class BenchmarkUtil {
      *
      * @return score as a double
      */
-    public static double getBenchmarkScore(int seed) {
+    public static double getBenchmarkScore(long seed) {
         double score = Double.NaN;
         File f = new File(BENCH_FILE);
 
@@ -30,7 +30,7 @@ public class BenchmarkUtil {
 
         if (Double.isNaN(score)) {
             log.info("Benchmark data not found, running CPU benchmark...");
-            var result = ScimarkAPI.runBenchmark(seed);
+            var result = ScimarkAPI.runBenchmark((int) seed);
             score = result.getScore();
             store(f, result);
         }
