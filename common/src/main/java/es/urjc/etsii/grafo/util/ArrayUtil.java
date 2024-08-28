@@ -105,6 +105,46 @@ public class ArrayUtil {
     }
 
     /**
+     * Copy and shuffle an array without modifying the original array.
+     * Uses Fisher–Yates shuffle
+     *
+     * @param array Array to shuffle
+     * @return shuffled array. Original array is not modified
+     */
+    public static int[] copyAndshuffle(int[] array) {
+        int[] copy = array.clone();
+        shuffle(copy);
+        return copy;
+    }
+
+    /**
+     * Shuffle an array IN PLACE using Fisher–Yates shuffle
+     *
+     * @param array Array to shuffle IN PLACE
+     */
+    public static void shuffle(Object[] array) {
+        var rnd = RandomManager.getRandom();
+        for (int i = array.length - 1; i > 0; i--) {
+            int index = rnd.nextInt(i + 1);
+            // Simple swap
+            swap(array, index, i);
+        }
+    }
+
+    /**
+     * Copy and shuffle an array without modifying the original array.
+     * Uses Fisher–Yates shuffle
+     *
+     * @param array Array to shuffle
+     * @return shuffled array. Original array is not modified
+     */
+    public static Object[] copyAndshuffle(Object[] array) {
+        Object[] copy = array.clone();
+        shuffle(copy);
+        return copy;
+    }
+
+    /**
      * Swaps the two specified elements in the specified array.
      *
      * @param arr array
@@ -155,33 +195,6 @@ public class ArrayUtil {
         long tmp = arr[i];
         arr[i] = arr[j];
         arr[j] = tmp;
-    }
-
-    /**
-     * Copy and shuffle an array without modifying the original array.
-     * Uses Fisher–Yates shuffle
-     *
-     * @param array Array to shuffle
-     * @return shuffled array. Original array is not modified
-     */
-    public static int[] copyAndshuffle(int[] array) {
-        int[] copy = array.clone();
-        shuffle(copy);
-        return copy;
-    }
-
-    /**
-     * Shuffle an array IN PLACE using Fisher–Yates shuffle
-     *
-     * @param array Array to shuffle IN PLACE
-     */
-    public static void shuffle(Object[] array) {
-        var rnd = RandomManager.getRandom();
-        for (int i = array.length - 1; i > 0; i--) {
-            int index = rnd.nextInt(i + 1);
-            // Simple swap
-            swap(array, index, i);
-        }
     }
 
     /**
