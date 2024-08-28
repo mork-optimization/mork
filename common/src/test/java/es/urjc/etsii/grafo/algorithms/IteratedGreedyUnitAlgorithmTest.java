@@ -5,8 +5,10 @@ import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.shake.Shake;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -29,6 +31,7 @@ class IteratedGreedyUnitAlgorithmTest {
     @BeforeAll
     public static void init(){
         Metrics.disableMetrics();
+        Context.Configurator.setObjectives(Objective.ofDefaultMinimize());
     }
 
     @SuppressWarnings("unchecked")

@@ -3,7 +3,12 @@ package es.urjc.etsii.grafo.solver;
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
+import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.services.BannerProvider;
+import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
+import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.springframework.boot.SpringApplication;
@@ -21,15 +26,15 @@ import org.springframework.scheduling.annotation.EnableAsync;
 public class Mork {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(Mork.class);
-    private static FMode fmode;
 
     /**
      * Procedure to launch the application.
-     *
+     * Deprecated: Use the version with the objectives parameter instead
+     * @see Mork#start(String, String[], Objective[])
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
      * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
      */
-    public static boolean start(String[] args, FMode fmode) {
+    public static <S extends Solution<S,I>, I extends Instance> boolean start(String[] args, FMode fmode) {
         return Mork.start(null, args, fmode);
     }
 
@@ -42,22 +47,46 @@ public class Mork {
         if(Mork.fmode == null){
             throw new IllegalStateException("FMode not set");
         }
-        return Mork.start(null, args, Mork.fmode);
+        Mork.start(null, args, Mork.fmode);
     }
 
+
+    /**
+     * Procedure to launch the application.
+     * Deprecated: Use the version with the objectives parameter instead
+     * @see Mork#start(String, String[], Objective[])
+     * @param pkgRoot  Custom package root for component scanning if changed from the default package
+     *                 (es.urjc.etsii)
+     * @param args     command line arguments, normally the parameter "String[] args" in the main method
+     * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
+     */
+    @Deprecated
+    public static <S extends Solution<S,I>, I extends Instance> void start(String pkgRoot, String[] args, FMode fmode) {
+        Mork.start(pkgRoot, args, Objective.of("Default", fmode, S::getScore, Move::getValue));
+    }
+
+    /**
+     * Procedure to launch the application.
+     *
+     * @param args     command line arguments, normally the parameter "String[] args" in the main method
+     * @param objectives List of objectives to track
+     */
+    public static <S extends Solution<S,I>, I extends Instance> boolean start(String[] args, Objective<?,S,I>... objectives){
+        return Mork.start(null, args, objectives);
+    }
 
     /**
      * Procedure to launch the application.
      *
      * @param pkgRoot  Custom package root for component scanning if changed from the default package
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
-     * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
+     * @param objectives List of objectives to track
      */
-    public static boolean start(String pkgRoot, String[] args, FMode fmode) {
+    public static boolean start(String pkgRoot, String[] args, Objective<?, ?, ?>... objectives) {
         args = argsProcessing(args);
         configurePackageScanning(pkgRoot);
         configureDeserialization();
-        setSolvingMode(fmode);
+        Context.Configurator.setObjectives(objectives);
         SpringApplication application = new SpringApplication(Mork.class);
         application.setBanner(new BannerProvider());
         application.setLogStartupInfo(false);
@@ -81,36 +110,14 @@ public class Mork {
     }
 
     /**
-     * Set solving mode,
-     * Warning: Changing the solving mode once the solving engine has started has undefined behaviour
+     * Set solving mode
+     * Warning: Changing the objectives after the solving engine has started has undefined behaviour
      *
-     * @param fmode MAXIMIZE if maximizing o.f, MINIMIZING if minimizing
+     * @param objectives List of objectives to track
      */
-    public static void setSolvingMode(FMode fmode) {
-        Mork.fmode = fmode;
-    }
+    @SafeVarargs
+    public static <S extends Solution<S,I>, I extends Instance> void setObjectives(Objective<?,S,I>... objectives) {
 
-    /**
-     * Solving mode
-     *
-     * @return true if maximizing, false if minimizing
-     */
-    public static boolean isMaximizing() {
-        return fmode == FMode.MAXIMIZE;
-    }
-
-    /**
-     * Solving mode
-     *
-     * @return true if minimizing, false if maximizing
-     */
-    public static boolean isMinimizing() {
-        return fmode == FMode.MINIMIZE;
-    }
-
-    public static FMode getFMode(){
-        return fmode;
-    }
 
     private static void configurePackageScanning(String pkgRoot) {
         String pkgs = "es.urjc.etsii";

@@ -7,7 +7,7 @@ import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.solver.Mork;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.IOUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,7 +46,7 @@ public class InstanceSelector<I extends Instance> extends AbstractOrchestrator {
                 instanceConfiguration.getPaths().put("default", path);
             }
             var instanceIDs = this.instanceManager.getInstanceSolveOrder("default", false);
-            EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Mork.getFMode(), List.of("Instance selection")));
+            EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectives(), List.of("Instance selection")));
             var properties = instancesToPropertyMatrix(instanceIDs);
             log.info("Writting CSV");
             writeCSV(Path.of(DEFAULT_OUTPUT_PATH), properties);

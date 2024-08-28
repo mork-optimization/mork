@@ -13,8 +13,8 @@ import es.urjc.etsii.grafo.experiment.ExperimentManager;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.BenchmarkUtil;
+import es.urjc.etsii.grafo.util.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.annotation.Profile;
@@ -80,9 +80,10 @@ public class UserExperimentOrchestrator<S extends Solution<S, I>, I extends Inst
         if(experiments.size() > 1){
             log.info("Experiments to execute: {}", experiments.keySet());
         }
-        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Mork.isMaximizing(), new ArrayList<>(experiments.keySet())));
+        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectives(), new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
         try {
+            executor.startup();
             experiments.values().forEach(this::experimentWrapper);
         } finally {
             executor.shutdown();

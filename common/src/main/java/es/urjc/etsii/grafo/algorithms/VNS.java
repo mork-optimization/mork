@@ -6,10 +6,12 @@ import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.metrics.BestObjective;
+import es.urjc.etsii.grafo.metrics.DeclaredObjective;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.shake.Shake;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.ValidationUtil;
@@ -68,6 +70,11 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
     protected KMapper<S, I> kMapper;
 
     /**
+     * Objective function to optimize
+     */
+    protected Objective<?,S,I> objective;
+
+    /**
      * VNS with default KMapper, which starts at 0 and increments by 1 each time the solution does not improve.
      * Stops when k >= 5. Behaviour can be customized passing a custom kMapper, such as:
      * <pre>
@@ -89,7 +96,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
             Shake<S, I> shake,
             Improver<S, I> improver
     ) {
-        this(algorithmName, getDefaultKMapper(maxK), constructive, shake, improver);
+        this(algorithmName, Context.getMainObjective(), getDefaultKMapper(maxK), constructive, shake, improver);
     }
 
     /**
@@ -101,8 +108,9 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * @param constructive  Constructive method
      * @param improver      List of improvers/local searches
      */
-    public VNS(String algorithmName, KMapper<S, I> kMapper, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
+    public VNS(String algorithmName, Objective<?,S,I> objective, KMapper<S, I> kMapper, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
         super(algorithmName);
+        this.objective = objective;
         this.kMapper = kMapper;
 
         // Ensure Ks are sorted, maxK is the last element
@@ -132,9 +140,9 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
     public S algorithm(I instance) {
         var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
-        Metrics.add(BestObjective.class, solution.getScore());
+        Metrics.add(DeclaredObjective.class, solution.getScore());
         solution = improver.improve(solution);
-        Metrics.add(BestObjective.class, solution.getScore());
+        Metrics.add(DeclaredObjective.class, solution.getScore());
 
         int internalK = 0;
         // While stop not request OR k in range. k check is done and breaks inside loop
@@ -151,10 +159,10 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
             ValidationUtil.assertValidScore(solution);
             copy = improver.improve(copy);
             ValidationUtil.assertValidScore(solution);
-            if (copy.isBetterThan(solution)) {
+            if (objective.isBetter(copy, solution)) {
                 solution = copy;
                 internalK = 0;
-                Metrics.add(BestObjective.class, solution.getScore());
+                Metrics.add(DeclaredObjective.class, solution.getScore());
             } else {
                 internalK++;
             }

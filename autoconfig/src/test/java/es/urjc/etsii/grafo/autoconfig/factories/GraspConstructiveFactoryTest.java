@@ -2,7 +2,10 @@ package es.urjc.etsii.grafo.autoconfig.factories;
 
 import es.urjc.etsii.grafo.create.grasp.GRASPConstructive;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
+import es.urjc.etsii.grafo.solution.Objective;
+import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.Map;
@@ -11,17 +14,23 @@ import static es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE;
 
 class GraspConstructiveFactoryTest {
 
+    static final Objective<?, ?, ?> defaultMin = Objective.ofDefaultMinimize();
+    @BeforeAll
+    static void setup() {
+        Context.Configurator.setObjectives(defaultMin);
+    }
+
     private final GRGraspConstructiveFactory grfactory = new GRGraspConstructiveFactory();
     private final RGGraspConstructiveFactory rgfactory = new RGGraspConstructiveFactory();
 
     private final Map<String, Object> fixedAlpha = Map.of(
-            "fmode", MINIMIZE,
+            "objective", defaultMin.getName(),
             "alpha", 0.2d,
             "candidateListManager", GRASPListManager.nul()
     );
 
     private final Map<String, Object> alphaRange = Map.of(
-            "fmode", MINIMIZE,
+            "objective", defaultMin.getName(),
             "alphaMin", 0.1d,
             "alphaMax", 0.3d,
             "candidateListManager", GRASPListManager.nul()
@@ -32,6 +41,12 @@ class GraspConstructiveFactoryTest {
     void testBuildGRComponent() {
         Assertions.assertDoesNotThrow(() -> grfactory.buildComponent(this.fixedAlpha));
         Assertions.assertDoesNotThrow(() -> grfactory.buildComponent(this.alphaRange));
+
+        Assertions.assertThrows(ClassCastException.class, () -> grfactory.buildComponent(Map.of(
+                "objective", MINIMIZE,
+                "alpha", 0.2d,
+                "candidateListManager", GRASPListManager.nul()
+        )));
     }
 
     @Test

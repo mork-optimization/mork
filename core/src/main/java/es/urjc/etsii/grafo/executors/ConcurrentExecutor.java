@@ -40,7 +40,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
     private static final Logger log = LoggerFactory.getLogger(ConcurrentExecutor.class);
 
     private final int nWorkers;
-    private final ExecutorService executor;
+    private ExecutorService executor;
 
     /**
      * Create a new ConcurrentExecutor. Do not create executors manually, inject them.
@@ -60,7 +60,6 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
     ) {
         super(validator, timeLimitCalculator, io, instanceManager, referenceResultProviders, solverConfig, exceptionHandlers);
         this.nWorkers = solverConfig.getnWorkers();
-        this.executor = Executors.newFixedThreadPool(this.nWorkers);
     }
 
     private Map<String, Map<Algorithm<S, I>, List<Future<WorkUnitResult<S, I>>>>> submitAll(Map<String, Map<Algorithm<S, I>, List<WorkUnit<S, I>>>> workUnits) {
@@ -135,6 +134,12 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
             }
         }
 
+    }
+
+    @Override
+    public void startup() {
+        this.executor = Executors.newFixedThreadPool(this.nWorkers);
+        log.debug("Allocating threadpool with {} workers", this.nWorkers);
     }
 
     /**

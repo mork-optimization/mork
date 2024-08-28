@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.executors;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
-import es.urjc.etsii.grafo.algorithms.EmptyAlgorithm;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.config.SolverConfig;
@@ -18,14 +17,13 @@ import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
-import es.urjc.etsii.grafo.solver.Mork;
-import es.urjc.etsii.grafo.util.DoubleComparator;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.TimeUtil;
 import es.urjc.etsii.grafo.util.ValidationUtil;
-import es.urjc.etsii.grafo.util.random.RandomManager;
 import me.tongfei.progressbar.ProgressBar;
 import me.tongfei.progressbar.ProgressBarBuilder;
 import me.tongfei.progressbar.ProgressBarStyle;
@@ -49,6 +47,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(Executor.class);
     public static final int EXTRA_SECS_BEFORE_WARNING = 10;
+    public static final int UNDEF_TIME = -1;
 
     protected final Optional<SolutionValidator<S, I>> validator;
     protected final Optional<TimeLimitCalculator<S, I>> timeLimitCalculator;
@@ -56,7 +55,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     protected final InstanceManager<I> instanceManager;
     protected final List<ReferenceResultProvider> referenceResultProviders;
     protected final SolverConfig solverConfig;
-    protected final FMode ofmode = Mork.getFMode();
+    protected final Objective<?,S,I> mainObjective = Context.getMainObjective();
 
     private final ExceptionHandler<S, I> exceptionHandler;
 
@@ -116,6 +115,11 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, long startTimestamp);
 
     /**
+     * Allocate resources and prepare for execution
+     */
+    public abstract void startup();
+
+    /**
      * Finalize and destroy all resources, we have finished and are shutting down now.
      */
     public abstract void shutdown();
@@ -132,7 +136,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         if (optimalValue.isPresent()) {
             // Check that solution score is not better than optimal value
             double solutionScore = solution.getScore();
-            if(ofmode.isBetter(solutionScore, optimalValue.get())){
+            if(mainObjective.isBetter(solutionScore, optimalValue.get())){
                 throw new AssertionError("Solution score (%s) improves optimal value (%s) in ReferenceResultProvider".formatted(solutionScore, optimalValue.get()));
             }
         }
@@ -149,9 +153,11 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         I instance = this.instanceManager.getInstance(workUnit.instancePath());
         Algorithm<S, I> algorithm = workUnit.algorithm();
 
+        long startTime = UNDEF_TIME, endTime = UNDEF_TIME;
+
         try {
             // Preparate current work unit
-            RandomManager.reset(workUnit.i());
+            Context.Configurator.resetRandom(solverConfig, workUnit.i());
             if (this.timeLimitCalculator.isPresent()) {
                 long maxDuration = this.timeLimitCalculator.get().timeLimitInMillis(instance, algorithm);
                 TimeControl.setMaxExecutionTime(maxDuration, TimeUnit.MILLISECONDS);
@@ -164,29 +170,38 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             }
 
             // Do real work
-            long starTime = System.nanoTime();
+            startTime = System.nanoTime();
             solution = algorithm.algorithm(instance);
-            long endTime = System.nanoTime();
+            endTime = System.nanoTime();
 
             // Prepare work unit results and cleanup
             endTimeControl(timeLimitCalculator, workUnit);
             validate(solution);
 
-            long timeToTarget = solution.getLastModifiedTime() - starTime;
-            long executionTime = endTime - starTime;
+            long timeToTarget = solution.getLastModifiedTime() - startTime;
+            long executionTime = endTime - startTime;
             var metrics = Metrics.areMetricsEnabled()? Metrics.getCurrentThreadMetrics() : null;
-            return new WorkUnitResult<>(workUnit, solution, executionTime, timeToTarget, metrics);
+            return WorkUnitResult.ok(workUnit, solution, executionTime, timeToTarget, metrics);
         } catch (Exception e) {
+            long totalTime = UNDEF_TIME;
+            if(startTime != UNDEF_TIME){
+                if(endTime == UNDEF_TIME){
+                    endTime = System.nanoTime();
+                }
+                totalTime = endTime - startTime;
+            }
             exceptionHandler.handleException(workUnit.experimentName(), workUnit.i(), e, Optional.ofNullable(solution), instance, workUnit.algorithm());
             EventPublisher.getInstance().publishEvent(new ErrorEvent(e));
-            return null;
+            return WorkUnitResult.failure(workUnit, totalTime, UNDEF_TIME);
         }
     }
 
     protected void processWorkUnitResult(WorkUnitResult<S, I> r, ProgressBar pb) {
         pb.step();
-        io.exportSolution(r, SolutionExportFrequency.ALL);
-        var solutionGenerated = new SolutionGeneratedEvent<>(r.iteration(), r.solution(), r.experimentName(), r.algorithm(), r.executionTime(), r.timeToTarget(), r.metrics());
+        if(r.success()){
+            io.exportSolution(r, SolutionExportFrequency.ALL);
+        }
+        var solutionGenerated = new SolutionGeneratedEvent<>(r.success(), r.iteration(), r.solution(), r.experimentName(), r.algorithm(), r.executionTime(), r.timeToTarget(), r.metrics());
         EventPublisher.getInstance().publishEvent(solutionGenerated);
         if (log.isDebugEnabled()) {
             log.debug(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.iteration(), nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
@@ -194,19 +209,28 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     }
 
     protected void exportAlgorithmInstanceSolution(WorkUnitResult<S, I> r) {
+        if(!r.success()){
+            log.debug("Skipping export of failed WUR: {}", r);
+            return;
+        }
         // replace best iteration number with generic text to avoid overwriting the corresponding work unit result
-        var modifiedWorkUnit = new WorkUnitResult<>(r.experimentName(), r.instancePath(), r.algorithm(), "bestiter", r.solution(), r.executionTime(), r.timeToTarget(), r.metrics());
+        var modifiedWorkUnit = WorkUnitResult.copyBestAlg(r);
         io.exportSolution(modifiedWorkUnit, SolutionExportFrequency.BEST_PER_ALG_INSTANCE);
     }
 
     protected void exportInstanceSolution(WorkUnitResult<S, I> r) {
+        if(!r.success()){
+            log.debug("Skipping export of failed WUR: {}", r);
+            return;
+        }
         // replace best iteration number and algorithm name with generic text to avoid overwriting the corresponding work unit result
-        var modifiedWorkUnit = new WorkUnitResult<>(r.experimentName(), r.instancePath(), new EmptyAlgorithm<>("bestalg"), "bestiter", r.solution(), r.executionTime(), r.timeToTarget(), r.metrics());
+        var modifiedWorkUnit = WorkUnitResult.copyBestInstance(r);
         io.exportSolution(modifiedWorkUnit, SolutionExportFrequency.BEST_PER_INSTANCE);
     }
 
     protected Optional<Double> getOptionalReferenceValue(String instanceName, boolean onlyOptimal) {
-        double best = Mork.isMaximizing() ? Integer.MIN_VALUE : Integer.MAX_VALUE;
+        var fmode = Context.getMainObjective().getFMode();
+        double best = fmode.getBadValue();
         for (var r : referenceResultProviders) {
             double score = Double.NaN;
             var ref = r.getValueFor(instanceName);
@@ -215,14 +239,10 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             }
             // Ignore if not valid value
             if (Double.isFinite(score) && (!onlyOptimal || ref.isOptimalValue())) {
-                if (Mork.isMaximizing()) {
-                    best = Math.max(best, score);
-                } else {
-                    best = Math.min(best, score);
-                }
+                best = fmode.best(best, score);
             }
         }
-        if (best == Integer.MAX_VALUE || best == Integer.MIN_VALUE) {
+        if (best == FMode.MAXIMIZE.getBadValue() || best == FMode.MINIMIZE.getBadValue()) {
             return Optional.empty();
         } else {
             return Optional.of(best);
@@ -258,14 +278,16 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         if (candidate == null) {
             throw new IllegalArgumentException("Null candidate");
         }
-        if (best == null) {
+        if (best == null || !best.success()) {
+            // anything is better than nothing
             return true;
         }
-        if (Mork.isMaximizing()) {
-            return DoubleComparator.isGreater(candidate.solution().getScore(), best.solution().getScore());
-        } else {
-            return DoubleComparator.isLess(candidate.solution().getScore(), best.solution().getScore());
+        if(!candidate.success()){
+            // do not even compare, failed execution
+            return false;
         }
+        Objective<?, S, I> objective = Context.getMainObjective();
+        return objective.isBetter(candidate.solution(), best.solution());
     }
 
     public String instanceName(String instancePath) {

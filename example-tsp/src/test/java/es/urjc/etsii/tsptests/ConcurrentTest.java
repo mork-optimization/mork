@@ -2,9 +2,10 @@ package es.urjc.etsii.tsptests;
 
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.orchestrator.UserExperimentOrchestrator;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solver.Mork;
+import es.urjc.etsii.grafo.util.Context;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -27,7 +28,7 @@ class ConcurrentTest {
 
     @BeforeAll
     public static void before(){
-        Mork.setSolvingMode(FMode.MINIMIZE);
+        Context.Configurator.setObjectives(Objective.ofDefaultMinimize());
     }
     private static Logger log = LoggerFactory.getLogger(ConcurrentTest.class);
 

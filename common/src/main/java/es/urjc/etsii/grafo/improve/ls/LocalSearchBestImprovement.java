@@ -1,16 +1,12 @@
 package es.urjc.etsii.grafo.improve.ls;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
-import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.neighborhood.ListExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
-import es.urjc.etsii.grafo.util.CollectionUtil;
-
-import java.util.function.ToDoubleFunction;
 
 /**
  * Local search procedures start from a given feasible solution and explore a determined neighborhood
@@ -28,25 +24,21 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
      * Create a new local search method using the given neighborhood.
      * Uses the method Move::getValue as the guiding function, with fMaximize = fmode.
      * @param neighborhood neighborhood to use
-     * @param fmode MAXIMIZE if the problem objective function is maximizing, MINIMIZE if minimizing
      */
     @AutoconfigConstructor
     public LocalSearchBestImprovement(
-            @ProvidedParam FMode fmode,
             Neighborhood<M, S, I> neighborhood
     ) {
-        super(fmode, neighborhood);
+        super(neighborhood);
     }
 
     /**
      * Create a new local search method using the given neighborhood
      * @param neighborhood neighborhood to use
-     * @param ofMaximize MAXIMIZE if the problem objective function is maximizing, MINIMIZE otherwise
-     * @param fMaximize MAXIMIZE if we should maximize the values returned by function f, MINIMIZE if not
-     * @param f function used to get a double value from a move
+     * @param objective objective function to optimize
      */
-    protected LocalSearchBestImprovement(FMode ofMaximize, Neighborhood<M, S, I> neighborhood, FMode fMaximize, ToDoubleFunction<M> f) {
-        super(ofMaximize, neighborhood, fMaximize, f);
+    public LocalSearchBestImprovement(Objective<M,S,I> objective, Neighborhood<M, S, I> neighborhood) {
+        super(objective, neighborhood);
     }
 
     /**
@@ -59,13 +51,9 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
         var expRes = neighborhood.explore(solution);
         M bestMove;
         if(expRes instanceof ListExploreResult<M,S,I> list){
-            bestMove = CollectionUtil.getBest(list.moveList(), f, alternativeFMode::isBetter);
+            bestMove = objective.getBestMove(list.moveList());
         } else {
-            var move = expRes.moves().reduce((m1, m2) -> {
-                double score1 = this.f.applyAsDouble(m1);
-                double score2 = this.f.applyAsDouble(m2);
-                return alternativeFMode.isBetter(score2, score1) ? m2 : m1;
-            });
+            var move = expRes.moves().reduce(objective::getBestMove);
             bestMove = move.orElse(null);
         }
         // Check if best move actually improves, if not end

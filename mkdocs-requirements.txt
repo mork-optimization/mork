@@ -1,2 +1,3 @@
 mkdocs-mermaid2-plugin
 Pygments
+mkdocs-awesome-pages-plugin

@@ -1,15 +1,12 @@
 package es.urjc.etsii.grafo.improve.ls;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
-import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.neighborhood.ListExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
-
-import java.util.function.ToDoubleFunction;
 
 /**
  * Local search procedures start from a given feasible solution and explore a determined neighborhood
@@ -27,25 +24,21 @@ public class LocalSearchFirstImprovement<M extends Move<S, I>, S extends Solutio
      * Create a new local search method using the given neighborhood.
      * Uses the method Move::getValue as the guiding function, with fMaximize = fmode.
      * @param neighborhood neighborhood to use
-     * @param fmode MAXIMIZE if the problem objective function is maximizing, MINIMIZE otherwise
      */
     @AutoconfigConstructor
     public LocalSearchFirstImprovement(
-            @ProvidedParam FMode fmode,
             Neighborhood<M, S, I> neighborhood
     ) {
-        super(fmode, neighborhood);
+        super(neighborhood);
     }
 
     /**
      * Create a new local search method using the given neighborhood
      * @param neighborhood neighborhood to use
-     * @param ofMaximize MAXIMIZE if the problem objective function is maximizing, MINIMIZE otherwise
-     * @param fMaximize true if we should maximize the values returned by function f, false otherwise
-     * @param f function used to get a double value from a move
+     * @param objective objective function to optimize
      */
-    protected LocalSearchFirstImprovement(FMode ofMaximize, Neighborhood<M, S, I> neighborhood, FMode fMaximize, ToDoubleFunction<M> f) {
-        super(ofMaximize, neighborhood, fMaximize, f);
+    public LocalSearchFirstImprovement(Objective<M,S,I> objective, Neighborhood<M, S, I> neighborhood) {
+        super(objective, neighborhood);
     }
 
     /**

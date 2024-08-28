@@ -3,13 +3,13 @@ package es.urjc.etsii.grafo.create.grasp;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
-import java.util.function.ToDoubleFunction;
 
 /**
  * GRASP Constructive method using the greedy random strategy. Use {@link GraspBuilder} to create instances of GRASP constructives, do not use this class directly.
@@ -22,8 +22,8 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
 
     private static final Logger log = LoggerFactory.getLogger(GreedyRandomGRASPConstructive.class);
 
-    protected GreedyRandomGRASPConstructive(FMode fmode, GRASPListManager<M, S, I> candidateListManager, ToDoubleFunction<M> greedyFunction, AlphaProvider provider, String alphaType) {
-        super(fmode, candidateListManager, greedyFunction, provider, alphaType);
+    protected GreedyRandomGRASPConstructive(Objective<M,S,I> objective, GRASPListManager<M, S, I> candidateListManager, AlphaProvider provider, String alphaType) {
+        super(objective, candidateListManager, provider, alphaType);
     }
 
     /**
@@ -41,14 +41,14 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
         int[] validIndexes = new int[cl.size()];
         int next = 0;
 
-        double limit = this.fmode == FMode.MAXIMIZE ?
+        double limit = objective.getFMode() == FMode.MAXIMIZE ?
                 max + alpha * (min - max) :
                 min + alpha * (max - min);
 
         for (int i = 0, clSize = cl.size(); i < clSize; i++) {
             M move = cl.get(i);
-            double value = greedyFunction.applyAsDouble(move);
-            if (fmode.isBetterOrEqual(value, limit)) {
+            double value = objective.evaluate(move);
+            if (objective.isBetterOrEqual(value, limit)) {
                 validIndexes[next++] = i;
             }
         }
@@ -62,7 +62,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
         double min = Double.MAX_VALUE;
         double max = -Double.MAX_VALUE;
         for (M m : cl) {
-            double value = greedyFunction.applyAsDouble(m);
+            double value = objective.evaluate(m);
             if (value < min) {
                 min = value;
             }
@@ -82,8 +82,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
         return "GRGRASP{" +
                 "a='" + alphaType + '\'' +
                 ", l=" + candidateListManager +
-                ", mode=" + fmode +
-                ", g=" + greedyFunction +
+                ", obj=" + objective.getName() +
                 '}';
     }
 

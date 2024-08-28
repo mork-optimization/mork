@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.autoconfigtests.model;
 
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 
 /**
  * Test solution to validate autoconfig behaviour, each component will add or remove some arbitrary quantity from its score
@@ -26,11 +25,6 @@ public class ACSolution extends Solution<ACSolution, ACInstance> {
     @Override
     public ACSolution cloneSolution() {
         return new ACSolution(this);
-    }
-
-    @Override
-    protected boolean _isBetterThan(ACSolution other) {
-        return DoubleComparator.isGreater(this.multiplier, other.multiplier);
     }
 
     @Override

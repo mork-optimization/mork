@@ -5,18 +5,21 @@ import es.urjc.etsii.grafo.algorithms.FMode;
 /**
  * Metric that stores the best objective values seen so far
  */
-public class BestObjective extends AbstractMetric {
+public class DeclaredObjective extends AbstractMetric {
 
+    private final String name;
     private final FMode fMode;
 
     /**
      * <p>Constructor for BestObjective.</p>
+     * @param fmode FMode to use when comparing values
      * @param referenceInstant nanoTime representing the start of the experiment, or an arbitrary point in time
      *                         used to relativize all other times when adding values to the metric
      */
-    public BestObjective(long referenceInstant) {
+    public DeclaredObjective(String name, FMode fmode, long referenceInstant) {
         super(referenceInstant);
-        this.fMode = Metrics.getFMode();
+        this.name = name;
+        this.fMode = fmode;
     }
 
     @Override

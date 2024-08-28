@@ -2,14 +2,15 @@ package es.urjc.etsii.grafo.improve;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.metrics.Metrics;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -24,7 +25,6 @@ public class VNDTest {
     TestSolution solution;
     TestInstance instance;
 
-    private FMode fmode;
     private List<Integer> calls;
     private List<Integer> expectedCallOrder = List.of(1,2,1,1,2,3,1,2,3);
 
@@ -62,7 +62,7 @@ public class VNDTest {
             calls.add(2);
             TestSolution s = a.getArgument(0);
             if(s.getScore() == 6){
-                s.setScore(fmode == FMode.MINIMIZE? 5: 7);
+                s.setScore(Context.getMainObjective().getFMode() == FMode.MINIMIZE? 5: 7);
             }
             return s;
         });
@@ -71,7 +71,7 @@ public class VNDTest {
             calls.add(3);
             TestSolution s = a.getArgument(0);
             if(s.getScore() % 2 == 0){
-                s.setScore(s.getScore() + (fmode == FMode.MINIMIZE? -1: +1));
+                s.setScore(s.getScore() + (Context.getMainObjective().getFMode() == FMode.MINIMIZE? -1: +1));
             }
             return s;
         });
@@ -79,8 +79,8 @@ public class VNDTest {
 
     @Test
     void testVNDminimizing(){
-        fmode = FMode.MINIMIZE;
-        var vnd = new VND<>(FMode.MINIMIZE, improver1, improver2, improver3);
+        Context.Configurator.setObjectives(Objective.ofDefaultMinimize());
+        var vnd = new VND<>(improver1, improver2, improver3);
         assertEquals(6, solution.getScore());
         var improvedSolution = vnd.improve(solution);
         assertEquals(3, improvedSolution.getScore());
@@ -90,8 +90,8 @@ public class VNDTest {
 
     @Test
     void testVNDmaximizing(){
-        fmode = FMode.MAXIMIZE;
-        var vnd = new VND<>(FMode.MAXIMIZE, improver1, improver2, improver3);
+        Context.Configurator.setObjectives(Objective.ofDefaultMaximize());
+        var vnd = new VND<>(improver1, improver2, improver3);
         assertEquals(6, solution.getScore());
         var improvedSolution = vnd.improve(solution);
         assertEquals(9, improvedSolution.getScore());

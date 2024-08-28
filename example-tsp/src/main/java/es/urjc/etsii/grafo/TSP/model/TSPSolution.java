@@ -2,7 +2,6 @@ package es.urjc.etsii.grafo.TSP.model;
 
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ArrayUtil;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.Arrays;
 
@@ -59,15 +58,6 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
         return new TSPSolution(this);
     }
 
-    /**
-     * Is the current solution strictly better than the solution given as a parameter?
-     * @param other solution we are comparing against
-     * @return true if strictly better, false if equals or worse.
-     */
-    @Override
-    protected boolean _isBetterThan(TSPSolution other) {
-        return DoubleComparator.isLess(this.routeLength, other.routeLength);
-    }
 
     /**
      * Get the current solution score.

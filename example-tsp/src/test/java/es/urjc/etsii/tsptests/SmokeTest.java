@@ -1,11 +1,12 @@
 package es.urjc.etsii.tsptests;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.events.AbstractEventStorage;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.solver.RunOnStart;
+import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -33,7 +34,7 @@ class SmokeTest {
 
     @BeforeAll
     public static void before(){
-        Mork.setSolvingMode(FMode.MINIMIZE);
+        Context.Configurator.setObjectives(Objective.ofDefaultMinimize());
     }
 
     @Test

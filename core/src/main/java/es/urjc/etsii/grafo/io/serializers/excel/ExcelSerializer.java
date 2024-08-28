@@ -1,13 +1,14 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.BenchmarkUtil;
+import es.urjc.etsii.grafo.util.Context;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
 import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.ss.util.CellReference;
@@ -86,7 +87,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             InstanceManager<I> instanceManager) {
         super(serializerConfig, referenceResultProviders);
         this.config = serializerConfig;
-        this.maximizing = Mork.isMaximizing();
+        this.maximizing = Context.getMainObjective().getFMode() == FMode.MAXIMIZE;
         this.excelCustomizer = excelCustomizer;
         this.instanceManager = instanceManager;
     }

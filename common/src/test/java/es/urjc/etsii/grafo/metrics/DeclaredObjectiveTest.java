@@ -7,17 +7,16 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class BestObjectiveTest {
+public class DeclaredObjectiveTest {
 
     @BeforeAll
     public static void setup(){
         Metrics.enableMetrics();
-        Metrics.setSolvingMode(FMode.MINIMIZE);
     }
 
     @Test
     public void testSimple(){
-        var metric = new BestObjective(0);
+        var metric = new DeclaredObjective("Test", FMode.MINIMIZE, 0);
         metric.add(1, 100);
         metric.add(1, 120); // should be discarded
         metric.add(2, 99); // should be included
