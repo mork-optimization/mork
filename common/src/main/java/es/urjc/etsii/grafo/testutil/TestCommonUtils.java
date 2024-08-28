@@ -17,6 +17,9 @@ public class TestCommonUtils {
         return config;
     }
 
+    public static RandomGenerator initRandom(){
+        return initRandom(TestCommonUtils.solverConfig(RandomType.DEFAULT, 0, 1));
+    }
     public static RandomGenerator initRandom(SolverConfig config){
         return initRandom(config, 0);
     }

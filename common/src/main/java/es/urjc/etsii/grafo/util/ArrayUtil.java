@@ -20,8 +20,19 @@ public class ArrayUtil {
      * @param arr array to reverse
      */
     public static void reverse(int[] arr) {
-        reverseFragment(arr, 0, arr.length);
+        reverse(arr, 0, arr.length-1);
     }
+
+    /**
+     * Reverse an array
+     *
+     * @param arr array to reverse
+     */
+    public static void reverse(Object[] arr) {
+        reverse(arr, 0, arr.length-1);
+    }
+
+
 
     /**
      * Reverse a fragment inside an array from start to end (inclusive)
@@ -30,10 +41,19 @@ public class ArrayUtil {
      * @param start start index, inclusive
      * @param end   end index, inclusive
      */
-    public static void reverseFragment(int[] arr, int start, int end) {
-        assert start >= 0 && start <= arr.length : String.format("Start index (%s) must be in range [0, %s)", start, arr.length);
-        assert end >= 0 && end <= arr.length : String.format("End index (%s) must be in range [0, %s)", start, arr.length);
-        assert start <= end : String.format("Start index (%s) must be <= end (%s)", start, end);
+    public static void reverse(int[] arr, int start, int end) {
+        if(arr.length <= 1){
+            return;
+        }
+        if (start < 0 || start >= arr.length) {
+            throw new IllegalArgumentException(String.format("Start index (%s) must be in range [0, %s)", start, arr.length));
+        }
+        if (end < 0 || end >= arr.length) {
+            throw new IllegalArgumentException(String.format("End index (%s) must be in range [0, %s)", start, arr.length));
+        }
+        if (start > end) {
+            throw new IllegalArgumentException(String.format("Start index (%s) must be <= end (%s)", start, end));
+        }
         for (int i = start, j = end; i < j; i++, j--) {
             int temp = arr[i];
             arr[i] = arr[j];
@@ -48,10 +68,19 @@ public class ArrayUtil {
      * @param start start index, inclusive
      * @param end   end index, inclusive
      */
-    public static void reverseFragment(Object[] arr, int start, int end) {
-        assert start >= 0 && start <= arr.length : String.format("Start index (%s) must be in range [0, %s)", start, arr.length);
-        assert end >= 0 && end <= arr.length : String.format("End index (%s) must be in range [0, %s)", start, arr.length);
-        assert start <= end : String.format("Start index (%s) must be <= end (%s)", start, end);
+    public static void reverse(Object[] arr, int start, int end) {
+        if(arr.length <= 1){
+            return;
+        }
+        if (start < 0 || start >= arr.length) {
+            throw new IllegalArgumentException(String.format("Start index (%s) must be in range [0, %s)", start, arr.length));
+        }
+        if (end < 0 || end >= arr.length) {
+            throw new IllegalArgumentException(String.format("End index (%s) must be in range [0, %s)", start, arr.length));
+        }
+        if (start > end) {
+            throw new IllegalArgumentException(String.format("Start index (%s) must be <= end (%s)", start, end));
+        }
         for (int i = start, j = end; i < j; i++, j--) {
             Object temp = arr[i];
             arr[i] = arr[j];
@@ -697,11 +726,10 @@ public class ArrayUtil {
         return Stream.of(arrs).flatMap(Stream::of).toArray(String[]::new);
     }
 
-    // TODO std optional as boolean
-    private record IntStats(int min, int max, int sum, double avg, double std) {}
-    private record DoubleStats(double min, double max, double sum, double avg, double std) {}
+    public record IntStats(int min, int max, int sum, double avg, double std) {}
+    public record DoubleStats(double min, double max, double sum, double avg, double std) {}
 
-    private IntStats stats(int[] data){
+    public static IntStats stats(int[] data){
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
         int sum = 0;
@@ -721,7 +749,7 @@ public class ArrayUtil {
         return new IntStats(min, max, sum, avg, std);
     }
 
-    private DoubleStats stats(double[] data){
+    public static DoubleStats stats(double[] data){
         double min = Double.MAX_VALUE;
         double max = -Double.MAX_VALUE;
         double sum = 0;

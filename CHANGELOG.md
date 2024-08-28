@@ -1,6 +1,7 @@
 # Developing
 - (New) Objective class: a class that represents an objective function of a problem. Each Objective has a name, a direction (minimize or maximize), and functions for extracting the value of the objective from Moves and from Solutions. See docs for a detailed description.
 - (New) Added CollectionUtil::getBest(Iterable,ToDoubleFunction)
+- (New) Added ArrayUtil::stats(double[]), ArrayUtil::stats(int[])
 - (Deleted) Solution::isBetterThan, use Objective instead.
 
 # v0.20
