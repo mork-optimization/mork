@@ -1,5 +1,10 @@
 package es.urjc.etsii.grafo.metrics;
 
+import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.Objective;
+import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
+
 import java.util.*;
 import java.util.function.Function;
 
@@ -88,6 +93,12 @@ public final class Metrics {
     @SuppressWarnings("unchecked")
     public static <T extends AbstractMetric> T get(String metricName){
         var storage = getCurrentThreadMetrics();
+        ensureMetricInitialized(metricName, storage);
+        // user is responsible for ensuring that the metric name corresponds with the expected type
+        return (T) storage.metrics.get(metricName);
+    }
+
+    private static void ensureMetricInitialized(String metricName, MetricsStorage storage) {
         if(!storage.metrics.containsKey(metricName)){
             // If initializer is present create, else fail because user forgot to register their custom metric
             if(initializers.containsKey(metricName)){
@@ -96,9 +107,8 @@ public final class Metrics {
                 throw new IllegalArgumentException("Unregistered metric: %s, did you forgot to register it?".formatted(metricName));
             }
         }
-        // user is responsible for ensuring that the metric name corresponds with the expected type
-        return (T) storage.metrics.get(metricName);
     }
+
     public static <T extends AbstractMetric> T get(Class<T> metric){
         return get(metric.getSimpleName());
     }
@@ -171,6 +181,19 @@ public final class Metrics {
         }
 
         return newStorage;
+    }
+
+    public static <S extends Solution<S,I>, I extends Instance> void addCurrentObjectives(S solution){
+        if(!areMetricsEnabled()){
+            return;
+        }
+        var storage = getCurrentThreadMetrics();
+        for(var obj: Context.getObjectives().values()){
+            var objective = (Objective<?, S, I>) obj;
+            String name = objective.getName();
+            ensureMetricInitialized(name, storage);
+            storage.metrics.get(name).add(objective.evalSol(solution));
+        }
     }
 
     public static void add(String metricName, double value){

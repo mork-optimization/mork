@@ -129,7 +129,7 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
                     continue;
                 }
                 testedMoves.add(move);
-                double score = objective.evaluate(move);
+                double score = objective.evalMove(move);
                 if (objective.improves(score) || acceptanceCriteria.accept(move, currentTemperature)) {
                     atLeastOne = true;
                     move.execute(solution);

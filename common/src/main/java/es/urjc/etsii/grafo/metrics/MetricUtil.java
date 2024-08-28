@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.metrics;
 
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
 public class MetricUtil {
@@ -17,6 +18,21 @@ public class MetricUtil {
      */
     public static double areaUnderCurve(Class<? extends AbstractMetric> metricType, long skipNanos, long duration, boolean logScale) {
         return areaUnderCurve(metricType.getSimpleName(), skipNanos, duration, logScale);
+    }
+
+    /**
+     * Calculate the area delimited between y = 0 and the given metric, in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]
+     * Should be extremely fast, with O(n) complexity, being N the number of data points for the given metric.
+     *
+     * @param objective objective to use for area calculation
+     * @param skipNanos  ignore any datapoint whose timestamp is less than (referenceTime+skipNanos).
+     * @param duration   pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
+     * @param logScale   Scale area under curve using natural logarithm
+     * @return area calculation as a double value
+     * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
+     */
+    public static double areaUnderCurve(Objective<?, ?, ?> objective, long skipNanos, long duration, boolean logScale) {
+        return areaUnderCurve(objective.getName(), skipNanos, duration, logScale);
     }
 
     /**

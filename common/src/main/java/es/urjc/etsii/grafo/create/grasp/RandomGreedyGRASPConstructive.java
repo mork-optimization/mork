@@ -51,14 +51,14 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
         }
 
         M best = objective.getBestMove(rcl);
-        double bestValue = objective.evaluate(best);
+        double bestValue = objective.evalMove(best);
         assert best != null : "null best with RCL:" + rcl;
 
         // Choose a random from all the items with equal best score
         log.debug("Best score found: {}", bestValue);
         var besties = new ArrayList<M>(cl.size());
         for (M m : rcl) {
-            if (DoubleComparator.equals(objective.evaluate(m), bestValue)) {
+            if (DoubleComparator.equals(objective.evalMove(m), bestValue)) {
                 besties.add(m);
             }
         }

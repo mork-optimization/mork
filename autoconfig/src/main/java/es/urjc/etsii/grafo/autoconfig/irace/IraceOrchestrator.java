@@ -20,7 +20,6 @@ import es.urjc.etsii.grafo.exception.IllegalAlgorithmConfigException;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.metrics.DeclaredObjective;
 import es.urjc.etsii.grafo.metrics.MetricUtil;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
@@ -350,7 +349,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             checkExecutionTime(algorithm, instance);
             TimeControl.remove();
             try {
-                score = MetricUtil.areaUnderCurve(DeclaredObjective.class,
+                score = MetricUtil.areaUnderCurve(Context.getMainObjective(),
                         TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
                         TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
                         solverConfig.isLogScaleArea()

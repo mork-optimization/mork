@@ -47,7 +47,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
 
         for (int i = 0, clSize = cl.size(); i < clSize; i++) {
             M move = cl.get(i);
-            double value = objective.evaluate(move);
+            double value = objective.evalMove(move);
             if (objective.isBetterOrEqual(value, limit)) {
                 validIndexes[next++] = i;
             }
@@ -62,7 +62,7 @@ public class GreedyRandomGRASPConstructive<M extends Move<S, I>, S extends Solut
         double min = Double.MAX_VALUE;
         double max = -Double.MAX_VALUE;
         for (M m : cl) {
-            double value = objective.evaluate(m);
+            double value = objective.evalMove(m);
             if (value < min) {
                 min = value;
             }

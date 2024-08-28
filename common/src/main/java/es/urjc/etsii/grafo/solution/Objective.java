@@ -41,17 +41,17 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
         return of("DefaultMinimize", FMode.MINIMIZE, Solution::getScore, Move::getValue);
     }
 
-    public abstract double evaluate(S solution);
-    public abstract double evaluate(M move);
+    public abstract double evalSol(S solution);
+    public abstract double evalMove(M move);
     public abstract FMode getFMode();
     public abstract String getName();
 
     public boolean isBetterOrEquals(S a, double b){
-        return getFMode().isBetterOrEqual(evaluate(a), b);
+        return getFMode().isBetterOrEqual(evalSol(a), b);
     }
 
     public boolean isBetterOrEqual(S a, S b){
-        return getFMode().isBetterOrEqual(evaluate(a), evaluate(b));
+        return getFMode().isBetterOrEqual(evalSol(a), evalSol(b));
     }
 
     public boolean isBetterOrEqual(double a, double b){
@@ -59,11 +59,11 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
     }
 
     public boolean isBetter(S a, double b){
-        return isBetter(evaluate(a), b);
+        return isBetter(evalSol(a), b);
     }
 
     public boolean isBetter(S a, S b){
-        return isBetter(evaluate(a), evaluate(b));
+        return isBetter(evalSol(a), evalSol(b));
     }
 
     public boolean isBetter(double a, double b){
@@ -84,9 +84,9 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
         for(var solution: list){
             if(best == null){
                 best = solution;
-                bestScore = evaluate(solution);
+                bestScore = evalSol(solution);
             } else {
-                double currentScore = evaluate(solution);
+                double currentScore = evalSol(solution);
                 if(isBetter(currentScore, bestScore)){
                     best = solution;
                     bestScore = currentScore;
@@ -103,9 +103,9 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
         for(var move: list){
             if(best == null){
                 best = move;
-                bestScore = evaluate(move);
+                bestScore = evalMove(move);
             } else {
-                double currentScore = evaluate(move);
+                double currentScore = evalMove(move);
                 if(isBetter(currentScore, bestScore)){
                     best = move;
                     bestScore = currentScore;
@@ -116,14 +116,14 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
     }
 
     public M getBestMove(M m1, M m2){
-        double score1 = evaluate(m1);
-        double score2 = evaluate(m2);
+        double score1 = evalMove(m1);
+        double score2 = evalMove(m2);
         return isBetter(score2, score1) ? m2 : m1;
     }
 
     public S getBestSolution(S s1, S s2){
-        double score1 = evaluate(s1);
-        double score2 = evaluate(s2);
+        double score1 = evalSol(s1);
+        double score2 = evalSol(s2);
         return isBetter(score2, score1) ? s2 : s1;
     }
 
@@ -142,12 +142,12 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
         }
 
         @Override
-        public double evaluate(S solution) {
+        public double evalSol(S solution) {
             return this.evaluateSolution.applyAsDouble(solution);
         }
 
         @Override
-        public double evaluate(M move) {
+        public double evalMove(M move) {
             return this.evaluateMove.applyAsDouble(move);
         }
 

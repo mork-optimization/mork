@@ -5,7 +5,6 @@ import es.urjc.etsii.grafo.annotations.CategoricalParam;
 import es.urjc.etsii.grafo.autoconfigtests.model.ACInstance;
 import es.urjc.etsii.grafo.autoconfigtests.model.ACSolution;
 import es.urjc.etsii.grafo.improve.Improver;
-import es.urjc.etsii.grafo.metrics.DeclaredObjective;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 import es.urjc.etsii.grafo.util.Context;
@@ -42,7 +41,7 @@ public class FlippyFlopImprover extends Improver<ACSolution, ACInstance> {
         while (!TimeControl.isTimeUp()){
             solution.setMultiplier(solution.getMultiplier() + 1);
             solution.notifyUpdate();
-            Metrics.add(DeclaredObjective.class, solution.getScore());
+            Metrics.addCurrentObjectives(solution);
             ConcurrencyUtil.sleep(sleepy, TimeUnit.MILLISECONDS);
         }
 
