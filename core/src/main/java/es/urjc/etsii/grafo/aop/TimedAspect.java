@@ -24,11 +24,10 @@ public final class TimedAspect {
         Logger log = LoggerFactory.getLogger(method.getDeclaringClass());
         var annotation = method.getAnnotation(TimeStats.class);
 
-        log.error("Started execution of {}()", method.getName());
         long start = System.nanoTime();
         var response = point.proceed();
         long end = System.nanoTime();
-        log.error("Execution of method {}() took {} ms", method.getName(), TimeUtil.convert(end-start, TimeUnit.NANOSECONDS, TimeUnit.MILLISECONDS));
+        log.trace("{}() took {} ms", method.getName(), TimeUtil.convert(end-start, TimeUnit.NANOSECONDS, TimeUnit.MILLISECONDS));
 
         return response;
     }

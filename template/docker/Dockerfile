@@ -20,9 +20,7 @@ COPY --from=build /build/app.jar /app.jar
 
 CMD [\
 "java",\
-"--add-opens", "java.base/java.util=ALL-UNNAMED",\
-"--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED",\
-"--add-opens", "java.base/java.lang=ALL-UNNAMED",\
+"--enable-preview",\
 # TODO Set memory usage, default to 4 GB
 "-Xmx4G", "-Xms4G",\
 "-jar", "/app.jar"\

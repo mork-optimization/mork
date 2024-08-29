@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.orchestrator;
 
+import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.EventPublisher;
 import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
@@ -50,11 +51,14 @@ public class UserExperimentOrchestrator<S extends Solution<S, I>, I extends Inst
      */
     public UserExperimentOrchestrator(
             SolverConfig solverConfig,
+            BlockConfig blockConfig,
             InstanceManager<I> instanceManager,
             ExperimentManager<S, I> experimentManager,
             Executor<S, I> executor
     ) {
         this.solverConfig = solverConfig;
+        Context.Configurator.setSolverConfig(solverConfig);
+        Context.Configurator.setBlockConfig(blockConfig);
         this.instanceManager = instanceManager;
         this.experimentManager = experimentManager;
         this.executor = executor;

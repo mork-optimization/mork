@@ -2,7 +2,7 @@
   <configuration default="false" name="Validation" type="Application" factoryName="Application">
     <option name="MAIN_CLASS_NAME" value="es.urjc.etsii.grafo.TSP.Main" />
     <module name="TSP" />
-    <option name="VM_PARAMETERS" value="-ea --add-opens java.base/java.util=ALL-UNNAMED --add-opens java.base/java.lang=ALL-UNNAMED --add-opens java.base/java.lang.reflect=ALL-UNNAMED" />
+    <option name="VM_PARAMETERS" value="-ea --enable-preview" />
     <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/" />
     <extension name="coverage">
       <pattern>

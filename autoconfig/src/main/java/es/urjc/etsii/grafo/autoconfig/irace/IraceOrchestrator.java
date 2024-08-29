@@ -8,6 +8,7 @@ import es.urjc.etsii.grafo.autoconfig.controller.IraceUtil;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
@@ -110,6 +111,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public IraceOrchestrator(
             Environment env,
             SolverConfig solverConfig,
+            BlockConfig blockConfig,
             ServerProperties serverProperties,
             InstanceConfiguration instanceConfiguration, IraceIntegration iraceIntegration,
             InstanceManager<I> instanceManager,
@@ -120,6 +122,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     ) {
         log.info("Starting tuning engine...");
         this.solverConfig = solverConfig;
+        Context.Configurator.setSolverConfig(solverConfig);
+        Context.Configurator.setBlockConfig(blockConfig);
         this.instanceConfiguration = instanceConfiguration;
         this.serverProperties = serverProperties;
         this.iraceIntegration = iraceIntegration;

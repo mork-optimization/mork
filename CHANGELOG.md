@@ -1,8 +1,10 @@
 # Developing
 - (New) Objective class: a class that represents an objective function of a problem. Each Objective has a name, a direction (minimize or maximize), and functions for extracting the value of the objective from Moves and from Solutions. See docs for a detailed description.
-- (New) Added CollectionUtil::getBest(Iterable,ToDoubleFunction)
-- (New) Added ArrayUtil::stats(double[]), ArrayUtil::stats(int[])
-- (Deleted) Solution::isBetterThan, use Objective instead.
+- (New) Util methods: CollectionUtil::getBest(Iterable,ToDoubleFunction), ArrayUtil::stats(double[]), ArrayUtil::stats(int[])
+- (New) Support for AspectJ, first magic annotation @TimeStats implemented to measure the time of any method.
+- (New) Added --enable-preview by default at compile and runtime, to allow anyone to use Java preview features directly.
+- (Fix) Math.random, Collections.shuffle now blocked using AspectJ instead of reflection. --add-opens no longer necessary.
+- (Deleted) Solution::isBetterThan, unused and not necessary.
 
 # v0.20
 - (New) Add support for 7Z and ZIP compressed instances, with no configuration required.

@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
@@ -39,6 +40,7 @@ public class Context {
             }
             context.objectives = parentValue.objectives;
             context.mainObjective = parentValue.mainObjective;
+            context.solverConfig = parentValue.solverConfig;
             return context;
         }
     }
@@ -120,6 +122,8 @@ public class Context {
 
         public Map<String, Objective<?, ?, ?>> objectives;
         public Objective<?, ?, ?> mainObjective;
+        public SolverConfig solverConfig;
+        public BlockConfig blockConfig;
     }
 
     public static class Configurator {
@@ -130,6 +134,22 @@ public class Context {
                 throw new IllegalStateException("Context not yet initialized");
             }
             ctx.get().random = jumpableGenerator;
+        }
+
+        public static void setSolverConfig(SolverConfig config){
+            Context.context.get().solverConfig = config;
+        }
+
+        public static SolverConfig getSolverConfig(){
+            return Context.context.get().solverConfig;
+        }
+
+        public static void setBlockConfig(BlockConfig config){
+            Context.context.get().blockConfig = config;
+        }
+
+        public static BlockConfig getBlockConfig(){
+            return Context.context.get().blockConfig;
         }
 
         /**
