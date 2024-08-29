@@ -269,12 +269,6 @@
                         <encoding>${project.build.sourceEncoding}</encoding>
                         <Xlint>ignore</Xlint>
                         <verbose>true</verbose>
-                        <aspectLibraries>
-                            <aspectLibrary>
-                                <groupId>es.urjc.etsii.grafo</groupId>
-                                <artifactId>mork</artifactId>
-                            </aspectLibrary>
-                        </aspectLibraries>
                     </configuration>
                     <executions>
                         <execution>
