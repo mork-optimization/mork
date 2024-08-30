@@ -207,7 +207,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${msurefire.version}</version>
                 <configuration>
-                    <argLine>${argLine} --enable-preview</argLine>
+                    <argLine>${argLine}</argLine>
                 </configuration>
             </plugin>
             <plugin>
@@ -274,7 +274,6 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <additionalOptions>--enable-preview</additionalOptions>
                     <source>${java.version}</source>
                     <doclint>all,-missing</doclint>
                 </configuration>
@@ -288,7 +287,6 @@
                     <compilerArgs>
                         <arg>-parameters</arg>
                         <arg>-Xlint:all,-this-escape,-processing,-options</arg>
-                        <arg>--enable-preview</arg>
                     </compilerArgs>
                 </configuration>
             </plugin>
