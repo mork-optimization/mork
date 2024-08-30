@@ -180,6 +180,7 @@
                         <encoding>${project.build.sourceEncoding}</encoding>
                         <Xlint>ignore</Xlint>
                         <verbose>true</verbose>
+                        <parameters>true</parameters>
                     </configuration>
                     <executions>
                         <execution>
