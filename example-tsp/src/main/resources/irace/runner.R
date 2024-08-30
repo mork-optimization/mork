@@ -11,8 +11,13 @@ if (!require(remotes)) {
 
 if (!require(irace)) {
   # install.packages("irace", type = "source", repos = "http://cran.us.r-project.org")
-  remotes::install_github("MLopez-Ibanez/irace@4704dd631622a0979a36c715cdd9ae9fc1d4b7ca", upgrade=FALSE)
+  remotes::install_github("mork-optimization/irace", upgrade=FALSE)
   library(irace)
+}
+
+if(!require(iraceplot)){
+    remotes::install_github("mork-optimization/iraceplot", upgrade=FALSE)
+    library(iraceplot)
 }
 
 if (!require(httr)) {
@@ -33,3 +38,5 @@ if (!require(base64enc)) {
 scenario <- readScenario(filename = "scenario.txt", scenario = defaultScenario())
 checkIraceScenario(scenario = scenario)
 irace_main(scenario = scenario)
+ablation_cmdline(c("-l", "irace.Rdata", "-s", "scenario.txt", "-p", "plots.pdf", "-O", "rank,boxplot"))
+report("irace.Rdata")

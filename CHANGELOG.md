@@ -3,6 +3,8 @@
 - (New) Util methods: CollectionUtil::getBest(Iterable,ToDoubleFunction), ArrayUtil::stats(double[]), ArrayUtil::stats(int[])
 - (New) Support for AspectJ, first magic annotation @TimeStats implemented to measure the time of any method.
 - (New) Added --enable-preview by default at compile and runtime, to allow anyone to use Java preview features directly.
+- (New) Ablation test: run ablation test by default after autoconfig procedure.
+- (New) Irace plots: generate an HTML report with the results of running the autoconfig procedure.
 - (Fix) Math.random, Collections.shuffle now blocked using AspectJ instead of reflection. --add-opens no longer necessary.
 - (Deleted) Solution::isBetterThan, unused and not necessary.
 

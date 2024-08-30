@@ -9,6 +9,8 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -31,8 +33,12 @@ public class IraceIntegrationTest {
     }
 
     @Test
-    void launchAutoconfig(){
+    void launchAutoconfig() throws IOException {
         var success = Mork.start(new String[]{"--autoconfig"}, FMode.MAXIMIZE);
         assertTrue(success);
+        assertTrue(Files.exists(Path.of("plots.pdf")));
+        assertTrue(Files.exists(Path.of("irace.Rdata")));
+        assertTrue(Files.exists(Path.of("log-ablation.Rdata")));
+        assertTrue(Files.exists(Path.of("report.html")));
     }
 }
