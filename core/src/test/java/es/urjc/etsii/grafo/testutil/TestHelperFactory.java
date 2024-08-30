@@ -20,7 +20,7 @@ public class TestHelperFactory {
     public static SolutionGeneratedEvent<TestSolution, TestInstance> solutionGenerated(String instanceName, String expName, String algName, int iter, double score, long time, long ttb){
         var solution = new TestSolution(new TestInstance(instanceName), score);
         var algorithm = new TestAlgorithm(algName);
-        return new SolutionGeneratedEvent<>(true, String.valueOf(iter), solution, expName, algorithm, time, ttb, new MetricsStorage());
+        return new SolutionGeneratedEvent<>(true, String.valueOf(iter), instanceName, solution, expName, algorithm, time, ttb, new MetricsStorage());
     }
 
 //    public static SolutionGeneratedEvent<TestSolution, TestInstance> solutionGenerated(String instanceName, String expName, String algName, int iter, double score, long time, long ttb, Map<String, TreeSet<TimeValue>> properties){

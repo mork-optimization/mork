@@ -21,7 +21,9 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
     private final String instanceName;
     private final String algorithmName;
     private final MetricsStorage metrics;
+    private final boolean success;
     private final String iteration;
+    private final String instancePath;
     private final double score;
     private final long executionTime;
     private final long timeToBest;
@@ -39,11 +41,11 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
      * @param timeToBest            time needed ot reach the best solution. timeToBest = totalTime - timeSinceLastModification
      * @param metrics both framework calculated and user defined metrics
      */
-    public SolutionGeneratedEvent(boolean success, String iteration, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest, MetricsStorage metrics) {
+    public SolutionGeneratedEvent(boolean success, String iteration, String instancePath, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest, MetricsStorage metrics) {
         super();
+        this.success = success;
         this.iteration = iteration;
-        this.score = solution.getScore();
-        this.instanceName = solution.getInstance().getId();
+        this.instancePath = instancePath;
         this.solution = new SoftReference<>(solution);
         this.experimentName = experimentName;
         this.algorithm = algorithm;
@@ -51,6 +53,13 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
         this.timeToBest = timeToBest;
         this.algorithmName = algorithm.getName();
         this.metrics = metrics;
+        if(solution != null){
+            this.score = solution.getScore();
+            this.instanceName = solution.getInstance().getId();
+        } else {
+            this.score = Double.NaN;
+            this.instanceName = "Unknown";
+        }
     }
 
     /**
@@ -141,5 +150,13 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
      */
     public MetricsStorage getMetrics() {
         return metrics;
+    }
+
+    /**
+     * Was the solution generated successfully?
+     * @return true if the solution was generated successfully, false otherwise
+     */
+    public boolean isSuccess() {
+        return success;
     }
 }

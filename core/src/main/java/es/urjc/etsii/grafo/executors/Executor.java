@@ -201,7 +201,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         if(r.success()){
             io.exportSolution(r, SolutionExportFrequency.ALL);
         }
-        var solutionGenerated = new SolutionGeneratedEvent<>(r.success(), r.iteration(), r.solution(), r.experimentName(), r.algorithm(), r.executionTime(), r.timeToTarget(), r.metrics());
+
+        var solutionGenerated = new SolutionGeneratedEvent<>(r.success(), r.iteration(), r.instancePath(), r.solution(), r.experimentName(), r.algorithm(), r.executionTime(), r.timeToTarget(), r.metrics());
         EventPublisher.getInstance().publishEvent(solutionGenerated);
         if (log.isDebugEnabled()) {
             log.debug(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.iteration(), nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
