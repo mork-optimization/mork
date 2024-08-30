@@ -13,6 +13,9 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
+      - uses: r-lib/actions/setup-pandoc@v2
+        with:
+          pandoc-version: '3.1.11' # The pandoc version to download (if necessary) and use.
       - name: Install curl libs
         run: sudo apt update && sudo apt install -y libcurl4-openssl-dev libssl-dev
       - name: Set up JDK 21
