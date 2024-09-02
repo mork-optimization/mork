@@ -71,6 +71,7 @@ class MultiStartAlgorithmTest {
                 .withMaxIterationsWithoutImproving(maxIterWithoutImprovement)
                 .withMinIterations(minNumberOfIterations)
                 .withMaxIterations(maxNumberOfIterations)
+                .withObjective(null)
                 .build(algorithm));
 
         Assertions.assertDoesNotThrow(() -> new MultiStartAlgorithmBuilder<TestSolution, TestInstance>()
