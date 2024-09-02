@@ -49,7 +49,7 @@
                     <aspectLibraries>
                         <aspectLibrary>
                             <groupId>es.urjc.etsii.grafo</groupId>
-                            <artifactId>mork</artifactId>
+                            <artifactId>mork-common</artifactId>
                         </aspectLibrary>
                     </aspectLibraries>
                 </configuration>
