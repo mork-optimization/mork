@@ -38,6 +38,11 @@ public final class TimedAspect {
         return commonLog(point);
     }
 
+    @Around("execution(* es.urjc.etsii.grafo.create.Constructive+.construct(..))")
+    public Object logConstruct(ProceedingJoinPoint point) throws Throwable {
+        return commonLog(point);
+    }
+
     public Object commonLog(ProceedingJoinPoint point) throws Throwable {
         var methodSignature = (MethodSignature) point.getSignature();
         Method method = methodSignature.getMethod();

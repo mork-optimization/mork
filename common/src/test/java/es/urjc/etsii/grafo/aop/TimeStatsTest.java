@@ -6,7 +6,13 @@ import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.util.Context;
+import es.urjc.etsii.grafo.util.TimeStatsEvent;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 public class TimeStatsTest {
 
@@ -23,7 +29,13 @@ public class TimeStatsTest {
         var solution = alg.algorithm(testInstance);
         long end = System.nanoTime();
         var timeData = Context.Configurator.getAndResetTimeEvents();
-        System.out.println(timeData);
+        Map<String, List<TimeStatsEvent>> organizedData = timeData.stream().collect(Collectors.groupingBy(TimeStatsEvent::method));
+        Assertions.assertEquals(4, organizedData.size());
+        Assertions.assertEquals(2, organizedData.get("algorithm").size());
+        Assertions.assertEquals(2, organizedData.get("construct").size());
+        Assertions.assertEquals(2, organizedData.get("improve").size());
+        Assertions.assertEquals(2, organizedData.get("work1").size());
+        Assertions.assertNull(organizedData.get("work2"));
         Metrics.disableMetrics();
     }
 
