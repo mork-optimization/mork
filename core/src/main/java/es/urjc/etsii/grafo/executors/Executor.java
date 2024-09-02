@@ -180,8 +180,9 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
             long timeToTarget = solution.getLastModifiedTime() - startTime;
             long executionTime = endTime - startTime;
+            var timeData = Context.Configurator.getAndResetTimeEvents();
             var metrics = Metrics.areMetricsEnabled()? Metrics.getCurrentThreadMetrics() : null;
-            return WorkUnitResult.ok(workUnit, solution, executionTime, timeToTarget, metrics);
+            return WorkUnitResult.ok(workUnit, solution, executionTime, timeToTarget, metrics, timeData);
         } catch (Exception e) {
             long totalTime = UNDEF_TIME;
             if(startTime != UNDEF_TIME){
@@ -192,7 +193,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             }
             exceptionHandler.handleException(workUnit.experimentName(), workUnit.i(), e, Optional.ofNullable(solution), instance, workUnit.algorithm());
             EventPublisher.getInstance().publishEvent(new ErrorEvent(e));
-            return WorkUnitResult.failure(workUnit, totalTime, UNDEF_TIME);
+            var timeData = Context.Configurator.getAndResetTimeEvents();
+            return WorkUnitResult.failure(workUnit, totalTime, UNDEF_TIME, timeData);
         }
     }
 
@@ -202,7 +204,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             io.exportSolution(r, SolutionExportFrequency.ALL);
         }
 
-        var solutionGenerated = new SolutionGeneratedEvent<>(r.success(), r.iteration(), r.instancePath(), r.solution(), r.experimentName(), r.algorithm(), r.executionTime(), r.timeToTarget(), r.metrics());
+        var solutionGenerated = new SolutionGeneratedEvent<>(r.success(), r.iteration(), r.instancePath(), r.solution(), r.experimentName(), r.algorithm(), r.executionTime(), r.timeToTarget(), r.metrics(), r.timeData());
         EventPublisher.getInstance().publishEvent(solutionGenerated);
         if (log.isDebugEnabled()) {
             log.debug(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.iteration(), nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));

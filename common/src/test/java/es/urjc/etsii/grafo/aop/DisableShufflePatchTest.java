@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.patches;
+package es.urjc.etsii.grafo.aop;
 
 import es.urjc.etsii.grafo.exception.InvalidRandomException;
 import es.urjc.etsii.grafo.util.Context;
@@ -8,7 +8,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 
-import static es.urjc.etsii.grafo.patches.DisableMathRandomPatchTest.setup;
+import static es.urjc.etsii.grafo.aop.DisableMathRandomPatchTest.setup;
 
 @TestMethodOrder(MethodOrderer.OrderAnnotation.class)
 public class DisableShufflePatchTest {

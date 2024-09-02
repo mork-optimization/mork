@@ -39,20 +39,13 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
      * @return Improved s
      */
     public S improve(S solution){
-        // Before
-        long startTime = System.nanoTime();
+
         double initialScore = solution.getScore();
-
-        // Improve
         S improvedSolution = this._improve(solution);
-
-        // After
-        long endTime = System.nanoTime();
-        long elapsedMillis = (endTime - startTime) / 1_000_000;
         double endScore = improvedSolution.getScore();
 
         // Log, verify and store
-        log.debug("Done in {}: {} --> {}", elapsedMillis, initialScore, endScore);
+        log.debug("{} --> {}", initialScore, endScore);
         if(objective.isBetter(initialScore, endScore)){
             throw new IllegalStateException(String.format("Score has worsened after executing an improvement method: %s --> %s", initialScore, endScore));
         }

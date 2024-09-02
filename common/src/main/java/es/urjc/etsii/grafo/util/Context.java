@@ -8,10 +8,7 @@ import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.random.RandomType;
 
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -41,6 +38,7 @@ public class Context {
             context.objectives = parentValue.objectives;
             context.mainObjective = parentValue.mainObjective;
             context.solverConfig = parentValue.solverConfig;
+            // context.timeEvents; // do not copy! thread responsible for managing its own events
             return context;
         }
     }
@@ -109,6 +107,9 @@ public class Context {
         return context.get().objectives;
     }
 
+    public static void addTimeEvent(boolean enter, long when, String clazz, String methodName){
+        context.get().timeEvents.add(new TimeStatsEvent(enter, when, clazz, methodName));
+    }
 
     /**
      * Dumb class to hold the context data
@@ -124,6 +125,7 @@ public class Context {
         public Objective<?, ?, ?> mainObjective;
         public SolverConfig solverConfig;
         public BlockConfig blockConfig;
+        public List<TimeStatsEvent> timeEvents = new ArrayList<>();
     }
 
     public static class Configurator {
@@ -190,6 +192,14 @@ public class Context {
             }
             localContext.objectives = Collections.unmodifiableMap(map);
             localContext.mainObjective = objectives[0];
+        }
+
+        public static List<TimeStatsEvent> getAndResetTimeEvents(){
+            var data = context.get();
+            var timeEvents = data.timeEvents;
+            data.timeEvents = null;
+            return timeEvents;
+
         }
     }
 }

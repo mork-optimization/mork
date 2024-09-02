@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.patches;
+package es.urjc.etsii.grafo.aop;
 
 import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.exception.InvalidRandomException;
