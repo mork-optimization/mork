@@ -103,7 +103,7 @@ public class ConcurrencyUtil {
      */
     public static void sleep(int time, TimeUnit unit){
         try {
-            Thread.sleep(unit.toMillis(time));
+            unit.sleep(time);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
