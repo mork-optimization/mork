@@ -8,7 +8,6 @@ from statistics import mean
 
 from os.path import join
 import numpy as np
-from matplotlib.pyplot import title
 
 from scipy.optimize import curve_fit
 
@@ -16,6 +15,7 @@ import pandas as pd  # data manipulation and analysis
 from pandas import DataFrame
 
 import plotly.express as px
+import plotly.graph_objects as go
 
 boring_colors = ["#EDEDE9", "#D6CCC2", "#F5EBE0", "#E3D5CA", "#d6e2e9"]
 real_color = "dodgerblue"
@@ -43,6 +43,8 @@ def get_functions() -> dict:
         r"a \cdot 2^n": lambda x, a: a * 2 ** x,
     }
 
+def get_full_name(stack: list[tuple[str, int]]) -> str:
+    return "/".join(name for name, _ in stack)
 
 def fold_profiler_data(path: str) -> DataFrame:
     """
@@ -62,24 +64,26 @@ def fold_profiler_data(path: str) -> DataFrame:
             jsondata = json.load(json_file)
 
         for i in jsondata['timeData']:
-            data.append([i['when'], i['enter'], i['clazz'], i['method']])
-        data.sort(key=lambda x: x[0])
+            data.append({'when': i['when'], 'enter': i['enter'], 'clazz': i['clazz'], 'method': i['method']})
+        data.sort(key=lambda x: x['when'])
 
         dict_data = defaultdict(list)
         stack = []
 
         for i in data:
-            key = i[2] + "::" + i[3]
-            if i[1]:
-                stack.append((key, i[0]))
+            name = f"{i['clazz']}::{i['method']}"
+            if i['enter']:
+                stack.append((name, i['when']))
             else:
+                current = get_full_name(stack)
                 start = stack.pop()
-                if key != start[0]:
-                    raise Exception(f"Unexpected stack frame: {key} != {start}")
-                dict_data[key].append((i[0] - start[1])/1000000) # Convert nanos to millis
+                if name != start[0]:
+                    raise Exception(f"Unexpected stack frame: {name} != {start[0]}")
+                dict_data[current].append((i['when'] - start[1])/1000000) # Convert nanos to millis
 
         for k, v in dict_data.items():
-            timestats.append({"instance": jsondata['instanceId'], "component": k, "time": mean(v)})
+            parent, child = k.rsplit("/", 1) if "/" in k else ("", k)
+            timestats.append({"instance": jsondata['instanceId'], "component": k, "parent": parent, "child": child, "time": mean(v)})
 
     return pd.DataFrame(timestats).sort_values(by=['instance', 'component'])
 
@@ -92,9 +96,10 @@ def to_sorted_df(x, y) -> DataFrame:
     return df
 
 def analyze_complexity(instances: DataFrame, timestats: DataFrame, param):
+    treemap_labels = []
     for c in timestats['component'].unique():
-        if "Null" in c:
-            continue
+        #if "Null" in c:
+        #    continue
         best_per_instance = []
         for col in instances.columns:
             x = instances[col]
@@ -139,7 +144,32 @@ def analyze_complexity(instances: DataFrame, timestats: DataFrame, param):
         best_per_instance.sort(key=lambda e: e['r2'], reverse=True)
         best = best_per_instance[0]
         print(f"Component {c} performance predicted as Θ({best['name']}) by {best['instance_prop']} - R2: {best['r2']}")
+        treemap_labels.append({"component": c, "property": best['instance_prop'], "function": f"Θ({best['name']})", "r2": best['r2']})
 
+    treemap_data = timestats.groupby(['component', 'parent', 'child'], as_index=False)['time'].mean()
+    treemap_data = treemap_data.merge(pd.DataFrame(treemap_labels), on='component')
+
+    fig = go.Figure()
+    fig.add_trace(go.Treemap(
+        ids=treemap_data.component,
+        labels=treemap_data.child,
+        parents=treemap_data.parent,
+        customdata=np.stack((treemap_data.time, treemap_data.property, treemap_data.function, treemap_data.r2), axis=-1),
+        hovertemplate='<b> %{label} </b> <br> Time: %{customdata[0]:.2f} ms <br> Complexity: %{customdata[2]} <br> Where n is: %{customdata[1]} <br> R2: %{customdata[3]:.2f}',
+        marker=dict(
+            colors=treemap_data.time,
+            colorscale='ylorbr',
+            colorbar=dict(title='T (ms)'),
+            cmid=treemap_data.time.mean(),
+            showscale=True
+        ),
+        maxdepth=3,
+        legend="legend"
+    ))
+    fig.update_layout(
+        margin=dict(t=50, l=25, r=25, b=25),
+    )
+    fig.show()
 
 def main():
     parser = argparse.ArgumentParser(
