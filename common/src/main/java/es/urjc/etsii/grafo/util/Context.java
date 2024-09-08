@@ -197,7 +197,7 @@ public class Context {
         public static List<TimeStatsEvent> getAndResetTimeEvents(){
             var data = context.get();
             var timeEvents = data.timeEvents;
-            data.timeEvents = null;
+            data.timeEvents = new ArrayList<>();
             return timeEvents;
 
         }

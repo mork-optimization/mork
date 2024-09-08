@@ -44,6 +44,7 @@ public abstract class Constructive<S extends Solution<S,I>, I extends Instance> 
 
         @Override
         public S construct(S solution) {
+            solution.notifyUpdate();
             return solution;
         }
     }

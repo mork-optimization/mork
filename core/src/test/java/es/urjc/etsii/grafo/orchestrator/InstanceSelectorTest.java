@@ -33,7 +33,6 @@ class InstanceSelectorTest {
         var instanceManager = new InstanceManager<>(config, new TestInstanceImporter());
         var eventMock = Mockito.mock(ApplicationEventPublisher.class);
         new EventPublisher(eventMock);
-
         var selector = new InstanceSelector<>(instanceManager, config); // The Python part is not actually tested!
         selector.run();
         var p = Path.of(InstanceSelector.DEFAULT_OUTPUT_PATH);

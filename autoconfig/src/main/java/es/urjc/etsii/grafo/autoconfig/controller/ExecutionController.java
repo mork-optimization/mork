@@ -30,7 +30,6 @@ import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKN
  * @param <I> Instance class
  */
 @RestController
-@Profile({"irace", "autoconfig"})
 public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(ExecutionController.class);

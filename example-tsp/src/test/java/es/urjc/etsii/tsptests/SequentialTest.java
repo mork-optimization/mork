@@ -2,7 +2,7 @@ package es.urjc.etsii.tsptests;
 
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
-import es.urjc.etsii.grafo.orchestrator.UserExperimentOrchestrator;
+import es.urjc.etsii.grafo.orchestrator.DefaultOrchestrator;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.Context;
@@ -34,12 +34,12 @@ class SequentialTest {
     private static Logger log = LoggerFactory.getLogger(SequentialTest.class);
 
     @Autowired
-    private UserExperimentOrchestrator<TSPSolution, TSPInstance> userExperimentOrchestrator;
+    private DefaultOrchestrator<TSPSolution, TSPInstance> defaultOrchestrator;
 
     @Test
     void testExecutor() {
         // Launch basic experiment
-        userExperimentOrchestrator.run();
+        defaultOrchestrator.run();
     }
 
     @AfterAll

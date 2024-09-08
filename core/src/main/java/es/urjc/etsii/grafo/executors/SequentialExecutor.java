@@ -29,7 +29,6 @@ import java.util.Optional;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-@Profile("user-experiment")
 @ConditionalOnExpression(value = "!${solver.parallelExecutor}")
 public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> extends Executor<S, I> {
 

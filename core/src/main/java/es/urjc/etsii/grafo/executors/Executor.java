@@ -101,12 +101,6 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         this.solverConfig = solverConfig;
         this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
 
-        if (validator.isEmpty()) {
-            log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
-        } else {
-            log.info("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
-        }
-
         this.validator = validator;
         this.io = io;
         this.instanceManager = instanceManager;
@@ -182,7 +176,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             long executionTime = endTime - startTime;
             var timeData = Context.Configurator.getAndResetTimeEvents();
             var metrics = Metrics.areMetricsEnabled()? Metrics.getCurrentThreadMetrics() : null;
-            return WorkUnitResult.ok(workUnit, solution, executionTime, timeToTarget, metrics, timeData);
+            return WorkUnitResult.ok(workUnit, instance.getId(), solution, executionTime, timeToTarget, metrics, timeData);
         } catch (Exception e) {
             long totalTime = UNDEF_TIME;
             if(startTime != UNDEF_TIME){
@@ -194,7 +188,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             exceptionHandler.handleException(workUnit.experimentName(), workUnit.i(), e, Optional.ofNullable(solution), instance, workUnit.algorithm());
             EventPublisher.getInstance().publishEvent(new ErrorEvent(e));
             var timeData = Context.Configurator.getAndResetTimeEvents();
-            return WorkUnitResult.failure(workUnit, totalTime, UNDEF_TIME, timeData);
+            return WorkUnitResult.failure(workUnit, instance.getId(), totalTime, UNDEF_TIME, timeData);
         }
     }
 

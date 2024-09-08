@@ -51,8 +51,7 @@ import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 /**
  * <p>IraceOrchestrator class.</p>
  */
-@Service
-@Profile({"irace", "autoconfig"})
+// TODO split in two orchestrators, one for irace and one for autoconfig. This class has too many responsibilities
 public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> extends AbstractOrchestrator {
 
     private static final Logger log = LoggerFactory.getLogger(IraceOrchestrator.class);
@@ -92,8 +91,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final List<String> rejectedThings = Collections.synchronizedList(new ArrayList<>());
 
 
-    private final boolean isAutoconfigEnabled;
-    private final boolean isFollower;
+    private boolean isAutoconfigEnabled;
+    private boolean isFollower;
     private int nIraceParameters = -1;
 
     /**
@@ -136,15 +135,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
         this.algorithmCandidateGenerator = algorithmCandidateGenerator;
 
-        if (validator.isEmpty()) {
-            log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
-        } else {
-            log.debug("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
-        }
-
         this.validator = validator;
-        this.isAutoconfigEnabled = Arrays.asList(env.getActiveProfiles()).contains("autoconfig");
-        this.isFollower = Arrays.asList(env.getActiveProfiles()).contains("follower");
     }
 
 
@@ -153,6 +144,20 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      */
     @Override
     public void run(String... args) {
+        for (String arg : args) {
+            if (arg.equals("--autoconfig")) {
+                this.isAutoconfigEnabled = true;
+            }
+            if(arg.equals("--follower")){
+                this.isFollower = true;
+            }
+        }
+
+        if (validator.isEmpty()) {
+            log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
+        } else {
+            log.debug("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
+        }
         if(isFollower){
             this.integrationKey = solverConfig.getIntegrationKey();
             log.info("Mork is running in follower mode, waiting for commands...");
@@ -400,6 +405,11 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
     public List<Object> getRejected() {
         return Collections.unmodifiableList(this.rejectedThings);
+    }
+
+    @Override
+    public List<String> getNames() {
+        return List.of("irace", "autoconfig");
     }
 
     public record SlowExecution(long relativeTime, String instanceName, Algorithm<?, ?> algorithm) {}

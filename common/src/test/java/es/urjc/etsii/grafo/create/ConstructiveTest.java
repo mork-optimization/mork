@@ -12,6 +12,7 @@ class ConstructiveTest {
         Constructive<TestSolution, TestInstance> constructive = Constructive.nul();
         Assertions.assertNotNull(constructive);
         TestSolution improved = Assertions.assertDoesNotThrow(() -> constructive.construct(solution));
+        Assertions.assertTrue(solution.getLastModifiedTime()>0);
         Assertions.assertEquals(solution, improved);
     }
 }

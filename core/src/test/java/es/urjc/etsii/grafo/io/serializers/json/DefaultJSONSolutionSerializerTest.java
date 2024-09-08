@@ -61,7 +61,7 @@ class DefaultJSONSolutionSerializerTest {
         var serializer = new DefaultJSONSolutionSerializer<TestSolution, TestInstance>(config);
         TestAssertions.toStringImpl(serializer);
         Assertions.assertTrue(serializer.isEnabled());
-        var wur = new WorkUnitResult<>(true, "testExperiment", this.solution.getInstance().getId(), this.algorithm, "bestIteration", this.solution, -1, -1, new MetricsStorage(), new ArrayList<>());
+        var wur = new WorkUnitResult<>(true, "testExperiment", this.solution.getInstance().getPath(), this.solution.getInstance().getId(), this.algorithm, "bestIteration", this.solution, -1, -1, new MetricsStorage(), new ArrayList<>());
         Assertions.assertThrows(UnsupportedOperationException.class, () -> serializer.export(new BufferedWriter(new StringWriter()), wur));
         serializer.exportSolution(wur);
         var paths = Files.list(this.tempDir).toList();

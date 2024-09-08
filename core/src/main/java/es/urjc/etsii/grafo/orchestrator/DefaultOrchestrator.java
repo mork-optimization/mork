@@ -14,30 +14,30 @@ import es.urjc.etsii.grafo.experiment.ExperimentManager;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.util.BenchmarkUtil;
 import es.urjc.etsii.grafo.util.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
-import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 
 /**
  * <p>UserExperimentOrchestrator class.</p>
  */
-@Service
-@Profile("user-experiment")
-public class UserExperimentOrchestrator<S extends Solution<S, I>, I extends Instance> extends AbstractOrchestrator {
+public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> extends AbstractOrchestrator {
 
-    private static final Logger log = LoggerFactory.getLogger(UserExperimentOrchestrator.class);
+    private static final Logger log = LoggerFactory.getLogger(DefaultOrchestrator.class);
     public static final int MAX_WORKLOAD = 1_000_000;
 
+    private final BlockConfig blockConfig;
     private final InstanceManager<I> instanceManager;
     private final ExperimentManager<S, I> experimentManager;
+    private final Optional<SolutionValidator<S, I>> validator;
     private final Executor<S, I> executor;
     private final SolverConfig solverConfig;
 
@@ -49,18 +49,19 @@ public class UserExperimentOrchestrator<S extends Solution<S, I>, I extends Inst
      * @param experimentManager a {@link ExperimentManager} object.
      * @param executor          a {@link Executor} object.
      */
-    public UserExperimentOrchestrator(
+    public DefaultOrchestrator(
             SolverConfig solverConfig,
             BlockConfig blockConfig,
             InstanceManager<I> instanceManager,
             ExperimentManager<S, I> experimentManager,
+            Optional<SolutionValidator<S,I>> validator,
             Executor<S, I> executor
     ) {
         this.solverConfig = solverConfig;
-        Context.Configurator.setSolverConfig(solverConfig);
-        Context.Configurator.setBlockConfig(blockConfig);
+        this.blockConfig = blockConfig;
         this.instanceManager = instanceManager;
         this.experimentManager = experimentManager;
+        this.validator = validator;
         this.executor = executor;
     }
 
@@ -78,6 +79,14 @@ public class UserExperimentOrchestrator<S extends Solution<S, I>, I extends Inst
      */
     @Override
     public void run(String... args) {
+        Context.Configurator.setSolverConfig(solverConfig);
+        Context.Configurator.setBlockConfig(blockConfig);
+        if (validator.isEmpty()) {
+            log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
+        } else {
+            log.info("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
+        }
+        this.experimentManager.runValidations();
         runBenchmark();
         log.info("Ready to start solving!");
         var experiments = this.experimentManager.getExperiments();

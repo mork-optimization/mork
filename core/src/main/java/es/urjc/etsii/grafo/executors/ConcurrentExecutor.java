@@ -33,7 +33,6 @@ import java.util.concurrent.Future;
  * @param <S> Solution class
  * @param <I> Instance class
  */
-@Profile("user-experiment")
 @ConditionalOnExpression(value = "${solver.parallelExecutor}")
 public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> extends Executor<S, I> {
 

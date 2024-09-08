@@ -14,9 +14,6 @@ import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-//@SpringBootTest(useMainMethod = SpringBootTest.UseMainMethod.ALWAYS, classes = {Mork.class}, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT) //
-//@ActiveProfiles(profiles = {"autoconfig"})
-//@DirtiesContext
 public class IraceIntegrationTest {
 
     @BeforeAll
@@ -33,8 +30,11 @@ public class IraceIntegrationTest {
     }
 
     @Test
-    void launchAutoconfig() throws IOException {
-        var success = Mork.start(new String[]{"--autoconfig"}, FMode.MAXIMIZE);
+    void launchAutoconfig() {
+        var success = Mork.start(new String[]{
+                "--autoconfig",
+                "--instances.path.default=instancesautoconfig/autoconfig",
+        }, FMode.MAXIMIZE);
         assertTrue(success);
         assertTrue(Files.exists(Path.of("plots.pdf")));
         assertTrue(Files.exists(Path.of("irace.Rdata")));

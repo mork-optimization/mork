@@ -30,10 +30,11 @@ public class Mork {
     /**
      * Procedure to launch the application.
      * Deprecated: Use the version with the objectives parameter instead
-     * @see Mork#start(String, String[], Objective[])
+     * @see Mork#start(String[], Objective[])
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
      * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
      */
+    @Deprecated
     public static <S extends Solution<S,I>, I extends Instance> boolean start(String[] args, FMode fmode) {
         return Mork.start(null, args, fmode);
     }
@@ -59,7 +60,8 @@ public class Mork {
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
      * @param objectives List of objectives to track
      */
-    public static <S extends Solution<S,I>, I extends Instance> boolean start(String[] args, Objective<?,S,I>... objectives){
+    @SafeVarargs
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean start(String[] args, Objective<M,S,I>... objectives){
         return Mork.start(null, args, objectives);
     }
 
@@ -70,8 +72,8 @@ public class Mork {
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
      * @param objectives List of objectives to track
      */
-    public static boolean start(String pkgRoot, String[] args, Objective<?, ?, ?>... objectives) {
-        args = argsProcessing(args);
+    @SafeVarargs
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean start(String pkgRoot, String[] args, Objective<M, S, I>... objectives) {
         configurePackageScanning(pkgRoot);
         configureDeserialization();
         Context.Configurator.setObjectives(objectives);
@@ -103,35 +105,5 @@ public class Mork {
             pkgs += "," + pkgRoot;
         }
         System.setProperty("advanced.scan-pkgs", pkgs);
-    }
-
-    private static String[] argsProcessing(String[] args) {
-        // Enable profile according to user config
-        String[] result = new String[args.length+1];
-        for (int i = 0; i < args.length; i++) {
-            result[i] = switch (args[i].trim()) {
-                case "--instance-selector" -> "--spring.profiles.active=instance-selector";
-                case "--irace" -> "--spring.profiles.active=irace";
-                case "--autoconfig" -> "--spring.profiles.active=autoconfig";
-                case "--follower" -> "--spring.profiles.active=follower";
-                case "--util" -> "--spring.profiles.active=util";
-                default -> args[i];
-            };
-        }
-
-        boolean profileSet = false;
-        for(var arg: result){
-            if(arg != null && arg.startsWith("--spring.profiles.active=")){
-                profileSet = true;
-                break;
-            }
-        }
-        // Default profile
-        if(!profileSet){
-            result[result.length-1] = "--spring.profiles.active=user-experiment";
-        } else {
-            result[result.length-1] = "";
-        }
-        return result;
     }
 }

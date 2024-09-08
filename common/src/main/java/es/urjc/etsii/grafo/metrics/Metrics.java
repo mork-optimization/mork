@@ -4,6 +4,8 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.Context;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.function.Function;
@@ -20,6 +22,8 @@ import java.util.function.Function;
  * Metrics from different threads can later be merged using {@link Metrics#merge(MetricsStorage...)}
  */
 public final class Metrics {
+
+    private static final Logger log = LoggerFactory.getLogger(Metrics.class.getName());
 
     private static final Map<String, Function<Long, ? extends AbstractMetric>> initializers = new HashMap<>();
     private static InheritableThreadLocal<MetricsStorage> localMetrics = new InheritableThreadLocal<>();
@@ -121,7 +125,7 @@ public final class Metrics {
      */
     public static <T extends AbstractMetric> void register(String metricName, Function<Long, T> initializer){
         if(initializers.containsKey(metricName)){
-            throw new IllegalArgumentException("Metric already registered: %s".formatted(metricName));
+            log.warn("Metric already registered: {}", metricName);
         }
         initializers.put(metricName, initializer);
     }

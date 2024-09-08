@@ -6,7 +6,7 @@ import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.exception.ResourceLimitException;
 import es.urjc.etsii.grafo.improve.Improver;
-import es.urjc.etsii.grafo.orchestrator.UserExperimentOrchestrator;
+import es.urjc.etsii.grafo.orchestrator.DefaultOrchestrator;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;
@@ -15,18 +15,18 @@ import org.junit.jupiter.api.Test;
 import java.util.ArrayList;
 import java.util.List;
 
-class UserExperimentOrchestratorTest {
+class DefaultOrchestratorTest {
 
     @Test
     void verifyWorkloadLimits(){
         var t1 = getTestData(100, 100, 100);
-        Assertions.assertThrows(ResourceLimitException.class, () -> UserExperimentOrchestrator.verifyWorkloadLimit(t1.config(), t1.instances(), t1.algorithms()));
+        Assertions.assertThrows(ResourceLimitException.class, () -> DefaultOrchestrator.verifyWorkloadLimit(t1.config(), t1.instances(), t1.algorithms()));
 
         var t2 = getTestData(1000, 1000, 1000);
-        Assertions.assertThrows(ResourceLimitException.class, () -> UserExperimentOrchestrator.verifyWorkloadLimit(t2.config(), t2.instances(), t2.algorithms()));
+        Assertions.assertThrows(ResourceLimitException.class, () -> DefaultOrchestrator.verifyWorkloadLimit(t2.config(), t2.instances(), t2.algorithms()));
 
         var t3 = getTestData(90, 90, 90);
-        Assertions.assertDoesNotThrow(() -> UserExperimentOrchestrator.verifyWorkloadLimit(t3.config(), t3.instances(), t3.algorithms()));
+        Assertions.assertDoesNotThrow(() -> DefaultOrchestrator.verifyWorkloadLimit(t3.config(), t3.instances(), t3.algorithms()));
     }
 
     private TestData getTestData(int repetitions, int nInstances, int nAlgorithms){
