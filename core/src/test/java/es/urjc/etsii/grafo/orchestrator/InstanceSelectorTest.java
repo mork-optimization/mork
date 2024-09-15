@@ -41,12 +41,12 @@ class InstanceSelectorTest {
         var lines = Files.readAllLines(p);
         assertEquals(7, lines.size());
         assertArrayEquals(new String[]{"id", "awesomeness", "ble", "random", "size"}, lines.get(0).split(","));
-        assertArrayEquals(new String[]{"instanceA", "1.0", "-7.1", "346.0", "100.0"}, lines.get(1).split(","));
-        assertArrayEquals(new String[]{"instanceB", "2.0", "-5.1123", "132768.0","6.0"}, lines.get(2).split(","));
-        assertArrayEquals(new String[]{"instanceC", "3.0", "0.1123", "4129.0","121111.0"}, lines.get(3).split(","));
-        assertArrayEquals(new String[]{"instanceD", "4.0", "0.0", "918624.0","0.0"}, lines.get(4).split(","));
-        assertArrayEquals(new String[]{"instanceE", "5.0", "0.1123", "-123.0","-121111.0"}, lines.get(5).split(","));
-        assertArrayEquals(new String[]{"instanceF", "6.0", "0.1123", "-123.0","-121111.0"}, lines.get(6).split(","));
+        assertArrayEquals(new String[]{"instanceA.txt", "1.0", "-7.1", "346.0", "100.0"}, lines.get(1).split(","));
+        assertArrayEquals(new String[]{"instanceB.txt", "2.0", "-5.1123", "132768.0","6.0"}, lines.get(2).split(","));
+        assertArrayEquals(new String[]{"instanceC.txt", "3.0", "0.1123", "4129.0","121111.0"}, lines.get(3).split(","));
+        assertArrayEquals(new String[]{"instanceD.txt", "4.0", "0.0", "918624.0","0.0"}, lines.get(4).split(","));
+        assertArrayEquals(new String[]{"instanceE.txt", "5.0", "0.1123", "-123.0","-121111.0"}, lines.get(5).split(","));
+        assertArrayEquals(new String[]{"instanceF.txt", "6.0", "0.1123", "-123.0","-121111.0"}, lines.get(6).split(","));
     }
 
     @AfterAll

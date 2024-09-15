@@ -8,6 +8,7 @@ import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.util.Context;
+import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -81,7 +82,7 @@ public class InstanceProperties<I extends Instance> extends AbstractOrchestrator
         try (var pb = Executor.getPBarBuilder("Instance analysis").setInitialMax(instanceIDs.size()).build()) {
             for (int row = 0; row < instanceIDs.size(); row++) {
                 var id = instanceIDs.get(row);
-                pb.setExtraMessage(id);
+                pb.setExtraMessage(FilenameUtils.getName(id));
                 var instance = this.instanceManager.getInstance(id);
                 var properties = filterProperties(instance);
                 if (instanceProperties == null) {

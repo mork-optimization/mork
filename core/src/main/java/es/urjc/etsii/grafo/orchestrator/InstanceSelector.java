@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.*;
 
 public class InstanceSelector<I extends Instance> extends InstanceProperties<I> {
@@ -54,8 +56,16 @@ public class InstanceSelector<I extends Instance> extends InstanceProperties<I> 
         try {
             IOUtil.extractResource("instance-selector/instance-selector.py", "instance_selector.py", isJAR, true);
             IOUtil.extractResource("instance-selector/requirements.txt", "requirements.txt", isJAR, true);
-            pb.command("python3", "-m", "pip", "install", "-r", "requirements.txt").start().waitFor();
-            pb.command("python3", "instance_selector.py", "-i", path, "-o", preOut, "-p", DEFAULT_OUTPUT_PATH, "-s", size).start().waitFor();
+            // Check if venv exists, if not, create it
+            if(!Files.exists(Path.of("venv"))){
+                log.info("Creating virtual environment for instance selector");
+                pb.command("python3", "-m", "venv", "venv").start().waitFor();
+            } else {
+                log.info("Virtual environment already exists, skipping creation");
+            }
+
+            pb.command("venv/bin/python3", "-m", "pip", "install", "-r", "requirements.txt").start().waitFor();
+            pb.command("venv/bin/python3", "instance_selector.py", "-i", path, "-o", preOut, "-p", DEFAULT_OUTPUT_PATH, "-s", size).start().waitFor();
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
