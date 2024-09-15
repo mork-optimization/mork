@@ -740,6 +740,7 @@ public class ArrayUtil {
     }
 
     public record IntStats(int min, int max, int sum, double avg, double std) {}
+    public record LongStats(long min, long max, long sum, double avg, double std) {}
     public record DoubleStats(double min, double max, double sum, double avg, double std) {}
 
     public static IntStats stats(int[] data){
@@ -760,6 +761,26 @@ public class ArrayUtil {
         }
         std = Math.sqrt(std / data.length);
         return new IntStats(min, max, sum, avg, std);
+    }
+
+    public static LongStats stats(long[] data){
+        long min = Integer.MAX_VALUE;
+        long max = Integer.MIN_VALUE;
+        long sum = 0;
+
+        for (long n : data) {
+            if (n < min) min = n;
+            if (n > max) max = n;
+            sum = Math.addExact(sum, n);
+        }
+
+        double avg = (double) sum / data.length;
+        double std = 0;
+        for(long n: data){
+            std += Math.pow(n - avg, 2);
+        }
+        std = Math.sqrt(std / data.length);
+        return new LongStats(min, max, sum, avg, std);
     }
 
     public static DoubleStats stats(double[] data){

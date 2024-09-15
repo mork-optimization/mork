@@ -479,24 +479,31 @@ class ArrayUtilTest {
         3		Min	1
          */
         var dataInt = new int[]{5, 8, 9, 1, 3};
+        var dataLong = new long[]{5, 8, 9, 1, 3};
         var dataDouble = new double[]{5, 8, 9, 1, 3};
 
         var statsInt = ArrayUtil.stats(dataInt);
+        var statsLong = ArrayUtil.stats(dataLong);
         var statsDouble = ArrayUtil.stats(dataDouble);
 
         Assertions.assertEquals(2.9933259094191533, statsInt.std());
+        Assertions.assertEquals(2.9933259094191533, statsLong.std());
         Assertions.assertEquals(2.9933259094191533, statsDouble.std());
 
         Assertions.assertEquals(5.2, statsInt.avg());
+        Assertions.assertEquals(5.2, statsLong.avg());
         Assertions.assertEquals(5.2, statsDouble.avg());
 
         Assertions.assertEquals(26, statsInt.sum());
+        Assertions.assertEquals(26, statsLong.sum());
         Assertions.assertEquals(26, statsDouble.sum());
 
         Assertions.assertEquals(9, statsInt.max());
+        Assertions.assertEquals(9, statsLong.max());
         Assertions.assertEquals(9, statsDouble.max());
 
         Assertions.assertEquals(1, statsInt.min());
+        Assertions.assertEquals(1, statsLong.min());
         Assertions.assertEquals(1, statsDouble.min());
     }
 
