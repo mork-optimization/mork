@@ -31,9 +31,6 @@ import es.urjc.etsii.grafo.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
-import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -108,7 +105,6 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      * @param algorithmCandidateGenerator
      */
     public IraceOrchestrator(
-            Environment env,
             SolverConfig solverConfig,
             BlockConfig blockConfig,
             ServerProperties serverProperties,
@@ -119,7 +115,6 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             Optional<SolutionValidator<S, I>> validator,
             AlgorithmCandidateGenerator algorithmCandidateGenerator
     ) {
-        log.info("Starting tuning engine...");
         this.solverConfig = solverConfig;
         Context.Configurator.setSolverConfig(solverConfig);
         Context.Configurator.setBlockConfig(blockConfig);
@@ -128,13 +123,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         this.iraceIntegration = iraceIntegration;
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         this.instanceManager = instanceManager;
-        log.debug("Using SolutionBuilder implementation: {}", this.solutionBuilder.getClass().getSimpleName());
-
         this.algorithmBuilder = decideImplementation(algorithmBuilders, AutomaticAlgorithmBuilder.class);
-        log.debug("Using AlgorithmBuilder implementation: {}", this.algorithmBuilder.getClass().getSimpleName());
-
         this.algorithmCandidateGenerator = algorithmCandidateGenerator;
-
         this.validator = validator;
     }
 
@@ -152,7 +142,10 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 this.isFollower = true;
             }
         }
+        log.info("Starting tuning engine... {isAutoconfig: {}, isFollower: {}}", isAutoconfigEnabled, isFollower);
 
+        log.debug("Using SolutionBuilder implementation: {}", this.solutionBuilder.getClass().getSimpleName());
+        log.debug("Using AlgorithmBuilder implementation: {}", this.algorithmBuilder.getClass().getSimpleName());
         if (validator.isEmpty()) {
             log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
         } else {

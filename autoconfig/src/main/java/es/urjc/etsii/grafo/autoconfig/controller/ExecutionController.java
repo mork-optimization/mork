@@ -46,7 +46,6 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
     public ExecutionController(IraceOrchestrator<S, I> orquestrator) {
         this.orquestrator = orquestrator;
         this.json = new ObjectMapper().configure(FAIL_ON_UNKNOWN_PROPERTIES, false); // ignore unmapped properties such as bounds
-        log.info("Execution controller enabled");
     }
 
     /**

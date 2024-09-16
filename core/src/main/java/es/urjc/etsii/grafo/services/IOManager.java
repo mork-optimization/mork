@@ -9,6 +9,8 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -18,7 +20,6 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
-import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.util.IOUtil.createFolder;
 
@@ -31,11 +32,11 @@ import static es.urjc.etsii.grafo.util.IOUtil.createFolder;
 @Service
 public class IOManager<S extends Solution<S, I>, I extends Instance> {
 
-    private static final Logger log = Logger.getLogger(IOManager.class.toString());
+    private static final Logger log = LoggerFactory.getLogger(IOManager.class);
 
     private final ErrorConfig errorConfig;
 
-    private List<SolutionSerializer<S, I>> solutionSerializers;
+    private final List<SolutionSerializer<S, I>> solutionSerializers;
 
     /**
      * Initialize IOManager
@@ -47,7 +48,7 @@ public class IOManager<S extends Solution<S, I>, I extends Instance> {
         this.errorConfig = errorConfig;
         this.solutionSerializers = solutionSerializers;
 
-        log.info("Using solution serializers: " + this.solutionSerializers);
+        log.debug("Detected solution serializers: " + this.solutionSerializers);
     }
 
     /**
@@ -76,7 +77,7 @@ public class IOManager<S extends Solution<S, I>, I extends Instance> {
      */
     public synchronized void exportError(String experimentName, Algorithm<S, I> alg, I i, Throwable t, String stacktrace) {
         if (!errorConfig.isErrorsToFile()) {
-            log.fine("Skipping exporting exception or error to disk, disabled in config.");
+            log.debug("Skipping exporting exception or error to disk, disabled in config.");
             return;
         }
         createFolder(this.errorConfig.getFolder());
