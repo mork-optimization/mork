@@ -64,8 +64,8 @@ public class InstanceSelector<I extends Instance> extends InstanceProperties<I> 
                 log.info("Virtual environment already exists, skipping creation");
             }
 
-            pb.command("venv/bin/python3", "-m", "pip", "install", "-r", "requirements.txt").start().waitFor();
-            pb.command("venv/bin/python3", "instance_selector.py", "-i", path, "-o", preOut, "-p", DEFAULT_OUTPUT_PATH, "-s", size).start().waitFor();
+            pb.command("./venv/bin/python3", "-m", "pip", "install", "-r", "requirements.txt").start().waitFor();
+            pb.command("./venv/bin/python3", "instance_selector.py", "-i", path, "-o", preOut, "-p", DEFAULT_OUTPUT_PATH, "-s", size).start().waitFor();
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (InterruptedException e) {
