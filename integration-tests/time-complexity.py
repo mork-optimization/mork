@@ -154,7 +154,7 @@ def analyze_complexity(instances: DataFrame, timestats: DataFrame, param):
         ids=treemap_data.component,
         labels=treemap_data.child,
         parents=treemap_data.parent,
-        customdata=np.stack((treemap_data.time, treemap_data.property, treemap_data.function, treemap_data.r2), axis=-1),
+        customdata=np.stack((treemap_data.time, treemap_data.property, treemap_data.function.str.replace(r'\cdot','⋅'), treemap_data.r2), axis=-1),
         hovertemplate='<b> %{label} </b> <br> Time: %{customdata[0]:.2f} ms <br> Complexity: %{customdata[2]} <br> Where n is: %{customdata[1]} <br> R2: %{customdata[3]:.2f}',
         marker=dict(
             colors=treemap_data.time,
