@@ -30,7 +30,7 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
 
     private volatile boolean warnedSlow = false;
 
-    private final AbstractSolutionSerializerConfig config;
+    protected final AbstractSolutionSerializerConfig config;
 
     /**
      * Create a new solution serializer with the given config
