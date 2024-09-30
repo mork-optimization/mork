@@ -6,6 +6,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.util.random.RandomType;
 
 import java.util.*;
@@ -38,6 +39,8 @@ public class Context {
             context.objectives = parentValue.objectives;
             context.mainObjective = parentValue.mainObjective;
             context.solverConfig = parentValue.solverConfig;
+            context.validator = parentValue.validator;
+            context.multiObjective = parentValue.multiObjective;
             // context.timeEvents; // do not copy! thread responsible for managing its own events
             return context;
         }
@@ -100,7 +103,12 @@ public class Context {
     }
 
     public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance>  Objective<M,S,I> getMainObjective(){
-        return (Objective<M,S,I>) context.get().mainObjective;
+
+        ContextData contextData = context.get();
+        if(contextData.multiObjective){
+            throw new IllegalStateException("Cannot get main objective in multi-objective mode. Probable fix: manually specify objective to optimize in algorithm component");
+        }
+        return (Objective<M,S,I>) contextData.mainObjective;
     }
 
     public static Map<String, Objective<?,?,?>> getObjectives(){
@@ -126,6 +134,8 @@ public class Context {
         public SolverConfig solverConfig;
         public BlockConfig blockConfig;
         public List<TimeStatsEvent> timeEvents = new ArrayList<>();
+        public SolutionValidator<?,?> validator;
+        public boolean multiObjective;
     }
 
     public static class Configurator {
@@ -154,6 +164,10 @@ public class Context {
             return Context.context.get().blockConfig;
         }
 
+        public static void setValidator(SolutionValidator<?,?> validator){
+            Context.context.get().validator = validator;
+        }
+
         /**
          * Initialize or reset random only for the current thread
          * @param config solver config
@@ -178,10 +192,10 @@ public class Context {
         }
 
         public static void setObjectives(Objective<?, ?, ?> objective) {
-            setObjectives(new Objective[]{objective});
+            setObjectives(false, new Objective[]{objective});
         }
 
-        public static void setObjectives(Objective<?, ?, ?>[] objectives) {
+        public static void setObjectives(boolean multiObjective, Objective<?, ?, ?>[] objectives) {
             if(Objects.requireNonNull(objectives).length == 0){
                 throw new IllegalArgumentException("Objectives array cannot be empty");
             }
@@ -190,6 +204,7 @@ public class Context {
             for(var obj: objectives){
                 map.put(obj.getName(), obj);
             }
+            localContext.multiObjective = multiObjective;
             localContext.objectives = Collections.unmodifiableMap(map);
             localContext.mainObjective = objectives[0];
         }

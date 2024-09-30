@@ -29,40 +29,24 @@ public class Mork {
 
     /**
      * Procedure to launch the application.
-     * Deprecated: Use the version with the objectives parameter instead
-     * @see Mork#start(String[], Objective[])
+     *
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
-     * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
+     * @param objective Objective to optimize, assumes single objective
      */
-    @Deprecated
-    public static <S extends Solution<S,I>, I extends Instance> boolean start(String[] args, FMode fmode) {
-        return Mork.start(null, args, fmode);
-    }
-
-
-    /**
-     * Procedure to launch the application.
-     * Deprecated: Use the version with the objectives parameter instead
-     * @see Mork#start(String, String[], Objective[])
-     * @param pkgRoot  Custom package root for component scanning if changed from the default package
-     *                 (es.urjc.etsii)
-     * @param args     command line arguments, normally the parameter "String[] args" in the main method
-     * @param fmode MAXIMIZE if the objective function of this problem should be maximized, MINIMIZE if it should be minimized
-     */
-    @Deprecated
-    public static <S extends Solution<S,I>, I extends Instance> boolean start(String pkgRoot, String[] args, FMode fmode) {
-        return Mork.start(pkgRoot, args, Objective.of("Default", fmode, S::getScore, Move::getValue));
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean start(String[] args, Objective<M,S,I> objective){
+        return Mork.start(null, args, false, objective);
     }
 
     /**
      * Procedure to launch the application.
      *
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
+     * @param multiobjective true if the problem is multiobjective, false otherwise
      * @param objectives List of objectives to track
      */
     @SafeVarargs
-    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean start(String[] args, Objective<M,S,I>... objectives){
-        return Mork.start(null, args, objectives);
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean start(String[] args, boolean multiobjective, Objective<M,S,I>... objectives){
+        return Mork.start(null, args, multiobjective, objectives);
     }
 
     /**
@@ -70,13 +54,14 @@ public class Mork {
      *
      * @param pkgRoot  Custom package root for component scanning if changed from the default package
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
+     * @param multiobjective true if the problem is multiobjective, false otherwise
      * @param objectives List of objectives to track
      */
     @SafeVarargs
-    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean start(String pkgRoot, String[] args, Objective<M, S, I>... objectives) {
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean start(String pkgRoot, String[] args, boolean multiobjective, Objective<M, S, I>... objectives) {
         configurePackageScanning(pkgRoot);
         configureDeserialization();
-        Context.Configurator.setObjectives(objectives);
+        Context.Configurator.setObjectives(multiobjective, objectives);
         SpringApplication application = new SpringApplication(Mork.class);
         application.setBanner(new BannerProvider());
         application.setLogStartupInfo(false);
