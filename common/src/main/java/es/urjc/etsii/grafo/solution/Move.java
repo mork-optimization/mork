@@ -64,11 +64,13 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
     }
 
     private S executeAsserts(S solution){
+        // todo no tengo acceso al objective desde aqui,
+        //  mover aotro sitio o ejecutar para todos los objective declarados que creo que es lo que mas sentido tiene
         assert saveLastMove(solution, this);
         double prevScore = solution.getScore();
         S newSolution = executeDirect(solution);
         assert ValidationUtil.scoreUpdate(solution, prevScore, this);
-        ValidationUtil.assertValidScore(solution);
+        Context.validate(solution);
         return newSolution;
     }
 
@@ -95,13 +97,6 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
      * to be implemented by each move type
      */
     protected abstract S _execute(S solution);
-
-    /**
-     * Get the movement value, represents how much does the move changes the f.o of a solution if executed
-     *
-     * @return f.o change
-     */
-    public abstract double getValue();
 
     /**
      * Returns a String representation of the current movement.

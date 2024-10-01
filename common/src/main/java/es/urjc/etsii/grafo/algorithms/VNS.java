@@ -155,9 +155,9 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
 
             S copy = solution.cloneSolution();
             copy = shake.shake(copy, userK);
-            ValidationUtil.assertValidScore(solution);
+            Context.validate(solution);
             copy = improver.improve(copy);
-            ValidationUtil.assertValidScore(solution);
+            Context.validate(solution);
             if (objective.isBetter(copy, solution)) {
                 solution = copy;
                 internalK = 0;

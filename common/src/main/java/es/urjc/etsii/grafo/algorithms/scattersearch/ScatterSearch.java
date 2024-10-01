@@ -6,6 +6,7 @@ import es.urjc.etsii.grafo.annotations.*;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ArrayUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
@@ -40,7 +41,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
     private final double ratio;
     private final SolutionDistance<S, I> solutionDistance;
     private final boolean softRestartEnabled;
-    private final FMode fmode;
+    private final Objective<?, S, I> objective;
 
     /**
      * @param initialRatio              During refset initialization, create initialRefset size * INITIAL_RATIO solutions,
@@ -64,7 +65,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
             Constructive<S, I> constructiveGoodDiversity,
             Improver<S, I> improver,
             SolutionCombinator<S, I> combinator,
-            @ProvidedParam FMode fmode,
+            @ProvidedParam Objective<?, S, I> objective,
             @IntegerParam(min = 1) int maxIterations,
             @RealParam(min = 0, max = 1) double diversityRatio,
             SolutionDistance<S, I> solutionDistance,
@@ -78,7 +79,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
         this.constructiveGoodDiversity = Objects.requireNonNull(constructiveGoodDiversity);
         this.improver = Objects.requireNonNull(improver);
         this.combinator = Objects.requireNonNull(combinator);
-        this.fmode = fmode;
+        this.objective = objective;
         this.softRestartEnabled = softRestartEnabled;
         this.maxIterations = maxIterations;
         this.ratio = diversityRatio;
@@ -95,7 +96,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
 
         var initialSolutions = initializeSolutions(instance, (int) (nSolutionsByScore * initialRatio), false);
         initialSolutions.addAll(initializeSolutions(instance, (int) (nSolutionsByDiversity * initialRatio), true));
-        initialSolutions.sort(fmode.comparator());
+        initialSolutions.sort(objective.comparator());
 
         int assignedSolutionsByScore = 0;
         for (S initialSolution : initialSolutions) {
@@ -149,7 +150,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
             forceFill(instance, alreadyUsed, initialRefsetArray, nSolutionsByScore, assignedSolutionsByDiversity, nSolutionsByDiversity, initialSolutions.size());
         }
 
-        Arrays.sort(initialRefsetArray, fmode.comparator());
+        Arrays.sort(initialRefsetArray, objective.comparator());
         return new RefSet<>(initialRefsetArray, nSolutionsByScore, nSolutionsByDiversity);
     }
 
@@ -191,7 +192,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
      */
     protected void replaceWorstNearest(RefSet<S, I> refset, S solution) {
         int i = 0;
-        while (i < refset.solutions.length && !fmode.isBetter(solution.getScore(), refset.solutions[i].getScore())) {
+        while (i < refset.solutions.length && !objective.isBetter(solution, refset.solutions[i])) {
             // Might be speed up using binary search, but for small arrays it is not worth it
             i++;
         }
@@ -259,7 +260,9 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
         if (!log.isDebugEnabled()) {
             return;
         }
-        log.debug("{}. refset=[{},{}], |newSols|={}, |insertedSols|={}", iterations, refsets.solutions[0].getScore(), refsets.solutions[refsets.solutions.length - 1].getScore(), newSet.size(), insertedSolutions.size());
+        double best = objective.evalSol(refsets.solutions[0]);
+        double worst = objective.evalSol(refsets.solutions[refsets.solutions.length - 1]);
+        log.debug("{}. refset=[{},{}], |newSols|={}, |insertedSols|={}", iterations, best, worst, newSet.size(), insertedSolutions.size());
         log.trace("{}. Current refset: {}, newSols: {}, mergeByValue: {}", iterations, refsets, newSet, insertedSolutions);
     }
 
@@ -296,14 +299,14 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
     }
 
     protected Set<S> mergeToSetByScore(RefSet<S, I> refset, Set<S> newSolutions) {
-        double worstValue = refset.solutions[refset.solutions.length - 1].getScore();
+        double worstValue = objective.evalSol(refset.solutions[refset.solutions.length - 1]);
         Set<S> insertedElements = new HashSet<>();
 
         var sortedNewSolutions = new ArrayList<>(newSolutions);
-        sortedNewSolutions.sort(fmode.comparator());
+        sortedNewSolutions.sort(objective.comparator());
 
         for (var solution : sortedNewSolutions) {
-            if (!(fmode.isBetter(solution.getScore(), worstValue))) {
+            if (!(objective.isBetter(solution, worstValue))) {
                 // Solution is worse than the worst solution in refset
                 break; // as newSolutions are ordered by value, if the current one is worse, all remaining must be worse too
             }
@@ -315,7 +318,7 @@ public class ScatterSearch<S extends Solution<S, I>, I extends Instance> extends
 
             replaceWorstNearest(refset, solution);
             insertedElements.add(solution);
-            worstValue = refset.solutions[refset.solutions.length - 1].getScore();
+            worstValue = objective.evalSol(refset.solutions[refset.solutions.length - 1]);
         }
 
         if (insertedElements.size() > refset.solutions.length) {

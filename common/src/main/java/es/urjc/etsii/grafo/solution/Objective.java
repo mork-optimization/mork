@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.solution;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.io.Instance;
 
+import java.util.Comparator;
 import java.util.function.ToDoubleFunction;
 
 /**
@@ -27,18 +28,6 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
 
     public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> of(String name, FMode fMode, ToDoubleFunction<S> evaluateSolution, ToDoubleFunction<M> evaluateMove){
         return new SimpleObjective<>(name, fMode, evaluateSolution, evaluateMove);
-    }
-
-    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> ofDefault(FMode fmode){
-        return of("Default", fmode, Solution::getScore, Move::getValue);
-    }
-
-    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> ofDefaultMaximize(){
-        return of("DefaultMaximize", FMode.MAXIMIZE, Solution::getScore, Move::getValue);
-    }
-
-    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> ofDefaultMinimize(){
-        return of("DefaultMinimize", FMode.MINIMIZE, Solution::getScore, Move::getValue);
     }
 
     public abstract double evalSol(S solution);
@@ -76,6 +65,30 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
 
     public boolean improves(double a){
         return getFMode().improves(a);
+    }
+
+    /**
+     * Comparator that orders solutions by quality
+     * @return a comparator that sorts solutions from best to worse
+     */
+    public Comparator<S> comparator() {
+        Comparator<S> c = Comparator.comparingDouble(this::evalSol);
+        if (this.getFMode() == FMode.MINIMIZE) {
+            return c; // Default is ascending order
+        }
+        return c.reversed();
+    }
+
+    /**
+     * Comparator that orders moves by quality
+     * @return a comparator that sorts moves from best to worse
+     */
+    public Comparator<? super Move<S,I>> comparatorMove() {
+        Comparator<Move<S,I>> c = Comparator.comparingDouble(Move::getValue);
+        if (this.getFMode() == FMode.MINIMIZE) {
+            return c; // Default is ascending order
+        }
+        return c.reversed();
     }
 
     public S getBestSolution(Iterable<S> list){

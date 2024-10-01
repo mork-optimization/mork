@@ -64,6 +64,15 @@ public class Context {
         context.set(new ContextData());
     }
 
+    public static <S extends Solution<S,I>, I extends Instance> void validate(S solution){
+        // TODO finish implementation
+        SolutionValidator<S,I> userValidator = (SolutionValidator<S, I>) Context.context.get().validator;
+        if(userValidator != null){
+            var result = userValidator.validate(solution);
+            result.throwIfFail();
+        }
+    }
+
 
     public static RandomGenerator getRandom(){
         return context.get().random;

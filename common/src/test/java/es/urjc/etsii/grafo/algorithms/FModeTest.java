@@ -1,54 +1,11 @@
 package es.urjc.etsii.grafo.algorithms;
 
-import es.urjc.etsii.grafo.testutil.TestMove;
-import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Test;
-
-import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 public class FModeTest {
 
-    @Test
-    void minimizeMoveComp(){
-        var data = TestMove.generateSeq(-1, 7, 3, 9);
-        data.sort(FMode.MINIMIZE.comparatorMove());
-        assertEquals(-1, data.get(0).getValue());
-        assertEquals(3, data.get(1).getValue());
-        assertEquals(7, data.get(2).getValue());
-        assertEquals(9, data.get(3).getValue());
-    }
-
-    @Test
-    void maximizeMoveComp(){
-        var data = TestMove.generateSeq(-1, 7, 3, 9);
-        data.sort(FMode.MAXIMIZE.comparatorMove());
-        assertEquals(9, data.get(0).getValue());
-        assertEquals(7, data.get(1).getValue());
-        assertEquals(3, data.get(2).getValue());
-        assertEquals(-1, data.get(3).getValue());
-    }
-
-    @Test
-    void minimizeSolComp(){
-        var data = TestSolution.from(-1, 7, 3, 9);
-        Arrays.sort(data, FMode.MINIMIZE.comparator());
-        assertEquals(-1, data[0].getScore());
-        assertEquals(3, data[1].getScore());
-        assertEquals(7, data[2].getScore());
-        assertEquals(9, data[3].getScore());
-    }
-
-    @Test
-    void maximizeSolComp(){
-        var data = TestSolution.from(-1, 7, 3, 9);
-        Arrays.sort(data, FMode.MAXIMIZE.comparator());
-        assertEquals(9, data[0].getScore());
-        assertEquals(7, data[1].getScore());
-        assertEquals(3, data[2].getScore());
-        assertEquals(-1, data[3].getScore());
-    }
 
     @Test
     void minimizeImproves(){

@@ -99,28 +99,6 @@ public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instanc
      */
     public abstract SELF cloneSolution();
 
-
-    /**
-     * Get the current solution score.
-     * The difference between this method and recalculateScore is that
-     * this result can be a property of the solution, or cached,
-     * it does not have to be calculated each time this method is called
-     *
-     * @return current solution score as double
-     */
-    public abstract double getScore();
-
-    /**
-     * Recalculate solution score and validate current solution state
-     * You must check that no constraints are broken, and that all costs are valid
-     * The difference between this method and getScore is that we must recalculate the score from scratch,
-     * without using any cache/shortcuts.
-     * DO NOT UPDATE CACHES / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
-     *
-     * @return current solution score as double
-     */
-    public abstract double recalculateScore();
-
     /**
      * Resume this solution
      * Generate a toString method using your IDE

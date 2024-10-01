@@ -39,14 +39,14 @@ public class GRASPAlgorithm<S extends Solution<S, I>, I extends Instance> extend
     public S algorithm(I instance) {
         var solution = this.newSolution(instance); // (3)
         solution = constructive.construct(solution);
-        ValidationUtil.assertValidScore(solution); // (4)
+        Context.validate(solution); // (4)
         solution = localSearch(solution);
         return solution;
     }
 
     protected S localSearch(S solution) {
         solution = improver.improve(solution); // (5)
-        ValidationUtil.assertValidScore(solution);
+        Context.validate(solution);
         return solution;
     }
 }
@@ -145,7 +145,7 @@ public class MyAlgorithm<S extends Solution<S, I>, I extends Instance> extends A
     protected S constructionStep(I instance){
         var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
-        ValidationUtil.assertValidScore(solution);
+        Context.validate(solution);
         log.trace("New solution: {}", solution);
         return solution;
     }
@@ -155,7 +155,7 @@ public class MyAlgorithm<S extends Solution<S, I>, I extends Instance> extends A
             return solution;
         }
         solution = improver.improve(solution);
-        ValidationUtil.assertValidScore(solution);
+        Context.validate(solution);
         Metrics.add(BestObjective.class, solution.getScore());
         log.debug("After LS: {}", solution);
         return solution;

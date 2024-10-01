@@ -38,18 +38,6 @@ public enum FMode {
         public boolean improves(double a) {
             return DoubleComparator.isPositive(a);
         }
-
-        @Override
-        public Comparator<Solution<?,?>> comparator() {
-            Comparator<Solution<?,?>> c = Comparator.comparingDouble(Solution::getScore);
-            return c.reversed();
-        }
-
-        @Override
-        public Comparator<Move<?, ?>> comparatorMove() {
-            Comparator<Move<?,?>> c = Comparator.comparingDouble(Move::getValue);
-            return c.reversed();
-        }
     },
 
     /**
@@ -79,17 +67,6 @@ public enum FMode {
         @Override
         public boolean improves(double a) {
             return DoubleComparator.isNegative(a);
-        }
-
-        @Override
-        public Comparator<Solution<?,?>> comparator() {
-            return Comparator.comparingDouble(Solution::getScore);
-        }
-
-
-        @Override
-        public Comparator<Move<?, ?>> comparatorMove() {
-            return Comparator.comparingDouble(Move::getValue);
         }
     };
 
@@ -130,16 +107,4 @@ public enum FMode {
      * @return true if score improves the solution, false otherwise
      */
     public abstract boolean improves(double a);
-
-    /**
-     * Returns a comparator that sorts solutions from best to worst
-     * @return a new comparator
-     */
-    public abstract Comparator<Solution<?,?>> comparator();
-
-    /**
-     * Returns a comparator that sorts moves from best to worst
-     * @return a new comparator
-     */
-    public abstract Comparator<Move<?,?>> comparatorMove();
 }

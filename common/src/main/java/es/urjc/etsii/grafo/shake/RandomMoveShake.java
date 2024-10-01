@@ -64,7 +64,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
             var move = this.neighborhood.getRandomMove(solution);
             if(move.isPresent()){
                 move.get().execute(solution);
-                ValidationUtil.assertValidScore(solution);
+                Context.validate(solution);
             } else {
                 log.debug("No move available in {}, ending shake at {} of {} iterations", neighborhood.getClass().getSimpleName(), i, k*ratio);
                 break;
