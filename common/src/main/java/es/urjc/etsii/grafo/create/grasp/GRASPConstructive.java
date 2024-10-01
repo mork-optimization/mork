@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.List;

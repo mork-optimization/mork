@@ -5,6 +5,8 @@ import es.urjc.etsii.grafo.metrics.DeclaredObjective;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestMove;
+import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeStatsEvent;
 import org.junit.jupiter.api.Assertions;
@@ -20,7 +22,7 @@ public class TimeStatsTest {
     void testTimedAlgorithm() {
         Metrics.enableMetrics();
         Metrics.resetMetrics();
-        Context.Configurator.setObjectives(Objective.ofDefaultMinimize());
+        Context.Configurator.setObjectives(Objective.ofMinimizing("DefaultMinimize", TestSolution::getScore, TestMove::getValue));
         Metrics.register("DefaultMinimize", ref -> new DeclaredObjective("DefaultMinimize", FMode.MINIMIZE, ref));
         // total time is algoritm + constructive + 2 * local search
         var alg = new TimedAlgorithm(3, 5, 1);

@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.BeforeAll;
@@ -17,6 +18,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.*;
 
 public class VNDTest {
+    private final Objective<?,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getValue);
+    private final Objective<?,TestSolution,TestInstance> maxObj = Objective.ofMaximizing("TestMax", TestSolution::getScore, TestMove::getValue);
 
     Improver<TestSolution, TestInstance> improver1;
     Improver<TestSolution, TestInstance> improver2;
@@ -79,7 +82,7 @@ public class VNDTest {
 
     @Test
     void testVNDminimizing(){
-        Context.Configurator.setObjectives(Objective.ofDefaultMinimize());
+        Context.Configurator.setObjectives(minObj);
         var vnd = new VND<>(improver1, improver2, improver3);
         assertEquals(6, solution.getScore());
         var improvedSolution = vnd.improve(solution);
@@ -90,7 +93,7 @@ public class VNDTest {
 
     @Test
     void testVNDmaximizing(){
-        Context.Configurator.setObjectives(Objective.ofDefaultMaximize());
+        Context.Configurator.setObjectives(maxObj);
         var vnd = new VND<>(improver1, improver2, improver3);
         assertEquals(6, solution.getScore());
         var improvedSolution = vnd.improve(solution);

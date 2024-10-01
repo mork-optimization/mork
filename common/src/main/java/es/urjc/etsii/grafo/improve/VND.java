@@ -53,7 +53,7 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
     protected S _improve(S solution) {
         int index = 0;
         while(index < improvers.size()){
-            double scoreBeforeImprover = solution.getScore();
+            double scoreBeforeImprover = objective.evalSol(solution);
             var improver = improvers.get(index);
             solution = improver.improve(solution);
 

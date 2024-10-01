@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.solution;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -64,12 +65,10 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
     }
 
     private S executeAsserts(S solution){
-        // todo no tengo acceso al objective desde aqui,
-        //  mover aotro sitio o ejecutar para todos los objective declarados que creo que es lo que mas sentido tiene
+        var oldValues = Context.evalSolution(solution);
         assert saveLastMove(solution, this);
-        double prevScore = solution.getScore();
         S newSolution = executeDirect(solution);
-        assert ValidationUtil.scoreUpdate(solution, prevScore, this);
+        assert ValidationUtil.scoreUpdate(solution, oldValues, this);
         Context.validate(solution);
         return newSolution;
     }

@@ -84,7 +84,7 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
      * @return a comparator that sorts moves from best to worse
      */
     public Comparator<? super Move<S,I>> comparatorMove() {
-        Comparator<Move<S,I>> c = Comparator.comparingDouble(Move::getValue);
+        Comparator<Move<S,I>> c = Comparator.comparingDouble(m -> this.evalMove((M) m));
         if (this.getFMode() == FMode.MINIMIZE) {
             return c; // Default is ascending order
         }

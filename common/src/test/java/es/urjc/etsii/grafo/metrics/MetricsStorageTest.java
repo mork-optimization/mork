@@ -27,8 +27,8 @@ class MetricsStorageTest {
         currentTime = System.nanoTime();
         Metrics.add(TestMetric.class, 76);
 
-        assertThrows(IllegalArgumentException.class, () -> Metrics.get(UnregisteredTestMetric.class));
-        assertThrows(IllegalArgumentException.class, () -> Metrics.get("asdfg"));
+        assertNull(Metrics.get(UnregisteredTestMetric.class));
+        assertNull(Metrics.get("asdfg"));
         var testMetric = Metrics.get(TestMetric.class);
         assertEquals(1, testMetric.values.size());
 

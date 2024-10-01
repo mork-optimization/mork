@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class GRASPConstructiveMaximizingTest {
 
+    private final Objective<TestMove,TestSolution,TestInstance> maxObj = Objective.ofMaximizing("TestMax", TestSolution::getScore, TestMove::getValue);
+
     TestGRASPListManager listManager;
     List<TestMove> moves;
     TestSolution solution;
@@ -43,8 +45,8 @@ class GRASPConstructiveMaximizingTest {
                 new TestMove(this.solution, 7, MAXIMIZE)
         ));
         this.listManager = new TestGRASPListManager(this.moves);
-        this.gr = new GreedyRandomGRASPConstructive<>(Objective.ofDefaultMaximize(), listManager, ()  -> 0, "Fixed{0}");
-        this.rg = new RandomGreedyGRASPConstructive<>(Objective.ofDefaultMaximize(), listManager, ()  -> 0, "Fixed{0}");
+        this.gr = new GreedyRandomGRASPConstructive<>(maxObj, listManager, ()  -> 0, "Fixed{0}");
+        this.rg = new RandomGreedyGRASPConstructive<>(maxObj, listManager, ()  -> 0, "Fixed{0}");
     }
 
     @Test
@@ -56,7 +58,7 @@ class GRASPConstructiveMaximizingTest {
         assertTrue(this.listManager.calledBefore);
         assertTrue(this.listManager.calledAfter);
         assertEquals(this.moves.size(), this.listManager.nCalls);
-        var moves = builtSolution.lastExecutesMoves();
+        var moves = (List<TestMove>) (Object) builtSolution.lastExecutesMoves();
         // Verify that moves are executed in decreasing score order, as grasp is run with alpha 0 = greedy
         descending(moves);
     }
@@ -70,15 +72,15 @@ class GRASPConstructiveMaximizingTest {
         assertTrue(this.listManager.calledBefore);
         assertTrue(this.listManager.calledAfter);
         assertEquals(this.moves.size(), this.listManager.nCalls);
-        var moves = builtSolution.lastExecutesMoves();
+        var moves = (List<TestMove>) (Object) builtSolution.lastExecutesMoves();
         // Verify that moves are executed in decreasing score order, as grasp is run with alpha 0 = greedy
         descending(moves);
     }
 
-    private void descending(List<Move<? extends Solution<TestSolution, TestInstance>, TestInstance>> moves){
-        double last = moves.get(0).getValue();
+    private void descending(List<TestMove> moves){
+        double last = maxObj.evalMove(moves.getFirst());
         for (int i = 1; i < moves.size(); i++) {
-            double current = moves.get(i).getValue();
+            double current = maxObj.evalMove(moves.get(i));
             assertTrue(DoubleComparator.isLessOrEquals(current, last));
             last = current;
         }

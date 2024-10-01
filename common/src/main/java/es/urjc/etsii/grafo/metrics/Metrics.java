@@ -107,9 +107,11 @@ public final class Metrics {
             // If initializer is present create, else fail because user forgot to register their custom metric
             if(initializers.containsKey(metricName)){
                 storage.metrics.put(metricName, initializers.get(metricName).apply(storage.referenceNanoTime));
-            } else {
-                throw new IllegalArgumentException("Unregistered metric: %s, did you forgot to register it?".formatted(metricName));
             }
+//            else {
+//                log.trace("Unregistered metric: {}", storage.metrics);
+//                throw new IllegalArgumentException("Unregistered metric: %s, did you forgot to register it?".formatted(metricName));
+//            }
         }
     }
 

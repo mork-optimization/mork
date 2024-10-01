@@ -124,6 +124,28 @@ public class Context {
         return context.get().objectives;
     }
 
+    public static <S extends Solution<S,I>, I extends Instance> Map<String, Double> evalSolution(S solution){
+        var objectives = context.get().objectives;
+        Map<String, Double> data = HashMap.newHashMap(objectives.size());
+        for(var e: objectives.entrySet()){
+            var objective = (Objective<?,S,I>) e.getValue();
+            double v = objective.evalSol(solution);
+            data.put(e.getKey(), v);
+        }
+        return data;
+    }
+
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Map<String, Double> evalDeltas(M move){
+        var objectives = context.get().objectives;
+        Map<String, Double> data = HashMap.newHashMap(objectives.size());
+        for(var e: objectives.entrySet()){
+            var objective = (Objective<M,S,I>) e.getValue();
+            double v = objective.evalMove(move);
+            data.put(e.getKey(), v);
+        }
+        return data;
+    }
+
     public static void addTimeEvent(boolean enter, long when, String clazz, String methodName){
         context.get().timeEvents.add(new TimeStatsEvent(enter, when, clazz, methodName));
     }

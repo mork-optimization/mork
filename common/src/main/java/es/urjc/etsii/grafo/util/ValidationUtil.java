@@ -2,10 +2,10 @@ package es.urjc.etsii.grafo.util;
 
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
-import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 
 import java.util.List;
+import java.util.Map;
 import java.util.RandomAccess;
 
 /**
@@ -39,14 +39,18 @@ public class ValidationUtil {
         }
     }
 
-    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean scoreUpdate(Objective<M,S,I> objective, S solution, double old, M move){
-        double newScore = objective.evalSol(solution);
-        double diff = newScore - old;
-        double expected = objective.evalMove(move);
-        if(DoubleComparator.equals(diff, expected)){
-            return true;
-        } else {
-            throw new AssertionError(String.format("Score change validation failed: %s - %s = %s != %s, current move: %s, solution state with move applied: %s. Last applied moves: %s", newScore, old, diff, expected, move, solution, solution.lastExecutesMovesAsString()));
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean scoreUpdate(S solution, Map<String, Double> oldValues, M move){
+        var deltaValues = Context.evalDeltas(move);
+        var newValues = Context.evalSolution(solution);
+        for(var entry : oldValues.entrySet()){
+            var objName = entry.getKey();
+            double oldValue = entry.getValue();
+            double expectedDelta = deltaValues.get(objName);
+            double newValue = newValues.get(objName);
+            if(!DoubleComparator.equals(expectedDelta, newValue - oldValue)){
+                throw new AssertionError(String.format("Score update validation failed: Δ != new - old --> %s != %s - %s, current move: %s, solution state with move applied: %s. Last applied moves: %s", expectedDelta, newValue, oldValue, move, solution, solution.lastExecutesMovesAsString()));
+            }
         }
+        return true;
     }
 }

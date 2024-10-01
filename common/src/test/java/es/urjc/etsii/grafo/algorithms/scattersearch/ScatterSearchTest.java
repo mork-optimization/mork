@@ -16,6 +16,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ScatterSearchTest {
 
+    private final Objective<TestMove,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getValue);
+
     @Test
     void testBuilder() {
         var builder = new ScatterSearchBuilder<TestSolution, TestInstance>();
@@ -56,9 +58,9 @@ class ScatterSearchTest {
         assertEquals(newImprover, builder.improver);
 
         // Maximize
-        assertNull(builder.fmode);
-        builder.withSolvingMode(FMode.MINIMIZE);
-        assertEquals(FMode.MINIMIZE, builder.fmode);
+        assertNull(builder.objective);
+        builder.withObjective(minObj);
+        assertEquals(minObj, builder.objective);
 
         // Refset size
         assertThrows(IllegalArgumentException.class, () -> builder.withRefsetSize(Integer.MAX_VALUE));

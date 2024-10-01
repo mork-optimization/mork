@@ -41,7 +41,6 @@ public class TestMove extends Move<TestSolution, TestInstance> {
         return solution;
     }
 
-    @Override
     public double getValue() {
         return score;
     }

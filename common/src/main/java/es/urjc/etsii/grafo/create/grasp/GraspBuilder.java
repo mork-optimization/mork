@@ -48,7 +48,8 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
     }
 
     /**
-     * Greedy function used to evaluate the score of each move. If not changed, uses {@link Move#getValue()} by default
+     * Determines both which greedy function is used to evaluate moves, and if the greedy function should be
+     * minimized or maximized.
      *
      * @param objective objective function to use
      * @return same builder with its config changed

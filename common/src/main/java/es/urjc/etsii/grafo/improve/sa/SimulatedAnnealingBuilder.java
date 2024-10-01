@@ -27,7 +27,7 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     private TerminationCriteria<M, S, I> terminationCriteria;
     private CoolDownControl<M, S, I> coolDownControl;
     private int cycleLength = 1;
-    private Objective<M,S,I> objective = Context.getMainObjective();
+    private Objective<M,S,I> objective;
 
     /**
      * Neighborhood for the Simulated Annealing.
@@ -69,8 +69,8 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      *
      * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withInitialTempMaxValue() {
-        this.initialTemperatureCalculator = new MaxDifferenceInitialTemperature<>();
+    public SimulatedAnnealingBuilder<M,S,I> withInitialTempMaxValue(Objective<M,S,I> objective) {
+        this.initialTemperatureCalculator = new MaxDifferenceInitialTemperature<>(objective);
         return this;
     }
 
@@ -80,8 +80,8 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
      * @param ratio Multiply max difference by this parameter
      * @return simulated annealing builder
      */
-    public SimulatedAnnealingBuilder<M,S,I> withInitialTempMaxValue(double ratio) {
-        this.initialTemperatureCalculator = new MaxDifferenceInitialTemperature<>(ratio);
+    public SimulatedAnnealingBuilder<M,S,I> withInitialTempMaxValue(Objective<M,S,I> objective, double ratio) {
+        this.initialTemperatureCalculator = new MaxDifferenceInitialTemperature<>(objective, ratio);
         return this;
     }
 
@@ -168,36 +168,6 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
         return this;
     }
 
-    /**
-     * Build a SimulatedAnnealing using the provided config values. Default values are as follows:
-     *
-     * @return configured and ready to use simulated annealing algorithm
-     */
-    public SimulatedAnnealing<M,S,I> build() {
-        if(this.objective == null){
-            throw new IllegalArgumentException("Cannot create simulated annealing without specifying an objective function. Use withObjective method to configure");
-        }
-        if(this.neighborhood == null){
-            throw new IllegalArgumentException("Cannot create simulated annealing without a neighborhood, use withNeighborhood method");
-        }
-        if(this.initialTemperatureCalculator == null){
-            throw new IllegalArgumentException("Cannot create simulated annealing without a neighborhood, use withInitialTemp to configure");
-        }
-        if(this.coolDownControl == null){
-            throw new IllegalArgumentException("Cannot create simulated annealing without a cool down function, use withCoolDown functions to configure");
-        }
-        if(this.terminationCriteria == null){
-            throw new IllegalArgumentException("Cannot create simulated annealing without a termination criteria, use withTerminationCriteria functions to configure. If you want to execute until the solution converges, use withConvergeTerminationCriteria");
-        }
-        if(cycleLength <= 0){
-            throw new IllegalArgumentException("Cycle length must be > 0");
-        }
-        if(acceptanceCriteria == null){
-            throw new IllegalArgumentException("Acceptance criteria is not configured. Use either withAcceptanceCriteria or withDefaultAcceptanceCriteria to configure an acceptance criteria.");
-        }
-
-        return new SimulatedAnnealing<>(objective, acceptanceCriteria, neighborhood, initialTemperatureCalculator, terminationCriteria, coolDownControl, this.cycleLength);
-    }
 
     /**
      * Configure a custom acceptance criteria.
@@ -211,8 +181,52 @@ public class SimulatedAnnealingBuilder<M extends Move<S, I>, S extends Solution<
     /**
      * Set acceptance criteria to default value, based on the metropolis exponential function
      */
-    public SimulatedAnnealingBuilder<M,S,I> withAcceptanceCriteriaDefault(){
-        this.acceptanceCriteria = new MetropolisAcceptanceCriteria<>();
+    public SimulatedAnnealingBuilder<M,S,I> withAcceptanceCriteriaDefault(Objective<M, S, I> objective){
+        this.acceptanceCriteria = new MetropolisAcceptanceCriteria<>(objective);
         return this;
+    }
+
+    /**
+     * Build a SimulatedAnnealing using the provided config values. Default values if not explicitly set:
+     * - Acceptance: Metropolis
+     * - Initial temp: max difference between moves in neighborhood
+     * - Cooling Schedule: Exponential with ratio 0.99
+     * - Termination criteria: temperature convergence
+     * - Cycle length: 1
+     * - Objective: Context::getMainObjective
+     *
+     * @return configured and ready to use simulated annealing algorithm
+     */
+    public SimulatedAnnealing<M,S,I> build() {
+        if(this.neighborhood == null){
+            throw new IllegalArgumentException("Cannot create simulated annealing without a neighborhood, use withNeighborhood method");
+        }
+
+        Objective<M,S,I> objective = this.objective == null? Context.getMainObjective() : this.objective;
+        if(objective == null){
+            throw new IllegalArgumentException("Cannot create simulated annealing without specifying an objective function. Use withObjective method to configure");
+        }
+
+        if(this.initialTemperatureCalculator == null){
+            this.withInitialTempMaxValue(objective);
+        }
+
+        if(this.coolDownControl == null){
+            this.withCoolDownExponential(0.99);
+        }
+
+        if(this.terminationCriteria == null){
+            this.withTerminationCriteriaConverge();
+        }
+
+        if(acceptanceCriteria == null){
+            this.withAcceptanceCriteriaDefault(objective);
+        }
+
+        if(cycleLength <= 0){
+            throw new IllegalArgumentException("Cycle length must be > 0");
+        }
+
+        return new SimulatedAnnealing<>(objective, acceptanceCriteria, neighborhood, initialTemperatureCalculator, terminationCriteria, coolDownControl, this.cycleLength);
     }
 }

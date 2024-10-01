@@ -7,9 +7,9 @@ import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
-import es.urjc.etsii.grafo.util.ValidationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

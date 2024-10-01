@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 
 public class TimedAlgorithm extends Algorithm<TestSolution, TestInstance> {
@@ -60,7 +61,7 @@ public class TimedAlgorithm extends Algorithm<TestSolution, TestInstance> {
         final int sleep;
 
         public TestLocalSearch(int sleep) {
-            super(Objective.ofDefaultMinimize());
+            super(Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getValue));
             this.sleep = sleep;
         }
 

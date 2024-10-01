@@ -14,6 +14,7 @@ import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.Context;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
@@ -170,7 +171,8 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
             return solution;
         }
         solution = ls(solution);
-        logger.debug("Initial solution: {} - {}", solution.getScore(), solution);
+        double bestScore = this.objective.evalSol(solution);
+        logger.debug("Initial solution: {} - {}", bestScore, solution);
         int iterationsWithoutImprovement = 0;
         for (int i = 0; i < maxIterations; i++) {
             if(TimeControl.isTimeUp()){
@@ -180,17 +182,20 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
             copy = this.destructionReconstruction.shake(copy, 1);
             copy = ls(copy);
 
+            // Verify original solution score has not changed while modifying the copy
+            assert DoubleComparator.equals(bestScore, this.objective.evalSol(solution)): "Original solution changed score after modifying a copy, review your clone implementation";
 
             // Analyze result
-            if(!objective.isBetter(copy, solution)){
+            if(!objective.isBetter(copy, bestScore)){
                 iterationsWithoutImprovement++;
                 if (iterationsWithoutImprovement >= this.stopIfNotImprovedIn) {
-                    logger.debug("Not improved after {} iterations, stopping in iteration {}. Current score {} - {}", stopIfNotImprovedIn, i, solution.getScore(), solution);
+                    logger.debug("Not improved after {} iterations, stopping in iteration {}. Current score {} - {}", stopIfNotImprovedIn, i, bestScore, solution);
                     break;
                 }
             } else {
                 solution = copy;
-                logger.debug("Improved at iteration {}: {} - {}", i, solution.getScore(), solution);
+                bestScore = this.objective.evalSol(solution);
+                logger.debug("Improved at iteration {}: {} - {}", i, bestScore, solution);
                 Metrics.addCurrentObjectives(solution);
                 iterationsWithoutImprovement = 0;
             }

@@ -40,9 +40,9 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
      */
     public S improve(S solution){
 
-        double initialScore = solution.getScore();
+        double initialScore = objective.evalSol(solution);
         S improvedSolution = this._improve(solution);
-        double endScore = improvedSolution.getScore();
+        double endScore = objective.evalSol(improvedSolution);
 
         // Log, verify and store
         log.debug("{} --> {}", initialScore, endScore);
