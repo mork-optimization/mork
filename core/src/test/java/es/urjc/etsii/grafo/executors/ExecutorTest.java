@@ -48,11 +48,11 @@ class ExecutorTest {
         Context.Configurator.setObjectives(Objective.ofDefaultMinimize());
         var instance1 = new TestInstance("inst1");
         var referenceResult1 = new ReferenceResult();
-        referenceResult1.setScore(5.0);
+        referenceResult1.setScores(5.0);
         referenceResult1.setOptimalValue(true);
 
         var referenceResult2 = new ReferenceResult();
-        referenceResult2.setScore(7.0);
+        referenceResult2.setScores(7.0);
         referenceResult2.setOptimalValue(false);
 
         this.referenceResultProvider = mock(ReferenceResultProvider.class);

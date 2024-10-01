@@ -65,12 +65,23 @@ public class Context {
     }
 
     public static <S extends Solution<S,I>, I extends Instance> void validate(S solution){
-        // TODO finish implementation
-        SolutionValidator<S,I> userValidator = (SolutionValidator<S, I>) Context.context.get().validator;
+        var ctx = context.get();
+        SolutionValidator<S,I> userValidator = (SolutionValidator<S, I>) ctx.validator;
         if(userValidator != null){
             var result = userValidator.validate(solution);
             result.throwIfFail();
         }
+        ValidationUtil.positiveTTB(solution);
+        // TODO add validation with ref result if optimal
+//        var instanceName = solution.getInstance().getId();
+//        var optimalValue = getOptionalReferenceValue(instanceName, true);
+//        if (optimalValue.isPresent()) {
+//            // Check that solution score is not better than optimal value
+//            double solutionScore = solution.getScore();
+//            if(mainObjective.isBetter(solutionScore, optimalValue.get())){
+//                throw new AssertionError("Solution score (%s) improves optimal value (%s) in ReferenceResultProvider".formatted(solutionScore, optimalValue.get()));
+//            }
+//        }
     }
 
 

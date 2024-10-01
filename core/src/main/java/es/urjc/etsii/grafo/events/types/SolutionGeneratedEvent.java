@@ -4,10 +4,12 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.metrics.MetricsStorage;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeStatsEvent;
 
 import java.lang.ref.SoftReference;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -27,7 +29,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
     private final boolean success;
     private final String iteration;
     private final String instancePath;
-    private final double score;
+    private final Map<String, Double> objectives;
     private final long executionTime;
     private final long timeToBest;
     private final Algorithm<S,I> algorithm;
@@ -59,11 +61,11 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
         this.metrics = metrics;
         this.timeStatsEvents = timeStatsEvents;
         if(solution != null){
-            this.score = solution.getScore();
+            this.objectives = Context.evalSolution(solution);
             this.instanceName = solution.getInstance().getId();
         } else {
-            this.score = Double.NaN;
             this.instanceName = "Unknown";
+            this.objectives = Map.of();
         }
     }
 
@@ -108,8 +110,8 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
      *
      * @return solution score
      */
-    public double getScore() {
-        return score;
+    public Map<String, Double> getObjectives() {
+        return objectives;
     }
 
     /**

@@ -124,17 +124,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
      * @param solution Solution to check.
      */
     public void validate(S solution) {
-        ValidationUtil.positiveTTB(solution);
-        var instanceName = solution.getInstance().getId();
-        var optimalValue = this.getOptionalReferenceValue(instanceName, true);
-        if (optimalValue.isPresent()) {
-            // Check that solution score is not better than optimal value
-            double solutionScore = solution.getScore();
-            if(mainObjective.isBetter(solutionScore, optimalValue.get())){
-                throw new AssertionError("Solution score (%s) improves optimal value (%s) in ReferenceResultProvider".formatted(solutionScore, optimalValue.get()));
-            }
-        }
-        ValidationUtil.runUserValidation(validator, solution);
+        Context.validate(solution);
     }
 
     /**

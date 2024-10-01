@@ -45,17 +45,17 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
         for (int i = 1; i < cutOff; i++) {
             var r = results.get(i - 1);
             double bestValueForInstance = bestValuesPerInstance.get(r.getInstanceName());
-            boolean isBest = DoubleComparator.equals(bestValueForInstance, r.getScore());
+            boolean isBest = DoubleComparator.equals(bestValueForInstance, r.getObjectives());
 
             data[i][RawSheetCol.INSTANCE_NAME.getIndex()] = r.getInstanceName();
             data[i][RawSheetCol.ALG_NAME.getIndex()] = r.getAlgorithmName();
             data[i][RawSheetCol.ITERATION.getIndex()] = r.getIteration();
-            data[i][RawSheetCol.SCORE.getIndex()] = r.getScore();
+            data[i][RawSheetCol.SCORE.getIndex()] = r.getObjectives();
             data[i][RawSheetCol.TOTAL_TIME.getIndex()] = nanosToSecs(r.getExecutionTime());
             data[i][RawSheetCol.TTB.getIndex()] = nanosToSecs(r.getTimeToBest());
             data[i][RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getIndex()] = bestValueForInstance;
             data[i][RawSheetCol.IS_BEST_KNOWN.getIndex()] = isBest ? 1 : 0;
-            data[i][RawSheetCol.DEV_TO_BEST.getIndex()] = getPercentageDevToBest(r.getScore(), bestValueForInstance);
+            data[i][RawSheetCol.DEV_TO_BEST.getIndex()] = getPercentageDevToBest(r.getObjectives(), bestValueForInstance);
 
 //            var userProps = r.getUserDefinedProperties();
 //            for (int j = 0; j < customProperties.length; j++) {

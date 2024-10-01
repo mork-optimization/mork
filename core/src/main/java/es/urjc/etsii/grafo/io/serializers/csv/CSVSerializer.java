@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.io.serializers.csv;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
+import com.fasterxml.jackson.annotation.JsonUnwrapped;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
@@ -19,6 +20,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 /**
  * CSV serializer. By changing the separator in the configuration from ',' to '\t', can serialize to other formats such as TSV.
@@ -64,7 +66,7 @@ public class CSVSerializer<S extends Solution<S, I>, I extends Instance> extends
             for (var instanceName : instaceNames) {
                 var providerName = referenceProvider.getProviderName();
                 var referenceValue = referenceProvider.getValueFor(instanceName);
-                if (referenceValue.getScore().isPresent()) {
+                if (referenceValue.getScores().isPresent()) {
                     data.add(new CSVRow(instanceName, providerName, referenceValue));
                 }
             }
@@ -79,25 +81,17 @@ public class CSVSerializer<S extends Solution<S, I>, I extends Instance> extends
     }
 
     private CsvSchema getSchema() {
-        return csvMapper.schemaFor(CSVRow.class)
+        return csvMapper
+                .schemaFor(CSVRow.class)
+                .
                 .withColumnSeparator(config.getSeparator())
                 .sortedBy("instanceName", "algorithmName", "iteration")
                 .withHeader();
     }
 
-    /**
-     * Private DTO to map required data to CSV
-     *
-     * @param instanceName
-     * @param algorithmName
-     * @param iteration
-     * @param score
-     * @param time
-     * @param ttb
-     */
-    private record CSVRow(String instanceName, String algorithmName, String iteration, double score, long time, long ttb) {
+    private record CSVRow(String instanceName, String algorithmName, String iteration, @JsonUnwrapped Map<String, Double> scores, long time, long ttb) {
         public CSVRow(SolutionGeneratedEvent<?, ?> event) {
-            this(event.getInstanceName(), event.getAlgorithmName(), event.getIteration(), event.getScore(), event.getExecutionTime(), event.getTimeToBest());
+            this(event.getInstanceName(), event.getAlgorithmName(), event.getIteration(), event.getObjectives(), event.getExecutionTime(), event.getTimeToBest());
         }
 
         public CSVRow(String instanceName, String algorithmName, ReferenceResult referenceValue) {

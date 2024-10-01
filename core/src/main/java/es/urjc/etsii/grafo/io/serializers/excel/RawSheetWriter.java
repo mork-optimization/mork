@@ -137,7 +137,7 @@ public abstract class RawSheetWriter {
                 .stream()
                 .collect(Collectors.toMap(
                         SolutionGeneratedEvent::getInstanceName,
-                        SolutionGeneratedEvent::getScore,
+                        SolutionGeneratedEvent::getObjectives,
                         (a, b) -> maximizing ? Math.max(a, b) : Math.min(a, b)
                 ));
 
@@ -146,7 +146,7 @@ public abstract class RawSheetWriter {
         for(var instance: ourBestValuePerInstance.keySet()){
             double best = ourBestValuePerInstance.get(instance);
             for(var reference: providers){
-                var optionalValue = reference.getValueFor(instance).getScore();
+                var optionalValue = reference.getValueFor(instance).getScores();
                 if(maximizing){
                     best = Math.max(best, optionalValue.orElse(ExcelSerializer.NEGATIVE_INFINITY));
                 } else {

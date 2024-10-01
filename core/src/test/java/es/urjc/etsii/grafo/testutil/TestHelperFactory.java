@@ -52,7 +52,7 @@ public class TestHelperFactory {
             @Override
             public ReferenceResult getValueFor(String instanceName) {
                 ReferenceResult rs = new ReferenceResult();
-                rs.setScore(score);
+                rs.setScores(score);
                 rs.setTimeInSeconds(timeInSeconds);
                 return rs;
             }

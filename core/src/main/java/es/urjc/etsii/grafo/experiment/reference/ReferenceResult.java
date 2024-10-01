@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.experiment.reference;
 
+import java.util.Map;
 import java.util.Optional;
 
 import static es.urjc.etsii.grafo.util.TimeUtil.secsToNanos;
@@ -8,7 +9,7 @@ import static es.urjc.etsii.grafo.util.TimeUtil.secsToNanos;
  * Reference result for an instance
  */
 public class ReferenceResult {
-    private double score = Double.NaN;
+    private Map<String, Double> scores = Map.of();
     private double timeInSeconds = Double.NaN;
     private double timeToBestInSeconds = Double.NaN;
     private boolean isOptimalValue = false;
@@ -18,8 +19,8 @@ public class ReferenceResult {
      *
      * @return score, NaN if not defined
      */
-    public double getScoreOrNan() {
-        return score;
+    public Map<String, Double> getScoreOrNan() {
+        return scores;
     }
 
     /**
@@ -27,8 +28,22 @@ public class ReferenceResult {
      *
      * @return optional score
      */
-    public Optional<Double> getScore(){
-        return Double.isNaN(this.score) ? Optional.empty() : Optional.of(this.score);
+    public Map<String, Double> getScores(){
+        return this.scores;
+    }
+
+    /**
+     * Get score if present, never NaN.
+     *
+     * @return optional score
+     */
+    public Optional<Double> getScore(String objective){
+        var score = this.scores.get(objective);
+        if(score != null && !Double.isNaN(score)){
+            return Optional.of(score);
+        } else {
+            return Optional.empty();
+        }
     }
 
     /**
@@ -53,22 +68,11 @@ public class ReferenceResult {
     /**
      * Set score
      *
-     * @param score score
+     * @param scores score
      * @return ReferenceResult
      */
-    public ReferenceResult setScore(double score) {
-        this.score = score;
-        return this;
-    }
-
-    /**
-     * Set score parsing double from the given string
-     *
-     * @param score as a string
-     * @return ReferenceResult
-     */
-    public ReferenceResult setScore(String score) {
-        this.setScore(Double.parseDouble(score));
+    public ReferenceResult setScores(Map<String, Double> scores) {
+        this.scores = scores;
         return this;
     }
 
@@ -131,7 +135,7 @@ public class ReferenceResult {
     }
 
     /**
-     * Is the current reference value returned by {@link ReferenceResult#getScore()} optimal?
+     * Is the current reference value returned by {@link ReferenceResult#getScores()} optimal?
      * @return True if the value returned by getScore is known to be optimal, false otherwise
      */
     public boolean isOptimalValue() {
@@ -139,7 +143,7 @@ public class ReferenceResult {
     }
 
     /**
-     * Specify if the value provided in {@link ReferenceResult#setScore(double)} ()} is optimal.
+     * Specify if the values provided in {@link ReferenceResult#setScores(Map)} is optimal.
      * If not specified, defaults to false.
      * @param isOptimal True if the value returned by getScore is known to be optimal, false otherwise
      */

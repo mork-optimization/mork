@@ -46,7 +46,7 @@ public class ExcelCalculatedRawSheetWriter extends RawSheetWriter {
             data[i][RawSheetCol.INSTANCE_NAME.getIndex()] = r.getInstanceName();
             data[i][RawSheetCol.ALG_NAME.getIndex()] = r.getAlgorithmName();
             data[i][RawSheetCol.ITERATION.getIndex()] = r.getIteration();
-            data[i][RawSheetCol.SCORE.getIndex()] = r.getScore();
+            data[i][RawSheetCol.SCORE.getIndex()] = r.getObjectives();
             data[i][RawSheetCol.TOTAL_TIME.getIndex()] = nanosToSecs(r.getExecutionTime());
             data[i][RawSheetCol.TTB.getIndex()] = nanosToSecs(r.getTimeToBest());
             int excelRowIndex = i + 1; // Current row +1 because Excel starts indexing rows on 1.
