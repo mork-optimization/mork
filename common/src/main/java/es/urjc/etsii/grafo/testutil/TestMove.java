@@ -41,7 +41,7 @@ public class TestMove extends Move<TestSolution, TestInstance> {
         return solution;
     }
 
-    public double getValue() {
+    public double getScoreChange() {
         return score;
     }
 

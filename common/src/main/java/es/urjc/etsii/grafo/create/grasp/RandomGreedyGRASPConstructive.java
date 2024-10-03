@@ -50,7 +50,7 @@ public class RandomGreedyGRASPConstructive<M extends Move<S, I>, S extends Solut
             return r.nextInt(cl.size());
         }
 
-        M best = objective.getBestMove(rcl);
+        M best = objective.bestMove(rcl);
         double bestValue = objective.evalMove(best);
         assert best != null : "null best with RCL:" + rcl;
 

@@ -23,7 +23,7 @@ public class FirstImprovementLSTest extends BaseLSTest {
     }
 
     public void testOrder(FMode fmode){
-        Objective<TestMove, TestSolution, TestInstance> objective = Objective.of("Test"+fmode, fmode, TestSolution::getScore, TestMove::getValue);
+        Objective<TestMove, TestSolution, TestInstance> objective = Objective.of("Test"+fmode, fmode, TestSolution::getScore, TestMove::getScoreChange);
         double[] values = {
                 0, 0.5, 195, -95438, 196341, -99614, 12, 861523, Math.PI, Math.E
         };
@@ -32,7 +32,7 @@ public class FirstImprovementLSTest extends BaseLSTest {
         var firstImprovementLS = new LocalSearchFirstImprovement<>(objective, mockNeighborhod);
         var chosenMove = firstImprovementLS.getMove(solution);
         Assertions.assertNotNull(chosenMove);
-        double value = chosenMove.getValue();
+        double value = chosenMove.getScoreChange();
         if(fmode == FMode.MAXIMIZE){
             Assertions.assertEquals(0.5, value);
         } else {

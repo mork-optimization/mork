@@ -93,7 +93,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
         if(experiments.size() > 1){
             log.info("Experiments to execute: {}", experiments.keySet());
         }
-        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectives(), new ArrayList<>(experiments.keySet())));
+        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectivesW(), new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
         try {
             executor.startup();

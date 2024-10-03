@@ -7,6 +7,9 @@ import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
+import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.Context;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
@@ -37,7 +40,7 @@ public class InstanceProperties<I extends Instance> extends AbstractOrchestrator
     public void run(String... args) {
         long start = System.nanoTime();
         try {
-            EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectives(), List.of("Instance analysis")));
+            EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectivesW(), List.of("Instance analysis")));
             analyzeInstances();
         } finally {
             long end = System.nanoTime();

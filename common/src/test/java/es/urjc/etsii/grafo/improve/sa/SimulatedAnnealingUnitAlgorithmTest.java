@@ -36,7 +36,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
 
     private final TestInstance testInstance = new TestInstance("testinstance");
     private final TestSolution testSolution = new TestSolution(testInstance);
-    private static final Objective<?,?,?> objective = Objective.of("Test", FMode.MINIMIZE, TestSolution::getScore, TestMove::getValue);
+    private static final Objective<?,?,?> objective = Objective.of("Test", FMode.MINIMIZE, TestSolution::getScore, TestMove::getScoreChange);
 
     Constructive<TestSolution, TestInstance> constructive = Constructive.nul();
     private CoolDownControl mockitoCoolDownControl;
@@ -121,7 +121,7 @@ class SimulatedAnnealingUnitAlgorithmTest {
                         .withNeighborhood(randomizableNeighborhood)
                         .build();
 
-        var fakeObj = Objective.of("Fake", FMode.MINIMIZE, TestSolution::getScore, TestMove::getValue);
+        var fakeObj = Objective.of("Fake", FMode.MINIMIZE, TestSolution::getScore, TestMove::getScoreChange);
         Context.Configurator.setObjectives(fakeObj);
         sa = new SimulatedAnnealingBuilder<>()
                         .withCoolDownCustom(coolDownControl)

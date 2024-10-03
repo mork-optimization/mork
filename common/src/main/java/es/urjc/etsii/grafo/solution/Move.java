@@ -69,7 +69,7 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
         assert saveLastMove(solution, this);
         S newSolution = executeDirect(solution);
         assert ValidationUtil.scoreUpdate(solution, oldValues, this);
-        Context.validate(solution);
+        assert Context.validate(solution);
         return newSolution;
     }
 

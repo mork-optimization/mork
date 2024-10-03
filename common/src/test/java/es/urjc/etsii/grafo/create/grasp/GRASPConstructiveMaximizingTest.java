@@ -1,8 +1,6 @@
 package es.urjc.etsii.grafo.create.grasp;
 
-import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Objective;
-import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.testutil.TestCommonUtils;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
@@ -21,7 +19,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class GRASPConstructiveMaximizingTest {
 
-    private final Objective<TestMove,TestSolution,TestInstance> maxObj = Objective.ofMaximizing("TestMax", TestSolution::getScore, TestMove::getValue);
+    private final Objective<TestMove,TestSolution,TestInstance> maxObj = Objective.ofMaximizing("TestMax", TestSolution::getScore, TestMove::getScoreChange);
 
     TestGRASPListManager listManager;
     List<TestMove> moves;

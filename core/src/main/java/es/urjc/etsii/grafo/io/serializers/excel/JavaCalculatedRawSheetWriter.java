@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.io.serializers.excel;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.util.ArrayUtil;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.util.AreaReference;
@@ -25,7 +26,7 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
     @Override
     public AreaReference fillRawSheet(XSSFSheet rawSheet, boolean maximizing, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders) {
         // Best values per instance
-        Map<String, Double> bestValuesPerInstance = bestResultPerInstance(results, referenceResultProviders, maximizing);
+        Map<String, Double> bestValuesPerInstance = bestResultPerInstance(Context.getMainObjective(), results, referenceResultProviders, maximizing);
 
         // Create headers
         String[] customProperties = getCustomPropertyNames(results);
@@ -42,20 +43,24 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
         Object[][] data = new Object[nRows][nColumns];
         data[0] = headers;
 
+        var mainObjName = Context.getMainObjective().getName();
+
         for (int i = 1; i < cutOff; i++) {
             var r = results.get(i - 1);
             double bestValueForInstance = bestValuesPerInstance.get(r.getInstanceName());
-            boolean isBest = DoubleComparator.equals(bestValueForInstance, r.getObjectives());
+            var objValues = r.getObjectives();
+            var mainObjValue = objValues.get(mainObjName);
+            boolean isBest = DoubleComparator.equals(bestValueForInstance, mainObjValue);
 
             data[i][RawSheetCol.INSTANCE_NAME.getIndex()] = r.getInstanceName();
             data[i][RawSheetCol.ALG_NAME.getIndex()] = r.getAlgorithmName();
             data[i][RawSheetCol.ITERATION.getIndex()] = r.getIteration();
-            data[i][RawSheetCol.SCORE.getIndex()] = r.getObjectives();
+            data[i][RawSheetCol.SCORE.getIndex()] = r.getObjectives().get(mainObjName);
             data[i][RawSheetCol.TOTAL_TIME.getIndex()] = nanosToSecs(r.getExecutionTime());
             data[i][RawSheetCol.TTB.getIndex()] = nanosToSecs(r.getTimeToBest());
             data[i][RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getIndex()] = bestValueForInstance;
             data[i][RawSheetCol.IS_BEST_KNOWN.getIndex()] = isBest ? 1 : 0;
-            data[i][RawSheetCol.DEV_TO_BEST.getIndex()] = getPercentageDevToBest(r.getObjectives(), bestValueForInstance);
+            data[i][RawSheetCol.DEV_TO_BEST.getIndex()] = getPercentageDevToBest(mainObjValue, bestValueForInstance);
 
 //            var userProps = r.getUserDefinedProperties();
 //            for (int j = 0; j < customProperties.length; j++) {
@@ -67,17 +72,17 @@ public class JavaCalculatedRawSheetWriter extends RawSheetWriter {
         int currentRow = cutOff;
         for(String instaceName: bestValuesPerInstance.keySet()){
             for(var provider: referenceResultProviders){
-                var result = provider.getValueFor(instaceName);
+                var refResult = provider.getValueFor(instaceName);
                 double bestValueForInstance = bestValuesPerInstance.get(instaceName);
-                double score = result.getScoreOrNan();
+                double score = refResult.getScores().getOrDefault(mainObjName, Double.NaN);
                 boolean isBest = Double.isFinite(score) && DoubleComparator.equals(bestValueForInstance, score);
 
                 data[currentRow][RawSheetCol.INSTANCE_NAME.getIndex()] = instaceName;
                 data[currentRow][RawSheetCol.ALG_NAME.getIndex()] = provider.getProviderName();
                 data[currentRow][RawSheetCol.ITERATION.getIndex()] = 0;
                 data[currentRow][RawSheetCol.SCORE.getIndex()] = nanInfiniteFilter(maximizing, score);
-                data[currentRow][RawSheetCol.TOTAL_TIME.getIndex()] = nanInfiniteFilter(false, result.getTimeInSeconds());
-                data[currentRow][RawSheetCol.TTB.getIndex()] = nanInfiniteFilter(false, result.getTimeToBestInSeconds());
+                data[currentRow][RawSheetCol.TOTAL_TIME.getIndex()] = nanInfiniteFilter(false, refResult.getTimeInSeconds());
+                data[currentRow][RawSheetCol.TTB.getIndex()] = nanInfiniteFilter(false, refResult.getTimeToBestInSeconds());
                 data[currentRow][RawSheetCol.IS_BEST_KNOWN.getIndex()] = isBest ? 1 : 0;
                 data[currentRow][RawSheetCol.DEV_TO_BEST.getIndex()] = getPercentageDevToBest(nanInfiniteFilter(maximizing, score), bestValueForInstance);
                 currentRow++;

@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.algorithms.scattersearch;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.solution.Objective;
@@ -16,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ScatterSearchTest {
 
-    private final Objective<TestMove,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getValue);
+    private final Objective<TestMove,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getScoreChange);
 
     @Test
     void testBuilder() {
@@ -145,7 +144,7 @@ class ScatterSearchTest {
 
     @Test
     void testInitializeSimple() {
-        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getValue);
+        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getScoreChange);
         var constructiveGood = new ScatterSearchTestConstructive();
         var constructiveDiverse = new ScatterSearchTestConstructive(50, 1);
         int refsetSize = 10;
@@ -165,7 +164,7 @@ class ScatterSearchTest {
 
     @Test
     void testInitializeFailoverDiverse() {
-        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getValue);
+        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getScoreChange);
         var constructiveGood = new ScatterSearchTestConstructive(0, 0);
         var constructiveDiverse = new ScatterSearchTestConstructive(50,1);
         int refsetSize = 10;
@@ -185,7 +184,7 @@ class ScatterSearchTest {
 
     @Test
     void testSoftReset() {
-        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getValue);
+        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getScoreChange);
         var constructiveGood = new ScatterSearchTestConstructive();
         var constructiveDiverse = new ScatterSearchTestConstructive(50, 1);
         int refsetSize = 10;
@@ -218,7 +217,7 @@ class ScatterSearchTest {
 
     @Test
     void replaceWorstIsActuallyBest(){
-        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMaximizing("Test", TestSolution::getScore, TestMove::getValue);
+        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMaximizing("Test", TestSolution::getScore, TestMove::getScoreChange);
 
         // When reinitializing the refset, all solutions may improve best value known, and that case is perfectly valid, test it
         var constructiveGood = new ScatterSearchTestConstructive(300, 1);
@@ -252,7 +251,7 @@ class ScatterSearchTest {
     }
     @Test
     void mergeSetTest(){
-        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getValue);
+        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getScoreChange);
         int refsetSize = 10;
         int ratio = 5; // Total 50 generated solutions
         double byDiversityRatio = 0.2;
@@ -277,7 +276,7 @@ class ScatterSearchTest {
 
     @Test
     void testAlgorithm() {
-        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMaximizing("Test", TestSolution::getScore, TestMove::getValue);
+        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMaximizing("Test", TestSolution::getScore, TestMove::getScoreChange);
         // Example run with 100 iterations, always keeps improving, final solution score must be greater than 1_000_000
         // When reinitializing the refset, all solutions may improve best value known, and that case is perfectly valid, test it
         var constructiveGood = new ScatterSearchTestConstructive(300, 1);

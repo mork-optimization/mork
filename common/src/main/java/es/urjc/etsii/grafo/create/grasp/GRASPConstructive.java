@@ -62,7 +62,7 @@ public abstract class GRASPConstructive<M extends Move<S, I>, S extends Solution
             chosen.execute(solution);
             cl = candidateListManager.updateCandidateList(solution, chosen, cl, index);
             assert ValidationUtil.assertFastAccess(cl);
-            Context.validate(solution);
+            assert Context.validate(solution);
         }
         return solution;
     }

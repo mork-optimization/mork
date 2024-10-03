@@ -9,10 +9,7 @@ import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.metrics.MetricsStorage;
 import org.mockito.Mockito;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
 
 import static org.mockito.ArgumentMatchers.anyString;
 
@@ -52,7 +49,7 @@ public class TestHelperFactory {
             @Override
             public ReferenceResult getValueFor(String instanceName) {
                 ReferenceResult rs = new ReferenceResult();
-                rs.setScores(score);
+                rs.setScores(Map.of("Test", score));
                 rs.setTimeInSeconds(timeInSeconds);
                 return rs;
             }

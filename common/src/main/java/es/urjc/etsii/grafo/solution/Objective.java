@@ -91,7 +91,7 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
         return c.reversed();
     }
 
-    public S getBestSolution(Iterable<S> list){
+    public S bestSolution(Iterable<S> list){
         S best = null;
         double bestScore = Double.NaN;
         for(var solution: list){
@@ -110,7 +110,7 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
     }
 
 
-    public M getBestMove(Iterable<M> list){
+    public M bestMove(Iterable<M> list){
         M best = null;
         double bestScore = Double.NaN;
         for(var move: list){
@@ -128,13 +128,17 @@ public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I 
         return best;
     }
 
-    public M getBestMove(M m1, M m2){
+    public double best(double a, double b){
+        return getFMode().best(a, b);
+    }
+
+    public M bestMove(M m1, M m2){
         double score1 = evalMove(m1);
         double score2 = evalMove(m2);
         return isBetter(score2, score1) ? m2 : m1;
     }
 
-    public S getBestSolution(S s1, S s2){
+    public S bestSolution(S s1, S s2){
         double score1 = evalSol(s1);
         double score2 = evalSol(s2);
         return isBetter(score2, score1) ? s2 : s1;

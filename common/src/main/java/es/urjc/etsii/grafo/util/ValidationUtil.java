@@ -1,7 +1,9 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResultManager;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 
 import java.util.List;
@@ -13,6 +15,8 @@ import java.util.RandomAccess;
  * Implement different assertions to check solution validity
  */
 public class ValidationUtil {
+
+
 
     /**
      * Check that the given list implements the RandomAccess interface
@@ -52,5 +56,19 @@ public class ValidationUtil {
             }
         }
         return true;
+    }
+
+    public static <S extends Solution<S, I>, I extends Instance> void validateWithRefValues(S solution, Map<String, Objective<?, S, I>> objectives, ReferenceResultManager referenceResultManager) {
+        var refValues = referenceResultManager.getRefValueForAllObjectives(solution.getInstance().getId(), true);
+        for(var obj : objectives.values()){
+            var name = obj.getName();
+            if(!refValues.containsKey(name)){
+                continue;
+            }
+            var refValue = refValues.get(name);
+            if(obj.isBetter(solution, refValue)){
+                throw new AssertionError(String.format("Solution has improved an optimal value: %s (%s). Solution data: %s ", refValue, name, solution));
+            }
+        }
     }
 }

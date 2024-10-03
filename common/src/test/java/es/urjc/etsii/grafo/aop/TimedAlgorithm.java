@@ -61,7 +61,7 @@ public class TimedAlgorithm extends Algorithm<TestSolution, TestInstance> {
         final int sleep;
 
         public TestLocalSearch(int sleep) {
-            super(Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getValue));
+            super(Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getScoreChange));
             this.sleep = sleep;
         }
 

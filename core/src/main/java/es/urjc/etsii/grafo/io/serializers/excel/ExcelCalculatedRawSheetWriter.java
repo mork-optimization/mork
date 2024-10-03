@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.io.serializers.excel;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.util.ArrayUtil;
+import es.urjc.etsii.grafo.util.Context;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -23,7 +24,7 @@ public class ExcelCalculatedRawSheetWriter extends RawSheetWriter {
     @Override
     public AreaReference fillRawSheet(XSSFSheet rawSheet, boolean maximizing, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders) {
         // Best values per instance
-        Map<String, Double> bestValuesPerInstance = bestResultPerInstance(results, referenceResultProviders, maximizing);
+        Map<String, Double> bestValuesPerInstance = bestResultPerInstance(Context.getMainObjective(), results, referenceResultProviders, maximizing);
 
         String[] customProperties = getCustomPropertyNames(results);
 
@@ -40,13 +41,15 @@ public class ExcelCalculatedRawSheetWriter extends RawSheetWriter {
         Object[][] data = new Object[nRows][nColumns];
         data[0] = headers;
 
+        var mainObjName = Context.getMainObjective().getName();
+
         for (int i = 1; i < cutOff; i++) {
             var r = results.get(i - 1);
 
             data[i][RawSheetCol.INSTANCE_NAME.getIndex()] = r.getInstanceName();
             data[i][RawSheetCol.ALG_NAME.getIndex()] = r.getAlgorithmName();
             data[i][RawSheetCol.ITERATION.getIndex()] = r.getIteration();
-            data[i][RawSheetCol.SCORE.getIndex()] = r.getObjectives();
+            data[i][RawSheetCol.SCORE.getIndex()] = r.getObjectives().get(mainObjName);
             data[i][RawSheetCol.TOTAL_TIME.getIndex()] = nanosToSecs(r.getExecutionTime());
             data[i][RawSheetCol.TTB.getIndex()] = nanosToSecs(r.getTimeToBest());
             int excelRowIndex = i + 1; // Current row +1 because Excel starts indexing rows on 1.
@@ -65,15 +68,15 @@ public class ExcelCalculatedRawSheetWriter extends RawSheetWriter {
         int currentRow = cutOff;
         for(String instanceName: bestValuesPerInstance.keySet()){
             for(var provider: referenceResultProviders){
-                var result = provider.getValueFor(instanceName);
-                double score = result.getScoreOrNan();
+                var refResult = provider.getValueFor(instanceName);
+                double refScore = refResult.getScores().getOrDefault(mainObjName, Double.NaN);
 
                 data[currentRow][RawSheetCol.INSTANCE_NAME.getIndex()] = instanceName;
                 data[currentRow][RawSheetCol.ALG_NAME.getIndex()] = provider.getProviderName();
                 data[currentRow][RawSheetCol.ITERATION.getIndex()] = 0;
-                data[currentRow][RawSheetCol.SCORE.getIndex()] = nanInfiniteFilter(maximizing, score);
-                data[currentRow][RawSheetCol.TOTAL_TIME.getIndex()] = nanInfiniteFilter(false, result.getTimeInSeconds());
-                data[currentRow][RawSheetCol.TTB.getIndex()] = nanInfiniteFilter(false, result.getTimeToBestInSeconds());
+                data[currentRow][RawSheetCol.SCORE.getIndex()] = nanInfiniteFilter(maximizing, refScore);
+                data[currentRow][RawSheetCol.TOTAL_TIME.getIndex()] = nanInfiniteFilter(false, refResult.getTimeInSeconds());
+                data[currentRow][RawSheetCol.TTB.getIndex()] = nanInfiniteFilter(false, refResult.getTimeToBestInSeconds());
 
                 int excelRowIndex = currentRow + 1; // Current row +1 because Excel starts indexing rows on 1.
                 data[currentRow][RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getIndex()] = String.format("%s(IF(%3$s:%3$s=%3$s%4$s,%2$s:%2$s))·%5$s%4$s", maximizing ? "MAX" : "MIN", RawSheetCol.SCORE.getExcelColIndex(),  RawSheetCol.INSTANCE_NAME.getExcelColIndex(), excelRowIndex, RawSheetCol.BEST_KNOWN_FOR_INSTANCE.getExcelColIndex());

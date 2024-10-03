@@ -15,15 +15,6 @@ public class ReferenceResult {
     private boolean isOptimalValue = false;
 
     /**
-     * get score for this instance, or NaN if not defined
-     *
-     * @return score, NaN if not defined
-     */
-    public Map<String, Double> getScoreOrNan() {
-        return scores;
-    }
-
-    /**
      * Get score if present, never NaN.
      *
      * @return optional score

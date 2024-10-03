@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.executors;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.EventPublisher;
@@ -10,7 +9,7 @@ import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.exceptions.DefaultExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
-import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResultManager;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
@@ -23,7 +22,6 @@ import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.TimeUtil;
-import es.urjc.etsii.grafo.util.ValidationUtil;
 import me.tongfei.progressbar.ProgressBar;
 import me.tongfei.progressbar.ProgressBarBuilder;
 import me.tongfei.progressbar.ProgressBarStyle;
@@ -53,9 +51,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     protected final Optional<TimeLimitCalculator<S, I>> timeLimitCalculator;
     protected final IOManager<S, I> io;
     protected final InstanceManager<I> instanceManager;
-    protected final List<ReferenceResultProvider> referenceResultProviders;
+    protected final ReferenceResultManager referenceResultManager;
     protected final SolverConfig solverConfig;
-    protected final Objective<?,S,I> mainObjective = Context.getMainObjective();
 
     private final ExceptionHandler<S, I> exceptionHandler;
 
@@ -81,11 +78,11 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     /**
      * Fill common values used by all executors
      *
-     * @param validator                solution validator if available
-     * @param timeLimitCalculator      time limit calculator if exists
-     * @param io                       IO manager
-     * @param referenceResultProviders list of all reference value providers implementations
-     * @param exceptionHandlers list of exception handlers available
+     * @param validator              solution validator if available
+     * @param timeLimitCalculator    time limit calculator if exists
+     * @param io                     IO manager
+     * @param exceptionHandlers      list of exception handlers available
+     * @param referenceResultManager reference result manager
      */
     @SuppressWarnings({"unchecked"}) // due to current decideImplementation required cast
     protected Executor(
@@ -93,17 +90,16 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             Optional<TimeLimitCalculator<S, I>> timeLimitCalculator,
             IOManager<S, I> io,
             InstanceManager<I> instanceManager,
-            List<ReferenceResultProvider> referenceResultProviders,
             SolverConfig solverConfig,
-            List<ExceptionHandler<S, I>> exceptionHandlers) {
+            List<ExceptionHandler<S, I>> exceptionHandlers, ReferenceResultManager referenceResultManager) {
         this.timeLimitCalculator = timeLimitCalculator;
-        this.referenceResultProviders = referenceResultProviders;
         this.solverConfig = solverConfig;
         this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
 
         this.validator = validator;
         this.io = io;
         this.instanceManager = instanceManager;
+        this.referenceResultManager = referenceResultManager;
     }
 
     public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, long startTimestamp);
@@ -117,15 +113,6 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
      * Finalize and destroy all resources, we have finished and are shutting down now.
      */
     public abstract void shutdown();
-
-    /**
-     * Run both user specific validations and our own.
-     *
-     * @param solution Solution to check.
-     */
-    public void validate(S solution) {
-        Context.validate(solution);
-    }
 
     /**
      * Execute a single iteration for the given (experiment, instance, algorithm, iterationId)
@@ -160,7 +147,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
             // Prepare work unit results and cleanup
             endTimeControl(timeLimitCalculator, workUnit);
-            validate(solution);
+            Context.validate(solution);
 
             long timeToTarget = solution.getLastModifiedTime() - startTime;
             long executionTime = endTime - startTime;
@@ -215,26 +202,6 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         io.exportSolution(modifiedWorkUnit, SolutionExportFrequency.BEST_PER_INSTANCE);
     }
 
-    protected Optional<Double> getOptionalReferenceValue(String instanceName, boolean onlyOptimal) {
-        var fmode = Context.getMainObjective().getFMode();
-        double best = fmode.getBadValue();
-        for (var r : referenceResultProviders) {
-            double score = Double.NaN;
-            var ref = r.getValueFor(instanceName);
-            if (ref != null) {
-                score = ref.getScoreOrNan();
-            }
-            // Ignore if not valid value
-            if (Double.isFinite(score) && (!onlyOptimal || ref.isOptimalValue())) {
-                best = fmode.best(best, score);
-            }
-        }
-        if (best == FMode.MAXIMIZE.getBadValue() || best == FMode.MINIMIZE.getBadValue()) {
-            return Optional.empty();
-        } else {
-            return Optional.of(best);
-        }
-    }
 
     /**
      * Create workunits with solve order

@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.io.serializers;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.events.AbstractEventStorage;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
-import es.urjc.etsii.grafo.testutil.TestHelperFactory;
-import es.urjc.etsii.grafo.testutil.TestInstance;
-import es.urjc.etsii.grafo.testutil.TestSerializerConfigUtils;
-import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.solution.Objective;
+import es.urjc.etsii.grafo.testutil.*;
+import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -18,6 +18,7 @@ import java.util.List;
 import static org.mockito.Mockito.*;
 
 public class ResultsSerializerListenerTest {
+    private static final Objective<TestMove, TestSolution, TestInstance> OBJ_MIN = Objective.of("Test", FMode.MINIMIZE, TestSolution::getScore, TestMove::getScoreChange);
 
     private final String expName = "TestExp";
     private AbstractEventStorage<TestSolution, TestInstance> eventStorage;
@@ -26,16 +27,20 @@ public class ResultsSerializerListenerTest {
     private ResultsSerializer<TestSolution, TestInstance> serializer3; // Always disabled
 
 
-    private List<SolutionGeneratedEvent<TestSolution,TestInstance>> data = Arrays.asList(
-            TestHelperFactory.solutionGenerated("fakeInstance", "fakeExp", "fakeAlg", 1, 2, 10, 8),
-            TestHelperFactory.solutionGenerated("fakeInstance2", "fakeExp2", "fakeAlg2", 2, 4, 12, 7),
-            TestHelperFactory.solutionGenerated("fakeInstance3", "fakeExp3", "fakeAlg3", 3, 5, 14, 6)
-    );
+    private List<SolutionGeneratedEvent<TestSolution,TestInstance>> data;
+
     private ResultsSerializerListener<TestSolution, TestInstance> listener;
 
     @SuppressWarnings("unchecked")
     @BeforeEach
     public void prepareMocks(@TempDir Path temp) {
+        Context.Configurator.setObjectives(OBJ_MIN);
+        data = Arrays.asList(
+                TestHelperFactory.solutionGenerated("fakeInstance", "fakeExp", "fakeAlg", 1, 2, 10, 8),
+                TestHelperFactory.solutionGenerated("fakeInstance2", "fakeExp2", "fakeAlg2", 2, 4, 12, 7),
+                TestHelperFactory.solutionGenerated("fakeInstance3", "fakeExp3", "fakeAlg3", 3, 5, 14, 6)
+        );
+
         Answer<?> answer = inv -> {
             String experimentName = inv.getArgument(0);
             List<?> data = inv.getArgument(1);

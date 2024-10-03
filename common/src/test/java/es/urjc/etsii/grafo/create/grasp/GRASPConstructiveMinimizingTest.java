@@ -1,8 +1,6 @@
 package es.urjc.etsii.grafo.create.grasp;
 
-import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Objective;
-import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.testutil.TestCommonUtils;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
@@ -20,7 +18,7 @@ import static es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE;
 import static org.junit.jupiter.api.Assertions.*;
 
 class GRASPConstructiveMinimizingTest {
-    private final Objective<TestMove,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getValue);
+    private final Objective<TestMove,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getScoreChange);
 
     TestGRASPListManager listManager;
     List<TestMove> moves;

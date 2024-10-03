@@ -51,9 +51,9 @@ public class LocalSearchBestImprovement<M extends Move<S, I>, S extends Solution
         var expRes = neighborhood.explore(solution);
         M bestMove;
         if(expRes instanceof ListExploreResult<M,S,I> list){
-            bestMove = objective.getBestMove(list.moveList());
+            bestMove = objective.bestMove(list.moveList());
         } else {
-            var move = expRes.moves().reduce(objective::getBestMove);
+            var move = expRes.moves().reduce(objective::bestMove);
             bestMove = move.orElse(null);
         }
         // Check if best move actually improves, if not end

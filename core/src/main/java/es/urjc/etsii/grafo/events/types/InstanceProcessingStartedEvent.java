@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.events.types;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 
 /**
  * Triggered when starting an experiment before any other action occurs
@@ -13,7 +13,7 @@ public class InstanceProcessingStartedEvent extends MorkEvent{
     private final String instanceName;
     private final List<? extends Algorithm<?,?>> algorithms;
     private final int repetitions;
-    private final Optional<Double> referenceValue;
+    private final Map<String, Double> refValues;
 
     /**
      * Create a new InstanceProcessingStartedEvent
@@ -22,14 +22,14 @@ public class InstanceProcessingStartedEvent extends MorkEvent{
      * @param instanceName instance name
      * @param algorithms list of algorithms to execute in the current experiment
      * @param repetitions number of repetitions for each (instance, algorithm) pair
-     * @param referenceValue best value for the given instance if known.
+     * @param refValues best value for the given instance if known.
      */
-    public InstanceProcessingStartedEvent(String experimentName, String instanceName, List<? extends Algorithm<?, ?>> algorithms, int repetitions, Optional<Double> referenceValue) {
+    public InstanceProcessingStartedEvent(String experimentName, String instanceName, List<? extends Algorithm<?, ?>> algorithms, int repetitions, Map<String, Double> refValues) {
         this.experimentName = experimentName;
         this.instanceName = instanceName;
         this.algorithms = algorithms;
         this.repetitions = repetitions;
-        this.referenceValue = referenceValue;
+        this.refValues = refValues;
     }
 
     /**
@@ -55,8 +55,8 @@ public class InstanceProcessingStartedEvent extends MorkEvent{
      *
      * @return reference value, or empty if not configured via a ReferenceResultProvider
      */
-    public Optional<Double> getReferenceValue() {
-        return referenceValue;
+    public Map<String, Double> getRefValues() {
+        return refValues;
     }
 
     /**

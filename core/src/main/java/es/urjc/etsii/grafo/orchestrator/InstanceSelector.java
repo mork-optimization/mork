@@ -31,7 +31,7 @@ public class InstanceSelector<I extends Instance> extends InstanceProperties<I> 
     public void run(String... args) {
         long start = System.nanoTime();
         try {
-            EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectives(), List.of("Instance analysis")));
+            EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectivesW(), List.of("Instance analysis")));
             analyzeInstances();
             log.info("Launching selector");
             selectInstances();

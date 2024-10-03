@@ -9,7 +9,7 @@ import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.InstanceProcessingStartedEvent;
 import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
-import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResultManager;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.services.IOManager;
@@ -20,7 +20,6 @@ import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
-import org.springframework.context.annotation.Profile;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -54,10 +53,10 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
             Optional<TimeLimitCalculator<S, I>> timeLimitCalculator,
             IOManager<S, I> io,
             InstanceManager<I> instanceManager,
-            List<ReferenceResultProvider> referenceResultProviders,
-            List<ExceptionHandler<S,I>> exceptionHandlers
+            List<ExceptionHandler<S,I>> exceptionHandlers,
+            ReferenceResultManager referenceResultManager
     ) {
-        super(validator, timeLimitCalculator, io, instanceManager, referenceResultProviders, solverConfig, exceptionHandlers);
+        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager);
         this.nWorkers = solverConfig.getnWorkers();
     }
 
@@ -101,8 +100,8 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
                 var instancePath = e.getKey();
                 var instanceName = instanceName(instancePath);
                 long instanceStartTime = System.nanoTime();
-                var referenceValue = getOptionalReferenceValue(instanceName, false);
-                events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), referenceValue));
+                var refValues = referenceResultManager.getRefValueForAllObjectives(instanceName, false);
+                events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), refValues));
 
                 pb.setExtraMessage(instanceName);
                 for (var algorithmWork : e.getValue().entrySet()) {

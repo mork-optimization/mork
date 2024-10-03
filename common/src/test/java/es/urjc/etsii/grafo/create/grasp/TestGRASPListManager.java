@@ -41,7 +41,7 @@ public class TestGRASPListManager extends GRASPListManager<TestMove, TestSolutio
         for (int i = 0; i < candidateList.size(); i++) {
             if (i == index) continue;
             TestMove m = candidateList.get(i);
-            newCandidates.add(new TestMove(solution, m.getValue(), m.getFmode()));
+            newCandidates.add(new TestMove(solution, m.getScoreChange(), m.getFmode()));
         }
         nCalls++;
         return newCandidates;

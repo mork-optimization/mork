@@ -1,10 +1,12 @@
 package es.urjc.etsii.grafo.executors;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResultManager;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.services.IOManager;
@@ -13,12 +15,14 @@ import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.solution.ValidationResult;
 import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -27,6 +31,8 @@ import static org.mockito.Mockito.*;
 
 @SuppressWarnings("unchecked")
 class ExecutorTest {
+    private static final Objective<TestMove, TestSolution, TestInstance> OBJ_MIN = Objective.of("Test", FMode.MINIMIZE, TestSolution::getScore, TestMove::getScoreChange);
+    private ReferenceResultManager referenceResultManager;
 
     private static class NopExceptionHandler extends ExceptionHandler<TestSolution, TestInstance> {
 
@@ -45,51 +51,58 @@ class ExecutorTest {
 
     @BeforeEach
     void initMocks(){
-        Context.Configurator.setObjectives(Objective.ofDefaultMinimize());
+        Context.Configurator.setObjectives(OBJ_MIN);
         var instance1 = new TestInstance("inst1");
         var referenceResult1 = new ReferenceResult();
-        referenceResult1.setScores(5.0);
+        referenceResult1.setScores(Map.of("Test", 5.0));
         referenceResult1.setOptimalValue(true);
 
         var referenceResult2 = new ReferenceResult();
-        referenceResult2.setScores(7.0);
+        referenceResult2.setScores(Map.of("Test", 7.0));
         referenceResult2.setOptimalValue(false);
 
         this.referenceResultProvider = mock(ReferenceResultProvider.class);
-        this.instanceManager = mock(InstanceManager.class);
-        this.validator = mock(SolutionValidator.class);
-        this.timeLimitCalculator = mock(TimeLimitCalculator.class);
-        this.ioManager = mock(IOManager.class);
-
-        when(instanceManager.getInstance("inst1")).thenReturn(instance1);
         when(referenceResultProvider.getProviderName()).thenReturn("MockedProvider");
         when(referenceResultProvider.getValueFor("inst1")).thenReturn(referenceResult1);
         when(referenceResultProvider.getValueFor("inst2")).thenReturn(referenceResult2);
-        when(validator.validate(any(TestSolution.class))).thenReturn(ValidationResult.ok());
+
+        this.instanceManager = mock(InstanceManager.class);
+        when(instanceManager.getInstance("inst1")).thenReturn(instance1);
+
+        this.timeLimitCalculator = mock(TimeLimitCalculator.class);
         when(timeLimitCalculator.timeLimitInMillis(any(TestInstance.class), any(Algorithm.class))).thenReturn(1_000L);
+
+        this.ioManager = mock(IOManager.class);
+
+        this.referenceResultManager = new ReferenceResultManager(List.of(this.referenceResultProvider));
+        Context.Configurator.setRefResultManager(referenceResultManager);
+
+        this.validator = mock(SolutionValidator.class);
+        when(validator.validate(any(TestSolution.class))).thenReturn(ValidationResult.ok());
+        Context.Configurator.setValidator(this.validator);
 
         this.executor = new TestExecutor(
                 Optional.of(this.validator),
                 Optional.of(this.timeLimitCalculator),
                 this.ioManager,
                 this.instanceManager,
-                List.of(this.referenceResultProvider),
                 new SolverConfig(), // Not relevant for this test? leave with default values
-                List.of(new NopExceptionHandler()));
+                List.of(new NopExceptionHandler()),
+                referenceResultManager);
     }
 
     @Test
     public void testGetOptionalReferenceResult(){
-        var optional = executor.getOptionalReferenceValue("inst1", true);
-        assertTrue(optional.isPresent());
-        assertEquals(5.0, optional.get());
+        var refValues = referenceResultManager.getRefValueForAllObjectives("inst1", true);
+        assertTrue(refValues.containsKey("Test"));
+        assertEquals(5.0, refValues.get("Test"));
 
-        optional = executor.getOptionalReferenceValue("inst2", true);
-        assertTrue(optional.isEmpty());
+        refValues = referenceResultManager.getRefValueForAllObjectives("inst2", true);
+        assertFalse(refValues.containsKey("Test"));
 
-        optional = executor.getOptionalReferenceValue("inst2", false);
-        assertTrue(optional.isPresent());
-        assertEquals(7.0, optional.get());
+        refValues = referenceResultManager.getRefValueForAllObjectives("inst2", false);
+        assertTrue(refValues.containsKey("Test"));
+        assertEquals(7.0, refValues.get("Test"));
     }
 
     @Test
@@ -98,10 +111,10 @@ class ExecutorTest {
         solution.notifyUpdate();
 
         solution.setScore(4.0); // Improves optimal value
-        assertThrows(AssertionError.class, () -> executor.validate(solution));
+        assertThrows(AssertionError.class, () -> Context.validate(solution));
 
         solution.setScore(8.0);
-        assertDoesNotThrow(() -> executor.validate(solution));
+        assertDoesNotThrow(() -> Context.validate(solution));
         verify(this.validator, atLeastOnce()).validate(solution);;
     }
 
@@ -110,10 +123,10 @@ class ExecutorTest {
         var solution = new TestSolution(new TestInstance("inst1"));
 
         solution.setScore(10.0);
-        assertThrows(AssertionError.class, () -> executor.validate(solution)); // No TTB
+        assertThrows(AssertionError.class, () -> Context.validate(solution)); // No TTB
 
         solution.notifyUpdate();
-        assertDoesNotThrow(() -> executor.validate(solution));
+        assertDoesNotThrow(() -> Context.validate(solution));
         verify(this.validator, atLeastOnce()).validate(solution);
     }
 
@@ -127,20 +140,20 @@ class ExecutorTest {
          * @param timeLimitCalculator time limit calculator if exists
          * @param io                                          IO manager
          * @param instanceManager   instance manager
-         * @param referenceResultProviders                    list of all reference value providers implementations
+         * @param referenceResultManager manages all reference value providers implementations
          * @param solverConfig  solver configuration
          */
         protected TestExecutor(
                 Optional<SolutionValidator<TestSolution, TestInstance>> solutionValidator,
                 Optional<TimeLimitCalculator<TestSolution, TestInstance>> timeLimitCalculator,
                 IOManager<TestSolution, TestInstance> io, InstanceManager<TestInstance> instanceManager,
-                List<ReferenceResultProvider> referenceResultProviders,
                 SolverConfig solverConfig,
-                List<ExceptionHandler<TestSolution, TestInstance>> exceptionHandlers
+                List<ExceptionHandler<TestSolution, TestInstance>> exceptionHandlers,
+                ReferenceResultManager referenceResultManager
 
         ) {
             super(solutionValidator, timeLimitCalculator,
-                    io, instanceManager, referenceResultProviders, solverConfig, exceptionHandlers);
+                    io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager);
         }
 
         @Override

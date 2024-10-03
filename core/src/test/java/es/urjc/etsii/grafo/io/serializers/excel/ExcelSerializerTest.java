@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
@@ -7,6 +8,7 @@ import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestHelperFactory;
 import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
 import org.apache.poi.openxml4j.util.ZipSecureFile;
@@ -39,11 +41,13 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 public class ExcelSerializerTest {
 
+    private static final Objective<TestMove, TestSolution, TestInstance> OBJ_MAX = Objective.of("Test", FMode.MAXIMIZE, TestSolution::getScore, TestMove::getScoreChange);
+
     @BeforeAll
     public static void configurePOI() {
         // In order to read the file due to the size of the pivot table
         ZipSecureFile.setMinInflateRatio(0.001);
-        Context.Configurator.setObjectives(Objective.ofDefaultMaximize());
+        Context.Configurator.setObjectives(OBJ_MAX);
     }
 
     @BeforeEach

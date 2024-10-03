@@ -20,8 +20,8 @@ class MultiStartAlgorithmTest {
 
     private final TestInstance testInstance = new TestInstance("testinstance");
     private final TestSolution testSolution = new TestSolution(testInstance);
-    private final Objective<?,TestSolution,TestInstance> maxObj = Objective.ofMaximizing("TestMax", TestSolution::getScore, TestMove::getValue);
-    private final Objective<?,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getValue);
+    private final Objective<?,TestSolution,TestInstance> maxObj = Objective.ofMaximizing("TestMax", TestSolution::getScore, TestMove::getScoreChange);
+    private final Objective<?,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getScoreChange);
     private Algorithm<TestSolution, TestInstance> algorithm;
 
     @SuppressWarnings("unchecked")

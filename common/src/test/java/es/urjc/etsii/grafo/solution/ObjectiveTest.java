@@ -14,29 +14,29 @@ public class ObjectiveTest {
     @Test
     void minimizeMoveComp(){
         var data = TestMove.generateSeq(-1, 7, 3, 9);
-        var objective = Objective.of("Default", FMode.MINIMIZE, TestSolution::getScore, TestMove::getValue);
+        var objective = Objective.of("Default", FMode.MINIMIZE, TestSolution::getScore, TestMove::getScoreChange);
         data.sort(objective.comparatorMove());
-        assertEquals(-1, data.get(0).getValue());
-        assertEquals(3, data.get(1).getValue());
-        assertEquals(7, data.get(2).getValue());
-        assertEquals(9, data.get(3).getValue());
+        assertEquals(-1, data.get(0).getScoreChange());
+        assertEquals(3, data.get(1).getScoreChange());
+        assertEquals(7, data.get(2).getScoreChange());
+        assertEquals(9, data.get(3).getScoreChange());
     }
 
     @Test
     void maximizeMoveComp(){
         var data = TestMove.generateSeq(-1, 7, 3, 9);
-        var objective = Objective.of("Default", FMode.MAXIMIZE, TestSolution::getScore, TestMove::getValue);
+        var objective = Objective.of("Default", FMode.MAXIMIZE, TestSolution::getScore, TestMove::getScoreChange);
         data.sort(objective.comparatorMove());
-        assertEquals(9, data.get(0).getValue());
-        assertEquals(7, data.get(1).getValue());
-        assertEquals(3, data.get(2).getValue());
-        assertEquals(-1, data.get(3).getValue());
+        assertEquals(9, data.get(0).getScoreChange());
+        assertEquals(7, data.get(1).getScoreChange());
+        assertEquals(3, data.get(2).getScoreChange());
+        assertEquals(-1, data.get(3).getScoreChange());
     }
 
     @Test
     void minimizeSolComp(){
         var data = TestSolution.from(-1, 7, 3, 9);
-        var objective = Objective.of("Default", FMode.MINIMIZE, TestSolution::getScore, TestMove::getValue);
+        var objective = Objective.of("Default", FMode.MINIMIZE, TestSolution::getScore, TestMove::getScoreChange);
         Arrays.sort(data, objective.comparator());
         assertEquals(-1, data[0].getScore());
         assertEquals(3, data[1].getScore());
@@ -47,7 +47,7 @@ public class ObjectiveTest {
     @Test
     void maximizeSolComp(){
         var data = TestSolution.from(-1, 7, 3, 9);
-        var objective = Objective.of("Default", FMode.MAXIMIZE, TestSolution::getScore, TestMove::getValue);
+        var objective = Objective.of("Default", FMode.MAXIMIZE, TestSolution::getScore, TestMove::getScoreChange);
         Arrays.sort(data, objective.comparator());
         assertEquals(9, data[0].getScore());
         assertEquals(7, data[1].getScore());

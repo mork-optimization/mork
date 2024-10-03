@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.util;
 
 import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.SolverConfig;
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResultManager;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Objective;
@@ -19,18 +20,18 @@ import java.util.random.RandomGenerator;
 import java.util.random.RandomGeneratorFactory;
 
 public class Context {
-    private static final Logger logger = Logger.getLogger(Context.class.getName());
+    private static final Logger log = Logger.getLogger(Context.class.getName());
 
     private static ContextLocal context = new ContextLocal();
 
-    private static class ContextLocal extends InheritableThreadLocal<ContextData> {
+    private static class ContextLocal<S extends Solution<S,I>, I extends Instance> extends InheritableThreadLocal<ContextData<S, I>> {
         public ContextLocal() {
-            set(new ContextData());
+            set(new ContextData<>());
         }
 
         @Override
-        protected ContextData childValue(ContextData parentValue) {
-            var context = new ContextData();
+        protected ContextData<S,I> childValue(ContextData<S,I> parentValue) {
+            var context = new ContextData<S,I>();
             // reuse executor from parent, submitted tasks will be shared by them
             context.executor = parentValue.executor;
             if(parentValue.random != null){
@@ -41,6 +42,7 @@ public class Context {
             context.solverConfig = parentValue.solverConfig;
             context.validator = parentValue.validator;
             context.multiObjective = parentValue.multiObjective;
+            context.referenceResultManager = parentValue.referenceResultManager;
             // context.timeEvents; // do not copy! thread responsible for managing its own events
             return context;
         }
@@ -64,39 +66,37 @@ public class Context {
         context.set(new ContextData());
     }
 
-    public static <S extends Solution<S,I>, I extends Instance> void validate(S solution){
-        var ctx = context.get();
-        SolutionValidator<S,I> userValidator = (SolutionValidator<S, I>) ctx.validator;
+    private static <S extends Solution<S,I>, I extends Instance> ContextData<S,I> get(){
+        return (ContextData<S, I>) context.get();
+    }
+
+    public static <S extends Solution<S,I>, I extends Instance> boolean validate(S solution){
+        ContextData<S,I> ctx = get();
+        SolutionValidator<S,I> userValidator = ctx.validator;
         if(userValidator != null){
             var result = userValidator.validate(solution);
             result.throwIfFail();
         }
         ValidationUtil.positiveTTB(solution);
-        // TODO add validation with ref result if optimal
-//        var instanceName = solution.getInstance().getId();
-//        var optimalValue = getOptionalReferenceValue(instanceName, true);
-//        if (optimalValue.isPresent()) {
-//            // Check that solution score is not better than optimal value
-//            double solutionScore = solution.getScore();
-//            if(mainObjective.isBetter(solutionScore, optimalValue.get())){
-//                throw new AssertionError("Solution score (%s) improves optimal value (%s) in ReferenceResultProvider".formatted(solutionScore, optimalValue.get()));
-//            }
-//        }
+        if(ctx.referenceResultManager != null){
+            ValidationUtil.validateWithRefValues(solution, getObjectives(), ctx.referenceResultManager);
+        }
+        return true;
     }
 
 
     public static RandomGenerator getRandom(){
-        return context.get().random;
+        return get().random;
     }
 
     public static boolean isExecutionQueueAvailable(){
-        var executor = context.get().executor;
+        var executor = get().executor;
         return executor != null && !executor.isShutdown();
     }
 
 
     public static <T> Future<T> submit(Callable<T> task){
-        var executor = context.get().executor;
+        var executor = get().executor;
         if(executor != null){
             return executor.submit(task);
         }
@@ -109,7 +109,7 @@ public class Context {
     }
 
     public static <T> Future<T> submit(Runnable task, T value){
-        var executor = context.get().executor;
+        var executor = get().executor;
         if(executor != null){
             return executor.submit(task, value);
         }
@@ -124,22 +124,29 @@ public class Context {
 
     public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance>  Objective<M,S,I> getMainObjective(){
 
-        ContextData contextData = context.get();
+        ContextData<S,I> contextData = get();
         if(contextData.multiObjective){
             throw new IllegalStateException("Cannot get main objective in multi-objective mode. Probable fix: manually specify objective to optimize in algorithm component");
         }
         return (Objective<M,S,I>) contextData.mainObjective;
     }
 
-    public static Map<String, Objective<?,?,?>> getObjectives(){
-        return context.get().objectives;
+    public static <S extends Solution<S,I>, I extends Instance> Map<String, Objective<?,S,I>> getObjectives(){
+        ContextData<S,I> ctx = get();
+        return ctx.objectives;
+    }
+
+    public static Map<String, Objective<?,?,?>> getObjectivesW(){
+        ContextData<?,?> ctx = get();
+        return (Map<String, Objective<?,?,?>>) (Object) ctx.objectives;
     }
 
     public static <S extends Solution<S,I>, I extends Instance> Map<String, Double> evalSolution(S solution){
-        var objectives = context.get().objectives;
+        ContextData<S,I> ctx = get();
+        var objectives = ctx.objectives;
         Map<String, Double> data = HashMap.newHashMap(objectives.size());
         for(var e: objectives.entrySet()){
-            var objective = (Objective<?,S,I>) e.getValue();
+            var objective = e.getValue();
             double v = objective.evalSol(solution);
             data.put(e.getKey(), v);
         }
@@ -147,10 +154,11 @@ public class Context {
     }
 
     public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Map<String, Double> evalDeltas(M move){
-        var objectives = context.get().objectives;
+        ContextData<S,I> ctx = get();
+        var objectives = ctx.objectives;
         Map<String, Double> data = HashMap.newHashMap(objectives.size());
         for(var e: objectives.entrySet()){
-            var objective = (Objective<M,S,I>) e.getValue();
+            Objective<M,S,I> objective = (Objective<M,S,I>) e.getValue();
             double v = objective.evalMove(move);
             data.put(e.getKey(), v);
         }
@@ -158,56 +166,58 @@ public class Context {
     }
 
     public static void addTimeEvent(boolean enter, long when, String clazz, String methodName){
-        context.get().timeEvents.add(new TimeStatsEvent(enter, when, clazz, methodName));
+        get().timeEvents.add(new TimeStatsEvent(enter, when, clazz, methodName));
     }
 
     /**
      * Dumb class to hold the context data
      */
-    private static class ContextData {
+    private static class ContextData<S extends Solution<S, I>, I extends Instance> {
         // random manager
         public RandomGenerator random;
 
         // threadpool
         public ExecutorService executor;
 
-        public Map<String, Objective<?, ?, ?>> objectives;
-        public Objective<?, ?, ?> mainObjective;
+        public Map<String, Objective<?, S, I>> objectives;
+        public Objective<?, S, I> mainObjective;
         public SolverConfig solverConfig;
         public BlockConfig blockConfig;
         public List<TimeStatsEvent> timeEvents = new ArrayList<>();
-        public SolutionValidator<?,?> validator;
+        public SolutionValidator<S,I> validator;
         public boolean multiObjective;
+        public ReferenceResultManager referenceResultManager;
     }
 
     public static class Configurator {
 
         public static void setRandom(RandomGenerator.JumpableGenerator jumpableGenerator){
-            var ctx = Context.context;
+            var ctx = get();
             if(ctx == null){
                 throw new IllegalStateException("Context not yet initialized");
             }
-            ctx.get().random = jumpableGenerator;
+            ctx.random = jumpableGenerator;
         }
 
         public static void setSolverConfig(SolverConfig config){
-            Context.context.get().solverConfig = config;
+            get().solverConfig = config;
         }
 
         public static SolverConfig getSolverConfig(){
-            return Context.context.get().solverConfig;
+            return get().solverConfig;
         }
 
         public static void setBlockConfig(BlockConfig config){
-            Context.context.get().blockConfig = config;
+            get().blockConfig = config;
         }
 
         public static BlockConfig getBlockConfig(){
-            return Context.context.get().blockConfig;
+            return get().blockConfig;
         }
 
-        public static void setValidator(SolutionValidator<?,?> validator){
-            Context.context.get().validator = validator;
+        public static <S extends Solution<S,I>, I extends Instance> void setValidator(SolutionValidator<S,I> validator){
+            ContextData<S,I> ctx = get();
+            ctx.validator = validator;
         }
 
         /**
@@ -237,26 +247,35 @@ public class Context {
             setObjectives(false, new Objective[]{objective});
         }
 
-        public static void setObjectives(boolean multiObjective, Objective<?, ?, ?>[] objectives) {
+        public static <S extends Solution<S,I>, I extends Instance> void setObjectives(boolean multiObjective, Objective<?, S, I>[] objectives) {
             if(Objects.requireNonNull(objectives).length == 0){
                 throw new IllegalArgumentException("Objectives array cannot be empty");
             }
-            var localContext = context.get();
-            var map = new HashMap<String, Objective<?, ?,?>>();
+            ContextData<S,I> ctx = get();
+            var map = new HashMap<String, Objective<?,S,I>>();
             for(var obj: objectives){
                 map.put(obj.getName(), obj);
             }
-            localContext.multiObjective = multiObjective;
-            localContext.objectives = Collections.unmodifiableMap(map);
-            localContext.mainObjective = objectives[0];
+            ctx.multiObjective = multiObjective;
+            ctx.objectives = Collections.unmodifiableMap(map);
+            ctx.mainObjective = objectives[0];
         }
 
         public static List<TimeStatsEvent> getAndResetTimeEvents(){
-            var data = context.get();
+            var data = get();
             var timeEvents = data.timeEvents;
             data.timeEvents = new ArrayList<>();
             return timeEvents;
 
+        }
+
+        public static void setRefResultManager(ReferenceResultManager referenceResultManager) {
+            var ctx = get();
+            ctx.referenceResultManager = referenceResultManager;
+        }
+
+        public static ReferenceResultManager getRefResultManager() {
+            return get().referenceResultManager;
         }
     }
 }

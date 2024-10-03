@@ -32,7 +32,7 @@ class IteratedGreedyUnitAlgorithmTest {
     @BeforeAll
     public static void init(){
         Metrics.disableMetrics();
-        Context.Configurator.setObjectives(Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getValue));
+        Context.Configurator.setObjectives(Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getScoreChange));
     }
 
     @SuppressWarnings("unchecked")

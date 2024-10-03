@@ -22,7 +22,7 @@ public class TimeStatsTest {
     void testTimedAlgorithm() {
         Metrics.enableMetrics();
         Metrics.resetMetrics();
-        Context.Configurator.setObjectives(Objective.ofMinimizing("DefaultMinimize", TestSolution::getScore, TestMove::getValue));
+        Context.Configurator.setObjectives(Objective.ofMinimizing("DefaultMinimize", TestSolution::getScore, TestMove::getScoreChange));
         Metrics.register("DefaultMinimize", ref -> new DeclaredObjective("DefaultMinimize", FMode.MINIMIZE, ref));
         // total time is algoritm + constructive + 2 * local search
         var alg = new TimedAlgorithm(3, 5, 1);
