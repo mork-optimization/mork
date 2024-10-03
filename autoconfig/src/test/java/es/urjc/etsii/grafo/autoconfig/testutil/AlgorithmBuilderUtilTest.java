@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.testutil;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.FakeGRASPConstructive;
@@ -28,8 +29,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class AlgorithmBuilderUtilTest {
 
-    static final Objective<?,?,?> defaultMin = Objective.ofDefaultMinimize();
-    static final Objective<?,?,?> defaultMax = Objective.ofDefaultMaximize();
+    static final Objective<?,?,?> defaultMin = Objective.of("TestMin", FMode.MINIMIZE, TestSolution::getScore, TestMove::getScoreChange);
+    static final Objective<?,?,?> defaultMax = Objective.of("TestMax", FMode.MAXIMIZE, TestSolution::getScore, TestMove::getScoreChange);
 
     @BeforeAll
     static void setup() {

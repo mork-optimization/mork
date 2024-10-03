@@ -1,8 +1,11 @@
 package es.urjc.etsii.grafo.autoconfig.factories;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.create.grasp.GRASPConstructive;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
 import es.urjc.etsii.grafo.solution.Objective;
+import es.urjc.etsii.grafo.testutil.TestMove;
+import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -14,7 +17,7 @@ import static es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE;
 
 class GraspConstructiveFactoryTest {
 
-    static final Objective<?, ?, ?> defaultMin = Objective.ofDefaultMinimize();
+    static final Objective<?,?,?> defaultMin = Objective.of("Test", FMode.MINIMIZE, TestSolution::getScore, TestMove::getScoreChange);
     @BeforeAll
     static void setup() {
         Context.Configurator.setObjectives(defaultMin);

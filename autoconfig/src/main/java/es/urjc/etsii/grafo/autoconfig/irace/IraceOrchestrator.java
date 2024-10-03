@@ -25,6 +25,7 @@ import es.urjc.etsii.grafo.metrics.MetricUtil;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.util.*;
@@ -160,7 +161,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         log.info("Ready to start!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
-        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectives(), experimentName));
+        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectivesW(), experimentName));
         try {
             launchIrace();
         } finally {
@@ -347,11 +348,12 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         validator.ifPresent(v -> v.validate(solution).throwIfFail());
 
         double score;
+        Objective<?,S,I> mainObj = Context.getMainObjective();
         if (isAutoconfigEnabled) {
             checkExecutionTime(algorithm, instance);
             TimeControl.remove();
             try {
-                score = MetricUtil.areaUnderCurve(Context.getMainObjective(),
+                score = MetricUtil.areaUnderCurve(mainObj,
                         TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
                         TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
                         solverConfig.isLogScaleArea()
@@ -369,7 +371,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             }
 
         } else {
-            score = solution.getScore();
+            score = mainObj.evalSol(solution);
         }
 
         if (Context.getMainObjective().getFMode() == FMode.MAXIMIZE) {

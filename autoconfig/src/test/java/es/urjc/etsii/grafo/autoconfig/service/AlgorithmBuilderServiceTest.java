@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmComponentFactory;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
@@ -11,6 +12,7 @@ import es.urjc.etsii.grafo.create.grasp.GRASPConstructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.Assertions;
@@ -25,10 +27,11 @@ class AlgorithmBuilderServiceTest {
 
     static AlgorithmInventoryService algComponent;
     static AlgorithmBuilderService builderService;
-    static Objective<?,?,?> defaultMinimize = Objective.ofDefaultMinimize();
+    static final Objective<?,?,?> defaultMin = Objective.of("Test", FMode.MINIMIZE, TestSolution::getScore, TestMove::getScoreChange);
+    
     @BeforeAll
     static void initialize(){
-        Context.Configurator.setObjectives(defaultMinimize);
+        Context.Configurator.setObjectives(defaultMin);
         algComponent = new AlgorithmInventoryService(new DefaultInventoryFilter(), TestUtil.getTestFactories(), TestUtil.getTestProviders());
         algComponent.runComponentDiscovery("es.urjc.etsii");
         builderService = new AlgorithmBuilderService(algComponent);
@@ -54,7 +57,7 @@ class AlgorithmBuilderServiceTest {
             improver=null,
             algorithmName="trickyNullAlg"
         }
-        """.formatted(defaultMinimize.getName());
+        """.formatted(defaultMin.getName());
         var algorithm = builderService.buildAlgorithmFromString(alg);
         Assertions.assertNotNull(algorithm);
         Assertions.assertEquals("trickyNullAlg", algorithm.getName());
@@ -87,7 +90,7 @@ class AlgorithmBuilderServiceTest {
             },
             improver=null
         }
-        """.formatted(defaultMinimize.getName());
+        """.formatted(defaultMin.getName());
         Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmFromString(alg));
     }
 
@@ -133,7 +136,7 @@ class AlgorithmBuilderServiceTest {
             objective="%s",
             candidateListManager=NullGraspListManager{}
         }
-        """.formatted(defaultMinimize.getName());
+        """.formatted(defaultMin.getName());
         var component = builderService.buildAlgorithmComponentFromString(alg);
         Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
@@ -146,7 +149,7 @@ class AlgorithmBuilderServiceTest {
             objective="%s",
             candidateListManager=NullGraspListManager{}
         }
-        """.formatted(defaultMinimize.getName());
+        """.formatted(defaultMin.getName());
         Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmFromString(alg));
     }
 
@@ -170,7 +173,7 @@ class AlgorithmBuilderServiceTest {
             objective="%s",
             candidateListManager=NullGraspListManager{}
         }
-        """.formatted(defaultMinimize.getName());
+        """.formatted(defaultMin.getName());
         var component = builderService.buildAlgorithmComponentFromString(alg);
         Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
@@ -184,7 +187,7 @@ class AlgorithmBuilderServiceTest {
             objective="%s",
             candidateListManager=NullGraspListManager{}
         }
-        """.formatted(defaultMinimize.getName());;
+        """.formatted(defaultMin.getName());;
         var component = builderService.buildAlgorithmComponentFromString(alg);
         Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
@@ -197,7 +200,7 @@ class AlgorithmBuilderServiceTest {
             objective="%s",
             candidateListManager=NullGraspListManager{}
         }
-        """.formatted(defaultMinimize.getName());;
+        """.formatted(defaultMin.getName());;
         Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
     }
 
@@ -207,7 +210,7 @@ class AlgorithmBuilderServiceTest {
         GRASP{
             objective="%s"
         }
-        """.formatted(defaultMinimize.getName());;
+        """.formatted(defaultMin.getName());;
         Assertions.assertThrows(NullPointerException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
     }
 
