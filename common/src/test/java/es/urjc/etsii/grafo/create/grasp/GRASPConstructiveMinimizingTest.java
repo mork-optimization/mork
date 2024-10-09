@@ -5,8 +5,10 @@ import es.urjc.etsii.grafo.testutil.TestCommonUtils;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.random.RandomType;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -26,6 +28,12 @@ class GRASPConstructiveMinimizingTest {
     private GreedyRandomGRASPConstructive<TestMove, TestSolution, TestInstance> gr;
     private RandomGreedyGRASPConstructive<TestMove, TestSolution, TestInstance> rg;
     private TestInstance instance;
+
+    @BeforeAll
+    static void setupObjectives(){
+        var obj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getScoreChange);
+        Context.Configurator.setObjectives(obj);
+    }
 
     @BeforeEach
     void setUp(){
