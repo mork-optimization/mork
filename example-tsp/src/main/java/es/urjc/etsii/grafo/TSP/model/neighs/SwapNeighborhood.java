@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.TSP.algorithms.neighborhood;
+package es.urjc.etsii.grafo.TSP.model.neighs;
 
 import es.urjc.etsii.grafo.TSP.model.TSPBaseMove;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;

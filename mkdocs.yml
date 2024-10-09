@@ -1,6 +1,7 @@
+# yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
 site_name: "Mork Developers Guide"
 theme:
-    name: "readthedocs"
+    name: "material"
     features:
         - content.code.select
         - content.code.annotate
@@ -14,6 +15,9 @@ markdown_extensions:
     - pymdownx.details
     - pymdownx.superfences
     - attr_list
+    - pymdownx.emoji:
+        emoji_index: !!python/name:material.extensions.emoji.twemoji
+        emoji_generator: !!python/name:material.extensions.emoji.to_svg
     - md_in_html
     - pymdownx.arithmatex:
         generic: true

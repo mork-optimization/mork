@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.TSP.experiments;
 
 import es.urjc.etsii.grafo.TSP.algorithms.constructives.TSPRandomConstructive;
-import es.urjc.etsii.grafo.TSP.algorithms.neighborhood.InsertNeighborhood;
-import es.urjc.etsii.grafo.TSP.algorithms.neighborhood.SwapNeighborhood;
+import es.urjc.etsii.grafo.TSP.model.neighs.InsertNeighborhood;
+import es.urjc.etsii.grafo.TSP.model.neighs.SwapNeighborhood;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
