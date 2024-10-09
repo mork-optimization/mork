@@ -3,9 +3,13 @@ package es.urjc.etsii.grafo.io.serializers;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.serializers.csv.CSVConfig;
 import es.urjc.etsii.grafo.io.serializers.csv.CSVSerializer;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -20,6 +24,12 @@ import static es.urjc.etsii.grafo.testutil.TestHelperFactory.solutionGenerator;
 
 public class CSVSerializerTest {
 
+    @BeforeAll
+    static void setupObjectives(){
+        Context.Configurator.setObjectives(
+                Objective.ofMaximizing("Test", TestSolution::getScore, TestMove::getScoreChange)
+        );
+    }
 
     public CSVSerializer<TestSolution, TestInstance> initCSV(char separator, Path p) {
         return initCSV(separator, p, new ArrayList<>());

@@ -76,8 +76,10 @@ targetRunner <- function(experiment, scenario) {
 ## such that each of its elements will be the argument to one call of
 ## target.runner, and scenario will also be passed to every call. See
 ## help(target.runner.default) for details.
-targetRunnerParallel <- function(experiments, exec.target.runner, scenario, target.runner) {
-
+targetRunnerParallel <- function(experiments, exec_target_runner, scenario, target_runner) {
+  library("httr")
+  library("base64enc")
+  library("rjson")
   integration_key <- "__INTEGRATION_KEY__"
   url <- "http://127.0.0.1:__PORT__/batchExecute"
 
@@ -117,10 +119,6 @@ maxExperiments =__MAX_EXPERIMENTS__
 
 ## Enable/disable testing the elite configurations found at each iteration.
 # testIterationElites = 0
-
-## Indicates the number of decimal places to be considered for the
-## real parameters.
-digits = 2
 
 ## A value of 0 silences all debug messages. Higher values provide
 ## more verbose debug messages.
@@ -210,10 +208,6 @@ parallel = 1000000
 ## absolute path or relative to the current directory. If empty or
 ## NULL, recovery is not performed.
 # recoveryFile = ""
-
-## File containing a list of logical expressions that cannot be true
-## for any evaluated configuration. If empty or NULL, do not use a file.
-forbiddenFile="./forbidden.txt"
 
 ## Enable/disable elitist irace.
 # elitist = 1

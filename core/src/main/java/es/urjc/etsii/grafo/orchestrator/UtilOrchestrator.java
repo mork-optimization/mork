@@ -1,8 +1,5 @@
 package es.urjc.etsii.grafo.orchestrator;
 
-import org.springframework.context.annotation.Profile;
-
-@Profile("util")
 public class UtilOrchestrator extends AbstractOrchestrator {
 
     @Override

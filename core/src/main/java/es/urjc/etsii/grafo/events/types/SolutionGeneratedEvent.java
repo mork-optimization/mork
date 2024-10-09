@@ -4,8 +4,12 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.metrics.MetricsStorage;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
+import es.urjc.etsii.grafo.util.TimeStatsEvent;
 
 import java.lang.ref.SoftReference;
+import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -21,8 +25,11 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
     private final String instanceName;
     private final String algorithmName;
     private final MetricsStorage metrics;
+    private final List<TimeStatsEvent> timeStatsEvents;
+    private final boolean success;
     private final String iteration;
-    private final double score;
+    private final String instancePath;
+    private final Map<String, Double> objectives;
     private final long executionTime;
     private final long timeToBest;
     private final Algorithm<S,I> algorithm;
@@ -31,19 +38,20 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
     /**
      * Create a new SolutionGeneratedEvent
      *
-     * @param iteration             solution iteration
-     * @param solution              generated solution
-     * @param experimentName        experiment name
-     * @param algorithm             algorithm that generated this solution
-     * @param executionTime         time used to generate this solution
-     * @param timeToBest            time needed ot reach the best solution. timeToBest = totalTime - timeSinceLastModification
-     * @param metrics both framework calculated and user defined metrics
+     * @param iteration       solution iteration
+     * @param solution        generated solution
+     * @param experimentName  experiment name
+     * @param algorithm       algorithm that generated this solution
+     * @param executionTime   time used to generate this solution
+     * @param timeToBest      time needed ot reach the best solution. timeToBest = totalTime - timeSinceLastModification
+     * @param metrics         both framework calculated and user defined metrics
+     * @param timeStatsEvents
      */
-    public SolutionGeneratedEvent(String iteration, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest, MetricsStorage metrics) {
+    public SolutionGeneratedEvent(boolean success, String iteration, String instancePath, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest, MetricsStorage metrics, List<TimeStatsEvent> timeStatsEvents) {
         super();
+        this.success = success;
         this.iteration = iteration;
-        this.score = solution.getScore();
-        this.instanceName = solution.getInstance().getId();
+        this.instancePath = instancePath;
         this.solution = new SoftReference<>(solution);
         this.experimentName = experimentName;
         this.algorithm = algorithm;
@@ -51,6 +59,14 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
         this.timeToBest = timeToBest;
         this.algorithmName = algorithm.getName();
         this.metrics = metrics;
+        this.timeStatsEvents = timeStatsEvents;
+        if(solution != null){
+            this.objectives = Context.evalSolution(solution);
+            this.instanceName = solution.getInstance().getId();
+        } else {
+            this.instanceName = "Unknown";
+            this.objectives = Map.of();
+        }
     }
 
     /**
@@ -94,8 +110,8 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
      *
      * @return solution score
      */
-    public double getScore() {
-        return score;
+    public Map<String, Double> getObjectives() {
+        return objectives;
     }
 
     /**
@@ -141,5 +157,13 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
      */
     public MetricsStorage getMetrics() {
         return metrics;
+    }
+
+    /**
+     * Was the solution generated successfully?
+     * @return true if the solution was generated successfully, false otherwise
+     */
+    public boolean isSuccess() {
+        return success;
     }
 }

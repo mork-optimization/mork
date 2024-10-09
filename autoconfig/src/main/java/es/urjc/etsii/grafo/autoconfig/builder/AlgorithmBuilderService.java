@@ -95,8 +95,10 @@ public class AlgorithmBuilderService {
      */
     public static AlgorithmParser getParser(String s){
         var lexer = new AlgorithmLexer(CharStreams.fromString(s));
+        lexer.removeErrorListeners(); // disable default console error listener
         var tokens = new CommonTokenStream(lexer);
         var parser = new AlgorithmParser(tokens);
+        parser.removeErrorListeners(); // disable default console error listener
         parser.setErrorHandler(new BailErrorStrategy());
         // TODO Review Lexer error handler
         return parser;

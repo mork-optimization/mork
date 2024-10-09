@@ -4,11 +4,11 @@ import com.fasterxml.jackson.annotation.JsonAutoDetect;
 import com.fasterxml.jackson.dataformat.csv.CsvMapper;
 import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
-import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -19,6 +19,7 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 
 /**
  * CSV serializer. By changing the separator in the configuration from ',' to '\t', can serialize to other formats such as TSV.
@@ -51,11 +52,13 @@ public class CSVSerializer<S extends Solution<S, I>, I extends Instance> extends
      */
     public void _serializeResults(String experimentName, List<SolutionGeneratedEvent<S, I>> results, Path p) {
         log.debug("Exporting result data to CSV...");
+        var mainObjName = Context.getMainObjective().getName();
 
         var instaceNames = new HashSet<String>();
         var data = new ArrayList<CSVRow>(results.size());
         for (var event : results) {
-            data.add(new CSVRow(event));
+            double score = event.getObjectives().getOrDefault(mainObjName, Double.NaN);
+            data.add(new CSVRow(event.getInstanceName(), event.getAlgorithmName(), String.valueOf(event.getIteration()), score, event.getExecutionTime(), event.getTimeToBest()));
             instaceNames.add(event.getInstanceName());
         }
 
@@ -63,9 +66,10 @@ public class CSVSerializer<S extends Solution<S, I>, I extends Instance> extends
         for (var referenceProvider : referenceResultProviders) {
             for (var instanceName : instaceNames) {
                 var providerName = referenceProvider.getProviderName();
-                var referenceValue = referenceProvider.getValueFor(instanceName);
-                if (referenceValue.getScore().isPresent()) {
-                    data.add(new CSVRow(instanceName, providerName, referenceValue));
+                var refResult = referenceProvider.getValueFor(instanceName);
+                double refScore = refResult.getScores().getOrDefault(mainObjName, Double.NaN);
+                if (Double.isFinite(refScore)) {
+                    data.add(new CSVRow(instanceName, providerName, "0", refScore, refResult.getTimeInNanos(), refResult.getTimeToBestInNanos()));
                 }
             }
         }
@@ -79,31 +83,13 @@ public class CSVSerializer<S extends Solution<S, I>, I extends Instance> extends
     }
 
     private CsvSchema getSchema() {
-        return csvMapper.schemaFor(CSVRow.class)
+        return csvMapper
+                .schemaFor(CSVRow.class)
                 .withColumnSeparator(config.getSeparator())
                 .sortedBy("instanceName", "algorithmName", "iteration")
                 .withHeader();
     }
 
-    /**
-     * Private DTO to map required data to CSV
-     *
-     * @param instanceName
-     * @param algorithmName
-     * @param iteration
-     * @param score
-     * @param time
-     * @param ttb
-     */
-    private record CSVRow(String instanceName, String algorithmName, String iteration, double score, long time, long ttb) {
-        public CSVRow(SolutionGeneratedEvent<?, ?> event) {
-            this(event.getInstanceName(), event.getAlgorithmName(), event.getIteration(), event.getScore(), event.getExecutionTime(), event.getTimeToBest());
-        }
-
-        public CSVRow(String instanceName, String algorithmName, ReferenceResult referenceValue) {
-            // TODO revisar este 0 para iteracion, me huele raro
-            this(instanceName, algorithmName, "0", referenceValue.getScoreOrNan(), referenceValue.getTimeInNanos(), referenceValue.getTimeToBestInNanos());
-        }
-    }
+    private record CSVRow(String instanceName, String algorithmName, String iteration, double score, long time, long ttb) {}
 
 }

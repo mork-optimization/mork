@@ -46,7 +46,7 @@ public class ShutdownService {
     public void onExperimentationEnd(ExecutionEndedEvent event){
         if(stopOnExperimentEnd){
             log.info("event.webserver.StopOnExperimentEnd enabled, requesting context close and exiting.");
-            delayedStop(5, TimeUnit.SECONDS);
+            delayedStop(1, TimeUnit.SECONDS);
         } else {
             log.info("event.webserver.StopOnExperimentEnd disabled, app must be manually stopped by user");
         }

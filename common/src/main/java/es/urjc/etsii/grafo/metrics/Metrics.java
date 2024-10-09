@@ -1,6 +1,11 @@
 package es.urjc.etsii.grafo.metrics;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
+import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.Objective;
+import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 import java.util.function.Function;
@@ -18,10 +23,11 @@ import java.util.function.Function;
  */
 public final class Metrics {
 
+    private static final Logger log = LoggerFactory.getLogger(Metrics.class.getName());
+
     private static final Map<String, Function<Long, ? extends AbstractMetric>> initializers = new HashMap<>();
     private static InheritableThreadLocal<MetricsStorage> localMetrics = new InheritableThreadLocal<>();
     private static volatile boolean enabled = false;
-    private static FMode fmode;
 
     private Metrics(){}
 
@@ -88,29 +94,27 @@ public final class Metrics {
         return enabled;
     }
 
-
-    public static void setSolvingMode(FMode fmode) {
-        Metrics.fmode = fmode;
-    }
-
-    public static FMode getFMode(){
-        return fmode;
-    }
-
     @SuppressWarnings("unchecked")
     public static <T extends AbstractMetric> T get(String metricName){
         var storage = getCurrentThreadMetrics();
+        ensureMetricInitialized(metricName, storage);
+        // user is responsible for ensuring that the metric name corresponds with the expected type
+        return (T) storage.metrics.get(metricName);
+    }
+
+    private static void ensureMetricInitialized(String metricName, MetricsStorage storage) {
         if(!storage.metrics.containsKey(metricName)){
             // If initializer is present create, else fail because user forgot to register their custom metric
             if(initializers.containsKey(metricName)){
                 storage.metrics.put(metricName, initializers.get(metricName).apply(storage.referenceNanoTime));
-            } else {
-                throw new IllegalArgumentException("Unregistered metric: %s, did you forgot to register it?".formatted(metricName));
             }
+//            else {
+//                log.trace("Unregistered metric: {}", storage.metrics);
+//                throw new IllegalArgumentException("Unregistered metric: %s, did you forgot to register it?".formatted(metricName));
+//            }
         }
-        // user is responsible for ensuring that the metric name corresponds with the expected type
-        return (T) storage.metrics.get(metricName);
     }
+
     public static <T extends AbstractMetric> T get(Class<T> metric){
         return get(metric.getSimpleName());
     }
@@ -123,7 +127,7 @@ public final class Metrics {
      */
     public static <T extends AbstractMetric> void register(String metricName, Function<Long, T> initializer){
         if(initializers.containsKey(metricName)){
-            throw new IllegalArgumentException("Metric already registered: %s".formatted(metricName));
+            log.warn("Metric already registered: {}", metricName);
         }
         initializers.put(metricName, initializer);
     }
@@ -183,6 +187,19 @@ public final class Metrics {
         }
 
         return newStorage;
+    }
+
+    public static <S extends Solution<S,I>, I extends Instance> void addCurrentObjectives(S solution){
+        if(!areMetricsEnabled()){
+            return;
+        }
+        var storage = getCurrentThreadMetrics();
+        for(var obj: Context.getObjectives().values()){
+            var objective = (Objective<?, S, I>) obj;
+            String name = objective.getName();
+            ensureMetricInitialized(name, storage);
+            storage.metrics.get(name).add(objective.evalSol(solution));
+        }
     }
 
     public static void add(String metricName, double value){

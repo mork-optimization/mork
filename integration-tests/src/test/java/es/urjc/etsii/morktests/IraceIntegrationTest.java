@@ -1,6 +1,7 @@
 package es.urjc.etsii.morktests;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
+import es.urjc.etsii.grafo.autoconfigtests.Main;
 import es.urjc.etsii.grafo.solver.Mork;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
@@ -9,10 +10,11 @@ import org.junit.jupiter.api.Test;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
-//@SpringBootTest(useMainMethod = SpringBootTest.UseMainMethod.ALWAYS, classes = {Mork.class}, webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT) //
-//@ActiveProfiles(profiles = {"autoconfig"})
-//@DirtiesContext
+import static org.junit.jupiter.api.Assertions.assertTrue;
+
 public class IraceIntegrationTest {
 
     @BeforeAll
@@ -29,7 +31,15 @@ public class IraceIntegrationTest {
     }
 
     @Test
-    void launchAutoconfig(){
-        Mork.start(new String[]{"--autoconfig"}, FMode.MAXIMIZE);
+    void launchAutoconfig() {
+        var success = Mork.start(new String[]{
+                "--autoconfig",
+                "--instances.path.default=instancesautoconfig/autoconfig",
+        }, Main.AC_OBJECTIVE);
+        assertTrue(success);
+        assertTrue(Files.exists(Path.of("plots.pdf")));
+        assertTrue(Files.exists(Path.of("irace.Rdata")));
+        assertTrue(Files.exists(Path.of("log-ablation.Rdata")));
+        assertTrue(Files.exists(Path.of("report.html")));
     }
 }

@@ -7,12 +7,14 @@ import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.Reconstructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.metrics.BestObjective;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.shake.DestroyRebuild;
 import es.urjc.etsii.grafo.shake.Destructive;
 import es.urjc.etsii.grafo.shake.Shake;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
@@ -51,6 +53,8 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
 
     private static final Logger logger = LoggerFactory.getLogger(IteratedGreedy.class);
 
+    private Objective<?,S,I> objective;
+
     /**
      * Constructive procedure
      */
@@ -86,16 +90,17 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
      * @param destructionReconstruction destruction and reconstruction procedures
      * @param improver improving procedures. Could be 0 or more.
      */
-    @AutoconfigConstructor
     public IteratedGreedy(
-            @ProvidedParam String name,
-            @IntegerParam(min = 0, max = 1_000_000) int maxIterations,
-            @IntegerParam(min = 1, max = 1_000_000) int stopIfNotImprovedIn,
+            String name,
+            Objective<?,S,I> objective,
+            int maxIterations,
+            int stopIfNotImprovedIn,
             Constructive<S, I> constructive,
             Shake<S, I> destructionReconstruction,
             Improver<S, I> improver
     ) {
         super(name);
+        this.objective = objective;
         if (maxIterations < 0) {
             throw new IllegalArgumentException("maxIterations must be greater or equal to 0");
         }
@@ -107,6 +112,18 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
         this.constructive = constructive;
         this.destructionReconstruction = destructionReconstruction;
         this.improver = improver;
+    }
+
+    @AutoconfigConstructor
+    public IteratedGreedy(
+            @ProvidedParam String name,
+            @IntegerParam(min = 0, max = 1_000_000) int maxIterations,
+            @IntegerParam(min = 1, max = 1_000_000) int stopIfNotImprovedIn,
+            Constructive<S, I> constructive,
+            Shake<S, I> destructionReconstruction,
+            Improver<S, I> improver
+    ) {
+        this(name, Context.getMainObjective(), maxIterations, stopIfNotImprovedIn, constructive, destructionReconstruction, improver);
     }
 
     /**
@@ -149,12 +166,13 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
     public S algorithm(I instance) {
         S solution = this.newSolution(instance);
         solution = this.constructive.construct(solution);
-        Metrics.add(BestObjective.class, solution.getScore());
+        Metrics.addCurrentObjectives(solution);
         if(TimeControl.isTimeUp()){
             return solution;
         }
         solution = ls(solution);
-        logger.debug("Initial solution: {} - {}", solution.getScore(), solution);
+        double bestScore = this.objective.evalSol(solution);
+        logger.debug("Initial solution: {} - {}", bestScore, solution);
         int iterationsWithoutImprovement = 0;
         for (int i = 0; i < maxIterations; i++) {
             if(TimeControl.isTimeUp()){
@@ -164,18 +182,21 @@ public class IteratedGreedy<S extends Solution<S, I>, I extends Instance> extend
             copy = this.destructionReconstruction.shake(copy, 1);
             copy = ls(copy);
 
+            // Verify original solution score has not changed while modifying the copy
+            assert DoubleComparator.equals(bestScore, this.objective.evalSol(solution)): "Original solution changed score after modifying a copy, review your clone implementation";
 
             // Analyze result
-            if(!copy.isBetterThan(solution)){
+            if(!objective.isBetter(copy, bestScore)){
                 iterationsWithoutImprovement++;
                 if (iterationsWithoutImprovement >= this.stopIfNotImprovedIn) {
-                    logger.debug("Not improved after {} iterations, stopping in iteration {}. Current score {} - {}", stopIfNotImprovedIn, i, solution.getScore(), solution);
+                    logger.debug("Not improved after {} iterations, stopping in iteration {}. Current score {} - {}", stopIfNotImprovedIn, i, bestScore, solution);
                     break;
                 }
             } else {
                 solution = copy;
-                logger.debug("Improved at iteration {}: {} - {}", i, solution.getScore(), solution);
-                Metrics.add(BestObjective.class, solution.getScore());
+                bestScore = this.objective.evalSol(solution);
+                logger.debug("Improved at iteration {}: {} - {}", i, bestScore, solution);
+                Metrics.addCurrentObjectives(solution);
                 iterationsWithoutImprovement = 0;
             }
         }

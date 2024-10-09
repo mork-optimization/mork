@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.autoconfig.antlr;// Generated from AlgorithmParser.g4 by ANTLR 4.13.0
+package es.urjc.etsii.grafo.autoconfig.antlr;// Generated from AlgorithmParser.g4 by ANTLR 4.13.2
 
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.atn.ATN;
@@ -11,9 +11,9 @@ import org.antlr.v4.runtime.tree.TerminalNode;
 
 import java.util.List;
 
-@SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast", "CheckReturnValue"})
+@SuppressWarnings({"all", "warnings", "unchecked", "unused", "cast", "CheckReturnValue", "this-escape"})
 public class AlgorithmParser extends Parser {
-	static { RuntimeMetaData.checkVersion("4.13.0", RuntimeMetaData.VERSION); }
+	static { RuntimeMetaData.checkVersion("4.13.2", RuntimeMetaData.VERSION); }
 
 	protected static final DFA[] _decisionToDFA;
 	protected static final PredictionContextCache _sharedContextCache =
@@ -108,11 +108,11 @@ public class AlgorithmParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_init; }
 		@Override
 		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).enterInit(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).enterInit(this);
 		}
 		@Override
 		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).exitInit(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitInit(this);
 		}
 	}
 
@@ -151,11 +151,11 @@ public class AlgorithmParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_component; }
 		@Override
 		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).enterComponent(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).enterComponent(this);
 		}
 		@Override
 		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).exitComponent(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitComponent(this);
 		}
 	}
 
@@ -213,11 +213,11 @@ public class AlgorithmParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_properties; }
 		@Override
 		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).enterProperties(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).enterProperties(this);
 		}
 		@Override
 		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).exitProperties(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitProperties(this);
 		}
 	}
 
@@ -272,11 +272,11 @@ public class AlgorithmParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_property; }
 		@Override
 		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).enterProperty(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).enterProperty(this);
 		}
 		@Override
 		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).exitProperty(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitProperty(this);
 		}
 	}
 
@@ -321,11 +321,11 @@ public class AlgorithmParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_propertyValue; }
 		@Override
 		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).enterPropertyValue(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).enterPropertyValue(this);
 		}
 		@Override
 		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).exitPropertyValue(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitPropertyValue(this);
 		}
 	}
 
@@ -401,11 +401,11 @@ public class AlgorithmParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_literal; }
 		@Override
 		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).enterLiteral(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).enterLiteral(this);
 		}
 		@Override
 		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).exitLiteral(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitLiteral(this);
 		}
 	}
 
@@ -514,11 +514,11 @@ public class AlgorithmParser extends Parser {
 		@Override public int getRuleIndex() { return RULE_arrayLiteral; }
 		@Override
 		public void enterRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).enterArrayLiteral(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).enterArrayLiteral(this);
 		}
 		@Override
 		public void exitRule(ParseTreeListener listener) {
-			if ( listener instanceof AlgorithmParserListener ) ((AlgorithmParserListener)listener).exitArrayLiteral(this);
+			if ( listener instanceof AlgorithmParserListener) ((AlgorithmParserListener)listener).exitArrayLiteral(this);
 		}
 	}
 

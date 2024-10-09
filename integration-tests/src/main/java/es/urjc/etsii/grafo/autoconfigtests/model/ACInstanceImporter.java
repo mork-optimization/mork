@@ -11,11 +11,16 @@ import java.io.IOException;
 public class ACInstanceImporter extends InstanceImporter<ACInstance> {
     @Override
     public ACInstance importInstance(BufferedReader reader, String filename) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        String line;
-        while ((line = reader.readLine()) != null) {
-            sb.append(line).append("\n");
+        int total = 0;
+        var line = reader.readLine();
+        try {
+            total = Integer.parseInt(line);
+        } catch (NumberFormatException e) {
+            while (line != null) {
+                total += line.length();
+                line = reader.readLine();
+            }
         }
-        return new ACInstance(filename, sb.toString());
+        return new ACInstance(filename, total);
     }
 }

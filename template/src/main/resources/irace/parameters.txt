@@ -36,3 +36,9 @@ localsearch     "localsearch="     c    (firstimprovement, bestimprovement)
 # dlb             "--dlb "             c      (0, 1)             | localsearch %in% c(1,2,3)
 # rasrank         "--rasranks "        i      (1, 100)         | algorithm %in% c("ras")
 # elitistants     "--elitistants "     i      (1, 750)         | algorithm %in% c("eas")
+
+[forbidden]
+# forbidden combination of parameter values
+
+[global]
+digits = 2

@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <name>Mork</name>
@@ -17,6 +18,7 @@
         <module>common</module>
         <module>autoconfig</module>
         <module>integration-tests</module>
+        <module>aggregate-report</module>
     </modules>
 
     <licenses>
@@ -44,15 +46,19 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jackson.version>2.16.0</jackson.version>
-        <springboot.version>3.2.0</springboot.version>
-        <mockito.version>5.7.0</mockito.version>
-        <byte-buddy.version>1.14.10</byte-buddy.version>
-        <msurefire.version>3.2.2</msurefire.version>
-        <mcompiler.version>3.11.0</mcompiler.version>
-        <msource.version>3.3.0</msource.version>
-        <mjavadoc.version>3.6.2</mjavadoc.version>
-        <mjar.version>3.3.0</mjar.version>
+        <jackson.version>2.17.2</jackson.version>
+        <springboot.version>3.3.4</springboot.version>
+        <mockito.version>5.14.1</mockito.version>
+        <byte-buddy.version>1.15.3</byte-buddy.version>
+        <msurefire.version>3.5.1</msurefire.version>
+        <mcompiler.version>3.13.0</mcompiler.version>
+        <msource.version>3.3.1</msource.version>
+        <mjavadoc.version>3.10.1</mjavadoc.version>
+        <mjar.version>3.4.2</mjar.version>
+        <graalvm.version>24.1.0</graalvm.version>
+        <maspectj.version>1.15.0</maspectj.version>
+        <aspectj.version>1.9.22.1</aspectj.version>
+        <apachepoi.version>5.3.0</apachepoi.version>
         <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>
         <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
         <sonar.organization>rmartinsanta</sonar.organization>
@@ -60,10 +66,9 @@
         <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
         <sonar.dynamicAnalysis>reuseReports</sonar.dynamicAnalysis>
         <sonar.coverage.jacoco.xmlReportPaths>
-            ${project.basedir}/../integration-tests/target/site/jacoco-aggregate/jacoco.xml
+            ${project.basedir}/../aggregate-report/target/site/jacoco-aggregate/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
         <sonar.language>java</sonar.language>
-        <graalvm.version>23.1.1</graalvm.version>
     </properties>
 
     <distributionManagement>
@@ -95,8 +100,40 @@
 
             <dependency>
                 <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>mork-common</artifactId>
+                <version>0.21-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
                 <artifactId>autoconfig</artifactId>
                 <version>0.21-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-starter</artifactId>
+                <version>${springboot.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.fasterxml.jackson.core</groupId>
+                <artifactId>jackson-annotations</artifactId>
+                <version>${jackson.version}</version>
+                <scope>compile</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.aspectj</groupId>
+                <artifactId>aspectjrt</artifactId>
+                <version>${aspectj.version}</version>
+                <scope>runtime</scope>
+            </dependency>
+
+            <dependency>
+                <groupId>org.aspectj</groupId>
+                <artifactId>aspectjweaver</artifactId>
+                <version>${aspectj.version}</version>
             </dependency>
 
             <dependency>
@@ -119,30 +156,68 @@
     </dependencyManagement>
 
     <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${springboot.version}</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>repackage</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.codehaus.mojo</groupId>
+                    <artifactId>aspectj-maven-plugin</artifactId>
+                    <version>${maspectj.version}</version>
+                    <configuration>
+                        <complianceLevel>17</complianceLevel>
+                        <showWeaveInfo>true</showWeaveInfo>
+                        <encoding>${project.build.sourceEncoding}</encoding>
+                        <Xlint>ignore</Xlint>
+                        <verbose>true</verbose>
+                        <parameters>true</parameters>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <phase>process-sources</phase>
+                            <goals>
+                                <goal>compile</goal>
+                                <goal>test-compile</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                    <dependencies>
+                        <dependency>
+                            <groupId>org.aspectj</groupId>
+                            <artifactId>aspectjtools</artifactId>
+                            <version>${aspectj.version}</version>
+                        </dependency>
+                    </dependencies>
+                </plugin>
+            </plugins>
+        </pluginManagement>
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${msurefire.version}</version>
                 <configuration>
-                    <argLine>--enable-preview</argLine>
+                    <argLine>${argLine}</argLine>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.10</version>
+                <version>0.8.12</version>
                 <executions>
                     <execution>
                         <goals>
                             <goal>prepare-agent</goal>
-                        </goals>
-                    </execution>
-                    <execution>
-                        <id>jacoco-report-aggregate</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>report-aggregate</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -150,7 +225,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
-                <version>3.1.0</version>
+                <version>3.2.5</version>
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>
@@ -199,7 +274,6 @@
                     </execution>
                 </executions>
                 <configuration>
-                    <additionalOptions>--enable-preview</additionalOptions>
                     <source>${java.version}</source>
                     <doclint>all,-missing</doclint>
                 </configuration>
@@ -209,10 +283,10 @@
                 <artifactId>maven-compiler-plugin</artifactId>
                 <version>${mcompiler.version}</version>
                 <configuration>
+                    <useIncrementalCompilation>false</useIncrementalCompilation>
                     <compilerArgs>
                         <arg>-parameters</arg>
                         <arg>-Xlint:all,-this-escape,-processing,-options</arg>
-                        <arg>--enable-preview</arg>
                     </compilerArgs>
                 </configuration>
             </plugin>

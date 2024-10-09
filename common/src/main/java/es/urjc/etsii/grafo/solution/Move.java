@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.solution;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -9,8 +10,6 @@ import static es.urjc.etsii.grafo.solution.Solution.MAX_DEBUG_MOVES;
 
 /**
  * Represents a change for a given solution in a given neighborhood
- * All neighborhood moves should be represented by implementations of either LazyMove or EagerMove.
- * Do not directly extend this class.
  */
 public abstract class Move<S extends Solution<S, I>, I extends Instance> {
 
@@ -64,11 +63,11 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
     }
 
     private S executeAsserts(S solution){
+        var oldValues = Context.evalSolution(solution);
         assert saveLastMove(solution, this);
-        double prevScore = solution.getScore();
         S newSolution = executeDirect(solution);
-        assert ValidationUtil.scoreUpdate(solution, prevScore, this);
-        ValidationUtil.assertValidScore(solution);
+        assert ValidationUtil.scoreUpdate(solution, oldValues, this);
+        assert Context.validate(solution);
         return newSolution;
     }
 
@@ -95,13 +94,6 @@ public abstract class Move<S extends Solution<S, I>, I extends Instance> {
      * to be implemented by each move type
      */
     protected abstract S _execute(S solution);
-
-    /**
-     * Get the movement value, represents how much does the move changes the f.o of a solution if executed
-     *
-     * @return f.o change
-     */
-    public abstract double getValue();
 
     /**
      * Returns a String representation of the current movement.

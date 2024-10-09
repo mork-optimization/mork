@@ -52,24 +52,12 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
         return new TestSolution(this);
     }
 
-    @Override
-    protected boolean _isBetterThan(TestSolution other) {
-        return false;
-    }
-
-
-    @Override
     public double getScore() {
         return this.score;
     }
 
     public void setScore(double score) {
         this.score = score;
-    }
-
-    @Override
-    public double recalculateScore() {
-        return this.score;
     }
 
     @Override

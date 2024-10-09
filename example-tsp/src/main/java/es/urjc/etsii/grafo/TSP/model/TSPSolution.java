@@ -2,7 +2,6 @@ package es.urjc.etsii.grafo.TSP.model;
 
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ArrayUtil;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.Arrays;
 
@@ -59,15 +58,6 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
         return new TSPSolution(this);
     }
 
-    /**
-     * Is the current solution strictly better than the solution given as a parameter?
-     * @param other solution we are comparing against
-     * @return true if strictly better, false if equals or worse.
-     */
-    @Override
-    protected boolean _isBetterThan(TSPSolution other) {
-        return DoubleComparator.isLess(this.routeLength, other.routeLength);
-    }
 
     /**
      * Get the current solution score.
@@ -77,8 +67,7 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
      *
      * @return current solution score as double
      */
-    @Override
-    public double getScore() {
+    public double getDistance() {
         return this.routeLength;
     }
 
@@ -90,15 +79,10 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
     }
 
     /**
-     * Recalculate solution score and validate current solution state
-     * You must check that no constraints are broken, and that all costs are valid
-     * The difference between this method and getScore is that we must recalculate the score from scratch,
-     * without using any cache/shortcuts.
-     * DO NOT UPDATE CACHES / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
-     *
+     * Recalculate solution score, sometimes is faster than incrementally calculating it.
+     * This method is also used in the solution validator to verify that the solution is correct.
      * @return current solution score as double
      */
-    @Override
     public double recalculateScore() {
         double distance = 0;
         for (int i = 0; i < this.route.length; i++) {

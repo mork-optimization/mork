@@ -5,8 +5,8 @@ import es.urjc.etsii.grafo.annotations.IntegerParam;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeControl;
-import es.urjc.etsii.grafo.util.ValidationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,7 +64,7 @@ public class RandomMoveShake<S extends Solution<S,I>, I extends Instance> extend
             var move = this.neighborhood.getRandomMove(solution);
             if(move.isPresent()){
                 move.get().execute(solution);
-                ValidationUtil.assertValidScore(solution);
+                assert Context.validate(solution);
             } else {
                 log.debug("No move available in {}, ending shake at {} of {} iterations", neighborhood.getClass().getSimpleName(), i, k*ratio);
                 break;

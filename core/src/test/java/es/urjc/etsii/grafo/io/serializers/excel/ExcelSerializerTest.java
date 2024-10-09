@@ -5,10 +5,12 @@ import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.solver.Mork;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestHelperFactory;
 import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.Context;
 import org.apache.poi.openxml4j.util.ZipSecureFile;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -32,16 +34,20 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
-import static es.urjc.etsii.grafo.testutil.TestHelperFactory.*;
+import static es.urjc.etsii.grafo.testutil.TestHelperFactory.referencesGenerator;
+import static es.urjc.etsii.grafo.testutil.TestHelperFactory.solutionGenerator;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 public class ExcelSerializerTest {
 
+    private static final Objective<TestMove, TestSolution, TestInstance> OBJ_MAX = Objective.of("Test", FMode.MAXIMIZE, TestSolution::getScore, TestMove::getScoreChange);
+
     @BeforeAll
     public static void configurePOI() {
         // In order to read the file due to the size of the pivot table
         ZipSecureFile.setMinInflateRatio(0.001);
+        Context.Configurator.setObjectives(OBJ_MAX);
     }
 
     @BeforeEach
@@ -53,7 +59,6 @@ public class ExcelSerializerTest {
         var config = new ExcelConfig();
         config.setFolder(p.toFile().getAbsolutePath());
         config.setCalculationMode(useJavaCalculation? ExcelConfig.CalculationMode.JAVA: ExcelConfig.CalculationMode.EXCEL);
-        Mork.setSolvingMode(FMode.MAXIMIZE);
         return new ExcelSerializer<>(config, references, customizer, instanceManager);
     }
 

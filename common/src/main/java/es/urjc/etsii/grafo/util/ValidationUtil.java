@@ -1,12 +1,13 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResultManager;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.solution.SolutionValidator;
 
 import java.util.List;
-import java.util.Optional;
+import java.util.Map;
 import java.util.RandomAccess;
 
 /**
@@ -14,17 +15,8 @@ import java.util.RandomAccess;
  * Implement different assertions to check solution validity
  */
 public class ValidationUtil {
-    /**
-     * Check if the cached score of a solution matches the recalculated score
-     *
-     * @param solution solution to check
-     * @param <S> Solution class
-     * @param <I> Instance class
-     */
-    public static <S extends Solution<S,I>, I extends Instance> void assertValidScore(S solution){
-        assert DoubleComparator.equals(solution.getScore(), solution.recalculateScore()) :
-                String.format("Score mismatch, getScore() %s, recalculateScore() %s. Review your incremental score calculation. Last applied moves: %s", solution.getScore(), solution.recalculateScore(), solution.lastExecutesMovesAsString());
-    }
+
+
 
     /**
      * Check that the given list implements the RandomAccess interface
@@ -51,28 +43,32 @@ public class ValidationUtil {
         }
     }
 
-    public static <S extends Solution<S,I>, I extends Instance> boolean scoreUpdate(S solution, double old, Move<S,I> move){
-        double newScore = solution.getScore();
-        double diff = newScore - old;
-        double expected = move.getValue();
-        if(DoubleComparator.equals(diff, expected)){
-            return true;
-        } else {
-            throw new AssertionError(String.format("Score change validation failed: %s - %s = %s != %s, current move: %s, solution state with move applied: %s. Last applied moves: %s", newScore, old, diff, expected, move, solution, solution.lastExecutesMovesAsString()));
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean scoreUpdate(S solution, Map<String, Double> oldValues, M move){
+        var deltaValues = Context.evalDeltas(move);
+        var newValues = Context.evalSolution(solution);
+        for(var entry : oldValues.entrySet()){
+            var objName = entry.getKey();
+            double oldValue = entry.getValue();
+            double expectedDelta = deltaValues.get(objName);
+            double newValue = newValues.get(objName);
+            if(!DoubleComparator.equals(expectedDelta, newValue - oldValue)){
+                throw new AssertionError(String.format("Score update validation failed: Δ != new - old --> %s != %s - %s, current move: %s, solution state with move applied: %s. Last applied moves: %s", expectedDelta, newValue, oldValue, move, solution, solution.lastExecutesMovesAsString()));
+            }
         }
+        return true;
     }
 
-    /**
-     * Run user provided validations if the user has implemented them
-     * @param solution to validate
-     */
-    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
-    public static <S extends Solution<S,I>, I extends Instance> void runUserValidation(Optional<SolutionValidator<S, I>> optValidator, S solution){
-        if(optValidator.isEmpty()){
-            return;
+    public static <S extends Solution<S, I>, I extends Instance> void validateWithRefValues(S solution, Map<String, Objective<?, S, I>> objectives, ReferenceResultManager referenceResultManager) {
+        var refValues = referenceResultManager.getRefValueForAllObjectives(solution.getInstance().getId(), true);
+        for(var obj : objectives.values()){
+            var name = obj.getName();
+            if(!refValues.containsKey(name)){
+                continue;
+            }
+            var refValue = refValues.get(name);
+            if(obj.isBetter(solution, refValue)){
+                throw new AssertionError(String.format("Solution has improved an optimal value: %s (%s). Solution data: %s ", refValue, name, solution));
+            }
         }
-        var validator = optValidator.get();
-        var result = validator.validate(solution);
-        result.throwIfFail();
     }
 }

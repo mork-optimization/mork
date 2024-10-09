@@ -2,7 +2,9 @@ package es.urjc.etsii.grafo.algorithms.multistart;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 
 /**
  * Multi-start algorithm builder based on Java Builder Pattern
@@ -32,6 +34,8 @@ public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Inst
      */
     private int maxIterationsWithoutImproving = Integer.MAX_VALUE / 2;
 
+    private Objective<?, S, I> objective = Context.getMainObjective();
+
     /**
      * Builder for {@link MultiStartAlgorithm}
      */
@@ -48,6 +52,10 @@ public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Inst
         return this;
     }
 
+    public MultiStartAlgorithmBuilder<S, I> withObjective(Objective<?, S, I> objective) {
+        this.objective = objective;
+        return this;
+    }
 
     /**
      * <p>withMaxIterations.</p>
@@ -95,6 +103,9 @@ public class MultiStartAlgorithmBuilder<S extends Solution<S, I>, I extends Inst
         if(name == null){
             name = "MS" + algorithm.getName();
         }
-        return new MultiStartAlgorithm<>(name, algorithm, maxIterations, minIterations, maxIterationsWithoutImproving);
+        if(objective == null){
+            throw new IllegalArgumentException("Objective cannot be null");
+        }
+        return new MultiStartAlgorithm<>(name, objective, algorithm, maxIterations, minIterations, maxIterationsWithoutImproving);
     }
 }

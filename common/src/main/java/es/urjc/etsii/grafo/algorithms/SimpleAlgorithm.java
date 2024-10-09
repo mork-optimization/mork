@@ -5,12 +5,11 @@ import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.metrics.BestObjective;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
-import es.urjc.etsii.grafo.util.ValidationUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,8 +63,8 @@ public class SimpleAlgorithm<S extends Solution<S, I>, I extends Instance> exten
     public S algorithm(I instance) {
         var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
-        ValidationUtil.assertValidScore(solution);
-        Metrics.add(BestObjective.class, solution.getScore());
+        assert Context.validate(solution);
+        Metrics.addCurrentObjectives(solution);
         printStatus("Constructive", solution);
         solution = localSearch(solution);
         return solution;
@@ -82,8 +81,8 @@ public class SimpleAlgorithm<S extends Solution<S, I>, I extends Instance> exten
             return solution;
         }
         solution = improver.improve(solution);
-        ValidationUtil.assertValidScore(solution);
-        Metrics.add(BestObjective.class, solution.getScore());
+        assert Context.validate(solution);
+        Metrics.addCurrentObjectives(solution);
         printStatus("Improver " + improver, solution);
         return solution;
     }

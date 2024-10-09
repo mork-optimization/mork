@@ -22,15 +22,15 @@ public abstract class InstanceImporter<I extends Instance> {
      * Create an instance from the format used by the problem.
      * After this method finishes executing, the Instance object MUST BE IMMUTABLE.
      *
-     * @param path File path from where we will load the data
+     * @param instancePath File path from where we will load the data
      * @return The instance object that represents this object
      */
-    public I importInstance(String path){
-        try (var reader = new BufferedReader(new InputStreamReader(IOUtil.getInputStream(path)))) {
-            var suggestedInstanceId = FilenameUtils.getBaseName(path);
+    public I importInstance(String instancePath){
+        try (var reader = new BufferedReader(new InputStreamReader(IOUtil.getInputStream(instancePath)))) {
+            var suggestedInstanceId = FilenameUtils.getName(instancePath);
             return importInstance(reader, suggestedInstanceId);
         } catch (Exception e) {
-            throw new InstanceImportException("Error while loading file: " + path, e);
+            throw new InstanceImportException("Error while loading file: " + instancePath, e);
         }
     }
 

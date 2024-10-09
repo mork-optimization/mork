@@ -4,6 +4,8 @@ import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.fill.ParameterProvider;
+import es.urjc.etsii.grafo.solution.Objective;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import org.apache.commons.lang3.ClassUtils;
 import org.slf4j.Logger;
@@ -301,6 +303,15 @@ public class AlgorithmBuilderUtil {
         // If the origin class is a string and the target is a boolean like value, try to parse as boolean
         if (target == Boolean.class || target == boolean.class) {
             return Boolean.parseBoolean(s);
+        }
+
+        // If the target class is an objective, try to find objective in context or fail if not found
+        if(ClassUtils.isAssignable(target, Objective.class)){
+            var objective = Context.getObjectives().get(s);
+            if(objective == null){
+                throw new IllegalArgumentException("Objective %s not found in context, available objectives are: %s".formatted(s, Context.getObjectives().keySet()));
+            }
+            return objective;
         }
 
         // If no specific string conversion exists return as is and hope for the best

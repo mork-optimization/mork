@@ -20,7 +20,6 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@Profile("autoconfig")
 public class AutoconfigDebugController {
 
     private final SolverConfig solverConfig;

@@ -8,4 +8,8 @@ import java.io.Serial;
 public class InvalidRandomException extends RuntimeException {
     @Serial
     private static final long serialVersionUID = 1L;
+
+    public InvalidRandomException(String message) {
+        super(message);
+    }
 }

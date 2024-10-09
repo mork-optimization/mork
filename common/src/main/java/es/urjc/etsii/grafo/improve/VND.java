@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.improve;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.annotations.ComponentParam;
-import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 
 import java.util.List;
 
@@ -21,10 +21,10 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
      * <p>Constructor for VND.</p>
      *
      * @param improvers a {@link List} object.
-     * @param fmode a boolean.
+     * @param objective objective to optimize
      */
-    public VND(List<Improver<S, I>> improvers, FMode fmode) {
-        super(fmode);
+    public VND(List<Improver<S, I>> improvers, Objective<?,S,I> objective) {
+        super(objective);
         this.improvers = improvers;
     }
 
@@ -34,17 +34,18 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
      * @param improver1 improver1
      * @param improver2 improver2
      * @param improver3 improver3
-     * @param fmode a boolean.
      */
     @AutoconfigConstructor
     public VND(
-            @ProvidedParam FMode fmode,
             @ComponentParam(disallowed = {VND.class}) Improver<S,I> improver1,
             @ComponentParam(disallowed = {VND.class}) Improver<S,I> improver2,
             @ComponentParam(disallowed = {VND.class}) Improver<S,I> improver3
     ) {
-        super(fmode);
-        this.improvers = List.of(improver1, improver2, improver3);
+        this(List.of(improver1, improver2, improver3));
+    }
+
+    public VND(List<Improver<S,I>> improvers) {
+        this(improvers, Context.getMainObjective());
     }
 
     /** {@inheritDoc} */
@@ -52,11 +53,11 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
     protected S _improve(S solution) {
         int index = 0;
         while(index < improvers.size()){
-            double scoreBeforeImprover = solution.getScore();
+            double scoreBeforeImprover = objective.evalSol(solution);
             var improver = improvers.get(index);
             solution = improver.improve(solution);
 
-            if(ofmode.isBetter(solution.getScore(), scoreBeforeImprover)){
+            if(objective.isBetter(solution,  scoreBeforeImprover)){
                 index = 0;
             } else {
                 index++;

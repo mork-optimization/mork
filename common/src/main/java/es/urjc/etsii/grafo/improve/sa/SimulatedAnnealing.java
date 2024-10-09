@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.improve.sa;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.improve.sa.cd.CoolDownControl;
 import es.urjc.etsii.grafo.improve.sa.initialt.InitialTemperatureCalculator;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
@@ -17,7 +17,6 @@ import org.slf4j.LoggerFactory;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.ToDoubleFunction;
 
 /**
  * Simulated annealing (SA) is a metaheuristic whose name comes from annealing in metallurgy.
@@ -42,14 +41,13 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
 
     private static final Logger log = LoggerFactory.getLogger(SimulatedAnnealing.class);
 
+    protected final Objective<M,S,I> objective;
     protected final AcceptanceCriteria<M, S, I> acceptanceCriteria;
     protected final RandomizableNeighborhood<M, S, I> neighborhood;
     protected final TerminationCriteria<M, S, I> terminationCriteria;
     protected final CoolDownControl<M, S, I> coolDownControl;
     protected final InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator;
     protected final int cycleLength;
-    protected final ToDoubleFunction<M> f;
-    protected final FMode fmode;
 
     private record CycleResult<S>(boolean atLeastOneMove, S bestSolution, S currentSolution) {
     }
@@ -63,19 +61,16 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
      * @param terminationCriteria
      * @param coolDownControl
      * @param cycleLength
-     * @param f
-     * @param fmode
      */
-    protected SimulatedAnnealing(FMode fMode, AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength, ToDoubleFunction<M> f, FMode fmode) {
-        super(fMode);
+    protected SimulatedAnnealing(Objective<M,S,I> objective, AcceptanceCriteria<M, S, I> acceptanceCriteria, RandomizableNeighborhood<M, S, I> ps, InitialTemperatureCalculator<M, S, I> initialTemperatureCalculator, TerminationCriteria<M, S, I> terminationCriteria, CoolDownControl<M, S, I> coolDownControl, int cycleLength) {
+        super(objective);
+        this.objective = objective;
         this.acceptanceCriteria = acceptanceCriteria;
         this.neighborhood = ps;
         this.terminationCriteria = terminationCriteria;
         this.coolDownControl = coolDownControl;
         this.initialTemperatureCalculator = initialTemperatureCalculator;
         this.cycleLength = cycleLength;
-        this.f = f;
-        this.fmode = fmode;
     }
 
     protected boolean shouldEnd(S best, double currentTemperature, int currentIteration){
@@ -134,11 +129,11 @@ public class SimulatedAnnealing<M extends Move<S, I>, S extends Solution<S, I>, 
                     continue;
                 }
                 testedMoves.add(move);
-                double score = f.applyAsDouble(move);
-                if (fmode.improves(score) || acceptanceCriteria.accept(move, currentTemperature)) {
+                double score = objective.evalMove(move);
+                if (objective.improves(score) || acceptanceCriteria.accept(move, currentTemperature)) {
                     atLeastOne = true;
                     move.execute(solution);
-                    if (solution.isBetterThan(best)) {
+                    if (objective.isBetter(solution, best)) {
                         best = solution.cloneSolution();
                     }
                     break;

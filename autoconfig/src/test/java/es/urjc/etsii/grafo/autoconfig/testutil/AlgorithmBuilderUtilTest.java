@@ -5,14 +5,18 @@ import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.FakeGRASPConstructive;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.TestAlgorithmA;
-import es.urjc.etsii.grafo.autoconfig.fill.FModeParam;
+import es.urjc.etsii.grafo.autoconfig.fill.ObjectiveParamProvider;
 import es.urjc.etsii.grafo.autoconfig.testutil.findautoconfig.Has0;
 import es.urjc.etsii.grafo.autoconfig.testutil.findautoconfig.Has1;
 import es.urjc.etsii.grafo.autoconfig.testutil.findautoconfig.Has2;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.Context;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Constructor;
@@ -24,6 +28,14 @@ import static es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderUtil.prepar
 import static org.junit.jupiter.api.Assertions.*;
 
 class AlgorithmBuilderUtilTest {
+
+    static final Objective<?,?,?> defaultMin = Objective.of("TestMin", FMode.MINIMIZE, TestSolution::getScore, TestMove::getScoreChange);
+    static final Objective<?,?,?> defaultMax = Objective.of("TestMax", FMode.MAXIMIZE, TestSolution::getScore, TestMove::getScoreChange);
+
+    @BeforeAll
+    static void setup() {
+        Context.Configurator.setObjectives(defaultMin);
+    }
 
     @Test
     void testFindMultipleConstructors() {
@@ -98,7 +110,7 @@ class AlgorithmBuilderUtilTest {
     @Test
     void buildGraspExplicitFMode() {
         Map<String, Object> params = Map.of(
-                "ofmode", FMode.MINIMIZE,
+                "objective", defaultMin.getName(),
                 "alpha", 0.75,
                 "candidateListManager", getCLManager());
         var greedyRandom = AlgorithmBuilderUtil.build(FakeGRASPConstructive.class, params, List.of());
@@ -118,7 +130,7 @@ class AlgorithmBuilderUtilTest {
         Map<String, Object> params = Map.of(
                 "alpha", 0.75,
                 "candidateListManager", getCLManager());
-        assertThrows(AlgorithmParsingException.class, () -> AlgorithmBuilderUtil.build(FakeGRASPConstructive.class, params, List.of(new FModeParam())));
+        assertThrows(AlgorithmParsingException.class, () -> AlgorithmBuilderUtil.build(FakeGRASPConstructive.class, params, List.of(new ObjectiveParamProvider())));
     }
 
     @Test
@@ -347,6 +359,16 @@ class AlgorithmBuilderUtilTest {
         Constructor<?> c = Has1.class.getConstructor(int.class);
         assertEquals(c, AlgorithmBuilderUtil.findAutoconfigConstructor(Has1.class));
         assertThrows(IllegalArgumentException.class, () -> AlgorithmBuilderUtil.findAutoconfigConstructor(Has2.class));
+    }
+
+    @Test
+    void testObjectiveConversion(){
+        var obj = (Objective<?, ?, ?>) prepareParameterValue(defaultMin.getName(), Objective.class);
+        assertSame(defaultMin, obj);
+
+        Assertions.assertThrows(IllegalArgumentException.class, () -> prepareParameterValue("MINIMIZE", Objective.class));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> prepareParameterValue("MAXIMIZE", Objective.class));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> prepareParameterValue(defaultMax.getName(), Objective.class));
     }
 
     private enum FakeEnum {

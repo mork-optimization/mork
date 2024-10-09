@@ -1,36 +1,27 @@
 package es.urjc.etsii.grafo.events.types;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
+import es.urjc.etsii.grafo.solution.Objective;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Triggered when the solver starts.
  */
 public class ExecutionStartedEvent extends MorkEvent {
 
-    private final boolean maximizing;
+    private final Map<String, Objective<?, ?, ?>> objectives;
     private final List<String> experimentNames;
 
     /**
      * Create a new ExecutionStartedEvent, triggered by the framework when the solver is ready to start.
      *
-     * @param maximizing
+     * @param objectives           main objective being optimized
      * @param experimentNames experiment names
      */
-    public ExecutionStartedEvent(boolean maximizing, List<String> experimentNames) {
-        this.maximizing = maximizing;
+    public ExecutionStartedEvent(Map<String, Objective<?, ?, ?>> objectives, List<String> experimentNames) {
+        this.objectives = objectives;
         this.experimentNames = experimentNames;
-    }
-
-    /**
-     * Create a new ExecutionStartedEvent, triggered by the framework when the solver is ready to start.
-     *
-     * @param fMode           mode
-     * @param experimentNames experiment names
-     */
-    public ExecutionStartedEvent(FMode fMode, List<String> experimentNames) {
-        this(fMode == FMode.MAXIMIZE, experimentNames);
     }
 
     /**
@@ -42,12 +33,7 @@ public class ExecutionStartedEvent extends MorkEvent {
         return experimentNames;
     }
 
-    /**
-     * Is this a maximization or a minimization problem?
-     *
-     * @return true if maximizing, false if minimizing
-     */
-    public boolean isMaximizing() {
-        return maximizing;
+    public Map<String, Objective<?, ?, ?>> getObjectives() {
+        return objectives;
     }
 }

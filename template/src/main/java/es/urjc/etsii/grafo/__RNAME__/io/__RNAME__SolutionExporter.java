@@ -2,6 +2,7 @@
 //
 //import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Instance;
 //import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Solution;
+//import es.urjc.etsii.grafo.executors.WorkUnitResult;
 //import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 //
 //import java.io.BufferedWriter;
@@ -22,10 +23,10 @@
 //    }
 //
 //    @Override
-//    public void export(BufferedWriter writer, __RNAME__Solution solution) throws IOException {
+//    public void export(BufferedWriter writer, WorkUnitResult<__RNAME__Solution, __RNAME__Instance> result) throws IOException {
 //        // Export data to the BufferedWriter. If more control is desired,
 //        // for example if you want to create multiple files for each solution, ot write binary data
 //        // ignore this method (throw new UnsupportedOperationException()) and override this one instead:
-//        // public void export(String folder, String suggestedFilename, __RNAME__Solution solution)
+//        // public void export(String folder, String suggestedFilename, WorkUnitResult<__RNAME__Solution, __RNAME__Instance> solution)
 //    }
 //}

@@ -1,18 +1,16 @@
 package es.urjc.etsii.grafo.improve.ls;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.metrics.BestObjective;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.function.ToDoubleFunction;
 
 /**
  * Local search procedures start from a given feasible solution and explore a determined neighborhood
@@ -35,31 +33,27 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
     private static final int WARN_LIMIT = 100_000;
 
     protected final Neighborhood<M, S, I> neighborhood;
-    protected final FMode alternativeFMode;
-    protected final ToDoubleFunction<M> f;
+    protected final Objective<M,S,I> objective;
+
 
     /**
      * Create a new local search method using the given neighborhood
      * @param neighborhood neighborhood to use
-     * @param solutionMode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
-     * @param alternativeFMode true if we should maximize the values returned by function f, false otherwise
-     * @param alternativeF function used to get a double value from a move
+     * @param objective MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
      */
-    protected LocalSearch(FMode solutionMode, Neighborhood<M, S, I> neighborhood, FMode alternativeFMode, ToDoubleFunction<M> alternativeF) {
-        super(solutionMode);
+    protected LocalSearch(Objective<M,S,I> objective, Neighborhood<M, S, I> neighborhood) {
+        super(objective);
+        this.objective = objective;
         this.neighborhood = neighborhood;
-        this.alternativeFMode = alternativeFMode;
-        this.f = alternativeF;
     }
 
     /**
      * Create a new local search method using the given neighborhood.
      * Uses the method Move::getValue as the guiding function, with fMaximize = maximize.
      * @param neighborhood neighborhood to use
-     * @param fmode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
      */
-    protected LocalSearch(FMode fmode, Neighborhood<M, S, I> neighborhood) {
-        this(fmode, neighborhood, fmode, Move::getValue);
+    protected LocalSearch(Neighborhood<M, S, I> neighborhood) {
+        this(Context.getMainObjective(), neighborhood);
     }
 
     /**
@@ -98,7 +92,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
 
         // Execute move, save metric if improved, and ask for another iteration
         move.execute(solution);
-        Metrics.add(BestObjective.class, solution.getScore());
+        Metrics.addCurrentObjectives(solution);
 
         return true;
     }
@@ -113,7 +107,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
     public abstract M getMove(S solution);
 
     protected boolean improves(M move){
-        double score = this.f.applyAsDouble(move);
-        return this.alternativeFMode.improves(score);
+        double score = this.objective.evalMove(move);
+        return this.objective.improves(score);
     }
 }

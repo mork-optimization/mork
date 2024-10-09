@@ -1,11 +1,14 @@
 package es.urjc.etsii.grafo.orchestrator;
 
+import es.urjc.etsii.grafo.annotations.InheritedComponent;
+
 import java.util.List;
 
 /**
  * Base orchestrator, contains common code.
  * An Orchestrator is the entity responsible for organizing all the work to execute and dispaching it.
  */
+@InheritedComponent
 public abstract class AbstractOrchestrator {
 
     /**
@@ -37,4 +40,8 @@ public abstract class AbstractOrchestrator {
      * @param args command line parameters
      */
     public abstract void run(String... args);
+
+    public List<String> getNames(){
+        return List.of(this.getClass().getSimpleName().replace("Orchestrator", ""));
+    }
 }

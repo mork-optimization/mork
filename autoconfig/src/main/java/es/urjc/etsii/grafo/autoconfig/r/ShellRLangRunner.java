@@ -28,16 +28,18 @@ public class ShellRLangRunner extends RLangRunner {
 
             // Launch Rscript executable in a new process
             ProcessBuilder pb = new ProcessBuilder("Rscript", "runner.R");
+            pb.redirectErrorStream(true);
             Process p = pb.start();
 
             // Send irace output to our logs in real time
-            drainStream(Level.INFO, p.getInputStream());
-            log.info("IRACE Error Stream: ");
-            drainStream(Level.WARNING, p.getErrorStream());
+            var containsErrors = drainStream(Level.INFO, p.getInputStream());
 
             // Wait until Rscript process terminates
-            p.waitFor();
-
+            var exitCode = p.waitFor();
+            log.info("Rscript process terminated with code: " + exitCode);
+            if(exitCode != 0 || containsErrors){
+                throw new RuntimeException("Error executing R code, review logs. Exit code: " + exitCode);
+            }
         } catch (IOException e) {
             throw new RuntimeException(e);
         } catch (InterruptedException e) {

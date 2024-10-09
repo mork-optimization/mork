@@ -1,14 +1,14 @@
 package es.urjc.etsii.grafo.create.grasp;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
-import es.urjc.etsii.grafo.solution.Move;
-import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.solution.Objective;
+import es.urjc.etsii.grafo.testutil.TestCommonUtils;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.DoubleComparator;
-import es.urjc.etsii.grafo.util.random.RandomManager;
 import es.urjc.etsii.grafo.util.random.RandomType;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class GRASPConstructiveMaximizingTest {
 
+    private final Objective<TestMove,TestSolution,TestInstance> maxObj = Objective.ofMaximizing("TestMax", TestSolution::getScore, TestMove::getScoreChange);
+
     TestGRASPListManager listManager;
     List<TestMove> moves;
     TestSolution solution;
@@ -28,10 +30,16 @@ class GRASPConstructiveMaximizingTest {
     private RandomGreedyGRASPConstructive<TestMove, TestSolution, TestInstance> rg;
     private TestInstance instance;
 
+    @BeforeAll
+    static void setupObjectives(){
+        var obj = Objective.ofMaximizing("TestMax", TestSolution::getScore, TestMove::getScoreChange);
+        Context.Configurator.setObjectives(obj);
+    }
+
     @BeforeEach
     void setUp(){
-        RandomManager.globalConfiguration(RandomType.DEFAULT, 0, 1);
-        RandomManager.localConfiguration(RandomType.DEFAULT, 0);
+        var config = TestCommonUtils.solverConfig(RandomType.DEFAULT, 0, 1);
+        TestCommonUtils.initRandom(config);
         this.instance = new TestInstance("testinstance");
         this.solution = new TestSolution(this.instance);
         this.moves = new ArrayList<>(Arrays.asList(
@@ -43,9 +51,8 @@ class GRASPConstructiveMaximizingTest {
                 new TestMove(this.solution, 7, MAXIMIZE)
         ));
         this.listManager = new TestGRASPListManager(this.moves);
-        this.gr = new GreedyRandomGRASPConstructive<>(MAXIMIZE, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
-        this.rg = new RandomGreedyGRASPConstructive<>(MAXIMIZE, listManager, TestMove::getValue, ()  -> 0, "Fixed{0}");
-
+        this.gr = new GreedyRandomGRASPConstructive<>(maxObj, listManager, ()  -> 0, "Fixed{0}");
+        this.rg = new RandomGreedyGRASPConstructive<>(maxObj, listManager, ()  -> 0, "Fixed{0}");
     }
 
     @Test
@@ -57,7 +64,7 @@ class GRASPConstructiveMaximizingTest {
         assertTrue(this.listManager.calledBefore);
         assertTrue(this.listManager.calledAfter);
         assertEquals(this.moves.size(), this.listManager.nCalls);
-        var moves = builtSolution.lastExecutesMoves();
+        var moves = (List<TestMove>) (Object) builtSolution.lastExecutesMoves();
         // Verify that moves are executed in decreasing score order, as grasp is run with alpha 0 = greedy
         descending(moves);
     }
@@ -71,15 +78,15 @@ class GRASPConstructiveMaximizingTest {
         assertTrue(this.listManager.calledBefore);
         assertTrue(this.listManager.calledAfter);
         assertEquals(this.moves.size(), this.listManager.nCalls);
-        var moves = builtSolution.lastExecutesMoves();
+        var moves = (List<TestMove>) (Object) builtSolution.lastExecutesMoves();
         // Verify that moves are executed in decreasing score order, as grasp is run with alpha 0 = greedy
         descending(moves);
     }
 
-    private void descending(List<Move<? extends Solution<TestSolution, TestInstance>, TestInstance>> moves){
-        double last = moves.get(0).getValue();
+    private void descending(List<TestMove> moves){
+        double last = maxObj.evalMove(moves.getFirst());
         for (int i = 1; i < moves.size(); i++) {
-            double current = moves.get(i).getValue();
+            double current = maxObj.evalMove(moves.get(i));
             assertTrue(DoubleComparator.isLessOrEquals(current, last));
             last = current;
         }

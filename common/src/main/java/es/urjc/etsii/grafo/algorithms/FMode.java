@@ -15,6 +15,16 @@ public enum FMode {
      */
     MAXIMIZE {
         @Override
+        public double best(double a, double b) {
+            return Math.max(a, b);
+        }
+
+        @Override
+        public double getBadValue() {
+            return Long.MIN_VALUE;
+        }
+
+        @Override
         public boolean isBetter(double a, double b) {
             return DoubleComparator.isGreater(a, b);
         }
@@ -28,24 +38,22 @@ public enum FMode {
         public boolean improves(double a) {
             return DoubleComparator.isPositive(a);
         }
-
-        @Override
-        public Comparator<Solution<?,?>> comparator() {
-            Comparator<Solution<?,?>> c = Comparator.comparingDouble(Solution::getScore);
-            return c.reversed();
-        }
-
-        @Override
-        public Comparator<Move<?, ?>> comparatorMove() {
-            Comparator<Move<?,?>> c = Comparator.comparingDouble(Move::getValue);
-            return c.reversed();
-        }
     },
 
     /**
      * Objective function should be minimized
      */
     MINIMIZE {
+        @Override
+        public double best(double a, double b) {
+            return Math.min(a, b);
+        }
+
+        @Override
+        public double getBadValue() {
+            return Long.MAX_VALUE;
+        }
+
         @Override
         public boolean isBetter(double a, double b) {
             return DoubleComparator.isLess(a, b);
@@ -60,18 +68,22 @@ public enum FMode {
         public boolean improves(double a) {
             return DoubleComparator.isNegative(a);
         }
-
-        @Override
-        public Comparator<Solution<?,?>> comparator() {
-            return Comparator.comparingDouble(Solution::getScore);
-        }
-
-
-        @Override
-        public Comparator<Move<?, ?>> comparatorMove() {
-            return Comparator.comparingDouble(Move::getValue);
-        }
     };
+
+    /**
+     * Get the best value between two values
+     * @param a value
+     * @param b value
+     * @return the best value between a and b
+     */
+    public abstract double best(double a, double b);
+
+    /**
+     * Get a really bad value for this mode, so any other value is better than this one.
+     * Useful for example for giving an initial value to the "bestValue" variable when looping through solutions
+     * @return a really big value if minimizing, a negative number if maximizing.
+     */
+    public abstract double getBadValue();
 
     /**
      * Compare two scores
@@ -95,16 +107,4 @@ public enum FMode {
      * @return true if score improves the solution, false otherwise
      */
     public abstract boolean improves(double a);
-
-    /**
-     * Returns a comparator that sorts solutions from best to worst
-     * @return a new comparator
-     */
-    public abstract Comparator<Solution<?,?>> comparator();
-
-    /**
-     * Returns a comparator that sorts moves from best to worst
-     * @return a new comparator
-     */
-    public abstract Comparator<Move<?,?>> comparatorMove();
 }

@@ -2,8 +2,9 @@ package es.urjc.etsii.grafo.services;
 
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.metrics.AbstractMetric;
+import es.urjc.etsii.grafo.metrics.DeclaredObjective;
 import es.urjc.etsii.grafo.metrics.Metrics;
-import es.urjc.etsii.grafo.solver.Mork;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.ReflectionUtil;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
+import java.util.Set;
 import java.util.function.Function;
 
 @Service
@@ -26,7 +28,6 @@ public class MetricsInitializer {
 
     @PostConstruct
     public void initializeMetrics(){
-        Metrics.setSolvingMode(Mork.getFMode());
         if(solverConfig.isMetrics()){
             Metrics.enableMetrics();
         } else {
@@ -36,8 +37,16 @@ public class MetricsInitializer {
         for(var pckg: packages.split(",")){
             var metricsTypes = ReflectionUtil.findTypesBySuper(pckg, AbstractMetric.class);
             for(var m: metricsTypes){
-                Metrics.register(m, reflectionInitializer(m));
+                // skip declared objectives, they are registered in next step
+                if (!ReflectionUtil.hierarchyContainsAny(m, Set.of(DeclaredObjective.class))) {
+                    Metrics.register(m, reflectionInitializer(m));
+                }
             }
+        }
+
+        // Register all objectives declared by the user
+        for(var obj: Context.getObjectives().values()){
+            Metrics.register(obj.getName(), instant -> new DeclaredObjective(obj.getName(), obj.getFMode(), instant));
         }
     }
 

@@ -1,7 +1,8 @@
-// TODO Optional: Uncomment and configure the reference results to use when comparing our algorithms during experimentation
+////TODO Optional: Uncomment and configure the reference results to use when comparing our algorithms during experimentation
 //package es.urjc.etsii.grafo.__RNAME__.experiments;
 //
 //
+// import es.urjc.etsii.grafo.__RNAME__.Main;
 // import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
 // import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 //
@@ -21,13 +22,18 @@
 //        Files.lines(Path.of("sota.csv")).forEach(l -> {
 //            var parts = l.split(",");
 //            var referenceResult = new ReferenceResult();
-//            referenceResult.setScore(parts[1]);         // Change columns if necessary
-//            referenceResult.setTimeInSeconds(parts[2]); // Use .setTimeToBestInSeconds if it is a TTB instead of total time
+//
+//            // Each objective can have a different reference value, in this example we set the score for the only objective that exists
+//            referenceResult.setScores(Map.of(Main.OBJECTIVE_NAME, Double.parseDouble(parts[1]))); // Change columns if necessary
+//
+//            referenceResult.setTimeInSeconds(parts[2]); // Use .setTimeToBestInSeconds instead if the value is TimeToBest (TTB) instead of total execution time
+//
 //            // If the value comes from an exact algorithm, you may mark it as optimal
-//            // The framework will validate that no solution improves this result, as it would be a bug
+//            // The framework will validate that no solution improves this result, and report it as a bug if it happens
 //            // optimalValue defaults to false if not specified
 //            // referenceResult.setOptimalValue(true);
-//            sotaResults.put(parts[0], referenceResult); // Instance name is usually the first column
+//
+//            sotaResults.put(parts[0], referenceResult); // Instance name is usually the first column, update if necessary
 //        });
 //    }
 //

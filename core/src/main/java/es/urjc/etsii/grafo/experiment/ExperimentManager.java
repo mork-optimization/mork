@@ -5,12 +5,11 @@ import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.orchestrator.UserExperimentOrchestrator;
+import es.urjc.etsii.grafo.orchestrator.DefaultOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
 import es.urjc.etsii.grafo.solution.Solution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -23,20 +22,21 @@ import java.util.regex.Pattern;
  * @param <I> Instance class
  */
 @Service
-@Profile("user-experiment")
 public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
 
     private static final int MAX_SHORTNAME_LENGTH = 30;
-    private final Pattern experimentFilter;
 
-    private static final Logger log = LoggerFactory.getLogger(UserExperimentOrchestrator.class);
+    private static final Logger log = LoggerFactory.getLogger(DefaultOrchestrator.class);
 
     /**
      * List of experiments
      */
-    private final Map<String, Experiment<S,I>> experiments = new LinkedHashMap<>();
+    private final Map<String, Experiment<S, I>> experiments = new LinkedHashMap<>();
 
+    private final List<AbstractExperiment<S, I>> experimentImplementations;
     private final List<ReferenceResultProvider> referenceResultProviders;
+    private final SolutionBuilder<S, I> solutionBuilder;
+    private final String experimentPattern;
 
     /**
      * Constructor
@@ -48,30 +48,35 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
      */
     @SuppressWarnings({"unchecked"})
     public ExperimentManager(List<AbstractExperiment<S, I>> experimentImplementations, SolverConfig solverConfig, List<SolutionBuilder<S, I>> solutionBuilders, List<ReferenceResultProvider> referenceResultProviders) {
-        this.referenceResultProviders = validateReferenceResultProviders(referenceResultProviders);
-        var experimentPattern = solverConfig.getExperiments();
-        experimentFilter = Pattern.compile(experimentPattern);
-        var solutionBuilder = UserExperimentOrchestrator.decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
-        log.debug("Using SolutionBuilder implementation: "+solutionBuilder.getClass().getSimpleName());
-        log.debug("Using ReferenceResultProviders: " + referenceResultProviders);
+        this.experimentImplementations = experimentImplementations;
+        this.referenceResultProviders = referenceResultProviders;
+
+        this.experimentPattern = solverConfig.getExperiments();
+        this.solutionBuilder = DefaultOrchestrator.decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
+    }
+
+    public void runValidations() {
+        validateReferenceResultProviders(referenceResultProviders);
+        log.debug("Using SolutionBuilder implementation: {}", solutionBuilder.getClass().getSimpleName());
+        log.debug("Using ReferenceResultProviders: {}", referenceResultProviders);
 
         for (var experiment : experimentImplementations) {
             String experimentName = experiment.getName();
             Class<?> experimentClass = experiment.getClass();
-            var matcher = experimentFilter.matcher(experimentName);
+            var matcher = Pattern.compile(experimentPattern).matcher(experimentName);
             if (matcher.matches()) {
                 var algorithms = experiment.getAlgorithms();
                 fillSolutionBuilder(algorithms, solutionBuilder);
                 validateAlgorithmNames(experiment.getName(), algorithms);
                 this.experiments.put(experimentName, new Experiment<>(experimentName, experimentClass, algorithms));
-                log.debug(String.format("Experiment %s matches against %s", experimentName, experimentPattern));
+                log.debug("Experiment {} matches against {}", experimentName, experimentPattern);
             } else {
-                log.debug(String.format("Experiment %s does not match against %s, ignoring", experimentName, experimentPattern));
+                log.debug("Experiment {} does not match against {}, ignoring", experimentName, experimentPattern);
             }
         }
 
-        if(this.experiments.isEmpty()){
-            if(experimentImplementations.isEmpty()){
+        if (this.experiments.isEmpty()) {
+            if (experimentImplementations.isEmpty()) {
                 log.error("No experiment definitions found. Experiments are defined by extending AbstractExperiment<S, I>, see the docs for more information.");
             } else {
                 log.error("Experiment found, but none passed filters. Verify that 'solver.experiments={}' is correct. Experiments detected: {}", experimentPattern, experimentImplementations.stream().map(AbstractExperiment::getName).toList());
@@ -96,7 +101,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
      *
      * @return mapping of experiments and it associated list of algorithms
      */
-    public Map<String, Experiment<S,I>> getExperiments() {
+    public Map<String, Experiment<S, I>> getExperiments() {
         return Collections.unmodifiableMap(this.experiments);
     }
 
@@ -119,7 +124,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
 
             // Same check for Algorithm::getShortName
             var shortName = algorithm.getName();
-            if(shortName.length() > MAX_SHORTNAME_LENGTH){
+            if (shortName.length() > MAX_SHORTNAME_LENGTH) {
                 throw new IllegalArgumentException(String.format("Algorithms shortnames cannot be longer than %s chars. Bad algorithm: %s - %s", MAX_SHORTNAME_LENGTH, shortName, algorithm));
             }
             if (shortNames.contains(shortName)) {
@@ -129,15 +134,14 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
         }
     }
 
-    private List<ReferenceResultProvider> validateReferenceResultProviders(List<ReferenceResultProvider> referenceResultProviders){
+    private void validateReferenceResultProviders(List<ReferenceResultProvider> referenceResultProviders) {
         Set<String> names = new HashSet<>();
-        for(var r: referenceResultProviders){
+        for (var r : referenceResultProviders) {
             String name = r.getProviderName();
-            if(names.contains(name)){
+            if (names.contains(name)) {
                 throw new IllegalArgumentException("Duplicated provider name: " + name);
             }
             names.add(name);
         }
-        return referenceResultProviders;
     }
 }

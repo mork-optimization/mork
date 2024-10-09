@@ -305,7 +305,6 @@ public class BitSetTest {
             set.add(i);
             values.add(set.hashCode());
         }
-        System.out.println(values.size());
         assertTrue(size*0.8 < values.size()); // Less than 20% of collisions
     }
 

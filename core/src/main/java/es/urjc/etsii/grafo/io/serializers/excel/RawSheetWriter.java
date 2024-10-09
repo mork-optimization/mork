@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.io.serializers.excel;
 
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
+import es.urjc.etsii.grafo.solution.Objective;
 import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFCell;
@@ -132,12 +133,13 @@ public abstract class RawSheetWriter {
      * @param maximizing true if this is a maximizing problem, false otherwise
      * @return best value known for a given instance
      */
-    protected static Map<String, Double> bestResultPerInstance(List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> providers, boolean maximizing) {
+    protected static Map<String, Double> bestResultPerInstance(Objective<?, ?, ?> objective, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> providers, boolean maximizing) {
+
         Map<String, Double> ourBestValuePerInstance = results
                 .stream()
                 .collect(Collectors.toMap(
                         SolutionGeneratedEvent::getInstanceName,
-                        SolutionGeneratedEvent::getScore,
+                        solGenEvent -> solGenEvent.getObjectives().get(objective.getName()),
                         (a, b) -> maximizing ? Math.max(a, b) : Math.min(a, b)
                 ));
 
@@ -146,7 +148,7 @@ public abstract class RawSheetWriter {
         for(var instance: ourBestValuePerInstance.keySet()){
             double best = ourBestValuePerInstance.get(instance);
             for(var reference: providers){
-                var optionalValue = reference.getValueFor(instance).getScore();
+                var optionalValue = reference.getValueFor(instance).getScore(objective.getName());
                 if(maximizing){
                     best = Math.max(best, optionalValue.orElse(ExcelSerializer.NEGATIVE_INFINITY));
                 } else {

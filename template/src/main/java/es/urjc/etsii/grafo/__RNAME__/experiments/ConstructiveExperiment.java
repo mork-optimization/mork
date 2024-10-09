@@ -9,7 +9,7 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.create.grasp.GraspBuilder;
 import es.urjc.etsii.grafo.experiment.AbstractExperiment;
-import es.urjc.etsii.grafo.solver.Mork;
+import es.urjc.etsii.grafo.util.Context;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +40,7 @@ public class ConstructiveExperiment extends AbstractExperiment<__RNAME__Solution
         // if the alpha parameter is not given --> random alpha in range [0,1] for each construction
         var graspBuilder = new GraspBuilder<__RNAME__ListManager.__RNAME__GRASPMove, __RNAME__Solution, __RNAME__Instance>()
                 //.withGreedyFunction()     // Optional, uncomment if a custom greedy function is used instead of the default (move get value)
-                .withMode(Mork.getFMode())   // Change FMode to either MAXIMIZE or MINIMIZE, can be different from problem f.o, for example when using a custom greedy function
+                .withObjective(Context.getMainObjective())   // If using the default objective this line can be removed, but you can configure any objective or secondary function you want here, for example in case of a flat landscape you may want to use a custom greedy function
                 .withListManager(graspListManager);
 
         // Create variants using greedy random strategy

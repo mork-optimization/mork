@@ -1,35 +1,27 @@
 package es.urjc.etsii.grafo.create.grasp;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.create.Reconstructive;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.util.DoubleComparator;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.List;
-import java.util.function.BiPredicate;
-import java.util.function.ToDoubleFunction;
 
 public abstract class GRASPConstructive<M extends Move<S, I>, S extends Solution<S, I>, I extends Instance> extends Reconstructive<S, I> {
 
     protected final String alphaType;
     protected final GRASPListManager<M, S, I> candidateListManager;
     protected final AlphaProvider alphaProvider;
-    protected final ToDoubleFunction<M> greedyFunction;
+    protected final Objective<M, S, I> objective;
 
-    /**
-     * Should we maximize or minimize
-     */
-    protected final FMode fmode;
-
-    protected GRASPConstructive(FMode fmode, GRASPListManager<M, S, I> candidateListManager, ToDoubleFunction<M> greedyFunction, AlphaProvider provider, String alphaType) {
+    protected GRASPConstructive(Objective<M,S,I> objective, GRASPListManager<M, S, I> candidateListManager, AlphaProvider provider, String alphaType) {
+        this.objective = objective;
         this.candidateListManager = candidateListManager;
-        this.greedyFunction = greedyFunction;
         this.alphaProvider = provider;
         this.alphaType = alphaType;
-        this.fmode = fmode;
     }
 
     /**
@@ -70,7 +62,7 @@ public abstract class GRASPConstructive<M extends Move<S, I>, S extends Solution
             chosen.execute(solution);
             cl = candidateListManager.updateCandidateList(solution, chosen, cl, index);
             assert ValidationUtil.assertFastAccess(cl);
-            ValidationUtil.assertValidScore(solution);
+            assert Context.validate(solution);
         }
         return solution;
     }

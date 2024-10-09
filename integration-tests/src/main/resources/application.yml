@@ -13,7 +13,7 @@ instances:
 
   path:
     # Default instance path for all experiments, can be overridden.
-    default: 'instancesautoconfig'
+    default: 'invalidfolder'
 
     # Override default instance path only for the experiment declared in file PreliminarExperiment.java
     # If an experiment does not have a specific path the default will be used. Example:

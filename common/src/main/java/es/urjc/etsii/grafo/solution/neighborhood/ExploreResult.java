@@ -2,7 +2,6 @@ package es.urjc.etsii.grafo.solution.neighborhood;
 
 
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solution.LazyMove;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Solution;
 
@@ -54,28 +53,6 @@ public class ExploreResult<M extends Move<S, I>, S extends Solution<S, I>, I ext
         return fromStream(Stream.empty(), 0);
     }
 
-    /**
-     * Explore result from a LazyMove, when the neighborhood size is known.
-     *
-     * @param move move list
-     * @param size upperbound neighborhood size for the current solution
-     */
-    public static <M extends LazyMove<M, S, I>, S extends Solution<S, I>, I extends Instance> ExploreResult<M,S,I> fromLazyMove(S solution, M move, int size){
-        return new ExploreResult<>(
-                Stream.iterate(move, Objects::nonNull, m -> m.next(solution)),
-                size
-        );
-    }
-
-    /**
-     * Explore result from a LazyMove, when the neighborhood size is unknown.
-     *
-     * @param solution current solution
-     * @param move move
-     */
-    public static <M extends LazyMove<M, S, I>, S extends Solution<S, I>, I extends Instance> ExploreResult<M,S,I> fromLazyMove(S solution, M move){
-        return fromLazyMove(solution, move, Neighborhood.UNKNOWN_SIZE);
-    }
 
     /**
      * Explore result from a list

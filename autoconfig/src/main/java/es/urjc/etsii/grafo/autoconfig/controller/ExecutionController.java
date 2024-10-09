@@ -30,7 +30,6 @@ import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKN
  * @param <I> Instance class
  */
 @RestController
-@Profile({"irace", "autoconfig"})
 public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(ExecutionController.class);
@@ -47,7 +46,6 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
     public ExecutionController(IraceOrchestrator<S, I> orquestrator) {
         this.orquestrator = orquestrator;
         this.json = new ObjectMapper().configure(FAIL_ON_UNKNOWN_PROPERTIES, false); // ignore unmapped properties such as bounds
-        log.info("Execution controller enabled");
     }
 
     /**
@@ -75,7 +73,7 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
     public ResponseEntity<List<ExecuteResponse>> batchExecute(@RequestBody ExecuteRequest request) throws JsonProcessingException {
         log.trace("Batch execute request: {}", request);
         var decoded = validateAndPrepare(request, this.orquestrator.getIntegrationKey());
-        List<IraceExecuteConfig> configs = json.readValue(decoded, new TypeReference<List<IraceExecuteConfig>>() {});
+        List<IraceExecuteConfig> configs = json.readValue(decoded, new TypeReference<>() {});
         var results = this.orquestrator.iraceMultiCallback(configs);
         return ResponseEntity.ok(results);
     }

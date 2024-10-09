@@ -2,10 +2,8 @@ package es.urjc.etsii.grafo.testutil;
 
 import es.urjc.etsii.grafo.solution.neighborhood.ExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
-import es.urjc.etsii.grafo.util.CollectionUtil;
 
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,6 +29,6 @@ public class TestNeighborhood extends RandomizableNeighborhood<TestMove, TestSol
 
     @Override
     public Optional<TestMove> getRandomMove(TestSolution solution) {
-        return Optional.of(new TestMove(solution, fakeMoves.get(0).getValue()));
+        return Optional.of(new TestMove(solution, fakeMoves.get(0).getScoreChange()));
     }
 }

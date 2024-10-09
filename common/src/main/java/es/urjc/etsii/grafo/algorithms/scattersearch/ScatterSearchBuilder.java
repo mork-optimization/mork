@@ -4,7 +4,9 @@ import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.StringUtil;
 
 import java.util.Objects;
@@ -40,10 +42,10 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
     protected double diversityRatio = 0;
 
     /**
-     * True if maximizing objective function, false otherwise.
-     * Tip: Can be obtained by calling Mork.isMaximizing() or hardcoded in the experiment.
+     * Objective to optimize
+     * Defaults to mainObjective
      */
-    protected FMode fmode;
+    protected Objective<?, S, I> objective;
 
     /**
      * Constructive to use to create "good value" solutions
@@ -208,12 +210,12 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
     }
 
     /**
-     * Set solving mode
-     * @param fmode MAXIMIZING if maximizing, MINIMIZING if minimizing
+     * Set objective to optimize in ScatterSearch
+     * @param objective objective to optimize, defautls to Context::getMainObjective if not set
      * @return current builder with solving mode set
      */
-    public ScatterSearchBuilder<S,I> withSolvingMode(FMode fmode){
-        this.fmode = fmode;
+    public ScatterSearchBuilder<S,I> withObjective(Objective<?, S, I> objective){
+        this.objective = objective;
         return this;
     }
 
@@ -235,12 +237,10 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
      * @return New instance of Scatter Search algorithm. Same builder can generate multiple algorithm instances.
      */
     public ScatterSearch<S,I> build(){
+        Objective<?,S,I> objective = this.objective == null? Context.getMainObjective() : this.objective;
+
         if(this.constructiveGoodValues == null){
             throw new IllegalArgumentException("no constructive method has been configured");
-        }
-
-        if(this.fmode == null){
-            throw new IllegalArgumentException("Null maximizing value");
         }
         
         return new ScatterSearch<>(name,
@@ -250,7 +250,7 @@ public class ScatterSearchBuilder<S extends Solution<S,I>, I extends Instance> {
                 constructiveDiverseValues,
                 improver,
                 combinator,
-                fmode,
+                objective,
                 maxIterations,
                 diversityRatio,
                 solutionDistance,

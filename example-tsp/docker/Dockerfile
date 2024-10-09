@@ -6,9 +6,7 @@ COPY target/TSP*.jar /app.jar
 
 CMD [\
 "/usr/bin/java",\
-"--add-opens", "java.base/java.util=ALL-UNNAMED",\
-"--add-opens", "java.base/java.lang.reflect=ALL-UNNAMED",\
-"--add-opens", "java.base/java.lang=ALL-UNNAMED",\
+"--enable-preview",\
 # Set memory usage
 "-Xmx1G", "-Xms1G",\
 "-jar", "/app.jar"\

@@ -1,12 +1,14 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.controller.IraceUtil;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
@@ -19,22 +21,17 @@ import es.urjc.etsii.grafo.exception.IllegalAlgorithmConfigException;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.metrics.BestObjective;
 import es.urjc.etsii.grafo.metrics.MetricUtil;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
-import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.*;
-import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.web.ServerProperties;
-import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
-import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -52,8 +49,7 @@ import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 /**
  * <p>IraceOrchestrator class.</p>
  */
-@Service
-@Profile({"irace", "autoconfig"})
+// TODO split in two orchestrators, one for irace and one for autoconfig. This class has too many responsibilities
 public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> extends AbstractOrchestrator {
 
     private static final Logger log = LoggerFactory.getLogger(IraceOrchestrator.class);
@@ -67,7 +63,13 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public static final String K_PORT = "__PORT__";
     public static final String F_PARAMETERS = "parameters.txt";
     public static final String F_SCENARIO = "scenario.txt";
-    public static final String F_FORBIDDEN = "forbidden.txt";
+    private final String IRACE_PARAM_EPILOGUE = """
+            
+            [global]
+            digits = 2
+            """;
+
+
     public static final int DEFAULT_IRACE_EXPERIMENTS = 10_000;
     public static final int MAX_HISTORIC_CONFIG_SIZE = 1_000;
 
@@ -87,7 +89,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final List<String> rejectedThings = Collections.synchronizedList(new ArrayList<>());
 
 
-    private final boolean isAutoconfigEnabled;
+    private boolean isAutoconfigEnabled;
+    private boolean isFollower;
     private int nIraceParameters = -1;
 
     /**
@@ -103,8 +106,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      * @param algorithmCandidateGenerator
      */
     public IraceOrchestrator(
-            Environment env,
             SolverConfig solverConfig,
+            BlockConfig blockConfig,
             ServerProperties serverProperties,
             InstanceConfiguration instanceConfiguration, IraceIntegration iraceIntegration,
             InstanceManager<I> instanceManager,
@@ -113,28 +116,17 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             Optional<SolutionValidator<S, I>> validator,
             AlgorithmCandidateGenerator algorithmCandidateGenerator
     ) {
-        log.info("Starting tuning engine...");
         this.solverConfig = solverConfig;
+        Context.Configurator.setSolverConfig(solverConfig);
+        Context.Configurator.setBlockConfig(blockConfig);
         this.instanceConfiguration = instanceConfiguration;
         this.serverProperties = serverProperties;
         this.iraceIntegration = iraceIntegration;
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         this.instanceManager = instanceManager;
-        log.debug("Using SolutionBuilder implementation: {}", this.solutionBuilder.getClass().getSimpleName());
-
         this.algorithmBuilder = decideImplementation(algorithmBuilders, AutomaticAlgorithmBuilder.class);
-        log.debug("Using AlgorithmBuilder implementation: {}", this.algorithmBuilder.getClass().getSimpleName());
-
         this.algorithmCandidateGenerator = algorithmCandidateGenerator;
-
-        if (validator.isEmpty()) {
-            log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
-        } else {
-            log.debug("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
-        }
-
         this.validator = validator;
-        this.isAutoconfigEnabled = Arrays.asList(env.getActiveProfiles()).contains("autoconfig");
     }
 
 
@@ -143,10 +135,33 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      */
     @Override
     public void run(String... args) {
+        for (String arg : args) {
+            if (arg.equals("--autoconfig")) {
+                this.isAutoconfigEnabled = true;
+            }
+            if(arg.equals("--follower")){
+                this.isFollower = true;
+            }
+        }
+        log.info("Starting tuning engine... {isAutoconfig: {}, isFollower: {}}", isAutoconfigEnabled, isFollower);
+
+        log.debug("Using SolutionBuilder implementation: {}", this.solutionBuilder.getClass().getSimpleName());
+        log.debug("Using AlgorithmBuilder implementation: {}", this.algorithmBuilder.getClass().getSimpleName());
+        if (validator.isEmpty()) {
+            log.warn("No SolutionValidator implementation has been found, solution CORRECTNESS WILL NOT BE CHECKED");
+        } else {
+            log.debug("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
+        }
+        if(isFollower){
+            this.integrationKey = solverConfig.getIntegrationKey();
+            log.info("Mork is running in follower mode, waiting for commands...");
+            return;
+        }
+
         log.info("Ready to start!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
-        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Mork.isMaximizing(), experimentName));
+        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectivesW(), experimentName));
         try {
             launchIrace();
         } finally {
@@ -181,7 +196,12 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 var nodes = this.algorithmCandidateGenerator.buildTree(solverConfig.getTreeDepth(), solverConfig.getMaxDerivationRepetition());
                 var iraceParams = this.algorithmCandidateGenerator.toIraceParams(nodes);
                 this.nIraceParameters = iraceParams.size();
-                Files.write(paramsPath, iraceParams);
+                var sb = new StringBuilder();
+                for (var p : iraceParams) {
+                    sb.append(p).append("\n");
+                }
+                sb.append(IRACE_PARAM_EPILOGUE);
+                Files.writeString(paramsPath, sb.toString());
             }
 
             var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration, serverProperties);
@@ -189,13 +209,12 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 copyWithSubstitutions(getInputStreamForIrace(F_PARAMETERS, isJar), paramsPath, substitutions);
             }
             copyWithSubstitutions(getInputStreamForIrace(F_SCENARIO, isJar), Path.of(F_SCENARIO), substitutions);
-            copyWithSubstitutions(getInputStreamForIrace(F_FORBIDDEN, isJar), Path.of(F_FORBIDDEN), substitutions);
         } catch (IOException e) {
             throw new RuntimeException("Failed extracting irace config files", e);
         }
     }
 
-    private final String integrationKey = StringUtil.generateSecret();
+    private String integrationKey = StringUtil.generateSecret();
 
     private Map<String, String> getSubstitutions(String integrationKey, SolverConfig solverConfig, InstanceConfiguration instanceConfiguration, ServerProperties server) {
         return Map.of(
@@ -255,7 +274,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         log.debug("Config {}. Built algorithm: {}", config, algorithm);
         // Configure randoms for reproducible experimentation
         long seed = Long.parseLong(config.getSeed());
-        RandomManager.localConfiguration(this.solverConfig.getRandomType(), seed);
+        Context.Configurator.resetRandom(solverConfig.getRandomType(), seed);
 
         // Execute
         return singleExecution(algorithm, instance);
@@ -276,7 +295,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             // but there is extra time available, keep executing the same algorithm until the timelimit is reached.
             // If not, we could be penalizing faster simpler algorithms against more complex ones.
             int iterations = Integer.MAX_VALUE / 2;
-            algorithm = new MultiStartAlgorithm<>(algorithm.getName(), algorithm, iterations, iterations, iterations);
+            algorithm = new MultiStartAlgorithm<>(algorithm.getName(), Context.getMainObjective(), algorithm, iterations, iterations, iterations);
             algorithm.setBuilder(this.solutionBuilder);
         }
         return algorithm;
@@ -329,11 +348,12 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         validator.ifPresent(v -> v.validate(solution).throwIfFail());
 
         double score;
+        Objective<?,S,I> mainObj = Context.getMainObjective();
         if (isAutoconfigEnabled) {
             checkExecutionTime(algorithm, instance);
             TimeControl.remove();
             try {
-                score = MetricUtil.areaUnderCurve(BestObjective.class,
+                score = MetricUtil.areaUnderCurve(mainObj,
                         TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
                         TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
                         solverConfig.isLogScaleArea()
@@ -351,11 +371,13 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             }
 
         } else {
-            score = solution.getScore();
+            score = mainObj.evalSol(solution);
         }
-        if (Mork.isMaximizing()) {
+
+        if (Context.getMainObjective().getFMode() == FMode.MAXIMIZE) {
             score *= -1; // Irace only minimizes. Applies to area under the metric curve too.
         }
+
         double elapsedSeconds = TimeUtil.nanosToSecs(endTime - startTime);
         log.debug("IRACE Iteration: {} {}", score, elapsedSeconds);
         return new ExecuteResponse(score, elapsedSeconds);
@@ -380,6 +402,10 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         return Collections.unmodifiableList(this.rejectedThings);
     }
 
-    public record SlowExecution(long relativeTime, String instanceName, Algorithm<?, ?> algorithm) {
+    @Override
+    public List<String> getNames() {
+        return List.of("irace", "autoconfig");
     }
+
+    public record SlowExecution(long relativeTime, String instanceName, Algorithm<?, ?> algorithm) {}
 }

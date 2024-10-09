@@ -1,22 +1,21 @@
 package es.urjc.etsii.grafo.algorithms.scattersearch;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
-import es.urjc.etsii.grafo.util.CollectionUtil;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
 class ScatterSearchTest {
+
+    private final Objective<TestMove,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getScoreChange);
 
     @Test
     void testBuilder() {
@@ -58,9 +57,9 @@ class ScatterSearchTest {
         assertEquals(newImprover, builder.improver);
 
         // Maximize
-        assertNull(builder.fmode);
-        builder.withSolvingMode(FMode.MINIMIZE);
-        assertEquals(FMode.MINIMIZE, builder.fmode);
+        assertNull(builder.objective);
+        builder.withObjective(minObj);
+        assertEquals(minObj, builder.objective);
 
         // Refset size
         assertThrows(IllegalArgumentException.class, () -> builder.withRefsetSize(Integer.MAX_VALUE));
@@ -145,13 +144,14 @@ class ScatterSearchTest {
 
     @Test
     void testInitializeSimple() {
+        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getScoreChange);
         var constructiveGood = new ScatterSearchTestConstructive();
         var constructiveDiverse = new ScatterSearchTestConstructive(50, 1);
         int refsetSize = 10;
         int ratio = 5; // Total 50 generated solutions
         double byDiversityRatio = 0.2;
         var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood, constructiveDiverse,
-                Improver.nul(), new CombinatorTestHelper(), FMode.MINIMIZE, 100, byDiversityRatio,
+                Improver.nul(), new CombinatorTestHelper(), objective, 100, byDiversityRatio,
                 new DistanceTestHelper(), true);
         sc.setBuilder(new TestSolutionBuilder());
         var inst = new TestInstance("TestInstance");
@@ -164,6 +164,7 @@ class ScatterSearchTest {
 
     @Test
     void testInitializeFailoverDiverse() {
+        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getScoreChange);
         var constructiveGood = new ScatterSearchTestConstructive(0, 0);
         var constructiveDiverse = new ScatterSearchTestConstructive(50,1);
         int refsetSize = 10;
@@ -171,7 +172,7 @@ class ScatterSearchTest {
         double byDiversityRatio = 0;
         var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood,
                 constructiveDiverse, Improver.nul(), new CombinatorTestHelper(),
-                FMode.MINIMIZE, 100, byDiversityRatio, new DistanceTestHelper(), true);
+                objective, 100, byDiversityRatio, new DistanceTestHelper(), true);
         sc.setBuilder(new TestSolutionBuilder());
         var inst = new TestInstance("TestInstance");
         var refset = sc.initializeRefset(TestSolution.class, inst);
@@ -183,6 +184,7 @@ class ScatterSearchTest {
 
     @Test
     void testSoftReset() {
+        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getScoreChange);
         var constructiveGood = new ScatterSearchTestConstructive();
         var constructiveDiverse = new ScatterSearchTestConstructive(50, 1);
         int refsetSize = 10;
@@ -190,7 +192,7 @@ class ScatterSearchTest {
         double byDiversityRatio = 0.2;
         var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood,
                 constructiveDiverse, Improver.nul(), new CombinatorTestHelper(),
-                FMode.MINIMIZE, 100, byDiversityRatio, new DistanceTestHelper(), true);
+                objective, 100, byDiversityRatio, new DistanceTestHelper(), true);
         sc.setBuilder(new TestSolutionBuilder());
         var inst = new TestInstance("TestInstance");
 
@@ -215,6 +217,8 @@ class ScatterSearchTest {
 
     @Test
     void replaceWorstIsActuallyBest(){
+        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMaximizing("Test", TestSolution::getScore, TestMove::getScoreChange);
+
         // When reinitializing the refset, all solutions may improve best value known, and that case is perfectly valid, test it
         var constructiveGood = new ScatterSearchTestConstructive(300, 1);
         var constructiveDiverse = new ScatterSearchTestConstructive(50, 1);
@@ -223,7 +227,7 @@ class ScatterSearchTest {
         double byDiversityRatio = 0;
         var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood,
                 constructiveDiverse, Improver.nul(), new CombinatorTestHelper(),
-                FMode.MAXIMIZE, 100, byDiversityRatio, new DistanceTestHelper(), true);
+                objective, 100, byDiversityRatio, new DistanceTestHelper(), true);
         sc.setBuilder(new TestSolutionBuilder());
         var inst = new TestInstance("TestInstance");
 
@@ -247,12 +251,13 @@ class ScatterSearchTest {
     }
     @Test
     void mergeSetTest(){
+        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMinimizing("Test", TestSolution::getScore, TestMove::getScoreChange);
         int refsetSize = 10;
         int ratio = 5; // Total 50 generated solutions
         double byDiversityRatio = 0.2;
         var c = new ScatterSearchTestConstructive();
         var sc = new ScatterSearch<>("Test", ratio, refsetSize, c, c, Improver.nul(),
-                new CombinatorTestHelper(), FMode.MINIMIZE, 100, byDiversityRatio,
+                new CombinatorTestHelper(), objective, 100, byDiversityRatio,
                 new DistanceTestHelper(), true);
         var inst = new TestInstance("TestInstance");
 
@@ -271,6 +276,7 @@ class ScatterSearchTest {
 
     @Test
     void testAlgorithm() {
+        Objective<TestMove,TestSolution, TestInstance> objective = Objective.ofMaximizing("Test", TestSolution::getScore, TestMove::getScoreChange);
         // Example run with 100 iterations, always keeps improving, final solution score must be greater than 1_000_000
         // When reinitializing the refset, all solutions may improve best value known, and that case is perfectly valid, test it
         var constructiveGood = new ScatterSearchTestConstructive(300, 1);
@@ -280,7 +286,7 @@ class ScatterSearchTest {
         double byDiversityRatio = 0;
         var sc = new ScatterSearch<>("Test", ratio, refsetSize, constructiveGood,
                 constructiveDiverse, Improver.nul(), new CombinatorTestHelper(),
-                FMode.MAXIMIZE, 100, byDiversityRatio, new DistanceTestHelper(), true
+                objective, 100, byDiversityRatio, new DistanceTestHelper(), true
         );
         sc.setBuilder(new TestSolutionBuilder());
         var solution = sc.algorithm(new TestInstance("TestInstance"));

@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.autoconfig.r.RLangRunner;
-import org.springframework.context.annotation.Profile;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.util.logging.Logger;
 
 import static es.urjc.etsii.grafo.util.IOUtil.getInputStreamForIrace;
 
@@ -14,9 +14,8 @@ import static es.urjc.etsii.grafo.util.IOUtil.getInputStreamForIrace;
  *
  */
 @Service
-@Profile({"irace", "autoconfig"})
 public class IraceIntegration {
-    private static final Logger log = Logger.getLogger(IraceIntegration.class.getName());
+    private static final Logger log = LoggerFactory.getLogger(IraceIntegration.class.getName());
 
     private final RLangRunner runner;
 
@@ -26,7 +25,7 @@ public class IraceIntegration {
      * @param runner a {@link RLangRunner} object.
      */
     public IraceIntegration(RLangRunner runner) {
-        log.info("Using R runner: " + runner.getClass().getSimpleName());
+        log.debug("Using R runner: {}", runner.getClass().getSimpleName());
         this.runner = runner;
     }
 

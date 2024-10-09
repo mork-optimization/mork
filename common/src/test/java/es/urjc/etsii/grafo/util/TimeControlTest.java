@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.util;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.concurrent.TimeUnit;
@@ -7,6 +8,11 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
 class TimeControlTest {
+
+    @BeforeEach
+    void reset(){
+        TimeControl.remove();
+    }
 
     @Test
     void failIfNotConfigured(){

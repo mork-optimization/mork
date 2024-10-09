@@ -1,13 +1,12 @@
 package es.urjc.etsii.grafo.improve;
 
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
-import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.metrics.BestObjective;
 import es.urjc.etsii.grafo.metrics.Metrics;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -22,14 +21,14 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(Improver.class);
 
-    protected final FMode ofmode;
+    protected final Objective<?,S,I> objective;
 
     /**
      * Initialize common improver fields, to be called by subclasses
-     * @param ofmode MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
+     * @param objective MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
      */
-    protected Improver(FMode ofmode) {
-        this.ofmode = ofmode;
+    protected Improver(Objective<?,S,I> objective) {
+        this.objective = objective;
     }
 
     /**
@@ -40,24 +39,17 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
      * @return Improved s
      */
     public S improve(S solution){
-        // Before
-        long startTime = System.nanoTime();
-        double initialScore = solution.getScore();
 
-        // Improve
+        double initialScore = objective.evalSol(solution);
         S improvedSolution = this._improve(solution);
-
-        // After
-        long endTime = System.nanoTime();
-        long elapsedMillis = (endTime - startTime) / 1_000_000;
-        double endScore = improvedSolution.getScore();
+        double endScore = objective.evalSol(improvedSolution);
 
         // Log, verify and store
-        log.debug("Done in {}: {} --> {}", elapsedMillis, initialScore, endScore);
-        if(ofmode.isBetter(initialScore, endScore)){
+        log.debug("{} --> {}", initialScore, endScore);
+        if(objective.isBetter(initialScore, endScore)){
             throw new IllegalStateException(String.format("Score has worsened after executing an improvement method: %s --> %s", initialScore, endScore));
         }
-        Metrics.add(BestObjective.class, solution.getScore());
+        Metrics.addCurrentObjectives(solution);
 
         return improvedSolution;
     }
@@ -75,8 +67,14 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
     @SafeVarargs
     @SuppressWarnings("varargs")
-    public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> serial(FMode fmode, Improver<S, I>... improvers){
-        return new SequentialImprover<>(fmode, improvers);
+    public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> serial(Objective<?,S,I> objective, Improver<S, I>... improvers){
+        return new SequentialImprover<>(objective, improvers);
+    }
+
+    @SafeVarargs
+    @SuppressWarnings("varargs")
+    public static <S extends Solution<S,I>, I extends Instance> Improver<S,I> serial(Improver<S, I>... improvers){
+        return new SequentialImprover<>(improvers);
     }
 
     /**
@@ -89,7 +87,7 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
         @AutoconfigConstructor
         public NullImprover() {
-            super(FMode.MINIMIZE); // It does not matter as it does nothing
+            super(Context.getMainObjective()); // It does not matter as it does nothing
         }
 
         @Override
@@ -108,22 +106,27 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
         private final Improver<S,I>[] improvers;
 
+
         @SafeVarargs
         @SuppressWarnings("varargs")
-        public SequentialImprover(FMode fmode, Improver<S, I>... improvers) {
-            super(fmode);
+        public SequentialImprover(Objective<?,S,I> objective, Improver<S, I>... improvers) {
+            super(objective);
             this.improvers = improvers;
+        }
+
+        @SafeVarargs
+        @SuppressWarnings("varargs")
+        public SequentialImprover(Improver<S, I>... improvers) {
+            this(Context.getMainObjective(), improvers);
         }
 
         @AutoconfigConstructor
         @SuppressWarnings({"unchecked", "rawtype"})
         public SequentialImprover(
-                @ProvidedParam FMode fmode,
                 Improver<S, I> improverA,
                 Improver<S, I> improverB
         ) {
-            super(fmode);
-            this.improvers = new Improver[]{improverA, improverB};
+            this(new Improver[]{improverA, improverB});
         }
 
         @Override

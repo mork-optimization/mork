@@ -1,5 +1,13 @@
 # Developing
-- Added CollectionUtil::getBest(Iterable,ToDoubleFunction)
+- (New) Objective class: a class that represents an objective function of a problem. Each Objective has a name, a direction (minimize or maximize), and functions for extracting the value of the objective from Moves and from Solutions. See docs for a detailed description.
+- (New) Util methods: CollectionUtil::getBest(Iterable,ToDoubleFunction), ArrayUtil::stats(double[]), ArrayUtil::stats(int[]), ArrayUtil::stats(long[])
+- (New) Support for AspectJ, first magic annotation @TimeStats implemented to measure the time of any method.
+- (New) Ablation test: run ablation test by default after autoconfig procedure.
+- (New) Irace plots: generate an HTML report with the results of running the autoconfig procedure.
+- (Fix) Math.random, Collections.shuffle now blocked using AspectJ instead of reflection. --add-opens no longer necessary.
+- (Deleted) Solution::isBetterThan, unused and not necessary.
+- (Deleted) Solution::getScore, Solution::recalculateScore: score recalculation should now be done in the solution validator implementation, and getScore can be any method the user wants, as long as it is declared as an Objective.
+- (Deleted) LazyMove & EagerMove: mostly unused and can be replaced by a normal Move. See SwapNeighborhood in TSP module for an example lazy implementation.
 
 # v0.20
 - (New) Add support for 7Z and ZIP compressed instances, with no configuration required.

@@ -59,7 +59,7 @@ def save_pca(df: DataFrame, output_path: str, explained_pca_ratio=0.90) -> DataF
     line_data = np.insert(line_data, 0, 0)
     plt.bar(np.arange(1, len(pca.explained_variance_ratio_) + 1), pca.explained_variance_ratio_, color='g')
     plt.plot(np.arange(0, len(line_data)), line_data, marker='D')
-    plt.xlim(0, len(pca.explained_variance_ratio_), 1)
+    plt.xlim(0, len(pca.explained_variance_ratio_))
     plt.axhline(y=explained_pca_ratio, color='black', linestyle='--')
     plt.xlabel('Number of components')
     plt.ylabel('Cumulative explained variance')
@@ -171,7 +171,7 @@ def cp_instances(chosen_instances: list[str], instance_folder: str, output_folde
 def main():
     parser = argparse.ArgumentParser(
         description='Creates a set of instances to use during the experimentation',
-        epilog='Created by Raul Martin, for the DRFLP project, if useful for your research consider citing the original work: https://doi.org/10.1162/evco_a_00317')
+        epilog='Created by for the DRFLP project, if useful for your research consider citing the original work: https://doi.org/10.1162/evco_a_00317')
     parser.add_argument('-p', '--properties', required=False, default="instance_properties.csv", help="CSV Input file containing instance properties.")
     parser.add_argument('-i', '--instances', required=False, default="instances", help="Path to instance folder.")
     parser.add_argument('-o', '--output', required=False, default="output", help="Path to output folder.")

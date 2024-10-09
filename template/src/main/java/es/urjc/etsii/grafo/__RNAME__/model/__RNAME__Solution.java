@@ -7,20 +7,20 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
     /**
      * Initialize solution from instance
      *
-     * @param ins
+     * @param instance
      */
-    public __RNAME__Solution(__RNAME__Instance ins) {
-        super(ins);
+    public __RNAME__Solution(__RNAME__Instance instance) {
+        super(instance);
         // TODO Initialize solution data structures if necessary
     }
 
     /**
      * Clone constructor
      *
-     * @param s Solution to clone
+     * @param solution Solution to clone
      */
-    public __RNAME__Solution(__RNAME__Solution s) {
-        super(s);
+    public __RNAME__Solution(__RNAME__Solution solution) {
+        super(solution);
         // TODO Copy ALL solution data, we are cloning a solution
         throw new UnsupportedOperationException("__RNAME__Solution::new(__RNAME__Solution) not implemented yet");
     }
@@ -33,14 +33,6 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
         return new __RNAME__Solution(this);
     }
 
-    @Override
-    protected boolean _isBetterThan(__RNAME__Solution other) {
-        // TODO given two solutions, is the current solution STRICTLY better than the other?
-        // Example implementation for a maximization problem:
-        // return DoubleComparator.isGreater(this.getScore(), other.getScore());
-        throw new UnsupportedOperationException("__RNAME__Solution::isBetterThan not implemented yet");
-    }
-
     /**
      * Get the current solution score.
      * The difference between this method and recalculateScore is that
@@ -49,33 +41,11 @@ public class __RNAME__Solution extends Solution<__RNAME__Solution, __RNAME__Inst
      *
      * @return current solution score as double
      */
-    @Override
     public double getScore() {
         // TODO: Implement efficient score calculation.
-        // Can be as simple as a score property that gets updated when the solution changes
+        // We recommend caching scores and updating them when the solution changes
         // Example: return this.score;
-        // The following implementation is NOT efficient but gets you started quickly
-        return recalculateScore();
-    }
-
-    /**
-     * Recalculate solution score from scratch, using the problem objective function.
-     * The difference between this method and getScore is that we must recalculate the score from scratch,
-     * without using any cache/shortcuts.
-     * This method will be used to validate the correct behaviour of the getScore() method, and to help catch
-     * bugs or mistakes when changing incremental score calculation.
-     * DO NOT UPDATE CACHES IN THIS METHOD / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
-     * DO NOT UPDATE CACHES IN THIS METHOD / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
-     * and once more
-     * DO NOT UPDATE CACHES IN THIS METHOD / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
-     *
-     * @return current solution score as double
-     */
-    @Override
-    public double recalculateScore() {
-        // TODO calculate solution score from scratch without modifying the current solution.
-        //  Be careful with side effects.
-        throw new UnsupportedOperationException("__RNAME__Solution:recalculateScore not implemented yet");
+        throw new UnsupportedOperationException("__RNAME__Solution:getScore not implemented yet");
     }
 
     /**

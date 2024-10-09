@@ -1,12 +1,21 @@
 package es.urjc.etsii.grafo.util;
 
+import es.urjc.etsii.grafo.testutil.TestCommonUtils;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 class ArrayUtilTest {
+
+    @BeforeAll
+    static void setupRnd(){
+        TestCommonUtils.initRandom();
+    }
 
     @Test
     void testInsertAndDeleteRightIntegersDistance1() {
@@ -267,14 +276,14 @@ class ArrayUtilTest {
 
     @Test
     void testSumInts(){
-        Assertions.assertThrows(ArithmeticException.class, () -> ArrayUtil.sum(new int[]{Integer.MAX_VALUE, 1}));
+        assertThrows(ArithmeticException.class, () -> ArrayUtil.sum(new int[]{Integer.MAX_VALUE, 1}));
         Assertions.assertEquals(5, ArrayUtil.sum(new int[]{2, 3}));
         Assertions.assertEquals(-1, ArrayUtil.sum(new int[]{-2, 1}));
     }
 
     @Test
     void testSumLongs(){
-        Assertions.assertThrows(ArithmeticException.class, () -> ArrayUtil.sum(new long[]{Long.MAX_VALUE, 1}));
+        assertThrows(ArithmeticException.class, () -> ArrayUtil.sum(new long[]{Long.MAX_VALUE, 1}));
         Assertions.assertEquals(5, ArrayUtil.sum(new long[]{2, 3}));
         Assertions.assertEquals(-1, ArrayUtil.sum(new long[]{-2, 1}));
     }
@@ -330,51 +339,51 @@ class ArrayUtilTest {
 
     @Test
     void testMaxInt(){
-        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.max(new int[]{}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.max(new int[]{}));
         Assertions.assertEquals(0, ArrayUtil.max(new int[]{-1, 0, -4123}));
         Assertions.assertEquals(0, ArrayUtil.max(new int[]{0}));
     }
 
     @Test
     void testMaxLong(){
-        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.max(new long[]{}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.max(new long[]{}));
         Assertions.assertEquals(0L, ArrayUtil.max(new long[]{-1, 0, -4123}));
         Assertions.assertEquals(0L, ArrayUtil.max(new long[]{0}));
     }
 
     @Test
     void testMaxDouble(){
-        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.max(new double[]{}));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.max(new double[]{1,4,Double.NaN,8}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.max(new double[]{}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.max(new double[]{1,4,Double.NaN,8}));
         Assertions.assertEquals(0, ArrayUtil.max(new double[]{-1, 0, -4123}));
         Assertions.assertEquals(0, ArrayUtil.max(new double[]{0}));
     }
 
     @Test
     void testMinInt(){
-        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.min(new int[]{}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.min(new int[]{}));
         Assertions.assertEquals(-4123, ArrayUtil.min(new int[]{-1, 0, -4123}));
         Assertions.assertEquals(0, ArrayUtil.min(new int[]{0}));
     }
 
     @Test
     void testMinLong(){
-        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.min(new long[]{}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.min(new long[]{}));
         Assertions.assertEquals(-4123L, ArrayUtil.min(new long[]{-1, 0, -4123}));
         Assertions.assertEquals(0L, ArrayUtil.min(new long[]{0}));
     }
 
     @Test
     void testMinDouble(){
-        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.min(new double[]{}));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.min(new double[]{1,4,Double.NaN,8}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.min(new double[]{}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.min(new double[]{1,4,Double.NaN,8}));
         Assertions.assertEquals(-4123D, ArrayUtil.min(new double[]{-1, 0, -4123}));
         Assertions.assertEquals(0D, ArrayUtil.min(new double[]{0}));
     }
 
     @Test
     void testMinIndexInt(){
-        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.minIndex(new int[]{}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.minIndex(new int[]{}));
         Assertions.assertEquals(2, ArrayUtil.minIndex(new int[]{-1, 0, -4123}));
         Assertions.assertEquals(2, ArrayUtil.minIndex(new int[]{-1, 0, -4123, -4123}));
         Assertions.assertEquals(3, ArrayUtil.minIndex(new int[]{-1, 0, -4123, -4124}));
@@ -383,7 +392,7 @@ class ArrayUtilTest {
 
     @Test
     void testMinIndexLong(){
-        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.minIndex(new long[]{}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.minIndex(new long[]{}));
         Assertions.assertEquals(2, ArrayUtil.minIndex(new long[]{-1, 0, -4123}));
         Assertions.assertEquals(2, ArrayUtil.minIndex(new long[]{-1, 0, -4123, -4123}));
         Assertions.assertEquals(3, ArrayUtil.minIndex(new long[]{-1, 0, -4123, -4124}));
@@ -392,8 +401,8 @@ class ArrayUtilTest {
 
     @Test
     void testMinIndexDouble(){
-        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.minIndex(new double[]{}));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> ArrayUtil.minIndex(new double[]{1,4,Double.NaN,8}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.minIndex(new double[]{}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.minIndex(new double[]{1,4,Double.NaN,8}));
         Assertions.assertEquals(2, ArrayUtil.minIndex(new double[]{-1, 0, -4123}));
         Assertions.assertEquals(2, ArrayUtil.minIndex(new double[]{-1, 0, -4123, -4123}));
         Assertions.assertEquals(3, ArrayUtil.minIndex(new double[]{-1, 0, -4123, -4124}));
@@ -407,5 +416,154 @@ class ArrayUtilTest {
         Assertions.assertArrayEquals(new String[]{"1", "2", "3", "4"}, ArrayUtil.merge(new String[]{}, new String[]{"1", "2", "3", "4"}));
         Assertions.assertArrayEquals(new String[]{"", ""}, ArrayUtil.merge(new String[]{""}, new String[]{""}));
         Assertions.assertArrayEquals(new String[]{}, ArrayUtil.merge(new String[]{}, new String[]{}));
+    }
+
+
+    @Test
+    void reverseInts(){
+        int[] data = new int[]{1,2,3,4,5};
+        ArrayUtil.reverse(data);
+        Assertions.assertArrayEquals(new int[]{5,4,3,2,1}, data);
+
+        data = new int[]{1,2,3,4,5};
+        ArrayUtil.reverse(data, 1, 3);
+        Assertions.assertArrayEquals(new int[]{1,4,3,2,5}, data);
+
+        int[] finalData = data;
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.reverse(finalData, -1, 3));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.reverse(finalData, 0, 5));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.reverse(finalData, 3, 1));
+
+        data = new int[]{};
+        ArrayUtil.reverse(data);
+        Assertions.assertArrayEquals(new int[]{}, data);
+
+        data = new int[]{-1};
+        ArrayUtil.reverse(data);
+        Assertions.assertArrayEquals(new int[]{-1}, data);
+
+    }
+
+    @Test
+    void reverseObjects(){
+        String[] data = new String[]{"1","2","3","4","5"};
+        ArrayUtil.reverse(data);
+        Assertions.assertArrayEquals(new String[]{"5","4","3","2","1"}, data);
+
+        data = new String[]{"1","2","3","4","5"};
+        ArrayUtil.reverse(data, 1, 3);
+        Assertions.assertArrayEquals(new String[]{"1","4","3","2","5"}, data);
+
+        String[] finalData = data;
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.reverse(finalData, -1, 3));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.reverse(finalData, 0, 5));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.reverse(finalData, 3, 1));
+
+        data = new String[]{};
+        ArrayUtil.reverse(data);
+        Assertions.assertArrayEquals(new String[]{}, data);
+
+        data = new String[]{"-1"};
+        ArrayUtil.reverse(data);
+        Assertions.assertArrayEquals(new String[]{"-1"}, data);
+    }
+
+    @Test
+    void stats(){
+        /*
+        From Excel
+        5		Std	2.9933259094191533
+        8		Mean	5.2
+        9		Sum	26
+        1		Max	9
+        3		Min	1
+         */
+        var dataInt = new int[]{5, 8, 9, 1, 3};
+        var dataLong = new long[]{5, 8, 9, 1, 3};
+        var dataDouble = new double[]{5, 8, 9, 1, 3};
+
+        var statsInt = ArrayUtil.stats(dataInt);
+        var statsLong = ArrayUtil.stats(dataLong);
+        var statsDouble = ArrayUtil.stats(dataDouble);
+
+        Assertions.assertEquals(2.9933259094191533, statsInt.std());
+        Assertions.assertEquals(2.9933259094191533, statsLong.std());
+        Assertions.assertEquals(2.9933259094191533, statsDouble.std());
+
+        Assertions.assertEquals(5.2, statsInt.avg());
+        Assertions.assertEquals(5.2, statsLong.avg());
+        Assertions.assertEquals(5.2, statsDouble.avg());
+
+        Assertions.assertEquals(26, statsInt.sum());
+        Assertions.assertEquals(26, statsLong.sum());
+        Assertions.assertEquals(26, statsDouble.sum());
+
+        Assertions.assertEquals(9, statsInt.max());
+        Assertions.assertEquals(9, statsLong.max());
+        Assertions.assertEquals(9, statsDouble.max());
+
+        Assertions.assertEquals(1, statsInt.min());
+        Assertions.assertEquals(1, statsLong.min());
+        Assertions.assertEquals(1, statsDouble.min());
+    }
+
+    @Test
+    void sanityCheckShuffleInt(){
+        int[] data = new int[]{0, 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+        ArrayUtil.shuffle(data);
+        // count numbers that do not change position
+        int samePosition = 0;
+        for(int i = 0; i < data.length; i++){
+            if(data[i] == i){
+                samePosition++;
+            }
+        }
+        // At least one has moved
+        Assertions.assertTrue(samePosition < data.length);
+        // Check there are no new or missing elements
+        Arrays.sort(data);
+        for(int i = 0; i < data.length; i++){
+            Assertions.assertEquals(i, data[i]);
+        }
+    }
+
+    @Test
+    void checkShuffleIntCopyDoesNotModifyOriginal(){
+        int[] data = new int[]{0, 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+        var result = ArrayUtil.copyAndshuffle(data);
+        Assertions.assertNotSame(data, result);
+        for(int i = 0; i < data.length; i++){
+            Assertions.assertEquals(i, data[i]);
+        }
+    }
+
+    @Test
+    void sanityCheckShuffleObject(){
+        Object[] data = new Object[]{0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+        ArrayUtil.shuffle(data);
+        // count numbers that do not change position
+        int samePosition = 0;
+        for(int i = 0; i < data.length; i++){
+            if((int) data[i] == i){
+                samePosition++;
+            }
+        }
+        // At least one has moved
+        Assertions.assertTrue(samePosition < data.length);
+        // Check there are no new or missing elements
+        Arrays.sort(data);
+        for(int i = 0; i < data.length; i++){
+            Assertions.assertEquals(i, data[i]);
+        }
+    }
+
+    @Test
+    void checkShuffleObjectCopyDoesNotModifyOriginal(){
+        Object[] data = new Object[]{0, 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15};
+        var result = ArrayUtil.copyAndshuffle(data);
+        Assertions.assertNotSame(data, result);
+        for(int i = 0; i < data.length; i++){
+            Assertions.assertEquals(i, data[i]);
+        }
     }
 }

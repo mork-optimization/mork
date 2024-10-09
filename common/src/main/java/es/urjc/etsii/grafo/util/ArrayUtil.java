@@ -20,8 +20,19 @@ public class ArrayUtil {
      * @param arr array to reverse
      */
     public static void reverse(int[] arr) {
-        reverseFragment(arr, 0, arr.length);
+        reverse(arr, 0, arr.length-1);
     }
+
+    /**
+     * Reverse an array
+     *
+     * @param arr array to reverse
+     */
+    public static void reverse(Object[] arr) {
+        reverse(arr, 0, arr.length-1);
+    }
+
+
 
     /**
      * Reverse a fragment inside an array from start to end (inclusive)
@@ -30,10 +41,19 @@ public class ArrayUtil {
      * @param start start index, inclusive
      * @param end   end index, inclusive
      */
-    public static void reverseFragment(int[] arr, int start, int end) {
-        assert start >= 0 && start <= arr.length : String.format("Start index (%s) must be in range [0, %s)", start, arr.length);
-        assert end >= 0 && end <= arr.length : String.format("End index (%s) must be in range [0, %s)", start, arr.length);
-        assert start <= end : String.format("Start index (%s) must be <= end (%s)", start, end);
+    public static void reverse(int[] arr, int start, int end) {
+        if(arr.length <= 1){
+            return;
+        }
+        if (start < 0 || start >= arr.length) {
+            throw new IllegalArgumentException(String.format("Start index (%s) must be in range [0, %s)", start, arr.length));
+        }
+        if (end < 0 || end >= arr.length) {
+            throw new IllegalArgumentException(String.format("End index (%s) must be in range [0, %s)", start, arr.length));
+        }
+        if (start > end) {
+            throw new IllegalArgumentException(String.format("Start index (%s) must be <= end (%s)", start, end));
+        }
         for (int i = start, j = end; i < j; i++, j--) {
             int temp = arr[i];
             arr[i] = arr[j];
@@ -48,10 +68,19 @@ public class ArrayUtil {
      * @param start start index, inclusive
      * @param end   end index, inclusive
      */
-    public static void reverseFragment(Object[] arr, int start, int end) {
-        assert start >= 0 && start <= arr.length : String.format("Start index (%s) must be in range [0, %s)", start, arr.length);
-        assert end >= 0 && end <= arr.length : String.format("End index (%s) must be in range [0, %s)", start, arr.length);
-        assert start <= end : String.format("Start index (%s) must be <= end (%s)", start, end);
+    public static void reverse(Object[] arr, int start, int end) {
+        if(arr.length <= 1){
+            return;
+        }
+        if (start < 0 || start >= arr.length) {
+            throw new IllegalArgumentException(String.format("Start index (%s) must be in range [0, %s)", start, arr.length));
+        }
+        if (end < 0 || end >= arr.length) {
+            throw new IllegalArgumentException(String.format("End index (%s) must be in range [0, %s)", start, arr.length));
+        }
+        if (start > end) {
+            throw new IllegalArgumentException(String.format("Start index (%s) must be <= end (%s)", start, end));
+        }
         for (int i = start, j = end; i < j; i++, j--) {
             Object temp = arr[i];
             arr[i] = arr[j];
@@ -73,6 +102,46 @@ public class ArrayUtil {
             array[index] = array[i];
             array[i] = a;
         }
+    }
+
+    /**
+     * Copy and shuffle an array without modifying the original array.
+     * Uses Fisher–Yates shuffle
+     *
+     * @param array Array to shuffle
+     * @return shuffled array. Original array is not modified
+     */
+    public static int[] copyAndshuffle(int[] array) {
+        int[] copy = array.clone();
+        shuffle(copy);
+        return copy;
+    }
+
+    /**
+     * Shuffle an array IN PLACE using Fisher–Yates shuffle
+     *
+     * @param array Array to shuffle IN PLACE
+     */
+    public static void shuffle(Object[] array) {
+        var rnd = RandomManager.getRandom();
+        for (int i = array.length - 1; i > 0; i--) {
+            int index = rnd.nextInt(i + 1);
+            // Simple swap
+            swap(array, index, i);
+        }
+    }
+
+    /**
+     * Copy and shuffle an array without modifying the original array.
+     * Uses Fisher–Yates shuffle
+     *
+     * @param array Array to shuffle
+     * @return shuffled array. Original array is not modified
+     */
+    public static Object[] copyAndshuffle(Object[] array) {
+        Object[] copy = array.clone();
+        shuffle(copy);
+        return copy;
     }
 
     /**
@@ -126,33 +195,6 @@ public class ArrayUtil {
         long tmp = arr[i];
         arr[i] = arr[j];
         arr[j] = tmp;
-    }
-
-    /**
-     * Copy and shuffle an array without modifying the original array.
-     * Uses Fisher–Yates shuffle
-     *
-     * @param array Array to shuffle
-     * @return shuffled array. Original array is not modified
-     */
-    public static int[] copyAndshuffle(int[] array) {
-        int[] copy = array.clone();
-        shuffle(copy);
-        return copy;
-    }
-
-    /**
-     * Shuffle an array IN PLACE using Fisher–Yates shuffle
-     *
-     * @param array Array to shuffle IN PLACE
-     */
-    public static void shuffle(Object[] array) {
-        var rnd = RandomManager.getRandom();
-        for (int i = array.length - 1; i > 0; i--) {
-            int index = rnd.nextInt(i + 1);
-            // Simple swap
-            swap(array, index, i);
-        }
     }
 
     /**
@@ -697,11 +739,11 @@ public class ArrayUtil {
         return Stream.of(arrs).flatMap(Stream::of).toArray(String[]::new);
     }
 
-    // TODO std optional as boolean
-    private record IntStats(int min, int max, int sum, double avg, double std) {}
-    private record DoubleStats(double min, double max, double sum, double avg, double std) {}
+    public record IntStats(int min, int max, int sum, double avg, double std) {}
+    public record LongStats(long min, long max, long sum, double avg, double std) {}
+    public record DoubleStats(double min, double max, double sum, double avg, double std) {}
 
-    private IntStats stats(int[] data){
+    public static IntStats stats(int[] data){
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
         int sum = 0;
@@ -721,9 +763,29 @@ public class ArrayUtil {
         return new IntStats(min, max, sum, avg, std);
     }
 
-    private DoubleStats stats(double[] data){
-        double min = Integer.MAX_VALUE;
-        double max = Integer.MIN_VALUE;
+    public static LongStats stats(long[] data){
+        long min = Integer.MAX_VALUE;
+        long max = Integer.MIN_VALUE;
+        long sum = 0;
+
+        for (long n : data) {
+            if (n < min) min = n;
+            if (n > max) max = n;
+            sum = Math.addExact(sum, n);
+        }
+
+        double avg = (double) sum / data.length;
+        double std = 0;
+        for(long n: data){
+            std += Math.pow(n - avg, 2);
+        }
+        std = Math.sqrt(std / data.length);
+        return new LongStats(min, max, sum, avg, std);
+    }
+
+    public static DoubleStats stats(double[] data){
+        double min = Double.MAX_VALUE;
+        double max = -Double.MAX_VALUE;
         double sum = 0;
 
         for (double n : data) {
