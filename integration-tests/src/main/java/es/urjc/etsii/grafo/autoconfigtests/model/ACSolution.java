@@ -27,13 +27,7 @@ public class ACSolution extends Solution<ACSolution, ACInstance> {
         return new ACSolution(this);
     }
 
-    @Override
     public double getScore() {
-        return Math.max(0, this.multiplier * getInstance().length());
-    }
-
-    @Override
-    public double recalculateScore() {
         return Math.max(0, this.multiplier * getInstance().length());
     }
 

@@ -7,7 +7,6 @@ import es.urjc.etsii.grafo.autoconfigtests.model.ACSolution;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.experiment.AbstractExperiment;
 import es.urjc.etsii.grafo.improve.Improver;
-import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 
 import java.util.List;
@@ -23,7 +22,7 @@ public class ComplexityExperiment extends AbstractExperiment<ACSolution, ACInsta
 
     private static class SleepyImprover extends Improver<ACSolution, ACInstance> {
         public SleepyImprover() {
-            super(Objective.ofDefaultMaximize());
+            super(Main.AC_OBJECTIVE);
         }
 
         @Override

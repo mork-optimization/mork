@@ -1,9 +1,9 @@
 package es.urjc.etsii.grafo.__RNAME__.constructives.grasp;
 
+import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__BaseMove;
 import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Instance;
 import es.urjc.etsii.grafo.__RNAME__.model.__RNAME__Solution;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
-import es.urjc.etsii.grafo.solution.EagerMove;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,10 +37,11 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
     public List<__RNAME__GRASPMove> updateCandidateList(__RNAME__Solution solution, __RNAME__GRASPMove move, List<__RNAME__GRASPMove> candidateList, int index) {
         // List can be partially updated / modified
         // recalculating from scratch is an ok start and can be optimized later if necessary
+        // Do not prematurely micro optimize, split the code in small methods and profile first
         return buildInitialCandidateList(solution);
     }
 
-    public static class __RNAME__GRASPMove extends EagerMove<__RNAME__Solution, __RNAME__Instance> {
+    public static class __RNAME__GRASPMove extends __RNAME__BaseMove {
         public __RNAME__GRASPMove(__RNAME__Solution solution) {
             super(solution);
         }
@@ -56,8 +57,7 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
             throw new UnsupportedOperationException("_execute() in __RNAME__ListManager not implemented yet");
         }
 
-        @Override
-        public double getValue() {
+        public double getScoreChange() {
             // TODO How much does o.f. value change if we apply this movement?
             throw new UnsupportedOperationException("getValue() in __RNAME__ListManager not implemented yet");
         }

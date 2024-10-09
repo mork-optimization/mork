@@ -1,9 +1,9 @@
 package es.urjc.etsii.tsptests;
 
+import es.urjc.etsii.grafo.TSP.Main;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.orchestrator.DefaultOrchestrator;
-import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.Context;
 import org.apache.commons.io.FileUtils;
@@ -28,7 +28,7 @@ class ConcurrentTest {
 
     @BeforeAll
     public static void before(){
-        Context.Configurator.setObjectives(Objective.ofDefaultMinimize());
+        Context.Configurator.setObjectives(Main.MINIMIZE_DISTANCE);
     }
     private static Logger log = LoggerFactory.getLogger(ConcurrentTest.class);
 

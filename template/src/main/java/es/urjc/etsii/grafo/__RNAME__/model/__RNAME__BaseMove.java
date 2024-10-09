@@ -1,17 +1,19 @@
 package es.urjc.etsii.grafo.__RNAME__.model;
 
-import es.urjc.etsii.grafo.solution.LazyMove;
+import es.urjc.etsii.grafo.solution.Move;
 
 /**
  * Example movement class. Can be an insert, a swap, anything that modifies the solution state
  */
-public abstract class __RNAME__ExampleMove extends LazyMove<__RNAME__ExampleMove, __RNAME__Solution, __RNAME__Instance> {
+public abstract class __RNAME__BaseMove extends Move<__RNAME__Solution, __RNAME__Instance> {
+
+    // common properties between moves should be stored here
 
     /**
      * Move constructor
      * @param solution solution
      */
-    public __RNAME__ExampleMove(__RNAME__Solution solution) {
+    public __RNAME__BaseMove(__RNAME__Solution solution) {
         super(solution);
     }
 
@@ -34,23 +36,7 @@ public abstract class __RNAME__ExampleMove extends LazyMove<__RNAME__ExampleMove
      *
      * @return f.o change
      */
-    public abstract double getValue();
-
-    /**
-     * Get next move in this sequence.
-     * There are two main strategies to generate moves:
-     * - eagerly: all at once, and store them on a list
-     * - lazily: only under demand, using Streams, like an Iterator
-     * Only the second implementation requires implementing this method. Ignore this method if using the first one.
-     *
-     * @param solution solution used to generate the previous move,
-     *                and where data will be picked for the current move
-     * @return the next move in this generator sequence if there is a next move, return null to signal end of sequence.
-     */
-    @Override
-    public __RNAME__ExampleMove next(__RNAME__Solution solution) {
-        throw new UnsupportedOperationException("Not implemented");
-    }
+    public abstract double getScoreChange();
 
     /**
      * Returns a String representation of the current movement. Only use relevant fields.

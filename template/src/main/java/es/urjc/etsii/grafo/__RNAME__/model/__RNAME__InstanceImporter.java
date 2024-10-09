@@ -24,6 +24,7 @@ public class __RNAME__InstanceImporter extends InstanceImporter<__RNAME__Instanc
 
         // TIP: You may use a Scanner if you prefer it to a Buffered Reader:
         // Scanner sc = new Scanner(reader);
+        // You do no need to handle or catch IOExceptions, they are handled by the framework
 
         // Call instance constructor when we have parsed all the data
         var instance = new __RNAME__Instance(suggestedName);

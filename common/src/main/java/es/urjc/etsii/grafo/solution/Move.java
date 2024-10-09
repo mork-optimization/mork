@@ -10,8 +10,6 @@ import static es.urjc.etsii.grafo.solution.Solution.MAX_DEBUG_MOVES;
 
 /**
  * Represents a change for a given solution in a given neighborhood
- * All neighborhood moves should be represented by implementations of either LazyMove or EagerMove.
- * Do not directly extend this class.
  */
 public abstract class Move<S extends Solution<S, I>, I extends Instance> {
 

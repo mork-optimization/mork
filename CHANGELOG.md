@@ -6,6 +6,8 @@
 - (New) Irace plots: generate an HTML report with the results of running the autoconfig procedure.
 - (Fix) Math.random, Collections.shuffle now blocked using AspectJ instead of reflection. --add-opens no longer necessary.
 - (Deleted) Solution::isBetterThan, unused and not necessary.
+- (Deleted) Solution::getScore, Solution::recalculateScore: score recalculation should now be done in the solution validator implementation, and getScore can be any method the user wants, as long as it is declared as an Objective.
+- (Deleted) LazyMove & EagerMove: mostly unused and can be replaced by a normal Move. See SwapNeighborhood in TSP module for an example lazy implementation.
 
 # v0.20
 - (New) Add support for 7Z and ZIP compressed instances, with no configuration required.

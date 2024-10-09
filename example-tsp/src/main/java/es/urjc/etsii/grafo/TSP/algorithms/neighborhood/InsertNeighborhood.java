@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.TSP.algorithms.neighborhood;
 
+import es.urjc.etsii.grafo.TSP.model.TSPBaseMove;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
-import es.urjc.etsii.grafo.solution.EagerMove;
 import es.urjc.etsii.grafo.solution.neighborhood.ExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 
@@ -11,7 +11,6 @@ import java.util.List;
 import java.util.Objects;
 
 public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMove, TSPSolution, TSPInstance> {
-
 
     @Override
     public ExploreResult<InsertMove, TSPSolution, TSPInstance> explore(TSPSolution solution) {
@@ -24,11 +23,10 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
         return ExploreResult.fromList(list);
     }
 
-    public static class InsertMove extends EagerMove<TSPSolution, TSPInstance> {
+    public static class InsertMove extends TSPBaseMove {
 
         final int pi;
         final int pj;
-        final double value;
 
         /**
          * Constructor on an insert move. Given a solution, an insert move consist in inserting the the location of a position pi, into a position pj.
@@ -42,7 +40,7 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
             super(solution);
             this.pi = pi;
             this.pj = pj;
-            this.value = calculateValue(solution);
+            this.distanceDelta = calculateValue(solution);
         }
 
         @Override
@@ -51,17 +49,11 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
             return solution;
         }
 
-        @Override
-        public double getValue() {
-            return this.value;
-        }
-
         private double calculateValue(TSPSolution solution){
             var s = solution.cloneSolution();
             s.insertLocationAtPiInPj(pi, pj);
-            return s.getScore() - solution.getScore();
+            return s.getDistance() - solution.getDistance();
         }
-
 
         @Override
         public String toString() {

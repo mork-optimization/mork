@@ -1,9 +1,9 @@
 package es.urjc.etsii.grafo.TSP.algorithms.constructives.grasp;
 
+import es.urjc.etsii.grafo.TSP.model.TSPBaseMove;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPSolution;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
-import es.urjc.etsii.grafo.solution.EagerMove;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -37,10 +37,11 @@ public class TSPListManager extends GRASPListManager<TSPListManager.TSPGRASPMove
     public List<TSPGRASPMove> updateCandidateList(TSPSolution solution, TSPGRASPMove move, List<TSPGRASPMove> candidateList, int index) {
         // List can be partially updated / modified
         // recalculating from scratch is an ok start and can be optimized later if necessary
+        // Do not prematurely micro optimize, split the code in small methods and profile first
         return buildInitialCandidateList(solution);
     }
 
-    public static class TSPGRASPMove extends EagerMove<TSPSolution, TSPInstance> {
+    public static class TSPGRASPMove extends TSPBaseMove {
         public TSPGRASPMove(TSPSolution solution) {
             super(solution);
         }
@@ -49,12 +50,6 @@ public class TSPListManager extends GRASPListManager<TSPListManager.TSPGRASPMove
         protected TSPSolution _execute(TSPSolution solution) {
             // TODO Apply changes to solution if movement is executed
             throw new UnsupportedOperationException("_execute() in TSPListManager not implemented yet");
-        }
-
-        @Override
-        public double getValue() {
-            // TODO How much does o.f. value change if we apply this movement?
-            throw new UnsupportedOperationException("getValue() in TSPListManager not implemented yet");
         }
 
         @Override

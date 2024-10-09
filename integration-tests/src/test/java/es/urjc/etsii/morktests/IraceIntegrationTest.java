@@ -1,6 +1,7 @@
 package es.urjc.etsii.morktests;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
+import es.urjc.etsii.grafo.autoconfigtests.Main;
 import es.urjc.etsii.grafo.solver.Mork;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
@@ -34,7 +35,7 @@ public class IraceIntegrationTest {
         var success = Mork.start(new String[]{
                 "--autoconfig",
                 "--instances.path.default=instancesautoconfig/autoconfig",
-        }, FMode.MAXIMIZE);
+        }, Main.AC_OBJECTIVE);
         assertTrue(success);
         assertTrue(Files.exists(Path.of("plots.pdf")));
         assertTrue(Files.exists(Path.of("irace.Rdata")));

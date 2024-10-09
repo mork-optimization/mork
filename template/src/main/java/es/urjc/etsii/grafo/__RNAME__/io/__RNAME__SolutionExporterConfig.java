@@ -9,18 +9,18 @@
 // * node "serializers.solution-custom" by default.
 // * First, loads the packaged serializers.yml inside the JAR.
 // * Secondly, if there exists a serializers.yml file outside the JAR, override the properties defined in it.
-// *
+// * <p>
 // * Several config properties are inherited, such as "frequency", "enabled", ...
 // */
 //@SerializerSource
 //@ConfigurationProperties(prefix = "serializers.solution-custom")
 //public class __RNAME__SolutionExporterConfig extends AbstractSolutionSerializerConfig {
 //
-//    // EXAMPLE PROPERTY, DELETE ME
+//    // This is an example configurable property, remove it if you don't need it, or replace it with your own
 //    private boolean enableMyCustomFeature;
 //
 //
-//    // GETTER AND SETTERS created by IntelliJ automatically
+//    // Add Getters and Setters for your custom properties automatically using IntelliJ generator or equivalent
 //    public boolean isEnableMyCustomFeature() {
 //        return enableMyCustomFeature;
 //    }
