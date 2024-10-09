@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.TSP.algorithms.neighborhood;
+package es.urjc.etsii.grafo.TSP.model.neighs;
 
 import es.urjc.etsii.grafo.TSP.model.TSPBaseMove;
 import es.urjc.etsii.grafo.TSP.model.TSPInstance;
@@ -40,7 +40,7 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
             super(solution);
             this.pi = pi;
             this.pj = pj;
-            this.distanceDelta = calculateValue(solution);
+            this.distanceDelta = insertDelta(solution);
         }
 
         @Override
@@ -49,7 +49,7 @@ public class InsertNeighborhood extends Neighborhood<InsertNeighborhood.InsertMo
             return solution;
         }
 
-        private double calculateValue(TSPSolution solution){
+        private double insertDelta(TSPSolution solution){
             var s = solution.cloneSolution();
             s.insertLocationAtPiInPj(pi, pj);
             return s.getDistance() - solution.getDistance();

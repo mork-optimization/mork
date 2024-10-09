@@ -1,3 +1,8 @@
+---
+title: Travelling Salesman Problem (TSP)
+description: Guided step-by-step example for implementing a solver for the Travelling Salesman Problem (TSP) with Mork
+icon: fontawesome/solid/suitcase
+---
 # Step-by-step example for the Travelling Salesman Problem (TSP) with Mork
 
 ## What is the Travelling Salesman Problem?
@@ -27,14 +32,19 @@ from *[The Trials And Tribulations Of The Traveling Salesman](https://medium.com
 ### 1.2 Download problem instances
 
 In order to test the proposed algorithms for the TSP we will use the standard instances for the problem, that can be
-easily obtained from *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)*.  
-*[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)* is a library of sample instances for the TSP  (and
-related problems) from various sources and of various types. Particularly, we will use
-the *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*. For the moment, you will only need to download the following
-files: [berlin52](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp),
-[eil101](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/eil101.tsp),
-[ch130](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ch130.tsp)
-and [st70](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp). Have a quick look at the structure of the files.
+easily obtained from *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)*.
+
+
+!!! abstract "What is TSPLIB?"
+    *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)* is a library of sample instances for the TSP  (and
+    related problems) from various sources and of various types. Particularly, we will use
+    the *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*. For the moment, you will only need to download the following
+    files: [berlin52](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp),
+    [eil101](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/eil101.tsp),
+    [ch130](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ch130.tsp)
+    and [st70](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp).
+
+
 
 ### 1.3 Using the quick start project generator
 
@@ -43,11 +53,13 @@ and click on generate your project. In a few seconds you will be able to downloa
 file and import it in your favorite IDE.
 
 
-> 💡 *Tip:* Some IDEs, allow you to select the `pom.xml` file when you select the option to import an existing project. If such a possibility exists, we highly recommend **importing the project as a maven project**. Some examples of how to import a [Maven](https://maven.apache.org/) project in the most important editors can be found in: [Eclipse](https://www.eclipse.org/m2e/), [IntelliJ](https://www.jetbrains.com/help/idea/maven-importing.html), or [NetBeans](https://netbeans.apache.org/wiki/MavenBestPractices.asciidoc).
+!!! tip  "💡 *Tip:*"
+    Some IDEs, allow you to select the `pom.xml` file when you select the option to import an existing project. If such a possibility exists, we highly recommend **importing the project as a maven project**. Some examples of how to import a [Maven](https://maven.apache.org/) project in the most important editors can be found in: [Eclipse](https://www.eclipse.org/m2e/), [IntelliJ](https://www.jetbrains.com/help/idea/maven-importing.html), or [NetBeans](https://netbeans.apache.org/wiki/MavenBestPractices.asciidoc).
 
 
-For your future project, remember to choose a valid name, i.e., check that it starts with an Uppercase letter followed by
+Remember to choose a valid name for your project, i.e., check that it starts with an Uppercase letter followed by
 any alphanumeric characters or underscores, without spaces.
+
 
 ### 1.4 A quick look
 
@@ -68,26 +80,24 @@ Docker template and helper scripts to easily build, run and deploy your applicat
 - 📁 **instances**
 
 This folder should contain everything related with the instances of the problem. In this case, since we are tackling
-the TSP, this folder will contain the TSP instances. Therefore, you should put the downloaded instances (*.tsp files) from  
-*[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*  
-in this folder.
+the TSP, this folder will contain the TSP instances. Therefore, you should put the downloaded instances (`*.tsp` files) from [TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html) in this folder.
 
-- 📁 **src/main**:
-- 📁 **java/es.urjc.etsii.grafo.TSP**
+- 📁 **src/main/java/es.urjc.etsii.grafo.TSP**
     - 📁 **algorithms**: algorithmic components, i.e, constructive, local search, metaheuristics, etc.
     - 📁 **experiments**: defines experiments to execute to test the proposed algorithms and strategies.
     - 📁 **model**: contains the basic elements of the studied problem: solution, instance, etc.
     - 📁 **drawing**: helper class to draw solutions in the web frontend.
-- 📁 **resources**
+- 📁 **src/main/resources**
     - 📁 **irace**: irace is a software package that implements a number of automatic configuration procedures.
     - 📁 **static**: contains files to generate a localhost web page which allow the researcher to see the
       solution-quality convergence and the best solution found.
     - 📝 application.yml: this file contains the global configuration of the project, such as which experiment should be
       executed, which instances should be used, among others. For a detailed configuration description, see [MorK configuration](../features/config.md).
+- 📁 **src/test**: similar to src/main but contains tests for the project, and related resources.
 - 📝 .gitignore: this file tells Git which files to ignore when pushing your project to [GitHub](https://github.com/) or any other remote server.
 - 📝 pom.xml: Maven configuration file, contains the project description and its dependencies. 
 
-## 2. Our first step: reading instances
+## 2. Reading instances
 
 This Mork project aims to approach the Traveling Salesman Problem (TSP). Given a set of points, (that can be considered
 as locations or cities), the TSP consists in finding a roundtrip of minimal total length visiting each node exactly once. In
@@ -205,12 +215,13 @@ public class TSPInstance extends Instance {
 > 💡 _Tip_: is this the first time you have come across record? You don't know what you're missing!! Record classes, which are a special kind of class, help to model plain data aggregates with less ceremony than normal classes. Have a look to the [Java documentation](https://docs.oracle.com/en/java/javase/16/language/records.html) abut record classes.
 
 
-**⚠️IMPORTANT : after exiting the instance constructor method, i.e., the instance is defined and generated, it MUST BE
-IMMUTABLE.**
+!!! danger "IMPORTANT"
+    After exiting the instance constructor method, the instance **must be immutable**.
+    The instance class should never implement setter methods. All mutable data must be in the solution class.
 
 Next, lets move on to the `TSPInstanceImporter.java` file. This class responsibility is generating problem instances given
-some files. To this end, we will need to implement the method: `importInstance(BufferedReader reader, String filename)`
-. This method receives as input parameters the buffered reader, managed by the framework, and the filename, returning the constructed instance.
+some files. To this end, we will need to implement the method: `importInstance(BufferedReader reader, String filename)`. 
+This method receives as input parameters the buffered reader, managed by the framework, and the filename, returning the constructed instance.
 Considering the TSP instance file structure, we will need to read the file line by line,
 storing the list of coordinates and the distance between each pair of coordinates, and finally, calling the instance constructor. The
 resultant class will be the following:
@@ -274,23 +285,39 @@ public class TSPInstanceImporter extends InstanceImporter<TSPInstance> {
 }
 ```
 
-> 💡 _Tip_: You may use the BufferedReader as given, or initialize a Scanner from the BufferedReader. However, both approaches cannot be used at the same time (i.e, sometimes reading from the buffered reader and sometimes from the scanner), as it may result in missing input data.
+> 💡 _Tip_: You may use the BufferedReader as given, 
+> or initialize a Scanner from the BufferedReader. 
+> However, both approaches cannot be used at the same time 
+> (i.e, sometimes reading from the buffered reader and sometimes from the scanner), 
+> as it may result in missing input data.
 
 
 ## 3. Modelling solution
 
-The next task is to define the TSP solution class. In this case, a solution corresponds to a circular path passing through each
-of the instance locations. To define a solution in Mork we must edit the `TSPSolution` class. The objects of this class
+The next task is to define the TSP solution class. Solution classes contain mutable data that is modified while solving an instance. 
+In the case of the TSP, the solution contains the order in which we will visit each of the cities or locations.
+To define a solution in Mork we must edit the `TSPSolution` class. The objects of this class
 represent the candidate solutions that are handled throughout the optimization algorithm developed. The simplest
 implementation of a circular path is through an array of integers, where the index represents the order (or position) in
-the path of the location (identified by the ID) referenced by that array index. It should be noted that an array type
-structure is very appropriate for this purpose, since it allows direct access to its components. An efficient
-implementation must take this type of details into account. In addition to this array, we will define another class
-attribute that represents the objective function value of the solution, i.e., the route length.
+the path of the location (identified by the ID) referenced by that array index. While in this example we use an array,
+as we must visit all locations and therefore the size is known, other times other data structures such as `HashSet` or `ArrayList` may be more appropriate. 
+Choosing the most performant data structure is not trivial, and sometimes the most performant approach is using an unexpected data structure. 
+Different alternatives can be tested and benchmarked to find the most efficient one.
 
-    private double distance;  
- 
-    private final int[] route;
+```java
+
+/**
+ * Cached length of the path between all locations, for performance reasons
+ */
+private double distance;  
+
+/**
+ * Order of the locations in the path. 
+ * The index represents the position in the path, and the value the location ID.
+ */
+private final int[] route;
+```
+    
 
 The main methods of the `TSPSolution` class are the following:
 
@@ -299,11 +326,11 @@ The main methods of the `TSPSolution` class are the following:
 By default, two constructors must be implemented. The first one initializes a solution given an instance. The second one
 initializes a solution given another solution, and it is used for cloning data. For example:
 
-```
-public TSPSolution(TSPInstance ins) {  
-  super(ins);  
-  this.route = new int[ins.numberOfLocations()];  
-  Arrays.fill(route, -1);  
+```java
+public TSPSolution(TSPInstance instance) {  
+  super(instance);  
+  this.route = new int[instance.numberOfLocations()];  
+  Arrays.fill(route, -1);  // -1 means that the position is empty / unused
 }
     
 public TSPSolution(TSPSolution s) {  
@@ -315,13 +342,13 @@ public TSPSolution(TSPSolution s) {
 
 ### Objective function methods
 
-We will also need a method to calculate the objective function of the solution. In Mork, there are two main
-procedures to manage the objective function of the solution:
+We will also need a method to calculate the objective function of the solution. Usually, two different methods are implemented:
 
 - `public double getScore()` : get the objective function of the solution. This procedure may behave like a getter method, returning cached score without performing any calculation.
 - `public double recalculateScore()`: recalculate solution objective function. **Make sure this method does not have side effects** (a common mistake is updating caches while executing recalculateScore). If this method does have side effects, something that may happen is that two subsequent calls to `recalculateScore()` may return different results.
 
-```  
+In this case, the objective function is the total distance of the path. Therefore, the implementation of these methods is
+```java
 public double getScore() {  
    return this.distance;  
 }
@@ -335,18 +362,23 @@ public double recalculateScore() {
   return distance;  
 }
 ```
+Note that the `recalculateScore()` method is not updating the distance attribute, but returning the calculated value. Moreover, both method names can be changed to `getDistance()` and `recalculateDistance()` respectively, to better reflect the nature of the problem.
 
-> 🙋 *FAQ: If both methods should return the same value, why have two implementations?*
-By using both implementations, the framework can validate when running in Validation mode 
-that the implementation is correct, and that incremental score calculation works as expected, 
-without slowing down execution when running in Performance mode.
+!!! question "Why have two implementations?"
+    The first method should be used when the solution is not modified, and the objective function is requested. 
+    This way, the objective function is calculated only once, and the result is cached.
+    The second method is used when the solution is modified, and the objective function must be recalculated.
+    In the next section, we will see how to update the objective function when the solution is modified incrementally.
 
-### Moving methods
+### Move methods
 
-The solution class must have the necessary methods to operate and edit a solution. In this case, since it is a path,
-methods to exchange the order of two locations (classic interchange movement), to establish a position in the path of a
-specific location (classic interchange movement), or even to randomize a path make sense for the TSP.
+While the solution class may contain all the necessary methods to operate and edit a solution,
+when the number of possible operations increases we can end with an extremely big, complex and unmaintainable class.
+In this case, we can split the solution class into different classes, each one containing a set of operations.
+For example, we can create a class responsible for inserting new nodes, and another one for swapping nodes
+(exchange the order of two locations, classic interchange movement), etc.
 
+In this example, we will implement all required methods inside the solution class, and in a later section we will refactor the code to use neighborhoods and movements. swap and insert movements. 
 ```    
    /**  
     * Shuffle route 
@@ -391,7 +423,8 @@ specific location (classic interchange movement), or even to randomize a path ma
     }
 ```
 
-> 💡 _Tip_: Take a look at the Javadocs of the util classes such as `CollectionUtil` and `ArrayUtil`, they may contain commonly used methods that are not implemented in the Java API. Are you missing some methods? Open an issue or submit a pull request!
+!!! tip
+    Take a look at the Javadocs of the util classes such as `CollectionUtil` and `ArrayUtil`, they may contain commonly used methods that are not implemented in the Java API. Are you missing some methods? Open an issue or submit a pull request!
 
 
 ## 4. Our first algorithms and experiments
@@ -434,8 +467,10 @@ experiment would look like this:
 ```
 public class ConstructiveExperiment extends AbstractExperiment<TSPSolution, TSPInstance> {
 
+    private final TSPConfig config;
+
     public ConstructiveExperiment(SolverConfig solverConfig) {
-        super(solverConfig);
+        this.config = solverConfig;
     }
 
     @Override
@@ -452,16 +487,15 @@ public class ConstructiveExperiment extends AbstractExperiment<TSPSolution, TSPI
 
 ### Run Mork
 
-To run Mork it is necessary to configure the run parameters. To do so, go to `application.yml` file, located at
-src/main/resources/. This file contains a list of well-documented properties. In this case we are going to focus just on
+Before running Mork we need to review its configuration and check that they are correct. To do so, go to `application.yml` file, located at
+`src/main/resources/`. This file contains a list of well-documented properties. In this case we are going to focus just on
 some of them:
 
-- instances: in this property the path of the location of the instances should be indicated (either a specific instance or a folder of instances, or even a folder with folders of instances). It is possible to indicate a path for each
+- `instances.path`: in this property the path of the location of the instances should be indicated (either a specific instance or a folder of instances, or even a folder with folders of instances). It is possible to indicate a path for each
   experiment. In this case we set `default: 'instances'`.
-- maximizing: since the TSP is a minimization optimization problem, maximizing is set to false: `maximizing: false`.
-- experiments: this property determines which experiment or experiments should be executed. To do so, you can optionally use
-  a regex expression. For a single experiment execution, just specify the class
-  name: `experiments: 'ConstructiveExperiment'`. 
+- `solver.experiments`: this property determines which experiment or experiments should be executed. To do so, you can optionally use
+  a regex expression. For a single experiment execution, just specify the class name: `experiments: 'ConstructiveExperiment'`. 
+- `solver.parallelExecutor`, `solver.nWorkers`: these properties determine the maximum of workers that will be used to execute the experiments.
 
 Have a look to the rest of configuration parameters and feel free to change whatever you want. 
 A more detailed explanation of how configuration works can be found at [this link](../features/config.md).
@@ -502,13 +536,12 @@ tasks:
 A neighborhoods represents all potential solutions that can be reached for a given solution applying a movement. In general, Neighborhoods can be explored using two different strategies:
 
 1. Eager exploration: Movements in this neighborhood are generated at once, using a list (`List<>`) of EagerMoves. Convenient, but may waste computer resources when the improve method is not a best improvement approach.
-2. Lazy exploration:  Movements in this neighborhood are generated lazily under demand using `Streams` with LazyMoves. Generate moves only when they need to be evaluated.
+2. Lazy exploration:  Movements in this neighborhood are generated lazily under demand using `Streams` with Moves. Generate moves only when they need to be evaluated.
 
-**Eager Exploration**
+**Insert neighborhood**
 
 To better explain eager exploration we are going to use the Insert classical move as an example. The insert operator consist
-in removing a location from the route and insert it between other two locations (i.e., insert it at a specific position)
-.
+in removing a location from the route and insert it between other two locations (i.e., insert it at a specific position).
 
 Have a look to the example depicted in the figure above. The location with ID=7 has been removed from the route, and it
 is wanted to insert it between locations 2 and 3. The resulting route after the insertion is shown in the second array.
@@ -535,37 +568,50 @@ positions of the route). A straightforward implementation is shown below:
     }
 ```
 
-Next task is to implement the Insert move: `public static class InsertMove extends EagerMove<TSPSolution, TSPInstance>`.
-Notice that this class has been nested in `InsertNeighborhood` class. As you may have noticed, the constructor of an
+Next task is to implement the Insert move: `public static class InsertMove extends TSPBaseMove`.
+Notice that this class has been nested inside the `InsertNeighborhood` class. As you may have noticed, the constructor of an
 insert move receive tree parameters: the solution and two integers: the position in the route of the location to insert
-in a desired position. Regardless of the type of movement intended (Eager or Lazy), the following methods have to be
+in a desired position. Regardless of the type of movement intended, the following methods have to be
 implemented:
 
 - `TSPSolution _execute()`: execute the move, returning the modified solution. In our case, the solution will be modified in place.
-- `double getValue()`: this procedure calculates the difference between the value of the solution that would be obtained
-  if the movement were carried out, and the value of the current target solution. This method does NOT perform the
-  movement, the solution (and its structures) must not change.
-- `boolean improves()` : returns true if applying the move results in a better solution than the current one.
-
+- `double getValue()`: or any other method, as longs as it returns how much the score is going to change if this movements is applied to the solution. procedure calculates the difference between the value of the solution that would be obtained
+  if the movement were carried out, and the value of the current target solution. 
+- 
 The easiest implementation of this class is depicted below.
 
 ```
-    public InsertMove(TSPSolution solution, int pi, int pj) {  
-      super(solution);  
-     this.pi = pi;  
-     this.pj = pj;  
-    }  
-      
-    protected TSPSolution _execute() {  
-      this.getSolution().insertLocationAtPiInPj(pi, pj);  
-      return true;
-    }  
-      
-    public double getValue() {  
-      var s = this.getSolution().cloneSolution();  
-      s.insertLocationAtPiInPj(pi, pj);  
-     return s.getScore() - this.getSolution().getScore();  
-    }
+    public static class InsertMove extends TSPBaseMove {
+
+        final int pi;
+        final int pj;
+
+        /**
+         * Constructor on an insert move. Given a solution, an insert move consist in inserting the the location of a position pi, into a position pj.
+         *
+         *
+         * @param solution current solution
+         * @param pi position of the location is going to be inserted into pj
+         * @param pj position where the location of pi is going to be inserted
+         */
+        public InsertMove(TSPSolution solution, int pi, int pj) {
+            super(solution);
+            this.pi = pi;
+            this.pj = pj;
+            this.distanceDelta = calculateValue(solution);
+        }
+
+        @Override
+        protected TSPSolution _execute(TSPSolution solution) {
+            solution.insertLocationAtPiInPj(pi, pj);
+            return solution;
+        }
+
+        private double calculateValue(TSPSolution solution){
+            var s = solution.cloneSolution();
+            s.insertLocationAtPiInPj(pi, pj);
+            return s.getDistance() - solution.getDistance();
+        }
 ```
 
 In this example, `getValue()` performed the insert move in a cloned solution of the current one. Then it returns the
@@ -573,10 +619,10 @@ difference in the objective function value between the cloned one (the neighbor 
 procedure is extremely inefficient. An efficient way to perform this calculation will evaluate just the part of the
 solution that has changed after the move. We depict a more efficient approach in the swap move example.
 
-**Lazy exploration**
+**Swap neighborhood**
 
 Movements in this neighborhood are generated lazily under demand
-using [`Streams`](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html) with `LazyMoves`. In this
+using [`Streams`](https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html). In this
 neighborhood we will need to build an exhaustive stream to iterate over it. We will use the classical swap move operator
 to define a Lazy Neighborhood. This move, exchange the position in the route of two locations, and can be easily
 explained through the following picture.
@@ -590,41 +636,75 @@ it? First, we generate the Swap Neighborhood
 class (`SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance>`) and implement
 the explore method. This method need to generate only the initial `SwapMove` object.
 
-```
+```java
+    public class SwapNeighborhood extends Neighborhood<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance> {
+
+
     @Override
-    public ExploreResult<SwapNeighborhood.SwapMove, TSPSolution, TSPInstance> explore(TSPSolution solution) {
-        int initialVertex = RandomManager.getRandom().nextInt(solution.getInstance().numberOfLocations());
-        return new ExploreResult<>(new SwapMove(solution, initialVertex, initialVertex, (initialVertex + 1) % solution.getInstance().numberOfLocations()));
+    public ExploreResult<SwapMove, TSPSolution, TSPInstance> explore(TSPSolution solution) {
+        // Instead of using a double for loop like the insert, we are going to generate the movements lazily
+//        List<SwapMove> swapMoves = new ArrayList<>();
+//        for (int i = 0; i < solution.getInstance().numberOfLocations(); i++) {
+//            for (int j = i + 1; j < solution.getInstance().numberOfLocations(); j++) {
+//                swapMoves.add(new SwapMove(solution, i, j));
+//            }
+//        }
+//        return ExploreResult.fromList(swapMoves);
+
+        int nLocations = solution.getInstance().numberOfLocations();
+        var stream =
+                // Generate all possible swap origin point, from 0 to n-1
+                IntStream.range(0, nLocations-1).boxed()
+                        // For each origin point, generate all possible swap destination points: from starting point + 1 to n
+                        .flatMap(i -> IntStream.range(i + 1, nLocations).mapToObj(j -> new SwapMove(solution, i, j)));
+
+        int streamSize = nLocations * (nLocations - 1) / 2;
+        return ExploreResult.fromStream(stream, streamSize);
     }
+
+    public static class SwapMove extends TSPBaseMove {
+
+        final int nLocations;
+        final int pi;
+        final int pj;
+
+        public SwapMove(TSPSolution solution, int pi, int pj) {
+            super(solution);
+            this.nLocations = solution.getInstance().numberOfLocations();
+            this.pi = pi;
+            this.pj = pj;
+            this.distanceDelta = calculateValue(solution);
+        }
+
+        private double calculateValue(TSPSolution solution) {
+            var s = solution.cloneSolution();
+            s.swapLocationOrder(pi, pj);
+            return s.getDistance() - solution.getDistance();
+        }
+
+        @Override
+        protected TSPSolution _execute(TSPSolution solution) {
+            solution.swapLocationOrder(pi, pj);
+            return solution;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Swap %s <-> %s", this.pi, this.pj);
+        }
+        // Omitted hashcode and equals generated by IntelliJ
+    }
+}
 ```
 
-Again, the `SwapMove` class is a nested class in `LazyNeighborhood` class. The main difference between Lazy moves and
-Eager moves is that in Lazy Moves the method `LazyMove<TSPSolution, TSPInstance> next()` must be implemented (in
-addition to all previous detailed methods). This method is in charge of generate next move in the stream sequence. Given
-a move, it generates the next move if exists, or null otherwise. In this particular example we would like to swap a pair
-of locations of the instance. Notice that the swap between a location A and B is equal to the swap between B and A.
-Therefore, this procedure should avoid generating already visited moves. Our proposed procedure is depicted next:
-
-    public LazyMove<TSPSolution, TSPInstance> next() {  
-      var nextPj = (pj + 1) % s.getInstance().numberOfLocations();  
-      var nextPi = pi;  
-      if (nextPj == initialPi) {  
-        nextPi = (nextPi + 1) % s.getInstance().numberOfLocations();
-        if (nextPi == (initialPi -1 + s.getInstance().numberOfLocations())/ + s.getInstance().numberOfLocations()) {  
-          return null;  
-        }  
-        nextPj = (nextPi + 1) % s.getInstance().numberOfLocations();  
-      }  
-      return new SwapMove(s, initialPi, nextPi, nextPj);  
-    }
 
 An example of the stream generated by this procedure, given an instance with locations A, B, C, D and E, starting with
 the swap A <->B, will be the following: A <-> B, A <-> C, A <-> D, A <-> E, B <-> C, B <-> D, B <-> E, C <-> D, C <-> E,
 D <-> E, and finally, `null`.
 
-#### Define a Local Search experiment
+#### Local Search experiments
 
-Define a local search experiment is as easy as define a constructive experiment. Copy the `ConstructiveExperiment` class
+Defining a local search experiment is as easy as defining a constructive experiment. Copy the `ConstructiveExperiment` class
 in the same folder and rename it to `LocalSearchExperiment`. In Mork, there are already implemented two different type of local searches: `LocalSearchFirstImprovement` and `LocalSearchBestImprovement`. The first one follows a first improvement
 strategy, i.e., as soon as it finds a move that results on an improvement, it is executed. The second one follows the best
 improvement strategy, it explores all solutions of a neighborhood and execute the best possible move, the move that
@@ -637,11 +717,11 @@ results in the best solution of the neighborhood. In this experiment we are goin
 ```
 public List<Algorithm<TSPSolution, TSPInstance>> getAlgorithms() {  
   var algorithms = new ArrayList<Algorithm<TSPSolution, TSPInstance>>();
-  algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive()));  
-  algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),new LocalSearchFirstImprovement<>(super.isMaximizing(), new InsertNeighborhood())));  
-  algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),new LocalSearchBestImprovement<>(super.isMaximizing(), new InsertNeighborhood())));  
-  algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),new LocalSearchFirstImprovement<>(super.isMaximizing(), new SwapNeighborhood())));  
-  algorithms.add(new SimpleAlgorithm<>(new TSPRandomConstructive(),new LocalSearchBestImprovement<>(super.isMaximizing(), new SwapNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm<>("Random", new TSPRandomConstructive()));  
+  algorithms.add(new SimpleAlgorithm<>("Random-FI-Insert", new TSPRandomConstructive(),new LocalSearchFirstImprovement<>(super.isMaximizing(), new InsertNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm<>("Random-BI-Insert", new TSPRandomConstructive(),new LocalSearchBestImprovement<>(super.isMaximizing(), new InsertNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm<>("Random-FI-Swap", new TSPRandomConstructive(),new LocalSearchFirstImprovement<>(super.isMaximizing(), new SwapNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm<>("Random-BI-Swap", new TSPRandomConstructive(),new LocalSearchBestImprovement<>(super.isMaximizing(), new SwapNeighborhood())));  
   return algorithms;
 }
 ```
@@ -650,6 +730,10 @@ Now is the moment to run this new experiment. Change the experiment property in 
 Remember to look to the interactive dashboard run in [localhost](http://localhost:8080/). Which is the best algorithm?
 
 ## 5. Visualizing solutions
+
+!!! danger
+    This section is outdated, and will be rewritten soon using the new frontend and API. We recommend to skip this section for now.
+
 
 In some cases you may be interested in seeing the solutions you are generating with your algorithms. This may allow you
 to detect possible problems, such as errors in the calculation of the objective function, or to detect weaknesses of the
@@ -709,6 +793,10 @@ evolves over the time. The result should be similar than the following image:
 ![Dashboard example](img/dashboard.png)
 
 ## 6. _Irace_
+!!! danger
+    This section is outdated, and will be rewritten soon using the new Autoconfig module.
+    We recommend to skip this section for now, and ask for support if necessary.
+
 
 In short, Irace is a software package that implements a number of automatic configuration procedures, that allows us to
 easily tune our algorithms when manually testing each possible configuration is not viable. Irace is integrated in Mork,
