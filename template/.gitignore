@@ -1,5 +1,6 @@
 .idea
 log*
+!logback.xml
 errors
 target
 __RNAME__.iml
