@@ -4,6 +4,8 @@ import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultManager;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.mo.pareto.ParetoSet;
+import es.urjc.etsii.grafo.mo.pareto.ParetoSimpleList;
 import es.urjc.etsii.grafo.solution.Move;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -18,6 +20,7 @@ import java.util.concurrent.Future;
 import java.util.logging.Logger;
 import java.util.random.RandomGenerator;
 import java.util.random.RandomGeneratorFactory;
+import java.util.stream.Stream;
 
 public class Context {
     private static final Logger log = Logger.getLogger(Context.class.getName());
@@ -44,6 +47,8 @@ public class Context {
             context.multiObjective = parentValue.multiObjective;
             context.referenceResultManager = parentValue.referenceResultManager;
             // context.timeEvents; // do not copy! thread responsible for managing its own events
+
+            context.paretoSet = parentValue.paretoSet;
             return context;
         }
     }
@@ -187,6 +192,7 @@ public class Context {
         public SolutionValidator<S,I> validator;
         public boolean multiObjective;
         public ReferenceResultManager referenceResultManager;
+        public ParetoSet<S,I> paretoSet;
     }
 
     public static class Configurator {
@@ -252,13 +258,18 @@ public class Context {
                 throw new IllegalArgumentException("Objectives array cannot be empty");
             }
             ContextData<S,I> ctx = get();
-            var map = new HashMap<String, Objective<?,S,I>>();
+            var map = new LinkedHashMap<String, Objective<?,S,I>>();
             for(var obj: objectives){
                 map.put(obj.getName(), obj);
             }
             ctx.multiObjective = multiObjective;
             ctx.objectives = Collections.unmodifiableMap(map);
             ctx.mainObjective = objectives[0];
+
+            if(multiObjective){
+                // TODO make configurable, and change by default to NDTree when behaviour is verified
+                ctx.paretoSet = new ParetoSimpleList<>();
+            }
         }
 
         public static List<TimeStatsEvent> getAndResetTimeEvents(){
@@ -276,6 +287,48 @@ public class Context {
 
         public static ReferenceResultManager getRefResultManager() {
             return get().referenceResultManager;
+        }
+
+        public static <S extends Solution<S,I>, I extends Instance> Iterable<S> getTrackedSolutions(){
+            ContextData<S,I> ctx = get();
+            return ctx.paretoSet.getTrackedSolutions();
+        }
+    }
+
+
+    public static class Pareto {
+        public static int MAX_ELITE_SOLS_PER_OBJ = 0;
+        public static int MAX_TRACKED_SOLS = 0;
+
+        public static <S extends Solution<S, I>, I extends Instance> int size() {
+            ContextData<S,I> ctx = get();
+            return ctx.paretoSet.size();
+        }
+
+        public static Stream<double[]> stream(){
+            return get().paretoSet.stream();
+        }
+
+        public static void reset() {
+            get().paretoSet.clear();
+        }
+
+        public static void resetElites(){
+            get().paretoSet.resetElites();
+        }
+
+        public static <S extends Solution<S, I>, I extends Instance> Map<String, TreeSet<S>> getElites() {
+            ContextData<S, I> ctx = get();
+            return ctx.paretoSet.getElites();
+        }
+
+        public static <S extends Solution<S, I>, I extends Instance> boolean add(S newSol) {
+            ContextData<S, I> ctx = get();
+            return ctx.paretoSet.add(newSol);
+        }
+
+        public static long getLastModifiedTime() {
+            return get().paretoSet.getLastModifiedTime();
         }
     }
 }
