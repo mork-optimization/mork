@@ -91,7 +91,7 @@ public class TestSolutionWithMultipleObjectives extends Solution<TestSolutionWit
 
     @Override
     public int hashCode() {
-        return Objects.hash(Arrays.hashCode(this.scores), properties);
+        return Arrays.hashCode(this.scores);
     }
 
     public void setScores(double[] scores){
