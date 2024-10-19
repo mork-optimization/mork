@@ -11,11 +11,11 @@ public class TestMove extends Move<TestSolution, TestInstance> {
     private final double score;
     private final FMode fmode;
 
-    public static List<TestMove> generateSeq(int... data){
+    public static List<TestMove> generateSeq(double... data){
         return generateSeq("TestInstance", data);
     }
 
-    public static List<TestMove> generateSeq(String instanceName, int... data){
+    public static List<TestMove> generateSeq(String instanceName, double... data){
         var testInstance = new TestInstance(instanceName);
         var testSolution = new TestSolution(testInstance);
         var moves = new ArrayList<TestMove>();
