@@ -18,7 +18,6 @@ public class ParetoSimpleListTest {
 
     public static void initializeParetoSet(){
         paretoSet = new ParetoSimpleList<>();
-        paretoSet.clear();
     }
 
     public static void setNObjectives(int n){
