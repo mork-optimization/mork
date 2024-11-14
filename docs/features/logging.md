@@ -48,8 +48,17 @@ public int improve(Solution s, List<Improver<Solution, Instance>> improvers) {
 
 Formatting strings is an expensive operation, that should not be done if the given log level is not enabled. 
 Avoid concatenating concatenating strings, or using `String::format`. As seen in the previous example, 
-use a fixed string, with `{}` as placeholders, and then pass the objects to be formatted as arguments to the logger call.**
-If necessary, use Logger.isLevelEnabled to check if the level is enabled before formatting the string.
+use a fixed string, with `{}` as placeholders, and then pass the objects to be formatted as arguments to the logger call.
+
+In more complex cases, you may need to invoke some methods to generate some debugging information, and doing everything in the logger call may be unreadable.
+In this cases, you can guard the expression using `Logger::isLevelEnabled`, and then calling the expensive methods and the log call only if the level is enabled. Example:
+
+```java
+if (logger.isDebugEnabled()) {
+    var expensiveResult = someExpensiveMethod();
+    logger.debug("The current solution is: {} -> {}", s, expensiveResult);
+}
+```
 
 ### Log levels
 In Mork, the log levels are used as follows:
