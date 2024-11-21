@@ -20,6 +20,7 @@ public abstract class Solution<SELF extends Solution<SELF, I>, I extends Instanc
     /**
      * Ignore field when serializing solutions to avoid data duplication
      */
+    @JsonIgnore
     private final I ins;
 
     /**
