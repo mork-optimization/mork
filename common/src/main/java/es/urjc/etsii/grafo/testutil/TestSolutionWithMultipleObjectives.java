@@ -12,39 +12,18 @@ public class TestSolutionWithMultipleObjectives extends Solution<TestSolutionWit
 
     protected double[] scores;
 
-    public static TestSolutionWithMultipleObjectives[] from(double... scores) {
-        return from(new TestInstance("TestInstance"), scores);
-    }
-
-    public static TestSolutionWithMultipleObjectives[] from(TestInstance instance, double... scores) {
-        var solutions = new TestSolutionWithMultipleObjectives[scores.length];
-        for (int i = 0; i < scores.length; i++) {
-            solutions[i] = new TestSolutionWithMultipleObjectives(instance, scores);
-        }
-        return solutions;
-    }
-
-    Map<String, Function<TestSolutionWithMultipleObjectives, Object>> properties = new HashMap<>();
-
-
     public TestSolutionWithMultipleObjectives(TestInstance ins) {
         super(ins);
     }
 
     public TestSolutionWithMultipleObjectives(TestInstance ins, double[] scores) {
         this(ins);
-        this.scores = scores;
-    }
-
-    public TestSolutionWithMultipleObjectives(TestInstance ins, double[] scores, Map<String, Function<TestSolutionWithMultipleObjectives, Object>> properties) {
-        this(ins);
-        this.scores = scores;
-        this.properties = properties;
+        this.scores = scores.clone();
     }
 
     public TestSolutionWithMultipleObjectives(TestSolutionWithMultipleObjectives sol) {
         super(sol);
-        this.scores = sol.scores;
+        this.scores = sol.scores.clone();
     }
 
     @Override
@@ -55,47 +34,28 @@ public class TestSolutionWithMultipleObjectives extends Solution<TestSolutionWit
     @Override
     public String toString() {
         return "TestSolutionWithMultipleObjectives{" +
-                "score=" + scores.toString() +
+                "score=" + Arrays.toString(scores) +
                 '}';
-    }
-
-    public void setTTB(long ttb) {
-        this.lastModifiedTime = ttb;
-    }
-
-    public void resetTTB() {
-        this.lastModifiedTime = Integer.MIN_VALUE;
-    }
-
-
-    @Override
-    public Map<String, Function<TestSolutionWithMultipleObjectives, Object>> customProperties() {
-        return this.properties;
     }
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         TestSolutionWithMultipleObjectives that = (TestSolutionWithMultipleObjectives) o;
-        if (this.scores.length != that.scores.length) {
-            return false;
-        }
-        for (int i = 0; i < this.scores.length; i++) {
-            if (Double.compare(that.scores[i], scores[i]) != 0){
-                return false;
-            }
-        }
-        return true;
+        return Objects.deepEquals(scores, that.scores);
     }
 
     @Override
     public int hashCode() {
-        return Arrays.hashCode(this.scores);
+        return Arrays.hashCode(scores);
+    }
+
+    public void setScore(int index, double value){
+        this.scores[index] = value;
     }
 
     public void setScores(double[] scores){
-        this.scores = scores;
+        this.scores = scores.clone();
     }
 
     public double getObjective(int index){
