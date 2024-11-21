@@ -26,7 +26,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
 
     private static final int MAX_SHORTNAME_LENGTH = 30;
 
-    private static final Logger log = LoggerFactory.getLogger(DefaultOrchestrator.class);
+    private static final Logger log = LoggerFactory.getLogger(ExperimentManager.class);
 
     /**
      * List of experiments
@@ -66,6 +66,10 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
             var matcher = Pattern.compile(experimentPattern).matcher(experimentName);
             if (matcher.matches()) {
                 var algorithms = experiment.getAlgorithms();
+                if(algorithms.isEmpty()){
+                    log.warn("Experiment {} declared in {} has no algorithms defined, ignoring", experimentName, experimentClass);
+                    continue;
+                }
                 fillSolutionBuilder(algorithms, solutionBuilder);
                 validateAlgorithmNames(experiment.getName(), algorithms);
                 this.experiments.put(experimentName, new Experiment<>(experimentName, experimentClass, algorithms));
@@ -79,7 +83,7 @@ public class ExperimentManager<S extends Solution<S, I>, I extends Instance> {
             if (experimentImplementations.isEmpty()) {
                 log.error("No experiment definitions found. Experiments are defined by extending AbstractExperiment<S, I>, see the docs for more information.");
             } else {
-                log.error("Experiment found, but none passed filters. Verify that 'solver.experiments={}' is correct. Experiments detected: {}", experimentPattern, experimentImplementations.stream().map(AbstractExperiment::getName).toList());
+                log.error("At least one experiment definition was found, but none survived filters. Verify that 'solver.experiments={}' is correct and that experiments are valid. List of detected experiments: {}", experimentPattern, experimentImplementations.stream().map(AbstractExperiment::getName).toList());
             }
         }
     }
