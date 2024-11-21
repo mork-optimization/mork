@@ -54,11 +54,11 @@ class ExecutorTest {
         Context.Configurator.setObjectives(OBJ_MIN);
         var instance1 = new TestInstance("inst1");
         var referenceResult1 = new ReferenceResult();
-        referenceResult1.setScores(Map.of("Test", 5.0));
+        referenceResult1.addScores(Map.of("Test", 5.0));
         referenceResult1.setOptimalValue(true);
 
         var referenceResult2 = new ReferenceResult();
-        referenceResult2.setScores(Map.of("Test", 7.0));
+        referenceResult2.addScores(Map.of("Test", 7.0));
         referenceResult2.setOptimalValue(false);
 
         this.referenceResultProvider = mock(ReferenceResultProvider.class);

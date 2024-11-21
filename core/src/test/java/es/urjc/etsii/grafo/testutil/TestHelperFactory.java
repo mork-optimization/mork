@@ -49,7 +49,7 @@ public class TestHelperFactory {
             @Override
             public ReferenceResult getValueFor(String instanceName) {
                 ReferenceResult rs = new ReferenceResult();
-                rs.setScores(Map.of("Test", score));
+                rs.addScores(Map.of("Test", score));
                 rs.setTimeInSeconds(timeInSeconds);
                 return rs;
             }

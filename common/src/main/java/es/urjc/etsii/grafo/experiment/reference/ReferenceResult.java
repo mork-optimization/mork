@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.experiment.reference;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
@@ -9,7 +10,7 @@ import static es.urjc.etsii.grafo.util.TimeUtil.secsToNanos;
  * Reference result for an instance
  */
 public class ReferenceResult {
-    private Map<String, Double> scores = Map.of();
+    private Map<String, Double> scores = new HashMap<>();
     private double timeInSeconds = Double.NaN;
     private double timeToBestInSeconds = Double.NaN;
     private boolean isOptimalValue = false;
@@ -62,9 +63,32 @@ public class ReferenceResult {
      * @param scores score
      * @return ReferenceResult
      */
-    public ReferenceResult setScores(Map<String, Double> scores) {
-        this.scores = scores;
+    public ReferenceResult addScores(Map<String, Double> scores) {
+        this.scores.putAll(scores);
         return this;
+    }
+
+    /**
+     * Set score
+     *
+     * @param objectiveName objective name
+     * @param score score
+     * @return ReferenceResult
+     */
+    public ReferenceResult addScore(String objectiveName, double score) {
+        this.scores.put(objectiveName, score);
+        return this;
+    }
+
+    /**
+     * Set score
+     *
+     * @param objectiveName objective name
+     * @param score score
+     * @return ReferenceResult
+     */
+    public ReferenceResult addScore(String objectiveName, String score) {
+        return this.addScore(objectiveName, Double.parseDouble(score));
     }
 
     /**
@@ -134,7 +158,7 @@ public class ReferenceResult {
     }
 
     /**
-     * Specify if the values provided in {@link ReferenceResult#setScores(Map)} is optimal.
+     * Specify if the values provided in {@link ReferenceResult#addScores(Map)} is optimal.
      * If not specified, defaults to false.
      * @param isOptimal True if the value returned by getScore is known to be optimal, false otherwise
      */
