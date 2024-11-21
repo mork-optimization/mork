@@ -268,7 +268,7 @@ public class Context {
 
             if(multiObjective){
                 // TODO make configurable, and change by default to NDTree when behaviour is verified
-                ctx.paretoSet = new ParetoSimpleList<>();
+                ctx.paretoSet = new ParetoSimpleList<>(objectives.length);
             }
         }
 

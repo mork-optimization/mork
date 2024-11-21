@@ -12,6 +12,10 @@ public class ParetoByFirstObjective<S extends Solution<S,I>, I extends Instance>
 
     private Map<Integer, List<double[]>> values = new HashMap<>();
 
+    public ParetoByFirstObjective(int nObjectives) {
+        super(nObjectives);
+    }
+
     @Override
     public synchronized void clear() {
         super.clear();

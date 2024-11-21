@@ -16,10 +16,17 @@ public abstract class ParetoSet<S extends Solution<S,I>, I extends Instance> {
 
     Map<String, TreeSet<S>> elites;
     Map<double[], S> solutions = HashMap.newHashMap(MAX_TRACKED_SOLS);
+    final int nObjectives;
 
-    public ParetoSet() {
+    /**
+     * Create a new Pareto set that will track solutions with n objectives
+     * @param nObjectives
+     */
+    public ParetoSet(int nObjectives){
+        this.nObjectives = nObjectives;
         resetElites();
     }
+
 
     public synchronized void resetElites(){
         this.elites = new HashMap<>();
@@ -37,6 +44,24 @@ public abstract class ParetoSet<S extends Solution<S,I>, I extends Instance> {
         return lastModifiedTime;
     }
 
+    /**
+     * Try to add multiple solutions to the Pareto front
+     * @param solutions solutions to try to add
+     * @return true if the Pareto front has been modified, false otherwise (all solutions are dominated by those in the Pareto front)
+     */
+    public synchronized boolean add(Iterable<S> solutions) {
+        boolean atLeastOne = false;
+        for(var solution: solutions){
+            atLeastOne |= add(solution);
+        }
+        return atLeastOne;
+    }
+
+    /**
+     * Try add solution to Pareto front. Solution is only added if it is not dominated by any other solution in the Pareto front.
+     * @param newSol solution to try to add to Pareto front
+     * @return true if the solution was added to the pareto front and therefore the Pareto front has been updated, false otherwise
+     */
     public synchronized boolean add(S newSol){
         Map<String, Objective<?, S, I>> objectives = Context.getObjectives();
         var objValues = new double[objectives.size()];
@@ -64,12 +89,12 @@ public abstract class ParetoSet<S extends Solution<S,I>, I extends Instance> {
         return added;
     }
 
-    public synchronized void addAll(double[][] front) {
-        for(double[] point: front){
-            add(point);
-        }
-    }
-
+    /**
+     * Check if a solution weakly dominates another
+     * @param a solution A scores
+     * @param b solution B scores
+     * @return true if A weakly dominates B, false otherwise
+     */
     public static boolean weaklyDominates(double[] a, double[] b) {
         if(a.length != b.length){
             throw new IllegalArgumentException("Both solutions must have the same number of objectives. Got A:"+a.length+" and B:"+b.length+" instead.");
