@@ -7,6 +7,7 @@
 - (Breaking) Due to changes in how objectives are handled, ReferenceResult methods have been renamed for clarity.
 - (Fix) Math.random, Collections.shuffle now blocked using AspectJ instead of reflection. --add-opens no longer necessary.
 - (Fix) Add @JsonIgnore to instance in solution class already exists in getter, but serializer may be configured to use fields instead of methods.
+- (Fix) Gracefully handle experiment declarations with 0 algorithms.
 - (Deleted) Solution::isBetterThan, unused and not necessary.
 - (Deleted) Solution::getScore, Solution::recalculateScore: score recalculation should now be done in the solution validator implementation, and getScore can be any method the user wants, as long as it is declared as an Objective.
 - (Deleted) LazyMove & EagerMove: mostly unused and can be replaced by a normal Move. See SwapNeighborhood in TSP module for an example lazy implementation.
