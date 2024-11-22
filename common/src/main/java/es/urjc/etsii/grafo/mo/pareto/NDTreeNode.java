@@ -20,8 +20,8 @@ public class NDTreeNode {
     private double[] midpoint;
     private List<NDTreeNode> children;
     private NDTreeNode parent;
-    private static int MAX_LIST_SIZE;
-    private static int NUMBER_OF_CHILDREN;
+    private int maxListSize;
+    private int numberOfChildren;
 
     /**
      * Node constructor -- only used to make root as doesn't connect upwards to a parent
@@ -32,9 +32,9 @@ public class NDTreeNode {
             System.out.println("Maximum list size must be at least as big as the number of children");
             numberOfChildren = maxListSize;
         }
-        MAX_LIST_SIZE = maxListSize;
-        NUMBER_OF_CHILDREN = numberOfChildren;
-        list = new ArrayList<>(MAX_LIST_SIZE + 1);
+        this.maxListSize = maxListSize;
+        this.numberOfChildren = numberOfChildren;
+        list = new ArrayList<>(this.maxListSize + 1);
     }
 
     /*
@@ -209,7 +209,7 @@ public class NDTreeNode {
             } else if (children.isEmpty()) {
                 // special case if all child nodes cleared out
                 children = null; // make a leaf
-                list = new ArrayList<>(MAX_LIST_SIZE + 1);
+                list = new ArrayList<>(maxListSize + 1);
             }
         }
         // Lies outside hyper-rectangle of node, so accept
@@ -223,7 +223,7 @@ public class NDTreeNode {
         if (this.isLeaf()) {
             list.add(solution);
             this.updateIdealNadir(solution);
-            if (list.size() > NDTreeNode.MAX_LIST_SIZE) {
+            if (list.size() > this.maxListSize) {
                 this.split();
             }
         } else {
@@ -264,8 +264,8 @@ public class NDTreeNode {
                 indexOfMostDistantChild = i;
             }
         }
-        children = new ArrayList<>(NUMBER_OF_CHILDREN);
-        NDTreeNode child = new NDTreeNode(this.onRemoveNotify, MAX_LIST_SIZE, NUMBER_OF_CHILDREN, this);
+        children = new ArrayList<>(numberOfChildren);
+        NDTreeNode child = new NDTreeNode(this.onRemoveNotify, maxListSize, numberOfChildren, this);
         children.add(child);
         child.add(list.get(indexOfMostDistantChild));
         //children[0] = new NDTreeNode(MAX_LIST_SIZE,NUMBER_OF_CHILDREN,this);
@@ -275,7 +275,7 @@ public class NDTreeNode {
         // fill up remaining child nodes
 
         // first put one child in each subnode, based on max distance from existing subnodes
-        for (int i = 1; i < NUMBER_OF_CHILDREN; i++) { // for the total number of children to make
+        for (int i = 1; i < numberOfChildren; i++) { // for the total number of children to make
             maxDistance = -1.0;
             indexOfMostDistantChild = -1;
             for (int k = 0; k < list.size(); k++) {
@@ -292,7 +292,7 @@ public class NDTreeNode {
                 }
             }
             indicesOfFirstChildren[i] = indexOfMostDistantChild;
-            child = new NDTreeNode(this.onRemoveNotify, MAX_LIST_SIZE, NUMBER_OF_CHILDREN, this);
+            child = new NDTreeNode(this.onRemoveNotify, maxListSize, numberOfChildren, this);
             children.add(child);
             child.add(list.get(indexOfMostDistantChild));
             //children[i] = new NDTreeNode(MAX_LIST_SIZE,NUMBER_OF_CHILDREN,this);
