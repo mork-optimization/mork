@@ -1,9 +1,7 @@
 package es.urjc.etsii.grafo.mo.pareto;
 
-import java.util.ArrayList;
-import java.util.Iterator;
-import java.util.List;
-import java.util.ListIterator;
+import java.util.*;
+import java.util.function.Consumer;
 
 
 /**
@@ -15,6 +13,7 @@ import java.util.ListIterator;
  */
 public class NDTreeNode {
 
+    private final Consumer<double[]> onRemoveNotify;
     private List<double[]> list;
     private double[] idealPointEstimate;
     private double[] nadirPointEstimate;
@@ -27,7 +26,8 @@ public class NDTreeNode {
     /**
      * Node constructor -- only used to make root as doesn't connect upwards to a parent
      */
-    NDTreeNode(int maxListSize, int numberOfChildren) {
+    NDTreeNode(Consumer<double[]> onRemoveNotify, int maxListSize, int numberOfChildren) {
+        this.onRemoveNotify = onRemoveNotify;
         if (maxListSize < numberOfChildren) {
             System.out.println("Maximum list size must be at least as big as the number of children");
             numberOfChildren = maxListSize;
@@ -40,8 +40,8 @@ public class NDTreeNode {
     /*
      * Construct a node connected to parent
      */
-    private NDTreeNode(int maxListSize, int numberOfChildren, NDTreeNode parent) {
-        this(maxListSize, numberOfChildren);
+    private NDTreeNode(Consumer<double[]> onRemoveNotify, int maxListSize, int numberOfChildren, NDTreeNode parent) {
+        this(onRemoveNotify, maxListSize, numberOfChildren);
         this.parent = parent;
     }
 
@@ -165,60 +165,51 @@ public class NDTreeNode {
         if (ParetoSet.weaklyDominates(nadirPointEstimate, solution)) {
             return false;
         }
-        if (ParetoSet.weaklyDominates(solution, idealPointEstimate)) {
-            if (parent != null) {
-                iteratorAbove.remove(); // detach this node and all subcomponents from tree
-            } else {
-                list = new ArrayList<>(MAX_LIST_SIZE + 1); // clean this root node
+        // Lies inside hyper-rectangle of node, so checking relationship with composite nodes/designs
+        if (this.isLeaf()) {
+            // Node is a leaf, so check against all designs
+            Iterator<double[]> iterator = list.iterator();
+            while (iterator.hasNext()) {
+                var member = iterator.next();
+                if (ParetoSet.weaklyDominates(member, solution)) {
+                    return false;
+                }
+                if (ParetoSet.weaklyDominates(solution, member)) {
+                    this.onRemoveNotify.accept(member);
+                    iterator.remove(); // existing member dominated, so remove
+                }
             }
-            return true;
-        }
-        if (ParetoSet.weaklyDominates(idealPointEstimate, solution) || ParetoSet.weaklyDominates(solution, nadirPointEstimate)) { // short-circuit or
-            // Lies inside hyper-rectangle of node, so checking relationship with composite nodes/designs
-            if (this.isLeaf()) {
-                // Node is a leaf, so check against all designs
-                Iterator<double[]> iterator = list.iterator();
-                while (iterator.hasNext()) {
-                    var member = iterator.next();
-                    if (ParetoSet.weaklyDominates(member, solution)) {
-                        return false;
-                    }
-                    if (ParetoSet.weaklyDominates(solution, member)) {
-                        iterator.remove(); // existing member dominated, so remove
-                    }
+        } else {
+            // Node is interior, so check against hyper-rectangles of children
+            ListIterator<NDTreeNode> iter = children.listIterator();
+            while (iter.hasNext()) {// number may change in place if dominated, need to cope with concurrent update
+                NDTreeNode n = iter.next();
+                if (!n.updateNode(solution, iter)) {
+                    return false; // if it is dominatated further down tree, return false and stop processing further
                 }
-            } else {
-                // Node is interior, so check against hyper-rectangles of children
-                ListIterator<NDTreeNode> iter = children.listIterator();
-                while (iter.hasNext()) {// number may change in place if dominated, need to cope with concurrent update
-                    NDTreeNode n = iter.next();
-                    if (!n.updateNode(solution, iter)) {
-                        return false; // if it is dominatated further down tree, return false and stop processing further
-                    }
-                    if (n.isEmpty()) {
-                        // Remove empty node
-                        iter.remove(); // detach this node and all subcomponents from tree
-                    }
+                if (n.isEmpty()) {
+                    // Remove empty node
+                    iter.remove(); // detach this node and all subcomponents from tree
                 }
+            }
 
-                if (children.size() == 1) { // replace current node state with child state, and detatch remaining child for gargage collection
-                    // Replacing current state with remaining child state
-                    NDTreeNode child = children.get(0);
-                    this.list = child.list;
-                    this.idealPointEstimate = child.idealPointEstimate;
-                    this.nadirPointEstimate = child.nadirPointEstimate;
-                    this.midpoint = child.midpoint;
-                    this.children = child.children;
-                    if (children != null) {
-                        for (NDTreeNode c : children) {
-                            c.parent = this;
-                        }
+            if (children.size() == 1) { // replace current node state with child state, and detatch remaining child for gargage collection
+                // Replacing current state with remaining child state
+                NDTreeNode child = children.getFirst();
+                this.list = child.list;
+                this.idealPointEstimate = child.idealPointEstimate;
+                this.nadirPointEstimate = child.nadirPointEstimate;
+                this.midpoint = child.midpoint;
+                this.children = child.children;
+                if (children != null) {
+                    for (NDTreeNode c : children) {
+                        c.parent = this;
                     }
-                } else if (children.isEmpty()) {
-                    // special case if all child nodes cleared out
-                    children = null; // make a leaf
-                    list = new ArrayList<>(MAX_LIST_SIZE + 1);
                 }
+            } else if (children.isEmpty()) {
+                // special case if all child nodes cleared out
+                children = null; // make a leaf
+                list = new ArrayList<>(MAX_LIST_SIZE + 1);
             }
         }
         // Lies outside hyper-rectangle of node, so accept
@@ -274,7 +265,7 @@ public class NDTreeNode {
             }
         }
         children = new ArrayList<>(NUMBER_OF_CHILDREN);
-        NDTreeNode child = new NDTreeNode(MAX_LIST_SIZE, NUMBER_OF_CHILDREN, this);
+        NDTreeNode child = new NDTreeNode(this.onRemoveNotify, MAX_LIST_SIZE, NUMBER_OF_CHILDREN, this);
         children.add(child);
         child.add(list.get(indexOfMostDistantChild));
         //children[0] = new NDTreeNode(MAX_LIST_SIZE,NUMBER_OF_CHILDREN,this);
@@ -301,7 +292,7 @@ public class NDTreeNode {
                 }
             }
             indicesOfFirstChildren[i] = indexOfMostDistantChild;
-            child = new NDTreeNode(MAX_LIST_SIZE, NUMBER_OF_CHILDREN, this);
+            child = new NDTreeNode(this.onRemoveNotify, MAX_LIST_SIZE, NUMBER_OF_CHILDREN, this);
             children.add(child);
             child.add(list.get(indexOfMostDistantChild));
             //children[i] = new NDTreeNode(MAX_LIST_SIZE,NUMBER_OF_CHILDREN,this);
@@ -461,6 +452,17 @@ public class NDTreeNode {
 
     public double[] getMidpoint() {
         return midpoint;
+    }
+
+    @Override
+    public String toString() {
+        return "NDTreeNode{" +
+                "ideal=" + Arrays.toString(idealPointEstimate) +
+                ", nadir=" + Arrays.toString(nadirPointEstimate) +
+                ", mid=" + Arrays.toString(midpoint) +
+                ", list=" + list +
+                ", children=" + children +
+                '}';
     }
 }
 
