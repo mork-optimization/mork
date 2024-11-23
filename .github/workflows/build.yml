@@ -13,11 +13,87 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0  # Shallow clones should be disabled for a better relevancy of analysis
-      - uses: r-lib/actions/setup-pandoc@v2
+      
+      - uses: r-lib/actions/setup-r@v2
+      - uses: r-lib/actions/setup-r-dependencies@v2
         with:
-          pandoc-version: '3.1.11' # The pandoc version to download (if necessary) and use.
-      - name: Install curl libs
-        run: sudo apt update && sudo apt install -y libcurl4-openssl-dev libssl-dev
+          install-pandoc: 'TRUE'
+          pandoc-version: '3.5'
+          upgrade: 'TRUE'
+          packages: |
+            any::httr
+            any::rjson
+            any::base64enc
+            any::remotes
+            any::Rcpp
+            any::withr
+            any::spacefillr
+            any::matrixStats
+            any::data.table
+            any::fs
+            any::rlang
+            any::lifecycle
+            any::glue
+            any::cli
+            any::vctrs
+            any::utf8
+            any::pkgconfig
+            any::pillar
+            any::magrittr
+            any::fansi
+            any::stringi
+            any::tidyselect
+            any::tibble
+            any::generics
+            any::xfun
+            any::yaml
+            any::highr
+            any::evaluate
+            any::fastmap
+            any::digest
+            any::htmltools
+            any::rappdirs
+            any::sass
+            any::memoise
+            any::jquerylib
+            any::cachem
+            any::later
+            any::lazyeval
+            any::cpp11
+            any::stringr
+            any::purrr
+            any::dplyr
+            any::tinytex
+            any::fontawesome
+            any::bslib
+            any::rmarkdown
+            any::knitr
+            any::colorspace
+            any::viridisLite
+            any::RColorBrewer
+            any::munsell
+            any::labeling
+            any::farver
+            any::scales
+            any::isoband
+            any::gtable
+            any::promises
+            any::crosstalk
+            any::tidyr
+            any::htmlwidgets
+            any::ggplot2
+            any::RcppEigen
+            any::systemfonts
+            any::polyclip
+            any::tweenr
+            any::httpuv
+            any::truncnorm
+            any::plotly
+            any::gridExtra
+            any::ggforce
+            any::forcats
+            any::DT
+
       - name: Set up JDK 21
         uses: graalvm/setup-graalvm@v1
         with:

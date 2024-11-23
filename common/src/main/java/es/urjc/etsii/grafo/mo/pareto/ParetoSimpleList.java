@@ -12,6 +12,10 @@ public class ParetoSimpleList<S extends Solution<S,I>, I extends Instance> exten
 
     private List<double[]> values = new ArrayList<>();
 
+    public ParetoSimpleList(int nObjectives) {
+        super(nObjectives);
+    }
+
     @Override
     public synchronized void clear() {
         super.clear();

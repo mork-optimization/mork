@@ -15,16 +15,17 @@ public class NDTree<S extends Solution<S,I>, I extends Instance> extends ParetoS
      * Constructor -- called by factory method
      */
     public NDTree(int numberOfObjectives) {
-        this(20, numberOfObjectives + 1);
+        this(numberOfObjectives, 20, numberOfObjectives + 1);
     }
 
     /*
      * Constructor -- called by factory method
      */
-    public NDTree(int maxListSizePerNode, int numberOfChildrenPerNode) {
+    public NDTree(int numberOfObjectives, int maxListSizePerNode, int numberOfChildrenPerNode) {
+        super(numberOfObjectives);
         this.maxListSizePerNode = maxListSizePerNode;
         this.numberOfChildrenPerNode = numberOfChildrenPerNode;
-        root = new NDTreeNode(maxListSizePerNode, numberOfChildrenPerNode);
+        root = new NDTreeNode(this::ejectedSolution, maxListSizePerNode, numberOfChildrenPerNode);
     }
 
     @Override
@@ -85,7 +86,7 @@ public class NDTree<S extends Solution<S,I>, I extends Instance> extends ParetoS
     @Override
     public synchronized void clear() {
         super.clear();
-        root = new NDTreeNode(maxListSizePerNode, numberOfChildrenPerNode);
+        root = new NDTreeNode(this::ejectedSolution, this.maxListSizePerNode, numberOfChildrenPerNode);
     }
 
 //    @Override

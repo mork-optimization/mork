@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.testutil;
 
 import es.urjc.etsii.grafo.solution.Solution;
 
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
@@ -21,7 +22,7 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
         return solutions;
     }
 
-    protected double score;
+    protected double[] score = new double[1];
 
     Map<String, Function<TestSolution, Object>> properties = new HashMap<>();
 
@@ -32,10 +33,21 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
 
     public TestSolution(TestInstance ins, double score) {
         this(ins);
+        this.score = new double[]{score};
+    }
+
+    public TestSolution(TestInstance ins, double[] score) {
+        this(ins);
         this.score = score;
     }
 
     public TestSolution(TestInstance ins, double score, Map<String, Function<TestSolution, Object>> properties) {
+        this(ins);
+        this.score = new double[]{score};
+        this.properties = properties;
+    }
+
+    public TestSolution(TestInstance ins, double[] score, Map<String, Function<TestSolution, Object>> properties) {
         this(ins);
         this.score = score;
         this.properties = properties;
@@ -43,7 +55,7 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
 
     public TestSolution(TestSolution sol) {
         super(sol);
-        this.score = sol.score;
+        this.score = sol.score.clone();
     }
 
 
@@ -53,11 +65,19 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
     }
 
     public double getScore() {
-        return this.score;
+        return getScore(0);
+    }
+
+    public double getScore(int i) {
+        return this.score[i];
     }
 
     public void setScore(double score) {
-        this.score = score;
+        setScore(0, score);
+    }
+
+    public void setScore(int i, double score) {
+        this.score[i] = score;
     }
 
     @Override
@@ -81,14 +101,13 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         TestSolution that = (TestSolution) o;
-        return Double.compare(that.score, score) == 0 && Objects.equals(properties, that.properties);
+        return Objects.deepEquals(score, that.score) && Objects.equals(properties, that.properties);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(score, properties);
+        return Objects.hash(Arrays.hashCode(score), properties);
     }
 }

@@ -8,14 +8,14 @@ import java.util.List;
 import java.util.Objects;
 
 public class TestMove extends Move<TestSolution, TestInstance> {
-    private final double score;
+    private final double delta;
     private final FMode fmode;
 
-    public static List<TestMove> generateSeq(int... data){
+    public static List<TestMove> generateSeq(double... data){
         return generateSeq("TestInstance", data);
     }
 
-    public static List<TestMove> generateSeq(String instanceName, int... data){
+    public static List<TestMove> generateSeq(String instanceName, double... data){
         var testInstance = new TestInstance(instanceName);
         var testSolution = new TestSolution(testInstance);
         var moves = new ArrayList<TestMove>();
@@ -25,9 +25,9 @@ public class TestMove extends Move<TestSolution, TestInstance> {
         return moves;
     }
 
-    public TestMove(TestSolution solution, double score, FMode fmode) {
+    public TestMove(TestSolution solution, double delta, FMode fmode) {
         super(solution);
-        this.score = score;
+        this.delta = delta;
         this.fmode = fmode;
     }
 
@@ -37,18 +37,18 @@ public class TestMove extends Move<TestSolution, TestInstance> {
 
     @Override
     protected TestSolution _execute(TestSolution solution) {
-        solution.score += this.score;
+        solution.setScore(solution.getScore() + this.delta);
         return solution;
     }
 
     public double getScoreChange() {
-        return score;
+        return delta;
     }
 
     @Override
     public String toString() {
         return "TestMove{" +
-                "score=" + score +
+                "score=" + delta +
                 ", maximizing=" + fmode +
                 '}';
     }
@@ -58,12 +58,12 @@ public class TestMove extends Move<TestSolution, TestInstance> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         TestMove testMove = (TestMove) o;
-        return Double.compare(testMove.score, score) == 0 && fmode == testMove.fmode;
+        return Double.compare(testMove.delta, delta) == 0 && fmode == testMove.fmode;
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(score, fmode);
+        return Objects.hash(delta, fmode);
     }
 
     public boolean isMaximizing() {

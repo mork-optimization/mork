@@ -21,7 +21,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.mockito.Mockito.*;
 
-class IteratedGreedyUnitAlgorithmTest {
+class IteratedGreedyTest {
 
     private final TestInstance testInstance = new TestInstance("testinstance");
     private final TestSolution testSolution = new TestSolution(testInstance);
