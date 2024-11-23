@@ -10,6 +10,7 @@ import java.lang.annotation.*;
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 @Configuration
+@Inherited
 @PropertySource(value = "classpath:serializers.yml", factory = YmlPropSourceFactory.class)
-@PropertySource(value = "serializers.yml", ignoreResourceNotFound = true, factory = YmlPropSourceFactory.class)
+@PropertySource(value = "file:serializers.yml", ignoreResourceNotFound = true, factory = YmlPropSourceFactory.class)
 public @interface SerializerSource {}
