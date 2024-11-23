@@ -20,7 +20,7 @@ jobs:
           install-pandoc: TRUE
           pandoc-version: '3.5'
           upgrade: TRUE
-          extra-packages: |
+          packages: |
             any::httr
             any::rjson
             any::base64enc
