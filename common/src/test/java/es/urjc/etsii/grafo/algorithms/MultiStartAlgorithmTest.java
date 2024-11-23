@@ -6,8 +6,10 @@ import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
@@ -20,9 +22,14 @@ class MultiStartAlgorithmTest {
 
     private final TestInstance testInstance = new TestInstance("testinstance");
     private final TestSolution testSolution = new TestSolution(testInstance);
-    private final Objective<?,TestSolution,TestInstance> maxObj = Objective.ofMaximizing("TestMax", TestSolution::getScore, TestMove::getScoreChange);
-    private final Objective<?,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getScoreChange);
+    private static final Objective<?,TestSolution,TestInstance> maxObj = Objective.ofMaximizing("TestMax", TestSolution::getScore, TestMove::getScoreChange);
+    private static final Objective<?,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getScoreChange);
     private Algorithm<TestSolution, TestInstance> algorithm;
+
+    @BeforeAll
+    static void setupObjectives(){
+        Context.Configurator.setObjectives(maxObj);
+    }
 
     @SuppressWarnings("unchecked")
     @BeforeEach

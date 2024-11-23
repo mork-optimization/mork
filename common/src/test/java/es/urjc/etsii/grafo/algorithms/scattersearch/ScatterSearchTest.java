@@ -6,6 +6,8 @@ import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.Context;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import java.util.*;
@@ -15,7 +17,12 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ScatterSearchTest {
 
-    private final Objective<TestMove,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getScoreChange);
+    private static final Objective<TestMove,TestSolution,TestInstance> minObj = Objective.ofMinimizing("TestMin", TestSolution::getScore, TestMove::getScoreChange);
+
+    @BeforeAll
+    static void setupObjectives(){
+        Context.Configurator.setObjectives(minObj);
+    }
 
     @Test
     void testBuilder() {
