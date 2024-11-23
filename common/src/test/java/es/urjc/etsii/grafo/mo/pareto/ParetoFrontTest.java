@@ -7,11 +7,14 @@ import es.urjc.etsii.grafo.testutil.TestMoveWithMultipleObjectives;
 import es.urjc.etsii.grafo.testutil.TestSolutionWithMultipleObjectives;
 import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.Set;
 import java.util.stream.Stream;
 
@@ -24,8 +27,7 @@ public class ParetoFrontTest {
         Context.Pareto.MAX_TRACKED_SOLS = max;
     }
 
-    public static Stream<Arguments> paretoSetsImpls(){
-        int nObjectives = 2;
+    public static Stream<Arguments> paretoSetsImpls(int nObjectives){
         Objective<TestMoveWithMultipleObjectives, TestSolutionWithMultipleObjectives, TestInstance>[] objectives = new Objective[nObjectives];
 
         for (int i = 0; i < nObjectives; i++) {
@@ -36,9 +38,12 @@ public class ParetoFrontTest {
         Context.Configurator.setObjectives(true, objectives);
         return Stream.of(
                 Arguments.of(new ParetoSimpleList<>(nObjectives)),
-                //Arguments.of(new ParetoByFirstObjective<>(nObjectives)), // NOTE: UNTESTED, does not behave like a real Pareto front, allows dominated solutions by design
                 Arguments.of(new NDTree<>(nObjectives))
         );
+    }
+
+    public static Stream<Arguments> paretoSetsImpls(){
+        return paretoSetsImpls(2);
     }
 
 
@@ -121,5 +126,43 @@ public class ParetoFrontTest {
         for (TestSolutionWithMultipleObjectives trackedSolution : paretoSet.getTrackedSolutions()) {
             assertEquals(sol, trackedSolution);
         }
+    }
+
+    Comparator<double[]> comparator = (o1, o2) -> {
+        for (int i = 0; i < o1.length; i++) {
+            int comp = Double.compare(o1[i], o2[i]);
+            if (comp != 0) {
+                return comp;
+            }
+        }
+        return 0;
+    };
+
+    @Test
+    public void validateBehaviourMatches() {
+        ParetoSet<TestSolutionWithMultipleObjectives, TestInstance>[] sets = paretoSetsImpls(3)
+                .map(a -> a.get()[0])
+                .toArray(ParetoSet[]::new);
+        var r = new Random(0);
+        for (int i = 0; i < 10_000; i++) {
+            double a = r.nextDouble(), b = r.nextDouble(), c = r.nextDouble();
+            var sol = new TestSolutionWithMultipleObjectives(instance, new double[]{a,b,c});
+            boolean[] results = new boolean[sets.length];
+            for (int j = 0; j < sets.length; j++) {
+                results[j] = sets[j].add(sol);
+            }
+            for (int j = 0; j < results.length - 1; j++) {
+                assertEquals(results[j], results[j + 1]);
+                assertEquals(sets[j].size(), sets[j + 1].size());
+                var l1 = sets[j].stream().sorted(comparator).toList();
+                var l2 = sets[j + 1].stream().sorted(comparator).toList();
+                for (int k = 0; k < l1.size(); k++) {
+                    var p1 = l1.get(k);
+                    var p2 = l2.get(k);
+                    Assertions.assertArrayEquals(p1, p2);
+                }
+            }
+        }
+        assertEquals(sets[0].size(), sets[1].size());
     }
 }
