@@ -6,17 +6,17 @@ import es.urjc.etsii.grafo.solution.Move;
 import java.util.Arrays;
 import java.util.Objects;
 
-public class TestMoveWithMultipleObjectives extends Move<TestSolutionWithMultipleObjectives, TestInstance> {
+public class TestMoveWithMultipleObjectives extends Move<TestSolution, TestInstance> {
     private final double[] deltas;
     private final FMode[] fmodes;
 
-    public TestMoveWithMultipleObjectives(TestSolutionWithMultipleObjectives solution, double[] deltas, FMode[] fmodes) {
+    public TestMoveWithMultipleObjectives(TestSolution solution, double[] deltas, FMode[] fmodes) {
         super(solution);
         this.deltas = deltas.clone();
         this.fmodes = fmodes.clone();
     }
 
-    public TestMoveWithMultipleObjectives(TestSolutionWithMultipleObjectives solution, double[] deltas) {
+    public TestMoveWithMultipleObjectives(TestSolution solution, double[] deltas) {
         super(solution);
         this.deltas = deltas.clone();
         this.fmodes = new FMode[deltas.length];
@@ -26,9 +26,9 @@ public class TestMoveWithMultipleObjectives extends Move<TestSolutionWithMultipl
     }
 
     @Override
-    protected TestSolutionWithMultipleObjectives _execute(TestSolutionWithMultipleObjectives solution) {
+    protected TestSolution _execute(TestSolution solution) {
         for (int j = 0; j < deltas.length; j++) {
-            solution.scores[j] += this.deltas[j];
+            solution.score[j] += this.deltas[j];
         }
         return solution;
     }
