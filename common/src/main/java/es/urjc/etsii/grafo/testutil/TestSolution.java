@@ -22,7 +22,7 @@ public class TestSolution extends Solution<TestSolution, TestInstance> {
         return solutions;
     }
 
-    protected double[] score;
+    protected double[] score = new double[1];
 
     Map<String, Function<TestSolution, Object>> properties = new HashMap<>();
 
