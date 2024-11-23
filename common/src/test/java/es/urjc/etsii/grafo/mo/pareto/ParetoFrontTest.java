@@ -4,7 +4,7 @@ import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMoveWithMultipleObjectives;
-import es.urjc.etsii.grafo.testutil.TestSolutionWithMultipleObjectives;
+import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -28,11 +28,11 @@ public class ParetoFrontTest {
     }
 
     public static Stream<Arguments> paretoSetsImpls(int nObjectives){
-        Objective<TestMoveWithMultipleObjectives, TestSolutionWithMultipleObjectives, TestInstance>[] objectives = new Objective[nObjectives];
+        Objective<TestMoveWithMultipleObjectives, TestSolution, TestInstance>[] objectives = new Objective[nObjectives];
 
         for (int i = 0; i < nObjectives; i++) {
             int finalI = i;
-            objectives[i] = Objective.of("obj" + i, FMode.MINIMIZE, s -> s.getObjective(finalI), m -> m.getScoreChanges()[finalI]);
+            objectives[i] = Objective.of("obj" + i, FMode.MINIMIZE, s -> s.getScore(finalI), m -> m.getScoreChanges()[finalI]);
         }
 
         Context.Configurator.setObjectives(true, objectives);
@@ -49,81 +49,81 @@ public class ParetoFrontTest {
 
     @ParameterizedTest
     @MethodSource("paretoSetsImpls")
-    public void testSimple(ParetoSet<TestSolutionWithMultipleObjectives, TestInstance> paretoSet) {
-        assertTrue(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{0.0, 0.0})));
-        assertTrue(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{-1.0, -1.0})));
+    public void testSimple(ParetoSet<TestSolution, TestInstance> paretoSet) {
+        assertTrue(paretoSet.add(new TestSolution(instance, new double[]{0.0, 0.0})));
+        assertTrue(paretoSet.add(new TestSolution(instance, new double[]{-1.0, -1.0})));
         assertEquals(1, paretoSet.size());
     }
 
     @ParameterizedTest
     @MethodSource("paretoSetsImpls")
-    public void testTwo(ParetoSet<TestSolutionWithMultipleObjectives, TestInstance> paretoSet) {
-        assertTrue(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{0.0, 0.0})));
-        assertFalse(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{0.0, 0.0})));
-        assertFalse(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{1.0, 0.0})));
-        assertFalse(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{0.0, 1.0})));
+    public void testTwo(ParetoSet<TestSolution, TestInstance> paretoSet) {
+        assertTrue(paretoSet.add(new TestSolution(instance, new double[]{0.0, 0.0})));
+        assertFalse(paretoSet.add(new TestSolution(instance, new double[]{0.0, 0.0})));
+        assertFalse(paretoSet.add(new TestSolution(instance, new double[]{1.0, 0.0})));
+        assertFalse(paretoSet.add(new TestSolution(instance, new double[]{0.0, 1.0})));
         assertEquals(1, paretoSet.size());
 
-        assertTrue(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{0.0, -1.0})));
-        assertFalse(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{0.0, -1.0})));
+        assertTrue(paretoSet.add(new TestSolution(instance, new double[]{0.0, -1.0})));
+        assertFalse(paretoSet.add(new TestSolution(instance, new double[]{0.0, -1.0})));
         assertEquals(1, paretoSet.size());
 
-        assertTrue(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{-1.0, 0.0})));
-        assertFalse(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{-1.0, 0.0})));
+        assertTrue(paretoSet.add(new TestSolution(instance, new double[]{-1.0, 0.0})));
+        assertFalse(paretoSet.add(new TestSolution(instance, new double[]{-1.0, 0.0})));
         assertEquals(2, paretoSet.size());
 
         // Check that solutions are correctly removed by the front
-        assertTrue(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{-1.0, -1.0})));
-        assertFalse(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{-1.0, -1.0})));
+        assertTrue(paretoSet.add(new TestSolution(instance, new double[]{-1.0, -1.0})));
+        assertFalse(paretoSet.add(new TestSolution(instance, new double[]{-1.0, -1.0})));
         assertEquals(1, paretoSet.size());
     }
 
     @ParameterizedTest
     @MethodSource("paretoSetsImpls")
-    public void testAddingNonDominatedSolutions(ParetoSet<TestSolutionWithMultipleObjectives, TestInstance> paretoSet) {
+    public void testAddingNonDominatedSolutions(ParetoSet<TestSolution, TestInstance> paretoSet) {
         int additions = 20;
         for (int i = 0; i < additions; i++) {
-            assertTrue(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{0.0 - i, 0.0 + i})));
+            assertTrue(paretoSet.add(new TestSolution(instance, new double[]{0.0 - i, 0.0 + i})));
         }
 
         assertEquals(additions, paretoSet.size());
-        assertTrue(paretoSet.add(new TestSolutionWithMultipleObjectives(instance, new double[]{0.0 - additions, 0.0 - additions})));
+        assertTrue(paretoSet.add(new TestSolution(instance, new double[]{0.0 - additions, 0.0 - additions})));
         assertEquals(1, paretoSet.size());
     }
 
     @ParameterizedTest
     @MethodSource("paretoSetsImpls")
-    public void testGetTrackedSolutions(ParetoSet<TestSolutionWithMultipleObjectives, TestInstance> paretoSet) {
+    public void testGetTrackedSolutions(ParetoSet<TestSolution, TestInstance> paretoSet) {
         int additions = 20;
         setMaxTrackedSolutions(additions);
-        Set<TestSolutionWithMultipleObjectives> solutions = HashSet.newHashSet(additions);
+        Set<TestSolution> solutions = HashSet.newHashSet(additions);
 
         for (int i = 0; i < additions; i++) {
-            TestSolutionWithMultipleObjectives sol = new TestSolutionWithMultipleObjectives(instance, new double[]{0.0 - i, 0.0 + i});
+            TestSolution sol = new TestSolution(instance, new double[]{0.0 - i, 0.0 + i});
             solutions.add(sol);
             assertTrue(paretoSet.add(sol));
         }
 
-        for (TestSolutionWithMultipleObjectives trackedSolution : paretoSet.getTrackedSolutions()) {
+        for (TestSolution trackedSolution : paretoSet.getTrackedSolutions()) {
             assertTrue(solutions.contains(trackedSolution));
             solutions.remove(trackedSolution);
         }
 
         assertTrue(solutions.isEmpty());
 
-        TestSolutionWithMultipleObjectives sol = new TestSolutionWithMultipleObjectives(instance, new double[]{0.0 - additions, 0.0 + additions});
+        TestSolution sol = new TestSolution(instance, new double[]{0.0 - additions, 0.0 + additions});
         assertTrue(paretoSet.add(sol));
 
-        for (TestSolutionWithMultipleObjectives trackedSolution : paretoSet.getTrackedSolutions()) {
+        for (TestSolution trackedSolution : paretoSet.getTrackedSolutions()) {
             Assertions.assertNotEquals(sol, trackedSolution);
         }
 
         assertEquals(additions + 1, paretoSet.size());
 
-        sol = new TestSolutionWithMultipleObjectives(instance, new double[]{Integer.MIN_VALUE, Integer.MIN_VALUE});
+        sol = new TestSolution(instance, new double[]{Integer.MIN_VALUE, Integer.MIN_VALUE});
         assertTrue(paretoSet.add(sol));
         assertEquals(1, paretoSet.size());
-        for (TestSolutionWithMultipleObjectives trackedSolution : paretoSet.getTrackedSolutions()) {
+        for (TestSolution trackedSolution : paretoSet.getTrackedSolutions()) {
             assertEquals(sol, trackedSolution);
         }
     }
@@ -140,13 +140,13 @@ public class ParetoFrontTest {
 
     @Test
     public void validateBehaviourMatches() {
-        ParetoSet<TestSolutionWithMultipleObjectives, TestInstance>[] sets = paretoSetsImpls(3)
+        ParetoSet<TestSolution, TestInstance>[] sets = paretoSetsImpls(3)
                 .map(a -> a.get()[0])
                 .toArray(ParetoSet[]::new);
         var r = new Random(0);
         for (int i = 0; i < 10_000; i++) {
             double a = r.nextDouble(), b = r.nextDouble(), c = r.nextDouble();
-            var sol = new TestSolutionWithMultipleObjectives(instance, new double[]{a,b,c});
+            var sol = new TestSolution(instance, new double[]{a,b,c});
             boolean[] results = new boolean[sets.length];
             for (int j = 0; j < sets.length; j++) {
                 results[j] = sets[j].add(sol);

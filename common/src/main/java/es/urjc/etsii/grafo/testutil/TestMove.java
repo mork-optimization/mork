@@ -37,7 +37,7 @@ public class TestMove extends Move<TestSolution, TestInstance> {
 
     @Override
     protected TestSolution _execute(TestSolution solution) {
-        solution.score += this.delta;
+        solution.setScore(solution.getScore() + this.delta);
         return solution;
     }
 
