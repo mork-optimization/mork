@@ -19,6 +19,7 @@ import java.io.StringWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 class DefaultJSONSolutionSerializerTest {
@@ -55,6 +56,24 @@ class DefaultJSONSolutionSerializerTest {
         var content = doExport();
         Assertions.assertFalse(content.contains("\n"));
         Assertions.assertFalse(content.contains("  "));
+    }
+
+    @Test
+    void exportWithCustomProperties() throws IOException{
+        config.setPretty(true);
+        solution = new TestSolution(
+                new TestInstance("testinstance"),
+                testScore,
+                Map.of(
+                        "testName", s -> "testValue",
+                        "testNumber", s -> 4269161
+                )
+        );
+        var content = doExport();
+        Assertions.assertTrue(content.contains("solutionProperties"));
+        content = content.replace(" ", "");
+        Assertions.assertTrue(content.contains("\"testNumber\":4269161"));
+        Assertions.assertTrue(content.contains("\"testName\":\"testValue\""));
     }
 
     private String doExport() throws IOException {
