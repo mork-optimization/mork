@@ -53,7 +53,7 @@
         <msurefire.version>3.5.1</msurefire.version>
         <mcompiler.version>3.13.0</mcompiler.version>
         <msource.version>3.3.1</msource.version>
-        <mjavadoc.version>3.10.1</mjavadoc.version>
+        <mjavadoc.version>3.11.1</mjavadoc.version>
         <mjar.version>3.4.2</mjar.version>
         <graalvm.version>24.1.0</graalvm.version>
         <maspectj.version>1.15.0</maspectj.version>
