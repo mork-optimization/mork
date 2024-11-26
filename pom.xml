@@ -175,7 +175,7 @@
                     <artifactId>aspectj-maven-plugin</artifactId>
                     <version>${maspectj.version}</version>
                     <configuration>
-                        <complianceLevel>17</complianceLevel>
+                        <complianceLevel>21</complianceLevel>
                         <showWeaveInfo>true</showWeaveInfo>
                         <encoding>${project.build.sourceEncoding}</encoding>
                         <Xlint>ignore</Xlint>
