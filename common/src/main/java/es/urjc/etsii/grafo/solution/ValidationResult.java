@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.solution;
 import es.urjc.etsii.grafo.exception.InvalidSolutionException;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -33,6 +34,22 @@ public class ValidationResult {
             return this.reasonFailed.getFirst();
         }
         return "Multiple failures: " + String.join("; ", this.reasonFailed);
+    }
+
+    /**
+     * Number of failed validations
+     * @return number of failed validations
+     */
+    public int getFailCount() {
+        return this.reasonFailed.size();
+    }
+
+    /**
+     * Get all reasons why the validation failed
+     * @return list of reasons
+     */
+    public List<String> getReasonsFailed() {
+        return Collections.unmodifiableList(this.reasonFailed);
     }
 
     private ValidationResult() {}
