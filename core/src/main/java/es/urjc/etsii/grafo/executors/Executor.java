@@ -47,7 +47,6 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     public static final int EXTRA_SECS_BEFORE_WARNING = 10;
     public static final int UNDEF_TIME = -1;
 
-    protected final Optional<SolutionValidator<S, I>> validator;
     protected final Optional<TimeLimitCalculator<S, I>> timeLimitCalculator;
     protected final IOManager<S, I> io;
     protected final InstanceManager<I> instanceManager;
@@ -96,7 +95,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         this.solverConfig = solverConfig;
         this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
 
-        this.validator = validator;
+        validator.ifPresent(Context.Configurator::setValidator);
         this.io = io;
         this.instanceManager = instanceManager;
         this.referenceResultManager = referenceResultManager;
