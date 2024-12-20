@@ -39,6 +39,9 @@ public record WorkUnitResult<S extends Solution<S, I>, I extends Instance>(boole
 
     public static <S extends Solution<S,I>, I extends Instance> Map<String, Object> computeSolutionProperties(S solution) {
         var generators = solution.customProperties();
+        if(generators == null || generators.isEmpty()){
+            return Map.of();
+        }
         Map<String, Object> properties = HashMap.newHashMap(generators.size());
         for(var e: generators.entrySet()){
             properties.put(e.getKey(), e.getValue().apply(solution));
