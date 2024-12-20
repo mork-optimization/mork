@@ -71,7 +71,8 @@ public class Mork {
         } catch (Exception e) {
             var rootCause = ExceptionUtil.getRootCause(e);
             log.error("%s: %s".formatted(rootCause.getClass().getSimpleName(), rootCause.getMessage()));
-            log.info("Unhandled exception: ", e);
+            log.info("Simplified stacktrace: {}", ExceptionUtil.filteredStacktrace(e));
+            log.trace("Full stacktrace: ", e);
             return false;
         }
     }

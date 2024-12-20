@@ -97,7 +97,9 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
         long startTime = System.nanoTime();
         try {
             executor.startup();
-            experiments.values().forEach(this::experimentWrapper);
+            for(var experiment : experiments.values()){
+                experimentWrapper(experiment);
+            }
         } finally {
             executor.shutdown();
             long totalExecutionTime = System.nanoTime() - startTime;

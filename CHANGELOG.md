@@ -7,6 +7,7 @@
 - (New) Irace plots: generate an HTML report with the results of running the autoconfig procedure.
 - (New) Two ParetoSet implementations are provided: a simple list based (should be correct, but slow) and a NDTree based implementation (should be fast, but may contain bugs).
 - (New) ValidationResult: allow accumulating errors.
+- (New) When we report an unhandled exception, filter some stackframes that are not relevant to the user code. Full stacktrace still logged at trace level.
 - (Breaking) Due to changes in how objectives are handled, ReferenceResult methods have been renamed for clarity.
 - (Fix) Math.random, Collections.shuffle now blocked using AspectJ instead of reflection. --add-opens no longer necessary.
 - (Fix) Add @JsonIgnore to instance in solution class already exists in getter, but serializer may be configured to use fields instead of methods.
