@@ -44,6 +44,7 @@ public class Context {
             context.mainObjective = parentValue.mainObjective;
             context.solverConfig = parentValue.solverConfig;
             context.validator = parentValue.validator;
+            context.validationEnabled = parentValue.validationEnabled;
             context.multiObjective = parentValue.multiObjective;
             context.referenceResultManager = parentValue.referenceResultManager;
             // context.timeEvents; // do not copy! thread responsible for managing its own events
@@ -77,6 +78,10 @@ public class Context {
 
     public static <S extends Solution<S,I>, I extends Instance> boolean validate(S solution){
         ContextData<S,I> ctx = get();
+        if(!ctx.validationEnabled){
+            // frequently called from asserts, need to return a true value if a exception should not be thrown
+            return true;
+        }
         SolutionValidator<S,I> userValidator = ctx.validator;
         if(userValidator != null){
             var result = userValidator.validate(solution);
@@ -190,6 +195,7 @@ public class Context {
         public BlockConfig blockConfig;
         public List<TimeStatsEvent> timeEvents = new ArrayList<>();
         public SolutionValidator<S,I> validator;
+        public boolean validationEnabled = true;
         public boolean multiObjective;
         public ReferenceResultManager referenceResultManager;
         public ParetoSet<S,I> paretoSet;
@@ -292,6 +298,20 @@ public class Context {
         public static <S extends Solution<S,I>, I extends Instance> Iterable<S> getTrackedSolutions(){
             ContextData<S,I> ctx = get();
             return ctx.paretoSet.getTrackedSolutions();
+        }
+
+        /**
+         * Enables validations for the current thread. Enabled by default.
+         */
+        public static void enableValidation(){
+            get().validationEnabled = true;
+        }
+
+        /**
+         * Disables validations for the current thread. By default all validations are run.
+         */
+        public static void disableValidation(){
+            get().validationEnabled = false;
         }
     }
 
