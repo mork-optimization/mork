@@ -143,7 +143,7 @@ public class InstanceManager<I extends Instance> {
         int bothLength = prefix.length() + suffix.length();
         List<String> list = new ArrayList<>();
         for (String path : sortedInstances) {
-            if(bothLength > path.length()){
+            if(bothLength >= path.length()){
                 list.add(path);
             } else {
                 String substring = path.substring(prefix.length(), path.length() - suffix.length());

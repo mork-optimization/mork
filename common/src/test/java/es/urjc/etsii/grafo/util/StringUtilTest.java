@@ -116,23 +116,26 @@ class StringUtilTest {
     void testLCP(){
         assertEquals("", StringUtil.longestCommonPrefix(new String[]{}));
         assertEquals("", StringUtil.longestCommonPrefix(new String[]{""}));
-        assertEquals("abcdef", StringUtil.longestCommonPrefix(new String[]{"abcdef"}));
-        assertEquals("abcdef", StringUtil.longestCommonPrefix(new String[]{"abcdef", "abcdefgasd"}));
-        assertEquals("abcdef", StringUtil.longestCommonPrefix(new String[]{"abcdefasd", "abcdefgasd"}));
-        assertEquals("", StringUtil.longestCommonPrefix(new String[]{"abcdefasd", ".abcdefgasd"}));
-        assertEquals("abc", StringUtil.longestCommonPrefix(new String[]{"abcdefasd", "abcdefasd", "abcDefasd"}));
-        assertEquals("a", StringUtil.longestCommonPrefix(new String[]{"air", "ambulance", "ablation", "aeroplane"}));
+        assertEquals("", StringUtil.longestCommonPrefix(new String[]{"abcdef"}));
+        assertEquals("ab.cd.", StringUtil.longestCommonPrefix(new String[]{"ab.cd.eg", "ab.cd.efgasd"}));
+        assertEquals("ab.cd.", StringUtil.longestCommonPrefix(new String[]{"ab.cd.ef", "ab.cd.ef.g.asd"}));
+        assertEquals("", StringUtil.longestCommonPrefix(new String[]{"abcdefasd", "abcdefgasd"}));
+        assertEquals("...abc/", StringUtil.longestCommonPrefix(new String[]{"...abc/abcdefasd", "...abc/.abcdefgasd"}));
+        assertEquals("/a/", StringUtil.longestCommonPrefix(new String[]{"/a/i/r/", "/a/m/b/u/l/a/c/e/", "/a/b/l/a/t/i/o/n/", "/a/e/r/o/p/l/a/n/e/"}));
+        assertEquals("test_", StringUtil.longestCommonPrefix(new String[]{"test_15.json", "test_5.json", "test_40.json"}));
     }
 
     @Test
     void testLCS(){
         assertEquals("", StringUtil.longestCommonSuffix(new String[]{}));
         assertEquals("", StringUtil.longestCommonSuffix(new String[]{""}));
-        assertEquals("abcdef", StringUtil.longestCommonSuffix(new String[]{"abcdef"}));
-        assertEquals("abcdef", StringUtil.longestCommonSuffix(new String[]{"abcdef", "abcdef"}));
+        assertEquals("", StringUtil.longestCommonSuffix(new String[]{"abcdef"}));
+        assertEquals("", StringUtil.longestCommonSuffix(new String[]{"abcdef", "abcdef"}));
         assertEquals("", StringUtil.longestCommonSuffix(new String[]{"abcdef", "abcdefgasd"}));
         assertEquals(".txt", StringUtil.longestCommonSuffix(new String[]{"whatever.txt", "file2.txt"}));
-        assertEquals("abcdefgasd", StringUtil.longestCommonSuffix(new String[]{"abcdefgasd", "/abcdefgasd"}));
+        assertEquals("", StringUtil.longestCommonSuffix(new String[]{"abcdefgasd", "/abcdefgasd"}));
+        assertEquals("/abcdefgasd.txt", StringUtil.longestCommonSuffix(new String[]{"abc/abcdefgasd.txt", "cba/abcdefgasd.txt"}));
+        assertEquals(".json", StringUtil.longestCommonSuffix(new String[]{"/a/test_15.json", "/a/test_5.json", "/a/test_40.json"}));
     }
 
 }

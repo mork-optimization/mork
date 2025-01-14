@@ -240,26 +240,33 @@ public class StringUtil {
      * @return Longest common prefix for all strings given as argument
      */
     public static String longestCommonPrefix(String[] data) {
-        if (data.length == 0) {
+        if (data.length <= 1) {
             return "";
         }
-        if (data.length == 1) {
-            return data[0];
+        String[][] tokens = new String[data.length][];
+        for (int i = 0; i < data.length; i++) {
+            tokens[i] = data[i].split("[\\W_]");
+        }
+        int commonTokens = 0;
+        var first = tokens[0];
+        out:
+        for (int i = 0; i < first.length-1; i++) {
+            for (int j = 1; j < tokens.length; j++) {
+                if (tokens[j].length <= i || !tokens[j][i].equals(first[i])) {
+                    break out;
+                }
+            }
+            commonTokens++;
+        }
+        if(commonTokens == 0){
+            return "";
+        }
+        int prefixLength = 0;
+        for (int i = 0; i < commonTokens; i++) {
+            prefixLength += tokens[0][i].length() + 1;
         }
 
-        Arrays.sort(data);
-        int prefixLength = 0;
-        String first = data[0];
-        String last = data[data.length - 1];
-        int minLength = Math.min(first.length(), last.length());
-        for (int i = 0; i < minLength; i++) {
-            if (first.charAt(i) == last.charAt(i)) {
-                prefixLength++;
-            } else {
-                break;
-            }
-        }
-        return first.substring(0, prefixLength);
+        return data[0].substring(0, prefixLength);
     }
 
     /**
