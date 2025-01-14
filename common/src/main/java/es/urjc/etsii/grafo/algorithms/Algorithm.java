@@ -15,13 +15,14 @@ import java.util.Objects;
  * @param <I> Instance class
  */
 @AlgorithmComponent
-public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
+public abstract class Algorithm<S extends Solution<S, I>, I extends Instance> {
 
-    private SolutionBuilder<S,I> builder;
+    private SolutionBuilder<S, I> builder;
     private String algorithmName;
 
     /**
      * Initialize common algorithm fields
+     *
      * @param algorithmName algorithm name. See {@link #setName(String)}
      */
     protected Algorithm(String algorithmName) {
@@ -33,7 +34,7 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
      *
      * @return algorithm name
      */
-    public String getName(){
+    public String getName() {
         return this.algorithmName;
     }
 
@@ -46,7 +47,7 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
      *
      * @param algorithmName must uniquely identify the algorithm inside an experiment
      */
-    public void setName(String algorithmName){
+    public void setName(String algorithmName) {
         this.algorithmName = algorithmName;
     }
 
@@ -64,7 +65,7 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
      * @param instance Instance
      * @return Empty solution, by default created calling the constructor Solution(Instance i)
      */
-    public S newSolution(I instance){
+    public S newSolution(I instance) {
         return this.builder.initializeSolution(instance);
     }
 
@@ -92,5 +93,12 @@ public abstract class Algorithm<S extends Solution<S,I>, I extends Instance> {
      */
     public void setBuilder(SolutionBuilder<S, I> builder) {
         this.builder = Objects.requireNonNull(builder);
+    }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName() + "{" +
+                "name='" + algorithmName + '\'' +
+                '}';
     }
 }

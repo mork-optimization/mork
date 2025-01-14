@@ -33,15 +33,16 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
     private static final int WARN_LIMIT = 100_000;
 
     protected final Neighborhood<M, S, I> neighborhood;
-    protected final Objective<M,S,I> objective;
+    protected final Objective<M, S, I> objective;
 
 
     /**
      * Create a new local search method using the given neighborhood
+     *
      * @param neighborhood neighborhood to use
-     * @param objective MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
+     * @param objective    MAXIMIZE to maximize scores returned by the given move, MINIMIZE for minimizing
      */
-    protected LocalSearch(Objective<M,S,I> objective, Neighborhood<M, S, I> neighborhood) {
+    protected LocalSearch(Objective<M, S, I> objective, Neighborhood<M, S, I> neighborhood) {
         super(objective);
         this.objective = objective;
         this.neighborhood = neighborhood;
@@ -50,6 +51,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
     /**
      * Create a new local search method using the given neighborhood.
      * Uses the method Move::getValue as the guiding function, with fMaximize = maximize.
+     *
      * @param neighborhood neighborhood to use
      */
     protected LocalSearch(Neighborhood<M, S, I> neighborhood) {
@@ -58,7 +60,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
 
     /**
      * {@inheritDoc}
-     *
+     * <p>
      * Improves a model.Solution
      * Iterates until we run out of time, or we cannot improve the current solution any further
      */
@@ -70,8 +72,8 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
             log.debug("Executing iteration {} for {}", rounds, this.getClass().getSimpleName());
             improved = iteration(solution);
             rounds++;
-            if(rounds == WARN_LIMIT){
-                log.warn("Localsearch method {} may be stuck in an infinite loop (warn at {})", this.getClass().getSimpleName(),  WARN_LIMIT);
+            if (rounds == WARN_LIMIT) {
+                log.warn("Localsearch method {} may be stuck in an infinite loop (warn at {})", this.getClass().getSimpleName(), WARN_LIMIT);
             }
         }
         log.debug("Improvement {} ended after {} iterations.", this.getClass().getSimpleName(), rounds);
@@ -81,6 +83,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
     /**
      * This procedure check if there are valid moves to neighbors solutions.
      * In that case, the move is executed. Otherwise, the procedure ends.
+     *
      * @return true if the solution has improved, false otherwise
      */
     public boolean iteration(S solution) {
@@ -106,8 +109,19 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
      */
     public abstract M getMove(S solution);
 
-    protected boolean improves(M move){
+    protected boolean improves(M move) {
         double score = this.objective.evalMove(move);
         return this.objective.improves(score);
+    }
+
+    @Override
+    public String toString() {
+        return this.getClass().getSimpleName()
+                .replace("LocalSearch", "LS")
+                .replace("BestImprovement", "BI")
+                .replace("FirstImprovement", "FI")
+                + "{" +
+                "neigh=" + neighborhood +
+                '}';
     }
 }
