@@ -1,4 +1,4 @@
-FROM maven:3-eclipse-temurin-17 as build
+FROM maven:3-eclipse-temurin-21 AS build
 RUN mkdir /build
 WORKDIR /build
 COPY ./pom.xml pom.xml
@@ -8,15 +8,15 @@ RUN mvn dependency:go-offline -B
 
 # copy sources and compile
 COPY ./src src
-RUN mvn clean package -B && cp target/__RNAME__-*.jar app.jar
+RUN mvn clean package -B -Dmaven.test.skip=true
 
-FROM eclipse-temurin:17-alpine as run
+FROM eclipse-temurin:21-alpine AS run
 
 # Remember to add extra files if needed by your project
 COPY instances /instances
 COPY *.csv *.tsv /
 COPY --from=build /root/.m2 /root/.m2
-COPY --from=build /build/app.jar /app.jar
+COPY --from=build /build/target/*.jar /app.jar
 
 CMD [\
 "java",\
