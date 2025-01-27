@@ -25,28 +25,71 @@ boring_colors = ["#EDEDE9", "#D6CCC2", "#F5EBE0", "#E3D5CA", "#d6e2e9"]
 real_color = "dodgerblue"
 best_color = "limegreen"
 
-CONSTANT = lambda x, a: np.full(x.size, a)
-LOG = lambda x, a: a * np.log(x)
-LINEAR = lambda x, a: a * x
-LINEARITHMIC = lambda x, a: a * x * np.log(x)
-QUADRATIC = lambda x, a: a * x ** 2
-EXPONENTIAL = lambda x, a: a * 2 ** x
+
+class ComplexityFunction(object):
+    def __init__(self, name, function, latex, html):
+        self.name = name
+        self.function = function
+        self.latex = latex
+        self.html = html
+
+    def f_name_latex(self, a, b):
+        return self.latex.replace("a", str(round(a, 2))).replace("b", str(round(b, 2)))
+
+    def f_name_html(self, a, b):
+        return self.html.replace("a", str(round(a, 2))).replace("b", str(round(b, 2)))
+
+
+class Fit(object):
+
+    def __init__(self, f: ComplexityFunction, instance_prop, r2, perr, mse, popt, dic, data):
+        self.f = f
+        self.instance_prop = instance_prop
+        self.r2 = r2
+        self.perr = perr
+        self.popt = popt
+        self.mse = mse
+        self.dic = dic
+        self.data = data
+
+    # Revisar de Salazar: https://ideone.com/xcInVf
+    # Podria funcionar mejor que el MSE
+    @staticmethod
+    def sort(fits: list['Fit']):
+        #fits.sort(key=lambda e: abs(e.r2), reverse=True)
+        #fits.sort(key=lambda e: e.perr)
+        fits.sort(key=lambda e: e.mse)
+
+    @staticmethod
+    def get_metric_name():
+        return "MSE"
+
+    def get_metric_value(self):
+        return self.mse
+
+    def is_better_than(self, other) -> bool:
+        return self.mse < other.mse
+
+    def name_html(self):
+        return self.f.f_name_html(*self.popt)
+
+    def name_latex(self):
+        return self.f.f_name_latex(*self.popt)
 
 
 def load_df(path: str) -> DataFrame:
     return pd.read_csv(path)
 
 
-def get_functions() -> dict:
-    return {
-        r"a": CONSTANT,
-        r"a \cdot \log(n)": LOG,
-        r"a \cdot n": LINEAR,
-        r"a \cdot n \log(n)": LINEARITHMIC,
-        r"a \cdot n^2": QUADRATIC,
-        r"a \cdot 2^n": EXPONENTIAL,
-        # TODO test more functions, cubic? x^4?
-    }
+def get_functions() -> list[ComplexityFunction]:
+    return [
+        ComplexityFunction("Log.", lambda x, a, b: a * np.log(x) + b, r"a \cdot \log(n) + b", r"a log(n) + b"),
+        ComplexityFunction("Linear", lambda x, a, b: a * x + b, r"a \cdot n + b", r"an + b"),
+        ComplexityFunction("Log. Linear", lambda x, a, b: a * x * np.log(x) + b, r"a \cdot n \log(n) + b", r"an log(n) + b"),
+        ComplexityFunction("Quadratic", lambda x, a, b: a * x ** 2 + b, r"a \cdot n^2 + b", r"an<sup>2</sup> + b"),
+        ComplexityFunction("Exponential", lambda x, a, b: a * 2 ** x + b, r"a \cdot 2^n + b", r"2<sup>n</sup> + b"),
+    ]
+
 
 def get_full_name(stack: list[tuple[str, int]]) -> str:
     return "/".join(name for name, _ in stack)
@@ -103,58 +146,21 @@ def prepare_df(df: DataFrame, timestats: DataFrame) -> DataFrame:
     return cloned
 
 
-def draw_functions_chart(xy, fits, instance_property, component_name):
+def draw_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, component_name):
     fig = px.line()
     fig.add_scatter(x=xy.index, y=xy['time'], name="Real", line=dict(color=real_color))
 
     for i, fit in enumerate(fits):
         color = boring_colors[i % len(boring_colors)] if i != 0 else best_color
-        fig.add_scatter(x=fit.data.x, y=fit.data.y, name=f"${fit.name}$", line=dict(color=color))
+        fig.add_scatter(x=fit.data.x, y=fit.data.y, name=f"${fit.name_latex()}$", line=dict(color=color))
         # print(f"Component {c} - Function {k} - {col} - R2: {r2} - {popt} - {dic['fvec']}")
 
-    fig.update_layout(title=rf"$\text{{{component_name} is }}Θ({fits[0].name})$", showlegend=True, xaxis_title=instance_property, yaxis_title="T (ms)")
+    fig.update_layout(title=rf"$\text{{{component_name} is }}Θ({fits[0].name_latex()})$", showlegend=True, xaxis_title=instance_property, yaxis_title="T (ms)")
     fig.show()
 
-class Fit(object):
-    name = ""
-    instance_prop = ""
-    r2 = 0
-    perr = 1000
-    popt = {}
-    dic = {}
-    data = {}
 
-    def __init__(self, name, instance_prop, r2, perr, mse, popt, dic, data):
-        self.name = name
-        self.instance_prop = instance_prop
-        self.r2 = r2
-        self.perr = perr
-        self.popt = popt
-        self.mse = mse
-        self.dic = dic
-        self.data = data
-
-    # Revisar de Salazar: https://ideone.com/xcInVf
-    # Podria funcionar mejor que el MSE
-    @staticmethod
-    def sort(fits: list['Fit']):
-        #fits.sort(key=lambda e: abs(e.r2), reverse=True)
-        #fits.sort(key=lambda e: e.perr)
-        fits.sort(key=lambda e: e.mse)
-
-    @staticmethod
-    def get_metric_name():
-        return "MSE"
-
-    def get_metric_value(self):
-        return self.mse
-
-    def is_better_than(self, other) -> bool:
-        return self.mse < other.mse
-
-
-def calculate_fitting_func(x: Series, y: Series, f_name: str, f, instance_property: str) -> Fit | None:
-    popt, pcov, dic, mesg, _ = curve_fit(f, x, y, full_output=True, check_finite=True)
+def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance_property: str) -> Fit | None:
+    popt, pcov, dic, mesg, _ = curve_fit(f.function, x, y, full_output=True, check_finite=True)
     # https://stackoverflow.com/questions/50371428/scipy-curve-fit-raises-optimizewarning-covariance-of-the-parameters-could-not
     # Curve fit puede fallar
     if np.isnan(pcov).any() or np.isinf(pcov).any():
@@ -162,7 +168,7 @@ def calculate_fitting_func(x: Series, y: Series, f_name: str, f, instance_proper
 
     # https://www.geeksforgeeks.org/how-to-return-the-fit-error-in-python-curvefit/
     perr = np.sqrt(np.diag(pcov))
-    y_estimated = f(x, *popt)
+    y_estimated = f.function(x, *popt)
     # residual sum of squares
     ss_res = np.sum((y - y_estimated) ** 2)
     mse = np.mean((y - y_estimated) ** 2)
@@ -171,8 +177,8 @@ def calculate_fitting_func(x: Series, y: Series, f_name: str, f, instance_proper
     # r-squared
     r2 = 1 - (ss_res / ss_tot)
     data = pd.DataFrame({'x':x, 'y':y_estimated})
-    name = f"{f_name}".replace("a", str(round(popt[0], 1)))
-    return Fit(name, instance_property, r2, perr, mse, popt, dic, data)
+
+    return Fit(f, instance_property, r2, perr, mse, popt, dic, data)
 
 def join_instance_timestats(instances: DataFrame, timestats: DataFrame, component_name: str, instance_property: str):
     x = instances[['id', instance_property]]
@@ -192,8 +198,8 @@ def calculate_fitting_funcs(instances: DataFrame, timestats: DataFrame, componen
     fits = []
     x = xy.index.to_numpy()
     y = xy['time'].to_numpy()
-    for k, v in fitting_funcs.items():
-        fit = calculate_fitting_func(x, y, k, v, instance_property)
+    for f in fitting_funcs:
+        fit = calculate_fitting_func(x, y, f, instance_property)
         if fit:
             fits.append(fit)
 
@@ -231,8 +237,8 @@ def analyze_complexity(instances: DataFrame, timestats: DataFrame):
         xy = join_instance_timestats(instances, timestats, component_name, best.instance_prop)
         draw_functions_chart(xy, fits, best.instance_prop, component_name)
 
-        print(f"Component {component_name} performance predicted as Θ({best.name}) by {best.instance_prop} - {Fit.get_metric_name()}: {best.get_metric_value()}")
-        treemap_labels.append({"component": component_name, "property": best.instance_prop, "function": f"Θ({best.name})", Fit.get_metric_name(): best.get_metric_value()})
+        print(f"Component {component_name} performance predicted as Θ({best.name_latex()}) by {best.instance_prop} - {Fit.get_metric_name()}: {best.get_metric_value()}")
+        treemap_labels.append({"component": component_name, "property": best.instance_prop, "function": f"Θ({best.name_html()})", Fit.get_metric_name(): best.get_metric_value()})
 
     if not treemap_labels:
         print("No components to show, skipping treemap generation")
@@ -248,7 +254,7 @@ def analyze_complexity(instances: DataFrame, timestats: DataFrame):
         ids=treemap_data.component,
         labels=treemap_data.child,
         parents=treemap_data.parent,
-        customdata=np.stack((treemap_data.time, treemap_data.property, treemap_data.function.str.replace(r'\cdot','⋅'), treemap_data[Fit.get_metric_name()]), axis=-1),
+        customdata=np.stack((treemap_data.time, treemap_data.property, treemap_data.function, treemap_data[Fit.get_metric_name()]), axis=-1),
         hovertemplate='<b> %{label} </b> <br> Time: %{customdata[0]:.2f} ms <br> Complexity: %{customdata[2]} <br> Where n is: %{customdata[1]} <br> ' + Fit.get_metric_name() + ': %{customdata[3]:.2f}',
         marker=dict(
             colors=treemap_data.time,

@@ -8,6 +8,7 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
 
 import java.io.File;
 import java.io.IOException;
@@ -20,6 +21,7 @@ import static es.urjc.etsii.grafo.orchestrator.InstanceSelector.DEFAULT_OUTPUT_P
 
 public class ComplexityAnalysisTest {
 
+    private final Logger log = org.slf4j.LoggerFactory.getLogger(ComplexityAnalysisTest.class);
     private static final Path propertiesPath = Path.of(DEFAULT_OUTPUT_PATH);
 
 
@@ -59,9 +61,23 @@ public class ComplexityAnalysisTest {
         Assertions.assertTrue(success);
         Assertions.assertTrue(Files.exists(propertiesPath));
 
+        log.info("Warming up JVM...");
+        runComplexityOnce(); // first one is to allow JVM to warm up, ignore results
+        log.info("Starting complexity analysis...");
+        success = runComplexityOnce();
+
+        Assertions.assertTrue(success);
+        Assertions.assertTrue(Files.exists(Path.of("solutions")));
+        // TODO call python script to analyze results automatically
+
+        // Sleep for 5 seconds to allow the webserver to be stopped
+        ConcurrencyUtil.sleep(5, TimeUnit.SECONDS);
+    }
+
+    private static boolean runComplexityOnce() throws IOException {
         // Execute a normal experiment to extract time statistics from the algorithms we have configured
         FileUtils.deleteDirectory(new File("solutions"));
-        success = Mork.start(new String[]{
+        return Mork.start(new String[]{
                 "--server.port=0",
                 "--instances.path.default=instancesautoconfig/sleepy",
                 "--solver.iterations=5",
@@ -74,11 +90,5 @@ public class ComplexityAnalysisTest {
                 "--serializers.solution-json.folder=solutions",
                 "--event.webserver.stopOnExecutionEnd=true"
         }, Main.AC_OBJECTIVE);
-        Assertions.assertTrue(success);
-        Assertions.assertTrue(Files.exists(Path.of("solutions")));
-        // TODO call python script to analyze results automatically
-
-        // Sleep for 5 seconds to allow the webserver to be stopped
-        ConcurrencyUtil.sleep(5, TimeUnit.SECONDS);
     }
 }
