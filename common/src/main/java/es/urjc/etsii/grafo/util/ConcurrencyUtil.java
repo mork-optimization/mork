@@ -101,7 +101,7 @@ public class ConcurrencyUtil {
      * @param time time to sleep
      * @param unit unit of time
      */
-    public static void sleep(int time, TimeUnit unit){
+    public static void sleep(long time, TimeUnit unit){
         try {
             unit.sleep(time);
         } catch (InterruptedException e) {
