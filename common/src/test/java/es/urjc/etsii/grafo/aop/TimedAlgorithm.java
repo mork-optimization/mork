@@ -67,7 +67,7 @@ public class TimedAlgorithm extends Algorithm<TestSolution, TestInstance> {
 
         // this method is timed by the framework
         @Override
-        protected TestSolution _improve(TestSolution solution) {
+        public TestSolution improve(TestSolution solution) {
             work1();
             work2();
             return solution;

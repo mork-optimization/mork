@@ -11,13 +11,11 @@ public class ACInstance extends Instance{
      * @param id      instance id or instance name
      * @param length content length, N
      */
-    protected ACInstance(String id, int length) {
+    protected ACInstance(String id, int length, double logar) {
         super(id);
         this.length = length;
         setProperty("length", length);
-        setProperty("sqrtlength", Math.sqrt(length));
-        setProperty("quartlength", length/4.0);
-        setProperty("loglength", Math.log(length));
+        setProperty("logar", logar);
         setProperty("c", 7);
     }
 

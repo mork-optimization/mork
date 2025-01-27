@@ -1,6 +1,9 @@
 package es.urjc.etsii.grafo.aop;
 
+import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.metrics.Metrics;
+import es.urjc.etsii.grafo.solution.Objective;
+import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeUtil;
 import org.aspectj.lang.ProceedingJoinPoint;
@@ -14,18 +17,29 @@ import java.lang.reflect.Method;
 import java.util.concurrent.TimeUnit;
 
 @Aspect
+@SuppressWarnings({"rawtypes", "unchecked"}) // todo investigate if we can avoid using raw types, probably not
 public final class TimedAspect {
-
-    //private static final Logger log = LoggerFactory.getLogger(TimedAspect.class);
 
     @Around("execution(* *(..)) && @annotation(es.urjc.etsii.grafo.aop.TimeStats)")
     public Object log(ProceedingJoinPoint point) throws Throwable {
         return commonLog(point);
     }
 
-    @Around("execution(* es.urjc.etsii.grafo.improve.Improver+.improve(..))")
-    public Object logImprover(ProceedingJoinPoint point) throws Throwable {
-        return commonLog(point);
+    @Around(value = "execution(* es.urjc.etsii.grafo.improve.Improver+.improve(..)) && target(improver) && args(solution)", argNames = "point,improver,solution")
+    public Object logImprover(ProceedingJoinPoint point, Improver improver, Solution solution) throws Throwable {
+        Objective objective = improver.getObjective();
+        double initialScore = objective.evalSol(solution);
+        Solution improvedSolution = (Solution) commonLog(point);
+        double endScore = objective.evalSol(improvedSolution);
+
+        // Log, verify and store
+        Improver.log.debug("{} --> {}", initialScore, endScore);
+        if(objective.isBetter(initialScore, endScore)){
+            throw new IllegalStateException(String.format("Score has worsened after executing an improvement method: %s --> %s", initialScore, endScore));
+        }
+        Metrics.addCurrentObjectives(solution);
+
+        return improvedSolution;
     }
 
     @Around("execution(* es.urjc.etsii.grafo.algorithms.Algorithm+.algorithm(..))")
@@ -55,14 +69,14 @@ public final class TimedAspect {
         if(Metrics.areMetricsEnabled()){
             Context.addTimeEvent(true, start, clazz.getSimpleName(), method.getName());
         }
-        var response = point.proceed();
+        var retVal = point.proceed();
         if(Metrics.areMetricsEnabled()){
             long end = System.nanoTime();
             Context.addTimeEvent(false, end, clazz.getSimpleName(), method.getName());
             log.trace("{}() took {} ms", method.getName(), TimeUtil.convert(end-start, TimeUnit.NANOSECONDS, TimeUnit.MILLISECONDS));
         }
 
-        return response;
+        return retVal;
     }
 }
 

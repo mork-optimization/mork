@@ -35,7 +35,7 @@ public class FlippyFlopImprover extends Improver<ACSolution, ACInstance> {
     }
 
     @Override
-    protected ACSolution _improve(ACSolution solution) {
+    public ACSolution improve(ACSolution solution) {
         if(!enabled) return solution;
         // simulate expensive calculations
         while (!TimeControl.isTimeUp()){

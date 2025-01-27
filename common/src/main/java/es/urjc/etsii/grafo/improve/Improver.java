@@ -19,7 +19,7 @@ import org.slf4j.LoggerFactory;
 @AlgorithmComponent
 public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
 
-    private static final Logger log = LoggerFactory.getLogger(Improver.class);
+    public static final Logger log = LoggerFactory.getLogger(Improver.class);
 
     protected final Objective<?,S,I> objective;
 
@@ -38,21 +38,7 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
      * @param solution model.Solution to improve
      * @return Improved s
      */
-    public S improve(S solution){
-
-        double initialScore = objective.evalSol(solution);
-        S improvedSolution = this._improve(solution);
-        double endScore = objective.evalSol(improvedSolution);
-
-        // Log, verify and store
-        log.debug("{} --> {}", initialScore, endScore);
-        if(objective.isBetter(initialScore, endScore)){
-            throw new IllegalStateException(String.format("Score has worsened after executing an improvement method: %s --> %s", initialScore, endScore));
-        }
-        Metrics.addCurrentObjectives(solution);
-
-        return improvedSolution;
-    }
+    public abstract S improve(S solution);
 
     /**
      * Create a no operation improve method
@@ -91,14 +77,8 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         }
 
         @Override
-        protected S _improve(S solution) {
-            return solution;
-        }
-
-        @Override
         public S improve(S solution) {
             return solution;
-
         }
     }
 
@@ -130,20 +110,15 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         }
 
         @Override
-        protected S _improve(S solution) {
+        public S improve(S solution) {
             for(var improver: improvers){
-                solution = improver._improve(solution);
+                solution = improver.improve(solution);
             }
             return solution;
         }
     }
 
-    /**
-     * Improves a Solution
-     * Iterates until we run out of time, or we cannot improve the current solution any further
-     *
-     * @param solution Solution to improve
-     * @return Improved solution
-     */
-    protected abstract S _improve(S solution);
+    public Objective<?, S, I> getObjective() {
+        return objective;
+    }
 }

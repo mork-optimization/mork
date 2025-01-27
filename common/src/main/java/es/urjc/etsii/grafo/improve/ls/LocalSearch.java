@@ -65,7 +65,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
      * Iterates until we run out of time, or we cannot improve the current solution any further
      */
     @Override
-    protected S _improve(S solution) {
+    public S improve(S solution) {
         int rounds = 1;
         boolean improved = true;
         while (!TimeControl.isTimeUp() && improved) {

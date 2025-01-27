@@ -17,7 +17,9 @@ public class ComplexityExperiment extends AbstractExperiment<ACSolution, ACInsta
     @Override
     public List<Algorithm<ACSolution, ACInstance>> getAlgorithms() {
         return List.of(
-                new SimpleAlgorithm<>("SimpleAlgorithm", new SleepyConstructive(), new SleepyImprover())
+                new SimpleAlgorithm<>("SimpleAlgorithm", new SleepyConstructive(),
+                        Improver.serial(new SleepyImprover(), new SleepyLogImprover())
+                )
         );
     }
 
@@ -32,9 +34,23 @@ public class ComplexityExperiment extends AbstractExperiment<ACSolution, ACInsta
         }
 
         @Override
-        public ACSolution _improve(ACSolution solution) {
+        public ACSolution improve(ACSolution solution) {
             long sleep = solution.getInstance().length() * 1000L + getNoise(1000, 1000);
             ConcurrencyUtil.sleep(sleep, TimeUnit.MICROSECONDS);
+            return solution;
+        }
+    }
+
+    private static class SleepyLogImprover extends Improver<ACSolution, ACInstance> {
+        public SleepyLogImprover() {
+            super(Main.AC_OBJECTIVE);
+        }
+
+        @Override
+        public ACSolution improve(ACSolution solution) {
+            var sleep = Math.log(solution.getInstance().length() * 1_000_000_000D) * 3;
+            sleep *= 1000; // millis to micro
+            ConcurrencyUtil.sleep((long) sleep, TimeUnit.MICROSECONDS);
             return solution;
         }
     }

@@ -221,7 +221,7 @@ class AlgorithmBuilderServiceTest {
         }
 
         @Override
-        protected TestSolution _improve(TestSolution solution) {
+        public TestSolution improve(TestSolution solution) {
             return solution;
         }
     }

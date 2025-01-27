@@ -134,6 +134,8 @@ class Fit(object):
         self.dic = dic
         self.data = data
 
+    # Revisar de Salazar: https://ideone.com/xcInVf
+    # Podria funcionar mejor que el MSE
     @staticmethod
     def sort(fits: list['Fit']):
         #fits.sort(key=lambda e: abs(e.r2), reverse=True)

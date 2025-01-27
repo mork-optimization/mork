@@ -50,7 +50,7 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
 
     /** {@inheritDoc} */
     @Override
-    protected S _improve(S solution) {
+    public S improve(S solution) {
         int index = 0;
         while(index < improvers.size()){
             double scoreBeforeImprover = objective.evalSol(solution);

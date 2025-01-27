@@ -12,15 +12,19 @@ public class ACInstanceImporter extends InstanceImporter<ACInstance> {
     @Override
     public ACInstance importInstance(BufferedReader reader, String filename) throws IOException {
         int total = 0;
-        var line = reader.readLine();
+        double logar;
+        var line1 = reader.readLine();
+        var line2 = reader.readLine();
         try {
-            total = Integer.parseInt(line);
+            total = Integer.parseInt(line1);
+            logar = Double.parseDouble(line2);
         } catch (NumberFormatException e) {
-            while (line != null) {
-                total += line.length();
-                line = reader.readLine();
+            while (line1 != null) {
+                total += line1.length();
+                line1 = reader.readLine();
             }
+            logar = Math.exp(total);
         }
-        return new ACInstance(filename, total);
+        return new ACInstance(filename, total, logar);
     }
 }
