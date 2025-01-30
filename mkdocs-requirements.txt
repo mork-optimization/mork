@@ -2,3 +2,4 @@ mkdocs-mermaid2-plugin
 Pygments
 mkdocs-awesome-pages-plugin
 mkdocs-material
+mkdocs-material[imaging]
