@@ -35,7 +35,7 @@ public class ComplexityExperiment extends AbstractExperiment<ACSolution, ACInsta
 
         @Override
         public ACSolution improve(ACSolution solution) {
-            long sleep = solution.getInstance().length() * 1000L + getNoise(1000, 1000);
+            long sleep = solution.getInstance().length() * 1000L + getNoise(10000, 1000);
             ConcurrencyUtil.sleep(sleep, TimeUnit.MICROSECONDS);
             return solution;
         }
@@ -48,8 +48,9 @@ public class ComplexityExperiment extends AbstractExperiment<ACSolution, ACInsta
 
         @Override
         public ACSolution improve(ACSolution solution) {
-            var sleep = Math.log(solution.getInstance().length() * 1_000_000_000D) * 3;
+            var sleep = Math.log(solution.getInstance().length()) * 3;
             sleep *= 1000; // millis to micro
+
             ConcurrencyUtil.sleep((long) sleep, TimeUnit.MICROSECONDS);
             return solution;
         }

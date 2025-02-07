@@ -1,6 +1,8 @@
 #################
 # CONFIGURATION #
 #################
+import re
+
 MIN_POINTS = 5
 
 import argparse
@@ -18,6 +20,7 @@ from scipy.optimize import curve_fit
 import pandas as pd  # data manipulation and analysis
 from pandas import DataFrame, Series
 
+import plotly
 import plotly.express as px
 import plotly.graph_objects as go
 
@@ -25,6 +28,23 @@ boring_colors = ["#EDEDE9", "#D6CCC2", "#F5EBE0", "#E3D5CA", "#d6e2e9"]
 real_color = "dodgerblue"
 best_color = "limegreen"
 
+def format_number_latex(n):
+    formatted =  f"{n:+.2g}"
+    exponent = re.search(r"e\+?(-?\d+)", formatted)
+    if not exponent:
+        return formatted
+    exponent = exponent.group(1).lstrip("0")
+    formatted = re.sub(r"e\+?(-?\d+)", rf"\\cdot 10^{exponent}", formatted)
+    return formatted
+
+def format_number_html(n):
+    formatted =  f"{n:+.2g}"
+    exponent = re.search(r"e\+?(-?\d+)", formatted)
+    if not exponent:
+        return formatted
+    exponent = exponent.group(1).lstrip("0")
+    formatted = re.sub(r"e\+?(-?\d+)", rf"&#183;10<sup>{exponent}</sup>", formatted)
+    return formatted
 
 class ComplexityFunction(object):
     def __init__(self, name, function, latex, html):
@@ -33,11 +53,12 @@ class ComplexityFunction(object):
         self.latex = latex
         self.html = html
 
+
     def f_name_latex(self, a, b):
-        return self.latex.replace("a", str(round(a, 2))).replace("b", str(round(b, 2)))
+        return self.latex.replace("a", format_number_latex(a)).replace("b", format_number_latex(b))
 
     def f_name_html(self, a, b):
-        return self.html.replace("a", str(round(a, 2))).replace("b", str(round(b, 2)))
+        return self.html.replace("a", format_number_html(a)).replace("b", format_number_html(b))
 
 
 class Fit(object):
@@ -83,11 +104,11 @@ def load_df(path: str) -> DataFrame:
 
 def get_functions() -> list[ComplexityFunction]:
     return [
-        ComplexityFunction("Log.", lambda x, a, b: a * np.log(x) + b, r"a \cdot \log(n) + b", r"a log(n) + b"),
-        ComplexityFunction("Linear", lambda x, a, b: a * x + b, r"a \cdot n + b", r"an + b"),
-        ComplexityFunction("Log. Linear", lambda x, a, b: a * x * np.log(x) + b, r"a \cdot n \log(n) + b", r"an log(n) + b"),
-        ComplexityFunction("Quadratic", lambda x, a, b: a * x ** 2 + b, r"a \cdot n^2 + b", r"an<sup>2</sup> + b"),
-        ComplexityFunction("Exponential", lambda x, a, b: a * 2 ** x + b, r"a \cdot 2^n + b", r"2<sup>n</sup> + b"),
+        ComplexityFunction("Log.", lambda x, a, b: a * np.log(x) + b, r"a \cdot \log(x) b", r"a log(x) b"),
+        ComplexityFunction("Linear", lambda x, a, b: a * x + b, r"a \cdot x b", r"ax b"),
+        ComplexityFunction("Log. Linear", lambda x, a, b: a * x * np.log(x) + b, r"a \cdot x \log(x) b", r"ax log(x) b"),
+        ComplexityFunction("Quadratic", lambda x, a, b: a * x ** 2 + b, r"a \cdot x^2 b", r"ax<sup>2</sup> b"),
+        ComplexityFunction("Exponential", lambda x, a, b: a * 2 ** x + b, r"a \cdot 2^x b", r"2<sup>x</sup> b"),
     ]
 
 
@@ -148,14 +169,29 @@ def prepare_df(df: DataFrame, timestats: DataFrame) -> DataFrame:
 
 def draw_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, component_name):
     fig = px.line()
-    fig.add_scatter(x=xy.index, y=xy['time'], name="Real", line=dict(color=real_color))
+    fig.add_scatter(x=xy.index, y=xy['time'], name="$Real$", line=dict(color=real_color))
 
     for i, fit in enumerate(fits):
         color = boring_colors[i % len(boring_colors)] if i != 0 else best_color
         fig.add_scatter(x=fit.data.x, y=fit.data.y, name=f"${fit.name_latex()}$", line=dict(color=color))
         # print(f"Component {c} - Function {k} - {col} - R2: {r2} - {popt} - {dic['fvec']}")
 
-    fig.update_layout(title=rf"$\text{{{component_name} is }}Θ({fits[0].name_latex()})$", showlegend=True, xaxis_title=instance_property, yaxis_title="T (ms)")
+    fig.update_layout(
+        title=rf"$\text{{{component_name} is }}Θ({fits[0].name_latex()})$",
+        showlegend=True,
+        #legend_title_text="Models",
+        legend = dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01,
+            font = dict(size = 16),
+            #title=dict(font=dict(size=20)),
+        ),
+
+        xaxis_title=instance_property,
+        yaxis_title="T (ms)"
+    )
     fig.show()
 
 
@@ -249,16 +285,18 @@ def analyze_complexity(instances: DataFrame, timestats: DataFrame):
     treemap_data = treemap_data[~treemap_data['component'].isin(failed_components)]
     treemap_data = treemap_data.merge(pd.DataFrame(treemap_labels), on='component')
 
+    treemap_data['child'] = treemap_data['child'].str.replace('::','<br>')
     fig = go.Figure()
     fig.add_trace(go.Treemap(
         ids=treemap_data.component,
         labels=treemap_data.child,
         parents=treemap_data.parent,
         customdata=np.stack((treemap_data.time, treemap_data.property, treemap_data.function, treemap_data[Fit.get_metric_name()]), axis=-1),
-        hovertemplate='<b> %{label} </b> <br> Time: %{customdata[0]:.2f} ms <br> Complexity: %{customdata[2]} <br> Where n is: %{customdata[1]} <br> ' + Fit.get_metric_name() + ': %{customdata[3]:.2f}',
+        hovertemplate='<b> %{label} </b> <br> Time: %{customdata[0]:.2f} ms <br> Complexity: %{customdata[2]} <br> Where n is: %{customdata[1]} <br> ' + Fit.get_metric_name() + ': %{customdata[3]:.2f}<extra></extra>', # <extra></extra> hides the extra tooltips that contains traceid by default
         marker=dict(
             colors=treemap_data.time,
             colorscale='ylorbr',
+            pad=dict(t=50, r=15, b=15, l=15),
             cmin=0,
             cmid=treemap_data.time.mean(),
             showscale=True,
@@ -272,8 +310,10 @@ def analyze_complexity(instances: DataFrame, timestats: DataFrame):
         legend="legend"
     ))
     fig.update_layout(
-        margin=dict(t=50, l=25, r=25, b=25),
+        uniformtext=dict(minsize=16, mode='show'),
+        margin = dict(t=50, l=25, r=25, b=25)
     )
+
     fig.show()
 
 def main():
