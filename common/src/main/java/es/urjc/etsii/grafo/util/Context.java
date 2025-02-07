@@ -313,6 +313,10 @@ public class Context {
         public static void disableValidation(){
             get().validationEnabled = false;
         }
+
+        public static boolean isValidationEnabled(){
+            return get().validationEnabled;
+        }
     }
 
 
