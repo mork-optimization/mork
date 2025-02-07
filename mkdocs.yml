@@ -4,68 +4,66 @@ site_url: "https://docs.mork-optimization.com"
 repo_url: https://github.com/mork-optimization/mork
 edit_uri: edit/master/docs/
 theme:
-    name: material
-    logo: assets/logo_white.svg
-    favicon: assets/logo_white.svg
-    icon:
-        edit: material/lead-pencil
-    features:
-        - content.action.edit
-        - content.code.select
-        - content.code.annotate
-        - navigation.instant
-        - navigation.instant.progress
-        - navigation.tracking
-        - navigation.path
-        - navigation.top
-        - search.suggest
-        - search.highlight
-    palette:
-        # Palette toggle for automatic mode
-        - media: "(prefers-color-scheme)"
-          toggle:
-              icon: material/brightness-auto
-              name: Switch to light mode
-
-        # Palette toggle for light mode
-        - media: "(prefers-color-scheme: light)"
-          scheme: default
-          primary: brown
-          accent: deep orange
-          toggle:
-              icon: material/brightness-7
-              name: Switch to dark mode
-
-        # Palette toggle for dark mode
-        - media: "(prefers-color-scheme: dark)"
-          scheme: slate
-          primary: brown
-          accent: deep orange
-          toggle:
-              icon: material/brightness-4
-              name: Switch to system preference
+  name: material
+  logo: assets/logo_white.svg
+  favicon: assets/logo_white.svg
+  icon:
+    edit: material/lead-pencil
+  features:
+    - content.action.edit
+    - content.code.select
+    - content.code.annotate
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.tracking
+    - navigation.path
+    - navigation.top
+    - search.suggest
+    - search.highlight
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: brown
+      accent: deep orange
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: brown
+      accent: deep orange
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
 
 plugins:
-    - search
-    - mermaid2
-    - awesome-pages
+  - search
+  - mermaid2
+  - awesome-pages
 
 markdown_extensions:
-    - admonition
-    - pymdownx.details
-    - pymdownx.superfences
-    - attr_list
-    - pymdownx.emoji:
-        emoji_index: !!python/name:material.extensions.emoji.twemoji
-        emoji_generator: !!python/name:material.extensions.emoji.to_svg
-    - md_in_html
-    - pymdownx.arithmatex:
-        generic: true
-    - toc:
-        permalink: true
-        title: On this page
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - attr_list
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+  - md_in_html
+  - pymdownx.arithmatex:
+      generic: true
+  - toc:
+      permalink: true
+      title: On this page
 
 
 extra_javascript:
-#    - https://polyfill.io/v3/polyfill.min.js?features=es6
-    - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+  #  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
