@@ -104,7 +104,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
             executor.shutdown();
             long totalExecutionTime = System.nanoTime() - startTime;
             EventPublisher.getInstance().publishEvent(new ExecutionEndedEvent(totalExecutionTime));
-            log.info("Total execution time: {} (s)", nanosToSecs(totalExecutionTime));
+            log.info("Total execution time: {} (s)", String.format("%.2f", nanosToSecs(totalExecutionTime)));
         }
     }
 
