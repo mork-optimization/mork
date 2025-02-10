@@ -38,6 +38,9 @@ public record WorkUnitResult<S extends Solution<S, I>, I extends Instance>(boole
     }
 
     public static <S extends Solution<S,I>, I extends Instance> Map<String, Object> computeSolutionProperties(S solution) {
+        if(solution == null){
+            return Map.of();
+        }
         var generators = solution.customProperties();
         if(generators == null || generators.isEmpty()){
             return Map.of();
