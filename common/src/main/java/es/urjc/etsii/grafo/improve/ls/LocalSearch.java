@@ -69,8 +69,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
         int rounds = 1;
         boolean improved = true;
         while (!TimeControl.isTimeUp() && improved) {
-            log.debug("Executing iteration {} for {}", rounds, this.getClass().getSimpleName());
-            improved = iteration(solution);
+            improved = iteration(rounds, solution);
             rounds++;
             if (rounds == WARN_LIMIT) {
                 log.warn("Localsearch method {} may be stuck in an infinite loop (warn at {})", this.getClass().getSimpleName(), WARN_LIMIT);
@@ -86,13 +85,14 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
      *
      * @return true if the solution has improved, false otherwise
      */
-    public boolean iteration(S solution) {
+    public boolean iteration(int rounds, S solution) {
         // Get next move to execute
         var move = getMove(solution);
         if (move == null) {
+            log.trace("Ending LS, no valid moves found in neighborhood");
             return false; // There are no valid moves in the neighborhood, end local search
         }
-
+        log.trace("Step {} executing: {}", rounds, move);
         // Execute move, save metric if improved, and ask for another iteration
         move.execute(solution);
         Metrics.addCurrentObjectives(solution);
