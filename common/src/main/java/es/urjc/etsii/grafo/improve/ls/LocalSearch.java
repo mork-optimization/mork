@@ -92,7 +92,9 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
             log.trace("Ending LS, no valid moves found in neighborhood");
             return false; // There are no valid moves in the neighborhood, end local search
         }
-        log.trace("Step {} executing: {}", rounds, move);
+        if(log.isTraceEnabled()){
+            log.trace("Step {}, current {}, executing: {}", rounds, this.objective.evalSol(solution), move);
+        }
         // Execute move, save metric if improved, and ask for another iteration
         move.execute(solution);
         Metrics.addCurrentObjectives(solution);
