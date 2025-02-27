@@ -86,7 +86,7 @@ targetRunnerParallel <- function(experiments, exec_target_runner, scenario, targ
   enc_cmdline <- base64encode(charToRaw(toJSON(experiments)))
   data <- paste0('{"config":"', enc_cmdline, '", "key":"', integration_key, '"}')
 
-  response <- POST(url, content_type_json(), body = data)
+  response <- POST(url, content_type_json(), timeout(24*3600), body = data)
   parsed_response <- content(response, as = "parsed")
   for (i in 1:length(parsed_response)) {
     if (parsed_response[[i]]$cost == "NaN") {
