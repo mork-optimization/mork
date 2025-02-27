@@ -107,6 +107,20 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * @param constructive  Constructive method
      * @param improver      List of improvers/local searches
      */
+    public VNS(String algorithmName, KMapper<S, I> kMapper, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
+        this(algorithmName, Context.getMainObjective(), kMapper, constructive, shake, improver);
+    }
+
+    /**
+     * Execute VNS until finished
+     *
+     * @param algorithmName Algorithm name, example: "VNSWithRandomConstructive"
+     * @param objective function to optimize
+     * @param kMapper       k value provider, @see VNS.KMapper
+     * @param shake         Perturbation method
+     * @param constructive  Constructive method
+     * @param improver      List of improvers/local searches
+     */
     public VNS(String algorithmName, Objective<?,S,I> objective, KMapper<S, I> kMapper, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
         super(algorithmName);
         this.objective = objective;
