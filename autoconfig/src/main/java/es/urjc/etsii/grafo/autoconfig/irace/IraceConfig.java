@@ -12,6 +12,7 @@ import org.springframework.context.annotation.Configuration;
 public class IraceConfig {
     private boolean enabled;
     private boolean shell;
+    private boolean auc = false;
 
     /**
      * Is irace enabled?
@@ -47,5 +48,21 @@ public class IraceConfig {
      */
     public void setShell(boolean shell) {
         this.shell = shell;
+    }
+
+    /**
+     * Decide if we should use the objective function directly or if we should calculate the AUC over the objective function
+     * @return trye if we should calculate the AUC, false to use the objective function applied to the solution
+     */
+    public boolean isAuc() {
+        return auc;
+    }
+
+    /**
+     * Decide if we should use the objective function directly or if we should calculate the AUC over the objective function
+     * @param auc true to calculate the AUC, false to use the objective function applied to the solution
+     */
+    public void setAuc(boolean auc) {
+        this.auc = auc;
     }
 }

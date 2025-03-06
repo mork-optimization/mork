@@ -74,6 +74,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public static final int MAX_HISTORIC_CONFIG_SIZE = 1_000;
 
 
+    private final IraceConfig iraceConfig;
     private final SolverConfig solverConfig;
     private final InstanceConfiguration instanceConfiguration;
     private final IraceIntegration iraceIntegration;
@@ -108,6 +109,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public IraceOrchestrator(
             SolverConfig solverConfig,
             BlockConfig blockConfig,
+            IraceConfig iraceConfig,
             ServerProperties serverProperties,
             InstanceConfiguration instanceConfiguration, IraceIntegration iraceIntegration,
             InstanceManager<I> instanceManager,
@@ -117,6 +119,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             AlgorithmCandidateGenerator algorithmCandidateGenerator
     ) {
         this.solverConfig = solverConfig;
+        this.iraceConfig = iraceConfig;
         Context.Configurator.setSolverConfig(solverConfig);
         Context.Configurator.setBlockConfig(blockConfig);
         this.instanceConfiguration = instanceConfiguration;
@@ -371,7 +374,15 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             }
 
         } else {
-            score = mainObj.evalSol(solution);
+            if(iraceConfig.isAuc()){
+                score = MetricUtil.areaUnderCurve(mainObj,
+                        TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
+                        TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
+                        solverConfig.isLogScaleArea()
+                );
+            } else {
+                score = mainObj.evalSol(solution);
+            }
         }
 
         if (Context.getMainObjective().getFMode() == FMode.MAXIMIZE) {
