@@ -9,6 +9,7 @@
 - (New) Two ParetoSet implementations are provided: a simple list based (should be correct, but slow) and a NDTree based implementation (should be fast, but may contain bugs).
 - (New) ValidationResult: allow accumulating errors.
 - (New) When we report an unhandled exception, filter some stackframes that are not relevant to the user code. Full stacktrace still logged at trace level.
+- (New) Add option to use AUC when using Irace in manual mode
 - (Breaking) Due to changes in how objectives are handled, ReferenceResult methods have been renamed for clarity.
 - (Breaking) Removed Improver::_improve, please implement Improver::improve directly instead. To migrate, just rename the method and make it public.
 - (Fix) Math.random, Collections.shuffle now blocked using AspectJ instead of reflection. --add-opens no longer necessary.
