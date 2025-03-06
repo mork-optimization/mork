@@ -4,6 +4,11 @@ if (!dir.exists(personal_lib_path)) {
 }
 .libPaths(personal_lib_path)
 
+if (!require(curl)) {
+  remotes::install_version("curl", version="5.2.3", lib=personal_lib_path, repos = "http://cran.us.r-project.org")
+  library(curl)
+}
+
 if (!require(remotes)) {
   install.packages("remotes", type = "source", repos = "http://cran.us.r-project.org")
   library(remotes)
