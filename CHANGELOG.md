@@ -11,6 +11,8 @@
 - (New) When we report an unhandled exception, filter some stackframes that are not relevant to the user code. Full stacktrace still logged at trace level.
 - (Breaking) Due to changes in how objectives are handled, ReferenceResult methods have been renamed for clarity.
 - (Breaking) Removed Improver::_improve, please implement Improver::improve directly instead. To migrate, just rename the method and make it public.
+- (Fix) Best solution per algorithm is not exported if repetitions = 1
+- (Fix) Best solution per instance is not exported if there is only one algorithm
 - (Fix) Math.random, Collections.shuffle now blocked using AspectJ instead of reflection. --add-opens no longer necessary.
 - (Fix) Add @JsonIgnore to instance in solution class already exists in getter, but serializer may be configured to use fields instead of methods.
 - (Fix) Gracefully handle experiment declarations with 0 algorithms.
