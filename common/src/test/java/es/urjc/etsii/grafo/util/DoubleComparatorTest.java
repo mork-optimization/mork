@@ -76,8 +76,8 @@ class DoubleComparatorTest {
         assertTrue(DoubleComparator.isGreater(-3.3, -4.4));
         assertFalse(DoubleComparator.isGreater(-4.4, -3.3));
         DoubleComparator.setPrecision(0.00000001);
-        assertTrue(DoubleComparator.isGreater(0.00000001, 0.0));
-        assertFalse(DoubleComparator.isGreater(-0.00000001, 0.0));
+        assertTrue(DoubleComparator.isGreater(0.0000001, 0.0));
+        assertFalse(DoubleComparator.isGreater(-0.0000001, 0.0));
     }
 
     @Test
@@ -85,13 +85,13 @@ class DoubleComparatorTest {
         assertTrue(DoubleComparator.isGreaterOrEquals(0.3, 0.2));
         assertTrue(DoubleComparator.isGreaterOrEquals(3, 2));
         assertTrue(DoubleComparator.isGreaterOrEquals(Double.MAX_VALUE, Double.MAX_VALUE));
-        assertTrue(DoubleComparator.isGreaterOrEquals(0.00000001, 0.0));
-        assertTrue(DoubleComparator.isGreaterOrEquals(-0.00000001, 0.0));
+        assertTrue(DoubleComparator.isGreaterOrEquals(1.00000001, 1.0));
+        assertTrue(DoubleComparator.isGreaterOrEquals(-1.00000001, -1.0));
         assertTrue(DoubleComparator.isGreaterOrEquals(-3.3, -4.4));
         assertFalse(DoubleComparator.isGreaterOrEquals(-4.4, -3.3));
         DoubleComparator.setPrecision(0.00000001);
-        assertTrue(DoubleComparator.isGreaterOrEquals(0.00000001, 0.0));
-        assertFalse(DoubleComparator.isGreaterOrEquals(-0.00000001, 0.0));
+        assertTrue(DoubleComparator.isGreaterOrEquals(3.00000001, 3.0));
+        assertFalse(DoubleComparator.isGreaterOrEquals(-3.00000001, 3.0));
     }
 
     @Test
@@ -99,13 +99,13 @@ class DoubleComparatorTest {
         assertFalse(DoubleComparator.isLess(0.3, 0.2));
         assertFalse(DoubleComparator.isLess(3, 2));
         assertFalse(DoubleComparator.isLess(Double.MAX_VALUE, Double.MAX_VALUE));
-        assertFalse(DoubleComparator.isLess(0.00000001, 0.0));
-        assertFalse(DoubleComparator.isLess(-0.00000001, 0.0));
+        assertFalse(DoubleComparator.isLess(1.00000001, 1.0));
+        assertFalse(DoubleComparator.isLess(-1.00000001, -1.0));
         assertFalse(DoubleComparator.isLess(-3.3, -4.4));
         assertTrue(DoubleComparator.isLess(-4.4, -3.3));
         DoubleComparator.setPrecision(0.00000001);
-        assertFalse(DoubleComparator.isLess(0.00000001, 0.0));
-        assertTrue(DoubleComparator.isLess(-0.00000001, 0.0));
+        assertFalse(DoubleComparator.isLess(3.0000001, 3.0));
+        assertTrue(DoubleComparator.isLess(-3.0000001, -3.0));
     }
 
     @Test
@@ -113,13 +113,13 @@ class DoubleComparatorTest {
         assertFalse(DoubleComparator.isLessOrEquals(0.3, 0.2));
         assertFalse(DoubleComparator.isLessOrEquals(3, 2));
         assertTrue(DoubleComparator.isLessOrEquals(Double.MAX_VALUE, Double.MAX_VALUE));
-        assertTrue(DoubleComparator.isLessOrEquals(0.00000001, 0.0));
-        assertTrue(DoubleComparator.isLessOrEquals(-0.00000001, 0.0));
+        assertTrue(DoubleComparator.isLessOrEquals(1.000000001, 1));
+        assertTrue(DoubleComparator.isLessOrEquals(-1.000000001, -1));
         assertFalse(DoubleComparator.isLessOrEquals(-3.3, -4.4));
         assertTrue(DoubleComparator.isLessOrEquals(-4.4, -3.3));
         DoubleComparator.setPrecision(0.00000001);
-        assertFalse(DoubleComparator.isLessOrEquals(0.00000001, 0.0));
-        assertTrue(DoubleComparator.isLessOrEquals(-0.00000001, 0.0));
+        assertFalse(DoubleComparator.isLessOrEquals(3.000001, 3.0));
+        assertTrue(DoubleComparator.isLessOrEquals(-3.000001, -3.0));
     }
 
     @Test
@@ -159,10 +159,9 @@ class DoubleComparatorTest {
     void withCustomPrecision() {
         assertFalse(DoubleComparator.equals(0.01, -0.01));
         assertFalse(DoubleComparator.isZero(0.05));
-        DoubleComparator.setPrecision(0.1);
+        DoubleComparator.setPrecision(10);
         assertTrue(DoubleComparator.equals(0.01, -0.01));
         assertTrue(DoubleComparator.isZero(0.05));
-        DoubleComparator.setPrecision(DoubleComparator.DEFAULT_EPSILON);
     }
 
     @Test
@@ -172,7 +171,7 @@ class DoubleComparatorTest {
         assertTrue(DoubleComparator.equals(6, 6));
 
         // Precision cases
-        assertFalse(DoubleComparator.equals(1.00001, 0.99999));
+        assertFalse(DoubleComparator.equals(1.0001, 0.9999));
         assertTrue(DoubleComparator.equals(1.00000000001, 0.99999999999));
 
         // Tricky cases

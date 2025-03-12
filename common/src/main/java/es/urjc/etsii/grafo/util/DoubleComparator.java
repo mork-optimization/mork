@@ -49,8 +49,17 @@ public class DoubleComparator {
      * @return True, if the difference between them is less than the error margin, false otherwise
      */
     public static boolean equals(double d1, double d2, double eps) {
+        if(d1 == 0 && d2 == 0){
+            return true;
+        }
         if (Double.isFinite(d1) && Double.isFinite(d2)) {
-            return Math.abs(d1 - d2) - eps < 0;
+            var absoluteChange = Math.abs(d1 - d2);
+            if(absoluteChange <= eps){
+                return true;
+            }
+            var avg = (Math.abs(d1) + Math.abs(d2)) / 2;
+            var relativeChange = absoluteChange / avg;
+            return relativeChange < eps;
         } else {
             return Double.compare(d1, d2) == 0;
         }
@@ -159,7 +168,7 @@ public class DoubleComparator {
      * @return true if d1 &gt; d2, false otherwise
      */
     public static boolean isGreater(double d1, double d2) {
-        return isPositive(d1 - d2);
+        return comparator(d1, d2, epsilon) > 0;
     }
 
     /**
@@ -170,7 +179,7 @@ public class DoubleComparator {
      * @return true if d1 &gt;= d2, false otherwise
      */
     public static boolean isGreaterOrEquals(double d1, double d2) {
-        return isPositiveOrZero(d1 - d2);
+        return comparator(d1, d2, epsilon) >= 0;
     }
 
     /**
@@ -181,7 +190,7 @@ public class DoubleComparator {
      * @return true if d1 &gt; d2, false otherwise
      */
     public static boolean isLess(double d1, double d2) {
-        return isNegative(d1 - d2);
+        return comparator(d1, d2, epsilon) < 0;
     }
 
     /**
@@ -192,6 +201,6 @@ public class DoubleComparator {
      * @return true if d1 &lt;= d2, false otherwise
      */
     public static boolean isLessOrEquals(double d1, double d2) {
-        return isNegativeOrZero(d1 - d2);
+        return comparator(d1, d2, epsilon) <= 0;
     }
 }
