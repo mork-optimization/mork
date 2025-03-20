@@ -90,11 +90,14 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                         }
                     }
                     assert algorithmBest != null;
-                    exportAlgorithmInstanceSolution(algorithmBest);
-                    events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                    if(solverConfig.getRepetitions() > 1){
+                        exportAlgorithmInstanceSolution(algorithmBest);
+                    }                    events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
                 }
                 assert instanceBest != null;
-                exportInstanceSolution(instanceBest);
+                if(algorithms.size() > 1){
+                    exportInstanceSolution(instanceBest);
+                }
                 long totalInstanceTime = System.nanoTime() - instanceStartTime;
                 events.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
             }
