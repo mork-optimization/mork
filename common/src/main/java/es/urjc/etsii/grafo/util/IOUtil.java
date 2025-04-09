@@ -101,15 +101,16 @@ public class IOUtil {
      * @param path   path to resource
      * @param target where to copy the resource
      * @param isJar  true if the resource is inside a JAR file, false otherwise
-     * @throws java.io.IOException if anything goes wrong
      */
-    public static void extractResource(String path, String target, boolean isJar, boolean autodelete) throws IOException {
+    public static void extractResource(String path, String target, boolean isJar, boolean autodelete) {
         Path pTarget;
         try (var inStream = isJar ?
                 IOUtil.class.getResourceAsStream("/BOOT-INF/classes/" + path) :
                 Files.newInputStream(new File("src/main/resources/", path).toPath())) {
             pTarget = Path.of(target);
             Files.write(pTarget, inStream.readAllBytes());
+        } catch (IOException e){
+            throw new RuntimeException(e);
         }
         if (autodelete) {
             pTarget.toFile().deleteOnExit();
