@@ -121,8 +121,8 @@ public class GraspBuilder<M extends Move<S, I>, S extends Solution<S, I>, I exte
      * @param graspListManager GRASP list manager instance
      * @return same builder with its config changed
      */
-    public GraspBuilder<M, S, I> withListManager(GRASPListManager<M, S, I> graspListManager) {
-        this.candidateListManager = Objects.requireNonNull(graspListManager);
+    public GraspBuilder<M, S, I> withListManager(GRASPListManager<? extends M, S, I> graspListManager) {
+        this.candidateListManager = (GRASPListManager<M, S, I>) Objects.requireNonNull(graspListManager);
         return this;
     }
 
