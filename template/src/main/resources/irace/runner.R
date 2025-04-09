@@ -2,7 +2,7 @@ personal_lib_path <- Sys.getenv("R_LIBS_USER")
 if (!dir.exists(personal_lib_path)) {
   dir.create(personal_lib_path, recursive = TRUE)
 }
-.libPaths(personal_lib_path)
+.libPaths(personal_lib_path, .libPaths())
 
 if (!require(curl)) {
   remotes::install_version("curl", version="5.2.3", lib=personal_lib_path, repos = "http://cran.us.r-project.org")
@@ -10,12 +10,11 @@ if (!require(curl)) {
 }
 
 if (!require(remotes)) {
-  install.packages("remotes", type = "source", repos = "http://cran.us.r-project.org")
+  install.packages("remotes", type = "source", lib=personal_lib_path, repos = "http://cran.us.r-project.org")
   library(remotes)
 }
 
 if (!require(irace)) {
-  # install.packages("irace", type = "source", repos = "http://cran.us.r-project.org")
   remotes::install_github("mork-optimization/irace", upgrade=FALSE)
   library(irace)
 }
@@ -26,17 +25,17 @@ if(!require(iraceplot)){
 }
 
 if (!require(httr)) {
-  install.packages("httr", type = "source", repos = "http://cran.us.r-project.org")
+  install.packages("httr", type = "source", lib=personal_lib_path, repos = "http://cran.us.r-project.org")
   library(httr)
 }
 
 if (!require(rjson)) {
-  install.packages("rjson", type = "source", repos = "http://cran.us.r-project.org")
+  install.packages("rjson", type = "source", lib=personal_lib_path, repos = "http://cran.us.r-project.org")
   library(rjson)
 }
 
 if (!require(base64enc)) {
-  install.packages("base64enc", type = "source", repos = "http://cran.us.r-project.org")
+  install.packages("base64enc", type = "source", lib=personal_lib_path, repos = "http://cran.us.r-project.org")
   library(base64enc)
 }
 
