@@ -48,7 +48,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jackson.version>2.18.1</jackson.version>
         <springboot.version>3.4.0</springboot.version>
-        <mockito.version>5.14.1</mockito.version>
+        <mockito.version>5.17.0</mockito.version>
         <byte-buddy.version>1.15.10</byte-buddy.version>
         <msurefire.version>3.5.1</msurefire.version>
         <mcompiler.version>3.13.0</mcompiler.version>
@@ -204,10 +204,21 @@
         <plugins>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-dependency-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>properties</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>${msurefire.version}</version>
                 <configuration>
-                    <argLine>${argLine}</argLine>
+                    <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
                 </configuration>
             </plugin>
             <plugin>
