@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.events.EventPublisher;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.orchestrator.InstanceSelector;
 import es.urjc.etsii.grafo.testutil.TestInstance;
+import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -23,8 +24,19 @@ import static org.junit.jupiter.api.Assertions.*;
 class InstanceSelectorTest {
 
     @BeforeAll
-    public static void resetProps(){
+    public static void resetProps() throws IOException {
         TestInstance.resetProperties();
+        FileUtils.copyDirectory(new File("../core/src/test/resources/instances"), new File("src/test/resources/instances"));
+        FileUtils.copyDirectory(new File("../template/src/main/resources/instance-selector"), new File("src/main/resources/instance-selector"));
+    }
+
+    @AfterAll
+    public static void deleteTempFiles(){
+        try {
+            new File(InstanceSelector.DEFAULT_OUTPUT_PATH).delete();
+            FileUtils.deleteDirectory(new File("src/test/resources/instances"));
+            FileUtils.deleteDirectory(new File("src/main/resources/instance-selector"));
+        } catch (Exception ignored){}
     }
 
     @Test
@@ -48,12 +60,5 @@ class InstanceSelectorTest {
         assertArrayEquals(new String[]{"instanceD.txt", "4.0", "0.0", "918624.0","0.0"}, lines.get(4).split(","));
         assertArrayEquals(new String[]{"instanceE.txt", "5.0", "0.1123", "-123.0","-121111.0"}, lines.get(5).split(","));
         assertArrayEquals(new String[]{"instanceF.txt", "6.0", "0.1123", "-123.0","-121111.0"}, lines.get(6).split(","));
-    }
-
-    @AfterAll
-    public static void deleteTempFiles(){
-        try {
-            new File(InstanceSelector.DEFAULT_OUTPUT_PATH).delete();
-        } catch (Exception ignored){}
     }
 }
