@@ -19,7 +19,8 @@ jobs:
         with:
           install-pandoc: 'TRUE'
           pandoc-version: '3.5'
-          upgrade: 'TRUE'
+          upgrade: 'FALSE'
+          cache: 'always'
           packages: |
             any::httr
             any::rjson
