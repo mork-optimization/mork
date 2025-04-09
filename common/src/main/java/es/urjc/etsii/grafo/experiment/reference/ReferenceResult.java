@@ -165,6 +165,22 @@ public class ReferenceResult {
     public void setOptimalValue(boolean isOptimal) {
         isOptimalValue = isOptimal;
     }
+
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        for(var e: scores.entrySet()){
+            sb.append(e.getKey()).append("=").append(e.getValue()).append(", ");
+        }
+        if(Double.isFinite(timeInSeconds)){
+            sb.append("t(s)=").append(timeInSeconds).append(", ");
+        }
+        if(Double.isFinite(timeToBestInSeconds)){
+            sb.append("ttb(s)=").append(timeToBestInSeconds).append(", ");
+        }
+        sb.append("optimal=").append(isOptimalValue);
+        return sb.toString();
+    }
 }
 
 
