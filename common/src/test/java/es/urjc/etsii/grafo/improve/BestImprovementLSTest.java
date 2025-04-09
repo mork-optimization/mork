@@ -3,15 +3,21 @@ package es.urjc.etsii.grafo.improve;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.improve.ls.LocalSearchBestImprovement;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.ArrayUtil;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 class BestImprovementLSTest extends BaseLSTest {
+    @BeforeAll
+    public static void init(){
+        Metrics.disableMetrics();
+    }
 
     @Test
     void testOrderMinimizing(){

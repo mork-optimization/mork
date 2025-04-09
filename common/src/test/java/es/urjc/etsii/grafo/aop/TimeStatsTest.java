@@ -10,6 +10,7 @@ import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeStatsEvent;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -18,13 +19,18 @@ import java.util.stream.Collectors;
 
 public class TimeStatsTest {
 
-    @Test
-    void testTimedAlgorithm() {
+    @BeforeEach
+    void setUp() {
         Metrics.enableMetrics();
         Metrics.resetMetrics();
+        Context.Configurator.getAndResetTimeEvents();
+    }
+
+    @Test
+    void testTimedAlgorithm() {
         Context.Configurator.setObjectives(Objective.ofMinimizing("DefaultMinimize", TestSolution::getScore, TestMove::getScoreChange));
         Metrics.register("DefaultMinimize", ref -> new DeclaredObjective("DefaultMinimize", FMode.MINIMIZE, ref));
-        // total time is algoritm + constructive + 2 * local search
+        // total time is algorithm + constructive + 2 * local search
         var alg = new TimedAlgorithm(3, 5, 1);
         var testInstance = new TestInstance("Test");
         long start = System.nanoTime();
