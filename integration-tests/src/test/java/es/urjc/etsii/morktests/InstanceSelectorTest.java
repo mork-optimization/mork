@@ -1,15 +1,16 @@
-package es.urjc.etsii.grafo.orchestrator;
+package es.urjc.etsii.morktests;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.events.EventPublisher;
 import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.orchestrator.InstanceSelector;
 import es.urjc.etsii.grafo.testutil.TestInstance;
-import es.urjc.etsii.grafo.testutil.TestInstanceImporter;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.context.ApplicationEventPublisher;
+import testutils.TestInstanceImporter2;
 
 import java.io.File;
 import java.io.IOException;
@@ -30,7 +31,7 @@ class InstanceSelectorTest {
     public void checkCSV() throws IOException {
         var config = new InstanceConfiguration();
         config.setPath(Map.of("default", "src/test/resources/instances"));
-        var instanceManager = new InstanceManager<>(config, new TestInstanceImporter());
+        var instanceManager = new InstanceManager<>(config, new TestInstanceImporter2());
         var eventMock = Mockito.mock(ApplicationEventPublisher.class);
         new EventPublisher(eventMock);
         var selector = new InstanceSelector<>(instanceManager, config); // The Python part is not actually tested!
