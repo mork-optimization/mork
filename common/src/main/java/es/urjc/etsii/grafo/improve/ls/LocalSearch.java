@@ -85,7 +85,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
      *
      * @return true if the solution has improved, false otherwise
      */
-    public boolean iteration(int rounds, S solution) {
+    public boolean iteration(int round, S solution) {
         // Get next move to execute
         var move = getMove(solution);
         if (move == null) {
@@ -93,7 +93,7 @@ public abstract class LocalSearch<M extends Move<S, I>, S extends Solution<S, I>
             return false; // There are no valid moves in the neighborhood, end local search
         }
         if(log.isTraceEnabled()){
-            log.trace("Step {}, current {}, executing: {}", rounds, this.objective.evalSol(solution), move);
+            log.trace("Step {}, current {}, executing: {}", round, this.objective.evalSol(solution), move);
         }
         // Execute move, save metric if improved, and ask for another iteration
         move.execute(solution);

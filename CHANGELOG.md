@@ -10,6 +10,7 @@
 - (New) ValidationResult: allow accumulating errors.
 - (New) PythonUtil: easily run Python commands inside a virtual environment
 - (New) When we report an unhandled exception, filter some stackframes that are not relevant to the user code. Full stacktrace still logged at trace level.
+- (New) Add option to use AUC when using Irace in manual mode
 - (Breaking) Due to changes in how objectives are handled, ReferenceResult methods have been renamed for clarity.
 - (Breaking) Removed Improver::_improve, please implement Improver::improve directly instead. To migrate, just rename the method and make it public.
 - (Breaking) DoubleComparator epsilon is now relative to the values being compared, not an absolute value.
