@@ -35,10 +35,9 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
 
 
     /**
-     * Generate initial candidate list. The list will be sorted if necessary by the constructive method.
-     *
+     * Generate initial candidate list.
      * @param solution Current solution
-     * @return a candidate list
+     * @return an UNSORTED candidate list
      */
     public abstract List<M> buildInitialCandidateList(S solution);
 

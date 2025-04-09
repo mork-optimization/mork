@@ -11,16 +11,16 @@ import java.util.List;
 public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.__RNAME__GRASPMove, __RNAME__Solution, __RNAME__Instance> {
 
     /**
-     * Generate initial candidate list. The list will be sorted if necessary by the constructive method.
+     * Generate initial candidate list.
      * @param solution Current solution
-     * @return a candidate list
+     * @return an UNSORTED candidate list
      */
     @Override
     public List<__RNAME__GRASPMove> buildInitialCandidateList(__RNAME__Solution solution) {
         var list = new ArrayList<__RNAME__GRASPMove>();
 
         // TODO Generate a list with all valid movements for current solution
-        // GRASP ends when CL is empty
+        // GRASP constructive ends when CL is empty
 
         return list;
     }
@@ -35,9 +35,9 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
      */
     @Override
     public List<__RNAME__GRASPMove> updateCandidateList(__RNAME__Solution solution, __RNAME__GRASPMove move, List<__RNAME__GRASPMove> candidateList, int index) {
-        // List can be partially updated / modified
-        // recalculating from scratch is an ok start and can be optimized later if necessary
-        // Do not prematurely micro optimize, split the code in small methods and profile first
+        // List can be partially updated / modified if required for performance
+        // Recalculating from scratch is OK and can be optimized later if necessary
+        // Do NOT prematurely optimize, split the code in small methods and profile first to see if this is necessary
         return buildInitialCandidateList(solution);
     }
 
@@ -52,8 +52,7 @@ public class __RNAME__ListManager extends GRASPListManager<__RNAME__ListManager.
             // Return the modified solutions.
             // It is up to the implementation to decide if the original solution is modified
             // in place or a new one is created by cloning the original solution and then applying the changes.
-            // This method should be idempotent, i.e. calling it multiple times with the same solution
-            // should return the same result
+            // NOTE: Calling this method multiple times with a solution and its clones must return the same result
             throw new UnsupportedOperationException("_execute() in __RNAME__ListManager not implemented yet");
         }
 
