@@ -3,41 +3,41 @@
     <modelVersion>4.0.0</modelVersion>
 
     <artifactId>aggregate-report</artifactId>
-    <version>0.21-SNAPSHOT</version>
+    <version>0.21</version>
     <name>Aggregate Reports</name>
     <description>Aggregates all coverage reports generated in each module by JaCoCo</description>
 
     <parent>
         <artifactId>mork-parent</artifactId>
         <groupId>es.urjc.etsii.grafo</groupId>
-        <version>0.21-SNAPSHOT</version>
+        <version>0.21</version>
     </parent>
 
     <dependencies>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>autoconfig</artifactId>
-            <version>0.21-SNAPSHOT</version>
+            <version>0.21</version>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork-common</artifactId>
-            <version>0.21-SNAPSHOT</version>
+            <version>0.21</version>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork</artifactId>
-            <version>0.21-SNAPSHOT</version>
+            <version>0.21</version>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>TSP</artifactId>
-            <version>0.21-SNAPSHOT</version>
+            <version>0.21</version>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>integration-tests</artifactId>
-            <version>0.21-SNAPSHOT</version>
+            <version>0.21</version>
         </dependency>
     </dependencies>
 
