@@ -1,4 +1,7 @@
 # Developing
+Stay tuned!
+
+# v0.21
 - (New) Objective class: a class that represents an objective function of a problem. Each Objective has a name, a direction (minimize or maximize), and functions for extracting the value of the objective from Moves and from Solutions. See docs for a detailed description.
 - (New) Util methods: CollectionUtil::getBest(Iterable,ToDoubleFunction), ArrayUtil::stats(double[]), ArrayUtil::stats(int[]), ArrayUtil::stats(long[]), ReferenceResult::setScore(String, double)
 - (New) Validator methods: getFailCount, getReasonsFailed
