@@ -73,4 +73,15 @@ public class IraceExecuteConfig {
         this.switches = switches;
     }
 
+    @Override
+    public String toString() {
+        return "IraceExecuteConfig{" +
+                "name='" + name + '\'' +
+                ", instanceId=" + instanceId +
+                ", instance='" + instance + '\'' +
+                ", seed=" + seed +
+                ", configuration=" + configuration +
+                ", switches=" + switches +
+                '}';
+    }
 }
