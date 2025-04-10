@@ -60,5 +60,7 @@ class InstanceSelectorTest {
         assertArrayEquals(new String[]{"instanceD.txt", "4.0", "0.0", "918624.0","0.0"}, lines.get(4).split(","));
         assertArrayEquals(new String[]{"instanceE.txt", "5.0", "0.1123", "-123.0","-121111.0"}, lines.get(5).split(","));
         assertArrayEquals(new String[]{"instanceF.txt", "6.0", "0.1123", "-123.0","-121111.0"}, lines.get(6).split(","));
+        assertArrayEquals(new String[]{"instanceF2.txt", "6.0", "0.1123", "-123.0","-121111.0"}, lines.get(6).split(","));
+        assertArrayEquals(new String[]{"instanceF3.txt", "6.0", "0.1123", "-123.0","-121111.0"}, lines.get(6).split(","));
     }
 }
