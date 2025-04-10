@@ -20,9 +20,6 @@ public class IraceExecuteConfig {
     @JsonProperty("configuration")
     private Map<String, Object> configuration;
 
-    @JsonProperty("switches")
-    private Map<String, String> switches;
-
     protected IraceExecuteConfig() {}
 
     public String getName() {
@@ -65,14 +62,6 @@ public class IraceExecuteConfig {
         this.configuration = configuration;
     }
 
-    public Map<String, String> getSwitches() {
-        return switches;
-    }
-
-    public void setSwitches(Map<String, String> switches) {
-        this.switches = switches;
-    }
-
     @Override
     public String toString() {
         return "IraceExecuteConfig{" +
@@ -81,7 +70,6 @@ public class IraceExecuteConfig {
                 ", instance='" + instance + '\'' +
                 ", seed=" + seed +
                 ", configuration=" + configuration +
-                ", switches=" + switches +
                 '}';
     }
 }

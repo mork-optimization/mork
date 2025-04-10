@@ -24,16 +24,11 @@ public class IraceUtil {
     }
 
     public static IraceRuntimeConfiguration toIraceRuntimeConfig(IraceExecuteConfig config) {
-        var paramNames = config.getSwitches();
         var paramValues = config.getConfiguration();
-        if(paramNames.size() != paramValues.size()){
-            throw new IllegalArgumentException("Number of parameters and values must be the same");
-        }
-        var algParams = new ArrayList<String>(paramNames.size());
-        for(var e: paramNames.entrySet()){
-            var k = e.getKey();
-            var paramName = e.getValue();
-            var paramValue = paramValues.get(k);
+        var algParams = new ArrayList<String>(paramValues.size());
+        for(var e: paramValues.entrySet()){
+            var paramName = e.getKey() + "=";
+            var paramValue = e.getValue();
             if(!paramValue.equals("NA")){
                 algParams.add(paramName + paramValue);
             }
