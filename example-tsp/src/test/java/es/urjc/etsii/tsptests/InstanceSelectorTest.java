@@ -1,8 +1,10 @@
 package es.urjc.etsii.tsptests;
 
+import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPInstanceImporter;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.events.EventPublisher;
+import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.orchestrator.InstanceSelector;
 import es.urjc.etsii.grafo.testutil.TestInstance;
@@ -24,13 +26,13 @@ class InstanceSelectorTest {
 
     private final String instancePath = "instances/TSPLIB/instances";
     @BeforeAll
-    public static void resetProps() throws IOException {
+    static void resetProps() throws IOException {
         TestInstance.resetProperties();
         FileUtils.copyDirectory(new File("../template/src/main/resources/instance-selector"), new File("src/main/resources/instance-selector"));
     }
 
     @Test
-    public void checkCSV() throws IOException {
+    void checkCSV() throws IOException {
         Path tmpFolder = Files.createTempDirectory("checkCSVTest");
         var tmpFolderF = tmpFolder.toFile();
         tmpFolderF.deleteOnExit();
@@ -61,11 +63,11 @@ class InstanceSelectorTest {
         assertTrue(f.isFile());
         var lines = Files.readAllLines(p);
         assertEquals(nInstances, lines.size()-1); // header in csv
-        var header = lines.get(0);
-        assertTrue(header.contains("avgDist"));
-        assertTrue(header.contains("stdDist"));
-        assertTrue(header.contains("maxDist"));
-        assertTrue(header.contains("cities"));
+        var header = lines.getFirst();
+        for(var prop: TSPInstance.getUniquePropertiesKeys()){
+            if(prop.equals(Instance.LOAD_TIME_NANOS)) continue;
+            assertTrue(header.contains(prop), "Property " + prop + " not found in CSV header");
+        }
     }
 
     private void verifyPrelimPath(File tmpFolderF, long nInstancesToPick) {
