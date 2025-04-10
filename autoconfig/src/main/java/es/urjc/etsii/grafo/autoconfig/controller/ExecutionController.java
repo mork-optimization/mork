@@ -56,7 +56,7 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
      */
     @PostMapping("/execute")
     public ResponseEntity<String> execute(@RequestBody ExecuteRequest request) {
-        log.trace("Execute request: {}", request);
+        log.info("Execute request: {}", request);
         var decoded = validateAndPrepare(request, this.orquestrator.getIntegrationKey());
         var config = IraceUtil.toIraceRuntimeConfig(decoded);
         var result = this.orquestrator.iraceSingleCallback(config);
@@ -71,7 +71,7 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
      */
     @PostMapping("/batchExecute")
     public ResponseEntity<List<ExecuteResponse>> batchExecute(@RequestBody ExecuteRequest request) throws JsonProcessingException {
-        log.trace("Batch execute request: {}", request);
+        log.info("Batch execute request: {}", request);
         var decoded = validateAndPrepare(request, this.orquestrator.getIntegrationKey());
         List<IraceExecuteConfig> configs = json.readValue(decoded, new TypeReference<>() {});
         var results = this.orquestrator.iraceMultiCallback(configs);
