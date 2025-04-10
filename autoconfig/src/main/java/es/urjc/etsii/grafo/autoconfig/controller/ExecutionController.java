@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import javax.ws.rs.ServerErrorException;
+import javax.ws.rs.core.Response;
 import java.util.List;
 
 import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
@@ -64,7 +66,7 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
             return ResponseEntity.ok(result.toIraceResultString());
         } catch (Exception e) {
             log.error("Error executing single request. Raw request: {}", decoded);
-            throw new RuntimeException(e);
+            throw new ServerErrorException(Response.Status.INTERNAL_SERVER_ERROR, e);
         }
     }
 
@@ -84,7 +86,7 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
             return ResponseEntity.ok(results);
         } catch (Exception e){
             log.error("Error executing batch request: {}, raw data: {}", configs, decoded);
-            throw new RuntimeException(e);
+            throw new ServerErrorException(Response.Status.INTERNAL_SERVER_ERROR, e);
         }
     }
 
