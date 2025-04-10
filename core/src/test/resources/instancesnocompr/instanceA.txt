@@ -1,5 +1,0 @@
-size,100
-ble,-7.1
-ignore,ignored
-awesomeness,1
-random,346

@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.TSP.model;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.util.ArrayUtil;
 
 public class TSPInstance extends Instance {
 
@@ -25,6 +26,11 @@ public class TSPInstance extends Instance {
         super(name);
         this.locations = locations;
         this.distances = distances;
+        setProperty("cities", locations.length);
+        var stats = ArrayUtil.stats(ArrayUtil.flatten(distances));
+        setProperty("avgDist", stats.avg());
+        setProperty("maxDist", stats.max());
+        setProperty("stdDist", stats.std());
     }
 
 
