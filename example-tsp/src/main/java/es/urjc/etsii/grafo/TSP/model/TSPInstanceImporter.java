@@ -12,12 +12,12 @@ public class TSPInstanceImporter extends InstanceImporter<TSPInstance> {
     @Override
     public TSPInstance importInstance(BufferedReader reader, String filename) throws IOException {
         Scanner sc = new Scanner(reader).useLocale(Locale.US);
-//        String name = sc.nextLine().split(":")[1].trim();
-//        String type = sc.nextLine().split(":")[1];
-//        String comment = sc.nextLine().split(":")[1];
+        String name = sc.nextLine().split(":")[1].trim();
+        String type = sc.nextLine().split(":")[1];
+        String comment = sc.nextLine().split(":")[1];
         int dimension = Integer.parseInt(sc.nextLine().split(":")[1].trim());
-//        String edgeWeightType = sc.nextLine().split(":")[1];
-//        String nodeCoordSection = sc.nextLine();
+        String edgeWeightType = sc.nextLine().split(":")[1];
+        String nodeCoordSection = sc.nextLine();
         TSPInstance.Coordinate[] locations = new TSPInstance.Coordinate[dimension];
         while (!sc.hasNext("EOF")) {
             int id = sc.nextInt() - 1;
