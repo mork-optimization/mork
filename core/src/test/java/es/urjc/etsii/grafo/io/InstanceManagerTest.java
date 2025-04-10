@@ -149,7 +149,7 @@ class InstanceManagerTest {
 
     @Test
     void validateNoCompression(){
-        var path = "src/test/resources/instances";
+        var path = "src/test/resources/instancesnocompr";
         var manager = buildManager(false, path, new TestInstanceImporter());
         var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
         assertEquals(6, instances.size());
