@@ -26,7 +26,7 @@ public class TSPInstanceImporter extends InstanceImporter<TSPInstance> {
             locations[id] = new TSPInstance.Coordinate(x, y);
         }
         double[][] distances = getMatrixOfDistances(locations);
-        return new TSPInstance(name, locations, distances);
+        return new TSPInstance(filename, locations, distances);
     }
 
 
