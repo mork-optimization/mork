@@ -56,11 +56,16 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
      */
     @PostMapping("/execute")
     public ResponseEntity<String> execute(@RequestBody ExecuteRequest request) {
-        log.info("Execute request: {}", request);
+        log.trace("Execute request: {}", request);
         var decoded = validateAndPrepare(request, this.orquestrator.getIntegrationKey());
-        var config = IraceUtil.toIraceRuntimeConfig(decoded);
-        var result = this.orquestrator.iraceSingleCallback(config);
-        return ResponseEntity.ok(result.toIraceResultString());
+        try {
+            var config = IraceUtil.toIraceRuntimeConfig(decoded);
+            var result = this.orquestrator.iraceSingleCallback(config);
+            return ResponseEntity.ok(result.toIraceResultString());
+        } catch (Exception e) {
+            log.error("Error executing single request. Raw request: {}", decoded);
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -71,11 +76,16 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
      */
     @PostMapping("/batchExecute")
     public ResponseEntity<List<ExecuteResponse>> batchExecute(@RequestBody ExecuteRequest request) throws JsonProcessingException {
-        log.info("Batch execute request: {}", request);
+        log.trace("Batch execute request: {}", request);
         var decoded = validateAndPrepare(request, this.orquestrator.getIntegrationKey());
         List<IraceExecuteConfig> configs = json.readValue(decoded, new TypeReference<>() {});
-        var results = this.orquestrator.iraceMultiCallback(configs);
-        return ResponseEntity.ok(results);
+        try {
+            var results = this.orquestrator.iraceMultiCallback(configs);
+            return ResponseEntity.ok(results);
+        } catch (Exception e){
+            log.error("Error executing batch request: {}, raw data: {}", configs, decoded);
+            throw new RuntimeException(e);
+        }
     }
 
     public static String validateAndPrepare(ExecuteRequest request, String integrationKey) {
