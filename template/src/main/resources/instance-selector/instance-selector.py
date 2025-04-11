@@ -38,7 +38,7 @@ def load_df(path: str) -> DataFrame:
 
 
 def prepare_df(df: DataFrame) -> DataFrame:
-    cloned = df.drop(["id"], axis=1)
+    cloned = df.drop(["id", "path"], axis=1)
     cloned = pd.DataFrame(preprocessing.scale(cloned), columns=cloned.columns)
     return cloned
 
@@ -157,15 +157,21 @@ def select_instances(original_df: DataFrame, filtered_df: DataFrame, kmeans: KMe
     return preliminary_instances
 
 
-def cp_instances(chosen_instances: list[str], instance_folder: str, output_folder: str):
-    preliminary_instance_path = join(output_folder, "instances")
-    os.mkdir(preliminary_instance_path)
-    for i in chosen_instances:
-        src = join(instance_folder, i)
-        dst = join(output_folder, "instances", i)
-        shutil.copyfile(src, dst)
+def cp_instances(original_df: DataFrame, chosen_instances: list[str], output_folder: str):
+    try:
+        preliminary_instance_path = join(output_folder, "instances")
+        os.mkdir(preliminary_instance_path)
+        for i in chosen_instances:
+            instance_path = original_df.loc[original_df["id"] == i]["path"].values[0]
+            dst = join(output_folder, "instances", i)
+            if not os.path.exists(os.path.dirname(dst)):
+                os.makedirs(os.path.dirname(dst))
+            print(f"Copying {instance_path} to {dst}")
+            shutil.copyfile(instance_path, dst)
+        print('Chosen instances have been copied to ', preliminary_instance_path)
+    except e:
+        print("Error copying preliminary instances, copy them manually: ", e)
 
-    print('Chosen instances have been copied to ', preliminary_instance_path)
 
 
 def main():
@@ -173,7 +179,6 @@ def main():
         description='Creates a set of instances to use during the experimentation',
         epilog='Created by for the DRFLP project, if useful for your research consider citing the original work: https://doi.org/10.1162/evco_a_00317')
     parser.add_argument('-p', '--properties', required=False, default="instance_properties.csv", help="CSV Input file containing instance properties.")
-    parser.add_argument('-i', '--instances', required=False, default="instances", help="Path to instance folder.")
     parser.add_argument('-o', '--output', required=False, default="output", help="Path to output folder.")
     parser.add_argument('-s', '--size', required=False, default=0.15,
                         help="Relative size of preliminary set. 0.15 means that 15% of instances will be selected.")
@@ -213,7 +218,7 @@ def main():
          - Number of clusters: {n_clusters}
          - Selected instances: {chosen_instances}
         """)
-    cp_instances(chosen_instances, args.instances, args.output)
+    cp_instances(original_df, chosen_instances, args.output)
     print(f"All done, bye!")
 
 

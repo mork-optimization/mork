@@ -240,4 +240,17 @@ public class IOUtil {
 
         return archiver.getEntryInputStream(archivePath, entryPath);
     }
+
+    public static String relativizePath(String path){
+        try {
+            String currentPath =  new File(".").getCanonicalPath();
+            if (path.startsWith(currentPath)) {
+                return path.substring(currentPath.length() + 1);
+            } else {
+                return path;
+            }
+        } catch (IOException e){
+            throw new RuntimeException(e);
+        }
+    }
 }

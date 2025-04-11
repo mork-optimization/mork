@@ -1,5 +1,6 @@
 # Developing
-Stay tuned!
+- (Fix) Irace integration with v4.2
+- (Fix) #228: Instance selector failed to copy instances if they were not in the root instance folder
 
 # v0.21
 - (New) Objective class: a class that represents an objective function of a problem. Each Objective has a name, a direction (minimize or maximize), and functions for extracting the value of the objective from Moves and from Solutions. See docs for a detailed description.

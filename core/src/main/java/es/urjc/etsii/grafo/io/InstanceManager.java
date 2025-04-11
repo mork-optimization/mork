@@ -203,7 +203,8 @@ public class InstanceManager<I extends Instance> {
         for(var e: instance.customProperties().entrySet()){
             instance.setProperty(e.getKey(), e.getValue());
         }
-        instance.setPath(path);
+
+        instance.setPath(IOUtil.relativizePath(path));
 
         this.cacheByPath.put(path, new SoftReference<>(instance));
         return instance;
