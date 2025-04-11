@@ -90,9 +90,10 @@ public class InstanceProperties<I extends Instance> extends AbstractOrchestrator
                 var properties = filterProperties(instance);
                 if (instanceProperties == null) {
                     nProperties = properties.size();
-                    instanceProperties = new Object[instanceIDs.size() + 1][nProperties + 1]; // +1 for title row and instance name
+                    instanceProperties = new Object[instanceIDs.size() + 1][nProperties + 2]; // +1 for title row, +2 for instance id and path
                     instanceProperties[0][0] = "id";
-                    int idx = 1;
+                    instanceProperties[0][1] = "path";
+                    int idx = 2;
                     for (var k : properties.keySet()) {
                         instanceProperties[0][idx++] = k;
                     }
@@ -102,7 +103,8 @@ public class InstanceProperties<I extends Instance> extends AbstractOrchestrator
                     }
                 }
                 instanceProperties[row + 1][0] = instance.getId();
-                for (int i = 1; i < instanceProperties[0].length; i++) {
+                instanceProperties[row + 1][1] = instance.getPath();
+                for (int i = 2; i < instanceProperties[0].length; i++) {
                     instanceProperties[row + 1][i] = properties.get((String) instanceProperties[0][i]);
                 }
                 pb.step();

@@ -4,8 +4,8 @@ import es.urjc.etsii.grafo.TSP.model.TSPInstance;
 import es.urjc.etsii.grafo.TSP.model.TSPInstanceImporter;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.events.EventPublisher;
-import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.orchestrator.InstanceProperties;
 import es.urjc.etsii.grafo.orchestrator.InstanceSelector;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import org.apache.commons.io.FileUtils;
@@ -20,11 +20,13 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Map;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class InstanceSelectorTest {
 
     private final String instancePath = "instances/TSPLIB/instances";
+
     @BeforeAll
     static void resetProps() throws IOException {
         TestInstance.resetProperties();
@@ -39,7 +41,7 @@ class InstanceSelectorTest {
 
         double prelimPercentage = 0.15;
         long nInstances = Files.list(Path.of(instancePath)).count();
-        long nInstancesToPick = (long)(Math.ceil(nInstances * prelimPercentage));
+        long nInstancesToPick = (long) (Math.ceil(nInstances * prelimPercentage));
 
         var config = new InstanceConfiguration();
         config.setPreliminarPercentage(prelimPercentage);
@@ -62,10 +64,12 @@ class InstanceSelectorTest {
         var f = p.toFile();
         assertTrue(f.isFile());
         var lines = Files.readAllLines(p);
-        assertEquals(nInstances, lines.size()-1); // header in csv
+        assertEquals(nInstances, lines.size() - 1); // header in csv
         var header = lines.getFirst();
-        for(var prop: TSPInstance.getUniquePropertiesKeys()){
-            if(prop.equals(Instance.LOAD_TIME_NANOS)) continue;
+        for (var prop : TSPInstance.getUniquePropertiesKeys()) {
+            if (InstanceProperties.ignoredProperties.contains(prop)) {
+                continue;
+            }
             assertTrue(header.contains(prop), "Property " + prop + " not found in CSV header");
         }
     }
@@ -80,8 +84,8 @@ class InstanceSelectorTest {
             assertTrue(f.getName().endsWith(".tsp"));
         }
         int nPdfs = 0;
-        for(var f: tmpFolderF.listFiles()){
-            if(f.isFile()){
+        for (var f : tmpFolderF.listFiles()) {
+            if (f.isFile()) {
                 assertTrue(f.getName().endsWith(".pdf"));
                 nPdfs++;
             }

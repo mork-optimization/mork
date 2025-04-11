@@ -41,10 +41,6 @@ public class InstanceSelector<I extends Instance> extends InstanceProperties<I> 
     }
 
     protected void selectInstances() {
-        String path = instanceConfiguration.getForSelection();
-        if (path == null || path.isBlank()) {
-            path = instanceConfiguration.getPath("default");
-        }
         var referenceClass = instanceManager.getUserImporterImplementation().getClass();
         var isJAR = IOUtil.isJAR(referenceClass);
 
@@ -54,6 +50,6 @@ public class InstanceSelector<I extends Instance> extends InstanceProperties<I> 
         IOUtil.extractResource("instance-selector/requirements.txt", "requirements.txt", isJAR, true);
 
         PythonUtil.run(true, "-m", "pip", "install", "-r", "requirements.txt");
-        PythonUtil.run(true, "instance_selector.py", "-i", path, "-o", preOut, "-p", DEFAULT_OUTPUT_PATH, "-s", size);
+        PythonUtil.run(true, "instance_selector.py", "-o", preOut, "-p", DEFAULT_OUTPUT_PATH, "-s", size);
     }
 }
