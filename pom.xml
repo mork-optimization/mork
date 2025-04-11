@@ -35,10 +35,9 @@
         </developer>
     </developers>
     <scm>
-        <connection>scm:git:git://github.com/rmartinsanta/mork.git</connection>
-        <developerConnection>scm:git:https://github.com/rmartinsanta/mork</developerConnection>
-        <url>https://github.com/rmartinsanta/mork/tree/master</url>
-        <tag>HEAD</tag>
+        <connection>scm:git:git://github.com/mork-optimization/mork.git</connection>
+        <developerConnection>scm:git:https://github.com/mork-optimization/mork</developerConnection>
+        <url>https://mork-optimization.com</url>
     </scm>
     <properties>
         <java.version>21</java.version>
