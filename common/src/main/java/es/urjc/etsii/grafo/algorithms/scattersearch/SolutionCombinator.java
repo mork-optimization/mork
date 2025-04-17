@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.algorithms.scattersearch;
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.TimeControl;
 
 import java.util.HashSet;
 import java.util.List;
@@ -22,6 +23,9 @@ public abstract class SolutionCombinator<S extends Solution<S, I>, I extends Ins
         var newset = new HashSet<S>(newsize);
         for (var solution : newSolutions) {
             for (var refSolution : currentSet) {
+                if(TimeControl.isTimeUp()){
+                    return newset;
+                }
                 var combinedSolution = this.apply(solution, refSolution);
                 newset.addAll(combinedSolution);
             }
