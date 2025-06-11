@@ -13,6 +13,9 @@ import java.util.Map;
 
 public record WorkUnitResult<S extends Solution<S, I>, I extends Instance>(boolean success, String experimentName, String instancePath, String instanceId, Algorithm<S,I> algorithm, String iteration, S solution, Map<String, Object> solutionProperties, long executionTime, long timeToTarget, MetricsStorage metrics, List<TimeStatsEvent> timeData) {
 
+    public static final String BEST_ALGORITHM = "bestalg";
+    public static final String BEST_ITERATION = "bestiter";
+
     public static <S extends Solution<S, I>, I extends Instance> WorkUnitResult<S,I> ok(WorkUnit<S,I> workUnit, String instanceId, S solution, long executionTime, long timeToTarget, MetricsStorage metrics, List<TimeStatsEvent> timeData) {
         return new WorkUnitResult<>(true, workUnit.experimentName(), workUnit.instancePath(), instanceId, workUnit.algorithm(), workUnit.i(), solution, executionTime, timeToTarget, metrics, timeData);
     }
@@ -22,11 +25,11 @@ public record WorkUnitResult<S extends Solution<S, I>, I extends Instance>(boole
     }
 
     public static <S extends Solution<S, I>, I extends Instance> WorkUnitResult<S,I> copyBestAlg(WorkUnitResult<S,I> workUnit) {
-        return new WorkUnitResult<>(workUnit.success(), workUnit.experimentName(), workUnit.instancePath(), workUnit.instanceId(), workUnit.algorithm(), "bestiter", workUnit.solution(), workUnit.executionTime(), workUnit.timeToTarget(), workUnit.metrics(), workUnit.timeData());
+        return new WorkUnitResult<>(workUnit.success(), workUnit.experimentName(), workUnit.instancePath(), workUnit.instanceId(), workUnit.algorithm(), BEST_ITERATION, workUnit.solution(), workUnit.executionTime(), workUnit.timeToTarget(), workUnit.metrics(), workUnit.timeData());
     }
 
     public static <S extends Solution<S, I>, I extends Instance> WorkUnitResult<S,I> copyBestInstance(WorkUnitResult<S,I> workUnit) {
-        return new WorkUnitResult<>(workUnit.success(), workUnit.experimentName(), workUnit.instancePath(), workUnit.instanceId(), new EmptyAlgorithm<>("bestalg"), "bestiter", workUnit.solution(), workUnit.executionTime(), workUnit.timeToTarget(), workUnit.metrics(), workUnit.timeData());
+        return new WorkUnitResult<>(workUnit.success(), workUnit.experimentName(), workUnit.instancePath(), workUnit.instanceId(), new EmptyAlgorithm<>(BEST_ALGORITHM), BEST_ITERATION, workUnit.solution(), workUnit.executionTime(), workUnit.timeToTarget(), workUnit.metrics(), workUnit.timeData());
     }
 
     public WorkUnitResult(boolean success, String experimentName, String instancePath, String instanceId, Algorithm<S,I> algorithm, int iteration, S solution, long executionTime, long timeToTarget, MetricsStorage metrics, List<TimeStatsEvent> timeData){

@@ -1,7 +1,3 @@
 package es.urjc.etsii.grafo.util;
 
-public record TimeStatsEvent(boolean enter, long when, String clazz, String method) {
-    public boolean isExit(){
-        return !enter;
-    }
-}
+public record TimeStatsEvent(boolean enter, long when, String clazz, String method) {}
