@@ -20,13 +20,15 @@ from scipy.optimize import curve_fit
 import pandas as pd  # data manipulation and analysis
 from pandas import DataFrame, Series
 
-import plotly
 import plotly.express as px
 import plotly.graph_objects as go
 
 boring_colors = ["#EDEDE9", "#D6CCC2", "#F5EBE0", "#E3D5CA", "#d6e2e9"]
 real_color = "dodgerblue"
 best_color = "limegreen"
+
+BEST_ALGORITHM = "bestalg"
+BEST_ITERATION = "bestiter"
 
 def format_number_latex(n):
     formatted =  f"{n:+.2g}"
