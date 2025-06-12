@@ -3,12 +3,9 @@ package es.urjc.etsii.grafo.improve;
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.Context;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * Any method that improves a given solution is called an Improver. The classical example, but not limited to, is a local search.
@@ -18,8 +15,6 @@ import org.slf4j.LoggerFactory;
  */
 @AlgorithmComponent
 public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
-
-    public static final Logger log = LoggerFactory.getLogger(Improver.class);
 
     protected final Objective<?,S,I> objective;
 

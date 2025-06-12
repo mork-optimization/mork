@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.aop;
 
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.metrics.Metrics;
+import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.Context;
@@ -20,6 +21,8 @@ import java.util.concurrent.TimeUnit;
 @SuppressWarnings({"rawtypes", "unchecked"}) // todo investigate if we can avoid using raw types, probably not
 public final class TimedAspect {
 
+    private static final Logger log = LoggerFactory.getLogger(TimedAspect.class);
+
     @Around("execution(* *(..)) && @annotation(es.urjc.etsii.grafo.aop.TimeStats)")
     public Object log(ProceedingJoinPoint point) throws Throwable {
         return commonLog(point);
@@ -33,7 +36,7 @@ public final class TimedAspect {
         double endScore = objective.evalSol(improvedSolution);
 
         // Log, verify and store
-        Improver.log.debug("{} --> {}", initialScore, endScore);
+        log.debug("{}: {} --> {}", improver.getClass().getSimpleName(), initialScore, endScore);
         if(objective.isBetter(initialScore, endScore)){
             throw new IllegalStateException(String.format("Score has worsened after executing an improvement method: %s --> %s", initialScore, endScore));
         }
@@ -47,9 +50,15 @@ public final class TimedAspect {
         return commonLog(point);
     }
 
-    @Around("execution(* es.urjc.etsii.grafo.shake.Shake+.shake(..))")
-    public Object logShake(ProceedingJoinPoint point) throws Throwable {
-        return commonLog(point);
+    @Around(value = "execution(* es.urjc.etsii.grafo.shake.Shake+.shake(..))  && target(shake) && args(solution)", argNames = "point,shake,solution")
+    public Object logShake(ProceedingJoinPoint point, Shake shake, Solution solution) throws Throwable {
+        Objective objective = Context.getMainObjective();
+        double initialScore = objective.evalSol(solution);
+        Solution shakedSolution = (Solution) commonLog(point);
+        double endScore = objective.evalSol(shakedSolution);
+        log.debug("{}: {} --> {}", shake.getClass().getSimpleName(), initialScore, endScore);
+
+        return shakedSolution;
     }
 
     @Around("execution(* es.urjc.etsii.grafo.create.Constructive+.construct(..))")
