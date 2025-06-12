@@ -10,7 +10,6 @@ import os
 import json
 
 from collections import defaultdict
-from statistics import mean
 
 from os.path import join
 import numpy as np
@@ -22,6 +21,9 @@ from pandas import DataFrame, Series
 
 import plotly.express as px
 import plotly.graph_objects as go
+
+import logging
+log = logging.getLogger(__name__)
 
 boring_colors = ["#EDEDE9", "#D6CCC2", "#F5EBE0", "#E3D5CA", "#d6e2e9"]
 real_color = "dodgerblue"
@@ -126,13 +128,17 @@ def fold_profiler_data(path: str) -> DataFrame:
     timestats = []
 
     for f in os.listdir(path):
-        if not f.endswith(".json") or not "bestalg" in f or not "bestiter" in f:
+        if not f.endswith(".json"):
             continue
 
-        print("Processing", f)
+        log.debug(f"Processing {f}")
         with open(join(path, f)) as json_file:
             data = []
             jsondata = json.load(json_file)
+
+        if jsondata['algorithm']['name'] == BEST_ALGORITHM or jsondata['iteration'] == BEST_ITERATION:
+            print(f"Skipping file {f}")
+            continue
 
         for i in jsondata['timeData']:
             data.append({'when': i['when'], 'enter': i['enter'], 'clazz': i['clazz'], 'method': i['method']})
@@ -150,14 +156,27 @@ def fold_profiler_data(path: str) -> DataFrame:
                 start = stack.pop()
                 if name != start[0]:
                     raise Exception(f"Unexpected stack frame: {name} != {start[0]}")
-                dict_data[current].append((i['when'] - start[1])/1000000) # Convert nanos to millis
 
-        for k, v in dict_data.items():
-            parent, child = k.rsplit("/", 1) if "/" in k else ("", k)
-            # TODO usaba mean, pero tiene sentido? o mejor max min etc
-            timestats.append({"instance": jsondata['instanceId'], "component": k, "parent": parent, "child": child, "time": mean(v)})
+                exec_time = (i['when'] - start[1])/1000000 # Convert nanos to millis
 
-    return pd.DataFrame(timestats).sort_values(by=['instance', 'component'])
+                # Note that algorithm name is discarded here, as it is not needed for the analysis
+                # We analyze by component instead of by specific algorithm config name
+                # TODO review if we need parent/child properties
+                parent, child = current.rsplit("/", 1) if "/" in current else ("", current)
+                timestats.append({
+                    'instance': jsondata['instanceId'],
+                    'iter': jsondata['iteration'],
+                    'component': current,
+                    'parent': parent,
+                    'child': child,
+                    'time': exec_time
+                })
+
+    df = pd.DataFrame(timestats)
+    df.sort_values(by=['instance', 'component', 'iter'], inplace=True)
+    df.drop(columns=['iter'], inplace=True)
+    df.groupby(['instance', 'component', 'parent', 'child'], as_index=False).mean()
+    return df
 
 #def process_recursive(data: list[dict], names: list[str], idx=0, ):
 
@@ -226,7 +245,7 @@ def join_instance_timestats(instances: DataFrame, timestats: DataFrame, componen
     xy = xy.groupby(instance_property).mean()
     return xy
 
-def calculate_fitting_funcs(instances: DataFrame, timestats: DataFrame, component_name: str, instance_property: str) -> [Fit]:
+def calculate_fitting_funcs(instances: DataFrame, timestats: DataFrame, component_name: str, instance_property: str) -> list[Fit]:
     fitting_funcs = get_functions()
     xy = join_instance_timestats(instances, timestats, component_name, instance_property)
     if len(xy) < MIN_POINTS:
@@ -249,7 +268,7 @@ def find_best_instance_property(instances: DataFrame, timestats: DataFrame, comp
     best_fits = []
 
     for instance_property in instances.columns:
-        if instance_property == 'id':
+        if instance_property == 'id' or instance_property == 'path':
             continue
 
         fits = calculate_fitting_funcs(instances, timestats, component_name, instance_property)
