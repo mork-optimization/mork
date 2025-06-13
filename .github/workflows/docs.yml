@@ -6,6 +6,9 @@ on:
       - master 
 permissions:
   contents: write
+  pages: write
+  id-token: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -14,13 +17,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: 3.x
-      - run: echo "cache_id=$(date --utc '+%V')" >> $GITHUB_ENV 
-      - uses: actions/cache@v4
-        with:
-          key: mkdocs-material-${{ env.cache_id }}
-          path: .cache 
-          restore-keys: |
-            mkdocs-material-
+          cache: 'pip'
       - run: pip install -r mkdocs-requirements.txt
       
       - name: Set up JDK 21
@@ -35,6 +32,7 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
+
       - run: mvn compile javadoc:javadoc javadoc:aggregate
       - run: mkdocs build
       - name: Upload artifact
