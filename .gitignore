@@ -42,3 +42,5 @@ target
 .DS_Store
 
 venv
+
+docs/apidocs

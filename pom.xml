@@ -274,6 +274,7 @@
                 <configuration>
                     <source>${java.version}</source>
                     <doclint>all,-missing</doclint>
+                    <outputDirectory>docs/</outputDirectory>
                 </configuration>
             </plugin>
             <plugin>
