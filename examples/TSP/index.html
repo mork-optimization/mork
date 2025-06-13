@@ -1,0 +1,2826 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+        <meta name="description" content="Guided step-by-step example for implementing a solver for the Travelling Salesman Problem (TSP) with Mork">
+      
+      
+      
+        <link rel="canonical" href="https://docs.mork-optimization.com/examples/TSP/">
+      
+      
+        <link rel="prev" href="../../concepts/algorithm-components/metaheuristics/vns/">
+      
+      
+        <link rel="next" href="../../features/compare/">
+      
+      
+      <link rel="icon" href="../../assets/logo_white.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.14">
+    
+    
+      
+        <title>Travelling Salesman Problem (TSP) - Mork Developers Guide</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.342714a4.min.css">
+      
+        
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#step-by-step-example-for-the-travelling-salesman-problem-tsp-with-mork" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Mork Developers Guide" class="md-header__button md-logo" aria-label="Mork Developers Guide" data-md-component="logo">
+      
+  <img src="../../assets/logo_white.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Mork Developers Guide
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Travelling Salesman Problem (TSP)
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="brown" data-md-color-accent="deep-orange"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="brown" data-md-color-accent="deep-orange"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+        <div class="md-search__suggest" data-md-component="search-suggest"></div>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/mork-optimization/mork" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Mork Developers Guide" class="md-nav__button md-logo" aria-label="Mork Developers Guide" data-md-component="logo">
+      
+  <img src="../../assets/logo_white.svg" alt="logo">
+
+    </a>
+    Mork Developers Guide
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/mork-optimization/mork" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../.." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Home
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Quickstart
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            Quickstart
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/starting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Getting started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/bestpractices/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Common mistakes to avoid
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/migrating/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Upgrading from old versions
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/tips/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Tips &amp; Tricks
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../quickstart/troubleshooting/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Common problems
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_3" id="__nav_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Apidocs
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3">
+            <span class="md-nav__icon md-icon"></span>
+            Apidocs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" >
+        
+          
+          <label class="md-nav__link" for="__nav_3_1" id="__nav_3_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Legal
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_3_1">
+            <span class="md-nav__icon md-icon"></span>
+            Legal
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apidocs/legal/jquery/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Jquery
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../apidocs/legal/jqueryUI/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    jqueryUI
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4" >
+        
+          
+          <label class="md-nav__link" for="__nav_4" id="__nav_4_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Concepts
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_4_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4">
+            <span class="md-nav__icon md-icon"></span>
+            Concepts
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/concepts/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Framework concepts
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2" id="__nav_4_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Algorithm components
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_4_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2">
+            <span class="md-nav__icon md-icon"></span>
+            Algorithm components
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/algorithm-components/components/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    List of components
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/algorithm-components/intro/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Algorithm components
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_4_2_3" >
+        
+          
+          <label class="md-nav__link" for="__nav_4_2_3" id="__nav_4_2_3_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Metaheuristics
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_4_2_3_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_4_2_3">
+            <span class="md-nav__icon md-icon"></span>
+            Metaheuristics
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../concepts/algorithm-components/metaheuristics/vns/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Variable Neighborhood Search (VNS)
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_5" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_5" id="__nav_5_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Step-by-step examples
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_5_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_5">
+            <span class="md-nav__icon md-icon"></span>
+            Step-by-step examples
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M176 56v40h160V56c0-4.4-3.6-8-8-8H184c-4.4 0-8 3.6-8 8m-48 40V56c0-30.9 25.1-56 56-56h144c30.9 0 56 25.1 56 56v424H128V96m-64 0h32v384H64c-35.3 0-64-28.7-64-64V160c0-35.3 28.7-64 64-64m384 384h-32V96h32c35.3 0 64 28.7 64 64v256c0 35.3-28.7 64-64 64"/></svg>
+  
+  <span class="md-ellipsis">
+    Travelling Salesman Problem (TSP)
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M176 56v40h160V56c0-4.4-3.6-8-8-8H184c-4.4 0-8 3.6-8 8m-48 40V56c0-30.9 25.1-56 56-56h144c30.9 0 56 25.1 56 56v424H128V96m-64 0h32v384H64c-35.3 0-64-28.7-64-64V160c0-35.3 28.7-64 64-64m384 384h-32V96h32c35.3 0 64 28.7 64 64v256c0 35.3-28.7 64-64 64"/></svg>
+  
+  <span class="md-ellipsis">
+    Travelling Salesman Problem (TSP)
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-the-travelling-salesman-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      What is the Travelling Salesman Problem?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-environment-set-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Environment set up
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Environment set up">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.1 Prerequisites
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-download-problem-instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.2 Download problem instances
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-using-the-quick-start-project-generator" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.3 Using the quick start project generator
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-a-quick-look" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.4 A quick look
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-reading-instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Reading instances
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-modelling-solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Modelling solution
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Modelling solution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Constructors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#objective-function-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Objective function methods
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#move-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Move methods
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-our-first-algorithms-and-experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Our first algorithms and experiments
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Our first algorithms and experiments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructive-procedures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Constructive procedures
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#define-an-experiment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Define an experiment
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-mork" class="md-nav__link">
+    <span class="md-ellipsis">
+      Run Mork
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-searches" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Searches
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Local Searches">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implement-a-neighborhood-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implement a neighborhood structure
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-search-experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Search experiments
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-visualizing-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Visualizing solutions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-irace" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Irace
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Irace">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configure-an-irace-experiment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure an irace experiment
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#define-the-parameters-to-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      Define the parameters to test
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adjusting-scenario-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adjusting scenario options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execute-irace" class="md-nav__link">
+    <span class="md-ellipsis">
+      Execute irace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#did-you-use-irace" class="md-nav__link">
+    <span class="md-ellipsis">
+      Did you use irace?
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-testing-in-mork" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Testing in Mork
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Testing in Mork">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#asserts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Asserts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_6" >
+        
+          
+          <label class="md-nav__link" for="__nav_6" id="__nav_6_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Features
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_6_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_6">
+            <span class="md-nav__icon md-icon"></span>
+            Features
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/compare/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    State-of-the-Art comparison
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/config/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    App configuration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/docker/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Docker containers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/events/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Event system
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/instance-manager/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Instance manager
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/instance-selection/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Automatic instance selection
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/irace/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Irace Integration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/logging/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Logging system
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/serialization/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Results and serialization
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/telegram/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Telegram Integration
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../features/validations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Validation and testing
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        
+          
+          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Tools
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_7">
+            <span class="md-nav__icon md-icon"></span>
+            Tools
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../tools/complexity/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Complexity Analysis
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+  
+
+<nav class="md-nav md-nav--secondary" aria-label="On this page">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      On this page
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#what-is-the-travelling-salesman-problem" class="md-nav__link">
+    <span class="md-ellipsis">
+      What is the Travelling Salesman Problem?
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#1-environment-set-up" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Environment set up
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Environment set up">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#11-prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.1 Prerequisites
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#12-download-problem-instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.2 Download problem instances
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#13-using-the-quick-start-project-generator" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.3 Using the quick start project generator
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#14-a-quick-look" class="md-nav__link">
+    <span class="md-ellipsis">
+      1.4 A quick look
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-reading-instances" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Reading instances
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-modelling-solution" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Modelling solution
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Modelling solution">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Constructors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#objective-function-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Objective function methods
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#move-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Move methods
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-our-first-algorithms-and-experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Our first algorithms and experiments
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Our first algorithms and experiments">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#constructive-procedures" class="md-nav__link">
+    <span class="md-ellipsis">
+      Constructive procedures
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#define-an-experiment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Define an experiment
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#run-mork" class="md-nav__link">
+    <span class="md-ellipsis">
+      Run Mork
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-searches" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Searches
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Local Searches">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implement-a-neighborhood-structure" class="md-nav__link">
+    <span class="md-ellipsis">
+      Implement a neighborhood structure
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#local-search-experiments" class="md-nav__link">
+    <span class="md-ellipsis">
+      Local Search experiments
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-visualizing-solutions" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Visualizing solutions
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-irace" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Irace
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Irace">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#configure-an-irace-experiment" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configure an irace experiment
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#define-the-parameters-to-test" class="md-nav__link">
+    <span class="md-ellipsis">
+      Define the parameters to test
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adjusting-scenario-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      Adjusting scenario options
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#execute-irace" class="md-nav__link">
+    <span class="md-ellipsis">
+      Execute irace
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#did-you-use-irace" class="md-nav__link">
+    <span class="md-ellipsis">
+      Did you use irace?
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-testing-in-mork" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Testing in Mork
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Testing in Mork">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#asserts" class="md-nav__link">
+    <span class="md-ellipsis">
+      Asserts
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/mork-optimization/mork/edit/master/docs/examples/TSP.md" title="Edit this page" class="md-content__button md-icon">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M16.84 2.73c-.39 0-.77.15-1.07.44l-2.12 2.12 5.3 5.31 2.12-2.1c.6-.61.6-1.56 0-2.14L17.9 3.17c-.3-.29-.68-.44-1.06-.44M12.94 6l-8.1 8.11 2.56.28.18 2.29 2.28.17.29 2.56 8.1-8.11m-14 3.74L2.5 21.73l6.7-1.79-.24-2.16-2.31-.17-.18-2.32"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="step-by-step-example-for-the-travelling-salesman-problem-tsp-with-mork">Step-by-step example for the Travelling Salesman Problem (TSP) with Mork<a class="headerlink" href="#step-by-step-example-for-the-travelling-salesman-problem-tsp-with-mork" title="Permanent link">&para;</a></h1>
+<h2 id="what-is-the-travelling-salesman-problem">What is the Travelling Salesman Problem?<a class="headerlink" href="#what-is-the-travelling-salesman-problem" title="Permanent link">&para;</a></h2>
+<p>The traveling salesman problem (commonly denoted as TSP) asks the following question: "Given a list of cities and the
+distances between each pair of cities, what is the shortest possible route that visits each city exactly once and
+returns to the origin city?" It is an NP-hard problem in combinatorial optimization, important in theoretical computer
+science and operations research.</p>
+<p><img alt="Example of the TSP problem" src="../img/introduction.jpeg" /></p>
+<p>Obtained
+from <em><a href="https://medium.com/basecs/the-trials-and-tribulations-of-the-traveling-salesman-56048d6709d">The Trials And Tribulations Of The Traveling Salesman</a></em>
+.</p>
+<h2 id="1-environment-set-up">1. Environment set up<a class="headerlink" href="#1-environment-set-up" title="Permanent link">&para;</a></h2>
+<h3 id="11-prerequisites">1.1 Prerequisites<a class="headerlink" href="#11-prerequisites" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Java 17 is required to run. Please download and install a recent JDK.</li>
+<li><a href="https://maven.apache.org/">Maven</a></li>
+<li>This is not really a prerequisite, but we recommend using an IDE, such as <a href="https://www.jetbrains.com/idea/">IntelliJ IDEA</a>.</li>
+</ul>
+<blockquote>
+<p>💡 <em>Tip:</em> Use SDKMAN to easily manage your JDKs and SDKs. Have a look to the official <em><a href="https://sdkman.io/">web page</a></em>.</p>
+</blockquote>
+<h3 id="12-download-problem-instances">1.2 Download problem instances<a class="headerlink" href="#12-download-problem-instances" title="Permanent link">&para;</a></h3>
+<p>In order to test the proposed algorithms for the TSP we will use the standard instances for the problem, that can be
+easily obtained from <em><a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html">TSPLIB</a></em>.</p>
+<div class="admonition abstract">
+<p class="admonition-title">What is TSPLIB?</p>
+<p><em><a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html">TSPLIB</a></em> is a library of sample instances for the TSP  (and
+related problems) from various sources and of various types. Particularly, we will use
+the <em><a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html">TSPLIB Symmetric Traveling Salesman Problem Instances</a></em>. For the moment, you will only need to download the following
+files: <a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp">berlin52</a>,
+<a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/eil101.tsp">eil101</a>,
+<a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ch130.tsp">ch130</a>
+and <a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp">st70</a>.</p>
+</div>
+<h3 id="13-using-the-quick-start-project-generator">1.3 Using the quick start project generator<a class="headerlink" href="#13-using-the-quick-start-project-generator" title="Permanent link">&para;</a></h3>
+<p>Go to <em><a href="https://generator.mork-optimization.com/">https://generator.mork-optimization.com/</a></em>, set "TSP" in the Project Name field
+and click on generate your project. In a few seconds you will be able to download your project. Then, extract the zip
+file and import it in your favorite IDE.</p>
+<div class="admonition tip">
+<p class="admonition-title">💡 <em>Tip:</em></p>
+<p>Some IDEs, allow you to select the <code>pom.xml</code> file when you select the option to import an existing project. If such a possibility exists, we highly recommend <strong>importing the project as a maven project</strong>. Some examples of how to import a <a href="https://maven.apache.org/">Maven</a> project in the most important editors can be found in: <a href="https://www.eclipse.org/m2e/">Eclipse</a>, <a href="https://www.jetbrains.com/help/idea/maven-importing.html">IntelliJ</a>, or <a href="https://netbeans.apache.org/wiki/MavenBestPractices.asciidoc">NetBeans</a>.</p>
+</div>
+<p>Remember to choose a valid name for your project, i.e., check that it starts with an Uppercase letter followed by
+any alphanumeric characters or underscores, without spaces.</p>
+<h3 id="14-a-quick-look">1.4 A quick look<a class="headerlink" href="#14-a-quick-look" title="Permanent link">&para;</a></h3>
+<p>The project is organized in the following folders</p>
+<ul>
+<li>📁 <strong>.run</strong></li>
+</ul>
+<p>If you are using  <a href="https://www.jetbrains.com/idea/">IntelliJ</a>, you might have noticed that there are two default
+configuration files: <code>Performance.run.xml</code> and <code>Validation.run.xml</code>. The main difference between both run configurations
+is whether the assertions are enabled. In validation mode, assertions try to check the correctness of the problem implementation, by detecting common mistakes.
+For more information see the specific doc page about <a href="../../features/validations/">MorK validations</a> and <a href="https://docs.oracle.com/javase/8/docs/technotes/guides/language/assert.html">the official Java documentation</a>.
+You may run your own run configurations, the main class is located at <code>es.urjc.etsii.grafo.&lt;problemname&gt;.Main</code> by default.</p>
+<ul>
+<li>📁 <strong>docker</strong> :</li>
+</ul>
+<p>Docker template and helper scripts to easily build, run and deploy your application using containers. For a detailed description, see <a href="../../features/docker/">MorK containers</a>.</p>
+<ul>
+<li>📁 <strong>instances</strong></li>
+</ul>
+<p>This folder should contain everything related with the instances of the problem. In this case, since we are tackling
+the TSP, this folder will contain the TSP instances. Therefore, you should put the downloaded instances (<code>*.tsp</code> files) from <a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html">TSPLIB Symmetric Traveling Salesman Problem Instances</a> in this folder.</p>
+<ul>
+<li>📁 <strong>src/main/java/es.urjc.etsii.grafo.TSP</strong><ul>
+<li>📁 <strong>algorithms</strong>: algorithmic components, i.e, constructive, local search, metaheuristics, etc.</li>
+<li>📁 <strong>experiments</strong>: defines experiments to execute to test the proposed algorithms and strategies.</li>
+<li>📁 <strong>model</strong>: contains the basic elements of the studied problem: solution, instance, etc.</li>
+<li>📁 <strong>drawing</strong>: helper class to draw solutions in the web frontend.</li>
+</ul>
+</li>
+<li>📁 <strong>src/main/resources</strong><ul>
+<li>📁 <strong>irace</strong>: irace is a software package that implements a number of automatic configuration procedures.</li>
+<li>📁 <strong>static</strong>: contains files to generate a localhost web page which allow the researcher to see the
+  solution-quality convergence and the best solution found.</li>
+<li>📝 application.yml: this file contains the global configuration of the project, such as which experiment should be
+  executed, which instances should be used, among others. For a detailed configuration description, see <a href="../../features/config/">MorK configuration</a>.</li>
+</ul>
+</li>
+<li>📁 <strong>src/test</strong>: similar to src/main but contains tests for the project, and related resources.</li>
+<li>📝 .gitignore: this file tells Git which files to ignore when pushing your project to <a href="https://github.com/">GitHub</a> or any other remote server.</li>
+<li>📝 pom.xml: Maven configuration file, contains the project description and its dependencies. </li>
+</ul>
+<h2 id="2-reading-instances">2. Reading instances<a class="headerlink" href="#2-reading-instances" title="Permanent link">&para;</a></h2>
+<p>This Mork project aims to approach the Traveling Salesman Problem (TSP). Given a set of points, (that can be considered
+as locations or cities), the TSP consists in finding a roundtrip of minimal total length visiting each node exactly once. In
+this section you will learn, what an instance is, how to define an instance of the problem, and how to read an instance
+from a file.</p>
+<p>A problem instance contains all the input data needed to create solutions for a problem. Focusing on the problem at hand, an instance represents a map of cities or locations, all of them connected to each other. In this particular problem, all locations are defined by x/y coordinates.</p>
+<p>At this point, you should have downloaded the instance
+files (<a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp">berlin52.tsp</a>
+, <a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/eil101.tsp">eil101</a>
+, <a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ch130.tsp">ch130</a>
+and <a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp">st70</a>), and placed them at the instance folder of the project.</p>
+<p>Have a look to any of those four files. The structure is the same for each of them. Particularly, these files have the 
+following<code>&lt;keyword&gt;:&lt;value&gt;</code> structure, where <code>&lt;keyword&gt;</code> denotes an alphanumerical keyword and <code>&lt;value&gt;</code> denotes 
+alphanumerical or numerical data:</p>
+<ul>
+<li>NAME : <code>&lt;string&gt;</code> // Identifies the data file.</li>
+<li>TYPE : <code>&lt;string&gt;</code> // Specifies the type of the data. In this case will be TSP.</li>
+<li>COMMENT :<code>&lt;string&gt;</code> // Additional comments.</li>
+<li>DIMENSION : <code>&lt;integer&gt;</code> // Number of its nodes (cities, locations, etc.)</li>
+<li>EDGE WEIGHT TYPE : <code>&lt;string&gt;</code> // Specifies how the edge weights (or distances) are given.</li>
+<li>NODE COORD SECTION :   <code>&lt;integer&gt; &lt;real&gt; &lt;real&gt;</code> // Node coordinates are given in this section.</li>
+</ul>
+<p>Notice that the five instances selected have EDGE WEIGHT TYPE = EUC_2D, which means that the distance between two
+points <em>i</em> and <em>j</em> is computed using the <a href="https://en.wikipedia.org/wiki/Euclidean_distance">Euclidean distance</a>: </p>
+<div class="arithmatex">\[
+{\displaystyle d(i,j)={\sqrt {(j_{1}-i_{1})^{2}+(j_{2}-i_{2})^{2}}}.}
+\]</div>
+<p>If you are interested in a deep description of the instances to test the proposed algorithm with other type of instance,
+have a look to the <a href="http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp95.pdf">TSPLIB documentation</a>.</p>
+<p>Then, open file <code>TSPInstance.java</code> located in <code>src/main/java/es/urjc/etsii/grafo/TSP/model</code>. This class will represent 
+an instance of the problem, i.e., a list of x/y coordinates. Therefore, we will carry out the following tasks:</p>
+<ul>
+<li>Define a structure that represents 2D coordinates.</li>
+<li>Define an attribute (in the <code>TSPInstance</code> class) that represents the list of locations and the distance between locations.</li>
+<li>Implement the class constructor and getter methods.</li>
+</ul>
+<p>Try it yourself, and compare it with our code (there is more than one possible implementation, everyone thinks different!)</p>
+<p>The resultant class could be something similar to:</p>
+<div class="highlight"><pre><span></span><code>public class TSPInstance extends Instance {  
+
+  /**  
+   * List of coordinates 
+   */  
+   private final Coordinate[] locations;  
+
+
+  /**  
+   * Distance between all coordinates 
+   */  
+   private final double[][] distances;  
+
+  /**  
+   * Constructor 
+   * @param name name of the instance  
+   * @param locations list of coordiantes  
+   */  
+   protected TSPInstance(String name, Coordinate[] locations, double[][] distances) {  
+      super(name);  
+      this.locations = locations;  
+      this.distances = distances;  
+  }  
+
+  /**  
+   * Get the list of locations 
+   * @return list of locations  
+   */  
+   public Coordinate[] getLocations() {  
+      return locations;  
+  }  
+
+  /**  
+   * Get the number of locations of the instance 
+   * @return number of locations  
+   */  
+   public int numberOfLocations() {  
+      return locations.length;  
+   }  
+
+  /**  
+   * 2D coordinate 
+   */  
+   public record Coordinate(double x, double y) {}  
+
+
+  /**  
+   * Get coordinate of a specific location (that represents a city, place, facility...) * * @param id of the location  
+   * @return the location coordinate  
+   */  
+   public Coordinate getCoordinate(int id) {  
+      return this.locations[id];  
+  }  
+
+
+  /**  
+   * Return the euclidean distance between two locations i and j. * * @param i first location  
+   * @param j second location  
+   * @return the euclidean distance  
+   */
+   public double getDistance(int i, int j) {  
+      return this.distances[i][j];  
+   }  
+
+}
+</code></pre></div>
+<blockquote>
+<p>💡 <em>Tip</em>: is this the first time you have come across record? You don't know what you're missing!! Record classes, which are a special kind of class, help to model plain data aggregates with less ceremony than normal classes. Have a look to the <a href="https://docs.oracle.com/en/java/javase/16/language/records.html">Java documentation</a> abut record classes.</p>
+</blockquote>
+<div class="admonition danger">
+<p class="admonition-title">IMPORTANT</p>
+<p>After exiting the instance constructor method, the instance <strong>must be immutable</strong>.
+The instance class should never implement setter methods. All mutable data must be in the solution class.</p>
+</div>
+<p>Next, lets move on to the <code>TSPInstanceImporter.java</code> file. This class responsibility is generating problem instances given
+some files. To this end, we will need to implement the method: <code>importInstance(BufferedReader reader, String filename)</code>. 
+This method receives as input parameters the buffered reader, managed by the framework, and the filename, returning the constructed instance.
+Considering the TSP instance file structure, we will need to read the file line by line,
+storing the list of coordinates and the distance between each pair of coordinates, and finally, calling the instance constructor. The
+resultant class will be the following:</p>
+<div class="highlight"><pre><span></span><code>public class TSPInstanceImporter extends InstanceImporter&lt;TSPInstance&gt; {
+
+    @Override
+    public TSPInstance importInstance(BufferedReader reader, String filename) throws IOException {
+        Scanner sc = new Scanner(reader).useLocale(Locale.US);
+        String name = sc.nextLine().split(&quot;:&quot;)[1].trim();
+        String type = sc.nextLine().split(&quot;:&quot;)[1];
+        String comment = sc.nextLine().split(&quot;:&quot;)[1];
+        int dimension = Integer.parseInt(sc.nextLine().split(&quot;:&quot;)[1].trim());
+        String edgeWeightType = sc.nextLine().split(&quot;:&quot;)[1];
+        String nodeCoordSection = sc.nextLine();
+        TSPInstance.Coordinate[] locations = new TSPInstance.Coordinate[dimension];
+        while (!sc.hasNext(&quot;EOF&quot;)) {
+            int id = sc.nextInt() - 1;
+            double x = sc.nextDouble();
+            double y = sc.nextDouble();
+            locations[id] = new TSPInstance.Coordinate(x, y);
+        }
+        double[][] distances = getMatrixOfDistances(locations);
+        return new TSPInstance(name, locations, distances);
+    }
+
+
+    /**
+     * Calculate all euclidean distances between all locations
+     *
+     * @param locations list of locations
+     * @return a matrix of distances
+     */
+    private double[][] getMatrixOfDistances(TSPInstance.Coordinate[] locations) {
+        var dimension = locations.length;
+        double[][] distances = new double[dimension][dimension];
+        for (int i = 0; i &lt; dimension; i++) {
+            for (int j = i+1; j &lt; dimension; j++) {
+                var distance = this.calculateEuclideanDistance(locations[i], locations[j]);
+                distances[i][j] = distance;
+                distances[j][i] = distance;
+            }
+        }
+       return distances;
+    }
+
+
+    /**
+     * Calculate the Euclidian distance of two given coordinates
+     *
+     * @param i first coordinate
+     * @param j second coordinate
+     * @return the euclidean distance between two coordiantes
+     */
+    public double calculateEuclideanDistance(TSPInstance.Coordinate i, TSPInstance.Coordinate j) {
+        var di = i.x() - j.x();
+        var dj = i.y() - j.y();
+        return Math.sqrt((di * di) + (dj * dj));
+    }
+}
+</code></pre></div>
+<blockquote>
+<p>💡 <em>Tip</em>: You may use the BufferedReader as given, 
+or initialize a Scanner from the BufferedReader. 
+However, both approaches cannot be used at the same time 
+(i.e, sometimes reading from the buffered reader and sometimes from the scanner), 
+as it may result in missing input data.</p>
+</blockquote>
+<h2 id="3-modelling-solution">3. Modelling solution<a class="headerlink" href="#3-modelling-solution" title="Permanent link">&para;</a></h2>
+<p>The next task is to define the TSP solution class. Solution classes contain mutable data that is modified while solving an instance. 
+In the case of the TSP, the solution contains the order in which we will visit each of the cities or locations.
+To define a solution in Mork we must edit the <code>TSPSolution</code> class. The objects of this class
+represent the candidate solutions that are handled throughout the optimization algorithm developed. The simplest
+implementation of a circular path is through an array of integers, where the index represents the order (or position) in
+the path of the location (identified by the ID) referenced by that array index. While in this example we use an array,
+as we must visit all locations and therefore the size is known, other times other data structures such as <code>HashSet</code> or <code>ArrayList</code> may be more appropriate. 
+Choosing the most performant data structure is not trivial, and sometimes the most performant approach is using an unexpected data structure. 
+Different alternatives can be tested and benchmarked to find the most efficient one.</p>
+<div class="highlight"><pre><span></span><code><span class="cm">/**</span>
+<span class="cm"> * Cached length of the path between all locations, for performance reasons</span>
+<span class="cm"> */</span>
+<span class="kd">private</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">distance</span><span class="p">;</span><span class="w">  </span>
+
+<span class="cm">/**</span>
+<span class="cm"> * Order of the locations in the path. </span>
+<span class="cm"> * The index represents the position in the path, and the value the location ID.</span>
+<span class="cm"> */</span>
+<span class="kd">private</span><span class="w"> </span><span class="kd">final</span><span class="w"> </span><span class="kt">int</span><span class="o">[]</span><span class="w"> </span><span class="n">route</span><span class="p">;</span>
+</code></pre></div>
+<p>The main methods of the <code>TSPSolution</code> class are the following:</p>
+<h3 id="constructors">Constructors<a class="headerlink" href="#constructors" title="Permanent link">&para;</a></h3>
+<p>By default, two constructors must be implemented. The first one initializes a solution given an instance. The second one
+initializes a solution given another solution, and it is used for cloning data. For example:</p>
+<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="nf">TSPSolution</span><span class="p">(</span><span class="n">TSPInstance</span><span class="w"> </span><span class="n">instance</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span>
+<span class="w">  </span><span class="kd">super</span><span class="p">(</span><span class="n">instance</span><span class="p">);</span><span class="w">  </span>
+<span class="w">  </span><span class="k">this</span><span class="p">.</span><span class="na">route</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="kt">int</span><span class="o">[</span><span class="n">instance</span><span class="p">.</span><span class="na">numberOfLocations</span><span class="p">()</span><span class="o">]</span><span class="p">;</span><span class="w">  </span>
+<span class="w">  </span><span class="n">Arrays</span><span class="p">.</span><span class="na">fill</span><span class="p">(</span><span class="n">route</span><span class="p">,</span><span class="w"> </span><span class="o">-</span><span class="mi">1</span><span class="p">);</span><span class="w">  </span><span class="c1">// -1 means that the position is empty / unused</span>
+<span class="p">}</span>
+
+<span class="kd">public</span><span class="w"> </span><span class="nf">TSPSolution</span><span class="p">(</span><span class="n">TSPSolution</span><span class="w"> </span><span class="n">s</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span>
+<span class="w">   </span><span class="kd">super</span><span class="p">(</span><span class="n">s</span><span class="p">);</span><span class="w">  </span>
+<span class="w">   </span><span class="k">this</span><span class="p">.</span><span class="na">route</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="na">route</span><span class="p">.</span><span class="na">clone</span><span class="p">();</span><span class="w">  </span>
+<span class="w">   </span><span class="k">this</span><span class="p">.</span><span class="na">distance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="na">distance</span><span class="p">;</span><span class="w">  </span>
+<span class="p">}</span>
+</code></pre></div>
+<h3 id="objective-function-methods">Objective function methods<a class="headerlink" href="#objective-function-methods" title="Permanent link">&para;</a></h3>
+<p>We will also need a method to calculate the objective function of the solution. Usually, two different methods are implemented:</p>
+<ul>
+<li><code>public double getScore()</code> : get the objective function of the solution. This procedure may behave like a getter method, returning cached score without performing any calculation.</li>
+<li><code>public double recalculateScore()</code>: recalculate solution objective function. <strong>Make sure this method does not have side effects</strong> (a common mistake is updating caches while executing recalculateScore). If this method does have side effects, something that may happen is that two subsequent calls to <code>recalculateScore()</code> may return different results.</li>
+</ul>
+<p>In this case, the objective function is the total distance of the path. Therefore, the implementation of these methods is
+<div class="highlight"><pre><span></span><code><span class="kd">public</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="nf">getScore</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">  </span>
+<span class="w">   </span><span class="k">return</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">distance</span><span class="p">;</span><span class="w">  </span>
+<span class="p">}</span>
+
+<span class="kd">public</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="nf">recalculateScore</span><span class="p">()</span><span class="w"> </span><span class="p">{</span><span class="w">  </span>
+<span class="w">   </span><span class="kt">double</span><span class="w"> </span><span class="n">distance</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w">  </span>
+<span class="w">   </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">route</span><span class="p">.</span><span class="na">length</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="o">++</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w">  </span>
+<span class="w">      </span><span class="kd">var</span><span class="w"> </span><span class="n">j</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">%</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">route</span><span class="p">.</span><span class="na">length</span><span class="p">;</span><span class="w">  </span>
+<span class="w">      </span><span class="n">distance</span><span class="w"> </span><span class="o">+=</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">getInstance</span><span class="p">().</span><span class="na">getDistance</span><span class="p">(</span><span class="n">route</span><span class="o">[</span><span class="n">i</span><span class="o">]</span><span class="p">,</span><span class="w"> </span><span class="n">route</span><span class="o">[</span><span class="n">j</span><span class="o">]</span><span class="p">);</span><span class="w">  </span>
+<span class="w">  </span><span class="p">}</span><span class="w">  </span>
+<span class="w">  </span><span class="k">return</span><span class="w"> </span><span class="n">distance</span><span class="p">;</span><span class="w">  </span>
+<span class="p">}</span>
+</code></pre></div>
+Note that the <code>recalculateScore()</code> method is not updating the distance attribute, but returning the calculated value. Moreover, both method names can be changed to <code>getDistance()</code> and <code>recalculateDistance()</code> respectively, to better reflect the nature of the problem.</p>
+<div class="admonition question">
+<p class="admonition-title">Why have two implementations?</p>
+<p>The first method should be used when the solution is not modified, and the objective function is requested. 
+This way, the objective function is calculated only once, and the result is cached.
+The second method is used when the solution is modified, and the objective function must be recalculated.
+In the next section, we will see how to update the objective function when the solution is modified incrementally.</p>
+</div>
+<h3 id="move-methods">Move methods<a class="headerlink" href="#move-methods" title="Permanent link">&para;</a></h3>
+<p>While the solution class may contain all the necessary methods to operate and edit a solution,
+when the number of possible operations increases we can end with an extremely big, complex and unmaintainable class.
+In this case, we can split the solution class into different classes, each one containing a set of operations.
+For example, we can create a class responsible for inserting new nodes, and another one for swapping nodes
+(exchange the order of two locations, classic interchange movement), etc.</p>
+<p>In this example, we will implement all required methods inside the solution class, and in a later section we will refactor the code to use neighborhoods and movements. swap and insert movements. 
+<div class="highlight"><pre><span></span><code>   /**  
+    * Shuffle route 
+    */
+    public void shuffleRoute() {  
+       ArrayUtil.shuffle(route);  
+    }  
+
+
+    /**  
+     * Swap classical move: 
+     * Swap the position in the route of two locations, given its actual positions. 
+     * Example: actual route : [a,b,c,d,e,f], pi = 0,  pj= 1, resultant route= [b,a,c,d,e,f] 
+     * Example: actual route : [a,b,c,d,e,f], pi = 1,  pj= 4, resultant route= [a,e,c,d,b,f] 
+     * When the operation is performed, the objective function (this.distance) is updated
+     * @param pi actual position of the location  
+     * @param pj desired position  
+     */
+     public void swapLocationOrder(int pi, int pj) {  
+        var i = this.route[pi];  
+        var j = this.route[pj];  
+        this.distance = this.distance - getDistanceContribution(pi) - getDistanceContribution(pj);  
+        this.route[pi] = j;  
+        this.route[pj] = i;  
+        this.distance = this.distance + getDistanceContribution(pi) + getDistanceContribution(pj);  
+    }  
+
+
+    /**  
+     * Insert classical move: 
+     * Deletes a location from and array (given its position) and inserts it in the specified position. 
+     * Example: actual route : [a,b,c,d,e,f], pi = 0,  pj= 1, resultant route= [b,a,c,d,e,f] 
+     * Example: actual route : [a,b,c,d,e,f], pi = 1,  pj= 4, resultant route=[a,c,d,e,b,f] 
+     * Example: actual route : [a,b,c,d,e,f], pi = 5   pj= 3, resultant route= [a,b,c,f,d,e] 
+     * When the operation is performed, the objective function (this.distance) is updated * 
+     * @param pi actual position of the location  
+     * @param pj desired position  
+     */
+     public void insertLocationAtPiInPj(int pi, int pj) {  
+        ArrayUtil.deleteAndInsert(this.route, pi, pj);  
+        this.distance = this.recalculateScore();  
+    }
+</code></pre></div></p>
+<div class="admonition tip">
+<p class="admonition-title">Tip</p>
+<p>Take a look at the Javadocs of the util classes such as <code>CollectionUtil</code> and <code>ArrayUtil</code>, they may contain commonly used methods that are not implemented in the Java API. Are you missing some methods? Open an issue or submit a pull request!</p>
+</div>
+<h2 id="4-our-first-algorithms-and-experiments">4. Our first algorithms and experiments<a class="headerlink" href="#4-our-first-algorithms-and-experiments" title="Permanent link">&para;</a></h2>
+<p>In this section we will generate our first solutions for the TSP. To do so, we will perform the following tasks:</p>
+<ol>
+<li>Implement a constructive that generates random solutions.</li>
+<li>Define an experiment.</li>
+<li>Run Mork: understanding the application.yml, the web interface and results.</li>
+</ol>
+<h3 id="constructive-procedures">Constructive procedures<a class="headerlink" href="#constructive-procedures" title="Permanent link">&para;</a></h3>
+<p>Constructive procedures are methods that generate solutions to a problem. To implement a constructive we are going to
+use as an example the constructive procedure located in the <code>constructives</code> folder. Every constructive proposed for the
+TSP must extend <code>Constructive&lt;TSPSolution, TSPInstance&gt;</code>.</p>
+<p>A simple implementation of a randomized constructive is shown below:</p>
+<div class="highlight"><pre><span></span><code>    @Override
+    public TSPSolution construct(TSPSolution solution) {
+        for (int i = 0; i &lt; solution.getInstance().numberOfLocations(); i++) {
+            solution.setOrderOfLocation(i, i);
+        }
+        solution.shuffleRoute();
+        solution.notifyUpdate();
+        solution.setScore(solution.recalculateScore());
+        return solution;
+    }
+</code></pre></div>
+<h3 id="define-an-experiment">Define an experiment<a class="headerlink" href="#define-an-experiment" title="Permanent link">&para;</a></h3>
+<p>Once the constructive procedure has been defined, let's define an experiment. Each of the experiments to be executed for the TSP should
+be located in the 'experiments' folder and must extend the <code>AbstractExperiment&lt;TSPSolution, TSPInstance&gt;</code> class. To
+define an experiment it is necessary to implement the method <code>getAlgorithms()</code>; which returns a list of algorithms. In
+this case, we are only interested in testing a simple algorithm, a constructive procedure. Therefore, the resulting
+experiment would look like this:</p>
+<div class="highlight"><pre><span></span><code>public class ConstructiveExperiment extends AbstractExperiment&lt;TSPSolution, TSPInstance&gt; {
+
+    private final TSPConfig config;
+
+    public ConstructiveExperiment(SolverConfig solverConfig) {
+        this.config = solverConfig;
+    }
+
+    @Override
+    public List&lt;Algorithm&lt;TSPSolution, TSPInstance&gt;&gt; getAlgorithms() {
+
+        var algorithms = new ArrayList&lt;Algorithm&lt;TSPSolution, TSPInstance&gt;&gt;();
+
+        algorithms.add(new SimpleAlgorithm&lt;&gt;(new TSPRandomConstructive()));
+
+        return algorithms;
+    }
+}
+</code></pre></div>
+<h3 id="run-mork">Run Mork<a class="headerlink" href="#run-mork" title="Permanent link">&para;</a></h3>
+<p>Before running Mork we need to review its configuration and check that they are correct. To do so, go to <code>application.yml</code> file, located at
+<code>src/main/resources/</code>. This file contains a list of well-documented properties. In this case we are going to focus just on
+some of them:</p>
+<ul>
+<li><code>instances.path</code>: in this property the path of the location of the instances should be indicated (either a specific instance or a folder of instances, or even a folder with folders of instances). It is possible to indicate a path for each
+  experiment. In this case we set <code>default: 'instances'</code>.</li>
+<li><code>solver.experiments</code>: this property determines which experiment or experiments should be executed. To do so, you can optionally use
+  a regex expression. For a single experiment execution, just specify the class name: <code>experiments: 'ConstructiveExperiment'</code>. </li>
+<li><code>solver.parallelExecutor</code>, <code>solver.nWorkers</code>: these properties determine the maximum of workers that will be used to execute the experiments.</li>
+</ul>
+<p>Have a look to the rest of configuration parameters and feel free to change whatever you want. 
+A more detailed explanation of how configuration works can be found at <a href="../../features/config/">this link</a>.</p>
+<p>Now we are ready to execute. Use your IDE to run the provided main method, IntelliJ should autodetect and create two configurations (Validation and Performance). You will see a lot of text and numbers in the console, don't worry, you can analyze them
+carefully when the program finishes, it is not difficult to understand. While the algorithm is running, go
+to: <em><a href="http://localhost:8080/">http://localhost:8080/</a></em>. In that website, you will be able to visualize the convergence
+chart and the actual value chart for each of the instance executed. In addition, you will be able to visualize the best
+solution found (as soon as we learn how to do it in the next sections).</p>
+<blockquote>
+<p>💡 <em>Tip</em>: when all experiments finish, the web server stops. If you wish to keep the webserver running, set: <code>event.webserver.stopOnExecutionEnd: false</code> in the application.yml file.</p>
+</blockquote>
+<p>When the execution ends, go to the results folder and check that an Excel file (*.xlsx) has been correctly generated. The
+Excel file contains two sheets: a summary of the results and raw results. Particularly, the summary file should report
+the following data (exactly the same, Mork experiments are fully reproducible)</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>ScTSPRandomConstructive</th>
+<th></th>
+<th></th>
+<th></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Instance names</td>
+<td>Min. score</td>
+<td>Sum Total T(s)</td>
+<td>hasBest</td>
+<td>Min. %Dev2Best</td>
+</tr>
+<tr>
+<td>berlin52</td>
+<td>25944.86163</td>
+<td>0.002271</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>ch130</td>
+<td>42393.82045</td>
+<td>0.0022626</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>eil101</td>
+<td>3094.175908</td>
+<td>0.0024924</td>
+<td>1</td>
+<td>0</td>
+</tr>
+<tr>
+<td>st70</td>
+<td>3285.619063</td>
+<td>0.0015071</td>
+<td>1</td>
+<td>0</td>
+</tr>
+</tbody>
+</table>
+<h3 id="local-searches">Local Searches<a class="headerlink" href="#local-searches" title="Permanent link">&para;</a></h3>
+<p>In this section you will be able to implement local search procedures and define more complex experiments. A local
+search algorithm starts from a candidate solution and then iteratively moves to a neighbor solution. As an example, we
+will define to classical neighborhood based on the swap and insert movement. To this end, we will perform the following
+tasks:</p>
+<ol>
+<li>Implement a neighborhood structure.</li>
+<li>Implement the insert/swap operator.</li>
+<li>Define a Local Search experiment.</li>
+</ol>
+<h4 id="implement-a-neighborhood-structure">Implement a neighborhood structure<a class="headerlink" href="#implement-a-neighborhood-structure" title="Permanent link">&para;</a></h4>
+<p>A neighborhoods represents all potential solutions that can be reached for a given solution applying a movement. In general, Neighborhoods can be explored using two different strategies:</p>
+<ol>
+<li>Eager exploration: Movements in this neighborhood are generated at once, using a list (<code>List&lt;&gt;</code>) of EagerMoves. Convenient, but may waste computer resources when the improve method is not a best improvement approach.</li>
+<li>Lazy exploration:  Movements in this neighborhood are generated lazily under demand using <code>Streams</code> with Moves. Generate moves only when they need to be evaluated.</li>
+</ol>
+<p><strong>Insert neighborhood</strong></p>
+<p>To better explain eager exploration we are going to use the Insert classical move as an example. The insert operator consist
+in removing a location from the route and insert it between other two locations (i.e., insert it at a specific position).</p>
+<p>Have a look to the example depicted in the figure above. The location with ID=7 has been removed from the route, and it
+is wanted to insert it between locations 2 and 3. The resulting route after the insertion is shown in the second array.
+<img alt="insert" src="https://images.saymedia-content.com/.image/c_limit,cs_srgb,q_auto:eco,w_609/MTc0NDYxNTczNzExMDEzMjI0/c-standard-list-insert-examples.webp" /></p>
+<p>Given the insert operator, the neighborhood is defined as all possible insertions of all locations in any position of
+the route. To this end, we first create a class named: <code>InsertNeighborhood</code> that must
+extend <code>Neighborhood&lt;InsertNeighborhood.InsertMove, TSPSolution, TSPInstance&gt;</code>, and
+where <code>InsertNeighborhood.InsertMove</code>is the insert move operator we have to define. Once the header of the class
+has been defined, next task will be to implement the method <code>public ExploreResult&lt;...&gt; explore(TSPSolution solution)</code>. 
+This method will generate all possible insert moves given a solution (i.e., insert all locations in each of the
+positions of the route). A straightforward implementation is shown below:</p>
+<div class="highlight"><pre><span></span><code>    @Override
+    public ExploreResult&lt;InsertMove, TSPSolution, TSPInstance&gt; explore(TSPSolution solution) {
+        List&lt;InsertMove&gt; list = new ArrayList&lt;&gt;();
+        for (int i = 0; i &lt; solution.getInstance().numberOfLocations(); i++) {
+            for (int j = 0; j &lt; solution.getInstance().numberOfLocations(); j++) {
+                list.add(new InsertMove(solution, i, j));
+            }
+        }
+        return new ExploreResult&lt;&gt;(list);
+    }
+</code></pre></div>
+<p>Next task is to implement the Insert move: <code>public static class InsertMove extends TSPBaseMove</code>.
+Notice that this class has been nested inside the <code>InsertNeighborhood</code> class. As you may have noticed, the constructor of an
+insert move receive tree parameters: the solution and two integers: the position in the route of the location to insert
+in a desired position. Regardless of the type of movement intended, the following methods have to be
+implemented:</p>
+<ul>
+<li><code>TSPSolution _execute()</code>: execute the move, returning the modified solution. In our case, the solution will be modified in place.</li>
+<li><code>double getValue()</code>: or any other method, as longs as it returns how much the score is going to change if this movements is applied to the solution. procedure calculates the difference between the value of the solution that would be obtained
+  if the movement were carried out, and the value of the current target solution. </li>
+<li>The easiest implementation of this class is depicted below.</li>
+</ul>
+<div class="highlight"><pre><span></span><code>    public static class InsertMove extends TSPBaseMove {
+
+        final int pi;
+        final int pj;
+
+        /**
+         * Constructor on an insert move. Given a solution, an insert move consist in inserting the the location of a position pi, into a position pj.
+         *
+         *
+         * @param solution current solution
+         * @param pi position of the location is going to be inserted into pj
+         * @param pj position where the location of pi is going to be inserted
+         */
+        public InsertMove(TSPSolution solution, int pi, int pj) {
+            super(solution);
+            this.pi = pi;
+            this.pj = pj;
+            this.distanceDelta = calculateValue(solution);
+        }
+
+        @Override
+        protected TSPSolution _execute(TSPSolution solution) {
+            solution.insertLocationAtPiInPj(pi, pj);
+            return solution;
+        }
+
+        private double calculateValue(TSPSolution solution){
+            var s = solution.cloneSolution();
+            s.insertLocationAtPiInPj(pi, pj);
+            return s.getDistance() - solution.getDistance();
+        }
+</code></pre></div>
+<p>In this example, <code>getValue()</code> performed the insert move in a cloned solution of the current one. Then it returns the
+difference in the objective function value between the cloned one (the neighbor solution) and the current one. This
+procedure is extremely inefficient. An efficient way to perform this calculation will evaluate just the part of the
+solution that has changed after the move. We depict a more efficient approach in the swap move example.</p>
+<p><strong>Swap neighborhood</strong></p>
+<p>Movements in this neighborhood are generated lazily under demand
+using <a href="https://docs.oracle.com/javase/8/docs/api/java/util/stream/Stream.html"><code>Streams</code></a>. In this
+neighborhood we will need to build an exhaustive stream to iterate over it. We will use the classical swap move operator
+to define a Lazy Neighborhood. This move, exchange the position in the route of two locations, and can be easily
+explained through the following picture.</p>
+<p><img alt="Swap in place" src="https://raw.githubusercontent.com/nickbalestra/nickbalestra.github.io/master/assets/images/swap-in-place.png" /></p>
+<p>The main difference between this neighborhood and the previous one is the way in which the movements are defined. In
+this case, instead of generating a list of movements, we will define a Stream. The general idea of this neighborhood is that given a movement, 
+the next movement can be generated (if it exists). In this way, movements are only generated if they are needed. How to do
+it? First, we generate the Swap Neighborhood
+class (<code>SwapNeighborhood extends Neighborhood&lt;SwapNeighborhood.SwapMove, TSPSolution, TSPInstance&gt;</code>) and implement
+the explore method. This method need to generate only the initial <code>SwapMove</code> object.</p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">class</span> <span class="nc">SwapNeighborhood</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">Neighborhood</span><span class="o">&lt;</span><span class="n">SwapNeighborhood</span><span class="p">.</span><span class="na">SwapMove</span><span class="p">,</span><span class="w"> </span><span class="n">TSPSolution</span><span class="p">,</span><span class="w"> </span><span class="n">TSPInstance</span><span class="o">&gt;</span><span class="w"> </span><span class="p">{</span>
+
+
+<span class="w">    </span><span class="nd">@Override</span>
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="n">ExploreResult</span><span class="o">&lt;</span><span class="n">SwapMove</span><span class="p">,</span><span class="w"> </span><span class="n">TSPSolution</span><span class="p">,</span><span class="w"> </span><span class="n">TSPInstance</span><span class="o">&gt;</span><span class="w"> </span><span class="nf">explore</span><span class="p">(</span><span class="n">TSPSolution</span><span class="w"> </span><span class="n">solution</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="c1">// Instead of using a double for loop like the insert, we are going to generate the movements lazily</span>
+<span class="c1">//        List&lt;SwapMove&gt; swapMoves = new ArrayList&lt;&gt;();</span>
+<span class="c1">//        for (int i = 0; i &lt; solution.getInstance().numberOfLocations(); i++) {</span>
+<span class="c1">//            for (int j = i + 1; j &lt; solution.getInstance().numberOfLocations(); j++) {</span>
+<span class="c1">//                swapMoves.add(new SwapMove(solution, i, j));</span>
+<span class="c1">//            }</span>
+<span class="c1">//        }</span>
+<span class="c1">//        return ExploreResult.fromList(swapMoves);</span>
+
+<span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">nLocations</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">solution</span><span class="p">.</span><span class="na">getInstance</span><span class="p">().</span><span class="na">numberOfLocations</span><span class="p">();</span>
+<span class="w">        </span><span class="kd">var</span><span class="w"> </span><span class="n">stream</span><span class="w"> </span><span class="o">=</span>
+<span class="w">                </span><span class="c1">// Generate all possible swap origin point, from 0 to n-1</span>
+<span class="w">                </span><span class="n">IntStream</span><span class="p">.</span><span class="na">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">nLocations</span><span class="o">-</span><span class="mi">1</span><span class="p">).</span><span class="na">boxed</span><span class="p">()</span>
+<span class="w">                        </span><span class="c1">// For each origin point, generate all possible swap destination points: from starting point + 1 to n</span>
+<span class="w">                        </span><span class="p">.</span><span class="na">flatMap</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="n">IntStream</span><span class="p">.</span><span class="na">range</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="n">nLocations</span><span class="p">).</span><span class="na">mapToObj</span><span class="p">(</span><span class="n">j</span><span class="w"> </span><span class="o">-&gt;</span><span class="w"> </span><span class="k">new</span><span class="w"> </span><span class="n">SwapMove</span><span class="p">(</span><span class="n">solution</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">j</span><span class="p">)));</span>
+
+<span class="w">        </span><span class="kt">int</span><span class="w"> </span><span class="n">streamSize</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nLocations</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="p">(</span><span class="n">nLocations</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="n">ExploreResult</span><span class="p">.</span><span class="na">fromStream</span><span class="p">(</span><span class="n">stream</span><span class="p">,</span><span class="w"> </span><span class="n">streamSize</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+
+<span class="w">    </span><span class="kd">public</span><span class="w"> </span><span class="kd">static</span><span class="w"> </span><span class="kd">class</span> <span class="nc">SwapMove</span><span class="w"> </span><span class="kd">extends</span><span class="w"> </span><span class="n">TSPBaseMove</span><span class="w"> </span><span class="p">{</span>
+
+<span class="w">        </span><span class="kd">final</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">nLocations</span><span class="p">;</span>
+<span class="w">        </span><span class="kd">final</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">pi</span><span class="p">;</span>
+<span class="w">        </span><span class="kd">final</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">pj</span><span class="p">;</span>
+
+<span class="w">        </span><span class="kd">public</span><span class="w"> </span><span class="nf">SwapMove</span><span class="p">(</span><span class="n">TSPSolution</span><span class="w"> </span><span class="n">solution</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">pi</span><span class="p">,</span><span class="w"> </span><span class="kt">int</span><span class="w"> </span><span class="n">pj</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="kd">super</span><span class="p">(</span><span class="n">solution</span><span class="p">);</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="na">nLocations</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">solution</span><span class="p">.</span><span class="na">getInstance</span><span class="p">().</span><span class="na">numberOfLocations</span><span class="p">();</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="na">pi</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pi</span><span class="p">;</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="na">pj</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">pj</span><span class="p">;</span>
+<span class="w">            </span><span class="k">this</span><span class="p">.</span><span class="na">distanceDelta</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">calculateValue</span><span class="p">(</span><span class="n">solution</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="kd">private</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="nf">calculateValue</span><span class="p">(</span><span class="n">TSPSolution</span><span class="w"> </span><span class="n">solution</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="kd">var</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">solution</span><span class="p">.</span><span class="na">cloneSolution</span><span class="p">();</span>
+<span class="w">            </span><span class="n">s</span><span class="p">.</span><span class="na">swapLocationOrder</span><span class="p">(</span><span class="n">pi</span><span class="p">,</span><span class="w"> </span><span class="n">pj</span><span class="p">);</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">s</span><span class="p">.</span><span class="na">getDistance</span><span class="p">()</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">solution</span><span class="p">.</span><span class="na">getDistance</span><span class="p">();</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="nd">@Override</span>
+<span class="w">        </span><span class="kd">protected</span><span class="w"> </span><span class="n">TSPSolution</span><span class="w"> </span><span class="nf">_execute</span><span class="p">(</span><span class="n">TSPSolution</span><span class="w"> </span><span class="n">solution</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="n">solution</span><span class="p">.</span><span class="na">swapLocationOrder</span><span class="p">(</span><span class="n">pi</span><span class="p">,</span><span class="w"> </span><span class="n">pj</span><span class="p">);</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">solution</span><span class="p">;</span>
+<span class="w">        </span><span class="p">}</span>
+
+<span class="w">        </span><span class="nd">@Override</span>
+<span class="w">        </span><span class="kd">public</span><span class="w"> </span><span class="n">String</span><span class="w"> </span><span class="nf">toString</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="n">String</span><span class="p">.</span><span class="na">format</span><span class="p">(</span><span class="s">&quot;Swap %s &lt;-&gt; %s&quot;</span><span class="p">,</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">pi</span><span class="p">,</span><span class="w"> </span><span class="k">this</span><span class="p">.</span><span class="na">pj</span><span class="p">);</span>
+<span class="w">        </span><span class="p">}</span>
+<span class="w">        </span><span class="c1">// Omitted hashcode and equals generated by IntelliJ</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>An example of the stream generated by this procedure, given an instance with locations A, B, C, D and E, starting with
+the swap A &lt;-&gt;B, will be the following: A &lt;-&gt; B, A &lt;-&gt; C, A &lt;-&gt; D, A &lt;-&gt; E, B &lt;-&gt; C, B &lt;-&gt; D, B &lt;-&gt; E, C &lt;-&gt; D, C &lt;-&gt; E,
+D &lt;-&gt; E, and finally, <code>null</code>.</p>
+<h4 id="local-search-experiments">Local Search experiments<a class="headerlink" href="#local-search-experiments" title="Permanent link">&para;</a></h4>
+<p>Defining a local search experiment is as easy as defining a constructive experiment. Copy the <code>ConstructiveExperiment</code> class
+in the same folder and rename it to <code>LocalSearchExperiment</code>. In Mork, there are already implemented two different type of local searches: <code>LocalSearchFirstImprovement</code> and <code>LocalSearchBestImprovement</code>. The first one follows a first improvement
+strategy, i.e., as soon as it finds a move that results on an improvement, it is executed. The second one follows the best
+improvement strategy, it explores all solutions of a neighborhood and execute the best possible move, the move that
+results in the best solution of the neighborhood. In this experiment we are going to define 5 algorithms:</p>
+<ul>
+<li>Random constructive:</li>
+<li>Insert Neighborhood following a first and best improvement strategy</li>
+<li>Swap Neighborhood following a first and best improvement strategy</li>
+</ul>
+<div class="highlight"><pre><span></span><code>public List&lt;Algorithm&lt;TSPSolution, TSPInstance&gt;&gt; getAlgorithms() {  
+  var algorithms = new ArrayList&lt;Algorithm&lt;TSPSolution, TSPInstance&gt;&gt;();
+  algorithms.add(new SimpleAlgorithm&lt;&gt;(&quot;Random&quot;, new TSPRandomConstructive()));  
+  algorithms.add(new SimpleAlgorithm&lt;&gt;(&quot;Random-FI-Insert&quot;, new TSPRandomConstructive(),new LocalSearchFirstImprovement&lt;&gt;(super.isMaximizing(), new InsertNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm&lt;&gt;(&quot;Random-BI-Insert&quot;, new TSPRandomConstructive(),new LocalSearchBestImprovement&lt;&gt;(super.isMaximizing(), new InsertNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm&lt;&gt;(&quot;Random-FI-Swap&quot;, new TSPRandomConstructive(),new LocalSearchFirstImprovement&lt;&gt;(super.isMaximizing(), new SwapNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm&lt;&gt;(&quot;Random-BI-Swap&quot;, new TSPRandomConstructive(),new LocalSearchBestImprovement&lt;&gt;(super.isMaximizing(), new SwapNeighborhood())));  
+  return algorithms;
+}
+</code></pre></div>
+<p>Now is the moment to run this new experiment. Change the experiment property in the <code>application.yml</code> file and run it!
+Remember to look to the interactive dashboard run in <a href="http://localhost:8080/">localhost</a>. Which is the best algorithm?</p>
+<h2 id="5-visualizing-solutions">5. Visualizing solutions<a class="headerlink" href="#5-visualizing-solutions" title="Permanent link">&para;</a></h2>
+<div class="admonition danger">
+<p class="admonition-title">Danger</p>
+<p>This section is outdated, and will be rewritten soon using the new frontend and API. We recommend to skip this section for now.</p>
+</div>
+<p>In some cases you may be interested in seeing the solutions you are generating with your algorithms. This may allow you
+to detect possible problems, such as errors in the calculation of the objective function, or to detect weaknesses of the
+proposed methods.</p>
+<p>This can be easily done with Mork. First, you have to look for a program/software to represent the solution you are
+generating. Particularly, in the case of the TSP, a solution of the problem represents a circular route that cover a
+set of locations.</p>
+<p>A simple, easy and open source software to visualize graph is <a href="https://graphviz.org/">Graphviz</a>. Graph visualization is
+a way of representing structural information as diagrams of abstract graphs and networks. There are many other cool
+libraries you could use to visualize graphs such as <a href="https://www.highcharts.com/">Highcharts</a>
+,<a href="https://www.chartjs.org/">Chart.js</a> or <a href="https://d3js.org/">D3.js</a>, among others. For the
+moment, <a href="https://graphviz.org/">Graphviz</a> is enough.</p>
+<p>All methods needed to draw a solution are located in <code>/drawing/DotGenerator.java</code>. We are not going to focus on how the
+graph is generated. We recommend the interested reader to have a look to <a href="https://graphviz.org/">Graphviz documentation</a>. An example Graphviz diagram of a solution for the
+instance <a href="http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp">berlin52</a> is illustrated in the following
+figure. Additionally, the source code that generates that figure can be found <a href="../berlin52.dot.txt">here</a>.</p>
+<p><img alt="Possible route for Berlin52 instance" src="../img/route.png" /></p>
+<p>Next task is to generate that figure each time a new best solution is found. Obviously, we want to show that figure in
+the dashboard launched in <em><a href="http://localhost:8080/">http://localhost:8080/</a></em>. To do so, you will need to have just a bit
+of knowledge of javascript. Therefore, go to <code>resources/static/app.js</code> and complete two
+methods: <code>function onSolutionGenerated(event)</code> and  <code>function onInstanceProcessingStart(event)</code>.</p>
+<div class="highlight"><pre><span></span><code>function onInstanceProcessingStart(event) {
+    [...]
+    // Draw best solution found
+    $(&#39;.best-solutions&#39;).prepend(&quot;&lt;div id=&#39;best-solution-&quot; + instanceName + &quot;&#39; class=&#39;text-center box-rendered-solution&#39;&gt;&lt;/div&gt;&quot;);
+    bestValue = NaN;
+    current_best_sol = $(&#39;#best-solution-&#39; + instanceName);
+     [...]
+}   
+
+function onSolutionGenerated(event) {
+    [...]    
+    // Change to &gt; if maximizing
+    if (isNaN(bestValue) || event.score &lt; bestValue) {
+        const chart_to_update = current_best_sol;
+        bestValue = event.score;
+        $.get(&quot;/api/generategraph/&quot; + event.eventId, (response) =&gt; {
+            chart_to_update.html(` &lt;p class=&quot;text-center&quot;&gt; best solution is ${event.score}&lt;/p&gt;` +
+                `&lt;img class=&quot;rendered-solution&quot; src=&quot;data:image/png;base64,${response}&quot; /&gt;`
+            );
+        });
+    }
+    [...]
+}
+</code></pre></div>
+<p>Now it is time to execute again or Local Search experiment and analyse how the solution and the solution quality
+evolves over the time. The result should be similar than the following image:</p>
+<p><img alt="Dashboard example" src="../img/dashboard.png" /></p>
+<h2 id="6-irace">6. <em>Irace</em><a class="headerlink" href="#6-irace" title="Permanent link">&para;</a></h2>
+<div class="admonition danger">
+<p class="admonition-title">Danger</p>
+<p>This section is outdated, and will be rewritten soon using the new Autoconfig module.
+We recommend to skip this section for now, and ask for support if necessary.</p>
+</div>
+<p>In short, Irace is a software package that implements a number of automatic configuration procedures, that allows us to
+easily tune our algorithms when manually testing each possible configuration is not viable. Irace is integrated in Mork,
+so tuning your algorithms is extremely easy. More information in the guidelines provided in the published
+article: <a href="https://doi.org/10.1016/j.orp.2016.09.002">"The irace package: Iterated racing for automatic algorithm configuration"</a>
+, or in the <em>irace</em> package
+documentation: <a href="https://cran.r-project.org/web/packages/irace/vignettes/irace-package.pdf">"The irace Package: User Guide"</a>
+.</p>
+<p>To implement irace, please, have a look to <a href="../../features/irace/">the documentation</a> for further details. Anyway, in
+this section, we will explain how to implement irace for the TSP. Particularly, we will generate an experiment to
+determine which is the best local search for the TSP:
+First or Best improvement local search, and Insert or Swap Neighborhood.</p>
+<ol>
+<li>Configure an irace experiment.</li>
+<li>Define the parameters to test.</li>
+<li>Adjusting scenario options.</li>
+</ol>
+<h3 id="configure-an-irace-experiment">Configure an irace experiment<a class="headerlink" href="#configure-an-irace-experiment" title="Permanent link">&para;</a></h3>
+<p>To configure an irace experiment it is needed to create a class that
+extends <code>IraceAlgorithmGenerator&lt;TSPSolution, TSPInstance&gt;</code>. In a Mork project, just one class, and only one, can
+extend <code>IraceAlgorithmGenerator</code>.</p>
+<p>This class must implement the
+method <code>public Algorithm&lt;TSPSolution, TSPInstance&gt; buildAlgorithm(IraceRuntimeConfiguration config)</code>, in charge of
+generate an Algorithm based on <code>IraceRuntimeConfiguration</code> object. This object contains the configuration of the
+experiment and will be defined in the next section. To obtain the configuration parameter, the
+method <code>String getValue(String s)</code> have to be called. In this case, two parameters has to be defined: the strategy of
+the local search (first or best); and the neighborhood (insert or swap).</p>
+<div class="highlight"><pre><span></span><code>public class IraceExperiment extends IraceAlgorithmGenerator&lt;TSPSolution, TSPInstance&gt; {
+
+    @Override
+    public Algorithm&lt;TSPSolution, TSPInstance&gt; buildAlgorithm(IraceRuntimeConfiguration config) {
+
+        var localSearchName = config.getValue(&quot;localsearch&quot;).orElseThrow();
+        var localSearchStrategy = config.getValue(&quot;localSearchStrategy&quot;).orElseThrow();
+        var localSearch = buildLocalSearch(localSearchName, localSearchStrategy);
+        var constructive = new TSPRandomConstructive();
+        return new SimpleAlgorithm&lt;&gt;(constructive, localSearch);
+    }
+
+
+    private LocalSearch&lt;? extends Move&lt;TSPSolution, TSPInstance&gt;, TSPSolution, TSPInstance&gt; buildLocalSearch(String localSearchName, String localSearchStrategy) {
+
+        var neighborhood = switch (localSearchName) {
+            case &quot;insert&quot; -&gt; new InsertNeighborhood();
+            case &quot;swap&quot; -&gt; new SwapNeighborhood();
+            default -&gt; throw new IllegalArgumentException(&quot;Not implemented: &quot; + localSearchName);
+        };
+
+        return switch (localSearchStrategy) {
+            case &quot;first&quot; -&gt; new LocalSearchFirstImprovement&lt;&gt;(false, neighborhood);
+            case &quot;best&quot; -&gt; new LocalSearchBestImprovement&lt;&gt;(false, neighborhood);
+            default -&gt; throw new IllegalArgumentException(&quot;Not implemented: &quot; + localSearchStrategy);
+        };
+    }
+}
+</code></pre></div>
+<h3 id="define-the-parameters-to-test">Define the parameters to test<a class="headerlink" href="#define-the-parameters-to-test" title="Permanent link">&para;</a></h3>
+<p>Go to file <code>/resources/irace/parameters.txt</code>  and include at the end the two following lines:</p>
+<div class="highlight"><pre><span></span><code>## Configuration of the local searches
+localsearch &quot;localsearch=&quot; c (swap, insert)
+localSearchStrategy &quot;localSearchStrategy=&quot; c (first, best)
+</code></pre></div>
+<p>As you might have noticed, <code>localsearch</code> and <code>localSearchStrategy</code> matches with the lines:</p>
+<div class="highlight"><pre><span></span><code>var localSearchName = config.getValue(&quot;localsearch&quot;).orElseThrow();
+var localSearchStrategy = config.getValue(&quot;localSearchStrategy&quot;).orElseThrow();
+</code></pre></div>
+<p>Be sure that you leave some empty lines at the end of the file (we don't why it crashes if there are no lines)</p>
+<h3 id="adjusting-scenario-options">Adjusting scenario options<a class="headerlink" href="#adjusting-scenario-options" title="Permanent link">&para;</a></h3>
+<p>Next, go to <code>/resources/irace/scenario.txt</code> and read carefully all configuration parameters. Some parameters you could
+modify are: <code>trainInstancesDir</code>, <code>maxExperiments</code>, <code>targetRunnerParallel</code>, among others.</p>
+<h3 id="execute-irace">Execute irace<a class="headerlink" href="#execute-irace" title="Permanent link">&para;</a></h3>
+<p>To execute irace, first, go to <code>application.yml</code> and enable irace:</p>
+<div class="highlight"><pre><span></span><code># Enable irace integration? Check IRACE Wiki section before enabling
+irace:
+enabled: false
+
+# False: use GraalVM implementation, does not need R installed locally
+# True: Use shell to execute R scripts, R/Rscript need to be locally installed and in path
+shell: true
+</code></pre></div>
+<p>Now, it's the moment when you wait up to a few hours until it ends. The time it takes to find the best configuration depends
+on the number of instances specified, as well as it sizes and the number of experiments that will be carried out. After it finishes, you may see something similar to:</p>
+<div class="highlight"><pre><span></span><code># Best configurations (first number is the configuration ID; listed from best to worst according to the sum of ranks):
+ localsearch localSearchStrategy
+ 2       insert               first
+ [...]
+</code></pre></div>
+<p>Great! Irace has determined that the best neighborhood strategy was 'First improvement', exploring the neighborhood of
+the inserts. These results are consistent with our experimentation.</p>
+<h3 id="did-you-use-irace">Did you use irace?<a class="headerlink" href="#did-you-use-irace" title="Permanent link">&para;</a></h3>
+<p>Please, do not forget to cite the original paper where Manuel López-Ibañez <em>et al.</em> published it:</p>
+<div class="highlight"><pre><span></span><code>López-Ibáñez, M., Dubois-Lacoste, J., Cáceres, L. P., Birattari, M., &amp; Stützle, T. (2016). The irace package: Iterated
+racing for automatic algorithm configuration. Operations Research Perspectives, 3, 43-58.
+</code></pre></div>
+<h2 id="7-testing-in-mork">7. Testing in Mork<a class="headerlink" href="#7-testing-in-mork" title="Permanent link">&para;</a></h2>
+<h4 id="asserts">Asserts<a class="headerlink" href="#asserts" title="Permanent link">&para;</a></h4>
+<p>I'm sure you've spent hours in front of your code trying to find that 🤬 bug. For that reason, we consider that it is
+important that any operation must be validated, and check that the implemented procedures perform the desired
+behavior.<br />
+And how can this be done in Mork? There are many ways, testing is one way, but in this case, we are talking about <strong>asserts</strong>. The keyword or reserved word <strong>assert</strong> is
+used to state that at a certain point in the code a certain condition must be true. For example, if you write a method
+that calculates the speed of a particle, you might assert that the calculated speed is less than the speed of light. Not
+using it yet? Take a look at
+the <a href="https://docs.oracle.com/javase/7/docs/technotes/guides/language/assert.html">official documentation</a> and start
+using it right now. Experience has shown that writing assertions while programming is one of the quickest and most
+effective ways to detect and correct bugs. As an added benefit, assertions serve to document the inner workings of your
+program, enhancing maintainability. By default, assertions are disabled at runtime. To enable assertions use
+the <code>-enableassertions</code>, or <code>-ea</code>, as a program argument.</p>
+
+
+
+
+
+
+
+  
+  
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+          <button type="button" class="md-top md-icon" data-md-component="top" hidden>
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M13 20h-2V8l-5.5 5.5-1.42-1.42L12 4.16l7.92 7.92-1.42 1.42L13 8z"/></svg>
+  Back to top
+</button>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "../..", "features": ["content.action.edit", "content.code.select", "content.code.annotate", "navigation.instant", "navigation.instant.progress", "navigation.tracking", "navigation.path", "navigation.top", "search.suggest", "search.highlight"], "search": "../../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.13a4f30d.min.js"></script>
+      
+        <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
