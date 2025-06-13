@@ -67,7 +67,7 @@ VNSNeighChange<MySolution, MyInstance> customChange = (solution, k) -> {
     .withNeighChange((solution, k) -> k >= 10 ? VNSNeighChange.STOPNOW : k + 1)
     ```
 
-### 6. Implementation notes and tips
+### 4. Implementation notes and tips
 
 - The VNS algorithm stops when the neighborhood change function returns `VNSNeighChange.STOPNOW`.
 - k always starts at 0, not 1.
@@ -80,13 +80,13 @@ VNSNeighChange<MySolution, MyInstance> customChange = (solution, k) -> {
 
 And links to their documentation:
 
-- **[`VNS<S, I>`](/apidocs/es/urjc/etsii/grafo/algorithms/vns/VNS.html)**: Main algorithm class. Generic in solution (`S`) and instance (`I`) types.
-- **[`VNSBuilder<S, I>`](/apidocs/es/urjc/etsii/grafo/algorithms/vns/VNSBuilder.html)**: Builder for configuring and instantiating VNS algorithms.
-- **[`VNSNeighChange<S, I>`](/apidocs/es/urjc/etsii/grafo/algorithms/vns/VNSNeighChange.html)**: Functional interface for neighborhood change strategies (controls how `k` changes).
-- **[`DefaultVNSNeighChange<S, I>`](/apidocs/es/urjc/etsii/grafo/algorithms/vns/DefaultVNSNeighChange.html)**: Default implementation of `VNSNeighChange`, increments `k` until a maximum value is reached.
-- **[`Constructive<S, I>`](/apidocs/es/urjc/etsii/grafo/create/Constructive.html)**: Base class for generating initial solutions.
-- **[`Improver<S, I>`](/apidocs/es/urjc/etsii/grafo/improve/Improver.html)**: Base class for any local search/improvement.
-- **[`Shake<S, I>`](/apidocs/es/urjc/etsii/grafo/shake/Shake.html)**: Base class for perturbing solutions.
+- **[`VNS<S, I>`](../../../apidocs/es/urjc/etsii/grafo/algorithms/vns/VNS.html)**: Main algorithm class. Generic in solution (`S`) and instance (`I`) types.
+- **[`VNSBuilder<S, I>`](../../../apidocs/es/urjc/etsii/grafo/algorithms/vns/VNSBuilder.html)**: Builder for configuring and instantiating VNS algorithms.
+- **[`VNSNeighChange<S, I>`](../../../apidocs/es/urjc/etsii/grafo/algorithms/vns/VNSNeighChange.html)**: Functional interface for neighborhood change strategies (controls how `k` changes).
+- **[`DefaultVNSNeighChange<S, I>`](../../../apidocs/es/urjc/etsii/grafo/algorithms/vns/DefaultVNSNeighChange.html)**: Default implementation of `VNSNeighChange`, increments `k` until a maximum value is reached.
+- **[`Constructive<S, I>`](../../../apidocs/es/urjc/etsii/grafo/create/Constructive.html)**: Base class for generating initial solutions.
+- **[`Improver<S, I>`](../../../apidocs/es/urjc/etsii/grafo/improve/Improver.html)**: Base class for any local search/improvement.
+- **[`Shake<S, I>`](../../../apidocs/es/urjc/etsii/grafo/shake/Shake.html)**: Base class for perturbing solutions.
 
 
 ## References
