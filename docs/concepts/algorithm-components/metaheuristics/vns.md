@@ -20,16 +20,6 @@ while (termination criteria not met) {
 }
 ```
 
-## Main Java Classes
-
-- **`VNS<S, I>`**: Main algorithm class. Generic in solution (`S`) and instance (`I`) types.
-- **`VNSBuilder<S, I>`**: Builder for configuring and instantiating VNS algorithms.
-- **`VNSNeighChange<S, I>`**: Functional interface for neighborhood change strategies (controls how `k` changes).
-- **`DefaultVNSNeighChange<S, I>`**: Default implementation of `VNSNeighChange`, increments `k` until a maximum value is reached.
-- **`Constructive<S, I>`**: Interface for generating initial solutions.
-- **`Improver<S, I>`**: Interface for local search/improvement.
-- **`Shake<S, I>`**: Interface for perturbing solutions.
-
 ## How to Use
 
 ### 1. Implement or select dependencies
@@ -84,6 +74,20 @@ VNSNeighChange<MySolution, MyInstance> customChange = (solution, k) -> {
 - The `DefaultVNSNeighChange` stops when `k` >= `kmax`.
 - If you want to make the VNS multistart, wrap it using the `MultiStartAlgorithm` class.
 - Before each shake, the current solution is cloned to avoid worsening it. New solutions are only accepted if they improve the current score.
+
+
+## Related Java Classes
+
+And links to their documentation:
+
+- **[`VNS<S, I>`](/apidocs/es/urjc/etsii/grafo/algorithms/vns/VNS.html)**: Main algorithm class. Generic in solution (`S`) and instance (`I`) types.
+- **[`VNSBuilder<S, I>`](/apidocs/es/urjc/etsii/grafo/algorithms/vns/VNSBuilder.html)**: Builder for configuring and instantiating VNS algorithms.
+- **[`VNSNeighChange<S, I>`](/apidocs/es/urjc/etsii/grafo/algorithms/vns/VNSNeighChange.html)**: Functional interface for neighborhood change strategies (controls how `k` changes).
+- **[`DefaultVNSNeighChange<S, I>`](/apidocs/es/urjc/etsii/grafo/algorithms/vns/DefaultVNSNeighChange.html)**: Default implementation of `VNSNeighChange`, increments `k` until a maximum value is reached.
+- **[`Constructive<S, I>`](/apidocs/es/urjc/etsii/grafo/create/Constructive.html)**: Base class for generating initial solutions.
+- **[`Improver<S, I>`](/apidocs/es/urjc/etsii/grafo/improve/Improver.html)**: Base class for any local search/improvement.
+- **[`Shake<S, I>`](/apidocs/es/urjc/etsii/grafo/shake/Shake.html)**: Base class for perturbing solutions.
+
 
 ## References
 
