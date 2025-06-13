@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - master 
-      - main
 permissions:
   contents: write
 jobs:
@@ -37,4 +36,10 @@ jobs:
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
       - run: mvn compile javadoc:javadoc javadoc:aggregate
-      - run: mkdocs gh-deploy --force
+      - run: mkdocs build
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v4
+        if: github.ref == 'refs/heads/master'
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
