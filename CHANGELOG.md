@@ -1,4 +1,7 @@
 # Developing
+
+# v0.22
+- (Breaking) Simplify VNS implementation. New docs page: 
 - (Fix) Irace integration with v4.2
 - (Fix) #228: Instance selector failed to copy instances if they were not in the root instance folder
 

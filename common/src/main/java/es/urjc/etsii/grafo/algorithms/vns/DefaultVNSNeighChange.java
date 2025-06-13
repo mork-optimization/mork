@@ -5,7 +5,7 @@ import es.urjc.etsii.grafo.solution.Solution;
 
 /**
  * Default VNSNeighChange implementation that increments K one by one until it reaches maxK.
- * VNS stops when K reaches maxK.
+ * VNS stops when K is equal or greater than maxK.
  * @param <S> Solution class
  * @param <I> Instance class
  */
