@@ -36,5 +36,5 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
-      - run: mvn javadoc:javadoc javadoc:aggregate
+      - run: mvn compile javadoc:javadoc javadoc:aggregate
       - run: mkdocs gh-deploy --force
