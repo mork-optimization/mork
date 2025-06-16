@@ -121,7 +121,7 @@ def get_full_name(stack: list[tuple[str, int]]) -> str:
 
 def fold_profiler_data(path: str) -> DataFrame:
     """
-    List all json files in data folder and load them
+    List all JSON files in the data folder and load them
     :param path:
     :return:
     """
@@ -172,10 +172,21 @@ def fold_profiler_data(path: str) -> DataFrame:
                     'time': exec_time
                 })
 
-    df = pd.DataFrame(timestats)
-    df.sort_values(by=['instance', 'component', 'iter'], inplace=True)
-    df.drop(columns=['iter'], inplace=True)
-    df.groupby(['instance', 'component', 'parent', 'child'], as_index=False).mean()
+    df_forcount = pd.DataFrame(timestats)
+    df_forcount.sort_values(by=['instance', 'component', 'iter'], inplace=True)
+    df_fortimes = df_forcount.copy()
+
+    df_forcount = df_forcount.groupby(['instance', 'component', 'parent', 'child', 'iter'], as_index=False).agg({'time': 'count'})
+    df_forcount.drop(columns=['iter'], inplace=True)
+    df_forcount = df_forcount.groupby(['instance', 'component', 'parent', 'child'], as_index=False).mean()
+
+
+    df_fortimes.drop(columns=['iter'], inplace=True)
+    df_fortimes.groupby(['instance', 'component', 'parent', 'child'], as_index=False).mean()
+
+    df = df_fortimes.merge(df_forcount, on=['instance', 'component', 'parent', 'child'], suffixes=('', '_count'))
+
+
     return df
 
 #def process_recursive(data: list[dict], names: list[str], idx=0, ):
