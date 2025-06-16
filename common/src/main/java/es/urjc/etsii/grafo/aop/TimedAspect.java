@@ -75,11 +75,11 @@ public final class TimedAspect {
 
         var annotation = method.getAnnotation(TimeStats.class);
         long start = System.nanoTime();
-        if(Metrics.areMetricsEnabled()){
+        if(Metrics.areMetricsEnabled() && Metrics.areTimeStatsEnabled()){
             Context.addTimeEvent(true, start, clazz.getSimpleName(), method.getName());
         }
         var retVal = point.proceed();
-        if(Metrics.areMetricsEnabled()){
+        if(Metrics.areMetricsEnabled() && Metrics.areTimeStatsEnabled()){
             long end = System.nanoTime();
             Context.addTimeEvent(false, end, clazz.getSimpleName(), method.getName());
             log.trace("{}() took {} ms", method.getName(), TimeUtil.convert(end-start, TimeUnit.NANOSECONDS, TimeUnit.MILLISECONDS));

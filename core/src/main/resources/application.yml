@@ -62,6 +62,8 @@ solver:
   # Enable or disable metrics tracking. Force enabled if using autoconfig.
   metrics: false
 
+  time-stats: false
+
 # Enable irace integration? Check IRACE Wiki section before enabling
 irace:
   enabled: false
