@@ -117,14 +117,9 @@ def get_functions() -> list[ComplexityFunction]:
 
 
 def get_full_name(stack: list[tuple[str, int]]) -> str:
-    return "/".join(name for name, _ in stack)
+    return "/".join(frame['name'] for frame in stack)
 
 def fold_profiler_data(path: str) -> DataFrame:
-    """
-    List all JSON files in the data folder and load them
-    :param path:
-    :return:
-    """
     timestats = []
 
     for f in os.listdir(path):
@@ -133,63 +128,63 @@ def fold_profiler_data(path: str) -> DataFrame:
 
         log.debug(f"Processing {f}")
         with open(join(path, f)) as json_file:
-            data = []
             jsondata = json.load(json_file)
 
         if jsondata['algorithm']['name'] == BEST_ALGORITHM or jsondata['iteration'] == BEST_ITERATION:
             print(f"Skipping file {f}")
             continue
 
+        # Build a list of events and a stack for exclusive time calculation
+        events = []
         for i in jsondata['timeData']:
-            data.append({'when': i['when'], 'enter': i['enter'], 'clazz': i['clazz'], 'method': i['method']})
-        data.sort(key=lambda x: x['when'])
+            events.append({'when': i['when'], 'enter': i['enter'], 'clazz': i['clazz'], 'method': i['method']})
+        events.sort(key=lambda x: x['when'])
 
-        dict_data = defaultdict(list)
         stack = []
 
-        for i in data:
+        for i in events:
             name = f"{i['clazz']}::{i['method']}"
             if i['enter']:
-                stack.append((name, i['when']))
+                stack.append({'name': name, 'when': i['when'], 'children_time': 0})
             else:
-                current = get_full_name(stack)
-                start = stack.pop()
-                if name != start[0]:
-                    raise Exception(f"Unexpected stack frame: {name} != {start[0]}")
+                full_name = get_full_name(stack)
+                current = stack.pop()
+                if name != current['name']:
+                    raise Exception(f"Unexpected stack frame: {name} != {current['name']}")
 
-                exec_time = (i['when'] - start[1])/1000000 # Convert nanos to millis
+                exec_time = (i['when'] - current['when']) / 1_000_000  # nanos to millis
+                exclusive_time = exec_time - current['children_time']
 
-                # Note that algorithm name is discarded here, as it is not needed for the analysis
-                # We analyze by component instead of by specific algorithm config name
-                # TODO review if we need parent/child properties
-                parent, child = current.rsplit("/", 1) if "/" in current else ("", current)
+                # Add exclusive time to parent if exists
+                if stack:
+                    stack[-1]['children_time'] += exec_time
+
+                parent, child = full_name.rsplit("/", 1) if "/" in full_name else ("", full_name)
                 timestats.append({
                     'instance': jsondata['instanceId'],
                     'iter': jsondata['iteration'],
-                    'component': current,
+                    'component': full_name,
                     'parent': parent,
                     'child': child,
-                    'time': exec_time
+                    'time': exec_time,
+                    'time_exclusive': exclusive_time
                 })
 
     df_forcount = pd.DataFrame(timestats)
     df_forcount.sort_values(by=['instance', 'component', 'iter'], inplace=True)
     df_fortimes = df_forcount.copy()
 
-    df_forcount = df_forcount.groupby(['instance', 'component', 'parent', 'child', 'iter'], as_index=False).agg({'time': 'count'})
+    df_forcount = df_forcount.groupby(['instance', 'component', 'parent', 'child', 'iter'], as_index=False).agg({'time': 'count', 'time_exclusive': 'count'})
     df_forcount.drop(columns=['iter'], inplace=True)
     df_forcount = df_forcount.groupby(['instance', 'component', 'parent', 'child'], as_index=False).mean()
-
 
     df_fortimes.drop(columns=['iter'], inplace=True)
     df_fortimes.groupby(['instance', 'component', 'parent', 'child'], as_index=False).mean()
 
     df = df_fortimes.merge(df_forcount, on=['instance', 'component', 'parent', 'child'], suffixes=('', '_count'))
 
-
     return df
 
-#def process_recursive(data: list[dict], names: list[str], idx=0, ):
 
 def prepare_df(df: DataFrame, timestats: DataFrame) -> DataFrame:
     exp_instances = timestats['instance'].unique()
