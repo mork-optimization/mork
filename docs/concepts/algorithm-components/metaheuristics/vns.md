@@ -61,10 +61,10 @@ VNSNeighChange<MySolution, MyInstance> customChange = (solution, k) -> {
 ```
 
 !!! tip
-    You can quickly implement a custom `VNSNeighChange` to control how the neighborhood change by using a lambda expression.
+    You can quickly implement a custom `VNSNeighChange` to control how the neighborhood changes by using a lambda expression.
     The following example is equivalent to the default behavior of `DefaultVNSNeighChange`, with `max=5` and `increment=1`:
     ```java
-    .withNeighChange((solution, k) -> k >= 10 ? VNSNeighChange.STOPNOW : k + 1)
+    .withNeighChange((solution, k) -> k >= 5 ? VNSNeighChange.STOPNOW : k + 1)
     ```
 
 ### 4. Implementation notes and tips
