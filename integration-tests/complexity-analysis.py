@@ -174,7 +174,8 @@ def fold_profiler_data(path: str) -> DataFrame:
     df_forcount.sort_values(by=['instance', 'component', 'iter'], inplace=True)
     df_fortimes = df_forcount.copy()
 
-    df_forcount = df_forcount.groupby(['instance', 'component', 'parent', 'child', 'iter'], as_index=False).agg({'time': 'count', 'time_exclusive': 'count'})
+    df_forcount.drop(columns=['time_exclusive'], inplace=True)
+    df_forcount = df_forcount.groupby(['instance', 'component', 'parent', 'child', 'iter'], as_index=False).agg({'time': 'count'})
     df_forcount.drop(columns=['iter'], inplace=True)
     df_forcount = df_forcount.groupby(['instance', 'component', 'parent', 'child'], as_index=False).mean()
 
