@@ -252,7 +252,7 @@ def join_instance_timestats(instances: DataFrame, timestats: DataFrame, componen
     xy = xy.groupby(instance_property).mean()
     return xy
 
-def calculate_fitting_funcs(instances: DataFrame, timestats: DataFrame, component_name: str, instance_property: str) -> list[Fit]:
+def calculate_fitting_funcs(instances: DataFrame, timestats: DataFrame, component_name: str, instance_property: str, property_source: str) -> list[Fit]:
     fitting_funcs = get_functions()
     xy = join_instance_timestats(instances, timestats, component_name, instance_property)
     if len(xy) < MIN_POINTS:
@@ -261,7 +261,10 @@ def calculate_fitting_funcs(instances: DataFrame, timestats: DataFrame, componen
 
     fits = []
     x = xy.index.to_numpy()
-    y = xy['time'].to_numpy()
+    if not property_source in xy.columns:
+        raise Exception(f"Property source {property_source} not found in data, skipping")
+
+    y = xy[property_source].to_numpy()
     for f in fitting_funcs:
         fit = calculate_fitting_func(x, y, f, instance_property)
         if fit:
@@ -271,14 +274,14 @@ def calculate_fitting_funcs(instances: DataFrame, timestats: DataFrame, componen
     return fits
 
 
-def find_best_instance_property(instances: DataFrame, timestats: DataFrame, component_name: str) -> list[Fit]:
+def find_best_instance_property(instances: DataFrame, timestats: DataFrame, component_name: str, property_source: str) -> list[Fit]:
     best_fits = []
 
     for instance_property in instances.columns:
         if instance_property == 'id' or instance_property == 'path':
             continue
 
-        fits = calculate_fitting_funcs(instances, timestats, component_name, instance_property)
+        fits = calculate_fitting_funcs(instances, timestats, component_name, instance_property, property_source)
         if not fits:
             continue
         if not best_fits or fits[0].is_better_than(best_fits[0]):
@@ -287,26 +290,30 @@ def find_best_instance_property(instances: DataFrame, timestats: DataFrame, comp
     return best_fits
 
 
-def analyze_complexity(instances: DataFrame, timestats: DataFrame):
+def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame):
     treemap_labels = []
     failed_components = []
     for component_name in timestats['component'].unique():
-        fits = find_best_instance_property(instances, timestats, component_name)
-        # If all fits have failed, skip property
-        if not fits:
-            failed_components.append(component_name)
-            print(f"Failed to calculate complexity of component {component_name}, skipping")
-            continue
-        best = fits[0]
-        xy = join_instance_timestats(instances, timestats, component_name, best.instance_prop)
-        draw_functions_chart(xy, fits, best.instance_prop, component_name)
+        complexities = {}
+        sources = ['time', 'time_exclusive', 'time_count']
+        for property_source in sources:
+            complexities[property_source] = find_best_instance_property(instances, timestats, component_name, property_source)
+            # If all fits have failed, skip property
+            if not complexities[property_source]:
+                failed_components.append(component_name)
+                print(f"Failed to calculate complexity of component {component_name}, skipping")
+                continue
+            best = complexities[property_source][0]
+            xy = join_instance_timestats(instances, timestats, component_name, best.instance_prop)
+            draw_functions_chart(xy, complexities[property_source], best.instance_prop, component_name)
 
-        print(f"Component {component_name} performance predicted as Θ({best.name_latex()}) by {best.instance_prop} - {Fit.get_metric_name()}: {best.get_metric_value()}")
-        treemap_labels.append({"component": component_name, "property": best.instance_prop, "function": f"Θ({best.name_html()})", Fit.get_metric_name(): best.get_metric_value()})
+            print(f"Component {component_name}, source {property_source} performance predicted as Θ({best.name_latex()}) by {best.instance_prop} - {Fit.get_metric_name()}: {best.get_metric_value()}")
+            treemap_labels.append({"component": component_name, "property_source":property_source, "instance_property": best.instance_prop, "function": f"Θ({best.name_html()})", Fit.get_metric_name(): best.get_metric_value()})
+
 
     if not treemap_labels:
         print("No components to show, skipping treemap generation")
-        return
+        return None
 
     treemap_data = timestats.groupby(['component', 'parent', 'child'], as_index=False)['time'].mean()
     # drop failed components
@@ -314,12 +321,20 @@ def analyze_complexity(instances: DataFrame, timestats: DataFrame):
     treemap_data = treemap_data.merge(pd.DataFrame(treemap_labels), on='component')
 
     treemap_data['child'] = treemap_data['child'].str.replace('::','<br>')
+    return treemap_data
+
+
+def analyze_complexity(instances: DataFrame, timestats: DataFrame):
+    treemap_data = try_analyze_all_property_sources(instances, timestats)
+    if not treemap_data:
+        return
+
     fig = go.Figure()
     fig.add_trace(go.Treemap(
         ids=treemap_data.component,
         labels=treemap_data.child,
         parents=treemap_data.parent,
-        customdata=np.stack((treemap_data.time, treemap_data.property, treemap_data.function, treemap_data[Fit.get_metric_name()]), axis=-1),
+        customdata=np.stack((treemap_data.time, treemap_data.instance_property, treemap_data.function, treemap_data[Fit.get_metric_name()]), axis=-1),
         hovertemplate='<b> %{label} </b> <br> Time: %{customdata[0]:.2f} ms <br> Complexity: %{customdata[2]} <br> Where n is: %{customdata[1]} <br> ' + Fit.get_metric_name() + ': %{customdata[3]:.2f}<extra></extra>', # <extra></extra> hides the extra tooltips that contains traceid by default
         marker=dict(
             colors=treemap_data.time,
@@ -360,8 +375,6 @@ def main():
     instances = load_df(args.properties)
     print("Loading profiler data")
     timestats = fold_profiler_data(args.data)
-    #print(f"Preparing CSV data")
-    #instances = prepare_df(instances, timestats)
     print(f"Analyzing complexity")
     analyze_complexity(instances, timestats)
 
