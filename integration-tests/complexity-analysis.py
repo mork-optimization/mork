@@ -23,6 +23,9 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 import logging
+from z3 import *
+
+
 log = logging.getLogger(__name__)
 
 boring_colors = ["#EDEDE9", "#D6CCC2", "#F5EBE0", "#E3D5CA", "#d6e2e9"]
@@ -31,6 +34,8 @@ best_color = "limegreen"
 
 BEST_ALGORITHM = "bestalg"
 BEST_ITERATION = "bestiter"
+
+
 
 def format_number_latex(n):
     formatted =  f"{n:+.2g}"
@@ -51,11 +56,12 @@ def format_number_html(n):
     return formatted
 
 class ComplexityFunction(object):
-    def __init__(self, name, function, latex, html):
+    def __init__(self, name, function, latex, html, calc):
         self.name = name
         self.function = function
         self.latex = latex
         self.html = html
+        self.calc = calc
 
 
     def f_name_latex(self, a, b):
@@ -63,6 +69,9 @@ class ComplexityFunction(object):
 
     def f_name_html(self, a, b):
         return self.html.replace("a", format_number_html(a)).replace("b", format_number_html(b))
+
+    def f_name_calc(self, a, b):
+        return self.calc.replace("a", str(a)).replace("b", str(b))
 
 
 class Fit(object):
@@ -95,6 +104,9 @@ class Fit(object):
     def is_better_than(self, other) -> bool:
         return self.mse < other.mse
 
+    def name_calc(self):
+        return self.f.f_name_calc(*self.popt)
+
     def name_html(self):
         return self.f.f_name_html(*self.popt)
 
@@ -108,16 +120,20 @@ def load_df(path: str) -> DataFrame:
 
 def get_functions() -> list[ComplexityFunction]:
     return [
-        ComplexityFunction("Log.", lambda x, a, b: a * np.log(x) + b, r"a \cdot \log(x) b", r"a log(x) b"),
-        ComplexityFunction("Linear", lambda x, a, b: a * x + b, r"a \cdot x b", r"ax b"),
-        ComplexityFunction("Log. Linear", lambda x, a, b: a * x * np.log(x) + b, r"a \cdot x \log(x) b", r"ax log(x) b"),
-        ComplexityFunction("Quadratic", lambda x, a, b: a * x ** 2 + b, r"a \cdot x^2 b", r"ax<sup>2</sup> b"),
-        ComplexityFunction("Exponential", lambda x, a, b: a * 2 ** x + b, r"a \cdot 2^x b", r"2<sup>x</sup> b"),
+        ComplexityFunction("Log.", lambda x, a, b: a * np.log(x) + b, r"a \cdot \log(x) b", r"a log(x) b", "a * logar(x) + b"),
+        ComplexityFunction("Linear", lambda x, a, b: a * x + b, r"a \cdot x b", r"ax b", "a * x + b"),
+        ComplexityFunction("Log. Linear", lambda x, a, b: a * x * np.log(x) + b, r"a \cdot x \log(x) b", r"ax log(x) b", "a * x * logar(x) + b"),
+        ComplexityFunction("Quadratic", lambda x, a, b: a * x ** 2 + b, r"a \cdot x^2 b", r"ax<sup>2</sup> b", "a * x ** 2 + b"),
+        ComplexityFunction("Exponential", lambda x, a, b: a * 2 ** x + b, r"a \cdot 2^x b", r"2<sup>x</sup> b", "a * 2 ** x + b"),
     ]
 
 
 def get_full_name(stack: list[tuple[str, int]]) -> str:
     return "/".join(frame['name'] for frame in stack)
+
+def z3_simplify(expr: str) -> str:
+    return expr
+
 
 def fold_profiler_data(path: str) -> DataFrame:
     timestats = []
@@ -195,9 +211,9 @@ def prepare_df(df: DataFrame, timestats: DataFrame) -> DataFrame:
     return cloned
 
 
-def draw_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, component_name):
+def draw_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, component_name, property_source='time'):
     fig = px.line()
-    fig.add_scatter(x=xy.index, y=xy['time'], name="$Real$", line=dict(color=real_color))
+    fig.add_scatter(x=xy.index, y=xy[property_source], name="$Real$", line=dict(color=real_color))
 
     for i, fit in enumerate(fits):
         color = boring_colors[i % len(boring_colors)] if i != 0 else best_color
@@ -205,7 +221,7 @@ def draw_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, comp
         # print(f"Component {c} - Function {k} - {col} - R2: {r2} - {popt} - {dic['fvec']}")
 
     fig.update_layout(
-        title=rf"$\text{{{component_name} is }}Θ({fits[0].name_latex()})$",
+        title=rf"$\text{{{component_name} - {property_source} is }}Θ({fits[0].name_latex()})$",
         showlegend=True,
         #legend_title_text="Models",
         legend = dict(
@@ -242,11 +258,16 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
     r2 = 1 - (ss_res / ss_tot)
     data = pd.DataFrame({'x':x, 'y':y_estimated})
 
+    # If popt is near whole numbers, round it
+    for i, p in enumerate(popt):
+        if abs(p - round(p)) < 1e-6:
+            popt[i] = round(p)
+
     return Fit(f, instance_property, r2, perr, mse, popt, dic, data)
 
-def join_instance_timestats(instances: DataFrame, timestats: DataFrame, component_name: str, instance_property: str):
+def join_instance_timestats(instances: DataFrame, timestats: DataFrame, component_name: str, instance_property: str, property_source: str = 'time') -> DataFrame:
     x = instances[['id', instance_property]]
-    y = timestats[timestats['component'] == component_name][['instance', 'time']]
+    y = timestats[timestats['component'] == component_name][['instance', property_source]]
     xy = x.set_index('id').join(y.set_index('instance'), how='right')
     xy = xy.sort_values(by=[instance_property], inplace=False)
     xy = xy.groupby(instance_property).mean()
@@ -254,7 +275,7 @@ def join_instance_timestats(instances: DataFrame, timestats: DataFrame, componen
 
 def calculate_fitting_funcs(instances: DataFrame, timestats: DataFrame, component_name: str, instance_property: str, property_source: str) -> list[Fit]:
     fitting_funcs = get_functions()
-    xy = join_instance_timestats(instances, timestats, component_name, instance_property)
+    xy = join_instance_timestats(instances, timestats, component_name, instance_property, property_source)
     if len(xy) < MIN_POINTS:
         print(f"Instance property {instance_property} has less than {MIN_POINTS} points after grouping, skipping")
         return []
@@ -304,11 +325,11 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
                 print(f"Failed to calculate complexity of component {component_name}, skipping")
                 continue
             best = complexities[property_source][0]
-            xy = join_instance_timestats(instances, timestats, component_name, best.instance_prop)
-            draw_functions_chart(xy, complexities[property_source], best.instance_prop, component_name)
+            xy = join_instance_timestats(instances, timestats, component_name, best.instance_prop, property_source)
+            draw_functions_chart(xy, complexities[property_source], best.instance_prop, component_name, property_source)
 
             print(f"Component {component_name}, source {property_source} performance predicted as Θ({best.name_latex()}) by {best.instance_prop} - {Fit.get_metric_name()}: {best.get_metric_value()}")
-            treemap_labels.append({"component": component_name, "property_source":property_source, "instance_property": best.instance_prop, "function": f"Θ({best.name_html()})", Fit.get_metric_name(): best.get_metric_value()})
+            treemap_labels.append({"component": component_name, "property_source":property_source, "instance_property": best.instance_prop, "calc_function": f"{best.name_calc()}","html_function": f"Θ({best.name_html()})", Fit.get_metric_name(): best.get_metric_value()})
 
 
     if not treemap_labels:
@@ -334,7 +355,7 @@ def analyze_complexity(instances: DataFrame, timestats: DataFrame):
         ids=treemap_data.component,
         labels=treemap_data.child,
         parents=treemap_data.parent,
-        customdata=np.stack((treemap_data.time, treemap_data.instance_property, treemap_data.function, treemap_data[Fit.get_metric_name()]), axis=-1),
+        customdata=np.stack((treemap_data.time, treemap_data.instance_property, treemap_data.html_function, treemap_data[Fit.get_metric_name()]), axis=-1),
         hovertemplate='<b> %{label} </b> <br> Time: %{customdata[0]:.2f} ms <br> Complexity: %{customdata[2]} <br> Where n is: %{customdata[1]} <br> ' + Fit.get_metric_name() + ': %{customdata[3]:.2f}<extra></extra>', # <extra></extra> hides the extra tooltips that contains traceid by default
         marker=dict(
             colors=treemap_data.time,
