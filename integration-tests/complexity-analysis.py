@@ -26,10 +26,9 @@ import logging
 from z3 import *
 
 
-logger = logging.getLogger(__name__)
-
-# Declare log function for Z3, defaults to base e
+# Declare log function for Z3, defaults to base e, and X variable
 log = Function('log', RealSort(), RealSort())
+x = Real('x')
 
 boring_colors = ["#EDEDE9", "#D6CCC2", "#F5EBE0", "#E3D5CA", "#d6e2e9"]
 real_color = "dodgerblue"
@@ -132,12 +131,12 @@ def get_functions() -> list[ComplexityFunction]:
 
 def complexity_formula(d: DataFrame, component_name: str) -> str:
     # find its children
-    itself = d[d.component==component_name][d.property_source=="time_exclusive"].calc_function.values[0]
+    itself = d[(d.component==component_name) & (d.property_source=="time_exclusive")].calc_function.values[0]
     children = d[d.parent==component_name].component.unique()
     for child in children:
         # accumulated complexity is number of times called * complexity of child
         child_formula = complexity_formula(d, child)
-        child_called_times = d[d.component==child][d.property_source=="time_count"].calc_function.values[0]
+        child_called_times = d[(d.component==child) & (d.property_source=="time_count")].calc_function.values[0]
         itself += f" + ({child_called_times}) * ({child_formula})"
     return itself
 
@@ -145,12 +144,12 @@ def get_full_name(stack: list[tuple[str, int]]) -> str:
     return "/".join(frame['name'] for frame in stack)
 
 def z3_simplify(expr: str) -> str:
-    if not x:
-        x = Real('x')
-
     z3_expr = eval(expr)
     z3_expr = simplify(z3_expr)
-    return str(z3_expr)
+    # TODO cutre, pero no encuentro la opcion para que no me meta fracciones inecesarias
+    z3_expr = re.sub(r'\b(\d+)/(\d+)\b', lambda m: f"{int(m.group(1)) / int(m.group(2)):.2f}", str(z3_expr))
+    z3_expr = re.sub(r'\s+', " ", z3_expr)  # Remove newlines and extra spaces
+    return z3_expr
 
 
 def fold_profiler_data(path: str) -> DataFrame:
@@ -160,7 +159,6 @@ def fold_profiler_data(path: str) -> DataFrame:
         if not f.endswith(".json"):
             continue
 
-        logger.debug(f"Processing {f}")
         with open(join(path, f)) as json_file:
             jsondata = json.load(json_file)
 
@@ -364,19 +362,23 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
     for component_name in timestats['component'].unique():
         # Calculate the combined complexity of each component
         c_combined = complexity_formula(treemap_data, component_name)
-        c_simple = treemap_data[treemap_data['component']==component_name][treemap_data.property_source=="time"].calc_function.values[0]
-        logger.debug(f"Component {component_name} complexity: ")
-        logger.debug(f" - Combined: {c_combined}")
-        logger.debug(f" - Combined Simpl: {z3_simplify(c_combined)}")
-        logger.debug(f" - Simple: {c_simple}")
+        c_simple = treemap_data[(treemap_data['component']==component_name) & (treemap_data.property_source=="time")].calc_function.values[0]
+        # TODO: remove prints and propertly export
+        print(f"Component {component_name} complexity: ")
+        print(f" - Combined: {c_combined}")
+        print(f" - Combined Simpl: {z3_simplify(c_combined)}")
+        print(f" - Simple: {c_simple}")
     return treemap_data
 
 
 def analyze_complexity(instances: DataFrame, timestats: DataFrame):
     treemap_data = try_analyze_all_property_sources(instances, timestats)
     if treemap_data is None:
-        logger.error("At least one component failed to estimate, cannot generate treemap.")
+        print("[ERROR] At least one component failed to estimate, cannot generate treemap.")
         return
+
+    # Retrocompatibility, todo adapt and complete
+    treemap_data = treemap_data[treemap_data.property_source == "time"]
 
     fig = go.Figure()
     fig.add_trace(go.Treemap(
