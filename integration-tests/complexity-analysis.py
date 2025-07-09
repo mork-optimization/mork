@@ -32,8 +32,7 @@ best_color = "limegreen"
 BEST_ALGORITHM = "bestalg"
 BEST_ITERATION = "bestiter"
 
-from sympy import symbols, simplify, log, Float, preorder_traversal
-x  = symbols('x')
+from sympy import symbols, simplify, log, Float, preorder_traversal, sstr
 
 def format_number_latex(n):
     formatted =  f"{n:+.2g}"
@@ -127,26 +126,33 @@ def get_functions() -> list[ComplexityFunction]:
 
 def complexity_formula(d: DataFrame, component_name: str) -> str:
     # find its children
-    itself = d[(d.component==component_name) & (d.property_source=="time_exclusive")].calc_function.values[0]
+    itself = d[(d.component==component_name) & (d.property_source=="time_exclusive")]
+    itself_calc_f = itself.calc_function.values[0]
+    itself_instance_property = itself.instance_property.values[0]
+    itself_calc_f = itself_calc_f.replace("x", itself_instance_property)
+
     children = d[d.parent==component_name].component.unique()
     for child in children:
         # accumulated complexity is number of times called * complexity of child
         child_formula = complexity_formula(d, child)
-        child_called_times = d[(d.component==child) & (d.property_source=="time_count")].calc_function.values[0]
-        itself += f" + ({child_called_times}) * ({child_formula})"
-    return itself
+        child_called_times = d[(d.component==child) & (d.property_source=="time_count")]
+        child_called_times_f = child_called_times.calc_function.values[0]
+        child_called_times_instance_property = child_called_times.instance_property.values[0]
+        child_called_times_f = child_called_times_f.replace("x", child_called_times_instance_property)
+
+        itself_calc_f += f" + ({child_called_times_f}) * ({child_formula})"
+    return itself_calc_f
 
 def get_full_name(stack: list[tuple[str, int]]) -> str:
     return "/".join(frame['name'] for frame in stack)
 
 def complexity_simplify(original_expr: str) -> str:
-    expr = eval(original_expr)
-    expr = simplify(expr)
+    expr = simplify(original_expr)
     for a in preorder_traversal(expr):
         if isinstance(a, Float):
             expr = expr.subs(a, round(a, 1))
 
-    return expr
+    return sstr(expr)
 
 
 def fold_profiler_data(path: str) -> DataFrame:
@@ -283,7 +289,12 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
             return Fit(f, instance_property, r2, perr, mse, popt, dic, data)
 
     except Warning as warn:
-        return None
+        if warn.args[0] == 'overflow encountered in power':
+            # Some functions such as exponential can easily overflow, this is expected and the function will be discarded
+            return None
+        else:
+            logging.warning(f"Warning during curve fitting: {warn}")
+            return None
 
 
 
@@ -311,6 +322,7 @@ def calculate_fitting_funcs(instances: DataFrame, timestats: DataFrame, componen
     if (y == y[0]).all():
         # Constant makes R2 and other metrics fail, add small value to first point to avoid all points being strictly equal
         y[0] -= 1e-6
+
     for f in fitting_funcs:
         fit = calculate_fitting_func(x, y, f, instance_property)
         if fit:
@@ -362,21 +374,41 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
         return None
 
     treemap_data = timestats.groupby(['component', 'parent', 'child'], as_index=False)['time'].mean()
+    all_formulas = pd.DataFrame(treemap_labels)
     # drop failed components
-    treemap_data = treemap_data[~treemap_data['component'].isin(failed_components)]
-    treemap_data = treemap_data.merge(pd.DataFrame(treemap_labels), on='component')
+    all_formulas = all_formulas[~all_formulas['component'].isin(failed_components)]
+    all_formulas = all_formulas.merge(treemap_data, on='component')
 
-    treemap_data['child'] = treemap_data['child'].str.replace('::','<br>')
+    all_formulas['child'] = all_formulas['child'].str.replace('::','<br>')
+    # Replace non-alphanumeric characters with underscores
+    all_formulas['instance_property'] = all_formulas['instance_property'].str.replace('\W+','_', regex=True)
+
+    for ip in all_formulas['instance_property'].unique():
+        # Create a symbol for each instance property
+        # This allows us to use the instance property in the complexity formulas directly
+        exec(f'{ip} = symbols("{ip}")')
 
     for component_name in timestats['component'].unique():
         # Calculate the combined complexity of each component
-        c_combined = complexity_formula(treemap_data, component_name)
-        c_simple = treemap_data[(treemap_data['component']==component_name) & (treemap_data.property_source=="time")].calc_function.values[0]
-        # TODO: remove prints and propertly export
+        c_combined = complexity_formula(all_formulas, component_name)
+        c_simpl_combined = complexity_simplify(eval(c_combined))
+
+        simple = all_formulas[(all_formulas['component']==component_name) & (all_formulas.property_source=="time")]
+        simple_instance_property = simple.instance_property.values[0]
+        simple_metric_v = simple[Fit.get_metric_name()].values[0]
+        c_simple = simple.calc_function.values[0].replace("x", simple_instance_property)
+        c_simpl_simple = complexity_simplify(eval(c_simple))
+
         print(f"Component {component_name} complexity: ")
         print(f" - Combined: {c_combined}")
-        print(f" - Combined Simpl: {complexity_simplify(c_combined)}")
+        print(f" - Combined Simpl: {c_simpl_combined}")
         print(f" - Simple: {c_simple}")
+        print(f" - Simple Simpl: {c_simpl_simple}")
+
+        treemap_data.loc[treemap_data['component'] == component_name, 'f_comb'] = c_simpl_combined
+        treemap_data.loc[treemap_data['component'] == component_name, 'f_simpl'] = c_simpl_simple
+        treemap_data.loc[treemap_data['component'] == component_name, Fit.get_metric_name()] = simple_metric_v
+
     return treemap_data
 
 
@@ -386,16 +418,13 @@ def analyze_complexity(instances: DataFrame, timestats: DataFrame):
         print("[ERROR] At least one component failed to estimate, cannot generate treemap.")
         return
 
-    # Retrocompatibility, todo adapt and complete
-    treemap_data = treemap_data[treemap_data.property_source == "time"]
-
     fig = go.Figure()
     fig.add_trace(go.Treemap(
         ids=treemap_data.component,
         labels=treemap_data.child,
         parents=treemap_data.parent,
-        customdata=np.stack((treemap_data.time, treemap_data.instance_property, treemap_data.html_function, treemap_data[Fit.get_metric_name()]), axis=-1),
-        hovertemplate='<b> %{label} </b> <br> Time: %{customdata[0]:.2f} ms <br> Complexity: %{customdata[2]} <br> Where n is: %{customdata[1]} <br> ' + Fit.get_metric_name() + ': %{customdata[3]:.2f}<extra></extra>', # <extra></extra> hides the extra tooltips that contains traceid by default
+        customdata=np.stack((treemap_data.time, treemap_data.f_comb, treemap_data.f_simpl, treemap_data[Fit.get_metric_name()]), axis=-1),
+        hovertemplate='<b> %{label} </b> <br> Time: %{customdata[0]:.2f} ms <br> Global: %{customdata[1]} <br> Combined: %{customdata[2]} <br> ' + Fit.get_metric_name() + ': %{customdata[3]:.2f}<extra></extra>', # <extra></extra> hides the extra tooltips that contains traceid by default
         marker=dict(
             colors=treemap_data.time,
             colorscale='ylorbr',
