@@ -8,6 +8,7 @@ MIN_POINTS = 5
 import argparse
 import os
 import json
+import warnings
 
 from collections import defaultdict
 
@@ -23,12 +24,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 
 import logging
-from z3 import *
-
-
-# Declare log function for Z3, defaults to base e, and X variable
-log = Function('log', RealSort(), RealSort())
-x = Real('x')
 
 boring_colors = ["#EDEDE9", "#D6CCC2", "#F5EBE0", "#E3D5CA", "#d6e2e9"]
 real_color = "dodgerblue"
@@ -37,7 +32,8 @@ best_color = "limegreen"
 BEST_ALGORITHM = "bestalg"
 BEST_ITERATION = "bestiter"
 
-
+from sympy import symbols, simplify, log, Float, preorder_traversal
+x  = symbols('x')
 
 def format_number_latex(n):
     formatted =  f"{n:+.2g}"
@@ -143,13 +139,14 @@ def complexity_formula(d: DataFrame, component_name: str) -> str:
 def get_full_name(stack: list[tuple[str, int]]) -> str:
     return "/".join(frame['name'] for frame in stack)
 
-def z3_simplify(expr: str) -> str:
-    z3_expr = eval(expr)
-    z3_expr = simplify(z3_expr)
-    # TODO cutre, pero no encuentro la opcion para que no me meta fracciones inecesarias
-    z3_expr = re.sub(r'\b(\d+)/(\d+)\b', lambda m: f"{int(m.group(1)) / int(m.group(2)):.2f}", str(z3_expr))
-    z3_expr = re.sub(r'\s+', " ", z3_expr)  # Remove newlines and extra spaces
-    return z3_expr
+def complexity_simplify(original_expr: str) -> str:
+    expr = eval(original_expr)
+    expr = simplify(expr)
+    for a in preorder_traversal(expr):
+        if isinstance(a, Float):
+            expr = expr.subs(a, round(a, 1))
+
+    return expr
 
 
 def fold_profiler_data(path: str) -> DataFrame:
@@ -256,30 +253,39 @@ def draw_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, comp
 
 
 def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance_property: str) -> Fit | None:
-    popt, pcov, dic, mesg, _ = curve_fit(f.function, x, y, full_output=True, check_finite=True)
-    # https://stackoverflow.com/questions/50371428/scipy-curve-fit-raises-optimizewarning-covariance-of-the-parameters-could-not
-    # Curve fit puede fallar
-    if np.isnan(pcov).any() or np.isinf(pcov).any():
+    try:
+        # https://stackoverflow.com/questions/50371428/scipy-curve-fit-raises-optimizewarning-covariance-of-the-parameters-could-not
+        # Curve fit might fail in some cases
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")  # Turn all warnings into exceptions
+            popt, pcov, dic, mesg, _ = curve_fit(f.function, x, y, full_output=True, check_finite=True)
+
+            if pcov is None or np.isnan(pcov).any() or np.isinf(pcov).any():
+                return None
+
+            # https://www.geeksforgeeks.org/how-to-return-the-fit-error-in-python-curvefit/
+            perr = np.sqrt(np.diag(pcov))
+            y_estimated = f.function(x, *popt)
+            # residual sum of squares
+            ss_res = np.sum((y - y_estimated) ** 2)
+            mse = np.mean((y - y_estimated) ** 2)
+            # total sum of squares
+            ss_tot = np.sum((y - np.mean(y)) ** 2)
+            # r-squared
+            r2 = 1 - (ss_res / ss_tot)
+            data = pd.DataFrame({'x':x, 'y':y_estimated})
+
+            # If popt is near whole numbers, round it
+            for i, p in enumerate(popt):
+                if abs(p - round(p)) < 1e-6:
+                    popt[i] = round(p)
+
+            return Fit(f, instance_property, r2, perr, mse, popt, dic, data)
+
+    except Warning as warn:
         return None
 
-    # https://www.geeksforgeeks.org/how-to-return-the-fit-error-in-python-curvefit/
-    perr = np.sqrt(np.diag(pcov))
-    y_estimated = f.function(x, *popt)
-    # residual sum of squares
-    ss_res = np.sum((y - y_estimated) ** 2)
-    mse = np.mean((y - y_estimated) ** 2)
-    # total sum of squares
-    ss_tot = np.sum((y - np.mean(y)) ** 2)
-    # r-squared
-    r2 = 1 - (ss_res / ss_tot)
-    data = pd.DataFrame({'x':x, 'y':y_estimated})
 
-    # If popt is near whole numbers, round it
-    for i, p in enumerate(popt):
-        if abs(p - round(p)) < 1e-6:
-            popt[i] = round(p)
-
-    return Fit(f, instance_property, r2, perr, mse, popt, dic, data)
 
 def join_instance_timestats(instances: DataFrame, timestats: DataFrame, component_name: str, instance_property: str, property_source: str = 'time') -> DataFrame:
     x = instances[['id', instance_property]]
@@ -302,6 +308,9 @@ def calculate_fitting_funcs(instances: DataFrame, timestats: DataFrame, componen
         raise Exception(f"Property source {property_source} not found in data, skipping")
 
     y = xy[property_source].to_numpy()
+    if (y == y[0]).all():
+        # Constant makes R2 and other metrics fail, add small value to first point to avoid all points being strictly equal
+        y[0] -= 1e-6
     for f in fitting_funcs:
         fit = calculate_fitting_func(x, y, f, instance_property)
         if fit:
@@ -366,7 +375,7 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
         # TODO: remove prints and propertly export
         print(f"Component {component_name} complexity: ")
         print(f" - Combined: {c_combined}")
-        print(f" - Combined Simpl: {z3_simplify(c_combined)}")
+        print(f" - Combined Simpl: {complexity_simplify(c_combined)}")
         print(f" - Simple: {c_simple}")
     return treemap_data
 
