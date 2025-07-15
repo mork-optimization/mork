@@ -148,11 +148,18 @@ def get_full_name(stack: list[tuple[str, int]]) -> str:
 
 def complexity_simplify(original_expr: str) -> str:
     expr = simplify(original_expr)
+    expr_rounded = expr
     for a in preorder_traversal(expr):
         if isinstance(a, Float):
-            expr = expr.subs(a, round(a, 1))
+            expr_rounded = expr_rounded.subs(a, round(a, 2))
+            # rounded1 = round(a, 1)
+            # rounded0 = round(a, 0)
+            # if abs(rounded1 == rounded0) < 1e-3:
+            #     expr_rounded = expr_rounded.subs(a, rounded0)
+            # else:
+            #     expr_rounded = expr_rounded.subs(a, rounded1)
 
-    return sstr(expr)
+    return expr_rounded
 
 
 def fold_profiler_data(path: str) -> DataFrame:
@@ -399,17 +406,45 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
         c_simple = simple.calc_function.values[0].replace("x", simple_instance_property)
         c_simpl_simple = complexity_simplify(eval(c_simple))
 
+        simple_exclusive = all_formulas[(all_formulas['component']==component_name) & (all_formulas.property_source=="time_exclusive")]
+        simple_exclusive_instance_property = simple_exclusive.instance_property.values[0]
+        simple_exclusive_metric_v = simple_exclusive[Fit.get_metric_name()].values[0]
+        c_simple_exclusive = simple_exclusive.calc_function.values[0].replace("x", simple_exclusive_instance_property)
+        c_simpl_simple_exclusive = complexity_simplify(eval(c_simple_exclusive))
+
         print(f"Component {component_name} complexity: ")
         print(f" - Combined: {c_combined}")
         print(f" - Combined Simpl: {c_simpl_combined}")
         print(f" - Simple: {c_simple}")
         print(f" - Simple Simpl: {c_simpl_simple}")
+        print(f" - Simple Exclusive: {c_simple_exclusive}")
+        print(f" - Simple Exclusive Simpl: {c_simpl_simple_exclusive}")
 
-        treemap_data.loc[treemap_data['component'] == component_name, 'f_comb'] = c_simpl_combined
-        treemap_data.loc[treemap_data['component'] == component_name, 'f_simpl'] = c_simpl_simple
+        treemap_data.loc[treemap_data['component'] == component_name, 'f_comb'] = sstr(c_simpl_combined)
+        treemap_data.loc[treemap_data['component'] == component_name, 'f_simpl'] = sstr(c_simpl_simple)
+        treemap_data.loc[treemap_data['component'] == component_name, 'f_simpl_excl'] = sstr(c_simpl_simple_exclusive)
         treemap_data.loc[treemap_data['component'] == component_name, Fit.get_metric_name()] = simple_metric_v
+        treemap_data.loc[treemap_data['component'] == component_name, 'mse_comb'] = mse(c_simpl_combined, instances, timestats, component_name, 'time')
+        treemap_data.loc[treemap_data['component'] == component_name, 'mse_simpl'] = mse(c_simpl_simple, instances, timestats, component_name, 'time')
+        treemap_data.loc[treemap_data['component'] == component_name, 'mse_simpl_excl'] = mse(c_simpl_simple_exclusive, instances, timestats, component_name, 'time_exclusive')
 
     return treemap_data
+
+def mse(formula, instances: DataFrame, timestats: DataFrame, component_name: str, property_source: str) -> float:
+    x = instances.drop(columns=['path'], inplace=False)
+    y = timestats[timestats['component'] == component_name][['instance', property_source]]
+    y = y.groupby('instance', as_index=False).mean()
+    xy = x.set_index('id').join(y.set_index('instance'), how='right')
+    # Column names without id and property_source
+    instance_properties = [col for col in xy.columns if col not in ['id', property_source]]
+    def eval_formula(row):
+        subs = {prop: row[prop] for prop in instance_properties}
+        return formula.evalf(subs=subs)
+
+    xy['y_estimated'] = xy.apply(eval_formula, axis=1)
+
+    mse = np.mean((xy[property_source] - xy.y_estimated) ** 2)
+    return mse
 
 
 def analyze_complexity(instances: DataFrame, timestats: DataFrame):
@@ -423,8 +458,8 @@ def analyze_complexity(instances: DataFrame, timestats: DataFrame):
         ids=treemap_data.component,
         labels=treemap_data.child,
         parents=treemap_data.parent,
-        customdata=np.stack((treemap_data.time, treemap_data.f_comb, treemap_data.f_simpl, treemap_data[Fit.get_metric_name()]), axis=-1),
-        hovertemplate='<b> %{label} </b> <br> Time: %{customdata[0]:.2f} ms <br> Global: %{customdata[1]} <br> Combined: %{customdata[2]} <br> ' + Fit.get_metric_name() + ': %{customdata[3]:.2f}<extra></extra>', # <extra></extra> hides the extra tooltips that contains traceid by default
+        customdata=np.stack((treemap_data.time, treemap_data.f_comb, treemap_data.f_simpl, treemap_data.f_simpl_excl, treemap_data[Fit.get_metric_name()], treemap_data.mse_comb, treemap_data.mse_simpl, treemap_data.mse_simpl_excl), axis=-1),
+        hovertemplate='<b> %{label} </b> <br> Time: %{customdata[0]:.2f} ms <br> Global (MSE: %{customdata[5]:.1f}): %{customdata[1]} <br> Combined (MSE: %{customdata[6]:.1f}): %{customdata[2]} <br> Exclusive (MSE: %{customdata[7]:.1f}): %{customdata[3]} <br>' + Fit.get_metric_name() + ': %{customdata[4]:.2f}<extra></extra>', # <extra></extra> hides the extra tooltips that contains traceid by default
         marker=dict(
             colors=treemap_data.time,
             colorscale='ylorbr',
