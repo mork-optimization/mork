@@ -131,6 +131,14 @@ def complexity_formula(d: DataFrame, component_name: str) -> str:
     itself_instance_property = itself.instance_property.values[0]
     itself_calc_f = itself_calc_f.replace("x", itself_instance_property)
 
+    itself_called_times = d[(d.component==component_name) & (d.property_source=="time_count")]
+    itself_called_times_f = itself_called_times.calc_function.values[0]
+    itself_called_times_instance_property = itself_called_times.instance_property.values[0]
+    itself_called_times_f = itself_called_times_f.replace("x", itself_called_times_instance_property)
+
+    # El bug es que asumo que la f de cuantas veces se llama el child es relativa desde el padre
+    # Cuando la estoy calculando de forma absolute
+    # ¿Dividir child entre parent deberia dar el resultado correcto? Poner como variable y pedirle que simplifique luego
     children = d[d.parent==component_name].component.unique()
     for child in children:
         # accumulated complexity is number of times called * complexity of child
@@ -139,6 +147,7 @@ def complexity_formula(d: DataFrame, component_name: str) -> str:
         child_called_times_f = child_called_times.calc_function.values[0]
         child_called_times_instance_property = child_called_times.instance_property.values[0]
         child_called_times_f = child_called_times_f.replace("x", child_called_times_instance_property)
+        child_called_times_f = f"({child_called_times_f}) / ({itself_called_times_f})"
 
         itself_calc_f += f" + ({child_called_times_f}) * ({child_formula})"
     return itself_calc_f
@@ -412,21 +421,25 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
         c_simple_exclusive = simple_exclusive.calc_function.values[0].replace("x", simple_exclusive_instance_property)
         c_simpl_simple_exclusive = complexity_simplify(eval(c_simple_exclusive))
 
+        mse_comb = mse(c_simpl_combined, instances, timestats, component_name, 'time')
+        mse_simpl = mse(c_simpl_simple, instances, timestats, component_name, 'time')
+        mse_simpl_excl = mse(c_simpl_simple_exclusive, instances, timestats, component_name, 'time_exclusive')
+
         print(f"Component {component_name} complexity: ")
-        print(f" - Combined: {c_combined}")
-        print(f" - Combined Simpl: {c_simpl_combined}")
-        print(f" - Simple: {c_simple}")
-        print(f" - Simple Simpl: {c_simpl_simple}")
-        print(f" - Simple Exclusive: {c_simple_exclusive}")
-        print(f" - Simple Exclusive Simpl: {c_simpl_simple_exclusive}")
+        #print(f" - Combined: {c_combined}")
+        print(f" - Combined (MSE: {mse_comb}): {c_simpl_combined}")
+        #print(f" - Simple: {c_simple}")
+        print(f" - Black box (MSE: {mse_simpl}): {c_simpl_simple}")
+        #print(f" - Simple Exclusive: {c_simple_exclusive}")
+        print(f" - Black box exclusive (MSE: {mse_simpl_excl}): {c_simpl_simple_exclusive}")
 
         treemap_data.loc[treemap_data['component'] == component_name, 'f_comb'] = sstr(c_simpl_combined)
         treemap_data.loc[treemap_data['component'] == component_name, 'f_simpl'] = sstr(c_simpl_simple)
         treemap_data.loc[treemap_data['component'] == component_name, 'f_simpl_excl'] = sstr(c_simpl_simple_exclusive)
         treemap_data.loc[treemap_data['component'] == component_name, Fit.get_metric_name()] = simple_metric_v
-        treemap_data.loc[treemap_data['component'] == component_name, 'mse_comb'] = mse(c_simpl_combined, instances, timestats, component_name, 'time')
-        treemap_data.loc[treemap_data['component'] == component_name, 'mse_simpl'] = mse(c_simpl_simple, instances, timestats, component_name, 'time')
-        treemap_data.loc[treemap_data['component'] == component_name, 'mse_simpl_excl'] = mse(c_simpl_simple_exclusive, instances, timestats, component_name, 'time_exclusive')
+        treemap_data.loc[treemap_data['component'] == component_name, 'mse_comb'] = mse_comb
+        treemap_data.loc[treemap_data['component'] == component_name, 'mse_simpl'] = mse_simpl
+        treemap_data.loc[treemap_data['component'] == component_name, 'mse_simpl_excl'] = mse_simpl_excl
 
     return treemap_data
 
