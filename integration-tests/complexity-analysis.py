@@ -170,26 +170,57 @@ def complexity_simplify(original_expr: str) -> str:
 
     return expr_rounded
 
+def fold_profiler_data_csv(path: str) -> any:
+    with open(path) as csv_file:
+        # Header contains instance name algorithm name, iteration number
+        instance, algorithm, iteration = csv_file.readline().strip().split(',')
+        if algorithm == BEST_ALGORITHM or iteration == BEST_ITERATION:
+            print(f"Skipping file {path}")
+            return []
+
+        events = []
+        for line in csv_file:
+            when, enter, clazz, method = line.strip().split(',')
+            events.append({'when': int(when), 'enter': enter == '1', 'clazz': clazz, 'method': method})
+
+        events.sort(key=lambda x: x['when'])
+        return events
+
+
+def fold_profiler_data_json(path: str) -> any:
+    with open(path) as json_file:
+        jsondata = json.load(json_file)
+
+    if jsondata['algorithm']['name'] == BEST_ALGORITHM or jsondata['iteration'] == BEST_ITERATION:
+        print(f"Skipping file {path}")
+        return []
+
+    # Build a list of events and a stack for exclusive time calculation
+    events = []
+    for i in jsondata['timeData']:
+        events.append({'when': i['when'], 'enter': i['enter'], 'clazz': i['clazz'], 'method': i['method']})
+    events.sort(key=lambda x: x['when'])
+
+    return events
+
 
 def fold_profiler_data(path: str) -> DataFrame:
     timestats = []
 
     for f in os.listdir(path):
-        if not f.endswith(".json"):
+        fullpath = join(path, f)
+        if f.endswith(".csv"):
+            events = fold_profiler_data_csv(fullpath)
+        elif f.endswith(".json"):
+            events = fold_profiler_data_json(fullpath)
+        else:
+            print(f"Skipping file {f}, not a CSV or JSON")
             continue
 
-        with open(join(path, f)) as json_file:
-            jsondata = json.load(json_file)
-
-        if jsondata['algorithm']['name'] == BEST_ALGORITHM or jsondata['iteration'] == BEST_ITERATION:
-            print(f"Skipping file {f}")
+        if not events:
+            print(f"No events returned by loader for file {f}, skipping")
             continue
 
-        # Build a list of events and a stack for exclusive time calculation
-        events = []
-        for i in jsondata['timeData']:
-            events.append({'when': i['when'], 'enter': i['enter'], 'clazz': i['clazz'], 'method': i['method']})
-        events.sort(key=lambda x: x['when'])
 
         stack = []
 
@@ -501,7 +532,7 @@ def main():
         description='Creates a set of instances to use during the experimentation',
         epilog='Created for the Mork project, if useful for your research consider citing the original publication')
     parser.add_argument('-p', '--properties', required=False, default="instance_properties.csv", help="CSV Input file containing instance properties.")
-    parser.add_argument('-i', '--data', required=False, default="solutions", help="Path to folder which contains profiler data")
+    parser.add_argument('-i', '--data', required=False, default="solutions", help="Path to folder which contains profiler data. Data can be stored in either CSV files or JSON, see docs for more details on the format.")
     # parser.add_argument('-o', '--output', required=False, default="output", help="Path to output folder.")
 
     args = parser.parse_args()
