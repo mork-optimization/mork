@@ -2,6 +2,9 @@
 # CONFIGURATION #
 #################
 import re
+import panel as pn
+pn.extension("plotly")
+pn.extension('katex', 'mathjax')
 
 from sympy.utilities.iterables import iterable
 
@@ -34,7 +37,12 @@ best_color = "limegreen"
 BEST_ALGORITHM = "bestalg"
 BEST_ITERATION = "bestiter"
 
+PROPERTY_SOURCES = ['time', 'time_exclusive', 'time_count']
+
 from sympy import symbols, simplify, log, Float, preorder_traversal, sstr
+
+# All generated plotly graphs by ID
+plots_by_id = defaultdict(dict)
 
 def format_number_latex(n):
     formatted =  f"{n:+.2g}"
@@ -117,7 +125,7 @@ def load_df(path: str) -> DataFrame:
     return pd.read_csv(path)
 
 
-def get_functions() -> list[ComplexityFunction]:
+def get_functions_single() -> list[ComplexityFunction]:
     return [
         ComplexityFunction("Log.", lambda x, a, b: a * np.log(x) + b, r"a \cdot \log(x) b", r"a log(x) b", "a * log(x) + b"),
         ComplexityFunction("Linear", lambda x, a, b: a * x + b, r"a \cdot x b", r"ax b", "a * x + b"),
@@ -125,6 +133,9 @@ def get_functions() -> list[ComplexityFunction]:
         ComplexityFunction("Quadratic", lambda x, a, b: a * x ** 2 + b, r"a \cdot x^2 b", r"ax<sup>2</sup> b", "a * x ** 2 + b"),
         ComplexityFunction("Exponential", lambda x, a, b: a * 2 ** x + b, r"a \cdot 2^x b", r"2<sup>x</sup> b", "a * 2 ** x + b"),
     ]
+
+# ComplexityFunction("T1", lambda x1, x2, a, b: a * x1 + b * x2, r"a \cdot x_1 + b \cdot x_2", r"ax<sub>1</sub> + bx<sub>2</sub>", "a * x1 + b * x2"),
+# ComplexityFunction("T2", lambda x1, x2, a, b: a * x1 * x2 + b, r"a \cdot x_1 \cdot x_2 + b", r"ax<sub>1</sub>x<sub>2</sub> + b", "a * x1 * x2 + b"),
 
 def complexity_formula(d: DataFrame, component_name: str) -> str:
     # find its children
@@ -198,7 +209,7 @@ def fold_profiler_data_json(path: str) -> any:
     iteration = jsondata['iteration']
     if algorithm == BEST_ALGORITHM or iteration == BEST_ITERATION:
         print(f"Skipping file {path}")
-        return []
+        return None, None, None, []
 
     # Build a list of events and a stack for exclusive time calculation
     events = []
@@ -282,7 +293,7 @@ def prepare_df(df: DataFrame, timestats: DataFrame) -> DataFrame:
     return cloned
 
 
-def draw_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, component_name, property_source='time'):
+def generate_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, component_name, property_source='time'):
     fig = px.line()
     fig.add_scatter(x=xy.index, y=xy[property_source], name="$Real$", line=dict(color=real_color))
 
@@ -307,7 +318,7 @@ def draw_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, comp
         xaxis_title=instance_property,
         yaxis_title="T (ms)"
     )
-    fig.show()
+    return fig
 
 
 def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance_property: str) -> Fit | None:
@@ -359,7 +370,7 @@ def join_instance_timestats(instances: DataFrame, timestats: DataFrame, componen
     return xy
 
 def calculate_fitting_funcs(instances: DataFrame, timestats: DataFrame, component_name: str, instance_property: str, property_source: str) -> list[Fit]:
-    fitting_funcs = get_functions()
+    fitting_funcs = get_functions_single()
     xy = join_instance_timestats(instances, timestats, component_name, instance_property, property_source)
     if len(xy) < MIN_POINTS:
         print(f"Instance property {instance_property} has less than {MIN_POINTS} points after grouping, skipping")
@@ -405,8 +416,7 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
     failed_components = []
     for component_name in timestats['component'].unique():
         complexities = {}
-        sources = ['time', 'time_exclusive', 'time_count']
-        for property_source in sources:
+        for property_source in PROPERTY_SOURCES:
             complexities[property_source] = find_best_instance_property(instances, timestats, component_name, property_source)
             # If all fits have failed, skip property
             if not complexities[property_source]:
@@ -415,7 +425,9 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
                 return None
             best = complexities[property_source][0]
             xy = join_instance_timestats(instances, timestats, component_name, best.instance_prop, property_source)
-            draw_functions_chart(xy, complexities[property_source], best.instance_prop, component_name, property_source)
+            f_chart = generate_functions_chart(xy, complexities[property_source], best.instance_prop, component_name, property_source)
+
+            plots_by_id[component_name][property_source] = f_chart
 
             print(f"Component {component_name}, source {property_source} performance predicted as Θ({best.name_latex()}) by {best.instance_prop} - {Fit.get_metric_name()}: {best.get_metric_value()}")
             treemap_labels.append({"component": component_name, "property_source":property_source, "instance_property": best.instance_prop, "calc_function": f"{best.name_calc()}","html_function": f"Θ({best.name_html()})", Fit.get_metric_name(): best.get_metric_value()})
@@ -496,7 +508,7 @@ def mse(formula, instances: DataFrame, timestats: DataFrame, component_name: str
     return mse
 
 
-def analyze_complexity(instances: DataFrame, timestats: DataFrame):
+def analyze_complexity(root_component_id: str, instances: DataFrame, timestats: DataFrame):
     treemap_data = try_analyze_all_property_sources(instances, timestats)
     if treemap_data is None:
         print("[ERROR] At least one component failed to estimate, cannot generate treemap.")
@@ -530,7 +542,29 @@ def analyze_complexity(instances: DataFrame, timestats: DataFrame):
         margin = dict(t=50, l=25, r=25, b=25)
     )
 
-    fig.show()
+    heatmap_pane = pn.pane.Plotly(fig)
+
+    def update_complexity_pane(complexity_pane, component_id):
+        complexity_pane.clear()
+        for k, v in plots_by_id[component_id].items():
+            complexity_pane.append((k, v))
+        complexity_pane.active = [0]
+
+    @pn.depends(heatmap_pane.param.click_data)
+    def on_click_heatmap(event):
+        if not event:
+            return
+        print(json.dumps(event))
+        plot_id = event['points'][0]['id']
+        update_complexity_pane(complexity_pane, plot_id)
+
+
+    column_pane = pn.Column(heatmap_pane, on_click_heatmap)
+    complexity_pane = pn.Accordion()
+    update_complexity_pane(complexity_pane, root_component_id)
+
+    test_latex = pn.pane.LaTeX(r"$\text{Test LaTeX}$")
+    pn.FlexBox(column_pane, complexity_pane, test_latex).servable()
 
 def main():
     parser = argparse.ArgumentParser(
@@ -548,11 +582,18 @@ def main():
     instances = load_df(args.properties)
     print("Loading profiler data")
     timestats = fold_profiler_data(args.data)
+
+    root_components = timestats[timestats['parent'] == ""].component.unique()
+    if len(root_components) != 1:
+        raise Exception(f"Expected exactly one root component, found {len(root_components)}")
+    root_component = root_components[0]
+
     print(f"Analyzing complexity")
-    analyze_complexity(instances, timestats)
+    analyze_complexity(root_component, instances, timestats)
 
     print(f"All done, bye!")
 
 
-if __name__ == '__main__':
-    main()
+print(f"{__name__} loaded, use -h argument for help")
+#if __name__ == '__main__':
+main()
