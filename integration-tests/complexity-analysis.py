@@ -483,13 +483,22 @@ def analyze_complexity(root_component_id: str, instances: DataFrame, timestats: 
         print("[ERROR] At least one component failed to estimate, cannot generate treemap.")
         return
 
+    # Total times for each component
+    vals = timestats.drop(columns=['instance', 'parent', 'child']).groupby(['component'], as_index=False).mean()
+    vals['time_total'] = vals['time'] * vals['time_count']
+    vals['time_total_excl'] = vals['time_exclusive'] * vals['time_count']
+    vals['time_total_excl_scaled'] = np.log1p(vals['time_total_excl'])
+    vals.drop(columns=['time'], inplace=True)
+    treemap_data = pd.merge(treemap_data, vals, on='component')
     fig = go.Figure()
     fig.add_trace(go.Treemap(
         ids=treemap_data.component,
+        values=treemap_data.time_total_excl_scaled,
+        branchvalues="remainder",
         labels=treemap_data.child,
         parents=treemap_data.parent,
-        customdata=np.stack((treemap_data.time, treemap_data.f_comb, treemap_data.f_simpl, treemap_data.f_simpl_excl, treemap_data[Fit.get_metric_name()], treemap_data.mse_comb, treemap_data.mse_simpl, treemap_data.mse_simpl_excl), axis=-1),
-        hovertemplate='<b> %{label} </b> <br> Time: %{customdata[0]:.2f} ms <br> Global (MSE: %{customdata[5]:.1f}): %{customdata[1]} <br> Combined (MSE: %{customdata[6]:.1f}): %{customdata[2]} <br> Exclusive (MSE: %{customdata[7]:.1f}): %{customdata[3]} <br>' + Fit.get_metric_name() + ': %{customdata[4]:.2f}<extra></extra>', # <extra></extra> hides the extra tooltips that contains traceid by default
+        customdata=np.stack((treemap_data.time_total, treemap_data.f_comb, treemap_data.f_simpl, treemap_data.f_simpl_excl, treemap_data[Fit.get_metric_name()], treemap_data.mse_comb, treemap_data.mse_simpl, treemap_data.mse_simpl_excl, treemap_data.time, treemap_data.time_count, treemap_data.time_total_excl, treemap_data.time_exclusive), axis=-1),
+        hovertemplate='<b>%{label} </b> <br> Total T(ms): %{customdata[0]:.2f} (%{customdata[8]:.2f} * %{customdata[9]:.2f}) <br> Exclusive T(ms): %{customdata[10]:.2f} (%{customdata[11]:.2f} * %{customdata[9]:.2f})<br> Global (MSE: %{customdata[5]:.1f}): %{customdata[1]} <br> Combined (MSE: %{customdata[6]:.1f}): %{customdata[2]} <br> Exclusive (MSE: %{customdata[7]:.1f}): %{customdata[3]}<extra></extra>', # <extra></extra> hides the extra tooltips that contains traceid by default
         marker=dict(
             colors=treemap_data.time,
             colorscale='ylorbr',
@@ -519,17 +528,16 @@ def analyze_complexity(root_component_id: str, instances: DataFrame, timestats: 
     def on_click_heatmap(event):
         if not event:
             return
-        print(json.dumps(event))
         plot_id = event['points'][0]['id']
         update_complexity_pane(complexity_pane, plot_id)
 
-
     column_pane = pn.Column(heatmap_pane, on_click_heatmap)
+
     complexity_pane = pn.Accordion()
     update_complexity_pane(complexity_pane, root_component_id)
 
-    test_latex = pn.pane.LaTeX(r"$1_2 x^3\text{Test LaTeX}$")
-    pn.FlexBox(column_pane, complexity_pane, test_latex).servable()
+    root_panel = pn.FlexBox(column_pane, complexity_pane)
+    return root_panel
 
 def main():
     parser = argparse.ArgumentParser(
@@ -551,11 +559,12 @@ def main():
     root_component = root_components[0]
 
     print(f"Analyzing complexity")
-    analyze_complexity(root_component, instances, timestats)
+    root_panel = analyze_complexity(root_component, instances, timestats)
 
-    print(f"All done, bye!")
+    if __name__ == "__main__":
+        root_panel.show(Threaded=True)
+    else:
+        root_panel.servable()
 
 
-print(f"{__name__} loaded, use -h argument for help")
-#if __name__ == '__main__':
 main()
