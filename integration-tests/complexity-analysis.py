@@ -63,16 +63,11 @@ def format_number_html(n):
     return formatted
 
 class ComplexityFunction(object):
-    def __init__(self, name, function, latex, html, calc):
+    def __init__(self, name, function, html, calc):
         self.name = name
         self.function = function
-        self.latex = latex
         self.html = html
         self.calc = calc
-
-
-    def f_name_latex(self, a, b):
-        return self.latex.replace("a", format_number_latex(a)).replace("b", format_number_latex(b))
 
     def f_name_html(self, a, b):
         return self.html.replace("a", format_number_html(a)).replace("b", format_number_html(b))
@@ -117,9 +112,6 @@ class Fit(object):
     def name_html(self):
         return self.f.f_name_html(*self.popt)
 
-    def name_latex(self):
-        return self.f.f_name_latex(*self.popt)
-
 
 def load_df(path: str) -> DataFrame:
     return pd.read_csv(path)
@@ -127,11 +119,11 @@ def load_df(path: str) -> DataFrame:
 
 def get_functions_single() -> list[ComplexityFunction]:
     return [
-        ComplexityFunction("Log.", lambda x, a, b: a * np.log(x) + b, r"a \cdot \log(x) b", r"a log(x) b", "a * log(x) + b"),
-        ComplexityFunction("Linear", lambda x, a, b: a * x + b, r"a \cdot x b", r"ax b", "a * x + b"),
-        ComplexityFunction("Log. Linear", lambda x, a, b: a * x * np.log(x) + b, r"a \cdot x \log(x) b", r"ax log(x) b", "a * x * log(x) + b"),
-        ComplexityFunction("Quadratic", lambda x, a, b: a * x ** 2 + b, r"a \cdot x^2 b", r"ax<sup>2</sup> b", "a * x ** 2 + b"),
-        ComplexityFunction("Exponential", lambda x, a, b: a * 2 ** x + b, r"a \cdot 2^x b", r"2<sup>x</sup> b", "a * 2 ** x + b"),
+        ComplexityFunction("Log.", lambda x, a, b: a * np.log(x) + b,r"a log(x) b", "a * log(x) + b"),
+        ComplexityFunction("Linear", lambda x, a, b: a * x + b, r"ax b", "a * x + b"),
+        ComplexityFunction("Log. Linear", lambda x, a, b: a * x * np.log(x) + b, r"ax log(x) b", "a * x * log(x) + b"),
+        ComplexityFunction("Quadratic", lambda x, a, b: a * x ** 2 + b,  r"ax<sup>2</sup> b", "a * x ** 2 + b"),
+        ComplexityFunction("Exponential", lambda x, a, b: a * 2 ** x + b, r"2<sup>x</sup> b", "a * 2 ** x + b"),
     ]
 
 # ComplexityFunction("T1", lambda x1, x2, a, b: a * x1 + b * x2, r"a \cdot x_1 + b \cdot x_2", r"ax<sub>1</sub> + bx<sub>2</sub>", "a * x1 + b * x2"),
@@ -295,15 +287,15 @@ def prepare_df(df: DataFrame, timestats: DataFrame) -> DataFrame:
 
 def generate_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, component_name, property_source='time'):
     fig = px.line()
-    fig.add_scatter(x=xy.index, y=xy[property_source], name="$Real$", line=dict(color=real_color))
+    fig.add_scatter(x=xy.index, y=xy[property_source], name="Real", line=dict(color=real_color))
 
     for i, fit in enumerate(fits):
         color = boring_colors[i % len(boring_colors)] if i != 0 else best_color
-        fig.add_scatter(x=fit.data.x, y=fit.data.y, name=f"${fit.name_latex()}$", line=dict(color=color))
+        fig.add_scatter(x=fit.data.x, y=fit.data.y, name=fit.name_html(), line=dict(color=color))
         # print(f"Component {c} - Function {k} - {col} - R2: {r2} - {popt} - {dic['fvec']}")
 
     fig.update_layout(
-        title=rf"$\text{{{component_name} - {property_source} is }}Θ({fits[0].name_latex()})$",
+        title=rf"{component_name} - {property_source} is Θ({fits[0].name_html()})",
         showlegend=True,
         #legend_title_text="Models",
         legend = dict(
@@ -429,7 +421,7 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
 
             plots_by_id[component_name][property_source] = f_chart
 
-            print(f"Component {component_name}, source {property_source} performance predicted as Θ({best.name_latex()}) by {best.instance_prop} - {Fit.get_metric_name()}: {best.get_metric_value()}")
+            print(f"Component {component_name}, source {property_source} performance predicted as Θ({best.name_html()}) by {best.instance_prop} - {Fit.get_metric_name()}: {best.get_metric_value()}")
             treemap_labels.append({"component": component_name, "property_source":property_source, "instance_property": best.instance_prop, "calc_function": f"{best.name_calc()}","html_function": f"Θ({best.name_html()})", Fit.get_metric_name(): best.get_metric_value()})
 
 
@@ -563,7 +555,7 @@ def analyze_complexity(root_component_id: str, instances: DataFrame, timestats: 
     complexity_pane = pn.Accordion()
     update_complexity_pane(complexity_pane, root_component_id)
 
-    test_latex = pn.pane.LaTeX(r"$\text{Test LaTeX}$")
+    test_latex = pn.pane.LaTeX(r"$1_2 x^3\text{Test LaTeX}$")
     pn.FlexBox(column_pane, complexity_pane, test_latex).servable()
 
 def main():
