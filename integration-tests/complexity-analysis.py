@@ -1,7 +1,7 @@
 #################
 # CONFIGURATION #
 #################
-import re
+import re, math
 import panel as pn
 pn.extension('mathjax','plotly', 'katex')
 
@@ -36,9 +36,14 @@ BEST_ITERATION = "bestiter"
 
 PROPERTY_SOURCES = ['time', 'time_exclusive', 'time_count']
 
-from sympy import symbols, simplify, log, Float, preorder_traversal, sstr, latex
+from sympy import symbols, simplify, log, Float, preorder_traversal, sstr, latex, cancel
 from sympy.utilities.iterables import iterable
 from sympy.printing.mathml import mathml
+from sympy.printing.str import StrPrinter
+
+class CustomStrPrinter(StrPrinter):
+    def _print_Float(self, expr):
+        return '{:.2f}'.format(expr)
 
 # All generated plotly graphs by ID
 plots_by_id = defaultdict(dict)
@@ -55,7 +60,7 @@ class ComplexityFunction(object):
     def f_name_mathml(self, a, b):
         expr = self.f_name_calc(a, b)
         expr = complexity_simplify(expr)
-        return str(expr)
+        return CustomStrPrinter().doprint(expr)
         #expr = latex(expr) # MathJax does not work when plotly is loaded in Panel
         #return f'${expr}$'
 
@@ -148,7 +153,7 @@ def complexity_simplify(original_expr: str) -> str:
     expr_rounded = expr
     for a in preorder_traversal(expr):
         if isinstance(a, Float):
-            expr_rounded = expr_rounded.subs(a, round(a, 2))
+            expr_rounded = expr_rounded.subs(a, round(a, 4))
 
     return expr_rounded
 
@@ -413,13 +418,13 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
     all_formulas = all_formulas[~all_formulas['component'].isin(failed_components)]
     all_formulas = all_formulas.merge(treemap_data, on='component')
 
-    # Replace non-alphanumeric characters with underscores
+    # Replace non-alphanumeric characters with underscores before declaring the symbol variables
     all_formulas['instance_property'] = all_formulas['instance_property'].str.replace('\W+','_', regex=True)
 
     for ip in all_formulas['instance_property'].unique():
         # Create a symbol for each instance property
         # This allows us to use the instance property in the complexity formulas directly
-        exec(f'{ip} = symbols("{ip}")')
+        locals()[ip] = symbols(ip)
 
     for component_name in timestats['component'].unique():
         # Calculate the combined complexity of each component
@@ -449,10 +454,10 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
         print(f" - Black box (MSE: {mse_simpl}): {c_simpl_simple}")
         print(f" - Simple Exclusive: {c_simple_exclusive}")
         print(f" - Black box exclusive (MSE: {mse_simpl_excl}): {c_simpl_simple_exclusive}")
-
-        treemap_data.loc[treemap_data['component'] == component_name, 'f_comb'] = sstr(c_simpl_combined)
-        treemap_data.loc[treemap_data['component'] == component_name, 'f_simpl'] = sstr(c_simpl_simple)
-        treemap_data.loc[treemap_data['component'] == component_name, 'f_simpl_excl'] = sstr(c_simpl_simple_exclusive)
+        formatter = CustomStrPrinter().doprint
+        treemap_data.loc[treemap_data['component'] == component_name, 'f_comb'] = formatter(c_simpl_combined)
+        treemap_data.loc[treemap_data['component'] == component_name, 'f_simpl'] = formatter(c_simpl_simple)
+        treemap_data.loc[treemap_data['component'] == component_name, 'f_simpl_excl'] = formatter(c_simpl_simple_exclusive)
         treemap_data.loc[treemap_data['component'] == component_name, Fit.get_metric_name()] = simple_metric_v
         treemap_data.loc[treemap_data['component'] == component_name, 'mse_comb'] = mse_comb
         treemap_data.loc[treemap_data['component'] == component_name, 'mse_simpl'] = mse_simpl
@@ -487,7 +492,7 @@ def analyze_complexity(root_component_id: str, instances: DataFrame, timestats: 
     vals = timestats.drop(columns=['instance', 'parent', 'child']).groupby(['component'], as_index=False).mean()
     vals['time_total'] = vals['time'] * vals['time_count']
     vals['time_total_excl'] = vals['time_exclusive'] * vals['time_count']
-    vals['time_total_excl_scaled'] = np.log1p(vals['time_total_excl'])
+    vals['time_total_excl_scaled'] = np.sqrt(vals['time_total_excl'])
     vals.drop(columns=['time'], inplace=True)
     treemap_data = pd.merge(treemap_data, vals, on='component')
     fig = go.Figure()
@@ -501,13 +506,13 @@ def analyze_complexity(root_component_id: str, instances: DataFrame, timestats: 
         hovertemplate='<b>%{label} </b> <br> Total T(ms): %{customdata[0]:.2f} (%{customdata[8]:.2f} * %{customdata[9]:.2f}) <br> Exclusive T(ms): %{customdata[10]:.2f} (%{customdata[11]:.2f} * %{customdata[9]:.2f})<br> Global (MSE: %{customdata[5]:.1f}): %{customdata[1]} <br> Combined (MSE: %{customdata[6]:.1f}): %{customdata[2]} <br> Exclusive (MSE: %{customdata[7]:.1f}): %{customdata[3]}<extra></extra>', # <extra></extra> hides the extra tooltips that contains traceid by default
         marker=dict(
             colors=treemap_data.time,
-            colorscale='ylorbr',
+            colorscale='RdYlGn_r',
             pad=dict(t=50, r=15, b=15, l=15),
             cmin=0,
-            cmid=treemap_data.time.mean(),
+            cmax=treemap_data.time_total_excl_scaled.max(),
             showscale=True,
             colorbar=dict(
-                title='T (ms)',
+                title='sqrt(T (ms))',
                 #tickvals=[0, 100, 1000, 10000, 100000, 1000000],
             ),
         ),
