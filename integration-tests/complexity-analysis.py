@@ -3,6 +3,8 @@
 #################
 import re
 
+from sympy.utilities.iterables import iterable
+
 MIN_POINTS = 5
 
 import argparse
@@ -176,7 +178,7 @@ def fold_profiler_data_csv(path: str) -> any:
         instance, algorithm, iteration = csv_file.readline().strip().split(',')
         if algorithm == BEST_ALGORITHM or iteration == BEST_ITERATION:
             print(f"Skipping file {path}")
-            return []
+            return None, None, []
 
         events = []
         for line in csv_file:
@@ -184,14 +186,17 @@ def fold_profiler_data_csv(path: str) -> any:
             events.append({'when': int(when), 'enter': enter == '1', 'clazz': clazz, 'method': method})
 
         events.sort(key=lambda x: x['when'])
-        return events
+        return instance, algorithm, iteration, events
 
 
 def fold_profiler_data_json(path: str) -> any:
     with open(path) as json_file:
         jsondata = json.load(json_file)
 
-    if jsondata['algorithm']['name'] == BEST_ALGORITHM or jsondata['iteration'] == BEST_ITERATION:
+    instance = jsondata['instanceId']
+    algorithm = jsondata['algorithm']['name']
+    iteration = jsondata['iteration']
+    if algorithm == BEST_ALGORITHM or iteration == BEST_ITERATION:
         print(f"Skipping file {path}")
         return []
 
@@ -201,7 +206,7 @@ def fold_profiler_data_json(path: str) -> any:
         events.append({'when': i['when'], 'enter': i['enter'], 'clazz': i['clazz'], 'method': i['method']})
     events.sort(key=lambda x: x['when'])
 
-    return events
+    return instance, algorithm, iteration, events
 
 
 def fold_profiler_data(path: str) -> DataFrame:
@@ -210,9 +215,9 @@ def fold_profiler_data(path: str) -> DataFrame:
     for f in os.listdir(path):
         fullpath = join(path, f)
         if f.endswith(".csv"):
-            events = fold_profiler_data_csv(fullpath)
+            instance, algorithm, iteration, events = fold_profiler_data_csv(fullpath)
         elif f.endswith(".json"):
-            events = fold_profiler_data_json(fullpath)
+            (instance, algorithm, iteration, events) = fold_profiler_data_json(fullpath)
         else:
             print(f"Skipping file {f}, not a CSV or JSON")
             continue
@@ -243,8 +248,8 @@ def fold_profiler_data(path: str) -> DataFrame:
 
                 parent, child = full_name.rsplit("/", 1) if "/" in full_name else ("", full_name)
                 timestats.append({
-                    'instance': jsondata['instanceId'],
-                    'iter': jsondata['iteration'],
+                    'instance': instance,
+                    'iter': iteration,
                     'component': full_name,
                     'parent': parent,
                     'child': child,

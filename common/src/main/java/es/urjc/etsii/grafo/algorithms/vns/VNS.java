@@ -88,7 +88,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
      * @param improver      List of improvers/local searches
      */
     @AutoconfigConstructor
-    protected VNS(@ProvidedParam String algorithmName, @IntegerParam(min = 1, max = 100) int maxK, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
+    public VNS(@ProvidedParam String algorithmName, @IntegerParam(min = 1, max = 100) int maxK, Constructive<S, I> constructive, Shake<S, I> shake, Improver<S, I> improver) {
         this(algorithmName, Context.getMainObjective(), new DefaultVNSNeighChange<>(maxK, 1), constructive, shake, improver);
     }
 
