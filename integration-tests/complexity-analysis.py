@@ -3,10 +3,7 @@
 #################
 import re
 import panel as pn
-pn.extension("plotly")
-pn.extension('katex', 'mathjax')
-
-from sympy.utilities.iterables import iterable
+pn.extension('mathjax','plotly', 'katex')
 
 MIN_POINTS = 5
 
@@ -39,42 +36,28 @@ BEST_ITERATION = "bestiter"
 
 PROPERTY_SOURCES = ['time', 'time_exclusive', 'time_count']
 
-from sympy import symbols, simplify, log, Float, preorder_traversal, sstr
+from sympy import symbols, simplify, log, Float, preorder_traversal, sstr, latex
+from sympy.utilities.iterables import iterable
+from sympy.printing.mathml import mathml
 
 # All generated plotly graphs by ID
 plots_by_id = defaultdict(dict)
 
-def format_number_latex(n):
-    formatted =  f"{n:+.2g}"
-    exponent = re.search(r"e\+?(-?\d+)", formatted)
-    if not exponent:
-        return formatted
-    exponent = exponent.group(1).lstrip("0")
-    formatted = re.sub(r"e\+?(-?\d+)", rf"\\cdot 10^{exponent}", formatted)
-    return formatted
-
-def format_number_html(n):
-    formatted =  f"{n:+.2g}"
-    exponent = re.search(r"e\+?(-?\d+)", formatted)
-    if not exponent:
-        return formatted
-    exponent = exponent.group(1).lstrip("0")
-    formatted = re.sub(r"e\+?(-?\d+)", rf"&#183;10<sup>{exponent}</sup>", formatted)
-    return formatted
-
 class ComplexityFunction(object):
-    def __init__(self, name, function, html, calc):
+    def __init__(self, name, function, calc):
         self.name = name
         self.function = function
-        self.html = html
         self.calc = calc
-
-    def f_name_html(self, a, b):
-        return self.html.replace("a", format_number_html(a)).replace("b", format_number_html(b))
 
     def f_name_calc(self, a, b):
         return self.calc.replace("a", str(a)).replace("b", str(b))
 
+    def f_name_mathml(self, a, b):
+        expr = self.f_name_calc(a, b)
+        expr = complexity_simplify(expr)
+        return str(expr)
+        #expr = latex(expr) # MathJax does not work when plotly is loaded in Panel
+        #return f'${expr}$'
 
 class Fit(object):
 
@@ -109,8 +92,8 @@ class Fit(object):
     def name_calc(self):
         return self.f.f_name_calc(*self.popt)
 
-    def name_html(self):
-        return self.f.f_name_html(*self.popt)
+    def name_mathml(self):
+        return self.f.f_name_mathml(*self.popt)
 
 
 def load_df(path: str) -> DataFrame:
@@ -119,15 +102,15 @@ def load_df(path: str) -> DataFrame:
 
 def get_functions_single() -> list[ComplexityFunction]:
     return [
-        ComplexityFunction("Log.", lambda x, a, b: a * np.log(x) + b,r"a log(x) b", "a * log(x) + b"),
-        ComplexityFunction("Linear", lambda x, a, b: a * x + b, r"ax b", "a * x + b"),
-        ComplexityFunction("Log. Linear", lambda x, a, b: a * x * np.log(x) + b, r"ax log(x) b", "a * x * log(x) + b"),
-        ComplexityFunction("Quadratic", lambda x, a, b: a * x ** 2 + b,  r"ax<sup>2</sup> b", "a * x ** 2 + b"),
-        ComplexityFunction("Exponential", lambda x, a, b: a * 2 ** x + b, r"2<sup>x</sup> b", "a * 2 ** x + b"),
+        ComplexityFunction("Log.", lambda x, a, b: a * np.log(x) + b,"a * log(x) + b"),
+        ComplexityFunction("Linear", lambda x, a, b: a * x + b, "a * x + b"),
+        ComplexityFunction("Log. Linear", lambda x, a, b: a * x * np.log(x) + b, "a * x * log(x) + b"),
+        ComplexityFunction("Quadratic", lambda x, a, b: a * x ** 2 + b, "a * x ** 2 + b"),
+        ComplexityFunction("Exponential", lambda x, a, b: a * 2 ** x + b, "a * 2 ** x + b"),
     ]
 
-# ComplexityFunction("T1", lambda x1, x2, a, b: a * x1 + b * x2, r"a \cdot x_1 + b \cdot x_2", r"ax<sub>1</sub> + bx<sub>2</sub>", "a * x1 + b * x2"),
-# ComplexityFunction("T2", lambda x1, x2, a, b: a * x1 * x2 + b, r"a \cdot x_1 \cdot x_2 + b", r"ax<sub>1</sub>x<sub>2</sub> + b", "a * x1 * x2 + b"),
+# ComplexityFunction("T1", lambda x1, x2, a, b: a * x1 + b * x2, r"ax<sub>1</sub> + bx<sub>2</sub>", "a * x1 + b * x2"),
+# ComplexityFunction("T2", lambda x1, x2, a, b: a * x1 * x2 + b, r"ax<sub>1</sub>x<sub>2</sub> + b", "a * x1 * x2 + b"),
 
 def complexity_formula(d: DataFrame, component_name: str) -> str:
     # find its children
@@ -166,12 +149,6 @@ def complexity_simplify(original_expr: str) -> str:
     for a in preorder_traversal(expr):
         if isinstance(a, Float):
             expr_rounded = expr_rounded.subs(a, round(a, 2))
-            # rounded1 = round(a, 1)
-            # rounded0 = round(a, 0)
-            # if abs(rounded1 == rounded0) < 1e-3:
-            #     expr_rounded = expr_rounded.subs(a, rounded0)
-            # else:
-            #     expr_rounded = expr_rounded.subs(a, rounded1)
 
     return expr_rounded
 
@@ -233,7 +210,7 @@ def fold_profiler_data(path: str) -> DataFrame:
         stack = []
 
         for i in events:
-            name = f"{i['clazz']}::{i['method']}"
+            name = f"{i['clazz']}<br>{i['method']}"
             if i['enter']:
                 stack.append({'name': name, 'when': i['when'], 'children_time': 0})
             else:
@@ -291,11 +268,14 @@ def generate_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, 
 
     for i, fit in enumerate(fits):
         color = boring_colors[i % len(boring_colors)] if i != 0 else best_color
-        fig.add_scatter(x=fit.data.x, y=fit.data.y, name=fit.name_html(), line=dict(color=color))
+        fig.add_scatter(x=fit.data.x, y=fit.data.y, name=fit.name_mathml(), line=dict(color=color))
         # print(f"Component {c} - Function {k} - {col} - R2: {r2} - {popt} - {dic['fvec']}")
 
     fig.update_layout(
-        title=rf"{component_name} - {property_source} is Θ({fits[0].name_html()})",
+        title=dict(
+            text=rf"{component_name.replace('<br>', '::').replace('/', '→')}<br>{property_source} is Θ({fits[0].name_mathml()})",
+            font=dict(size=12),
+        ),
         showlegend=True,
         #legend_title_text="Models",
         legend = dict(
@@ -303,8 +283,6 @@ def generate_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, 
             y=0.99,
             xanchor="left",
             x=0.01,
-            font = dict(size = 16),
-            #title=dict(font=dict(size=20)),
         ),
 
         xaxis_title=instance_property,
@@ -421,8 +399,8 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
 
             plots_by_id[component_name][property_source] = f_chart
 
-            print(f"Component {component_name}, source {property_source} performance predicted as Θ({best.name_html()}) by {best.instance_prop} - {Fit.get_metric_name()}: {best.get_metric_value()}")
-            treemap_labels.append({"component": component_name, "property_source":property_source, "instance_property": best.instance_prop, "calc_function": f"{best.name_calc()}","html_function": f"Θ({best.name_html()})", Fit.get_metric_name(): best.get_metric_value()})
+            print(f"Component {component_name}, source {property_source} performance predicted as Θ({best.name_mathml()}) by {best.instance_prop} - {Fit.get_metric_name()}: {best.get_metric_value()}")
+            treemap_labels.append({"component": component_name, "property_source":property_source, "instance_property": best.instance_prop, "calc_function": f"{best.name_calc()}", Fit.get_metric_name(): best.get_metric_value()})
 
 
     if not treemap_labels:
@@ -435,7 +413,6 @@ def try_analyze_all_property_sources(instances: DataFrame, timestats: DataFrame)
     all_formulas = all_formulas[~all_formulas['component'].isin(failed_components)]
     all_formulas = all_formulas.merge(treemap_data, on='component')
 
-    all_formulas['child'] = all_formulas['child'].str.replace('::','<br>')
     # Replace non-alphanumeric characters with underscores
     all_formulas['instance_property'] = all_formulas['instance_property'].str.replace('\W+','_', regex=True)
 
@@ -529,10 +506,6 @@ def analyze_complexity(root_component_id: str, instances: DataFrame, timestats: 
         maxdepth=3,
         legend="legend"
     ))
-    fig.update_layout(
-        uniformtext=dict(minsize=16, mode='show'),
-        margin = dict(t=50, l=25, r=25, b=25)
-    )
 
     heatmap_pane = pn.pane.Plotly(fig)
 
@@ -564,12 +537,9 @@ def main():
         epilog='Created for the Mork project, if useful for your research consider citing the original publication')
     parser.add_argument('-p', '--properties', required=False, default="instance_properties.csv", help="CSV Input file containing instance properties.")
     parser.add_argument('-i', '--data', required=False, default="solutions", help="Path to folder which contains profiler data. Data can be stored in either CSV files or JSON, see docs for more details on the format.")
-    # parser.add_argument('-o', '--output', required=False, default="output", help="Path to output folder.")
 
     args = parser.parse_args()
 
-    #shutil.rmtree(args.output, ignore_errors=True)
-    #os.mkdir(args.output)
     print(f"Loading CSV {args.properties}")
     instances = load_df(args.properties)
     print("Loading profiler data")
