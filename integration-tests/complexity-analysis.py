@@ -36,10 +36,11 @@ BEST_ITERATION = "bestiter"
 
 PROPERTY_SOURCES = ['time', 'time_exclusive', 'time_count']
 
-from sympy import symbols, simplify, log, Float, preorder_traversal, sstr, latex, cancel
+from sympy import symbols, simplify, sympify, log, Float, preorder_traversal, sstr, latex, cancel, lambdify
 from sympy.utilities.iterables import iterable
 from sympy.printing.mathml import mathml
 from sympy.printing.str import StrPrinter
+from sympy.abc import x, a, b
 
 class CustomStrPrinter(StrPrinter):
     def _print_Float(self, expr):
@@ -49,13 +50,13 @@ class CustomStrPrinter(StrPrinter):
 plots_by_id = defaultdict(dict)
 
 class ComplexityFunction(object):
-    def __init__(self, name, function, calc):
+    def __init__(self, name, calc):
         self.name = name
-        self.function = function
-        self.calc = calc
+        self.expr = sympify(calc)
+        self.function = lambdify([x, a, b], self.expr)
 
-    def f_name_calc(self, a, b):
-        return self.calc.replace("a", str(a)).replace("b", str(b))
+    def f_name_calc(self, a_val, b_val):
+        return self.expr.subs({a: a_val, b: b_val})
 
     def f_name_mathml(self, a, b):
         expr = self.f_name_calc(a, b)
@@ -107,11 +108,11 @@ def load_df(path: str) -> DataFrame:
 
 def get_functions_single() -> list[ComplexityFunction]:
     return [
-        ComplexityFunction("Log.", lambda x, a, b: a * np.log(x) + b,"a * log(x) + b"),
-        ComplexityFunction("Linear", lambda x, a, b: a * x + b, "a * x + b"),
-        ComplexityFunction("Log. Linear", lambda x, a, b: a * x * np.log(x) + b, "a * x * log(x) + b"),
-        ComplexityFunction("Quadratic", lambda x, a, b: a * x ** 2 + b, "a * x ** 2 + b"),
-        ComplexityFunction("Exponential", lambda x, a, b: a * 2 ** x + b, "a * 2 ** x + b"),
+        ComplexityFunction("Log.","a * log(x) + b"),
+        ComplexityFunction("Linear", "a * x + b"),
+        ComplexityFunction("Log. Linear", "a * x * log(x) + b"),
+        ComplexityFunction("Quadratic",  "a * x ** 2 + b"),
+        ComplexityFunction("Exponential",  "a * 2 ** x + b"),
     ]
 
 # ComplexityFunction("T1", lambda x1, x2, a, b: a * x1 + b * x2, r"ax<sub>1</sub> + bx<sub>2</sub>", "a * x1 + b * x2"),
@@ -129,9 +130,6 @@ def complexity_formula(d: DataFrame, component_name: str) -> str:
     itself_called_times_instance_property = itself_called_times.instance_property.values[0]
     itself_called_times_f = itself_called_times_f.replace("x", itself_called_times_instance_property)
 
-    # El bug es que asumo que la f de cuantas veces se llama el child es relativa desde el padre
-    # Cuando la estoy calculando de forma absolute
-    # ¿Dividir child entre parent deberia dar el resultado correcto? Poner como variable y pedirle que simplifique luego
     children = d[d.parent==component_name].component.unique()
     for child in children:
         # accumulated complexity is number of times called * complexity of child
