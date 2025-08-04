@@ -38,7 +38,7 @@ BEST_ITERATION = "bestiter"
 
 PROPERTY_SOURCES = ['time', 'time_exclusive', 'time_count']
 
-from sympy import symbols, simplify, sympify, log, Float, preorder_traversal, sstr, latex, cancel, lambdify, Expr
+from sympy import symbols, simplify, sympify, log, Float, preorder_traversal, sstr, latex, cancel, lambdify, Expr, expand
 from sympy.utilities.iterables import iterable
 from sympy.printing.mathml import mathml
 from sympy.printing.str import StrPrinter
@@ -68,14 +68,6 @@ class ComplexityFunction(ABC):
         pass
 
     @abstractmethod
-    def f_name_calc(self, values: list):
-        pass
-
-    @abstractmethod
-    def f_name_mathml(self, values: list):
-        pass
-
-    @abstractmethod
     def replace(self, instance_property: list[str], values: list[float]) -> Expr:
         pass
 
@@ -94,16 +86,6 @@ class ComplexityFunctionSingle(ComplexityFunction):
 
     def name(self):
         return self._name
-
-    def f_name_calc(self, values: list):
-        if len(values) != 2:
-            raise Exception("Wrong number of arguments")
-        return self.expr.subs({a: values[0], b: values[1]})
-
-    def f_name_mathml(self, values: list):
-        expr = self.f_name_calc(values)
-        expr = complexity_simplify(expr)
-        return CustomStrPrinter().doprint(expr)
 
     def replace(self, instance_property: list[str], values: list[float]) -> Expr:
         if len(instance_property) != 1:
@@ -126,33 +108,21 @@ class ComplexityFunSum(ComplexityFunction):
         return self._name
 
     def generate_function(self):
-        def f(X, av, bv):
+        def f(X, av1, bv1, av2, bv2):
             x1, x2 = X.T
-            y1 = self.compf1.generate_function()(x1, av, bv)
-            y2 = self.compf1.generate_function()(x2, av, bv)
+            y1 = self.compf1.generate_function()(x1, av1, bv1)
+            y2 = self.compf2.generate_function()(x2, av2, bv2)
             return y1 + y2
 
         return f
 
-    def f_name_calc(self, values: list):
-        if len(values) != 4:
-            raise Exception("Wrong number of arguments")
-        expr1 = self.compf1.expr.subs({a: values[0], b: values[1]})
-        expr2 = self.compf2.expr.subs({a: values[2], b: values[3]})
-        return expr1 + expr2
-
-    def f_name_mathml(self, values: list):
-        expr = self.f_name_calc(values)
-        expr = complexity_simplify(expr)
-        return CustomStrPrinter().doprint(expr)
-
     def replace(self, instance_property: list[str], values: list[float]) -> Expr:
         if len(instance_property) != 2:
             raise Exception("Wrong number of arguments")
-        if len(values) != 2:
+        if len(values) != 4:
             raise Exception("Wrong number of arguments")
         expr1 = self.compf1.expr.subs({x: mysymbols[instance_property[0]], a: values[0], b: values[1]})
-        expr2 = self.compf1.expr.subs({x: mysymbols[instance_property[1]], a: values[0], b: values[1]})
+        expr2 = self.compf2.expr.subs({x: mysymbols[instance_property[1]], a: values[2], b: values[3]})
         return expr1 + expr2
 
     def __str__(self):
@@ -170,33 +140,21 @@ class ComplexityFunMult(ComplexityFunction):
         return self._name
 
     def generate_function(self):
-        def f(X, av, bv):
+        def f(X, av1, bv1, av2, bv2):
             x1, x2 = X.T
-            y1 = self.compf1.generate_function()(x1, av, bv)
-            y2 = self.compf1.generate_function()(x2, av, bv)
+            y1 = self.compf1.generate_function()(x1, av1, bv1)
+            y2 = self.compf2.generate_function()(x2, av2, bv2)
             return y1 * y2
 
         return f
 
-    def f_name_calc(self, values: list):
-        if len(values) != 4:
-            raise Exception("Wrong number of arguments")
-        expr1 = self.compf1.expr.subs({a: values[0], b: values[1]})
-        expr2 = self.compf2.expr.subs({a: values[2], b: values[3]})
-        return expr1 * expr2
-
-    def f_name_mathml(self, values: list):
-        expr = self.f_name_calc(values)
-        expr = complexity_simplify(expr)
-        return CustomStrPrinter().doprint(expr)
-
     def replace(self, instance_property: list[str], values: list[float]) -> Expr:
         if len(instance_property) != 2:
             raise Exception("Wrong number of arguments")
-        if len(values) != 2:
+        if len(values) != 4:
             raise Exception("Wrong number of arguments")
         expr1 = self.compf1.expr.subs({x: mysymbols[instance_property[0]], a: values[0], b: values[1]})
-        expr2 = self.compf1.expr.subs({x: mysymbols[instance_property[1]], a: values[0], b: values[1]})
+        expr2 = self.compf2.expr.subs({x: mysymbols[instance_property[1]], a: values[2], b: values[3]})
         return expr1 * expr2
 
     def __str__(self):
@@ -235,6 +193,9 @@ class Fit(object):
         expr = complexity_simplify(self.f)
         return CustomStrPrinter().doprint(expr)
 
+    def __str__(self):
+        return f"{self.instance_prop} = {self.name_calc()} (MSE: {self.mse})"
+
 
 def load_df(path: str) -> DataFrame:
     return pd.read_csv(path)
@@ -248,16 +209,16 @@ fitting_functions_single: list[ComplexityFunctionSingle] = [
     ComplexityFunctionSingle("Exponential", "a * 2 ** x + b"),
 ]
 
-
-# Revisar cuantos parametros esta usando curve fit, quiza dejar solo en 2 en vez de 4 para los dobles, misma a y b entre
-# funciones de complejidad
 def get_functions_double() -> list[ComplexityFunction]:
     r = []
     for f1 in fitting_functions_single:
         for f2 in fitting_functions_single:
-            r.append(ComplexityFunSum(f1, f2))
-            r.append(ComplexityFunMult(f1, f2))
+            if f1 != f2:
+                r.append(ComplexityFunSum(f1, f2))
+                r.append(ComplexityFunMult(f1, f2))
     return r
+
+fitting_functions_double: list[ComplexityFunction] = get_functions_double()
 
 
 def complexity_formula(d: DataFrame, component_name: str) -> Expr:
@@ -287,9 +248,9 @@ def get_full_name(stack: list[tuple[str, int]]) -> str:
 def complexity_simplify(original_expr: Expr) -> Expr:
     expr = simplify(original_expr)
     expr_rounded = expr
-    for a in preorder_traversal(expr):
-        if isinstance(a, Float):
-            expr_rounded = expr_rounded.subs(a, round(a, 2))
+    # for a in preorder_traversal(expr):
+    #    if isinstance(a, Float):
+    #        expr_rounded = expr_rounded.subs(a, round(a, 4))
 
     return expr_rounded
 
@@ -405,6 +366,7 @@ def prepare_df(df: DataFrame, timestats: DataFrame) -> DataFrame:
 
 
 def generate_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, component_name, property_source='time'):
+    # TODO esto ahora no funciona porque diferentes fits pueden tener diferentes instance_properties
     fig = px.line()
     fig.add_scatter(x=xy.index, y=xy[property_source], name="Real", line=dict(color=real_color))
 
@@ -459,7 +421,9 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
             else:
                 data = pd.DataFrame({'x1': x, 'y': y_estimated})
 
-            return Fit(f.replace(instance_property, popt), instance_property, perr, mse, popt, dic, data)
+            f = f.replace(instance_property, popt)
+            f = expand(f)
+            return Fit(f, instance_property, perr, mse, popt, dic, data)
 
     except Warning as warn:
         if warn.args[0] == 'overflow encountered in power':
@@ -473,71 +437,61 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
             return None
 
 
-def calculate_fitting_funcs(data: DataFrame, component_name: str, instance_property: str, property_source: str) -> list[
-    Fit]:
-    xy = data[data['component'] == component_name][[instance_property, property_source]]
+def calculate_fitting_funcs(data: DataFrame, component: str, feature: str, property_src: str) -> list[Fit]:
+    xy = data[data['component'] == component][[feature, property_src]]
     # Instance features may have duplicated values (ex: graph density with different results). Average them.
-    xy = xy.groupby(instance_property).mean()
+    xy = xy.groupby(feature).mean()
 
-    x, y = xy.index.to_numpy(), xy[property_source].to_numpy()
+    x, y = xy.index.to_numpy(), xy[property_src].to_numpy()
 
     fits = []
     for f in fitting_functions_single:
-        fit = calculate_fitting_func(x, y, f, [instance_property])
+        fit = calculate_fitting_func(x, y, f, [feature])
         if fit:
             fits.append(fit)
 
-    Fit.sort(fits)
     return fits
 
 
-def calculate_fitting_funcs2(data: DataFrame, component_name: str, instance_feature1: str, instance_feature2: str,
-                             property_source: str) -> list[Fit]:
-    xy = data[data['component'] == component_name][[instance_feature1, instance_feature2, property_source]]
+def calculate_fitting_funcs2(data: DataFrame, component: str, feature1: str, feature2: str,
+                             property_src: str) -> list[Fit]:
+    xy = data[data['component'] == component][[feature1, feature2, property_src]]
     # Instance features may have duplicated values (ex: graph density with different results). Average them.
-    xy = xy.groupby([instance_feature1, instance_feature2]).mean()
+    xy = xy.groupby([feature1, feature2]).mean()
     if len(xy) < MIN_POINTS:
         print(
-            f"Instance property pair ({instance_feature1}, {instance_feature2}) has less than {MIN_POINTS} points after grouping, skipping")
+            f"Instance property pair ({feature1}, {feature2}) has less than {MIN_POINTS} points after grouping, skipping")
         return []
 
-    x, y = xy.index.to_numpy(), xy[property_source].to_numpy()
+    x, y = xy.index.to_numpy(), xy[property_src].to_numpy()
     x = np.array([*x])  # Replaces array of tuples with 2d np array
 
     fits = []
-    for f in get_functions_double():
-        fit = calculate_fitting_func(x, y, f, [instance_feature1, instance_feature2])
+    for f in fitting_functions_double:
+        fit = calculate_fitting_func(x, y, f, [feature1, feature2])
         if fit:
             fits.append(fit)
 
-    Fit.sort(fits)
     return fits
 
 
-def find_best_instance_property(instance_features: list[str], data: DataFrame, component_name: str,
-                                property_source: str) -> list[Fit]:
-    best_fits = []
-    for feature in instance_features:
-        fits = calculate_fitting_funcs(data, component_name, feature, property_source)
-        if not fits:
-            continue
-        if not best_fits or fits[0].mse < best_fits[0].mse:
-            best_fits = fits
+def find_best_instance_property(features: list[str], data: DataFrame, component: str, prop_src: str) -> list[Fit]:
+    fits_single: list[Fit] = []
+    for feature in features:
+        fits_single += calculate_fitting_funcs(data, component, feature, prop_src)
 
-    best_fits2 = []
-    for i in range(len(instance_features)):
-        for j in range(i + 1, len(instance_features)):
-            fits = calculate_fitting_funcs2(data, component_name, instance_features[i], instance_features[j],
-                                            property_source)
-        if not fits:
-            continue
-        if not best_fits2 or fits[0].mse < best_fits2[0].mse:
-            best_fits2 = fits
+    Fit.sort(fits_single)
+    fits_double: list[Fit] = []
+    for i in range(len(features)):
+        for j in range(i + 1, len(features)):
+            fits_double += calculate_fitting_funcs2(data, component, features[i], features[j], prop_src)
 
-    if best_fits2[0].mse < 0.8 * best_fits[0].mse:
-        best_fits = best_fits2
+    Fit.sort(fits_double)
 
-    return best_fits
+    # Return best 3 of each type
+    fits = fits_single[:3] + fits_double[:3]
+    Fit.sort(fits)
+    return fits
 
 
 def try_analyze_all_property_sources(instance_features: list[str], data: DataFrame):
@@ -586,7 +540,8 @@ def try_analyze_all_property_sources(instance_features: list[str], data: DataFra
         c_simple = simple.calc_function.values[0]
         c_simple_simpl = complexity_simplify(c_simple)
 
-        simple_exclusive = all_formulas[(all_formulas['component'] == component_name) & (all_formulas.property_source == "time_exclusive")]
+        simple_exclusive = all_formulas[
+            (all_formulas['component'] == component_name) & (all_formulas.property_source == "time_exclusive")]
         simple_exclusive_metric_v = simple_exclusive[Fit.get_metric_name()].values[0]
         c_simple_exclusive = simple_exclusive.calc_function.values[0]
         c_simpl_simple_exclusive = complexity_simplify(c_simple_exclusive)
@@ -625,7 +580,7 @@ def mse(formula, instance_features, data: DataFrame, component_name: str, proper
     xy['y_estimated'] = xy.apply(eval_formula, axis=1)
 
     mse = np.mean((xy[property_source] - xy.y_estimated) ** 2)
-    return float(mse) # np uses 'floating' type
+    return float(mse)  # np uses 'floating' type
 
 
 def analyze_complexity(root_component_id: str, instance_features: list[str], data: DataFrame):
