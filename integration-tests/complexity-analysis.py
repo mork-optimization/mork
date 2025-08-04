@@ -7,7 +7,7 @@ import panel as pn
 pn.extension('mathjax', 'plotly', 'katex')
 
 MIN_POINTS = 5
-DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD = 0.8 # 20% less
+DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD = 0.8  # 20% less
 
 import argparse
 import os
@@ -38,7 +38,7 @@ BEST_ITERATION = "bestiter"
 
 PROPERTY_SOURCES = ['time', 'time_exclusive', 'time_count']
 
-from sympy import symbols, simplify, sympify, log, Float, preorder_traversal, sstr, latex, cancel, lambdify
+from sympy import symbols, simplify, sympify, log, Float, preorder_traversal, sstr, latex, cancel, lambdify, Expr
 from sympy.utilities.iterables import iterable
 from sympy.printing.mathml import mathml
 from sympy.printing.str import StrPrinter
@@ -46,6 +46,7 @@ from sympy.printing.str import StrPrinter
 from abc import ABC, abstractmethod
 
 x, a, b = symbols("x a b")
+mysymbols = {}
 
 
 class CustomStrPrinter(StrPrinter):
@@ -75,8 +76,13 @@ class ComplexityFunction(ABC):
         pass
 
     @abstractmethod
+    def replace(self, instance_property: list[str], values: list[float]) -> Expr:
+        pass
+
+    @abstractmethod
     def __str__(self):
         pass
+
 
 class ComplexityFunctionSingle(ComplexityFunction):
     def __init__(self, name, calc):
@@ -99,11 +105,19 @@ class ComplexityFunctionSingle(ComplexityFunction):
         expr = complexity_simplify(expr)
         return CustomStrPrinter().doprint(expr)
 
+    def replace(self, instance_property: list[str], values: list[float]) -> Expr:
+        if len(instance_property) != 1:
+            raise Exception("Wrong number of arguments")
+        if len(values) != 2:
+            raise Exception("Wrong number of arguments")
+        return self.expr.subs({x: mysymbols[instance_property[0]], a: values[0], b: values[1]})
+
     def __str__(self):
         return self.name()
 
+
 class ComplexityFunSum(ComplexityFunction):
-    def __init__(self, compf1: ComplexityFunction, compf2: ComplexityFunction):
+    def __init__(self, compf1: ComplexityFunctionSingle, compf2: ComplexityFunctionSingle):
         self._name = f"{compf1.name()}+{compf2.name()}"
         self.compf1 = compf1
         self.compf2 = compf2
@@ -114,8 +128,8 @@ class ComplexityFunSum(ComplexityFunction):
     def generate_function(self):
         def f(X, av, bv):
             x1, x2 = X.T
-            y1 = self.compf1.generate_function()(x1,av,bv)
-            y2 = self.compf1.generate_function()(x2,av,bv)
+            y1 = self.compf1.generate_function()(x1, av, bv)
+            y2 = self.compf1.generate_function()(x2, av, bv)
             return y1 + y2
 
         return f
@@ -132,12 +146,22 @@ class ComplexityFunSum(ComplexityFunction):
         expr = complexity_simplify(expr)
         return CustomStrPrinter().doprint(expr)
 
+    def replace(self, instance_property: list[str], values: list[float]) -> Expr:
+        if len(instance_property) != 2:
+            raise Exception("Wrong number of arguments")
+        if len(values) != 2:
+            raise Exception("Wrong number of arguments")
+        expr1 = self.compf1.expr.subs({x: mysymbols[instance_property[0]], a: values[0], b: values[1]})
+        expr2 = self.compf1.expr.subs({x: mysymbols[instance_property[1]], a: values[0], b: values[1]})
+        return expr1 + expr2
+
     def __str__(self):
         return self.name()
 
+
 class ComplexityFunMult(ComplexityFunction):
 
-    def __init__(self, compf1: ComplexityFunction, compf2: ComplexityFunction):
+    def __init__(self, compf1: ComplexityFunctionSingle, compf2: ComplexityFunctionSingle):
         self._name = f"{compf1.name()}*{compf2.name()}"
         self.compf1 = compf1
         self.compf2 = compf2
@@ -148,11 +172,12 @@ class ComplexityFunMult(ComplexityFunction):
     def generate_function(self):
         def f(X, av, bv):
             x1, x2 = X.T
-            y1 = self.compf1.generate_function()(x1,av,bv)
-            y2 = self.compf1.generate_function()(x2,av,bv)
+            y1 = self.compf1.generate_function()(x1, av, bv)
+            y2 = self.compf1.generate_function()(x2, av, bv)
             return y1 * y2
 
         return f
+
     def f_name_calc(self, values: list):
         if len(values) != 4:
             raise Exception("Wrong number of arguments")
@@ -165,11 +190,20 @@ class ComplexityFunMult(ComplexityFunction):
         expr = complexity_simplify(expr)
         return CustomStrPrinter().doprint(expr)
 
+    def replace(self, instance_property: list[str], values: list[float]) -> Expr:
+        if len(instance_property) != 2:
+            raise Exception("Wrong number of arguments")
+        if len(values) != 2:
+            raise Exception("Wrong number of arguments")
+        expr1 = self.compf1.expr.subs({x: mysymbols[instance_property[0]], a: values[0], b: values[1]})
+        expr2 = self.compf1.expr.subs({x: mysymbols[instance_property[1]], a: values[0], b: values[1]})
+        return expr1 * expr2
+
     def __str__(self):
         return self.name()
 
-class Fit(object):
 
+class Fit(object):
     def __init__(self, f: ComplexityFunction, instance_prop: list[str], perr, mse, popt, dic, data):
         self.f = f
         self.instance_prop = instance_prop
@@ -194,24 +228,26 @@ class Fit(object):
     def get_metric_value(self):
         return self.mse
 
-    def name_calc(self):
-        return self.f.f_name_calc(self.popt)
+    def name_calc(self) -> Expr:
+        return self.f
 
     def name_mathml(self):
-        return self.f.f_name_mathml(self.popt)
+        expr = complexity_simplify(self.f)
+        return CustomStrPrinter().doprint(expr)
 
 
 def load_df(path: str) -> DataFrame:
     return pd.read_csv(path)
 
 
-fitting_functions_single: list[ComplexityFunction] = [
+fitting_functions_single: list[ComplexityFunctionSingle] = [
     ComplexityFunctionSingle("Log.", "a * log(x) + b"),
     ComplexityFunctionSingle("Linear", "a * x + b"),
     ComplexityFunctionSingle("Log. Linear", "a * x * log(x) + b"),
     ComplexityFunctionSingle("Quadratic", "a * x ** 2 + b"),
     ComplexityFunctionSingle("Exponential", "a * 2 ** x + b"),
 ]
+
 
 # Revisar cuantos parametros esta usando curve fit, quiza dejar solo en 2 en vez de 4 para los dobles, misma a y b entre
 # funciones de complejidad
@@ -224,17 +260,13 @@ def get_functions_double() -> list[ComplexityFunction]:
     return r
 
 
-def complexity_formula(d: DataFrame, component_name: str) -> str:
+def complexity_formula(d: DataFrame, component_name: str) -> Expr:
     # find its children
     itself = d[(d.component == component_name) & (d.property_source == "time_exclusive")]
     itself_calc_f = itself.calc_function.values[0]
-    itself_instance_property = itself.instance_property.values[0]
-    itself_calc_f = itself_calc_f.replace("x", itself_instance_property)
 
     itself_called_times = d[(d.component == component_name) & (d.property_source == "time_count")]
     itself_called_times_f = itself_called_times.calc_function.values[0]
-    itself_called_times_instance_property = itself_called_times.instance_property.values[0]
-    itself_called_times_f = itself_called_times_f.replace("x", itself_called_times_instance_property)
 
     children = d[d.parent == component_name].component.unique()
     for child in children:
@@ -242,11 +274,9 @@ def complexity_formula(d: DataFrame, component_name: str) -> str:
         child_formula = complexity_formula(d, child)
         child_called_times = d[(d.component == child) & (d.property_source == "time_count")]
         child_called_times_f = child_called_times.calc_function.values[0]
-        child_called_times_instance_property = child_called_times.instance_property.values[0]
-        child_called_times_f = child_called_times_f.replace("x", child_called_times_instance_property)
-        child_called_times_f = f"({child_called_times_f}) / ({itself_called_times_f})"
+        child_called_times_f = child_called_times_f / itself_called_times_f
 
-        itself_calc_f += f" + ({child_called_times_f}) * ({child_formula})"
+        itself_calc_f = itself_calc_f + (child_called_times_f * child_formula)
     return itself_calc_f
 
 
@@ -254,12 +284,12 @@ def get_full_name(stack: list[tuple[str, int]]) -> str:
     return "/".join(frame['name'] for frame in stack)
 
 
-def complexity_simplify(original_expr: str) -> str:
+def complexity_simplify(original_expr: Expr) -> Expr:
     expr = simplify(original_expr)
     expr_rounded = expr
     for a in preorder_traversal(expr):
         if isinstance(a, Float):
-            expr_rounded = expr_rounded.subs(a, round(a, 4))
+            expr_rounded = expr_rounded.subs(a, round(a, 2))
 
     return expr_rounded
 
@@ -398,7 +428,7 @@ def generate_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, 
             x=0.01,
         ),
 
-        xaxis_title=instance_property[0], # TODO Igual que arriba, solo coge la primera propiedad para el scatter plot
+        xaxis_title=instance_property[0],  # TODO Igual que arriba, solo coge la primera propiedad para el scatter plot
         # plotly 3d scatter plot?
         yaxis_title="T (ms)"
     )
@@ -411,7 +441,8 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
         # Curve fit might fail in some cases
         with warnings.catch_warnings():
             warnings.simplefilter("error")  # Turn all warnings into exceptions
-            popt, pcov, dic, mesg, _ = curve_fit(f.generate_function(), x, y, full_output=True, check_finite=True, maxfev=10000)
+            popt, pcov, dic, mesg, _ = curve_fit(f.generate_function(), x, y, full_output=True, check_finite=True,
+                                                 maxfev=10000)
 
             if pcov is None or np.isnan(pcov).any() or np.isinf(pcov).any():
                 return None
@@ -422,31 +453,31 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
             # residual sum of squares
             mse = np.mean((y - y_estimated) ** 2)
             if x.ndim > 1:
-                x_cols = {f'x{i+1}': x[:, i] for i in range(x.shape[1])}
+                x_cols = {f'x{i + 1}': x[:, i] for i in range(x.shape[1])}
                 x_cols['y'] = y_estimated
                 data = pd.DataFrame(x_cols)
             else:
                 data = pd.DataFrame({'x1': x, 'y': y_estimated})
 
-            return Fit(f, instance_property, perr, mse, popt, dic, data)
+            return Fit(f.replace(instance_property, popt), instance_property, perr, mse, popt, dic, data)
 
     except Warning as warn:
         if warn.args[0] == 'overflow encountered in power':
             # Some functions such as exponential can easily overflow, this is expected and the function will be discarded
+            return None
+        elif warn.args[0] == 'Covariance of the parameters could not be estimated':
+            # Bad / failed fit
             return None
         else:
             logging.warning(f"{f}: {warn}")
             return None
 
 
-def calculate_fitting_funcs(data: DataFrame, component_name: str, instance_property: str, property_source: str) -> list[Fit]:
-
+def calculate_fitting_funcs(data: DataFrame, component_name: str, instance_property: str, property_source: str) -> list[
+    Fit]:
     xy = data[data['component'] == component_name][[instance_property, property_source]]
     # Instance features may have duplicated values (ex: graph density with different results). Average them.
     xy = xy.groupby(instance_property).mean()
-    if len(xy) < MIN_POINTS:
-        print(f"Instance property {instance_property} has less than {MIN_POINTS} points after grouping, skipping")
-        return []
 
     x, y = xy.index.to_numpy(), xy[property_source].to_numpy()
 
@@ -460,17 +491,18 @@ def calculate_fitting_funcs(data: DataFrame, component_name: str, instance_prope
     return fits
 
 
-def calculate_fitting_funcs2(data: DataFrame, component_name: str, instance_feature1: str, instance_feature2: str, property_source: str) -> list[Fit]:
-
+def calculate_fitting_funcs2(data: DataFrame, component_name: str, instance_feature1: str, instance_feature2: str,
+                             property_source: str) -> list[Fit]:
     xy = data[data['component'] == component_name][[instance_feature1, instance_feature2, property_source]]
     # Instance features may have duplicated values (ex: graph density with different results). Average them.
     xy = xy.groupby([instance_feature1, instance_feature2]).mean()
     if len(xy) < MIN_POINTS:
-        print(f"Instance property pair ({instance_feature1}, {instance_feature2}) has less than {MIN_POINTS} points after grouping, skipping")
+        print(
+            f"Instance property pair ({instance_feature1}, {instance_feature2}) has less than {MIN_POINTS} points after grouping, skipping")
         return []
 
     x, y = xy.index.to_numpy(), xy[property_source].to_numpy()
-    x = np.array([*x]) # Replaces array of tuples with 2d np array
+    x = np.array([*x])  # Replaces array of tuples with 2d np array
 
     fits = []
     for f in get_functions_double():
@@ -495,7 +527,8 @@ def find_best_instance_property(instance_features: list[str], data: DataFrame, c
     best_fits2 = []
     for i in range(len(instance_features)):
         for j in range(i + 1, len(instance_features)):
-            fits = calculate_fitting_funcs2(data, component_name, instance_features[i], instance_features[j], property_source)
+            fits = calculate_fitting_funcs2(data, component_name, instance_features[i], instance_features[j],
+                                            property_source)
         if not fits:
             continue
         if not best_fits2 or fits[0].mse < best_fits2[0].mse:
@@ -521,74 +554,64 @@ def try_analyze_all_property_sources(instance_features: list[str], data: DataFra
                 print(f"Failed to calculate complexity of component {component_name}, skipping")
                 return None
             best = complexities[property_source][0]
-            xy = data[data['component'] == component_name][[*best.instance_prop, property_source]].groupby(best.instance_prop).mean()
-            f_chart = generate_functions_chart(xy, complexities[property_source], best.instance_prop, component_name, property_source)
+            xy = data[data['component'] == component_name][[*best.instance_prop, property_source]].groupby(
+                best.instance_prop).mean()
+            f_chart = generate_functions_chart(xy, complexities[property_source], best.instance_prop, component_name,
+                                               property_source)
             plots_by_id[component_name][property_source] = f_chart
 
             print(
-                f"Component {component_name}, source {property_source} performance predicted as Θ({best.name_mathml()}) by {best.instance_prop} - {Fit.get_metric_name()}: {best.get_metric_value()}")
-            treemap_labels.append({"component": component_name, "property_source": property_source,
-                                   "instance_property": ",".join(best.instance_prop), "calc_function": f"{best.name_calc()}",
-                                   Fit.get_metric_name(): best.get_metric_value()})
+                f"{component_name} ({property_source}) --> Θ({best.name_mathml()}) - {Fit.get_metric_name()}: {best.get_metric_value()}")
+            treemap_labels.append(
+                {"component": component_name, "property_source": property_source, "calc_function": best.name_calc(),
+                 Fit.get_metric_name(): best.get_metric_value()})
 
     if not treemap_labels:
         print("No components to show, skipping treemap generation")
         return None
 
-    treemap_data = data.groupby(['component', 'parent', 'child'], as_index=False)['time'].mean()
+    tree_df = data.groupby(['component', 'parent', 'child'], as_index=False)['time'].mean()
     all_formulas = pd.DataFrame(treemap_labels)
     # drop failed components
     all_formulas = all_formulas[~all_formulas['component'].isin(failed_components)]
-    all_formulas = all_formulas.merge(treemap_data, on='component')
-
-    # Replace non-alphanumeric characters with underscores before declaring the symbol variables
-    all_formulas['instance_property'] = all_formulas['instance_property'].str.replace('\W+', '_', regex=True)
-
-    for ip in all_formulas['instance_property'].unique():
-        # Create a symbol for each instance property
-        # This allows us to use the instance property in the complexity formulas directly
-        locals()[ip] = symbols(ip)
+    all_formulas = all_formulas.merge(tree_df, on='component')
 
     for component_name in data['component'].unique():
         # Calculate the combined complexity of each component
         c_combined = complexity_formula(all_formulas, component_name)
-        c_simpl_combined = complexity_simplify(eval(c_combined))
+        c_combined_simpl = complexity_simplify(c_combined)
 
         simple = all_formulas[(all_formulas['component'] == component_name) & (all_formulas.property_source == "time")]
-        simple_instance_property = simple.instance_property.values[0]
         simple_metric_v = simple[Fit.get_metric_name()].values[0]
-        c_simple = simple.calc_function.values[0].replace("x", simple_instance_property)
-        c_simpl_simple = complexity_simplify(eval(c_simple))
+        c_simple = simple.calc_function.values[0]
+        c_simple_simpl = complexity_simplify(c_simple)
 
-        simple_exclusive = all_formulas[
-            (all_formulas['component'] == component_name) & (all_formulas.property_source == "time_exclusive")]
-        simple_exclusive_instance_property = simple_exclusive.instance_property.values[0]
+        simple_exclusive = all_formulas[(all_formulas['component'] == component_name) & (all_formulas.property_source == "time_exclusive")]
         simple_exclusive_metric_v = simple_exclusive[Fit.get_metric_name()].values[0]
-        c_simple_exclusive = simple_exclusive.calc_function.values[0].replace("x", simple_exclusive_instance_property)
-        c_simpl_simple_exclusive = complexity_simplify(eval(c_simple_exclusive))
+        c_simple_exclusive = simple_exclusive.calc_function.values[0]
+        c_simpl_simple_exclusive = complexity_simplify(c_simple_exclusive)
 
-        mse_comb = mse(c_simpl_combined, instance_features, data, component_name, 'time')
-        mse_simpl = mse(c_simpl_simple, instance_features, data, component_name, 'time')
+        mse_comb = mse(c_combined_simpl, instance_features, data, component_name, 'time')
+        mse_simpl = mse(c_simple_simpl, instance_features, data, component_name, 'time')
         mse_simpl_excl = mse(c_simpl_simple_exclusive, instance_features, data, component_name, 'time_exclusive')
 
         print(f"Component {component_name} complexity: ")
         print(f" - Combined: {c_combined}")
-        print(f" - Combined (MSE: {mse_comb}): {c_simpl_combined}")
+        print(f" - Combined (MSE: {mse_comb}): {c_combined_simpl}")
         print(f" - Simple: {c_simple}")
-        print(f" - Black box (MSE: {mse_simpl}): {c_simpl_simple}")
+        print(f" - Black box (MSE: {mse_simpl}): {c_simple_simpl}")
         print(f" - Simple Exclusive: {c_simple_exclusive}")
         print(f" - Black box exclusive (MSE: {mse_simpl_excl}): {c_simpl_simple_exclusive}")
         formatter = CustomStrPrinter().doprint
-        treemap_data.loc[treemap_data['component'] == component_name, 'f_comb'] = formatter(c_simpl_combined)
-        treemap_data.loc[treemap_data['component'] == component_name, 'f_simpl'] = formatter(c_simpl_simple)
-        treemap_data.loc[treemap_data['component'] == component_name, 'f_simpl_excl'] = formatter(
-            c_simpl_simple_exclusive)
-        treemap_data.loc[treemap_data['component'] == component_name, Fit.get_metric_name()] = simple_metric_v
-        treemap_data.loc[treemap_data['component'] == component_name, 'mse_comb'] = mse_comb
-        treemap_data.loc[treemap_data['component'] == component_name, 'mse_simpl'] = mse_simpl
-        treemap_data.loc[treemap_data['component'] == component_name, 'mse_simpl_excl'] = mse_simpl_excl
+        tree_df.loc[tree_df['component'] == component_name, 'f_comb'] = formatter(c_combined_simpl)
+        tree_df.loc[tree_df['component'] == component_name, 'f_simpl'] = formatter(c_simple_simpl)
+        tree_df.loc[tree_df['component'] == component_name, 'f_simpl_excl'] = formatter(c_simpl_simple_exclusive)
+        tree_df.loc[tree_df['component'] == component_name, Fit.get_metric_name()] = simple_metric_v
+        tree_df.loc[tree_df['component'] == component_name, 'mse_comb'] = mse_comb
+        tree_df.loc[tree_df['component'] == component_name, 'mse_simpl'] = mse_simpl
+        tree_df.loc[tree_df['component'] == component_name, 'mse_simpl_excl'] = mse_simpl_excl
 
-    return treemap_data
+    return tree_df
 
 
 def mse(formula, instance_features, data: DataFrame, component_name: str, property_source: str) -> float:
@@ -602,7 +625,7 @@ def mse(formula, instance_features, data: DataFrame, component_name: str, proper
     xy['y_estimated'] = xy.apply(eval_formula, axis=1)
 
     mse = np.mean((xy[property_source] - xy.y_estimated) ** 2)
-    return mse
+    return float(mse) # np uses 'floating' type
 
 
 def analyze_complexity(root_component_id: str, instance_features: list[str], data: DataFrame):
@@ -610,7 +633,7 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
 
     if treemap_data is None:
         print("[ERROR] At least one component failed to estimate, cannot generate treemap.")
-        return
+        return None
 
     # Aggregate data for each component
     per_component = data.drop(columns=['instance', 'parent', 'child']).groupby(['component'], as_index=False).mean()
@@ -687,6 +710,19 @@ def main():
 
     print(f"Loading CSV {args.properties}")
     instances = load_df(args.properties)
+
+    instance_features = instances.columns.values
+    instance_features = np.delete(instance_features,
+                                  np.where((instance_features == "id") | (instance_features == "path")))
+
+    for feature in instance_features:
+        if instances[feature].nunique() < MIN_POINTS:
+            print(f"Feature {feature} has less than {MIN_POINTS} unique values, skipping")
+            instance_features = np.delete(instance_features, np.where(instance_features == feature))
+            instances.drop(columns=[feature], inplace=True)
+        else:
+            mysymbols[feature] = symbols(feature)
+
     print("Loading profiler data")
     timestats = fold_profiler_data(args.data)
 
@@ -697,10 +733,13 @@ def main():
 
     data = pd.merge(timestats, instances, left_on='instance', right_on='id', how='left')
     data.drop(columns=['id', 'path'], inplace=True)
-    instance_features = instances.columns.values
-    instance_features = np.delete(instance_features, np.where((instance_features == "id") | (instance_features == "path")))
+
     print(f"Analyzing complexity")
     root_panel = analyze_complexity(root_component, instance_features, data)
+
+    if not root_panel:
+        print("Complexity analysis failed, review logs and open a Github issue if you suspect this is a bug")
+        exit(1)
 
     if __name__ == "__main__":
         root_panel.show(Threaded=True)
