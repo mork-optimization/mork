@@ -690,7 +690,7 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
         print("On selectA change:", value)
         if not value:
             return
-        update_selector_paneB(selectB, value)
+        update_selector_paneB(value)
 
     @pn.depends(selectB.param.value)
     def on_selectB_change(value):
@@ -698,28 +698,29 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
             return
         update_scatter_plots(scatter_pane, value)
 
-    def update_selector_paneA(select, component_id):
+    def update_selector_paneA(component_id):
         nonlocal last_selected_component, last_selected_type
         print("Selected component: ", component_id)
         last_selected_component = component_id
         new_options = {}
         for type in plots_by_id[last_selected_component].keys():
             new_options[f"{type}: {last_selected_component}"] = type
-        select.options = new_options
-        select.value = next(iter(select.options.values()))
+        selectA.options = new_options
+        selectA.value = next(iter(selectA.options.values()))
+        update_selector_paneB(selectA.value)
 
-    def update_selector_paneB(select, type_id):
+    def update_selector_paneB(type_id):
         nonlocal last_selected_component, last_selected_type
         print("Selected type: ", type_id)
         last_selected_type = type_id
-        select.options = list(plots_by_id[last_selected_component][last_selected_type])
-        select.value = select.options[0]
+        selectB.options = list(plots_by_id[last_selected_component][last_selected_type])
+        selectB.value = selectB.options[0]
 
     @pn.depends(heatmap_pane.param.click_data)
     def on_click_heatmap(event):
         if not event:
             return
-        update_selector_paneA(selectA, event['points'][0]['id'])
+        update_selector_paneA(event['points'][0]['id'])
 
     def update_scatter_plots(scatter_pane, fit_id):
         nonlocal last_selected_component, last_selected_type
@@ -731,7 +732,7 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
         scatter_pane.active = [0]
 
     column_pane = pn.Column(heatmap_pane, on_click_heatmap, selectA, on_selectA_change, selectB, on_selectB_change)
-    update_selector_paneA(selectA, root_component_id)
+    update_selector_paneA(root_component_id)
 
     root_panel = pn.FlexBox(column_pane, scatter_pane)
     return root_panel
