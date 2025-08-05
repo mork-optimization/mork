@@ -14,6 +14,7 @@
         <module>core</module>
         <module>template</module>
         <module>example-tsp</module>
+        <module>example-mst</module>
         <module>common</module>
         <module>autoconfig</module>
         <module>integration-tests</module>

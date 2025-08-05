@@ -44,3 +44,8 @@ target
 venv
 
 docs/apidocs
+solutions*
+results*
+log*
+.benchmark
+**/docs
