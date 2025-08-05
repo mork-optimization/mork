@@ -54,6 +54,7 @@
         <msource.version>3.3.1</msource.version>
         <mjavadoc.version>3.11.2</mjavadoc.version>
         <mjar.version>3.4.2</mjar.version>
+        <mgpg.version>3.2.8</mgpg.version>
         <graalvm.version>24.2.0</graalvm.version>
         <maspectj.version>1.15.0</maspectj.version>
         <aspectj.version>1.9.23</aspectj.version>
@@ -223,7 +224,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-gpg-plugin</artifactId>
-                <version>3.2.7</version>
+                <version>${mgpg.version}</version>
                 <executions>
                     <execution>
                         <id>sign-artifacts</id>
