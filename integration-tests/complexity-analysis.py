@@ -7,7 +7,7 @@ import panel as pn
 pn.extension('mathjax', 'plotly', 'katex')
 
 MIN_POINTS = 5
-DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD = 0.8  # 20% less
+DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD = 0.5  # double parameter, double improvemenent or reject
 
 import argparse
 import os
@@ -38,7 +38,8 @@ BEST_ITERATION = "bestiter"
 
 PROPERTY_SOURCES = ['time', 'time_exclusive', 'time_count']
 
-from sympy import symbols, simplify, sympify, log, Float, preorder_traversal, sstr, latex, cancel, lambdify, Expr, expand
+from sympy import symbols, simplify, sympify, log, Float, preorder_traversal, sstr, latex, cancel, lambdify, Expr, \
+    expand
 from sympy.utilities.iterables import iterable
 from sympy.printing.mathml import mathml
 from sympy.printing.str import StrPrinter
@@ -55,7 +56,7 @@ class CustomStrPrinter(StrPrinter):
 
 
 # All generated plotly graphs by ID
-plots_by_id = defaultdict(dict)
+plots_by_id = defaultdict(lambda: defaultdict(dict))
 
 
 class ComplexityFunction(ABC):
@@ -209,6 +210,7 @@ fitting_functions_single: list[ComplexityFunctionSingle] = [
     ComplexityFunctionSingle("Exponential", "a * 2 ** x + b"),
 ]
 
+
 def get_functions_double() -> list[ComplexityFunction]:
     r = []
     for f1 in fitting_functions_single:
@@ -217,6 +219,7 @@ def get_functions_double() -> list[ComplexityFunction]:
                 r.append(ComplexityFunSum(f1, f2))
                 r.append(ComplexityFunMult(f1, f2))
     return r
+
 
 fitting_functions_double: list[ComplexityFunction] = get_functions_double()
 
@@ -365,20 +368,14 @@ def prepare_df(df: DataFrame, timestats: DataFrame) -> DataFrame:
     return cloned
 
 
-def generate_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, component_name, property_source='time'):
-    # TODO esto ahora no funciona porque diferentes fits pueden tener diferentes instance_properties
+def generate_f_chart_2d(xy: DataFrame, fit: Fit, component_name, property_source='time'):
     fig = px.line()
-    fig.add_scatter(x=xy.index, y=xy[property_source], name="Real", line=dict(color=real_color))
-
-    for i, fit in enumerate(fits):
-        color = boring_colors[i % len(boring_colors)] if i != 0 else best_color
-        # TODO asume que solo hay uno, puede haber un x2 tmb, revisar
-        fig.add_scatter(x=fit.data.x1, y=fit.data.y, name=fit.name_mathml(), line=dict(color=color))
-        # print(f"Component {c} - Function {k} - {col} - R2: {r2} - {popt} - {dic['fvec']}")
+    fig.add_scatter(x=xy[fit.instance_prop[0]], y=xy[property_source], name="Real", line=dict(color=real_color))
+    fig.add_scatter(x=fit.data.x1, y=fit.data.y, name=fit.name_mathml(), line=dict(color=best_color))
 
     fig.update_layout(
         title=dict(
-            text=rf"{component_name.replace('<br>', '::').replace('/', '→')}<br>{property_source} is Θ({fits[0].name_mathml()})",
+            text=rf"{component_name.replace('<br>', '::').replace('/', '→')}<br>{property_source} is Θ({fit.name_mathml()})",
             font=dict(size=12),
         ),
         showlegend=True,
@@ -390,11 +387,64 @@ def generate_functions_chart(xy: DataFrame, fits: list[Fit], instance_property, 
             x=0.01,
         ),
 
-        xaxis_title=instance_property[0],  # TODO Igual que arriba, solo coge la primera propiedad para el scatter plot
-        # plotly 3d scatter plot?
+        xaxis_title=fit.instance_prop[0],
         yaxis_title="T (ms)"
     )
     return fig
+
+
+def generate_f_chart_3d(xy: DataFrame, fit: Fit, component_name, property_source='time'):
+    fig = px.scatter_3d()
+    hovertemplate = f'<b>{fit.instance_prop[0]}</b>: %{{x}}<br><b>{fit.instance_prop[1]}</b>: %{{y}}<br><b>{property_source}</b>: %{{z}}<br>'
+    fig.add_scatter3d(x=xy[fit.instance_prop[0]], y=xy[fit.instance_prop[1]], z=xy[property_source], name="Real",
+                      line=dict(color=real_color), hovertemplate=hovertemplate)
+    fig.add_scatter3d(x=fit.data.x1, y=fit.data.x2, z=fit.data.y, name=fit.name_mathml(), line=dict(color=best_color),
+                      hovertemplate=hovertemplate)
+
+    fig.update_layout(
+        title=dict(
+            text=rf"{component_name.replace('<br>', '::').replace('/', '→')}<br>{property_source} is Θ({fit.name_mathml()})",
+            font=dict(size=12),
+        ),
+        showlegend=True,
+        # legend_title_text="Models",
+        legend=dict(
+            yanchor="top",
+            y=0.99,
+            xanchor="left",
+            x=0.01,
+        ),
+        scene=dict(
+            xaxis=dict(
+                title=dict(
+                    text=f"{fit.instance_prop[0]}",
+                ),
+            ),
+            yaxis=dict(
+                title=dict(
+                    text=f"{fit.instance_prop[1]}",
+                ),
+            ),
+            zaxis=dict(
+                title=dict(
+                    text=f"T (ms)",
+                ),
+            ),
+        ),
+    )
+    return fig
+
+
+def generate_f_chart(data: DataFrame, fit: Fit, component_name, property_source='time'):
+    xy = data[data['component'] == component_name][[*fit.instance_prop, property_source]].groupby(
+        fit.instance_prop).mean()
+    xy.reset_index(inplace=True)
+    if len(fit.instance_prop) == 1:
+        return generate_f_chart_2d(xy, fit, component_name, property_source)
+    elif len(fit.instance_prop) == 2:
+        return generate_f_chart_3d(xy, fit, component_name, property_source)
+    else:
+        raise Exception(f"Unsupported number of instance properties: {len(fit.instance_prop)}. Expected 1 or 2.")
 
 
 def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance_property: list[str]) -> Fit | None:
@@ -470,6 +520,7 @@ def calculate_fitting_funcs2(data: DataFrame, component: str, feature1: str, fea
     for f in fitting_functions_double:
         fit = calculate_fitting_func(x, y, f, [feature1, feature2])
         if fit:
+            fit.mse = fit.mse / DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD
             fits.append(fit)
 
     return fits
@@ -508,11 +559,10 @@ def try_analyze_all_property_sources(instance_features: list[str], data: DataFra
                 print(f"Failed to calculate complexity of component {component_name}, skipping")
                 return None
             best = complexities[property_source][0]
-            xy = data[data['component'] == component_name][[*best.instance_prop, property_source]].groupby(
-                best.instance_prop).mean()
-            f_chart = generate_functions_chart(xy, complexities[property_source], best.instance_prop, component_name,
-                                               property_source)
-            plots_by_id[component_name][property_source] = f_chart
+            for i in range(len(complexities[property_source])):
+                current = complexities[property_source][i]
+                f_chart = generate_f_chart(data, current, component_name, property_source)
+                plots_by_id[component_name][property_source][current.name_calc()] = f_chart
 
             print(
                 f"{component_name} ({property_source}) --> Θ({best.name_mathml()}) - {Fit.get_metric_name()}: {best.get_metric_value()}")
@@ -629,26 +679,61 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
     ))
 
     heatmap_pane = pn.pane.Plotly(fig)
+    selectA = pn.widgets.Select(name='Type')
+    selectB = pn.widgets.Select(name='Ranked fits')
+    scatter_pane = pn.Accordion()
+    last_selected_component = ""
+    last_selected_type = ""
 
-    def update_complexity_pane(complexity_pane, component_id):
-        complexity_pane.clear()
-        for k, v in plots_by_id[component_id].items():
-            complexity_pane.append((k, v))
-        complexity_pane.active = [0]
+    @pn.depends(selectA.param.value)
+    def on_selectA_change(value):
+        print("On selectA change:", value)
+        if not value:
+            return
+        update_selector_paneB(selectB, value)
+
+    @pn.depends(selectB.param.value)
+    def on_selectB_change(value):
+        if not value:
+            return
+        update_scatter_plots(scatter_pane, value)
+
+    def update_selector_paneA(select, component_id):
+        nonlocal last_selected_component, last_selected_type
+        print("Selected component: ", component_id)
+        last_selected_component = component_id
+        new_options = {}
+        for type in plots_by_id[last_selected_component].keys():
+            new_options[f"{type}: {last_selected_component}"] = type
+        select.options = new_options
+        select.value = next(iter(select.options.values()))
+
+    def update_selector_paneB(select, type_id):
+        nonlocal last_selected_component, last_selected_type
+        print("Selected type: ", type_id)
+        last_selected_type = type_id
+        select.options = list(plots_by_id[last_selected_component][last_selected_type])
+        select.value = select.options[0]
 
     @pn.depends(heatmap_pane.param.click_data)
     def on_click_heatmap(event):
         if not event:
             return
-        plot_id = event['points'][0]['id']
-        update_complexity_pane(complexity_pane, plot_id)
+        update_selector_paneA(selectA, event['points'][0]['id'])
 
-    column_pane = pn.Column(heatmap_pane, on_click_heatmap)
+    def update_scatter_plots(scatter_pane, fit_id):
+        nonlocal last_selected_component, last_selected_type
+        print("Selected fit id: ", fit_id)
+        scatter_pane.clear()
+        k = last_selected_type
+        v = plots_by_id[last_selected_component][last_selected_type][fit_id]
+        scatter_pane.append((k, v))
+        scatter_pane.active = [0]
 
-    complexity_pane = pn.Accordion()
-    update_complexity_pane(complexity_pane, root_component_id)
+    column_pane = pn.Column(heatmap_pane, on_click_heatmap, selectA, on_selectA_change, selectB, on_selectB_change)
+    update_selector_paneA(selectA, root_component_id)
 
-    root_panel = pn.FlexBox(column_pane, complexity_pane)
+    root_panel = pn.FlexBox(column_pane, scatter_pane)
     return root_panel
 
 
