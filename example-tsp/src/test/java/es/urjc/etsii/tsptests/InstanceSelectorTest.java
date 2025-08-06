@@ -1,7 +1,7 @@
 package es.urjc.etsii.tsptests;
 
-import es.urjc.etsii.grafo.TSP.model.TSPInstance;
-import es.urjc.etsii.grafo.TSP.model.TSPInstanceImporter;
+import es.urjc.etsii.grafo.tsp.model.TSPInstance;
+import es.urjc.etsii.grafo.tsp.model.TSPInstanceImporter;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.events.EventPublisher;
 import es.urjc.etsii.grafo.io.InstanceManager;

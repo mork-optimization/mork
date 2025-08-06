@@ -14,7 +14,7 @@
         <module>core</module>
         <module>template</module>
         <module>example-tsp</module>
-        <module>example-mst</module>
+        <module>example-graphs</module>
         <module>common</module>
         <module>autoconfig</module>
         <module>integration-tests</module>
@@ -56,6 +56,7 @@
         <mjavadoc.version>3.11.2</mjavadoc.version>
         <mjar.version>3.4.2</mjar.version>
         <mgpg.version>3.2.8</mgpg.version>
+        <mjacoco.version>0.8.12</mjacoco.version>
         <graalvm.version>24.2.0</graalvm.version>
         <maspectj.version>1.15.0</maspectj.version>
         <aspectj.version>1.9.23</aspectj.version>
@@ -213,7 +214,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <version>${mjacoco.version}</version>
                 <executions>
                     <execution>
                         <goals>

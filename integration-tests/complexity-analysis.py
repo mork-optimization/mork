@@ -16,7 +16,7 @@ import warnings
 
 from collections import defaultdict
 
-from os.path import join
+from os.path import join, isfile
 import numpy as np
 
 from scipy.optimize import curve_fit
@@ -748,6 +748,10 @@ def main():
                         help="Path to folder which contains profiler data. Data can be stored in either CSV files or JSON, see docs for more details on the format.")
 
     args = parser.parse_args()
+
+    if not isfile(args.properties):
+        print(f"File {args.properties} does not exist, please provide a valid CSV file with instance properties")
+        exit(1)
 
     print(f"Loading CSV {args.properties}")
     instances = load_df(args.properties)

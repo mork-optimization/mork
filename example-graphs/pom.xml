@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!-- Project name and current version -->
-    <artifactId>tsp</artifactId>
+    <artifactId>example-graphs</artifactId>
     <version>0.22-SNAPSHOT</version>
 
     <!-- Automatic configuration, can be overridden -->
@@ -18,24 +18,22 @@
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork</artifactId>
         </dependency>
-        <dependency>
-            <groupId>es.urjc.etsii.grafo</groupId>
-            <artifactId>mork-common</artifactId>
-        </dependency>
+
+        <!-- Autoconfig dependency, can be removed if not used -->
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>autoconfig</artifactId>
         </dependency>
 
         <dependency>
-            <groupId>guru.nidi</groupId>
-            <artifactId>graphviz-java-all-j2v8</artifactId>
-            <version>0.18.1</version>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-test</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-starter-test</artifactId>
+            <groupId>org.aspectj</groupId>
+            <artifactId>aspectjrt</artifactId>
         </dependency>
     </dependencies>
 
@@ -59,4 +57,5 @@
             </plugin>
         </plugins>
     </build>
+
 </project>
