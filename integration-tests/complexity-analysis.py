@@ -437,8 +437,7 @@ def generate_f_chart_3d(xy: DataFrame, fit: Fit, component_name, property_source
 
 
 def generate_f_chart(data: DataFrame, fit: Fit, component_name, property_source='time'):
-    xy = data[data['component'] == component_name][[*fit.instance_prop, property_source]].groupby(
-        fit.instance_prop).mean()
+    xy = data[data['component'] == component_name][[*fit.instance_prop, property_source]]
     xy.reset_index(inplace=True)
     if len(fit.instance_prop) == 1:
         return generate_f_chart_2d(xy, fit, component_name, property_source)
@@ -493,10 +492,8 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
 
 def calculate_fitting_funcs(data: DataFrame, component: str, feature: str, property_src: str) -> list[Fit]:
     xy = data[data['component'] == component][[feature, property_src]]
-    # Instance features may have duplicated values (ex: graph density with different results). Average them.
-    xy = xy.groupby(feature).mean()
 
-    x, y = xy.index.to_numpy(), xy[property_src].to_numpy()
+    x, y = xy[feature], xy[property_src].to_numpy()
 
     fits = []
     for f in fitting_functions_single:
@@ -510,15 +507,13 @@ def calculate_fitting_funcs(data: DataFrame, component: str, feature: str, prope
 def calculate_fitting_funcs2(data: DataFrame, component: str, feature1: str, feature2: str,
                              property_src: str) -> list[Fit]:
     xy = data[data['component'] == component][[feature1, feature2, property_src]]
-    # Instance features may have duplicated values (ex: graph density with different results). Average them.
-    xy = xy.groupby([feature1, feature2]).mean()
+
     if len(xy) < MIN_POINTS:
         print(
             f"Instance property pair ({feature1}, {feature2}) has less than {MIN_POINTS} points after grouping, skipping")
         return []
 
-    x, y = xy.index.to_numpy(), xy[property_src].to_numpy()
-    x = np.array([*x])  # Replaces array of tuples with 2d np array
+    x, y = xy[[feature1, feature2]].to_numpy(), xy[property_src].to_numpy()
 
     fits = []
     for f in fitting_functions_double:
@@ -625,7 +620,6 @@ def try_analyze_all_property_sources(instance_features: list[str], data: DataFra
 
 def mse(formula, instance_features, data: DataFrame, component_name: str, property_source: str) -> float:
     xy = data[data['component'] == component_name][['instance', property_source, *instance_features]]
-    xy = xy.groupby('instance', as_index=False).mean()
 
     def eval_formula(row):
         subs = {feature: row[feature] for feature in instance_features}
