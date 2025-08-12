@@ -1,7 +1,6 @@
 #################
 # CONFIGURATION #
 #################
-import re, math
 import panel as pn
 
 pn.extension('mathjax', 'plotly', 'katex')
@@ -39,10 +38,10 @@ BEST_ITERATION = "bestiter"
 
 PROPERTY_SOURCES = ['time', 'time_exclusive', 'time_count']
 
-from sympy import symbols, simplify, sympify, log, Float, preorder_traversal, sstr, latex, cancel, lambdify, Expr, \
+from sympy import symbols, simplify, sympify, lambdify, Expr, \
     expand
-from sympy.utilities.iterables import iterable
 from sympy.printing.mathml import mathml
+from sympy.utilities.mathml import c2p
 from sympy.printing.str import StrPrinter
 
 from abc import ABC, abstractmethod
@@ -57,7 +56,7 @@ class CustomStrPrinter(StrPrinter):
 
 
 # All generated plotly graphs by ID
-plots_by_id = defaultdict(lambda: defaultdict(dict))
+fits_by_id = defaultdict(lambda: defaultdict(dict))
 
 
 class ComplexityFunction(ABC):
@@ -172,6 +171,7 @@ class Fit(object):
         self.mse = mse
         self.dic = dic
         self.data = data
+        self.chart = None  # Will be set later when generating the chart
 
     # Revisar de Salazar: https://ideone.com/xcInVf
     # Podria funcionar mejor que el MSE
@@ -191,8 +191,11 @@ class Fit(object):
     def name_calc(self) -> Expr:
         return self.f
 
-    def name_mathml(self):
+    def name_simple(self):
         return print_simplify(self.f)
+
+    def name_html(self):
+        return c2p(mathml(self.f))
 
     def __str__(self):
         return f"{self.instance_prop} = {self.name_calc()} (MSE: {self.mse})"
@@ -377,11 +380,11 @@ def generate_f_chart_2d(xy: DataFrame, fit: Fit, component_name, property_source
     fit_x_df = pd.DataFrame({fit.instance_prop[0]: fit_x})
     fit_y = estimate_y(fit.f, fit_x_df, fit.instance_prop)
     fig.add_scatter(x=xy[fit.instance_prop[0]], y=xy[property_source], mode="markers", name="Data", marker=dict(color=real_color))
-    fig.add_scatter(x=fit_x, y=fit_y, name=fit.name_mathml(), mode="lines", line=dict(color=best_color))
+    fig.add_scatter(x=fit_x, y=fit_y, name=fit.name_simple(), mode="lines", line=dict(color=best_color))
 
     fig.update_layout(
         title=dict(
-            text=rf"{component_name.replace(NEW_LINE, '::').replace('/', '→')}<br>{property_source} is Θ({fit.name_mathml()})",
+            text=rf"{component_name.replace(NEW_LINE, '::').replace('/', '→')}<br>{property_source} is Θ({fit.name_simple()})",
             font=dict(size=12),
         ),
         showlegend=True,
@@ -404,12 +407,12 @@ def generate_f_chart_3d(xy: DataFrame, fit: Fit, component_name, property_source
     hovertemplate = f'<b>{fit.instance_prop[0]}</b>: %{{x}}<br><b>{fit.instance_prop[1]}</b>: %{{y}}<br><b>{property_source}</b>: %{{z}}<br>'
     fig.add_scatter3d(x=xy[fit.instance_prop[0]], y=xy[fit.instance_prop[1]], z=xy[property_source], mode="markers", name="Real",
                       marker=dict(color=real_color), hovertemplate=hovertemplate)
-    fig.add_mesh3d(x=fit.data.x1, y=fit.data.x2, z=fit.data.y, name=fit.name_mathml(),
-                      hovertemplate=hovertemplate)
+    fig.add_mesh3d(x=fit.data.x1, y=fit.data.x2, z=fit.data.y, name=fit.name_simple(),
+                   hovertemplate=hovertemplate)
 
     fig.update_layout(
         title=dict(
-            text=rf"{component_name.replace('<br>', '::').replace('/', '→')}<br>{property_source} is Θ({fit.name_mathml()})",
+            text=rf"{component_name.replace('<br>', '::').replace('/', '→')}<br>{property_source} is Θ({fit.name_simple()})",
             font=dict(size=12),
         ),
         showlegend=True,
@@ -566,10 +569,11 @@ def try_analyze_all_property_sources(instance_features: list[str], data: DataFra
             for i in range(len(complexities[property_source])):
                 current = complexities[property_source][i]
                 f_chart = generate_f_chart(data, current, component_name, property_source)
-                plots_by_id[component_name][property_source][current.name_mathml()] = f_chart
+                current.chart = f_chart
+                fits_by_id[component_name][property_source][current.name_simple()] = current
 
             print(
-                f"{component_name.replace(NEW_LINE, '::')} ({property_source}) --> Θ({best.name_mathml()}) - {Fit.get_metric_name()}: {best.get_metric_value()}")
+                f"{component_name.replace(NEW_LINE, '::')} ({property_source}) --> Θ({best.name_simple()}) - {Fit.get_metric_name()}: {best.get_metric_value()}")
             treemap_labels.append(
                 {"component": component_name, "property_source": property_source, "calc_function": best.name_calc(),
                  Fit.get_metric_name(): best.get_metric_value()})
@@ -687,7 +691,7 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
     heatmap_pane = pn.pane.Plotly(fig)
     selectA = pn.widgets.Select(name='Type')
     selectB = pn.widgets.Select(name='Ranked fits')
-    scatter_pane = pn.Accordion()
+    detail_pane = pn.Accordion()
     last_selected_component = ""
     last_selected_type = ""
 
@@ -702,14 +706,14 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
     def on_selectB_change(value):
         if not value:
             return
-        update_scatter_plots(scatter_pane, value)
+        update_scatter_plots(detail_pane, value)
 
     def update_selector_paneA(component_id):
         nonlocal last_selected_component, last_selected_type
         print("Selected component: ", component_id)
         last_selected_component = component_id
         new_options = {}
-        for type in plots_by_id[last_selected_component].keys():
+        for type in fits_by_id[last_selected_component].keys():
             new_options[f"{type}: {last_selected_component.replace(NEW_LINE, '::')}"] = type
         selectA.options = new_options
         selectA.value = next(iter(selectA.options.values()))
@@ -719,7 +723,7 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
         nonlocal last_selected_component, last_selected_type
         print("Selected type: ", type_id)
         last_selected_type = type_id
-        selectB.options = list(plots_by_id[last_selected_component][last_selected_type].keys())
+        selectB.options = list(fits_by_id[last_selected_component][last_selected_type].keys())
         selectB.value = selectB.options[0]
 
     @pn.depends(heatmap_pane.param.click_data)
@@ -733,14 +737,21 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
         print("Selected fit id: ", fit_id)
         scatter_pane.clear()
         k = last_selected_type
-        v = plots_by_id[last_selected_component][last_selected_type][fit_id]
-        scatter_pane.append((k, v))
+        v = fits_by_id[last_selected_component][last_selected_type][fit_id]
+        scatter_pane.append((k, v.chart))
+        scatter_pane.append(("Details", pn.pane.HTML(f"""
+        <h1> Detailed data for {last_selected_component.replace(NEW_LINE, '::')} </h1>
+        <p>  Full formula: {v.name_html()} </p>
+        <p>  MSE: {v.get_metric_value()} </p>
+        <p>  perr: {v.perr} </p>
+        <p>  popt: {v.popt} </p>
+        """)))
         scatter_pane.active = [0]
 
-    column_pane = pn.Column(heatmap_pane, on_click_heatmap, selectA, on_selectA_change, selectB, on_selectB_change)
+    control_pane = pn.Column(heatmap_pane, on_click_heatmap, selectA, on_selectA_change, selectB, on_selectB_change)
     update_selector_paneA(root_component_id)
 
-    root_panel = pn.FlexBox(column_pane, scatter_pane)
+    root_panel = pn.FlexBox(control_pane, detail_pane)
     return root_panel
 
 
