@@ -109,10 +109,10 @@ class ComplexityFunSum(ComplexityFunction):
         return self._name
 
     def generate_function(self):
-        def f(X, av1, bv1, av2, bv2):
+        def f(X, av1, bv1):
             x1, x2 = X.T
             y1 = self.compf1.generate_function()(x1, av1, bv1)
-            y2 = self.compf2.generate_function()(x2, av2, bv2)
+            y2 = self.compf2.generate_function()(x2, av1, bv1)
             return y1 + y2
 
         return f
@@ -120,10 +120,10 @@ class ComplexityFunSum(ComplexityFunction):
     def replace(self, instance_property: list[str], values: list[float]) -> Expr:
         if len(instance_property) != 2:
             raise Exception("Wrong number of arguments")
-        if len(values) != 4:
+        if len(values) != 2:
             raise Exception("Wrong number of arguments")
         expr1 = self.compf1.expr.subs({x: mysymbols[instance_property[0]], a: values[0], b: values[1]})
-        expr2 = self.compf2.expr.subs({x: mysymbols[instance_property[1]], a: values[2], b: values[3]})
+        expr2 = self.compf2.expr.subs({x: mysymbols[instance_property[1]], a: values[0], b: values[1]})
         return expr1 + expr2
 
     def __str__(self):
@@ -141,10 +141,10 @@ class ComplexityFunMult(ComplexityFunction):
         return self._name
 
     def generate_function(self):
-        def f(X, av1, bv1, av2, bv2):
+        def f(X, av1, bv1):
             x1, x2 = X.T
             y1 = self.compf1.generate_function()(x1, av1, bv1)
-            y2 = self.compf2.generate_function()(x2, av2, bv2)
+            y2 = self.compf2.generate_function()(x2, av1, bv1)
             return y1 * y2
 
         return f
@@ -152,10 +152,10 @@ class ComplexityFunMult(ComplexityFunction):
     def replace(self, instance_property: list[str], values: list[float]) -> Expr:
         if len(instance_property) != 2:
             raise Exception("Wrong number of arguments")
-        if len(values) != 4:
+        if len(values) != 2:
             raise Exception("Wrong number of arguments")
         expr1 = self.compf1.expr.subs({x: mysymbols[instance_property[0]], a: values[0], b: values[1]})
-        expr2 = self.compf2.expr.subs({x: mysymbols[instance_property[1]], a: values[2], b: values[3]})
+        expr2 = self.compf2.expr.subs({x: mysymbols[instance_property[1]], a: values[0], b: values[1]})
         return expr1 * expr2
 
     def __str__(self):
@@ -207,6 +207,7 @@ fitting_functions_single: list[ComplexityFunctionSingle] = [
     ComplexityFunctionSingle("Linear", "a * x + b"),
     ComplexityFunctionSingle("Log. Linear", "a * x * log(x) + b"),
     ComplexityFunctionSingle("Quadratic", "a * x ** 2 + b"),
+    ComplexityFunctionSingle("Cubic", "a * x ** 3 + b"),
     ComplexityFunctionSingle("Exponential", "a * 2 ** x + b"),
 ]
 
@@ -477,7 +478,7 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
 
     except Warning as warn:
         if warn.args[0] == 'overflow encountered in power':
-            # Some functions such as exponential can easily overflow, this is expected and the function will be discarded
+            # Some functions such as exponential can easily overflow, this is expected, and the function will be discarded
             return None
         elif warn.args[0] == 'Covariance of the parameters could not be estimated':
             # Bad / failed fit
@@ -485,6 +486,9 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
         else:
             logging.warning(f"{f}: {warn}")
             return None
+    except RuntimeError as err:
+        logging.warning(f"{f}: {err}")
+        return None
 
 
 def calculate_fitting_funcs(data: DataFrame, component: str, feature: str, property_src: str) -> list[Fit]:
