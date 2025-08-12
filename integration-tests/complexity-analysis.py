@@ -6,8 +6,9 @@ import panel as pn
 pn.extension('mathjax', 'plotly', 'katex')
 
 MIN_POINTS = 5
-DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD = 0.5  # double parameter, double improvemenent or reject
+DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD = 0.8  # double parameter, double improvemenent or reject
 NEW_LINE = "<br>"  # HTML line break, used in component names
+MIN_VALUE = 0.000_000_001
 
 import argparse
 import os
@@ -46,7 +47,7 @@ from sympy.printing.str import StrPrinter
 
 from abc import ABC, abstractmethod
 
-x, a, b = symbols("x a b")
+x, a, b, c = symbols("x a b c")
 mysymbols = {}
 
 
@@ -80,7 +81,8 @@ class ComplexityFunction(ABC):
 class ComplexityFunctionSingle(ComplexityFunction):
     def __init__(self, name, calc):
         self._name = name
-        self.expr = sympify(calc)
+        self.expr_orig = sympify(calc)
+        self.expr = a * self.expr_orig + b
 
     def generate_function(self):
         return lambdify([x, a, b], self.expr)
@@ -109,10 +111,10 @@ class ComplexityFunSum(ComplexityFunction):
         return self._name
 
     def generate_function(self):
-        def f(X, av1, bv1):
+        def f(X, av1, bv1, cv1):
             x1, x2 = X.T
-            y1 = self.compf1.generate_function()(x1, av1, bv1)
-            y2 = self.compf2.generate_function()(x2, av1, bv1)
+            y1 = self.compf1.generate_function()(x1, av1, cv1 / 2)
+            y2 = self.compf2.generate_function()(x2, bv1, cv1 / 2)
             return y1 + y2
 
         return f
@@ -120,11 +122,13 @@ class ComplexityFunSum(ComplexityFunction):
     def replace(self, instance_property: list[str], values: list[float]) -> Expr:
         if len(instance_property) != 2:
             raise Exception("Wrong number of arguments")
-        if len(values) != 2:
+        if len(values) != 3:
             raise Exception("Wrong number of arguments")
-        expr1 = self.compf1.expr.subs({x: mysymbols[instance_property[0]], a: values[0], b: values[1]})
-        expr2 = self.compf2.expr.subs({x: mysymbols[instance_property[1]], a: values[0], b: values[1]})
-        return expr1 + expr2
+        expr1 = self.compf1.expr_orig.subs({x: mysymbols[instance_property[0]]})
+        expr2 = self.compf2.expr_orig.subs({x: mysymbols[instance_property[1]]})
+        expr_comb = a * expr1 + b * expr2 + c
+        expr_comb = expr_comb.subs({a: values[0], b: values[1], c: values[2]})
+        return expr_comb
 
     def __str__(self):
         return self.name()
@@ -143,9 +147,9 @@ class ComplexityFunMult(ComplexityFunction):
     def generate_function(self):
         def f(X, av1, bv1):
             x1, x2 = X.T
-            y1 = self.compf1.generate_function()(x1, av1, bv1)
-            y2 = self.compf2.generate_function()(x2, av1, bv1)
-            return y1 * y2
+            y1 = self.compf1.generate_function()(x1, 1, 0)
+            y2 = self.compf2.generate_function()(x2, 1, 0)
+            return av1 * y1 * y2 + bv1
 
         return f
 
@@ -154,9 +158,9 @@ class ComplexityFunMult(ComplexityFunction):
             raise Exception("Wrong number of arguments")
         if len(values) != 2:
             raise Exception("Wrong number of arguments")
-        expr1 = self.compf1.expr.subs({x: mysymbols[instance_property[0]], a: values[0], b: values[1]})
-        expr2 = self.compf2.expr.subs({x: mysymbols[instance_property[1]], a: values[0], b: values[1]})
-        return expr1 * expr2
+        expr1 = self.compf1.expr.subs({x: mysymbols[instance_property[0]], a: 1, b: 0})
+        expr2 = self.compf2.expr.subs({x: mysymbols[instance_property[1]], a: 1, b: 0})
+        return values[0] * expr1 * expr2 + values[1]
 
     def __str__(self):
         return self.name()
@@ -206,12 +210,13 @@ def load_df(path: str) -> DataFrame:
 
 
 fitting_functions_single: list[ComplexityFunctionSingle] = [
-    ComplexityFunctionSingle("Log.", "a * log(x) + b"),
-    ComplexityFunctionSingle("Linear", "a * x + b"),
-    ComplexityFunctionSingle("Log. Linear", "a * x * log(x) + b"),
-    ComplexityFunctionSingle("Quadratic", "a * x ** 2 + b"),
-    ComplexityFunctionSingle("Cubic", "a * x ** 3 + b"),
-    ComplexityFunctionSingle("Exponential", "a * 2 ** (0.000_001*x) + b"), # Exponential functions can overflow easily, try to compensate by using smaller exponents to fit
+    ComplexityFunctionSingle("Log.", "log(x)"),
+    ComplexityFunctionSingle("Linear", "x"),
+    ComplexityFunctionSingle("Log. Linear", "x * log(x)"),
+    ComplexityFunctionSingle("Quadratic", "x ** 2"),
+    ComplexityFunctionSingle("Cubic", "x ** 3"),
+    ComplexityFunctionSingle("Exponential", "2 ** (0.000_001*x)"),
+    # Exponential functions can overflow easily, try to compensate by using smaller exponents to fit
 ]
 
 
@@ -256,8 +261,8 @@ def print_simplify(original_expr: Expr) -> Expr:
     expr = simplify(original_expr)
     formatter = CustomStrPrinter().doprint
     expr_str = formatter(expr)
-    #expr2 = sympify(expr_str)
-    #expr2 = simplify(expr2)
+    # expr2 = sympify(expr_str)
+    # expr2 = simplify(expr2)
     return expr_str
 
 
@@ -379,7 +384,8 @@ def generate_f_chart_2d(xy: DataFrame, fit: Fit, component_name, property_source
     fit_x = np.linspace(x_min, x_max, 1000)
     fit_x_df = pd.DataFrame({fit.instance_prop[0]: fit_x})
     fit_y = estimate_y(fit.f, fit_x_df, fit.instance_prop)
-    fig.add_scatter(x=xy[fit.instance_prop[0]], y=xy[property_source], mode="markers", name="Data", marker=dict(color=real_color))
+    fig.add_scatter(x=xy[fit.instance_prop[0]], y=xy[property_source], mode="markers", name="Data",
+                    marker=dict(color=real_color))
     fig.add_scatter(x=fit_x, y=fit_y, name=fit.name_simple(), mode="lines", line=dict(color=best_color))
 
     fig.update_layout(
@@ -405,7 +411,8 @@ def generate_f_chart_2d(xy: DataFrame, fit: Fit, component_name, property_source
 def generate_f_chart_3d(xy: DataFrame, fit: Fit, component_name, property_source='time'):
     fig = px.scatter_3d()
     hovertemplate = f'<b>{fit.instance_prop[0]}</b>: %{{x}}<br><b>{fit.instance_prop[1]}</b>: %{{y}}<br><b>{property_source}</b>: %{{z}}<br>'
-    fig.add_scatter3d(x=xy[fit.instance_prop[0]], y=xy[fit.instance_prop[1]], z=xy[property_source], mode="markers", name="Real",
+    fig.add_scatter3d(x=xy[fit.instance_prop[0]], y=xy[fit.instance_prop[1]], z=xy[property_source], mode="markers",
+                      name="Real",
                       marker=dict(color=real_color), hovertemplate=hovertemplate)
     fig.add_mesh3d(x=fit.data.x1, y=fit.data.x2, z=fit.data.y, name=fit.name_simple(),
                    hovertemplate=hovertemplate)
@@ -462,7 +469,7 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
         with warnings.catch_warnings():
             warnings.simplefilter("error")  # Turn all warnings into exceptions
             popt, pcov, dic, mesg, _ = curve_fit(f.generate_function(), x, y, full_output=True, check_finite=True,
-                                                 maxfev=10000, bounds=(0.0, np.inf))
+                                                 maxfev=10000, bounds=(0, np.inf))
 
             if pcov is None or np.isnan(pcov).any() or np.isinf(pcov).any():
                 return None
@@ -479,7 +486,12 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
             else:
                 data = pd.DataFrame({'x1': x, 'y': y_estimated})
 
-            f = f.replace(instance_property, popt)
+            popt_f = []
+            for v in popt:
+                if abs(v) < MIN_VALUE:
+                    v = 0
+                popt_f.append(v)
+            f = f.replace(instance_property, popt_f)
             f = expand(f)
             return Fit(f, instance_property, perr, mse, popt, dic, data)
 
@@ -547,7 +559,7 @@ def find_best_instance_property(features: list[str], data: DataFrame, component:
     Fit.sort(fits_double)
 
     # Return best 3 of each type
-    fits = fits_single[:3] + fits_double[:3]
+    fits = fits_single[:5] + fits_double[:7]
     Fit.sort(fits)
     return fits
 
