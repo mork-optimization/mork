@@ -371,8 +371,9 @@ def prepare_df(df: DataFrame, timestats: DataFrame) -> DataFrame:
 
 def generate_f_chart_2d(xy: DataFrame, fit: Fit, component_name, property_source='time'):
     fig = px.line()
-    fig.add_scatter(x=xy[fit.instance_prop[0]], y=xy[property_source], name="Real", line=dict(color=real_color))
-    fig.add_scatter(x=fit.data.x1, y=fit.data.y, name=fit.name_mathml(), line=dict(color=best_color))
+    fit_df = fit.data.drop_duplicates()
+    fig.add_scatter(x=xy[fit.instance_prop[0]], y=xy[property_source], mode="markers", name="Data", marker=dict(color=real_color))
+    fig.add_scatter(x=fit_df.x1, y=fit_df.y, name=fit.name_mathml(), mode="markers", marker=dict(color=best_color))
 
     fig.update_layout(
         title=dict(
