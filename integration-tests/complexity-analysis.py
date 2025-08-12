@@ -8,6 +8,7 @@ pn.extension('mathjax', 'plotly', 'katex')
 
 MIN_POINTS = 5
 DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD = 0.5  # double parameter, double improvemenent or reject
+NEW_LINE = "<br>"  # HTML line break, used in component names
 
 import argparse
 import os
@@ -191,8 +192,7 @@ class Fit(object):
         return self.f
 
     def name_mathml(self):
-        expr = complexity_simplify(self.f)
-        return CustomStrPrinter().doprint(expr)
+        return print_simplify(self.f)
 
     def __str__(self):
         return f"{self.instance_prop} = {self.name_calc()} (MSE: {self.mse})"
@@ -208,7 +208,7 @@ fitting_functions_single: list[ComplexityFunctionSingle] = [
     ComplexityFunctionSingle("Log. Linear", "a * x * log(x) + b"),
     ComplexityFunctionSingle("Quadratic", "a * x ** 2 + b"),
     ComplexityFunctionSingle("Cubic", "a * x ** 3 + b"),
-    ComplexityFunctionSingle("Exponential", "a * 2 ** x + b"),
+    ComplexityFunctionSingle("Exponential", "a * 2 ** (0.000_001*x) + b"), # Exponential functions can overflow easily, try to compensate by using smaller exponents to fit
 ]
 
 
@@ -249,14 +249,13 @@ def get_full_name(stack: list[tuple[str, int]]) -> str:
     return "/".join(frame['name'] for frame in stack)
 
 
-def complexity_simplify(original_expr: Expr) -> Expr:
+def print_simplify(original_expr: Expr) -> Expr:
     expr = simplify(original_expr)
-    expr_rounded = expr
-    # for a in preorder_traversal(expr):
-    #    if isinstance(a, Float):
-    #        expr_rounded = expr_rounded.subs(a, round(a, 4))
-
-    return expr_rounded
+    formatter = CustomStrPrinter().doprint
+    expr_str = formatter(expr)
+    #expr2 = sympify(expr_str)
+    #expr2 = simplify(expr2)
+    return expr_str
 
 
 def fold_profiler_data_csv(path: str) -> any:
@@ -316,7 +315,7 @@ def fold_profiler_data(path: str) -> DataFrame:
         stack = []
 
         for i in events:
-            name = f"{i['clazz']}<br>{i['method']}"
+            name = f"{i['clazz']}{NEW_LINE}{i['method']}"
             if i['enter']:
                 stack.append({'name': name, 'when': i['when'], 'children_time': 0})
             else:
@@ -382,7 +381,7 @@ def generate_f_chart_2d(xy: DataFrame, fit: Fit, component_name, property_source
 
     fig.update_layout(
         title=dict(
-            text=rf"{component_name.replace('<br>', '::').replace('/', '→')}<br>{property_source} is Θ({fit.name_mathml()})",
+            text=rf"{component_name.replace(NEW_LINE, '::').replace('/', '→')}<br>{property_source} is Θ({fit.name_mathml()})",
             font=dict(size=12),
         ),
         showlegend=True,
@@ -460,7 +459,7 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
         with warnings.catch_warnings():
             warnings.simplefilter("error")  # Turn all warnings into exceptions
             popt, pcov, dic, mesg, _ = curve_fit(f.generate_function(), x, y, full_output=True, check_finite=True,
-                                                 maxfev=10000)
+                                                 maxfev=10000, bounds=(0.0, np.inf))
 
             if pcov is None or np.isnan(pcov).any() or np.isinf(pcov).any():
                 return None
@@ -567,10 +566,10 @@ def try_analyze_all_property_sources(instance_features: list[str], data: DataFra
             for i in range(len(complexities[property_source])):
                 current = complexities[property_source][i]
                 f_chart = generate_f_chart(data, current, component_name, property_source)
-                plots_by_id[component_name][property_source][current.name_calc()] = f_chart
+                plots_by_id[component_name][property_source][current.name_mathml()] = f_chart
 
             print(
-                f"{component_name} ({property_source}) --> Θ({best.name_mathml()}) - {Fit.get_metric_name()}: {best.get_metric_value()}")
+                f"{component_name.replace(NEW_LINE, '::')} ({property_source}) --> Θ({best.name_mathml()}) - {Fit.get_metric_name()}: {best.get_metric_value()}")
             treemap_labels.append(
                 {"component": component_name, "property_source": property_source, "calc_function": best.name_calc(),
                  Fit.get_metric_name(): best.get_metric_value()})
@@ -588,18 +587,18 @@ def try_analyze_all_property_sources(instance_features: list[str], data: DataFra
     for component_name in data['component'].unique():
         # Calculate the combined complexity of each component
         c_combined = complexity_formula(all_formulas, component_name)
-        c_combined_simpl = complexity_simplify(c_combined)
+        c_combined_simpl = simplify(c_combined)
 
         simple = all_formulas[(all_formulas['component'] == component_name) & (all_formulas.property_source == "time")]
         simple_metric_v = simple[Fit.get_metric_name()].values[0]
         c_simple = simple.calc_function.values[0]
-        c_simple_simpl = complexity_simplify(c_simple)
+        c_simple_simpl = simplify(c_simple)
 
         simple_exclusive = all_formulas[
             (all_formulas['component'] == component_name) & (all_formulas.property_source == "time_exclusive")]
         simple_exclusive_metric_v = simple_exclusive[Fit.get_metric_name()].values[0]
         c_simple_exclusive = simple_exclusive.calc_function.values[0]
-        c_simpl_simple_exclusive = complexity_simplify(c_simple_exclusive)
+        c_simpl_simple_exclusive = simplify(c_simple_exclusive)
 
         mse_comb = mse(c_combined_simpl, instance_features, data, component_name, 'time')
         mse_simpl = mse(c_simple_simpl, instance_features, data, component_name, 'time')
@@ -612,10 +611,9 @@ def try_analyze_all_property_sources(instance_features: list[str], data: DataFra
         print(f" - Black box (MSE: {mse_simpl}): {c_simple_simpl}")
         print(f" - Simple Exclusive: {c_simple_exclusive}")
         print(f" - Black box exclusive (MSE: {mse_simpl_excl}): {c_simpl_simple_exclusive}")
-        formatter = CustomStrPrinter().doprint
-        tree_df.loc[tree_df['component'] == component_name, 'f_comb'] = formatter(c_combined_simpl)
-        tree_df.loc[tree_df['component'] == component_name, 'f_simpl'] = formatter(c_simple_simpl)
-        tree_df.loc[tree_df['component'] == component_name, 'f_simpl_excl'] = formatter(c_simpl_simple_exclusive)
+        tree_df.loc[tree_df['component'] == component_name, 'f_comb'] = print_simplify(c_combined_simpl)
+        tree_df.loc[tree_df['component'] == component_name, 'f_simpl'] = print_simplify(c_simple_simpl)
+        tree_df.loc[tree_df['component'] == component_name, 'f_simpl_excl'] = print_simplify(c_simpl_simple_exclusive)
         tree_df.loc[tree_df['component'] == component_name, Fit.get_metric_name()] = simple_metric_v
         tree_df.loc[tree_df['component'] == component_name, 'mse_comb'] = mse_comb
         tree_df.loc[tree_df['component'] == component_name, 'mse_simpl'] = mse_simpl
@@ -712,7 +710,7 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
         last_selected_component = component_id
         new_options = {}
         for type in plots_by_id[last_selected_component].keys():
-            new_options[f"{type}: {last_selected_component}"] = type
+            new_options[f"{type}: {last_selected_component.replace(NEW_LINE, '::')}"] = type
         selectA.options = new_options
         selectA.value = next(iter(selectA.options.values()))
         update_selector_paneB(selectA.value)
@@ -721,7 +719,7 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
         nonlocal last_selected_component, last_selected_type
         print("Selected type: ", type_id)
         last_selected_type = type_id
-        selectB.options = list(plots_by_id[last_selected_component][last_selected_type])
+        selectB.options = list(plots_by_id[last_selected_component][last_selected_type].keys())
         selectB.value = selectB.options[0]
 
     @pn.depends(heatmap_pane.param.click_data)
