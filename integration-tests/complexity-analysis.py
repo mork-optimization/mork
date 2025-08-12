@@ -371,9 +371,14 @@ def prepare_df(df: DataFrame, timestats: DataFrame) -> DataFrame:
 
 def generate_f_chart_2d(xy: DataFrame, fit: Fit, component_name, property_source='time'):
     fig = px.line()
-    fit_df = fit.data.drop_duplicates()
+    x_series = xy[fit.instance_prop[0]]
+    # Calculate evenly spaced x-y pairs for the estimation line
+    x_min, x_max = x_series.min(), x_series.max()
+    fit_x = np.linspace(x_min, x_max, 1000)
+    fit_x_df = pd.DataFrame({fit.instance_prop[0]: fit_x})
+    fit_y = estimate_y(fit.f, fit_x_df, fit.instance_prop)
     fig.add_scatter(x=xy[fit.instance_prop[0]], y=xy[property_source], mode="markers", name="Data", marker=dict(color=real_color))
-    fig.add_scatter(x=fit_df.x1, y=fit_df.y, name=fit.name_mathml(), mode="markers", marker=dict(color=best_color))
+    fig.add_scatter(x=fit_x, y=fit_y, name=fit.name_mathml(), mode="lines", line=dict(color=best_color))
 
     fig.update_layout(
         title=dict(
@@ -398,9 +403,9 @@ def generate_f_chart_2d(xy: DataFrame, fit: Fit, component_name, property_source
 def generate_f_chart_3d(xy: DataFrame, fit: Fit, component_name, property_source='time'):
     fig = px.scatter_3d()
     hovertemplate = f'<b>{fit.instance_prop[0]}</b>: %{{x}}<br><b>{fit.instance_prop[1]}</b>: %{{y}}<br><b>{property_source}</b>: %{{z}}<br>'
-    fig.add_scatter3d(x=xy[fit.instance_prop[0]], y=xy[fit.instance_prop[1]], z=xy[property_source], name="Real",
-                      line=dict(color=real_color), hovertemplate=hovertemplate)
-    fig.add_scatter3d(x=fit.data.x1, y=fit.data.x2, z=fit.data.y, name=fit.name_mathml(), line=dict(color=best_color),
+    fig.add_scatter3d(x=xy[fit.instance_prop[0]], y=xy[fit.instance_prop[1]], z=xy[property_source], mode="markers", name="Real",
+                      marker=dict(color=real_color), hovertemplate=hovertemplate)
+    fig.add_mesh3d(x=fit.data.x1, y=fit.data.x2, z=fit.data.y, name=fit.name_mathml(),
                       hovertemplate=hovertemplate)
 
     fig.update_layout(
@@ -619,14 +624,18 @@ def try_analyze_all_property_sources(instance_features: list[str], data: DataFra
     return tree_df
 
 
-def mse(formula, instance_features, data: DataFrame, component_name: str, property_source: str) -> float:
-    xy = data[data['component'] == component_name][['instance', property_source, *instance_features]]
-
+def estimate_y(formula, xy: DataFrame, instance_features: list[str]) -> Series:
     def eval_formula(row):
         subs = {feature: row[feature] for feature in instance_features}
-        return formula.evalf(subs=subs)
+        return float(formula.evalf(subs=subs))
 
-    xy['y_estimated'] = xy.apply(eval_formula, axis=1)
+    y_estimated = xy.apply(eval_formula, axis=1)
+    return y_estimated
+
+
+def mse(formula, instance_features, data: DataFrame, component_name: str, property_source: str) -> float:
+    xy = data[data['component'] == component_name][['instance', property_source, *instance_features]]
+    xy['y_estimated'] = estimate_y(formula, xy, instance_features)
 
     mse = np.mean((xy[property_source] - xy.y_estimated) ** 2)
     return float(mse)  # np uses 'floating' type
