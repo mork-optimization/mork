@@ -167,7 +167,7 @@ class ComplexityFunMult(ComplexityFunction):
 
 
 class Fit(object):
-    def __init__(self, f: ComplexityFunction, instance_prop: list[str], perr, mse, popt, dic, data):
+    def __init__(self, f: Expr, instance_prop: list[str], perr, mse, popt, dic, data):
         self.f = f
         self.instance_prop = instance_prop
         self.perr = perr
@@ -202,7 +202,7 @@ class Fit(object):
         return c2p(mathml(self.f))
 
     def __str__(self):
-        return f"{self.instance_prop} = {self.name_calc()} (MSE: {self.mse})"
+        return f"{self.instance_prop} = {self.name_calc()} (MSE: {self.mse:.2f})"
 
 
 def load_df(path: str) -> DataFrame:
@@ -413,9 +413,9 @@ def generate_f_chart_3d(xy: DataFrame, fit: Fit, component_name, property_source
     hovertemplate = f'<b>{fit.instance_prop[0]}</b>: %{{x}}<br><b>{fit.instance_prop[1]}</b>: %{{y}}<br><b>{property_source}</b>: %{{z}}<br>'
     fig.add_scatter3d(x=xy[fit.instance_prop[0]], y=xy[fit.instance_prop[1]], z=xy[property_source], mode="markers",
                       name="Real",
-                      marker=dict(color=real_color), hovertemplate=hovertemplate)
+                      marker=dict(color=real_color, opacity=0.7, symbol="diamond-open"), hovertemplate=hovertemplate)
     fig.add_mesh3d(x=fit.data.x1, y=fit.data.x2, z=fit.data.y, name=fit.name_simple(),
-                   hovertemplate=hovertemplate)
+                   hovertemplate=hovertemplate, opacity=0.7, showlegend=True)
 
     fig.update_layout(
         title=dict(
@@ -451,7 +451,15 @@ def generate_f_chart_3d(xy: DataFrame, fit: Fit, component_name, property_source
     return fig
 
 
+def generate_constant_chart(fit, component_name, property_source):
+    fig = px.scatter_3d()
+    fig.add_annotation(text=f"{component_name} {property_source} is constant with value {fit.popt[0]}", showarrow=False, font={"size":20})
+    return fig
+
 def generate_f_chart(data: DataFrame, fit: Fit, component_name, property_source='time'):
+    if len(fit.instance_prop) == 0:
+        return generate_constant_chart(fit, component_name, property_source)
+
     xy = data[data['component'] == component_name][[*fit.instance_prop, property_source]]
     xy.reset_index(inplace=True)
     if len(fit.instance_prop) == 1:
@@ -570,7 +578,12 @@ def try_analyze_all_property_sources(instance_features: list[str], data: DataFra
     for component_name in data['component'].unique():
         complexities = {}
         for property_source in PROPERTY_SOURCES:
-            complexities[property_source] = find_best_instance_property(instance_features, data, component_name,
+            # If all values are equal, they do not depend on any instance property, skip estimation
+            uniq  = np.unique(data[data['component'] == component_name][property_source])
+            if len(uniq) == 1:
+                complexities[property_source] = [Fit(sympify(uniq[0]), [], [0, 0], 0, [uniq[0], 0], {}, pd.DataFrame())]
+            else:
+                complexities[property_source] = find_best_instance_property(instance_features, data, component_name,
                                                                         property_source)
             # If all fits have failed, skip property
             if not complexities[property_source]:
@@ -582,10 +595,12 @@ def try_analyze_all_property_sources(instance_features: list[str], data: DataFra
                 current = complexities[property_source][i]
                 f_chart = generate_f_chart(data, current, component_name, property_source)
                 current.chart = f_chart
-                fits_by_id[component_name][property_source][current.name_simple()] = current
+                # Fits are sorted from better to worse, so if there is a collision, the previous fit is better
+                if current.name_simple() not in fits_by_id[component_name][property_source]:
+                    fits_by_id[component_name][property_source][current.name_simple()] = current
 
             print(
-                f"{component_name.replace(NEW_LINE, '::')} ({property_source}) --> Θ({best.name_simple()}) - {Fit.get_metric_name()}: {best.get_metric_value()}")
+                f"{component_name.replace(NEW_LINE, '::')} ({property_source}) --> Θ({best.name_simple()}) - {Fit.get_metric_name()}: {best.get_metric_value():.2f}")
             treemap_labels.append(
                 {"component": component_name, "property_source": property_source, "calc_function": best.name_calc(),
                  Fit.get_metric_name(): best.get_metric_value()})
