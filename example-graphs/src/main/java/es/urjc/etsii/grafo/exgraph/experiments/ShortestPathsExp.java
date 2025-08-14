@@ -13,6 +13,9 @@ public class ShortestPathsExp extends AbstractExperiment<MSTSolution, MSTInstanc
 
     @Override
     public List<Algorithm<MSTSolution, MSTInstance>> getAlgorithms() {
-        return List.of(new FloydWharshallAlg(), new NDijkstraAlg());
+        return List.of(
+                new FloydWharshallAlg(),
+                new NDijkstraAlg()
+        );
     }
 }

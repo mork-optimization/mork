@@ -49,3 +49,4 @@ results*
 log*
 .benchmark
 **/docs
+/example-graphs/instances/

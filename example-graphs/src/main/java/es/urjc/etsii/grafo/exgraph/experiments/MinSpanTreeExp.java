@@ -13,6 +13,9 @@ public class MinSpanTreeExp extends AbstractExperiment<MSTSolution, MSTInstance>
 
     @Override
     public List<Algorithm<MSTSolution, MSTInstance>> getAlgorithms() {
-        return List.of(new KruskalAlg(), new PrimAlg());
+        return List.of(
+                new KruskalAlg(),
+                new PrimAlg()
+        );
     }
 }

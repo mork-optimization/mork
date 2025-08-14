@@ -20,7 +20,7 @@ public class PrimAlg extends Algorithm<MSTSolution, MSTInstance> {
     public MSTSolution algorithm(MSTInstance instance) {
         int v = instance.v();
         boolean[] inMST = new boolean[v];
-        List<Edge> mstEdges = new ArrayList<>();
+        List<Edge> mstEdges = new ArrayList<>(v);
         PriorityQueue<Edge> pq = new PriorityQueue<>(instance.e(), Comparator.comparingDouble(Edge::weight));
 
         // Start from vertex 0
@@ -32,7 +32,7 @@ public class PrimAlg extends Algorithm<MSTSolution, MSTInstance> {
             pq.add(e);
         }
 
-        while (mstEdges.size() < v - 1 && !pq.isEmpty()) {
+        while (!pq.isEmpty()) {
             Edge edge = pq.poll();
             int next = inMST[edge.from()] ? edge.to() : edge.from();
             if (inMST[next]) continue;

@@ -24,7 +24,7 @@ public class KruskalAlg extends Algorithm<MSTSolution, MSTInstance> {
         int[] parent = new int[v];
         for (int i = 0; i < v; i++) parent[i] = i;
 
-        List<Edge> mstEdges = new ArrayList<>(instance.e());
+        List<Edge> mstEdges = new ArrayList<>(instance.v());
         int edgesAdded = 0;
 
         for (Edge edge : edges) {

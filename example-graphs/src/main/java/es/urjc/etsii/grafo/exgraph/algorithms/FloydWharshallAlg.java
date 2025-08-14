@@ -41,6 +41,7 @@ public class FloydWharshallAlg extends Algorithm<MSTSolution, MSTInstance> {
         var edges = instance.getEdges();
         for (var e: edges) {
             d[e.from()][e.to()] = e.weight();
+            d[e.to()][e.from()] = e.weight();
         }
         return d;
     }

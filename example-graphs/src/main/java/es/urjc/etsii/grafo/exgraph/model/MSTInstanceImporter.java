@@ -86,9 +86,19 @@ public class MSTInstanceImporter extends InstanceImporter<MSTInstance> {
         }
         // if we have multiple components, add edges to connect them
         boolean[] visited = new boolean[n];
-        int nextNode;
-        while ((nextNode = notVisited(visited)) != -1){
+        int nextNode = 0, lastNode = -1;
+        while(true){
             bfs(visited, graph, nextNode);
+            lastNode = nextNode;
+            nextNode = notVisited(visited);
+            if(nextNode == -1){
+                break;
+            } else {
+                var edge = new Edge(lastNode, nextNode, rnd.nextDouble());
+                graph[lastNode].add(edge);
+                graph[nextNode].add(edge);
+                edges.add(edge);
+            }
         }
         return new MSTInstance("er-%s-%s-%s".formatted(n, p, seed), graph, edges, seed);
     }
