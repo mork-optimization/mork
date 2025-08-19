@@ -16,6 +16,7 @@
         <module>example-tsp</module>
         <module>example-bmssc</module>
         <module>example-graphs</module>
+        <module>example-vrpod</module>
         <module>common</module>
         <module>autoconfig</module>
         <module>integration-tests</module>
