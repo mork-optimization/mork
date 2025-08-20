@@ -1,9 +1,9 @@
-package es.urjc.etsii.grafo.exgraph.experiments;
+package es.urjc.etsii.grafo.graphs.experiments;
 
-import es.urjc.etsii.grafo.exgraph.algorithms.FloydWharshallAlg;
-import es.urjc.etsii.grafo.exgraph.algorithms.NDijkstraAlg;
-import es.urjc.etsii.grafo.exgraph.model.MSTInstance;
-import es.urjc.etsii.grafo.exgraph.model.MSTSolution;
+import es.urjc.etsii.grafo.graphs.algorithms.FloydWharshallAlg;
+import es.urjc.etsii.grafo.graphs.algorithms.NDijkstraAlg;
+import es.urjc.etsii.grafo.graphs.model.MSTInstance;
+import es.urjc.etsii.grafo.graphs.model.MSTSolution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.experiment.AbstractExperiment;
 

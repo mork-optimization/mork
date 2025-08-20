@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.exgraph.model;
+package es.urjc.etsii.grafo.graphs.model;
 
 import es.urjc.etsii.grafo.io.Instance;
 

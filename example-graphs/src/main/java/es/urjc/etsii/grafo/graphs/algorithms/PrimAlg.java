@@ -1,8 +1,8 @@
-package es.urjc.etsii.grafo.exgraph.algorithms;
+package es.urjc.etsii.grafo.graphs.algorithms;
 
-import es.urjc.etsii.grafo.exgraph.model.Edge;
-import es.urjc.etsii.grafo.exgraph.model.MSTInstance;
-import es.urjc.etsii.grafo.exgraph.model.MSTSolution;
+import es.urjc.etsii.grafo.graphs.model.Edge;
+import es.urjc.etsii.grafo.graphs.model.MSTInstance;
+import es.urjc.etsii.grafo.graphs.model.MSTSolution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 
 import java.util.ArrayList;
