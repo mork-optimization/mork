@@ -22,6 +22,7 @@ public class TimeStatsTest {
     @BeforeEach
     void setUp() {
         Metrics.enableMetrics();
+        Metrics.enableTimeStats();
         Metrics.resetMetrics();
         Context.Configurator.getAndResetTimeEvents();
     }
