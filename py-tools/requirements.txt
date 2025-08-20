@@ -1,8 +1,12 @@
-scikit-learn==1.5.2
-pandas==2.2.2
-numpy==2.1.1
-matplotlib==3.9.2
+scikit-learn==1.7.1
+pandas==2.3.1
+numpy==2.3.2
+matplotlib==3.10.5
 seaborn==0.13.2
 yellowbrick==1.5
 argparse==1.4.0
-setuptools==78.1.0
+setuptools==80.9.0
+panel==1.7.5
+plotly==6.3.0
+sympy==1.14.0
+lxml==6.0.0
