@@ -3,7 +3,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!-- Project name and current version -->
-    <artifactId>example-graphs</artifactId>
+    <artifactId>graphs</artifactId>
     <version>0.22-SNAPSHOT</version>
 
     <!-- Automatic configuration, can be overridden -->

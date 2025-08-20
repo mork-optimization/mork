@@ -4,7 +4,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <!-- Project name and current version -->
-    <artifactId>example-vrpod</artifactId>
+    <artifactId>vrpod</artifactId>
     <version>0.22-SNAPSHOT</version>
 
     <!-- Automatic configuration, can be overridden -->

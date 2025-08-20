@@ -103,6 +103,38 @@
             </dependency>
 
             <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>tsp</artifactId>
+                <version>0.22-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>graphs</artifactId>
+                <version>0.22-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>bmssc</artifactId>
+                <version>0.22-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <version>0.22-SNAPSHOT</version>
+                <artifactId>flayouts</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>vrpod</artifactId>
+                <version>0.22-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>integration-tests</artifactId>
+                <scope>test</scope>
+                <version>0.22-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-starter</artifactId>
                 <version>${springboot.version}</version>
