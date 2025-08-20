@@ -48,22 +48,21 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jackson.version>2.18.3</jackson.version>
-        <springboot.version>3.4.4</springboot.version>
-        <mockito.version>5.17.0</mockito.version>
-        <byte-buddy.version>1.17.5</byte-buddy.version>
+        <jackson.version>2.19.2</jackson.version>
+        <springboot.version>3.5.4</springboot.version>
+        <mockito.version>5.19.0</mockito.version>
         <mdependency.version>3.8.1</mdependency.version>
         <msurefire.version>3.5.3</msurefire.version>
         <mcompiler.version>3.14.0</mcompiler.version>
         <msource.version>3.3.1</msource.version>
-        <mjavadoc.version>3.11.2</mjavadoc.version>
+        <mjavadoc.version>3.11.3</mjavadoc.version>
         <mjar.version>3.4.2</mjar.version>
         <mgpg.version>3.2.8</mgpg.version>
-        <mjacoco.version>0.8.12</mjacoco.version>
+        <mjacoco.version>0.8.13</mjacoco.version>
         <mclean.version>3.5.0</mclean.version>
-        <graalvm.version>24.2.0</graalvm.version>
+        <graalvm.version>24.2.2</graalvm.version>
         <maspectj.version>1.15.0</maspectj.version>
-        <aspectj.version>1.9.23</aspectj.version>
+        <aspectj.version>1.9.24</aspectj.version>
         <apachepoi.version>5.4.1</apachepoi.version>
         <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>
         <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
