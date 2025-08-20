@@ -32,7 +32,19 @@
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
-            <artifactId>example-graphs</artifactId>
+            <artifactId>graphs</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>bmssc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>flayouts</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>vrpod</artifactId>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>

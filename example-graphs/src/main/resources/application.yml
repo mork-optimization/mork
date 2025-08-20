@@ -7,7 +7,7 @@ instances:
 
   path:
     # Default instance path for all experiments, can be overridden.
-    default: 'instances/graph_10_0.1_63218637.gen'
+    default: 'instances/'
 
     # Override default instance path only for the experiment declared in file PreliminarExperiment.java
     # If an experiment does not have a specific path the default will be used. Example:
@@ -24,7 +24,7 @@ solver:
   # Which experiments should be executed? .* --> All.
   # Experiment names default to the class name in which they are declared unless overridden.
   # Tip, you may use a Regex, example: Preeliminar.*
-  experiments: 'Shortest.*'
+  experiments: 'MinSpanTree.*'
 
   # How many times should each experiment be repeated. Recommended a minimum of 30
   repetitions: 1

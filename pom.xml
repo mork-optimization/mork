@@ -14,7 +14,10 @@
         <module>core</module>
         <module>template</module>
         <module>example-tsp</module>
+        <module>example-bmssc</module>
+        <module>example-flayouts</module>
         <module>example-graphs</module>
+        <module>example-vrpod</module>
         <module>common</module>
         <module>autoconfig</module>
         <module>integration-tests</module>
@@ -45,21 +48,21 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jackson.version>2.18.3</jackson.version>
-        <springboot.version>3.4.4</springboot.version>
-        <mockito.version>5.17.0</mockito.version>
-        <byte-buddy.version>1.17.5</byte-buddy.version>
+        <jackson.version>2.19.2</jackson.version>
+        <springboot.version>3.5.4</springboot.version>
+        <mockito.version>5.19.0</mockito.version>
         <mdependency.version>3.8.1</mdependency.version>
         <msurefire.version>3.5.3</msurefire.version>
         <mcompiler.version>3.14.0</mcompiler.version>
         <msource.version>3.3.1</msource.version>
-        <mjavadoc.version>3.11.2</mjavadoc.version>
+        <mjavadoc.version>3.11.3</mjavadoc.version>
         <mjar.version>3.4.2</mjar.version>
         <mgpg.version>3.2.8</mgpg.version>
-        <mjacoco.version>0.8.12</mjacoco.version>
-        <graalvm.version>24.2.0</graalvm.version>
+        <mjacoco.version>0.8.13</mjacoco.version>
+        <mclean.version>3.5.0</mclean.version>
+        <graalvm.version>24.2.2</graalvm.version>
         <maspectj.version>1.15.0</maspectj.version>
-        <aspectj.version>1.9.23</aspectj.version>
+        <aspectj.version>1.9.24</aspectj.version>
         <apachepoi.version>5.4.1</apachepoi.version>
         <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>
         <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
@@ -96,6 +99,38 @@
             <dependency>
                 <groupId>es.urjc.etsii.grafo</groupId>
                 <artifactId>autoconfig</artifactId>
+                <version>0.22-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>tsp</artifactId>
+                <version>0.22-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>graphs</artifactId>
+                <version>0.22-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>bmssc</artifactId>
+                <version>0.22-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <version>0.22-SNAPSHOT</version>
+                <artifactId>flayouts</artifactId>
+            </dependency>
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>vrpod</artifactId>
+                <version>0.22-SNAPSHOT</version>
+            </dependency>
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>integration-tests</artifactId>
+                <scope>test</scope>
                 <version>0.22-SNAPSHOT</version>
             </dependency>
 
@@ -303,4 +338,42 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>ultraclean</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-clean-plugin</artifactId>
+                        <version>${mclean.version}</version>
+                        <configuration>
+                            <filesets>
+                                <fileset>
+                                    <directory>./</directory>
+                                    <includes>
+                                        <include>log**</include>
+                                        <include>results/</include>
+                                        <include>solutions/</include>
+                                        <include>errors/</include>
+                                        <include>docs/apidocs/</include>
+                                        <include>.benchmark</include>
+                                        <include>irace.Rdata</include>
+                                        <include>parameters.txt</include>
+                                        <include>plots.pdf</include>
+                                        <include>runner.R</include>
+                                        <include>scenario.txt</include>
+                                        <include>instance_properties.csv</include>
+                                        <include>report.html</include>
+                                        <include>report_files/</include>
+                                    </includes>
+                                    <followSymlinks>false</followSymlinks>
+                                </fileset>
+                            </filesets>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
