@@ -60,6 +60,7 @@
         <mjar.version>3.4.2</mjar.version>
         <mgpg.version>3.2.8</mgpg.version>
         <mjacoco.version>0.8.12</mjacoco.version>
+        <mclean.version>3.5.0</mclean.version>
         <graalvm.version>24.2.0</graalvm.version>
         <maspectj.version>1.15.0</maspectj.version>
         <aspectj.version>1.9.23</aspectj.version>
@@ -338,4 +339,33 @@
             </plugin>
         </plugins>
     </build>
+
+    <profiles>
+        <profile>
+            <id>ultraclean</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <artifactId>maven-clean-plugin</artifactId>
+                        <version>${mclean.version}</version>
+                        <configuration>
+                            <filesets>
+                                <fileset>
+                                    <directory>./</directory>
+                                    <includes>
+                                        <include>log**</include>
+                                        <include>results</include>
+                                        <include>solutions</include>
+                                        <include>errors</include>
+                                        <include>.benchmark</include>
+                                    </includes>
+                                    <followSymlinks>false</followSymlinks>
+                                </fileset>
+                            </filesets>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
