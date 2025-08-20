@@ -353,10 +353,19 @@
                                     <directory>./</directory>
                                     <includes>
                                         <include>log**</include>
-                                        <include>results</include>
-                                        <include>solutions</include>
-                                        <include>errors</include>
+                                        <include>results/</include>
+                                        <include>solutions/</include>
+                                        <include>errors/</include>
+                                        <include>docs/apidocs/</include>
                                         <include>.benchmark</include>
+                                        <include>irace.Rdata</include>
+                                        <include>parameters.txt</include>
+                                        <include>plots.pdf</include>
+                                        <include>runner.R</include>
+                                        <include>scenario.txt</include>
+                                        <include>instance_properties.csv</include>
+                                        <include>report.html</include>
+                                        <include>report_files/</include>
                                     </includes>
                                     <followSymlinks>false</followSymlinks>
                                 </fileset>
