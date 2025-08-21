@@ -125,7 +125,8 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
             var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
 
-            var area = new AreaReference(convertNumToColString(0) + ":" + convertNumToColString(getCommonHeaders().length-1), SpreadsheetVersion.EXCEL2007);
+            var areaString = String.format("%s1:%s%s", convertNumToColString(0), convertNumToColString(getCommonHeaders().length-1), 1_000_000);
+            var area = new AreaReference(areaString, SpreadsheetVersion.EXCEL2007);
             headRawSheet(rawSheet);
             fillPivotSheet(pivotSheet, area, rawSheet);
 
