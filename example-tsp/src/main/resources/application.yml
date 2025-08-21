@@ -1,7 +1,7 @@
 instances:
   path:
     # Default instance path for all experiments, can be overridden.
-    default: 'instances/TSPLIB/instances'
+    default: 'instances/small'
 
     # Override default instance path only for the experiment declared in file PreliminarExperiment.java
     # If an experiment does not have a specific path the default will be used. Example:
@@ -18,10 +18,10 @@ solver:
   # Which experiments should be executed? .* --> All.
   # Experiment names default to the class name in which they are declared unless overridden.
   # Tip, you may use a Regex, example: Preeliminar.*
-  experiments: '.*'
+  experiments: 'Constructive.*'
 
   # How many times should each experiment be repeated. Recommended a minimum of 30
-  repetitions: 100
+  repetitions: 100_000
 
   # Use parallel executor DISABLE IF THE ALGORITHM IS ALREADY PARALLELIZED
   # Valid Values: true, false
