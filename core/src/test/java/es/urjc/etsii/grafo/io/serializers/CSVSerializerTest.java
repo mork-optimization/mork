@@ -73,7 +73,9 @@ public class CSVSerializerTest {
 
     @Test
     public void writeEmptyCSVInvalidPath() {
-        Assertions.assertThrows(RuntimeException.class, () -> writeEmptyCSVParameters(Path.of("/doesnotexist"), referencesGenerator(Double.NaN,Double.NaN)));
+        var path = Path.of("/doesnotexist");
+        var references = referencesGenerator(Double.NaN, Double.NaN);
+        Assertions.assertThrows(RuntimeException.class, () -> writeEmptyCSVParameters(path, references));
     }
 
     @Test
