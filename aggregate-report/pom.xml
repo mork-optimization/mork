@@ -32,6 +32,10 @@
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>tsptw</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>graphs</artifactId>
         </dependency>
         <dependency>

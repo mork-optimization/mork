@@ -14,6 +14,7 @@
         <module>core</module>
         <module>template</module>
         <module>example-tsp</module>
+        <module>example-tsptw</module>
         <module>example-bmssc</module>
         <module>example-flayouts</module>
         <module>example-graphs</module>
