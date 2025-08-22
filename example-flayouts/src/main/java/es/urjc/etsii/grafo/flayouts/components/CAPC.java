@@ -106,7 +106,10 @@ public class CAPC extends Algorithm<CAPSolution, CAPInstance> {
             var error = IOUtils.toString(process.getErrorStream(), StandardCharsets.UTF_8);
             process.waitFor();
             return output + "\n\n" + error;
-        } catch (IOException | InterruptedException e) {
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
     }
