@@ -44,32 +44,32 @@ public class ExcelSerializerTest {
     private static final Objective<TestMove, TestSolution, TestInstance> OBJ_MAX = Objective.of("Test", FMode.MAXIMIZE, TestSolution::getScore, TestMove::getScoreChange);
 
     @BeforeAll
-    public static void configurePOI() {
+    static void configurePOI() {
         // In order to read the file due to the size of the pivot table
         ZipSecureFile.setMinInflateRatio(0.001);
         Context.Configurator.setObjectives(OBJ_MAX);
     }
 
     @BeforeEach
-    public void cleanInstance() {
+    void cleanInstance() {
         Instance.resetProperties();
     }
 
-    public ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references, InstanceManager<TestInstance> instanceManager) {
+    ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references, InstanceManager<TestInstance> instanceManager) {
         var config = new ExcelConfig();
         config.setFolder(p.toFile().getAbsolutePath());
         return new ExcelSerializer<>(config, references, customizer, instanceManager);
     }
 
-    public ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references) {
+    ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references) {
         return initExcel(customizer, p, references, TestHelperFactory.emptyInstanceManager());
     }
 
-    public ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p) {
+    ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p) {
         return initExcel(customizer, p, new ArrayList<>());
     }
 
-    public void writeEmptyExcelParameters(Path temp, List<ReferenceResultProvider> references) {
+    void writeEmptyExcelParameters(Path temp, List<ReferenceResultProvider> references) {
         var excel = initExcel(Optional.empty(), temp, references);
         var excelPath = temp.resolve("test.xlsx");
         excel.serializeResults("TestExperiment", new ArrayList<>(), excelPath);
@@ -78,28 +78,29 @@ public class ExcelSerializerTest {
     }
 
     @Test
-    public void writeEmptyCalcExcel(@TempDir Path temp) throws IOException {
+    void writeEmptyCalcExcel(@TempDir Path temp) {
         writeEmptyExcelParameters(temp, new ArrayList<>());
     }
 
     @Test
-    public void writeEmptyExcelWithReferences(@TempDir Path temp) throws IOException {
+    void writeEmptyExcelWithReferences(@TempDir Path temp) {
         writeEmptyExcelParameters(temp, referencesGenerator(10, 10));
     }
 
     @Test
-    public void writeEmptyCSVWithInvalidReference(@TempDir Path temp) {
+    void writeEmptyCSVWithInvalidReference(@TempDir Path temp) {
         Assertions.assertDoesNotThrow(() -> writeEmptyExcelParameters(temp, referencesGenerator(Double.NaN, Double.NaN)));
     }
 
-    @ParameterizedTest
-    @ValueSource(booleans =  {true, false})
-    public void writeEmptyCSVInvalidPath(boolean useJavaCalculation) {
-        Assertions.assertThrows(RuntimeException.class, () -> writeEmptyExcelParameters(Path.of("/doesnotexist"), referencesGenerator(Double.NaN, Double.NaN)));
+    @Test
+    void writeEmptyCSVInvalidPath() {
+        var path = Path.of("/doesnotexist");
+        var references = referencesGenerator(Double.NaN, Double.NaN);
+        Assertions.assertThrows(RuntimeException.class, () -> writeEmptyExcelParameters(path, references));
     }
 
     @Test
-    public void writeXLSXWithCustomizer(@TempDir Path temp) {
+    void writeXLSXWithCustomizer(@TempDir Path temp) {
         var customizer = Mockito.mock(ExcelCustomizer.class);
         var excel = initExcel(Optional.of(customizer), temp);
         var excelPath = temp.resolve("test2.xlsx");
@@ -112,7 +113,7 @@ public class ExcelSerializerTest {
     }
 
     @Test
-    public void writeXLSXWithReferences(@TempDir Path temp) throws IOException {
+    void writeXLSXWithReferences(@TempDir Path temp) throws IOException {
         var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10));
         var excelPath = temp.resolve("test2.xlsx");
 
@@ -141,7 +142,7 @@ public class ExcelSerializerTest {
     }
 
     @Test
-    public void writeEmptyInstanceSheet(@TempDir Path temp) throws IOException {
+    void writeEmptyInstanceSheet(@TempDir Path temp) throws IOException {
         var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10));
         var excelPath = temp.resolve("emptyInstanceSheet.xlsx");
         var data = solutionGenerator();
@@ -163,7 +164,7 @@ public class ExcelSerializerTest {
     }
 
     @Test
-    public void writeInstanceSheet(@TempDir Path temp) throws IOException {
+    void writeInstanceSheet(@TempDir Path temp) throws IOException {
         var instance = new TestInstance("writeInstanceSheetTest");
         instance.setProperty("customProperty", 1234567);
         var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));
@@ -192,7 +193,7 @@ public class ExcelSerializerTest {
     }
 
 //    @Test
-//    public void writeExcelWithCustomProperties(boolean useJavaCalculation, @TempDir Path temp) throws IOException {
+//    void writeExcelWithCustomProperties(boolean useJavaCalculation, @TempDir Path temp) throws IOException {
 //        var instance = new TestInstance("writeInstanceSheetTest");
 //        instance.setProperty("customProperty", 1234567);
 //        var excel = initExcel(useJavaCalculation, Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));
@@ -236,12 +237,4 @@ public class ExcelSerializerTest {
 //        }
 //    }
 
-    private List<? extends SolutionGeneratedEvent<?,?>> listOfN(int n){
-        var event = TestHelperFactory.solutionGenerated("fakeInstance", "fakeExp", "fakeAlg", -1, 2, 10, 8);
-        var list = new ArrayList<SolutionGeneratedEvent<?,?>>(n);
-        for (int i = 0; i < n; i++) {
-            list.add(event);
-        }
-        return list;
-    }
 }

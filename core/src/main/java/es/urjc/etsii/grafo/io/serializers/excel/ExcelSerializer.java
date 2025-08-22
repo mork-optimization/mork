@@ -116,10 +116,10 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
 
         File f = p.toFile();
         var excelBook = new XSSFWorkbook();
-        var streamExcelBook = new SXSSFWorkbook(excelBook, 100, true);
 
         try (
-                var outputStream = new FileOutputStream(f)
+                var outputStream = new FileOutputStream(f);
+                var streamExcelBook = new SXSSFWorkbook(excelBook, 100, true);
         ) {
             var rawSheet = streamExcelBook.createSheet(RAW_SHEET);
             var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
@@ -149,10 +149,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             streamExcelBook.write(outputStream);
             log.debug("XLSX created successfully");
         } catch (Exception e) {
-            e.printStackTrace();
             throw new RuntimeException(String.format("Exception while trying to save Excel file: %s, reason: %s", f.getAbsolutePath(), e.getClass().getSimpleName()), e);
-        } finally {
-            streamExcelBook.dispose();
         }
     }
 
@@ -393,9 +390,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     public void fillRawSheet(SXSSFSheet rawSheet, boolean maximizing, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders) {
         // Best values per instance
         Map<String, Double> bestValuesPerInstance = bestResultPerInstance(Context.getMainObjective(), results, referenceResultProviders, maximizing);
-
-        // TODO String[] customProperties = getCustomPropertyNames(results);
-        String[] customProperties = new String[0];
+        String[] customProperties = new String[0]; // TODO review and adapt impl
 
         // Create headers
         String[] commonHeaders = getCommonHeaders();
@@ -403,7 +398,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
 
         int nColumns = headers.length;
         int cutOff = results.size() + 1;
-        int rowsForProvider = referenceResultProviders.size() * bestValuesPerInstance.keySet().size();
+        int rowsForProvider = referenceResultProviders.size() * bestValuesPerInstance.size();
         int nRows = cutOff + rowsForProvider;
 
         // Create matrix data
@@ -477,7 +472,6 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     }
 
     public void headRawSheet(SXSSFSheet rawSheet) {
-        // TODO String[] customProperties = getCustomPropertyNames(results);
         String[] customProperties = new String[0];
 
         // Create headers
