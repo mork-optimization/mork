@@ -1,79 +1,151 @@
 package es.urjc.etsii.grafo.TSPTW.model;
 
 import es.urjc.etsii.grafo.solution.Solution;
+import org.slf4j.Logger;
+
+import java.util.ArrayList;
+import java.util.List;
+
+import static java.lang.Math.max;
 
 public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
-    /**
-     * Initialize solution from instance
-     *
-     * @param instance
-     */
+    private static Logger log = org.slf4j.LoggerFactory.getLogger(TSPTWSolution.class);
+
+    List<Integer> permutation;
+    // TODO remove n and instance properties, keeping them for translation of c++
+    int n;
+    int[][] distance;
+    int[] window_start;
+    int[] window_end;
+    // END instance properties
+
+    boolean[] node_assigned;
+    int nodes_available;
+    static int evaluations = 0;
+    int _constraint_violations;
+    int _infeasibility;
+    int _lower_bound;
+    int _lower_bound_constraint_violations;
+
+    int[] _makespan;
+    int _tourcost;
+
     public TSPTWSolution(TSPTWInstance instance) {
         super(instance);
-        // TODO Initialize solution data structures if necessary
+
+        this.n = instance.n();
+        this.distance = instance.getDistance();
+        this.window_end = instance.getWindowEnd();
+        this.window_start = instance.getWindowStart();
+
+        this.permutation = new ArrayList<>(instance.n() + 1);
+        this.node_assigned = new boolean[instance.n()];
+        this._constraint_violations = 0;
+        this._infeasibility = 0;
+        this._lower_bound = -1;
+        this._lower_bound_constraint_violations = -1;
+        this._makespan = new int[instance.n() + 1];
+        this._tourcost = 0;
+
+        this.permutation.add(0);
+        node_assigned[0] = true;
+        nodes_available--;
     }
 
-    /**
-     * Clone constructor
-     *
-     * @param solution Solution to clone
-     */
     public TSPTWSolution(TSPTWSolution solution) {
         super(solution);
-        // TODO Copy ALL solution data, we are cloning a solution
-        throw new UnsupportedOperationException("TSPTWSolution::new(TSPTWSolution) not implemented yet");
+
+        this.n = solution.n;
+        this.distance = solution.distance;
+        this.window_start = solution.window_start;
+        this.window_end = solution.window_end;
+
+        this.permutation = new ArrayList<>(solution.permutation);
+        this.node_assigned = solution.node_assigned.clone();
+        this._constraint_violations = solution._constraint_violations;
+        this._infeasibility = solution._infeasibility;
+        this._lower_bound = solution._lower_bound;
+        this._lower_bound_constraint_violations = solution._lower_bound_constraint_violations;
+        this._makespan = solution._makespan.clone();
+        this._tourcost = solution._tourcost;
     }
 
 
     @Override
     public TSPTWSolution cloneSolution() {
-        // You do not need to modify this method
-        // Call clone constructor
         return new TSPTWSolution(this);
     }
 
-    /**
-     * Get the current solution score.
-     * The difference between this method and recalculateScore is that
-     * this result can be a property of the solution, or cached,
-     * it does not have to be calculated each time this method is called
-     *
-     * @return current solution score as double
-     */
     public double getScore() {
-        // TODO: Implement efficient score calculation.
-        // We recommend caching scores and updating them when the solution changes
-        // Example: return this.score;
-        throw new UnsupportedOperationException("TSPTWSolution:getScore not implemented yet");
+        return this.cost();
     }
 
-    /**
-     * Generate a string representation of this solution. Used when printing progress to console,
-     * show as minimal info as possible
-     *
-     * @return Small string representing the current solution (Example: id + score)
-     */
     @Override
     public String toString() {
-        // TODO: When all fields are implemented delete this method and use your IDE
-        //  to autogenerate it using only the most important fields.
-        // This method will be called to print best solutions in console while solving, and by your IDE when debugging
-        // WARNING: DO NOT UPDATE CACHES IN THIS METHOD / MAKE SURE THIS METHOD DOES NOT HAVE SIDE EFFECTS
-        // Calling toString to a solution should NEVER change or update any of its fields
-        throw new UnsupportedOperationException("TSPTWSolution::toString not implemented yet");
+        return "%s -> %s".formatted(this._tourcost, this.permutation);
     }
 
-//    /**
-//     * Optionally provide a way to calculate custom solution properties
-//     * @return a map with the property names as keys,
-//     * and a function to calculate the property value given the solution as value
-//     */
-//    @Override
-//    public Map<String, Function<TSPTWSolution, Object>> customProperties() {
-//        var properties = new HashMap<String, Function<TSPTWSolution, Object>>();
-//        properties.put("myCustomPropertyName", s -> s.getScore());
-//        properties.put("myCustomProperty2Name", TSPTWSolution::getScore);
-//        return properties;
+//    public void setTour(int[] tour) {
+//        this.tour = tour.clone();
+//        this.score = recalculateScore();
+//        notifyUpdate();
 //    }
+
+    public double cost() {
+        return this._tourcost;
+    }
+
+    public boolean better_than(TSPTWSolution other) {
+        return _constraint_violations < other._constraint_violations ||
+                (_constraint_violations == other._constraint_violations && cost() < other.cost());
+    }
+
+    int constraint_violations() {
+        return this._constraint_violations;
+    }
+
+    void add(int current, int node) {
+        assert (node > 0);
+        assert (node != current);
+        assert (!node_assigned[node]);
+
+        permutation.add(node);
+        int j = permutation.size() - 1;
+
+        _makespan[j] = max(_makespan[j - 1] + distance[current][node],
+                window_start[node]);
+
+        if (_makespan[j] > window_end[node]) {
+            _infeasibility += _makespan[j] - window_end[node];
+            _constraint_violations++;
+        }
+
+        _tourcost += distance[current][node];
+
+        node_assigned[node] = true;
+        nodes_available--;
+
+        evaluations++;
+
+        if (nodes_available == 1) {
+            current = node;
+            node = 0;
+            while (node_assigned[node]) {
+                node++;
+            }
+            add(current, node);
+            // This is the last node, so connect it to the depot.
+            permutation.add(0);
+            _makespan[n] = _makespan[n - 1] + distance[node][0];
+            _tourcost += distance[node][0];
+            if (_makespan[n] > window_end[0]) {
+                _constraint_violations++;
+                _infeasibility += _makespan[n] - window_end[0];
+            }
+            evaluations++;
+        }
+    }
+
+
 }

@@ -9,7 +9,9 @@ Authors involved in this work and their respective contributions:
 - Person2.
 ## Datasets
 
-Instances are categorized in different datasets inside the 'instances' folder. All instances are from the [UCI Machine Learning Repository](https://archive.ics.uci.edu/ml/index.php) or reference to paper where they are from, etc.
+Instances are categorized in different datasets inside the 'instances' folder. 
+Instances have been downloaded from https://lopez-ibanez.eu/tsptw-instances.
+
 
 ### Instance format
 
