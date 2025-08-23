@@ -5,12 +5,12 @@ import es.urjc.etsii.grafo.io.Instance;
 public class TSPTWInstance extends Instance {
 
     private int n;
-    private int[][] distance;
+    private double[][] distance;
     private int[] windowStart;
     private int[] windowEnd;
     private boolean isSymmetric;
 
-    public TSPTWInstance(String suggestedName, int n, int[][] distance, int[] windowStart, int[] windowEnd, boolean isSymmetric) {
+    public TSPTWInstance(String suggestedName, int n, double[][] distance, int[] windowStart, int[] windowEnd, boolean isSymmetric) {
         super(suggestedName);
 
         this.n = n;
@@ -40,7 +40,7 @@ public class TSPTWInstance extends Instance {
         return n;
     }
 
-    public int dist(int a, int b) {
+    public double dist(int a, int b) {
         return distance[a][b];
     }
 
@@ -56,7 +56,7 @@ public class TSPTWInstance extends Instance {
         return isSymmetric;
     }
 
-    public int[][] getDistance() {
+    public double[][] getDistance() {
         return distance;
     }
 

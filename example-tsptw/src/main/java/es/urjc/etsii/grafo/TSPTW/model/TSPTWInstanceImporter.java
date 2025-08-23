@@ -35,13 +35,13 @@ public class TSPTWInstanceImporter extends InstanceImporter<TSPTWInstance> {
             }
 
             // Distance matrix n x n
-            int[][] distance = new int[n][n];
+            double[][] distance = new double[n][n];
             for (int i = 0; i < n; i++) {
                 for (int j = 0; j < n; j++) {
                     if (!sc.hasNextDouble()) {
                         throw new IOException("invalid distance matrix");
                     }
-                    distance[i][j] = sc.nextInt();
+                    distance[i][j] = sc.nextDouble();
                 }
             }
 
@@ -75,7 +75,7 @@ public class TSPTWInstanceImporter extends InstanceImporter<TSPTWInstance> {
         }
     }
 
-    private static boolean isSymmetric(int[][] m) {
+    private static boolean isSymmetric(double[][] m) {
         int n = m.length;
         for (int i = 0; i < n; i++) {
             for (int j = i + 1; j < n; j++) {
