@@ -1,8 +1,8 @@
-package es.urjc.etsii.grafo.TSPTW.alg;
+package es.urjc.etsii.grafo.tsptw.alg;
 
-import es.urjc.etsii.grafo.TSPTW.constructives.TSPTWRandomConstructive;
-import es.urjc.etsii.grafo.TSPTW.model.TSPTWInstance;
-import es.urjc.etsii.grafo.TSPTW.model.TSPTWSolution;
+import es.urjc.etsii.grafo.tsptw.constructives.TSPTWRandomConstructive;
+import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
+import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.TimeUtil;
@@ -58,7 +58,7 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
                 x2.ls_feasibility_1shift_first();
 
                 if (x2.infeasibility() < x.infeasibility()) {
-                    logger.debug("vnd_f {} {} {} {} s remaning\n",
+                    logger.debug("vnd_f {} {} {} {} s remaning",
                             level, x2.cost(), x2.constraint_violations(), TimeUtil.nanosToSecs(TimeControl.remaining()));
                     x = x2.clone_solution();
                     level = 1; // Improved
@@ -85,8 +85,8 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
 
             if (x2.cost() < x.cost()) {
                 logger.debug("# (pert. {})\t{}", level, x2.cost());
-                logger.debug("gvns {} {} {} {} s remaining",
-                        level, x2.cost(), x2.constraint_violations(), TimeUtil.nanosToSecs(TimeControl.remaining()));
+                logger.debug("gvns {} {} {}",
+                        level, x2.cost(), x2.constraint_violations());
                 x.copy_from(x2);
                 level = 1;
                 iterlevel = 0;
@@ -104,23 +104,26 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
     public void vnd(TSPTWSolution x) {
         boolean improved = false;
         assert x.constraint_violations() == 0;
+        x.assert_solution();
 
         do {
             while (x.feasible_1shift_first()) {
+                x.assert_solution();
                 improved = true;
             }
             if (improved) {
-                logger.debug("insert {} {} {} {} s remaining",
-                        improved ? 1 : 0, x.cost(), x.constraint_violations(), TimeUtil.nanosToSecs(TimeControl.remaining()));
+                logger.debug("insert {} {} {}",
+                        improved ? 1 : 0, x.cost(), x.constraint_violations());
             }
 
             improved = false;
             while (x.two_opt_first()) {
+                x.assert_solution();
                 improved = true;
             }
             if (improved) {
-                logger.debug("2opt {} {} {} {} s remaining",
-                        improved ? 1 : 0, x.cost(), x.constraint_violations(), TimeUtil.nanosToSecs(TimeControl.remaining()));
+                logger.debug("2opt {} {} {}",
+                        improved ? 1 : 0, x.cost(), x.constraint_violations());
             }
         } while (improved);
     }

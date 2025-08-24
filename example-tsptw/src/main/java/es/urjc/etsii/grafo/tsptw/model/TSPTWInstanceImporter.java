@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.TSPTW.model;
+package es.urjc.etsii.grafo.tsptw.model;
 
 import es.urjc.etsii.grafo.io.InstanceImporter;
 import es.urjc.etsii.grafo.util.DoubleComparator;

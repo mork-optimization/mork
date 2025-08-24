@@ -1,8 +1,8 @@
-package es.urjc.etsii.grafo.TSPTW;
+package es.urjc.etsii.grafo.tsptw;
 
-import es.urjc.etsii.grafo.TSPTW.model.TSPTWBaseMove;
-import es.urjc.etsii.grafo.TSPTW.model.TSPTWInstance;
-import es.urjc.etsii.grafo.TSPTW.model.TSPTWSolution;
+import es.urjc.etsii.grafo.tsptw.model.TSPTWBaseMove;
+import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
+import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solver.Mork;
 

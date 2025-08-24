@@ -1,7 +1,7 @@
-package es.urjc.etsii.grafo.TSPTW.shake;
+package es.urjc.etsii.grafo.tsptw.shake;
 
-import es.urjc.etsii.grafo.TSPTW.model.TSPTWInstance;
-import es.urjc.etsii.grafo.TSPTW.model.TSPTWSolution;
+import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
+import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.shake.Shake;
 
 public class ExampleTSPTWShake extends Shake<TSPTWSolution, TSPTWInstance> {

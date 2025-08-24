@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.TSPTW.model;
+package es.urjc.etsii.grafo.tsptw.model;
 
 import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.solution.ValidationResult;

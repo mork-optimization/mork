@@ -1,8 +1,8 @@
-package es.urjc.etsii.grafo.TSPTW.constructives.grasp;
+package es.urjc.etsii.grafo.tsptw.constructives.grasp;
 
-import es.urjc.etsii.grafo.TSPTW.model.TSPTWBaseMove;
-import es.urjc.etsii.grafo.TSPTW.model.TSPTWInstance;
-import es.urjc.etsii.grafo.TSPTW.model.TSPTWSolution;
+import es.urjc.etsii.grafo.tsptw.model.TSPTWBaseMove;
+import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
+import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
 
 import java.util.ArrayList;

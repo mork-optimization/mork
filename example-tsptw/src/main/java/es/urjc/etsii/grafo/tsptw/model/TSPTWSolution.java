@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.TSPTW.model;
+package es.urjc.etsii.grafo.tsptw.model;
 
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.CollectionUtil;
@@ -181,8 +181,8 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         }
     }
 
-    public void assert_solution(){
-        assert check_solution(): "Solution validation failed";
+    public void assert_solution() {
+        assert check_solution() : "Solution validation failed";
     }
 
     public boolean check_solution() {
@@ -263,8 +263,11 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
     // Helper methods
     public boolean is_a_permutation(List<Integer> permutation) {
-        Set<Integer> set = new HashSet<>(permutation);
-        return set.size() == permutation.size();
+        Set<Integer> set = HashSet.newHashSet(permutation.size());
+        for (int i = 0; i < permutation.size() - 1; i++) {
+            set.add(permutation.get(i));
+        }
+        return set.size() == permutation.size() -1; // -1 because depot appears twice, ignore last element
     }
 
     public void swap(int k) {
@@ -330,30 +333,33 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         evaluations += n - (k + 2);
     }
 
-    public boolean is_feasible_swap(int k, int[] firstM) {
-        int lastM = (firstM[0] == n + 1) ? k + 2 : n + 1;
+    public boolean is_feasible_swap(int k, int[] first_m) {
+        var p = this.permutation;
 
-        for (int j = min(firstM[0], k); j < lastM; j++) {
-            _makespan[j] = max(_makespan[j - 1] + distance[permutation.get(j - 1)][permutation.get(j)], window_start[permutation.get(j)]);
-            if (_makespan[j] > window_end[permutation.get(j)]) {
-                firstM[0] = j;
+        int last_m = (first_m[0] == n + 1) ? k + 2 : n + 1;
+        int j, prev, current;
+        for (j = min(first_m[0], k); j < last_m; j++) {
+            _makespan[j] = max(_makespan[j - 1] + distance[p.get(j - 1)][p.get(j)], window_start[p.get(j)]);
+            if (_makespan[j] > window_end[p.get(j)]) {
+                first_m[0] = j;
                 return false;
             }
         }
 
-        int prev = permutation.get(lastM - 1);
-        double mkspan = _makespan[lastM - 1];
-        for (int j = lastM; j < n + 1; j++) {
-            int current = permutation.get(j);
+        prev = p.get(last_m - 1);
+        double mkspan = _makespan[last_m - 1];
+        for (j = last_m; j < n + 1; j++, prev = current) {
+            current = p.get(j);
             mkspan += distance[prev][current];
 
             if (_makespan[j] <= window_start[current]) {
                 if (mkspan <= window_start[current]) {
                     _makespan[j] = window_start[current];
-                    firstM[0] = n + 1;
+                    first_m[0] = n + 1;
                     return true;
                 }
             } else {
+                assert (_makespan[j] <= window_end[current]);
                 if (mkspan <= window_start[current]) {
                     _makespan[j] = window_start[current];
                     mkspan = window_start[current];
@@ -362,13 +368,12 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             }
             if (mkspan > window_end[current]) {
                 _makespan[j] = mkspan;
-                firstM[0] = j;
+                first_m[0] = j;
                 return false;
             }
             _makespan[j] = mkspan;
-            prev = current;
         }
-        firstM[0] = n + 1;
+        first_m[0] = n + 1;
         return true;
     }
 
@@ -384,7 +389,6 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         evaluations += 6;
         return delta;
     }
-
 
 
     public double do_swap(int k) {
@@ -545,6 +549,8 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             }
             makespan[i] = mkspan;
         }
+        System.arraycopy(makespan, low, this._makespan, low, this._makespan.length - low);
+
         return true;
     }
 
@@ -562,6 +568,10 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
     public boolean feasible_1shift_first() {
         assert (_constraint_violations == 0);
+
+        log.debug("# 1shift_feasible: START: ");
+
+
         List<Integer> rand_nodes = new ArrayList<>();
         shuffle_1shift_feasible_nodes(rand_nodes);
 
@@ -572,7 +582,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                     + distance[ci][permutation.get(i + 1)]
                     - distance[permutation.get(i - 1)][permutation.get(i + 1)];
 
-            // Swapping backwards i + 1
+            // This is in fact swapping backwards i + 1
             for (int d = i - 1; d > 0; d--) {
                 int cj = permutation.get(d);
                 if (tw_infeasible[ci][cj]) break;
@@ -583,7 +593,9 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                 if (delta2 >= delta1) continue;
                 if (!insertion_is_feasible(i, d)) continue;
                 reinsert(permutation, i, d);
+                log.debug("improved ({}, {}): {} -> {}", i, i+1, _tourcost, _tourcost - delta1 + delta2);
                 this._tourcost += delta2 - delta1;
+                assert_solution();
                 return true;
             }
 
@@ -598,16 +610,19 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                 if (delta2 >= delta1) continue;
                 if (!insertion_is_feasible(i, d)) continue;
                 reinsert(permutation, i, d);
+                log.debug("improved ({}, {}): {} -> {}", i, i+1, _tourcost, _tourcost - delta1 + delta2);
                 this._tourcost += delta2 - delta1;
+                assert_solution();
                 return true;
             }
         }
+        log.debug("# 1shift_feasible: START: ");
         return false;
     }
 
     public boolean ls_feasibility_1shift_first() {
         boolean improved = false;
-        while (feasible_1shift_first()) {
+        while (feasibility_1shift_first()) {
             improved = true;
         }
         return improved;
@@ -755,7 +770,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         return false;
     }
 
-    public double infeasibility(){
+    public double infeasibility() {
         return this._infeasibility;
     }
 

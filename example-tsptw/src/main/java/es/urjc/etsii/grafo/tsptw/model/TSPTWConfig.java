@@ -1,4 +1,4 @@
-package es.urjc.etsii.grafo.TSPTW.model;
+package es.urjc.etsii.grafo.tsptw.model;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
