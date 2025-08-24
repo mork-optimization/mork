@@ -193,25 +193,16 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         int cviolsUnsure = 0;
         double infeas = 0;
 
-        if (permutation.size() - 1 != n) {
-            log.error("Invalid: (permutation.size() == {}) != (n == {})", permutation.size() - 1, n);
-            return false;
-        }
+        assert permutation.size() - 1 == n : "Invalid: (permutation.size() == %s) != (n == %s)".formatted(permutation.size() - 1, n);
 
-        if (!is_a_permutation(permutation)) {
-            log.error("Invalid: not a permutation!");
-            return false;
-        }
+        assert is_a_permutation(permutation): "Invalid: not a permutation!";
 
         for (int i = 1; i < n; i++) {
             int node = permutation.get(i);
 
             cost += distance[prev][node];
             mkspan = max(mkspan + distance[prev][node], window_start[node]);
-            if (!DoubleComparator.equals(mkspan, _makespan[i])) {
-                log.error("Invalid: makespan = {} != _makespan[{}] = {}!", mkspan, i, _makespan[i]);
-                return false;
-            }
+            assert DoubleComparator.equals(mkspan, _makespan[i]): "Invalid: makespan = %s != _makespan[%s] = %s".formatted(mkspan, i, _makespan[i]);
 
             if (_makespan[i] > window_end[node]) {
                 cviols++;
@@ -226,16 +217,10 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
         // Finish at the depot
         cost += distance[prev][0];
-        if (!DoubleComparator.equals(cost, _tourcost)) {
-            log.error("Invalid: real cost = {} != _tourcost = {}!", cost, _tourcost);
-            return false;
-        }
+        assert DoubleComparator.equals(cost, _tourcost): "Invalid: real cost = %s != _tourcost = %s".formatted(cost, _tourcost);
 
         mkspan = max(mkspan + distance[prev][0], window_start[0]);
-        if (!DoubleComparator.equals(mkspan, _makespan[n])) {
-            log.error("Invalid: makespan = {} != _makespan[n] = {}!", mkspan, _makespan[n]);
-            return false;
-        }
+        assert DoubleComparator.equals(mkspan, _makespan[n]): "Invalid: makespan = %s != _makespan[%s] = %s".formatted(mkspan, n, _makespan[n]);
 
         if (_makespan[n] > window_end[0]) {
             cviols++;
@@ -245,18 +230,9 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             cviolsUnsure++;
         }
 
-        if (Math.abs(cviols - _constraint_violations) > cviolsUnsure) {
-            log.error("Invalid: real cviols = {} != _constraint_violations = {} (unsure = {})!", cviols, _constraint_violations, cviolsUnsure);
-            return false;
-        } else if (_constraint_violations < 0) {
-            log.error("Invalid: _constraint_violations = {} < 0!", _constraint_violations);
-            return false;
-        }
-
-        if (_infeasibility != infeas) {
-            log.error("Invalid: _infeasibility ({}) != real infeasibility ({})!", _infeasibility, infeas);
-            return false;
-        }
+        assert Math.abs(cviols - _constraint_violations) <= cviolsUnsure: "Invalid: real cviols = %s != _constraint_violations = %s (unsure = %s)".formatted(cviols, _constraint_violations, cviolsUnsure);
+        assert _constraint_violations >= 0: "Invalid: _constraint_violations = %s < 0".formatted(_constraint_violations);
+        assert _infeasibility == infeas: "Invalid: real infeas = %s != _infeasibility = %s".formatted(infeas, _infeasibility);
 
         return true;
     }
@@ -1019,7 +995,10 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                     int cj = ngh.permutation.get(d + 1);
                     if (tw_infeasible[cj][ci]) break;
                     delta_cost += ngh.do_swap(d);
-                    if (ngh.is_feasible_swap(d, new int[]{first_m})) {
+                    var first_m_t = new int[]{first_m};
+                    boolean is_feasible = ngh.is_feasible_swap(d, first_m_t);
+                    first_m = first_m_t[0];
+                    if (is_feasible) {
                         assert ngh.constraint_violations() == 0;
                         assert this._tourcost + delta_cost == ngh._tourcost;
                         assert first_m == n + 1;
@@ -1034,7 +1013,10 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                     int cj = ngh.permutation.get(d + 1);
                     if (tw_infeasible[cj][ci]) break;
                     delta_cost += ngh.do_swap(d);
-                    if (ngh.is_feasible_swap(d, new int[]{first_m})) {
+                    var first_m_t = new int[]{first_m};
+                    boolean is_feasible = ngh.is_feasible_swap(d, first_m_t);
+                    first_m = first_m_t[0];
+                    if (is_feasible) {
                         assert ngh.constraint_violations() == 0;
                         assert this._tourcost + delta_cost == ngh._tourcost;
                         assert first_m == n + 1;

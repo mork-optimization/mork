@@ -18,6 +18,7 @@ public class TSPTWRandomConstructive extends Constructive<TSPTWSolution, TSPTWIn
         ArrayUtil.shuffle(tour);
         solution.add(tour);
 
+        solution.notifyUpdate();
         return solution;
     }
 }
