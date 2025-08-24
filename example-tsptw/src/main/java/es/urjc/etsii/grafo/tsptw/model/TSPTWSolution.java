@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
@@ -13,7 +14,7 @@ import static java.lang.Math.min;
 
 public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
-    private static Logger log = org.slf4j.LoggerFactory.getLogger(TSPTWSolution.class);
+    private static Logger log = LoggerFactory.getLogger(TSPTWSolution.class);
 
     List<Integer> permutation;
     // TODO remove n and instance properties, keeping them for translation of c++
@@ -107,12 +108,6 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
     public String toString() {
         return "%s -> %s".formatted(this._tourcost, this.permutation);
     }
-
-//    public void setTour(int[] tour) {
-//        this.tour = tour.clone();
-//        this.score = recalculateScore();
-//        notifyUpdate();
-//    }
 
     public double cost() {
         return this._tourcost;
@@ -626,154 +621,8 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         CollectionUtil.shuffle(infeas);
     }
 
-    public boolean backward_violated(boolean[] improved) {
-        List<Integer> infeas = new ArrayList<>();
-        compute_infeas_set(infeas);
-
-        TSPTWSolution sol;
-
-        // Backward movements of violated customers.
-        while (!infeas.isEmpty()) {
-            int i = infeas.remove(infeas.size() - 1);
-            assert (_makespan[i] > window_end[i]);
-            sol = this.clone_solution();
-            boolean moved = false;
-
-            for (int d = i - 1; d > 0; d--) {
-                if (sol.infeasible_move(d, d + 1)) break;
-                sol.swap(d);
-                if (sol.infeasibility() < this.infeasibility()) {
-                    this.copy_from(sol);
-                    improved[0] = true;
-                    moved = true;
-                    if (sol.infeasibility() == 0) return true;
-                }
-            }
-            if (moved) {
-                compute_infeas_set(infeas);
-            }
-        }
-        return false;
-    }
-
-    public boolean forward_nonviolated(boolean[] improved) {
-        List<Integer> feas = new ArrayList<>();
-        compute_feas_set(feas);
-
-        TSPTWSolution sol;
-
-        // Forward movements of non-violated customers.
-        while (!feas.isEmpty()) {
-            int i = feas.remove(feas.size() - 1);
-            assert (_makespan[i] <= window_end[i]);
-            sol = this.clone_solution();
-            boolean moved = false;
-
-            for (int d = i; d < n - 1; d++) {
-                if (sol.infeasible_move(d, d + 1)) break;
-                sol.swap(d);
-                if (sol.infeasibility() < this.infeasibility()) {
-                    this.copy_from(sol);
-                    improved[0] = true;
-                    moved = true;
-                    if (this.infeasibility() == 0) return true;
-                }
-            }
-            if (moved) {
-                compute_feas_set(feas);
-            }
-        }
-        return false;
-    }
-
-    public boolean forward_violated(boolean[] improved) {
-        List<Integer> infeas = new ArrayList<>();
-        compute_infeas_set(infeas);
-
-        TSPTWSolution sol;
-
-        // Forward movements of violated customers.
-        while (!infeas.isEmpty()) {
-            int i = infeas.remove(infeas.size() - 1);
-            assert (_makespan[i] > window_end[i]);
-            sol = this.clone_solution();
-            boolean moved = false;
-
-            for (int d = i; d < n - 1; d++) {
-                if (sol.infeasible_move(d, d + 1)) break;
-                sol.swap(d);
-                if (sol.infeasibility() < this.infeasibility()) {
-                    this.copy_from(sol);
-                    improved[0] = true;
-                    moved = true;
-                    if (this.infeasibility() == 0) return true;
-                }
-            }
-            if (moved) {
-                compute_infeas_set(infeas);
-            }
-        }
-        return false;
-    }
-
-    public boolean backward_nonviolated(boolean[] improved) {
-        List<Integer> feas = new ArrayList<>();
-        compute_feas_set(feas);
-
-        TSPTWSolution sol;
-
-        // Backward movements of non-violated customers.
-        while (!feas.isEmpty()) {
-            int i = feas.remove(feas.size() - 1);
-            assert (_makespan[i] <= window_end[i]);
-            sol = this.clone_solution();
-            boolean moved = false;
-
-            for (int d = i - 1; d > 0; d--) {
-                if (sol.infeasible_move(d, d + 1)) break;
-                sol.swap(d);
-                if (sol.infeasibility() < this.infeasibility()) {
-                    this.copy_from(sol);
-                    improved[0] = true;
-                    moved = true;
-                    if (sol.infeasibility() == 0) return true;
-                }
-            }
-            if (moved) {
-                compute_feas_set(feas);
-            }
-        }
-        return false;
-    }
-
     public double infeasibility() {
         return this._infeasibility;
-    }
-
-    public boolean feasibility_1shift_first_code() {
-        if (_constraint_violations == 0) return false;
-
-        boolean[] improved = {false};
-
-        if (backward_violated(improved)) return true;
-        if (forward_nonviolated(improved)) return true;
-        if (forward_violated(improved)) return true;
-        if (backward_nonviolated(improved)) return true;
-
-        return improved[0];
-    }
-
-    public boolean feasibility_1shift_first_paper() {
-        if (_constraint_violations == 0) return false;
-
-        boolean[] improved = {false};
-
-        if (backward_violated(improved)) return true;
-        if (forward_nonviolated(improved)) return true;
-        if (backward_nonviolated(improved)) return true;
-        if (forward_violated(improved)) return true;
-
-        return improved[0];
     }
 
     public boolean feasibility_1shift_first() {
@@ -905,10 +754,6 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
     public void two_opt_move(int h1, int h3) {
         Collections.reverse(permutation.subList(h1 + 1, h3 + 1));
-    }
-
-    public boolean three_opt_first() {
-        throw new UnsupportedOperationException("Not implemented yet");
     }
 
     public boolean two_opt_first() {
