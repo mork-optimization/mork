@@ -27,7 +27,9 @@ public class IOUtil {
 
     private static final Map<String, Compression.FileArchiveHandler> SUPPORTED_ARCHIVES = Map.of(
             ZIP, new Compression.ZipArchiveHandler(),
-            SEVEN_Z, new Compression.SevenZHandler()
+            SEVEN_Z, new Compression.SevenZHandler(),
+            "gz", new Compression.TarGzArchiveHandler(),
+            "tar", new Compression.TarGzArchiveHandler()
     );
 
     /**

@@ -1,12 +1,15 @@
 package es.urjc.etsii.grafo.util;
 
+import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class IOUtilTest {
@@ -104,4 +107,78 @@ public class IOUtilTest {
             Assertions.assertEquals(1, count);
         }
     }
+
+    void assertEntries(List<String> entries){
+        Set<String> expected = Set.of("instances/f1/bye-world.txt", "instances/f2/test1.txt", "instances/f2/test2.txt", "instances/hello-world.txt", "instances/empty-world.txt");
+        Set<String> actual = new HashSet<>();
+        for(var e: entries){
+            Assertions.assertTrue(e.contains(Compression.SEP));
+            actual.add(e.split(Compression.SEP)[1]);
+        }
+        Assertions.assertEquals(expected, actual);
+    }
+
+    void assertContent(String path, String content) {
+        content = content.strip();
+        if(path.endsWith("test1.txt")){
+            Assertions.assertEquals("1", content);
+        } else if(path.endsWith("test2.txt")){
+            Assertions.assertEquals("2", content);
+        } else if(path.endsWith("hello-world.txt")){
+            Assertions.assertEquals("Hello world!", content);
+        } else if(path.endsWith("bye-world.txt")){
+            Assertions.assertEquals("Bye world!", content);
+        } else if(path.endsWith("empty-world.txt")){
+            Assertions.assertEquals("", content);
+        } else {
+            Assertions.fail("Unexpected file: " + path);
+        }
+    }
+
+    @Test
+    void testZip() throws IOException {
+        var entries = IOUtil.iterate("src/test/resources/instances.zip");
+        assertEntries(entries);
+        for(var e: entries){
+            var in = IOUtil.getInputStream(e);
+            var content = IOUtils.toString(in, StandardCharsets.UTF_8);
+            assertContent(e, content);
+        }
+    }
+
+
+    @Test
+    void test7z() throws IOException {
+        var entries = IOUtil.iterate("src/test/resources/instances.7z");
+        assertEntries(entries);
+        for(var e: entries){
+            var in = IOUtil.getInputStream(e);
+            var content = IOUtils.toString(in, StandardCharsets.UTF_8);
+            assertContent(e, content);
+        }
+    }
+
+    @Test
+    void testTarGz() throws IOException {
+        var entries = IOUtil.iterate("src/test/resources/instances.tar.gz");
+        assertEntries(entries);
+        for(var e: entries){
+            var in = IOUtil.getInputStream(e);
+            var content = IOUtils.toString(in, StandardCharsets.UTF_8);
+            assertContent(e, content);
+        }
+    }
+
+    @Test
+    void testTar() throws IOException {
+        var entries = IOUtil.iterate("src/test/resources/instances.tar");
+        assertEntries(entries);
+        for(var e: entries){
+            var in = IOUtil.getInputStream(e);
+            var content = IOUtils.toString(in, StandardCharsets.UTF_8);
+            assertContent(e, content);
+        }
+    }
+
 }
+
