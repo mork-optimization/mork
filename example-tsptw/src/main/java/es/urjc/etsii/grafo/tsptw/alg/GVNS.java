@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.tsptw.alg;
 
+import es.urjc.etsii.grafo.aop.TimeStats;
 import es.urjc.etsii.grafo.tsptw.constructives.TSPTWRandomConstructive;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.util.TimeControl;
-import es.urjc.etsii.grafo.util.TimeUtil;
 import org.slf4j.Logger;
 
 
@@ -41,6 +41,7 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
         return x;
     }
 
+    @TimeStats
     public TSPTWSolution vns_feasible(TSPTWInstance instance) {
         TSPTWSolution x;
         TSPTWSolution x2;
@@ -74,6 +75,7 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
         return x;
     }
 
+    @TimeStats
     public void gvns(TSPTWSolution x) {
         x.assert_solution();
         int level = 1;
@@ -103,6 +105,7 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
         }
     }
 
+    @TimeStats
     public void vnd(TSPTWSolution x) {
         boolean improved = false;
         assert x.constraint_violations() == 0;

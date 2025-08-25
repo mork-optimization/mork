@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.tsptw.model;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.util.ArrayUtil;
 
 public class TSPTWInstance extends Instance {
 
@@ -19,8 +20,41 @@ public class TSPTWInstance extends Instance {
         this.windowEnd = windowEnd;
         this.isSymmetric = isSymmetric;
 
+        setProperties();
+    }
+
+    private void setProperties() {
         setProperty("n", n);
         setProperty("isSymmetric", isSymmetric);
+
+        int[] windowSizes = new int[windowStart.length];
+        for (int i = 0; i < windowSizes.length; i++) {
+            windowSizes[i] = windowEnd[i] - windowStart[i];
+        }
+        var windowStats = ArrayUtil.stats(windowSizes);
+        setProperty("windowSizeAvg", windowStats.avg());
+        setProperty("windowSizeMin", windowStats.min());
+        setProperty("windowSizeMax", windowStats.max());
+
+        int c = 0;
+        double total = 0, min = Integer.MAX_VALUE, max = Integer.MIN_VALUE;
+        for (int i = 0; i < distance.length; i++) {
+            for (int j = 0; j < distance[i].length; j++) {
+                if(i != j){
+                    c++;
+                    total += distance[i][j];
+                    if(distance[i][j] < min){
+                        min = distance[i][j];
+                    }
+                    if(distance[i][j] > max){
+                        max = distance[i][j];
+                    }
+                }
+            }
+        }
+        setProperty("distMin", min);
+        setProperty("distMax", max);
+        setProperty("distAvg", total/c);
     }
 
 

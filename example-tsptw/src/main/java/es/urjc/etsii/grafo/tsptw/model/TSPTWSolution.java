@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.tsptw.model;
 
+import es.urjc.etsii.grafo.aop.TimeStats;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
@@ -536,6 +537,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         CollectionUtil.shuffle(v);
     }
 
+    @TimeStats
     public boolean feasible_1shift_first() {
         assert (_constraint_violations == 0);
 
@@ -904,6 +906,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         Collections.reverse(permutation.subList(h1 + 1, h3 + 1));
     }
 
+    @TimeStats
     public boolean two_opt_first() {
         assert this.getInstance().isSymmetric();
         assert _constraint_violations == 0;
@@ -957,6 +960,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         this.copy_from(tmp);
     }
 
+    @TimeStats
     public void perturb_1shift_feasible(int level) {
         var rng = RandomManager.getRandom();
         assert _constraint_violations == 0;
