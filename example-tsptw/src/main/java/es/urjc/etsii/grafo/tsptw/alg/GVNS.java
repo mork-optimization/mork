@@ -49,17 +49,18 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
         do {
             int level = 1;
             x = constructive.construct(new TSPTWSolution(instance));
+            x.assert_solution();
             x.ls_feasibility_1shift_first();
+            x.assert_solution();
             x2 = x.clone_solution();
 
-            while (x.constraint_violations() > 0 && level < level_max_vns_feasible
-                    && !TimeControl.isTimeUp()) {
+            while (x.constraint_violations() > 0 && level < level_max_vns_feasible && !TimeControl.isTimeUp()) {
                 x2.perturb_1shift(level);
                 x2.ls_feasibility_1shift_first();
 
                 if (x2.infeasibility() < x.infeasibility()) {
-                    logger.debug("vnd_f {} {} {} {} s remaning",
-                            level, x2.cost(), x2.constraint_violations(), TimeUtil.nanosToSecs(TimeControl.remaining()));
+                    logger.debug("vnd_f {} {} {}",
+                            level, x2.cost(), x2.constraint_violations());
                     x = x2.clone_solution();
                     level = 1; // Improved
                 } else {
@@ -74,6 +75,7 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
     }
 
     public void gvns(TSPTWSolution x) {
+        x.assert_solution();
         int level = 1;
         int iterlevel_max = 30;
         int iterlevel = 0;
