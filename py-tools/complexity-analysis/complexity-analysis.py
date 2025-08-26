@@ -704,8 +704,8 @@ def mse(formula, instance_features, data: DataFrame, component_name: str, proper
     return float(mse)  # np uses 'floating' type
 
 def f_short(f):
-    # convert f to string and if longer than 40 chars cut string
-    return f"{f[:40]}"
+    # f is a column in a dataframe, create a new column with f to string and if longer than 40 chars cut string
+    return f.str.slice(0, 40)
 
 def analyze_complexity(root_component_id: str, instance_features: list[str], data: DataFrame):
     treemap_data = try_analyze_all_property_sources(instance_features, data)
@@ -818,7 +818,6 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
     root_panel = pn.FlexBox(control_pane, detail_pane)
     return root_panel
 
-
 def main():
     parser = argparse.ArgumentParser(
         description='Creates a set of instances to use during the experimentation',
@@ -828,6 +827,8 @@ def main():
     parser.add_argument('-i', '--data', required=False, default="solutions",
                         help="Path to folder which contains profiler data. Data can be stored in either CSV files or JSON, see docs for more details on the format.")
 
+    # parser.add_argument('-dfi', '--dataframe-input', required=False, help="Path to cached dataframe")
+    # parser.add_argument('-dfo', '--dataframe-output', required=False, help="Generate a cached dataframe")
     args = parser.parse_args()
 
     if not isfile(args.properties):
