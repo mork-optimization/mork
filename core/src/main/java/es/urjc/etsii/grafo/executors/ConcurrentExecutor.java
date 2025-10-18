@@ -140,6 +140,10 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
 
     @Override
     public void startup() {
+        int availableCores = Runtime.getRuntime().availableProcessors();
+        if(this.nWorkers > availableCores){
+            log.warn("Configured number of workers ({}) is higher than available processor cores ({}). This may lead to performance degradation due to excessive context switching.", this.nWorkers, availableCores);
+        }
         this.executor = Executors.newFixedThreadPool(this.nWorkers);
         log.debug("Allocating threadpool with {} workers", this.nWorkers);
     }
