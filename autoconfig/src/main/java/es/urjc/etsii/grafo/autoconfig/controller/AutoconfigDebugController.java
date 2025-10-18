@@ -10,7 +10,6 @@ import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import jakarta.servlet.http.HttpServletRequest;
-import org.springframework.context.annotation.Profile;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -72,11 +71,50 @@ public class AutoconfigDebugController {
         return this.inventory.getInventory();
     }
 
+    @GetMapping("/auto/debug/toIraceConfig/**")
+    public Object toIraceConfig(HttpServletRequest request){
+        String url = request.getRequestURI();
+        String[] parts = url.split("/toIraceConfig/");
+        if(parts.length != 2){
+            return Map.of("error", "Invalid URL format. Expected format: /toIraceConfig/{commandLine}");
+        }
+        String cmdline = URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
+        cmdline = cleanCmdLine(cmdline);
+        Map<String, String> params = extractParameters(cmdline);
+        var line1 = new StringBuilder();
+        var line2 = new StringBuilder();
+        for(var entry: params.entrySet()){
+            line1.append(entry.getKey()).append("\t");
+            line2.append(entry.getValue()).append("\t");
+        }
+        return Map.of("iraceConfig", line1.toString().trim() + "\n" + line2.toString().trim());
+    }
+
+    private static Map<String, String> extractParameters(String cmdline) {
+        Map<String, String> params = new LinkedHashMap<>();
+        for(var pair: cmdline.split("\\s+")) {
+            if (pair.contains("=")) {
+                var parts = pair.split("=");
+                if (parts.length == 2) {
+                    params.put(parts[0], parts[1]);
+                } else {
+                    throw new IllegalArgumentException("Invalid parameter format: " + pair);
+                }
+            } else {
+                throw new IllegalArgumentException("Parameter without value: " + pair);
+            }
+        }
+        return params;
+    }
+
     @GetMapping("/auto/debug/decode/**")
     public Object decode(HttpServletRequest request){
         String url = request.getRequestURI();
-        String cmdline = url.split("/decode/")[1];
-        cmdline = URLDecoder.decode(cmdline, StandardCharsets.UTF_8);
+        String[] parts = url.split("/decode/");
+        if(parts.length != 2){
+            return Map.of("error", "Invalid URL format. Expected format: /toIraceConfig/{commandLine}");
+        }
+        String cmdline = URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
         cmdline = cleanCmdLine(cmdline);
 
         var config = cmdline.startsWith("ROOT")?

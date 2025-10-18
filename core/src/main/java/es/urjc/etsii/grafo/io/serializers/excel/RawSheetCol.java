@@ -9,51 +9,51 @@ public enum RawSheetCol {
     /**
      * Instance name
      */
-    INSTANCE_NAME(0, "Instance Name", RawSheetWriter.CType.VALUE),
+    INSTANCE_NAME(0, "Instance Name", ExcelSerializer.CType.VALUE),
 
     /**
      * Algorithm name
      */
-    ALG_NAME(1, "Algorithm Name", RawSheetWriter.CType.VALUE),
+    ALG_NAME(1, "Algorithm Name", ExcelSerializer.CType.VALUE),
 
     /**
      * Iteration
      */
-    ITERATION(2, "Iteration", RawSheetWriter.CType.VALUE),
+    ITERATION(2, "Iteration", ExcelSerializer.CType.VALUE),
 
     /**
      * Score
      */
-    SCORE(3, "Score", RawSheetWriter.CType.VALUE),
+    SCORE(3, "Score", ExcelSerializer.CType.VALUE),
 
     /**
      * Total time in seconds
      */
-    TOTAL_TIME(4, "Total Time (s)", RawSheetWriter.CType.VALUE),
+    TOTAL_TIME(4, "Total Time (s)", ExcelSerializer.CType.VALUE),
 
     /**
      * Time to best in seconds
      */
-    TTB(5, "Time to Best (s)", RawSheetWriter.CType.VALUE),
+    TTB(5, "Time to Best (s)", ExcelSerializer.CType.VALUE),
 
     /**
      * True if score is best known for instance
      */
-    IS_BEST_KNOWN(6, "Is Best Known?", RawSheetWriter.CType.FORMULA),
+    IS_BEST_KNOWN(6, "Is Best Known?", ExcelSerializer.CType.FORMULA),
 
     /**
      * %Dev to best value. Should be 0 if is best known.
      */
-    DEV_TO_BEST(7, "% Dev. to best known", RawSheetWriter.CType.FORMULA),
+    DEV_TO_BEST(7, "% Dev. to best known", ExcelSerializer.CType.FORMULA),
 
     /**
      * Best known value for instance name in same row
      */
-    BEST_KNOWN_FOR_INSTANCE(8, "Best value known", RawSheetWriter.CType.ARRAY_FORMULA);
+    BEST_KNOWN_FOR_INSTANCE(8, "Best value known", ExcelSerializer.CType.FORMULA);
 
     private final int index;
     private final String name;
-    private final RawSheetWriter.CType type;
+    private final ExcelSerializer.CType type;
 
     /**
      * Fields for RawSheetCol
@@ -61,7 +61,7 @@ public enum RawSheetCol {
      * @param name column name
      * @param type column type hint
      */
-    RawSheetCol(int index, String name, RawSheetWriter.CType type) {
+    RawSheetCol(int index, String name, ExcelSerializer.CType type) {
         this.index = index;
         this.name = name;
         this.type = type;
@@ -81,7 +81,7 @@ public enum RawSheetCol {
      *
      * @return column index as string (i.e AB)
      */
-    public String getExcelColIndex(){
+    public String getExcelColIdx(){
         return convertNumToColString(this.getIndex());
     }
 
@@ -99,7 +99,7 @@ public enum RawSheetCol {
      *
      * @return column type hint
      */
-    public RawSheetWriter.CType getCType(){
+    public ExcelSerializer.CType getCType(){
         return type;
     }
 
@@ -109,10 +109,10 @@ public enum RawSheetCol {
      * @param index index to search
      * @return enum value for given index
      */
-    public static RawSheetWriter.CType getCTypeForIndex(int index){
+    public static ExcelSerializer.CType getCTypeForIndex(int index){
         var values = RawSheetCol.values();
         if(index >= values.length){
-            return RawSheetWriter.CType.VALUE;
+            return ExcelSerializer.CType.VALUE;
         }
         for(var i: values){
             if(i.getIndex() == index){

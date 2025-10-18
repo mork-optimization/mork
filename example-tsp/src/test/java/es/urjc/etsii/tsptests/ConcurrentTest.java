@@ -1,8 +1,8 @@
 package es.urjc.etsii.tsptests;
 
-import es.urjc.etsii.grafo.TSP.Main;
-import es.urjc.etsii.grafo.TSP.model.TSPInstance;
-import es.urjc.etsii.grafo.TSP.model.TSPSolution;
+import es.urjc.etsii.grafo.tsp.Main;
+import es.urjc.etsii.grafo.tsp.model.TSPInstance;
+import es.urjc.etsii.grafo.tsp.model.TSPSolution;
 import es.urjc.etsii.grafo.orchestrator.DefaultOrchestrator;
 import es.urjc.etsii.grafo.solver.Mork;
 import es.urjc.etsii.grafo.util.Context;

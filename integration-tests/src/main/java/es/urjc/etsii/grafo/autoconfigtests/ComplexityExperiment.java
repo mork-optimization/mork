@@ -17,7 +17,7 @@ public class ComplexityExperiment extends AbstractExperiment<ACSolution, ACInsta
     @Override
     public List<Algorithm<ACSolution, ACInstance>> getAlgorithms() {
         return List.of(
-                new SimpleAlgorithm<>("SimpleAlgorithm", new SleepyConstructive(),
+                new SimpleAlgorithmNLocal("SimpleAlgorithm", new SleepyConstructive(),
                         Improver.serial(new SleepyImprover(), new SleepyLogImprover())
                 )
         );
@@ -26,6 +26,23 @@ public class ComplexityExperiment extends AbstractExperiment<ACSolution, ACInsta
     private static long getNoise(double mean, double stdDev) {
         long sleep =  (long) RandomManager.getRandom().nextGaussian(mean, stdDev);
         return Math.max(sleep, 0);
+    }
+
+    private static class SimpleAlgorithmNLocal extends SimpleAlgorithm<ACSolution, ACInstance> {
+        public SimpleAlgorithmNLocal(String name, Constructive<ACSolution, ACInstance> constructive,
+                                     Improver<ACSolution, ACInstance> improver) {
+            super(name, constructive, improver);
+        }
+
+        @Override
+        public ACSolution algorithm(ACInstance instance) {
+            ACSolution solution = new ACSolution(instance);
+            solution = constructive.construct(solution);
+            for (int i = 0; i < 3; i++) {
+                solution = improver.improve(solution);
+            }
+            return solution;
+        }
     }
 
     private static class SleepyImprover extends Improver<ACSolution, ACInstance> {

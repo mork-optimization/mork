@@ -1,6 +1,10 @@
 # Developing
+
+# v0.22
+- (Breaking) Simplify VNS implementation. New doc page for VNS.
 - (Fix) Irace integration with v4.2
 - (Fix) #228: Instance selector failed to copy instances if they were not in the root instance folder
+- (New) #129: New Excel serializer, allows users to extend the raw data and should have better performance in most cases.
 
 # v0.21
 - (New) Objective class: a class that represents an objective function of a problem. Each Objective has a name, a direction (minimize or maximize), and functions for extracting the value of the objective from Moves and from Solutions. See docs for a detailed description.

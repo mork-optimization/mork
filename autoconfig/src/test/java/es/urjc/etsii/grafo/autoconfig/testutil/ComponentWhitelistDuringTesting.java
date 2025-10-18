@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.testutil;
 
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
-import es.urjc.etsii.grafo.algorithms.VNS;
+import es.urjc.etsii.grafo.algorithms.vns.VNS;
 import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.*;
 import es.urjc.etsii.grafo.autoconfig.inventory.WhitelistInventoryFilter;

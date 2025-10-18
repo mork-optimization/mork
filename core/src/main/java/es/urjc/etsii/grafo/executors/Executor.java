@@ -139,6 +139,12 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
                 Metrics.resetMetrics();
             }
 
+            if(solverConfig.isTimeStats()){
+                Metrics.enableTimeStats();
+            } else {
+                Metrics.disableTimeStats();
+            }
+
             // Do real work
             startTime = System.nanoTime();
             solution = algorithm.algorithm(instance);

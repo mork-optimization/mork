@@ -29,6 +29,8 @@ public final class Metrics {
     private static InheritableThreadLocal<MetricsStorage> localMetrics = new InheritableThreadLocal<>();
     private static volatile boolean enabled = false;
 
+    private static volatile boolean timeStats = false;
+
     private Metrics(){}
 
     /**
@@ -84,6 +86,22 @@ public final class Metrics {
         localMetrics.remove();
         initializers.clear();
         enabled = false;
+    }
+
+    public static void enableTimeStats(){
+        timeStats = true;
+    }
+
+    public static void disableTimeStats(){
+        timeStats = false;
+    }
+
+    /**
+     * Return true if time stats are enabled, false otherwise.
+     * @return true if time stats are enabled, false otherwise
+     */
+    public static boolean areTimeStatsEnabled(){
+        return timeStats;
     }
 
     /**

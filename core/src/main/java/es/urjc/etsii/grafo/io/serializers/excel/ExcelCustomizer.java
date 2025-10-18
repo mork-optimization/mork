@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
+import org.apache.poi.xssf.streaming.SXSSFWorkbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 
 /**

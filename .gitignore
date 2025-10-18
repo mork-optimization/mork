@@ -42,3 +42,11 @@ target
 .DS_Store
 
 venv
+
+docs/apidocs
+solutions*
+results*
+log*
+.benchmark
+**/docs
+/example-graphs/instances/

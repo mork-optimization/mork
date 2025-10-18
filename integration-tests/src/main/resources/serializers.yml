@@ -52,10 +52,6 @@ serializers:
     # Enable XLSX results serializer, set to false to skip serializing results to Excel 2007+
     enabled: true
 
-    # Defines how to handle calculated values when serializing to Excel 2007+
-    # Possible values: java, excel, auto.
-    calculationMode: auto
-
     # When generating the pivot table, should algorithms be in rows or columns?
     # True: Instances per row, algorithms in columns
     # False: Algorithms in rows, instances in columns

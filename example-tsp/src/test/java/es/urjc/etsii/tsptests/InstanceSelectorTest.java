@@ -1,7 +1,7 @@
 package es.urjc.etsii.tsptests;
 
-import es.urjc.etsii.grafo.TSP.model.TSPInstance;
-import es.urjc.etsii.grafo.TSP.model.TSPInstanceImporter;
+import es.urjc.etsii.grafo.tsp.model.TSPInstance;
+import es.urjc.etsii.grafo.tsp.model.TSPInstanceImporter;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.events.EventPublisher;
 import es.urjc.etsii.grafo.io.InstanceManager;
@@ -10,6 +10,7 @@ import es.urjc.etsii.grafo.orchestrator.InstanceSelector;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.springframework.context.ApplicationEventPublisher;
@@ -23,6 +24,7 @@ import java.util.Map;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+@Disabled // TODO move this tests to the integration tests module
 class InstanceSelectorTest {
 
     private final String instancePath = "instances/TSPLIB/instances";

@@ -82,7 +82,7 @@ Docker template and helper scripts to easily build, run and deploy your applicat
 This folder should contain everything related with the instances of the problem. In this case, since we are tackling
 the TSP, this folder will contain the TSP instances. Therefore, you should put the downloaded instances (`*.tsp` files) from [TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html) in this folder.
 
-- 📁 **src/main/java/es.urjc.etsii.grafo.TSP**
+- 📁 **src/main/java/es.urjc.etsii.grafo.tsp**
     - 📁 **algorithms**: algorithmic components, i.e, constructive, local search, metaheuristics, etc.
     - 📁 **experiments**: defines experiments to execute to test the proposed algorithms and strategies.
     - 📁 **model**: contains the basic elements of the studied problem: solution, instance, etc.

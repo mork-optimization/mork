@@ -100,6 +100,12 @@ public class SolverConfig {
      */
     private boolean metrics = false;
 
+    /**
+     * Enable collection of time statistics for each algorithm component execution.
+     * See {@link es.urjc.etsii.grafo.aop.TimeStats} for more information.
+     */
+    private boolean timeStats = false;
+
 
     /**
      * <p>Getter for the field <code>seed</code>.</p>
@@ -331,5 +337,23 @@ public class SolverConfig {
      */
     public void setIntegrationKey(String integrationKey) {
         this.integrationKey = integrationKey;
+    }
+
+    /**
+     * Enable collection of time statistics for each algorithm component execution.
+     * See {@link es.urjc.etsii.grafo.aop.TimeStats} for more information.
+     * @return true if time stats are enabled, false otherwise
+     */
+    public boolean isTimeStats() {
+        return timeStats;
+    }
+
+    /**
+     * Enable collection of time statistics for each algorithm component execution.
+     * See {@link es.urjc.etsii.grafo.aop.TimeStats} for more information.
+     * @param timeStats true if time stats should be enabled, false otherwise
+     */
+    public void setTimeStats(boolean timeStats) {
+        this.timeStats = timeStats;
     }
 }

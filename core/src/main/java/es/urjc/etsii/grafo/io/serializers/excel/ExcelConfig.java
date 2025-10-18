@@ -97,65 +97,6 @@ public class ExcelConfig extends AbstractResultSerializerConfig {
     private boolean instanceSheetEnabled = true;
 
     /**
-     * Calculation mode, see enum for full details on each mode
-     */
-    private CalculationMode calculationMode = CalculationMode.AUTO;
-
-    /**
-     * Threshold for changing calculation mode if auto. Calculated empirically.
-     */
-    private final int rowThreshold = 2000;
-
-    /**
-     * Defines how to handle calculated values when serializing to Excel 2007+
-     */
-    public enum CalculationMode {
-        /**
-         * Calculate data before serializing to Excel, extremely fast but extending Excel files will not update calculated data such as best value per instance or %Dev.
-         */
-        JAVA,
-
-        /**
-         * Calculate data when user opens Excel file for the first time. Much slower, but allows users to extend and easily modify Excel files.
-         */
-        EXCEL,
-
-        /**
-         * Decide strategy at runtime depending on the number of rows to serialize.
-         */
-        AUTO
-    }
-
-    /**
-     * Defines how to handle calculated values when serializing to Excel 2007+
-     *
-     * @return a value from CalculationMode enum
-     */
-    public CalculationMode getCalculationMode() {
-        return calculationMode;
-    }
-
-    /**
-     * When calculationMode is AUTO,
-     * less than the threshold will use Excel mode,
-     * more than threshold will use Java mode (much faster).
-     *
-     * @return row threshold to change mode automatically
-     */
-    public int getRowThreshold() {
-        return rowThreshold;
-    }
-
-    /**
-     * Defines how to handle calculated values when serializing to Excel 2007+
-     *
-     * @param calculationMode new calculation mode
-     */
-    public void setCalculationMode(CalculationMode calculationMode) {
-        this.calculationMode = calculationMode;
-    }
-
-    /**
      * When generating the pivot table, should algorithms be in rows or columns?
      *
      * @return True: Instances per row, algorithms in columns

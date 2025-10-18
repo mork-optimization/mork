@@ -17,27 +17,39 @@
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>autoconfig</artifactId>
-            <version>0.22-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork-common</artifactId>
-            <version>0.22-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork</artifactId>
-            <version>0.22-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
-            <artifactId>TSP</artifactId>
-            <version>0.22-SNAPSHOT</version>
+            <artifactId>tsp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>graphs</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>bmssc</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>flayouts</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>vrpod</artifactId>
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>integration-tests</artifactId>
-            <version>0.22-SNAPSHOT</version>
+            <scope>test</scope>
         </dependency>
     </dependencies>
 
@@ -46,7 +58,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <version>${mjacoco.version}</version>
                 <executions>
                     <execution>
                         <id>jacoco-report-aggregate</id>

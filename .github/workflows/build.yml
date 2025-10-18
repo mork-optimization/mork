@@ -1,4 +1,4 @@
-name: Build
+name: Sonar analysis and build
 on:
   push:
     branches:

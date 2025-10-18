@@ -61,12 +61,24 @@ public class SimpleAlgorithm<S extends Solution<S, I>, I extends Instance> exten
      */
     @Override
     public S algorithm(I instance) {
+        var solution = constructive(instance);
+        solution = localSearch(solution);
+        return solution;
+    }
+
+    /**
+     * <p>Construct a solution first by calling the correct Java constructor and then
+     * initialize it using the provided constructive method.</p>
+     *
+     * @param instance a I object.
+     * @return a S object.
+     */
+    protected S constructive(I instance) {
         var solution = this.newSolution(instance);
         solution = constructive.construct(solution);
         assert Context.validate(solution);
         Metrics.addCurrentObjectives(solution);
         printStatus("Constructive", solution);
-        solution = localSearch(solution);
         return solution;
     }
 
