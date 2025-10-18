@@ -4,6 +4,7 @@
 - (Breaking) Simplify VNS implementation. New doc page for VNS.
 - (Fix) Irace integration with v4.2
 - (Fix) #228: Instance selector failed to copy instances if they were not in the root instance folder
+- (Fix) #300: Use algorithmName in Algorithm::toString when possible, fallback to current class name.
 - (Fix) #301: Warning if SOLVER_NWORKERS exceeds physical CPU cores in configuration
 - (New) #129: New Excel serializer, allows users to extend the raw data and should have better performance in most cases.
 

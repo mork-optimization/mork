@@ -35,7 +35,9 @@ public abstract class Algorithm<S extends Solution<S, I>, I extends Instance> {
      * @return algorithm name
      */
     public String getName() {
-        return this.algorithmName;
+        return (algorithmName == null || algorithmName.isBlank()) ?
+                this.getClass().getSimpleName() :
+                algorithmName;
     }
 
     /**
@@ -97,8 +99,6 @@ public abstract class Algorithm<S extends Solution<S, I>, I extends Instance> {
 
     @Override
     public String toString() {
-        return this.getClass().getSimpleName() + "{" +
-                "name='" + algorithmName + '\'' +
-                '}';
+        return getName() + "{}";
     }
 }
