@@ -13,6 +13,7 @@ public class IraceConfig {
     private boolean enabled;
     private boolean shell;
     private boolean auc = false;
+    private boolean timecontrol = false;
 
     /**
      * Is irace enabled?
@@ -64,5 +65,21 @@ public class IraceConfig {
      */
     public void setAuc(boolean auc) {
         this.auc = auc;
+    }
+
+    /**
+     * Is time control enabled?
+     * @return true if enabled, false otherwise
+     */
+    public boolean isTimecontrol() {
+        return timecontrol;
+    }
+
+    /**
+     * Enable or disable time control.
+     * @param timecontrol true to enable, false to disable
+     */
+    public void setTimecontrol(boolean timecontrol) {
+        this.timecontrol = timecontrol;
     }
 }
