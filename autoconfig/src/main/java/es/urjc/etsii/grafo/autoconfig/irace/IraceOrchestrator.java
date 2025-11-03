@@ -25,6 +25,7 @@ import es.urjc.etsii.grafo.metrics.MetricUtil;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
+import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
@@ -84,6 +85,10 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final InstanceManager<I> instanceManager;
     private final Optional<SolutionValidator<S, I>> validator;
 
+    private final Optional<TimeLimitCalculator<S, I>> timeLimitCalculator;
+
+
+
     private final AlgorithmCandidateGenerator algorithmCandidateGenerator;
     private final ConcurrentLinkedQueue<IraceRuntimeConfiguration> configHistoric = new ConcurrentLinkedQueue<>();
     private final List<SlowExecution> slowExecutions = Collections.synchronizedList(new ArrayList<>());
@@ -115,11 +120,12 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             InstanceManager<I> instanceManager,
             List<SolutionBuilder<S, I>> solutionBuilders,
             List<AlgorithmBuilder<S, I>> algorithmBuilders,
-            Optional<SolutionValidator<S, I>> validator,
+            Optional<SolutionValidator<S, I>> validator, Optional<TimeLimitCalculator<S, I>> timeLimitCalculator,
             AlgorithmCandidateGenerator algorithmCandidateGenerator
     ) {
         this.solverConfig = solverConfig;
         this.iraceConfig = iraceConfig;
+        this.timeLimitCalculator = timeLimitCalculator;
         Context.Configurator.setSolverConfig(solverConfig);
         Context.Configurator.setBlockConfig(blockConfig);
         this.instanceConfiguration = instanceConfiguration;
@@ -329,11 +335,20 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
     private ExecuteResponse singleExecution(Algorithm<S, I> algorithm, I instance) {
         long maxExecTime = solverConfig.getIgnoreInitialMillis() + solverConfig.getIntervalDurationMillis();
+        if(!isAutoconfigEnabled && this.iraceConfig.isTimecontrol()){
+            if(this.timeLimitCalculator.isEmpty()){
+                throw new IllegalStateException("irace.timecontrol is true, but no time limit calculator has been found, time control will not be enabled");
+            }
+            var timelimit = timeLimitCalculator.get().timeLimitInMillis(instance, algorithm);
+            TimeControl.setMaxExecutionTime(timelimit, TimeUnit.MILLISECONDS);
+            TimeControl.start();
+        }
+
         if (isAutoconfigEnabled) {
             // Autoconfig requires metrics to be enabled to track algorithm performance
-            Metrics.enableMetrics();
             TimeControl.setMaxExecutionTime(maxExecTime, TimeUnit.MILLISECONDS);
             TimeControl.start();
+            Metrics.enableMetrics();
         }
 
         if(Metrics.areMetricsEnabled()){
@@ -352,9 +367,11 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
         double score;
         Objective<?,S,I> mainObj = Context.getMainObjective();
-        if (isAutoconfigEnabled) {
+        if(this.isAutoconfigEnabled || iraceConfig.isTimecontrol()){
             checkExecutionTime(algorithm, instance);
             TimeControl.remove();
+        }
+        if (isAutoconfigEnabled) {
             try {
                 score = MetricUtil.areaUnderCurve(mainObj,
                         TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
