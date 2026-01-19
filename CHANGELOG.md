@@ -7,6 +7,9 @@
 - (New) Python tools module, refactor complexity analysis & instance selector scripts
 - (Fix) Irace v4.2 integration
 - (Fix) #228: Instance selector failed to copy instances if they were not in the root instance folder
+- (Fix) #300: Use algorithmName in Algorithm::toString when possible, fallback to current class name.
+- (Fix) #301: Warning if SOLVER_NWORKERS exceeds physical CPU cores in configuration
+- (New) #129: New Excel serializer, allows users to extend the raw data and should have better performance in most cases.
 
 # v0.21
 - (New) Objective class: a class that represents an objective function of a problem. Each Objective has a name, a direction (minimize or maximize), and functions for extracting the value of the objective from Moves and from Solutions. See docs for a detailed description.

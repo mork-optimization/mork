@@ -114,7 +114,7 @@ public class SimpleAlgorithm<S extends Solution<S, I>, I extends Instance> exten
      */
     @Override
     public String toString() {
-        return "S{" +
+        return getName() + "{" +
                 "c=" + constructive +
                 ", i=" + improver +
                 '}';
