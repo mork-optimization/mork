@@ -45,26 +45,25 @@
         <url>https://mork-optimization.com</url>
     </scm>
     <properties>
-        <java.version>21</java.version>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <java.version>25</java.version>
+        <maven.compiler.source>25</maven.compiler.source>
+        <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jackson.version>2.19.2</jackson.version>
-        <springboot.version>3.5.4</springboot.version>
-        <mockito.version>5.19.0</mockito.version>
-        <mdependency.version>3.8.1</mdependency.version>
-        <msurefire.version>3.5.3</msurefire.version>
-        <mcompiler.version>3.14.0</mcompiler.version>
-        <msource.version>3.3.1</msource.version>
-        <mjavadoc.version>3.11.3</mjavadoc.version>
-        <mjar.version>3.4.2</mjar.version>
+        <jackson.version>3.0.3</jackson.version>
+        <springboot.version>4.0.1</springboot.version>
+        <mdependency.version>3.9.0</mdependency.version>
+        <msurefire.version>3.5.4</msurefire.version>
+        <mcompiler.version>3.14.1</mcompiler.version>
+        <msource.version>3.4.0</msource.version>
+        <mjavadoc.version>3.12.0</mjavadoc.version>
+        <mjar.version>3.5.0</mjar.version>
         <mgpg.version>3.2.8</mgpg.version>
-        <mjacoco.version>0.8.13</mjacoco.version>
+        <mjacoco.version>0.8.14</mjacoco.version>
         <mclean.version>3.5.0</mclean.version>
-        <graalvm.version>24.2.2</graalvm.version>
+        <graalvm.version>25.0.1</graalvm.version>
         <maspectj.version>1.15.0</maspectj.version>
-        <aspectj.version>1.9.24</aspectj.version>
-        <apachepoi.version>5.4.1</apachepoi.version>
+        <aspectj.version>1.9.25.1</aspectj.version>
+        <apachepoi.version>5.5.1</apachepoi.version>
         <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>
         <sonar.moduleKey>${project.artifactId}</sonar.moduleKey>
         <sonar.organization>rmartinsanta</sonar.organization>
@@ -146,12 +145,12 @@
                 <version>${springboot.version}</version>
             </dependency>
 
-            <dependency>
-                <groupId>com.fasterxml.jackson.core</groupId>
-                <artifactId>jackson-annotations</artifactId>
-                <version>${jackson.version}</version>
-                <scope>compile</scope>
-            </dependency>
+<!--            <dependency>-->
+<!--                <groupId>com.fasterxml.jackson.core</groupId>-->
+<!--                <artifactId>jackson-annotations</artifactId>-->
+<!--                <version>${jackson.version}</version>-->
+<!--                <scope>compile</scope>-->
+<!--            </dependency>-->
 
             <dependency>
                 <groupId>org.aspectj</groupId>

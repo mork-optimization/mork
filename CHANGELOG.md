@@ -2,6 +2,7 @@
 
 # v0.22
 - (Breaking) Simplify VNS implementation. New doc page for VNS.
+- (Breaking) Minimum required Java version is now Java 25 LTS.
 - (New) Support tar and tar.gz compressed instance files, in addition to existing zip and 7z formats.
 - (New) #129: Faster Excel serializer and allow users to easily extend the raw data.
 - (New) Python tools module, refactor complexity analysis & instance selector scripts
@@ -10,6 +11,7 @@
 - (Fix) #300: Use algorithmName in Algorithm::toString when possible, fallback to current class name.
 - (Fix) #301: Warning if SOLVER_NWORKERS exceeds physical CPU cores in configuration
 - (New) #129: New Excel serializer, allows users to extend the raw data and should have better performance in most cases.
+- (New) Update dependencies, biggest change is migration to Spring Boot 4 and Jackson 3.
 
 # v0.21
 - (New) Objective class: a class that represents an objective function of a problem. Each Objective has a name, a direction (minimize or maximize), and functions for extracting the value of the objective from Moves and from Solutions. See docs for a detailed description.
