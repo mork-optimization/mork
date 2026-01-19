@@ -13,7 +13,7 @@ instances:
 
   path:
     # Default instance path for all experiments, can be overridden.
-    default: 'instances/complexity'
+    default: 'instances/'
     irace: 'instances/tuning/instances'
 
     # Override default instance path only for the experiment declared in file PreliminarExperiment.java
