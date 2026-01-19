@@ -6,9 +6,23 @@ from alive_progress import alive_bar
 
 pn.extension('mathjax', 'plotly', 'katex')
 
+# Maximum number of box depth when stacking in the tree plot
+# Lower levels than MAX_DEPTH are hidden at first, but are shown
+# later if MAX_DEPTH changes when their parent component is clicked
+MAX_DEPTH=5
+
+# Minimum number of different values than an instance feature must have
+# Instance features that do not have enough values will be discarded
 MIN_POINTS = 5
-DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD = 0.8  # double parameter, double improvemenent or reject
+
+# Penalization applied when using two instance features instead of one, to avoid overfitting.
+# If using two instance features do not improve by at least 20% <--> 0. value to the best single feature,
+# they are ranked lower or even discarded
+DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD = 0.8
+
+
 NEW_LINE = "<br>"  # HTML line break, used in component names
+# Minimum value that a double can be before it is considered equal to 0.
 MIN_VALUE = 0.000_000_001
 
 import argparse
@@ -54,7 +68,7 @@ mysymbols = {}
 
 class CustomStrPrinter(StrPrinter):
     def _print_Float(self, expr):
-        return '{:.2f}'.format(expr)
+        return '{:.2g}'.format(expr)
 
 
 # All generated plotly graphs by ID
@@ -305,7 +319,8 @@ def fold_profiler_data_json(path: str) -> any:
             events.append({'clazz': i['clazz'], 'method': i['method'], 'when': i['exit'], 'enter': False, 'l': i['exit']-i['enter']})
 
     # Sort by when, if when is equal, then first enter true than enter false, if both are equal, then length from greater to smallest if enter is true, from smallest to greatest if enter is false
-    events.sort(key=lambda x: (x['when'], 1 if x['enter'] else 0, -x.get('l', 0) if x['enter'] else x.get('l', 0)))
+    #events.sort(key=lambda x: (x['when'], 1 if x['enter'] else 0, -x.get('l', 0) if x['enter'] else x.get('l', 0)))
+    events.sort(key=lambda x: (x['when']))
     return instance, algorithm, iteration, events
 
 
@@ -729,14 +744,24 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
         labels=treemap_data.child,
         parents=treemap_data.parent,
         customdata=np.stack(
-            (treemap_data.time_total, f_short(treemap_data.f_comb), f_short(treemap_data.f_simpl), f_short(treemap_data.f_simpl_excl),
-             treemap_data[Fit.get_metric_name()], treemap_data.mse_comb, treemap_data.mse_simpl,
-             treemap_data.mse_simpl_excl, treemap_data.time, treemap_data.time_count, treemap_data.time_total_excl,
-             treemap_data.time_exclusive), axis=-1),
-        hovertemplate='<b>%{label} </b> <br> Total T(ms): %{customdata[0]:.2f} (%{customdata[8]:.2f} * %{customdata[9]:.2f}) <br> Exclusive T(ms): %{customdata[10]:.2f} (%{customdata[11]:.2f} * %{customdata[9]:.2f})<br> Global (MSE: %{customdata[5]:.1f}): %{customdata[1]} <br> Combined (MSE: %{customdata[6]:.1f}): %{customdata[2]} <br> Exclusive (MSE: %{customdata[7]:.1f}): %{customdata[3]}<extra></extra>',
-        # <extra></extra> hides the extra tooltips that contains traceid by default
+            (
+                treemap_data.time_total, treemap_data.time, treemap_data.time_count,
+                treemap_data.time_total_excl, treemap_data.time_exclusive, treemap_data.time_count,
+                treemap_data.mse_comb, f_short(treemap_data.f_comb),
+                treemap_data.mse_simpl, f_short(treemap_data.f_simpl),
+                treemap_data.mse_simpl_excl, f_short(treemap_data.f_simpl_excl),
+            ), axis=-1),
+        hovertemplate='''
+<b>%{label} </b> <br>
+Total T(ms): %{customdata[0]:.2f} (%{customdata[1]:.2f} * %{customdata[2]:.2f}) <br>
+Exclusive T(ms): %{customdata[3]:.2f} (%{customdata[4]:.2f} * %{customdata[5]:.2f})<br>
+Whitebox (MSE: %{customdata[6]:.1f}): %{customdata[7]} <br>
+Blackbox (MSE: %{customdata[8]:.1f}): %{customdata[9]} <br>
+Exclusive (MSE: %{customdata[10]:.1f}): %{customdata[11]}
+<extra></extra>
+        ''',
         marker=dict(
-            colors=treemap_data.time,
+            colors=treemap_data.time_total_excl_scaled,
             colorscale='RdYlGn_r',
             pad=dict(t=50, r=15, b=15, l=15),
             cmin=0,
@@ -748,7 +773,7 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
             ),
         ),
 
-        maxdepth=3,
+        maxdepth=MAX_DEPTH,
         legend="legend"
     ))
 
