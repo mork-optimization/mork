@@ -588,6 +588,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         return false;
     }
 
+    @TimeStats
     public boolean ls_feasibility_1shift_first() {
         boolean improved = false;
         while (feasibility_1shift_first_code()) {
@@ -1030,6 +1031,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         assert_solution();
     }
 
+    @TimeStats
     public void perturb_1shift(int level) {
         var rng = RandomManager.getRandom();
         assert level > 0;
