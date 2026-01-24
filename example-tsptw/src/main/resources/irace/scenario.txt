@@ -1,0 +1,224 @@
+###################################################### -*- mode: r -*- #####
+## Scenario setup for Iterated Race (iRace).
+############################################################################
+
+## !!!! IMPORTANT !!!!
+## VALUES BETWEEN __ ARE AUTOCONFIGURED BY MORK AT RUNTIME
+## Example: trainInstancesDir will be automatically set to the instance folder set in application.yml
+
+## To use the default value of a parameter of iRace, simply do not set
+## the parameter (comment it out in this file, and do not give any
+## value on the command line).
+
+## File that contains the description of the parameters.
+parameterFile = "./parameters.txt"
+
+## Directory where the programs will be run.
+execDir = "./"
+
+## File to save tuning results as an R dataset, either absolute path
+## or relative to execDir.
+# logFile = "./irace.Rdata"
+
+## Directory where tuning instances are located, either absolute path or
+## relative to current directory.
+trainInstancesDir = "__INSTANCES_PATH__"
+
+## File with a list of instances and (optionally) parameters.
+## If empty or NULL, do not use a file.
+#trainInstancesFile = "./training.txt"
+#testInstancesFile = "./test.txt"
+
+
+## A file containing a list of initial configurations.
+## If empty or NULL, do not use a file.
+# configurationsFile = ""
+
+## The script called for each configuration that launches the program to be
+## tuned.  See templates/target-runner.tmpl
+targetRunner <- function(experiment, scenario) {
+  #
+  # configuration.id <- experiment$id.configuration
+  # instance.id <- experiment$id.instance
+  # seed <- experiment$seed
+  # configuration <- experiment$configuration
+  # instance <- experiment$instance
+  # switches <- experiment$switches
+  # bound <- experiment$bound
+  # integration_key <- "__INTEGRATION_KEY__"
+  # url <- "http://127.0.0.1:__PORT__/execute"
+  # cmdline <- paste(configuration.id, instance.id, seed, instance, bound,
+  #                  buildCommandLine(configuration, switches))
+  # enc_cmdline <- base64encode(charToRaw(cmdline))
+  # data <- paste0('{"config":"', enc_cmdline, '", "key":"', integration_key, '"}')
+  #
+  # response <- POST(url, content_type_json(), body = data)
+  # text_response <- content(response, as = "text")
+  #
+  # v.output <- parse.output(text_response, verbose = FALSE)
+  # cost <- v.output[1]
+  # time <- v.output[2]
+  # return(list(cost = cost, time = time))
+  stop("targetRunner should never be called, targetRunnerParallel is responsible for handling the experiment")
+}
+
+## Number of times to retry a call to target-runner if the call failed.
+# targetRunnerRetries = 0
+
+## Optional data passed to targetRunner. This is ignored by the default
+## targetRunner function, but it may be used by custom targetRunner functions
+## to pass persistent data around.
+# targetRunnerData = NULL
+
+## Optional R function to provide custom parallelization of target.runner.  The
+## signature of this function should be 'function(experiments, target.runner,
+## scenario)', where target.runner is an R function, 'experiments' is a list
+## such that each of its elements will be the argument to one call of
+## target.runner, and scenario will also be passed to every call. See
+## help(target.runner.default) for details.
+targetRunnerParallel <- function(experiments, exec_target_runner, scenario, target_runner) {
+  library("httr")
+  library("base64enc")
+  library("rjson")
+  integration_key <- "__INTEGRATION_KEY__"
+  url <- "http://127.0.0.1:__PORT__/batchExecute"
+
+  enc_cmdline <- base64encode(charToRaw(toJSON(experiments)))
+  data <- paste0('{"config":"', enc_cmdline, '", "key":"', integration_key, '"}')
+
+  response <- POST(url, content_type_json(), timeout(24*3600), body = data)
+  parsed_response <- content(response, as = "parsed")
+  for (i in 1:length(parsed_response)) {
+    if (parsed_response[[i]]$cost == "NaN") {
+      parsed_response[[i]]$cost <- Inf
+      parsed_response[[i]]$time <- 0
+    }
+  }
+
+  return(parsed_response)
+}
+
+## Optional script that provides a numeric value for each configuration.
+## See templates/target-evaluator.tmpl
+# targetEvaluator = ""
+
+## The maximum number of runs (invocations of targetRunner) that will
+## performed. It determines the (maximum) budget of experiments for the tuning.
+maxExperiments =__MAX_EXPERIMENTS__
+
+## Directory where testing instances are located, either absolute or relative
+## to current directory.
+# testInstancesDir = ""
+
+## File containing a list of test instances and optionally additional
+## parameters for them.  If empty or NULL, do not use a file.
+# testInstancesFile = ""
+
+## Number of elite configurations returned by irace that will be tested.
+# testNbElites = 1
+
+## Enable/disable testing the elite configurations found at each iteration.
+# testIterationElites = 0
+
+## A value of 0 silences all debug messages. Higher values provide
+## more verbose debug messages.
+# debugLevel = 0
+
+## Number of iterations of Race. Do not use something else than the
+## default (that is, the dynamic value) unless you know exactly what
+## you are doing.
+# nbIterations = 0
+
+## Number of experiments per iteration. Do no use something else than
+## the default (that is, the dynamic value) unless you know exactly
+## what you are doing.
+# nbExperimentsPerIteration = 0
+
+## Sample the instances or take them always in the same order.
+# sampleInstances = 1
+
+## Specifies the statistical test type: F-test or t-test.
+testType = "F-test"
+
+## Specifies how many instances are seen before the first elimination
+## test. It must be a multiple of eachTest.
+firstTest =5
+
+## Specifies how many instances are seen between elimination tests.
+# eachTest = 1
+
+## Specifies how many instances are seen between elimination tests.
+# eachTest = 1
+
+## The minimum number of configurations that should survive to continue one
+## iteration. Do not use something else than the default (that is, the
+## dynamic value) unless you know exactly what you are doing.
+# minNbSurvival = 0
+
+## The number of configurations that should be sampled and evaluated at
+## each iteration. Do no use something else than
+## the default (that is, the dynamic value) unless you know exactly
+## what you are doing.
+# nbConfigurations = 0
+
+## This value is used to determine the number of configurations
+## to be sampled and evaluated at each iteration. Use
+## the default unless you know exactly what you are doing.
+# mu = 5
+
+## Enable/disable deterministic algorithm mode, if enabled irace
+## will not use an instance more that once in each race. Note that
+## if the number of instances provided is less than firstTest, no
+## statistical test will be performed.
+# deterministic = 0
+
+## Seed of the random number generator (must be a positive integer, NA
+## means use a random seed).
+seed = __SEED__
+
+## Number of calls to targetRunner to execute in parallel. Less than 2
+## means calls to targetRunner are sequentially executed.
+# parallel = __PARALLEL__
+# Use an absurdly high number to avoid Irace being the bottleneck.
+# Parallelism is automatically controlled by the Mork Execution Controller.
+parallel = 1000000
+
+## Enable/disable load-balancing when executing experiments in
+## parallel. Load-balancing makes better use of computing resources, but
+## increases communication overhead. If this overhead is large, disabling
+## load-balancing may be faster.
+# loadBalancing = 1
+
+## Enable/disable SGE cluster mode. Use qstat to wait for
+## cluster jobs to finish (targetRunner must invoke qsub).
+# sgeCluster = 0
+
+## Enable/disable MPI. Use MPI to execute targetRunner in parallel
+## (parameter parallel is the number of slaves).
+# mpi = 0
+
+## Enable/disable the soft restart strategy that avoids premature convergence
+## of the probabilistic model.
+# softRestart = 1
+
+## Confidence level for the elimination test.
+# confidence = 0.95
+
+## Previously saved log file to recover the execution of irace, either
+## absolute path or relative to the current directory. If empty or
+## NULL, recovery is not performed.
+# recoveryFile = ""
+
+## Enable/disable elitist irace.
+# elitist = 1
+
+## Number of instances to add to execution list before previous instances in
+## elitist irace.
+# elitistNewInstances  = 1
+
+## Limit for the elitist race, number of statistical test performed without
+## elimination of configurations.
+# elitistLimit  = 2
+
+## END of scenario file
+############################################################################
