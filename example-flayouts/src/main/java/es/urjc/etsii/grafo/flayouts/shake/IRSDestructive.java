@@ -22,15 +22,15 @@ public class IRSDestructive extends Destructive<FLPSolution, FLPInstance> {
             throw new IllegalArgumentException("IRSDestructive is designed to work with IteratedGreedy like methods, not VNS");
         }
 
-        if (solution.getNRows() != 2) {
-            throw new IllegalArgumentException("IRSDestructive only tested for DRFP, current nRows = " + solution.getNRows());
+        if (solution.nRows() != 2) {
+            throw new IllegalArgumentException("IRSDestructive only tested for DRFP, current nRows = " + solution.nRows());
         }
 
         var instance = solution.getInstance();
 
         var touchingFacilities = getTouching(solution);
         if (touchingFacilities.isEmpty()) {
-            log.debug(String.format("Possible bug: could not detect any facilities touching between rows. Skipping this iteration. Data: %s", Arrays.deepToString(solution.getSolutionData())));
+            log.debug(String.format("Possible bug: could not detect any facilities touching between rows. Skipping this iteration. Data: %s", Arrays.deepToString(solution.getRows())));
             return null;
         }
 
@@ -44,9 +44,9 @@ public class IRSDestructive extends Destructive<FLPSolution, FLPInstance> {
         int b_left_start = 0;
         int b_left_end = item.destPosition;
         int a_right_start = item.originPosition + 1;
-        int a_right_end = solution.getRowSize(item.originRow);
+        int a_right_end = solution.rowSize(item.originRow);
         int b_right_start = item.destPosition + 1;
-        int b_right_end = solution.getRowSize(item.destRow);
+        int b_right_end = solution.rowSize(item.destRow);
 
         // First piece: Data before the chosen touching facilities
         int[][] data1 = new int[][]{
@@ -76,10 +76,10 @@ public class IRSDestructive extends Destructive<FLPSolution, FLPInstance> {
     }
 
     private int[][] toIds(FLPSolution solution) {
-        var facilities = solution.getSolutionData();
+        var facilities = solution.getRows();
         int[][] result = new int[facilities.length][];
         for (int i = 0; i < facilities.length; i++) {
-            int rowSize = solution.getRowSize(i);
+            int rowSize = solution.rowSize(i);
             result[i] = new int[rowSize];
             for (int j = 0; j < rowSize; j++) {
                 result[i][j] = facilities[i][j].id;
@@ -90,14 +90,14 @@ public class IRSDestructive extends Destructive<FLPSolution, FLPInstance> {
 
     private ArrayList<Touch> getTouching(FLPSolution solution) {
         var touches = new ArrayList<Touch>();
-        var data = solution.getSolutionData();
+        var data = solution.getRows();
 
-        for (int row1 = 0; row1 < solution.getNRows(); row1++) {
-            for (int pos1 = 0; pos1 < solution.getRowSize(row1); pos1++) {
+        for (int row1 = 0; row1 < solution.nRows(); row1++) {
+            for (int pos1 = 0; pos1 < solution.rowSize(row1); pos1++) {
                 var f1 = data[row1][pos1];
-                for (int row2 = row1 + 1; row2 < solution.getNRows(); row2++) {
+                for (int row2 = row1 + 1; row2 < solution.nRows(); row2++) {
                     assert row1 != row2;
-                    for (int pos2 = 0; pos2 < solution.getRowSize(row2); pos2++) {
+                    for (int pos2 = 0; pos2 < solution.rowSize(row2); pos2++) {
                         var f2 = data[row2][pos2];
                         if (f1.stacks(f2)) {
                             var t = new Touch(solution, row1, pos1, row2, pos2);
@@ -125,11 +125,11 @@ public class IRSDestructive extends Destructive<FLPSolution, FLPInstance> {
         }
 
         public int getId1() {
-            return solution.getSolutionData()[originRow][originPosition].id;
+            return solution.getRows()[originRow][originPosition].id;
         }
 
         public int getId2() {
-            return solution.getSolutionData()[destRow][destPosition].id;
+            return solution.getRows()[destRow][destPosition].id;
         }
     }
 

@@ -25,7 +25,7 @@ public class RandomRemoveDestructive extends Destructive<FLPSolution, FLPInstanc
     @Override
     public FLPSolution destroy(FLPSolution solution, int k) {
         var instance = solution.getInstance();
-        var facilities = solution.getSolutionData();
+        var facilities = solution.getRows();
 
         // How many facilities should be removed from the solution, remove at least one
         long n = max(1, round(instance.getNRealFacilities() * ratio));
@@ -34,8 +34,8 @@ public class RandomRemoveDestructive extends Destructive<FLPSolution, FLPInstanc
         var allIds = new ArrayList<Integer>();
 
         // Get all assigned facilities IDs
-        for (int i = 0; i < solution.getNRows(); i++) {
-            for (int j = 0; j < solution.getRowSize(i); j++) {
+        for (int i = 0; i < solution.nRows(); i++) {
+            for (int j = 0; j < solution.rowSize(i); j++) {
                 allIds.add(facilities[i][j].facility.id);
             }
         }
@@ -49,10 +49,10 @@ public class RandomRemoveDestructive extends Destructive<FLPSolution, FLPInstanc
         // Rebuild solution without blocked facilities
         var newSolution = solution.cloneSolution();
         newSolution.deassignAll();
-        for (int i = 0; i < solution.getNRows(); i++) {
-            for (int j = 0; j < solution.getRowSize(i); j++) {
-                var facility = facilities[i][j].facility;
-                if(!blockedFacilities.contains(facility.id)){
+        for (int i = 0; i < solution.nRows(); i++) {
+            for (int j = 0; j < solution.rowSize(i); j++) {
+                var facility = facilities[i][j];
+                if(!blockedFacilities.contains(facility)){
                     newSolution.insertLast(i, facility);
                 }
             }

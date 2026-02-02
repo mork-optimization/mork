@@ -27,7 +27,7 @@ public class DRFPSolutionIO extends SolutionSerializer<FLPSolution, FLPInstance>
     @Override
     public void export(BufferedWriter writer, WorkUnitResult<FLPSolution, FLPInstance> result) throws IOException {
         var solution = result.solution();
-        var data = solution.getSolutionData();
+        var data = solution.getRows();
         StringBuilder sb = new StringBuilder();
         for(var row: data){
             for(var f: row){

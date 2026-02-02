@@ -70,7 +70,7 @@ public class FLPInstance extends Instance {
      * @param facility facility id, between 0 and n-1
      * @return size
      */
-    public int l(int facility){
+    public int length(int facility){
         return this.lengths[facility];
     }
 
@@ -80,7 +80,7 @@ public class FLPInstance extends Instance {
      * @param f2 facility2, between 0 and n-1
      * @return flow
      */
-    public int c(int f1, int f2){
+    public int flow(int f1, int f2){
         return this.weigths[f1][f2];
     }
 

@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.flayouts.model;
 
-import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.util.ArrayUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
@@ -48,7 +47,7 @@ public class MoveNeighborhood extends RandomizableNeighborhood<FLPMove, FLPSolut
             var ri2 = solution.getRowIndexForPosition(position2);
 
             // Antes de hacer el movement
-            assert solution.equalsSolutionData(solution.recalculateCentersCopy());
+            assert solution.equalsSolutionData(solution.calculateCenters());
             double before = solution.getScore();
             assert DoubleComparator.equals(solution.getScore(), solution.recalculateScore());
 
@@ -56,30 +55,30 @@ public class MoveNeighborhood extends RandomizableNeighborhood<FLPMove, FLPSolut
 
             if(ri1.row == ri2.row){
                 // Do movement
-                ArrayUtil.deleteAndInsert(solution.solutionData[ri1.row], ri1.index, ri2.index);
+                ArrayUtil.deleteAndInsert(solution.rows[ri1.row], ri1.index, ri2.index);
 
                 // Despues de hacer el movimiento
                 after = solution.recalculateScore();
 
                 // Undo movement
-                ArrayUtil.deleteAndInsert(solution.solutionData[ri1.row], ri2.index, ri1.index);
+                ArrayUtil.deleteAndInsert(solution.rows[ri1.row], ri2.index, ri1.index);
 
                 // Al deshacer el coste deberia quedar igual
                 solution.recalculateCentersInPlace(ri1.row);
 
             } else {
-                var value = ArrayUtil.remove(solution.solutionData[ri1.row], ri1.index);
-                ArrayUtil.insert(solution.solutionData[ri2.row], ri2.index, value);
+                var value = ArrayUtil.remove(solution.rows[ri1.row], ri1.index);
+                ArrayUtil.insert(solution.rows[ri2.row], ri2.index, value);
                 solution.rowSize[ri1.row]--;
-                solution.solutionData[ri1.row][solution.rowSize[ri1.row]] = null;
+                solution.rows[ri1.row][solution.rowSize[ri1.row]] = null;
                 solution.rowSize[ri2.row]++;
                 after = solution.recalculateScore();
 
-                value = ArrayUtil.remove(solution.solutionData[ri2.row], ri2.index);
-                ArrayUtil.insert(solution.solutionData[ri1.row], ri1.index, value);
+                value = ArrayUtil.remove(solution.rows[ri2.row], ri2.index);
+                ArrayUtil.insert(solution.rows[ri1.row], ri1.index, value);
                 solution.rowSize[ri1.row]++;
                 solution.rowSize[ri2.row]--;
-                solution.solutionData[ri2.row][solution.rowSize[ri2.row]] = null;
+                solution.rows[ri2.row][solution.rowSize[ri2.row]] = null;
             }
 
             assert DoubleComparator.equals(before, solution.recalculateScore());
@@ -88,7 +87,7 @@ public class MoveNeighborhood extends RandomizableNeighborhood<FLPMove, FLPSolut
 
         @Override
         protected void _execute() {
-            this.move(this.index1, this.index2, this.score);
+            this.move(this.index1, this.index2, this.delta);
         }
 
         @Override
@@ -127,7 +126,7 @@ public class MoveNeighborhood extends RandomizableNeighborhood<FLPMove, FLPSolut
                 solution.solutionData[ri1.row][solution.rowSize[ri1.row]] = null;
 
                 solution.rowSize[ri2.row]++;
-                solution.cachedScore += this.score;
+                solution.cachedScore += this.delta;
                 solution.recalculateCentersInPlace(ri1.row);
                 solution.recalculateCentersInPlace(ri2.row);
             }
@@ -139,7 +138,7 @@ public class MoveNeighborhood extends RandomizableNeighborhood<FLPMove, FLPSolut
         public String toString() {
             var rowindex1 = s.getRowIndexForPosition(this.index1);
             var rowindex2 = s.getRowIndexForPosition(this.index2);
-            return String.format("(%s, %s) => (%s, %s); c=%s", rowindex1.row, rowindex1.index, rowindex2.row, rowindex2.index, this.score);
+            return String.format("(%s, %s) => (%s, %s); c=%s", rowindex1.row, rowindex1.index, rowindex2.row, rowindex2.index, this.delta);
         }
     }
 }

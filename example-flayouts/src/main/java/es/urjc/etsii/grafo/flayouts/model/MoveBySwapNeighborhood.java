@@ -22,22 +22,22 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
         var moves = new ArrayList<MoveBySwap>();
         var clone = new FLPSolution(solution);
         assert DoubleComparator.equals(clone.getScore(), solution.getScore());
-        assert clone.equalsSolutionData(solution.getSolutionData());
+        assert clone.equalsSolutionData(solution.getRows());
         double initialScore = solution.getScore();
 
-        for (int i = 0; i < solution.solutionData.length; i++) {
+        for (int i = 0; i < solution.rows.length; i++) {
             generateRowMoves(moves, solution, i);
         }
 
         assert DoubleComparator.equals(initialScore, solution.recalculateScore());
         assert DoubleComparator.equals(clone.getScore(), solution.getScore());
-        assert clone.equalsSolutionData(solution.getSolutionData());
+        assert clone.equalsSolutionData(solution.getRows());
         return moves;
     }
 
     protected void generateRowMoves(List<MoveBySwap> moves, FLPSolution solution, int rowIndex) {
-        var rowData = solution.getSolutionData()[rowIndex];
-        int rowSize = solution.getRowSize(rowIndex);
+        var rowData = solution.getRows()[rowIndex];
+        int rowSize = solution.rowSize(rowIndex);
 
         for (int position = 0; position < solution.rowSize[rowIndex]; position++) {
             var target = rowData[position];
@@ -52,12 +52,12 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
 //            assert target == rowData[rowSize-1];
 
             // Moves available in other rows
-            for (int insertRow = 0; insertRow < solution.solutionData.length; insertRow++) {
+            for (int insertRow = 0; insertRow < solution.rows.length; insertRow++) {
                 if(rowIndex == insertRow){
                     continue;
                 }
                 // Prepare using existing move
-                int insertIndex = solution.getRowSize(insertRow);
+                int insertIndex = solution.rowSize(insertRow);
                 var insertRI = new FLPSolution.RowIndex(insertRow, insertIndex);
                 var originRI = new FLPSolution.RowIndex(rowIndex, position);
 
@@ -65,7 +65,7 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
                 double baseCost = prepareMove.getValue();
                 prepareMove._execute();
 
-                assert solution.getRowSize(rowIndex) == rowSize -1;
+                assert solution.rowSize(rowIndex) == rowSize -1;
 
                 // Do
                 right2LeftForPosition(baseCost, rowIndex, position, moves, solution, insertRow, insertIndex);
@@ -74,7 +74,7 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
                 var undoMove = new HelperMove(solution, insertRI, originRI);
                 assert DoubleComparator.equals(-baseCost, undoMove.getValue());
                 undoMove._execute();
-                assert solution.getRowSize(rowIndex) == rowSize;
+                assert solution.rowSize(rowIndex) == rowSize;
             }
 
             // Undo prepare for multirow movebyswap
@@ -97,7 +97,7 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
         }
         // Undo insert by swap
         // [a,b,c,d,e] ends like [b,c,d,e,a], delete last and insert on first position.
-        ArrayUtil.deleteAndInsert(solution.solutionData[row], solution.rowSize[row] - 1, position);
+        ArrayUtil.deleteAndInsert(solution.rows[row], solution.rowSize[row] - 1, position);
         solution.recalculateCentersInPlace(row);
 
         double finalScore = solution.getScore();
@@ -120,7 +120,7 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
 
         // Undo insert by swap
         // [a,b,c,d,e] ends like [e,a,b,c,d], delete last and insert on first position.
-        ArrayUtil.deleteAndInsert(solution.solutionData[row], 0, position);
+        ArrayUtil.deleteAndInsert(solution.rows[row], 0, position);
         solution.recalculateCentersInPlace(row);
 
         double finalScore = solution.getScore();
@@ -143,7 +143,7 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
 
         // Undo insert by swap
         // [a,b,c,d,e] ends like [e,a,b,c,d], delete last and insert on first position.
-        ArrayUtil.deleteAndInsert(solution.solutionData[row], 0, position);
+        ArrayUtil.deleteAndInsert(solution.rows[row], 0, position);
         solution.recalculateCentersInPlace(row);
 
         double finalScore = solution.getScore();
@@ -168,7 +168,7 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
 
     private static double consecutiveSwapCost(FLPSolution solution, int row, int leftIndex, int rightIndex) {
         int rowSize = solution.rowSize[row];
-        var rowData = solution.solutionData[row];
+        var rowData = solution.rows[row];
         var instance = solution.getInstance();
 
         assert leftIndex < rightIndex : String.format("Left index (%s) must be strictly smaller than right index (%s)", leftIndex, rightIndex);
@@ -200,33 +200,33 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
         for (int i = 0; i < leftIndex; i++) {
             var otherbox = rowData[i];
             // Left box moves right increases cost
-            costChange += distanceChangeLeft2Right * instance.c(leftBox.facility, otherbox.facility);
+            costChange += distanceChangeLeft2Right * instance.flow(leftBox.facility, otherbox.facility);
             // Right cost moves left decreases cost
-            costChange -= distanceChangeRight2Left * instance.c(rightBox.facility, otherbox.facility);
+            costChange -= distanceChangeRight2Left * instance.flow(rightBox.facility, otherbox.facility);
         }
 
         // Area 2
         for (int i = rightIndex + 1; i < rowSize; i++) {
             var otherbox = rowData[i];
             // Left box moves right decreases cost
-            costChange -= distanceChangeLeft2Right * instance.c(leftBox.facility, otherbox.facility);
+            costChange -= distanceChangeLeft2Right * instance.flow(leftBox.facility, otherbox.facility);
             // Right cost moves left increases cost
-            costChange += distanceChangeRight2Left * instance.c(rightBox.facility, otherbox.facility);
+            costChange += distanceChangeRight2Left * instance.flow(rightBox.facility, otherbox.facility);
         }
 
         // Area 3: All rows different from current
-        for (int currentRow = 0; currentRow < solution.solutionData.length; currentRow++) {
+        for (int currentRow = 0; currentRow < solution.rows.length; currentRow++) {
             if(currentRow == row) continue; // Current row already calculated by Area 1 and Area 2
             for (int i = 0; i < solution.rowSize[currentRow]; i++) {
-                var otherBox = solution.solutionData[currentRow][i];
-                int leftBoxWeight = instance.c(otherBox.facility, leftBox.facility);
+                var otherBox = solution.rows[currentRow][i];
+                int leftBoxWeight = instance.flow(otherBox.facility, leftBox.facility);
                 double beforeLeftCost = Math.abs(otherBox.lastCenter - leftBox.lastCenter);
                 double afterLeftCost = Math.abs(otherBox.lastCenter - newRightCenter);
 
                 // Changed
                 costChange += (afterLeftCost - beforeLeftCost) * leftBoxWeight;
 
-                int rightBoxWeight = instance.c(otherBox.facility, rightBox.facility);
+                int rightBoxWeight = instance.flow(otherBox.facility, rightBox.facility);
                 double beforeRightCost = Math.abs(otherBox.lastCenter - rightBox.lastCenter);
                 double afterRightCost = Math.abs(otherBox.lastCenter - newLeftCenter);
                 costChange += (afterRightCost - beforeRightCost) * rightBoxWeight;
@@ -270,13 +270,13 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
 
             if(row1 == row2){
                 solution.cachedScore += score;
-                ArrayUtil.deleteAndInsert(solution.solutionData[row1], index1, index2);
+                ArrayUtil.deleteAndInsert(solution.rows[row1], index1, index2);
                 solution.recalculateCentersInPlace(row1);
             } else {
-                var value = ArrayUtil.remove(solution.solutionData[row1], index1);
-                ArrayUtil.insert(solution.solutionData[row2], index2, value);
+                var value = ArrayUtil.remove(solution.rows[row1], index1);
+                ArrayUtil.insert(solution.rows[row2], index2, value);
                 solution.rowSize[row1]--;
-                solution.solutionData[row1][solution.rowSize[row1]] = null;
+                solution.rows[row1][solution.rowSize[row1]] = null;
                 solution.rowSize[row2]++;
                 solution.cachedScore += score;
                 solution.recalculateCentersInPlace(row1);
@@ -334,7 +334,7 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
         public static double moveCost(FLPSolution solution, FLPSolution.RowIndex ri1, FLPSolution.RowIndex ri2) {
 
             // Antes de hacer el movement
-            assert solution.equalsSolutionData(solution.recalculateCentersCopy());
+            assert solution.equalsSolutionData(solution.calculateCenters());
             double before = solution.getScore();
             assert DoubleComparator.equals(solution.getScore(), solution.recalculateScore());
 
@@ -342,26 +342,26 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
 
             if(ri1.row == ri2.row){
                 // Do movement
-                ArrayUtil.deleteAndInsert(solution.solutionData[ri1.row], ri1.index, ri2.index);
+                ArrayUtil.deleteAndInsert(solution.rows[ri1.row], ri1.index, ri2.index);
 
                 // Despues de hacer el movimiento
                 after = solution.recalculateScore();
 
                 // Undo movement
-                ArrayUtil.deleteAndInsert(solution.solutionData[ri1.row], ri2.index, ri1.index);
+                ArrayUtil.deleteAndInsert(solution.rows[ri1.row], ri2.index, ri1.index);
 
                 // Al deshacer el coste deberia quedar igual
                 solution.recalculateCentersInPlace(ri1.row);
 
             } else {
-                var value = ArrayUtil.remove(solution.solutionData[ri1.row], ri1.index);
-                ArrayUtil.insert(solution.solutionData[ri2.row], ri2.index, value);
+                var value = ArrayUtil.remove(solution.rows[ri1.row], ri1.index);
+                ArrayUtil.insert(solution.rows[ri2.row], ri2.index, value);
                 solution.rowSize[ri1.row]--;
                 solution.rowSize[ri2.row]++;
                 after = solution.recalculateScore();
 
-                value = ArrayUtil.remove(solution.solutionData[ri2.row], ri2.index);
-                ArrayUtil.insert(solution.solutionData[ri1.row], ri1.index, value);
+                value = ArrayUtil.remove(solution.rows[ri2.row], ri2.index);
+                ArrayUtil.insert(solution.rows[ri1.row], ri1.index, value);
                 solution.rowSize[ri1.row]++;
                 solution.rowSize[ri2.row]--;
             }

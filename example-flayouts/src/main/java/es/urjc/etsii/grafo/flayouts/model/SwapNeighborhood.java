@@ -6,7 +6,6 @@ import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.Optional;
-import java.util.stream.Stream;
 
 public class SwapNeighborhood extends RandomizableNeighborhood<FLPMove, FLPSolution, FLPInstance> {
 
@@ -46,14 +45,14 @@ public class SwapNeighborhood extends RandomizableNeighborhood<FLPMove, FLPSolut
             var ri2 = solution.getRowIndexForPosition(position2);
 
             // Antes de hacer el movimiento
-            assert solution.equalsSolutionData(solution.recalculateCentersCopy());
+            assert solution.equalsSolutionData(solution.calculateCenters());
             double before = solution.getScore();
             assert DoubleComparator.equals(solution.getScore(), solution.recalculateScore());
 
             // Do movement
-            var temp = solution.solutionData[ri1.row][ri1.index];
-            solution.solutionData[ri1.row][ri1.index] = solution.solutionData[ri2.row][ri2.index];
-            solution.solutionData[ri2.row][ri2.index] = temp;
+            var temp = solution.rows[ri1.row][ri1.index];
+            solution.rows[ri1.row][ri1.index] = solution.rows[ri2.row][ri2.index];
+            solution.rows[ri2.row][ri2.index] = temp;
 
             // Despues de hacer el movimiento
             // todo: if row1 == row2 skip second call
@@ -63,9 +62,9 @@ public class SwapNeighborhood extends RandomizableNeighborhood<FLPMove, FLPSolut
             double after = solution.recalculateScore();
 
             // Undo movement
-            temp = solution.solutionData[ri1.row][ri1.index];
-            solution.solutionData[ri1.row][ri1.index] = solution.solutionData[ri2.row][ri2.index];
-            solution.solutionData[ri2.row][ri2.index] = temp;
+            temp = solution.rows[ri1.row][ri1.index];
+            solution.rows[ri1.row][ri1.index] = solution.rows[ri2.row][ri2.index];
+            solution.rows[ri2.row][ri2.index] = temp;
 
             // todo: if row1 == row2 skip second call
             solution.recalculateCentersInPlace(ri1.row);
@@ -80,7 +79,7 @@ public class SwapNeighborhood extends RandomizableNeighborhood<FLPMove, FLPSolut
 
         @Override
         protected void _execute() {
-            this.swap(this.index1, this.index2, this.score);
+            this.swap(this.index1, this.index2, this.delta);
         }
 
         @Override

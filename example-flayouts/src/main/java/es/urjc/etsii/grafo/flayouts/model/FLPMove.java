@@ -4,22 +4,22 @@ import es.urjc.etsii.grafo.solution.Move;
 
 public abstract class FLPMove extends Move<FLPSolution, FLPInstance> {
 
-    final double score;
+    final double delta;
 
-    public FLPMove(FLPSolution s, double score) {
+    public FLPMove(FLPSolution s, double delta) {
         super(s);
-        this.score = score;
+        this.delta = delta;
     }
 
     @Override
     public String toString() {
         return this.getClass().getSimpleName()+"{" +
-                ", sc=" + score +
+                ", sc=" + delta +
                 '}';
     }
 
     public double getDelta() {
-        return score;
+        return delta;
     }
 
     @Override

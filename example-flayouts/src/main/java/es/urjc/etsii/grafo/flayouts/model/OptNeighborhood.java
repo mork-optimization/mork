@@ -12,8 +12,8 @@ public class OptNeighborhood extends Neighborhood<FLPMove, FLPSolution, FLPInsta
     public Stream<FLPMove> stream(FLPSolution solution) {
         // Assume first row has at least two elements
         Stream<FLPMove> stream = Stream.empty();
-        for (int i = 0; i < solution.getNRows(); i++) {
-            if (solution.getRowSize(i) > 1) {
+        for (int i = 0; i < solution.nRows(); i++) {
+            if (solution.rowSize(i) > 1) {
                 stream = Stream.concat(stream, buildStream(new OptMove(solution, i, 0, 1)));
             }
         }
@@ -32,18 +32,18 @@ public class OptNeighborhood extends Neighborhood<FLPMove, FLPSolution, FLPInsta
         // Neighborhoods cost calculation and move execution
         private static double twoOptCost(FLPSolution solution, int row, int index1, int index2) {
             // Antes de hacer el movimiento
-            assert solution.equalsSolutionData(solution.recalculateCentersCopy());
+            assert solution.equalsSolutionData(solution.calculateCenters());
             double before = solution.partialCost(row, index1, index2);
 
             // Do movement
-            ArrayUtil.reverseFragment(solution.solutionData[row], index1, index2);
+            ArrayUtil.reverseFragment(solution.rows[row], index1, index2);
 
             // Despues de hacer el movimiento
             solution.recalculateCentersInPlace(row);
             double after = solution.partialCost(row, index1, index2);
 
             // Undo movement
-            ArrayUtil.reverseFragment(solution.solutionData[row], index1, index2);
+            ArrayUtil.reverseFragment(solution.rows[row], index1, index2);
 
             // Al deshacer el coste deberia quedar igual
             solution.recalculateCentersInPlace(row);
@@ -54,7 +54,7 @@ public class OptNeighborhood extends Neighborhood<FLPMove, FLPSolution, FLPInsta
 
         @Override
         protected void _execute() {
-            this.twoOpt(this.row, this.index1, this.index2, this.score);
+            this.twoOpt(this.row, this.index1, this.index2, this.delta);
         }
 
         @Override
