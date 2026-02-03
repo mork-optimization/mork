@@ -7,9 +7,8 @@ import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.util.ArrayList;
 import java.util.Objects;
-import java.util.stream.Stream;
 
-public class OptNeighborhood extends Neighborhood<OptNeighborhood.OptMove, FLPSolution, FLPInstance> {
+public class FLPOptNeigh extends Neighborhood<FLPOptNeigh.OptMove, FLPSolution, FLPInstance> {
 
     @Override
     public ExploreResult<OptMove, FLPSolution, FLPInstance> explore(FLPSolution solution) {

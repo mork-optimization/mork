@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Objects;
 
 import static es.urjc.etsii.grafo.flayouts.model.FLPSolution.FREE_SPACE;
+import static es.urjc.etsii.grafo.flayouts.model.FLPSwapNeigh.SwapMove.consecutiveSwapCost;
 
 public class FLPAddNeigh extends Neighborhood<FLPAddNeigh.AddMove, FLPSolution, FLPInstance> {
 
@@ -33,15 +34,19 @@ public class FLPAddNeigh extends Neighborhood<FLPAddNeigh.AddMove, FLPSolution, 
     public List<AddMove> exploreList(FLPSolution solution){
         var list = new ArrayList<AddMove>();
         for (var facility : solution.notAssignedFacilities) {
-            for (int row = 0; row < solution.nRows(); row++) {
-                if (insertBySwap) {
-                    movesBySwap(list, solution, facility, row);
-                } else {
-                    movesNaive(list, solution, facility, row);
-                }
-            }
+            exploreForFacility(list, solution, facility);
         }
         return list;
+    }
+
+    public void exploreForFacility(ArrayList<AddMove> list, FLPSolution solution, int facility){
+        for (int row = 0; row < solution.nRows(); row++) {
+            if (insertBySwap) {
+                movesBySwap(list, solution, facility, row);
+            } else {
+                movesNaive(list, solution, facility, row);
+            }
+        }
     }
 
     private void movesNaive(ArrayList<AddMove> list, FLPSolution solution, int facility, int row) {
@@ -66,13 +71,8 @@ public class FLPAddNeigh extends Neighborhood<FLPAddNeigh.AddMove, FLPSolution, 
         moves.add(new AddMove(solution, index, index, facility, accCost));
 
         // Do insert by swap, facility ends at 0 index
-        var _moves = new ArrayList<MoveBySwapNeighborhood.MoveBySwap>();
-        MoveBySwapNeighborhood.right2LeftConstructive(accCost, _moves, solution, row, index);
-
-        for (var _move : _moves) {
-            var move = new AddMove(solution, _move.getRowDest(), _move.getIndexDest(), facility, _move.getScoreChange());
-            moves.add(move);
-        }
+        var _moves = new ArrayList<AddMove>();
+        right2Left(accCost, _moves, solution, row, index, facility);
 
         // Delete facility from solution
         deleteFirst(solution, row, facility);
@@ -80,13 +80,24 @@ public class FLPAddNeigh extends Neighborhood<FLPAddNeigh.AddMove, FLPSolution, 
         assert DoubleComparator.equals(solution.getScore(), prevScore);
     }
 
+    public static void right2Left(double baseCost, List<AddMove> moves, FLPSolution solution, int row, int initialPos, int facility) {
+        // El score debe ser el mismo antes y despues
+        double accCost = baseCost;
+        for (int pos = initialPos; pos > 0; pos--) {
+            double _cost = consecutiveSwapCost(solution, row, pos - 1, pos);
+            accCost += _cost;
+            var move = new AddMove(solution, row, pos, facility, accCost);
+            moves.add(move);
+        }
+    }
+
 
     public static double insertCost(FLPSolution solution, int rowIdx, int pos, int f) {
-        int tope = solution.rowSize[rowIdx];
+        int rowSize = solution.rowSize[rowIdx];
         var row = solution.rows[rowIdx];
 
         // Antes de hacer el movimiento
-        double before = solution.partialCost(rowIdx, pos, tope - 1);
+        double before = solution.partialCost(rowIdx, pos, rowSize - 1);
 
         // Do movement
         System.arraycopy(row, pos, row, pos + 1, solution.rowSize[rowIdx] - pos);
@@ -95,7 +106,7 @@ public class FLPAddNeigh extends Neighborhood<FLPAddNeigh.AddMove, FLPSolution, 
         solution.updateCentersFrom(rowIdx, pos);
 
         // Despues de hacer el movimiento
-        double after = solution.partialCost(rowIdx, pos, tope);
+        double after = solution.partialCost(rowIdx, pos, rowSize);
 
         // Deshacemos el movimiento
         solution.rowSize[rowIdx]--;
@@ -104,7 +115,7 @@ public class FLPAddNeigh extends Neighborhood<FLPAddNeigh.AddMove, FLPSolution, 
         solution.updateCentersFrom(rowIdx, pos);
 
         // Al deshacer el coste deberia quedar igual
-        assert DoubleComparator.equals(before, solution.partialCost(rowIdx, pos, tope - 1));
+        assert DoubleComparator.equals(before, solution.partialCost(rowIdx, pos, rowSize - 1));
 
         return after - before;
     }
@@ -121,7 +132,7 @@ public class FLPAddNeigh extends Neighborhood<FLPAddNeigh.AddMove, FLPSolution, 
         int pos = solution.rowSize(row);
         AddMove addMove = new AddMove(solution, row, pos, facility);
         double oldScore = solution.getScore();
-        double delta = addMove.getDelta();
+        double delta = addMove.delta();
         addMove._execute(solution);
 
         assert DoubleComparator.equals(oldScore + delta, solution.getScore());
@@ -143,6 +154,18 @@ public class FLPAddNeigh extends Neighborhood<FLPAddNeigh.AddMove, FLPSolution, 
 
         public AddMove(FLPSolution solution, int rowIdx, int pos, int facility) {
             this(solution, rowIdx, pos, facility, insertCost(solution, rowIdx, pos, facility));
+        }
+
+        public int pos() {
+            return pos;
+        }
+
+        public int rowIdx() {
+            return rowIdx;
+        }
+
+        public int facility() {
+            return facility;
         }
 
         @Override

@@ -8,7 +8,7 @@ import es.urjc.etsii.grafo.solver.Mork;
 
 public class Main {
 
-    public static final Objective<FLPMove, FLPSolution, FLPInstance> FLOW = Objective.ofMinimizing("Flow", FLPSolution::getScore, FLPMove::getDelta);
+    public static final Objective<FLPMove, FLPSolution, FLPInstance> FLOW = Objective.ofMinimizing("Flow", FLPSolution::getScore, FLPMove::delta);
 
     public static void main(String[] args) {
         Mork.start(args, FLOW);

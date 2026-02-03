@@ -4,7 +4,7 @@ import es.urjc.etsii.grafo.solution.Move;
 
 public abstract class FLPMove extends Move<FLPSolution, FLPInstance> {
 
-    final double delta;
+    protected final double delta;
 
     public FLPMove(FLPSolution s, double delta) {
         super(s);
@@ -18,7 +18,7 @@ public abstract class FLPMove extends Move<FLPSolution, FLPInstance> {
                 '}';
     }
 
-    public double getDelta() {
+    public double delta() {
         return delta;
     }
 

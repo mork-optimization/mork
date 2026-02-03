@@ -186,8 +186,7 @@ public class FLPSolution extends Solution<FLPSolution, FLPInstance> {
     public double partialCost(final int row, final int index1, final int index2){
         var instance = getInstance();
         double total = 0;
-        // todos los afectados cambia su coste, faltaria verificar que esto esta bien
-        // ademas podria optimizarse mas seguramente
+        // TODO validate
         for (int i = index1; i <= index2; i++) {
             for (int currentRow = 0; currentRow < rows.length; currentRow++) {
                 for (int k = 0; k < this.rowSize[currentRow]; k++) {
@@ -284,5 +283,22 @@ public class FLPSolution extends Solution<FLPSolution, FLPInstance> {
             this.center[f] = left + instance.length(f) / 2.0;
             left += instance.length(f);
         }
+    }
+
+    public record Coords(int row, int pos){}
+
+    /**
+     * Returns an array with all the coordinates of the assigned facilities
+     * The array should be used as a map, where the index / key is the facility ID, and the stored value is the coordinates of the facility as a tuple (row, pos)
+     * @return Array of facility coordinates
+     */
+    public Coords[] locateAll(){
+        Coords[] coords = new Coords[this.assignedFacilities];
+        for (int row = 0; row < nRows(); row++) {
+            for (int pos = 0; pos < rowSize(row); pos++) {
+                coords[rows[row][pos]] = new Coords(row, pos);
+            }
+        }
+        return coords;
     }
 }

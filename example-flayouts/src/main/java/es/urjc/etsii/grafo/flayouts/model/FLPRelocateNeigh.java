@@ -14,15 +14,58 @@ import java.util.Optional;
 /**
  * Move one element A from its position I to another position J, displacing all elements between those positions
  */
-public class RelocateNeighborhood extends RandomizableNeighborhood<RelocateNeighborhood.RelocateMove, FLPSolution, FLPInstance> {
+public class FLPRelocateNeigh extends RandomizableNeighborhood<FLPRelocateNeigh.RelocateMove, FLPSolution, FLPInstance> {
+
+    private final boolean insertBySwap;
+
+    private final FLPAddNeigh addNeigh = new FLPAddNeigh();
+
+    public FLPRelocateNeigh(boolean insertBySwap) {
+        this.insertBySwap = insertBySwap;
+    }
 
     @Override
-    public ExploreResult<RelocateNeighborhood.RelocateMove, FLPSolution, FLPInstance> explore(FLPSolution solution) {
-        if(solution.nAssigned() <= 2){
+    public ExploreResult<FLPRelocateNeigh.RelocateMove, FLPSolution, FLPInstance> explore(FLPSolution solution) {
+        if (solution.nAssigned() <= 2) {
             return ExploreResult.empty();
         }
         List<RelocateMove> moves = new ArrayList<>();
 
+        if(insertBySwap){
+            relocationsBySwap(moves, solution);
+        } else {
+            relocationsSlow(moves, solution);
+        }
+
+        return ExploreResult.fromList(moves);
+    }
+
+    private void relocationsBySwap(List<RelocateMove> moves, FLPSolution solution) {
+        var copy = solution.cloneSolution();
+        for (int row = 0; row < copy.nRows(); row++) {
+            for (int pos = 0; pos < copy.rowSize(row); pos++) {
+                int facility = copy.rows[row][pos];
+                double currentScore = copy.getScore();
+                var removeMove = new FLPRemoveNeigh.RemoveMove(copy, row, pos, facility);
+                removeMove._execute(copy);
+                // get all add moves for this facility, and create combined movement
+                var addMoves = new ArrayList<FLPAddNeigh.AddMove>();
+                addNeigh.exploreForFacility(addMoves, copy, facility);
+                for(var addMove : addMoves){
+                    var relocateMove = new RelocateMove(solution, row, pos, addMove.rowIdx(), addMove.pos(), removeMove.delta() + addMove.delta());
+                    moves.add(relocateMove);
+                }
+                // undo remove
+                var addMove = new FLPAddNeigh.AddMove(copy, row, pos, facility);
+                addMove._execute(copy);
+
+                assert DoubleComparator.equals(currentScore, copy.getScore()): "Score invariant broken";
+            }
+        }
+        assert copy.equals(solution): "Solution is not equal after finding moves, all changes should have been reversed";
+    }
+
+    private void relocationsSlow(List<RelocateMove> moves, FLPSolution solution) {
         int nRows = solution.nRows();
         // Generate each unordered pair once:
         // - (A,B) == (B,A) -> only keep lexicographically increasing (row,pos) pairs
@@ -38,20 +81,18 @@ public class RelocateNeighborhood extends RandomizableNeighborhood<RelocateNeigh
                 }
             }
         }
-
-        return ExploreResult.fromList(moves);
     }
 
     @Override
-    public Optional<RelocateNeighborhood.RelocateMove> getRandomMove(FLPSolution solution) {
+    public Optional<FLPRelocateNeigh.RelocateMove> getRandomMove(FLPSolution solution) {
         int nAssigned = solution.nAssigned();
-        if(nAssigned <= 2){
+        if (nAssigned <= 2) {
             return Optional.empty();
         }
 
         var r = RandomManager.getRandom();
 
-        int a = r.nextInt(nAssigned-1), b = r.nextInt(nAssigned);
+        int a = r.nextInt(nAssigned - 1), b = r.nextInt(nAssigned);
 
         if (a == b) b++; // guaranteed does not overflow because if a == b, then b is at least < nAssigned -1.
 
@@ -104,7 +145,7 @@ public class RelocateNeighborhood extends RandomizableNeighborhood<RelocateNeigh
 
             double after;
 
-            if(row1 == row2){
+            if (row1 == row2) {
                 // Do movement
                 ArrayUtil.deleteAndInsert(solution.rows[row1], pos1, pos2);
 
@@ -139,10 +180,10 @@ public class RelocateNeighborhood extends RandomizableNeighborhood<RelocateNeigh
 
         @Override
         protected FLPSolution _execute(FLPSolution solution) {
-            if(row1 == row2){
+            if (row1 == row2) {
                 solution.cachedScore += delta;
                 ArrayUtil.deleteAndInsert(solution.rows[row1], pos1, pos2);
-                solution.updateCentersFromTo(row1, pos1, pos2+1);
+                solution.updateCentersFromTo(row1, pos1, pos2 + 1);
             } else {
                 var value = ArrayUtil.remove(solution.rows[row1], pos1);
                 ArrayUtil.insert(solution.rows[row2], pos2, value);
