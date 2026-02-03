@@ -15,7 +15,7 @@ public class SwapNeighborhood extends RandomizableNeighborhood<FLPMove, FLPSolut
         if(solution.allFacilitiesSize() <= 2){
             return ExploreResult.empty();
         }
-        return this.ExploreResult.fromStream(new SwapMove(solution, 0, 1));
+        return ExploreResult.fromStream(new SwapMove(solution, 0, 1));
     }
 
     @Override
@@ -105,9 +105,9 @@ public class SwapNeighborhood extends RandomizableNeighborhood<FLPMove, FLPSolut
 
             var solution = getSolution();
             solution.cachedScore += cost;
-            var temp = solution.solutionData[ri1.row][ri1.index];
-            solution.solutionData[ri1.row][ri1.index] = solution.solutionData[ri2.row][ri2.index];
-            solution.solutionData[ri2.row][ri2.index] = temp;
+            var temp = solution.rows[ri1.row][ri1.index];
+            solution.rows[ri1.row][ri1.index] = solution.rows[ri2.row][ri2.index];
+            solution.rows[ri2.row][ri2.index] = temp;
 
             // todo: if row1 == row2 skip second call
             solution.recalculateCentersInPlace(ri1.row);

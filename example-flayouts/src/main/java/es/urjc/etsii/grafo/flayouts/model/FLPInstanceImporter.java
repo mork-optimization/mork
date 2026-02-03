@@ -15,16 +15,15 @@ public class FLPInstanceImporter extends InstanceImporter<FLPInstance> {
         Scanner sc = new Scanner(reader);
         int n = sc.nextInt();
 
-        Facility[] facilities = new Facility[n];
+        int[] lengths = new int[n];
         for (int i = 0; i < n; i++) {
-            int width = sc.nextInt();
-            facilities[i] = new Facility(i, width);
+            lengths[i] = sc.nextInt();
         }
 
-        int[][] weights = new int[n][n];
+        int[][] flow = new int[n][n];
         for (int i = 0; i < n; i++) {
             for (int j = 0; j < n; j++) {
-                weights[i][j] = sc.nextInt();
+                flow[i][j] = sc.nextInt();
             }
         }
 
@@ -32,19 +31,19 @@ public class FLPInstanceImporter extends InstanceImporter<FLPInstance> {
             throw new IllegalStateException("Unparsed input at end of file");
         }
 
-        if(!isSimmetric(weights)){
+        if(!isSimmetric(flow)){
             log.warning(String.format("Non symmetric weight matrix in instance %s, copying data such us w[j][i] = w[i][j] to force symmetry", filename));
 
-            for (int i = 0; i < weights.length; i++) {
-                for (int j = 0; j < weights.length; j++) {
-                    weights[j][i] = weights[i][j];
+            for (int i = 0; i < flow.length; i++) {
+                for (int j = 0; j < flow.length; j++) {
+                    flow[j][i] = flow[i][j];
                 }
             }
         }
 
         // Match instance filenames with names in previous paper and excel file
         String instanceName = filename.replace(".txt", "").replace("Am", "");
-        var instance = new FLPInstance(instanceName, facilities, weights);
+        var instance = new FLPInstance(instanceName, lengths, flow);
         return instance;
     }
 

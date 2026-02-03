@@ -376,11 +376,11 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
 
             if(ri1.row == ri2.row){
                 solution.cachedScore += score;
-                ArrayUtil.deleteAndInsert(solution.solutionData[ri1.row], ri1.index, ri2.index);
+                ArrayUtil.deleteAndInsert(solution.rows[ri1.row], ri1.index, ri2.index);
                 solution.recalculateCentersInPlace(ri1.row);
             } else {
-                var value = ArrayUtil.remove(solution.solutionData[ri1.row], ri1.index);
-                ArrayUtil.insert(solution.solutionData[ri2.row], ri2.index, value);
+                var value = ArrayUtil.remove(solution.rows[ri1.row], ri1.index);
+                ArrayUtil.insert(solution.rows[ri2.row], ri2.index, value);
                 solution.rowSize[ri1.row]--;
                 solution.rowSize[ri2.row]++;
                 solution.cachedScore += this.score;
@@ -393,7 +393,7 @@ public class MoveBySwapNeighborhood extends Neighborhood<MoveBySwapNeighborhood.
 
         @Override
         public String toString() {
-            return "MoveMove{" +
+            return "RelocateMove{" +
                     "score=" + score +
                     ", ri1=" + ri1 +
                     ", ri2=" + ri2 +

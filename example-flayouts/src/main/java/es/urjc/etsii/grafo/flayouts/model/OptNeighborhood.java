@@ -1,85 +1,90 @@
 package es.urjc.etsii.grafo.flayouts.model;
 
+import es.urjc.etsii.grafo.solution.neighborhood.ExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.util.ArrayUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 
+import java.util.ArrayList;
+import java.util.Objects;
 import java.util.stream.Stream;
 
-public class OptNeighborhood extends Neighborhood<FLPMove, FLPSolution, FLPInstance> {
+public class OptNeighborhood extends Neighborhood<OptNeighborhood.OptMove, FLPSolution, FLPInstance> {
 
     @Override
-    public Stream<FLPMove> stream(FLPSolution solution) {
-        // Assume first row has at least two elements
-        Stream<FLPMove> stream = Stream.empty();
-        for (int i = 0; i < solution.nRows(); i++) {
-            if (solution.rowSize(i) > 1) {
-                stream = Stream.concat(stream, buildStream(new OptMove(solution, i, 0, 1)));
+    public ExploreResult<OptMove, FLPSolution, FLPInstance> explore(FLPSolution solution) {
+        var moves = new ArrayList<OptMove>();
+        for (int row = 0; row < solution.nRows(); row++) {
+            if (solution.rowSize(row) <= 1) {
+                continue;
+            }
+            int rowSize = solution.rowSize(row);
+            for (int pos1 = 0; pos1 < rowSize - 1; pos1++) {
+                for (int pos2 = pos1 + 1; pos2 < rowSize; pos2++) {
+                    moves.add(new OptMove(solution, row, pos1, pos2));
+                }
             }
         }
-        return stream;
+        return ExploreResult.fromList(moves);
     }
 
-    protected static class OptMove extends FLPMove {
+    public static class OptMove extends FLPMove {
 
         private final int row;
+        private final int pos1;
+        private final int pos2;
 
-        public OptMove(FLPSolution s, int row, int index1, int index2) {
-            super(s, index1, index2, twoOptCost(s, row, index1, index2));
+        public OptMove(FLPSolution s, int row, int pos1, int pos2) {
+            this(s, row, pos1, pos2, twoOptCost(s, row, pos1, pos2));
+        }
+
+        public OptMove(FLPSolution s, int row, int pos1, int pos2, double cost) {
+            super(s, cost);
             this.row = row;
+            this.pos1 = pos1;
+            this.pos2 = pos2;
         }
 
         // Neighborhoods cost calculation and move execution
-        private static double twoOptCost(FLPSolution solution, int row, int index1, int index2) {
+        private static double twoOptCost(FLPSolution solution, int row, int pos1, int pos2) {
             // Antes de hacer el movimiento
-            assert solution.equalsSolutionData(solution.calculateCenters());
-            double before = solution.partialCost(row, index1, index2);
+            double before = solution.partialCost(row, pos1, pos2);
 
             // Do movement
-            ArrayUtil.reverseFragment(solution.rows[row], index1, index2);
+            ArrayUtil.reverse(solution.rows[row], pos1, pos2);
 
             // Despues de hacer el movimiento
-            solution.recalculateCentersInPlace(row);
-            double after = solution.partialCost(row, index1, index2);
+            solution.updateCenters(row);
+            double after = solution.partialCost(row, pos1, pos2);
 
             // Undo movement
-            ArrayUtil.reverseFragment(solution.rows[row], index1, index2);
+            ArrayUtil.reverse(solution.rows[row], pos1, pos2);
 
             // Al deshacer el coste deberia quedar igual
-            solution.recalculateCentersInPlace(row);
-            assert DoubleComparator.equals(before, solution.partialCost(row, index1, index2));
+            solution.updateCenters(row);
+            assert DoubleComparator.equals(before, solution.partialCost(row, pos1, pos2));
 
             return after - before;
         }
 
         @Override
-        protected void _execute() {
-            this.twoOpt(this.row, this.index1, this.index2, this.delta);
+        protected FLPSolution _execute(FLPSolution solution) {
+            solution.cachedScore += delta;
+            ArrayUtil.reverse(solution.rows[row], pos1, pos2);
+            solution.updateCenters(row);
+            return solution;
         }
 
         @Override
-        public OptMove next() {
-            // Copy for new movement
-            int _row = row, _index1 = index1, _index2 = index2;
-            _index2++;
-            if (_index2 >= s.getRowSize(_row)) {
-                // Advance _index1 and reset _index2
-                _index1++;
-                _index2 = _index1 + 1;
-                if (_index2 >= s.getRowSize(_row)) {
-                    return null; // End of stream
-                }
-            }
-
-            return new OptMove(this.s, _row, _index1, _index2);
+        public boolean equals(Object o) {
+            if (o == null || getClass() != o.getClass()) return false;
+            OptMove optMove = (OptMove) o;
+            return row == optMove.row && pos1 == optMove.pos1 && pos2 == optMove.pos2;
         }
 
-        public void twoOpt(int row, int index1, int index2, double cost) {
-            var solution = getSolution();
-            solution.cachedScore += cost;
-            ArrayUtil.reverseFragment(solution.solutionData[row], index1, index2);
-            solution.recalculateCentersInPlace(row);
-            assert DoubleComparator.isPositiveOrZero(solution.cachedScore) : "Cannot have negative score in this problem: " + solution.cachedScore;
+        @Override
+        public int hashCode() {
+            return Objects.hash(row, pos1, pos2);
         }
     }
 }

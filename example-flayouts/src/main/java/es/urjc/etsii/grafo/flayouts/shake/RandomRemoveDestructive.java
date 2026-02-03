@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.flayouts.shake;
 
+import es.urjc.etsii.grafo.flayouts.model.FLPAddNeigh;
 import es.urjc.etsii.grafo.flayouts.model.FLPInstance;
 import es.urjc.etsii.grafo.flayouts.model.FLPSolution;
 import es.urjc.etsii.grafo.shake.Destructive;
@@ -28,7 +29,7 @@ public class RandomRemoveDestructive extends Destructive<FLPSolution, FLPInstanc
         var facilities = solution.getRows();
 
         // How many facilities should be removed from the solution, remove at least one
-        long n = max(1, round(instance.getNRealFacilities() * ratio));
+        long n = max(1, round(instance.nFacilities() * ratio));
 
         var blockedFacilities = new HashSet<Integer>();
         var allIds = new ArrayList<Integer>();
@@ -36,7 +37,7 @@ public class RandomRemoveDestructive extends Destructive<FLPSolution, FLPInstanc
         // Get all assigned facilities IDs
         for (int i = 0; i < solution.nRows(); i++) {
             for (int j = 0; j < solution.rowSize(i); j++) {
-                allIds.add(facilities[i][j].facility.id);
+                allIds.add(facilities[i][j]);
             }
         }
 
@@ -53,7 +54,8 @@ public class RandomRemoveDestructive extends Destructive<FLPSolution, FLPInstanc
             for (int j = 0; j < solution.rowSize(i); j++) {
                 var facility = facilities[i][j];
                 if(!blockedFacilities.contains(facility)){
-                    newSolution.insertLast(i, facility);
+                    var add = new FLPAddNeigh.AddMove(newSolution, i, j, facility);
+                    add.execute(newSolution);
                 }
             }
         }

@@ -1,9 +1,9 @@
 package es.urjc.etsii.grafo.flayouts.constructives;
 
-import es.urjc.etsii.grafo.drflp.model.FLPInstance;
-import es.urjc.etsii.grafo.drflp.model.FLPSolution;
-import es.urjc.etsii.grafo.drflp.model.Facility;
-import es.urjc.etsii.grafo.solver.create.Reconstructive;
+import es.urjc.etsii.grafo.create.Reconstructive;
+import es.urjc.etsii.grafo.flayouts.model.FLPAddNeigh;
+import es.urjc.etsii.grafo.flayouts.model.FLPInstance;
+import es.urjc.etsii.grafo.flayouts.model.FLPSolution;
 import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
@@ -24,15 +24,12 @@ public class DRFPRandomConstructive extends Reconstructive<FLPSolution, FLPInsta
         var random = RandomManager.getRandom();
         CollectionUtil.shuffle(facilities);
 
-        var nrows = solution.getInstance().getNRows();
-
-        for (Facility f : facilities) {
-            int row = random.nextInt(nrows);
-            solution.insertLast(row, f);
+        for (int f : facilities) {
+            int row = random.nextInt(solution.nRows());
+            int pos = solution.rowSize(row);
+            var addMove = new FLPAddNeigh.AddMove(solution, row, pos, f);
+            addMove.execute(solution);
         }
-
-        solution.rebuildCaches();
-        solution.updateLastModifiedTime();
 
         return solution;
     }

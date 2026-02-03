@@ -18,12 +18,6 @@ public class FLPSolution extends Solution<FLPSolution, FLPInstance> {
     protected final HashSet<Integer> notAssignedFacilities;
     protected final int[] rowSize;
     protected int assignedFacilities = 0;
-//
-//    protected List<Piece> pendingPieces = new ArrayList<>();
-//
-//    public List<Piece> getPendingPieces() {
-//        return pendingPieces;
-//    }
 
     public int[][] getRows() {
         return rows;
@@ -58,14 +52,12 @@ public class FLPSolution extends Solution<FLPSolution, FLPInstance> {
      */
     public FLPSolution(FLPSolution s) {
         super(s);
-        // Copy solution data
         rows = new int[s.rows.length][];
         for (int i = 0; i < rows.length; i++) {
             rows[i] = new int[s.rows[i].length];
             System.arraycopy(s.rows[i], 0, rows[i], 0, rows[i].length);
         }
 
-//        this.pendingPieces = new ArrayList<>(s.pendingPieces);
         this.rowSize = s.rowSize.clone();
         this.center = s.center.clone();
         this.notAssignedFacilities = new HashSet<>(s.notAssignedFacilities);
@@ -261,37 +253,36 @@ public class FLPSolution extends Solution<FLPSolution, FLPInstance> {
     }
 
     /**
+     * Update all facility centers in row
+     * @param rowIdx row index
+     */
+    public void updateCenters(int rowIdx){
+        updateCentersFromTo(rowIdx, 0, this.rowSize[rowIdx]);
+    }
+
+    /**
      * Update all facility centers from
      * @param rowIdx row to update
-     * @param pos update centers from this position (included) until the end of the row
+     * @param start update centers from this position (included) until the end of the row
      */
-    public void updateCentersFrom(int rowIdx, int pos){
+    public void updateCentersFrom(int rowIdx, int start){
+        updateCentersFromTo(rowIdx, start, this.rowSize[rowIdx]);
+    }
+
+    /**
+     * Update all facility centers in range [start, end)
+     * @param rowIdx row index
+     * @param start update centers from this position / index, included
+     * @param end update centers until this position / index, not included
+     */
+    public void updateCentersFromTo(int rowIdx, int start, int end){
         var instance = getInstance();
         var row = this.rows[rowIdx];
-        double left = this.left(rowIdx, pos);
-        for (int i = pos; i < this.rowSize[rowIdx]; i++) {
+        double left = this.left(rowIdx, start);
+        for (int i = start; i < end; i++) {
             var f = row[i];
             this.center[f] = left + instance.length(f) / 2.0;
             left += instance.length(f);
         }
-    }
-
-    public void insertLast(int rowIndex, int facility){
-        assert DoubleComparator.equals(this.cachedScore, this.recalculateScore());
-        assert this.notAssignedFacilities.contains(facility);
-
-        int position = this.rowSize[rowIndex];
-        double cost = this.insertCost(rowIndex, position, facility);
-
-        cachedScore += cost;
-        var row = rows[rowIndex];
-        row[position] = facility;
-        rowSize[rowIndex]++;
-        this.assignedFacilities++;
-        this.notAssignedFacilities.remove(facility);
-        recalculateCentersInPlace(rowIndex);
-
-        assert DoubleComparator.equals(this.cachedScore, this.recalculateScore()) : String.format("Score mismatch, expected %s cached is %s", this.recalculateScore(), this.cachedScore);
-        assert !this.notAssignedFacilities.contains(facility);
     }
 }

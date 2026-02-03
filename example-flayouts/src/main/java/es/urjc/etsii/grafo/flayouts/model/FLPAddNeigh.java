@@ -5,7 +5,6 @@ import es.urjc.etsii.grafo.annotations.CategoricalParam;
 import es.urjc.etsii.grafo.solution.neighborhood.ExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.util.DoubleComparator;
-import es.urjc.etsii.grafo.util.ValidationUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,28 +53,29 @@ public class FLPAddNeigh extends Neighborhood<FLPAddNeigh.AddMove, FLPSolution, 
         }
     }
 
-    private void movesBySwap(ArrayList<AddMove> list, FLPSolution solution, int facility, int row) {
+    private void movesBySwap(ArrayList<AddMove> moves, FLPSolution solution, int facility, int row) {
         int rowSize = solution.rowSize(row);
         if (rowSize == 0) {
-            list.add(new AddMove(solution, row, 0, facility));
+            moves.add(new AddMove(solution, row, 0, facility));
             return;
         }
 
         var prevScore = solution.getScore();
-
-        double accCost = insertAtLast(solution, rowSize, facility);
-        moves.add(new DRFPAddMove(solution, rowIndex, index, facility, accCost));
+        int index = solution.rowSize(row);
+        double accCost = insertAtLastCost(solution, rowSize, facility);
+        moves.add(new AddMove(solution, index, index, facility, accCost));
 
         // Do insert by swap, facility ends at 0 index
         var _moves = new ArrayList<MoveBySwapNeighborhood.MoveBySwap>();
         MoveBySwapNeighborhood.right2LeftConstructive(accCost, _moves, solution, row, index);
 
         for (var _move : _moves) {
-            var move = new DRFPAddMove(solution, _move.getRowDest(), _move.getIndexDest(), facility, _move.getScoreChange());
+            var move = new AddMove(solution, _move.getRowDest(), _move.getIndexDest(), facility, _move.getScoreChange());
             moves.add(move);
         }
+
         // Delete facility from solution
-        deleteFirst(solution, rowIndex, facility);
+        deleteFirst(solution, row, facility);
 
         assert DoubleComparator.equals(solution.getScore(), prevScore);
     }
@@ -117,7 +117,7 @@ public class FLPAddNeigh extends Neighborhood<FLPAddNeigh.AddMove, FLPSolution, 
         solution.remove(rowId, 0);
     }
 
-    private double insertAtLast(FLPSolution solution, int row, int facility) {
+    private double insertAtLastCost(FLPSolution solution, int row, int facility) {
         int pos = solution.rowSize(row);
         AddMove addMove = new AddMove(solution, row, pos, facility);
         double oldScore = solution.getScore();
