@@ -48,7 +48,7 @@
         <maven.compiler.source>21</maven.compiler.source>
         <maven.compiler.target>21</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jackson.version>2.19.2</jackson.version>
+        <jackson.version>2.21</jackson.version>
         <springboot.version>3.5.4</springboot.version>
         <mockito.version>5.19.0</mockito.version>
         <mdependency.version>3.8.1</mdependency.version>
