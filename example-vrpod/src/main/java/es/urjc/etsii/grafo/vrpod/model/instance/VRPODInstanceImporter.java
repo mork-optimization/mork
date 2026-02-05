@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.vrpod.model.instance;
 
+import es.urjc.etsii.grafo.exception.InstanceImportException;
 import es.urjc.etsii.grafo.io.InstanceImporter;
 
 import java.io.BufferedReader;
@@ -52,8 +53,6 @@ public class VRPODInstanceImporter extends InstanceImporter<VRPODInstance> {
                     throw new IllegalStateException("Duplicated NUMOCASSIONALDRIVERS inside file: " + filename);
                 numOccasionalDrivers = Integer.parseInt(line.split(":")[1].trim());
                 parsedNumOcassionalDrivers = true;
-
-
             }
 
             // Data of vertex
@@ -99,12 +98,14 @@ public class VRPODInstanceImporter extends InstanceImporter<VRPODInstance> {
                     currentY = Double.parseDouble(line.split(":")[1].trim());
                 }
                 if (line.startsWith("Number of customers")) {
+                    checkInitialized(instance);
                     instance.odsCoordinates[currentDriver] = new Point2D(currentX, currentY);
                     customersToParse = Integer.parseInt(line.split(":")[1].trim());
                     instance.ods2Clients[currentDriver] = new HashSet<>(customersToParse);
                 }
 
                 if (nextLineCustomers) {
+                    checkInitialized(instance);
                     String[] parts = line.split(" ");
 
                     // Process data of clientsCoordinates:
@@ -137,7 +138,7 @@ public class VRPODInstanceImporter extends InstanceImporter<VRPODInstance> {
             }
         }
 
-
+        checkInitialized(instance);
         instance.inverseOds2Customer();
 
         assert parsedCapacity : "Missing property CAPACITY in file " + instance.name;
@@ -150,6 +151,12 @@ public class VRPODInstanceImporter extends InstanceImporter<VRPODInstance> {
         calculateInstanceProperties(instance, numberOfDestinations, numOccasionalDrivers, capacity);
 
         return instance;
+    }
+
+    private void checkInitialized(VRPODInstance instance){
+        if(instance == null){
+            throw new InstanceImportException("Trying to parse instance data before instance initialization at (VERTEX_PROFIT)");
+        }
     }
 
     private void calculateInstanceProperties(VRPODInstance instance, int numberOfDestinations, int numOccasionalDrivers, int capacity) {

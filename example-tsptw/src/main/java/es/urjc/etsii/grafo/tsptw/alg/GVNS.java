@@ -117,8 +117,8 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
                 improved = true;
             }
             if (improved) {
-                logger.debug("insert {} {} {}",
-                        improved ? 1 : 0, x.cost(), x.constraint_violations());
+                logger.debug("insert {} {}",
+                        x.cost(), x.constraint_violations());
             }
 
             improved = false;
@@ -127,8 +127,8 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
                 improved = true;
             }
             if (improved) {
-                logger.debug("2opt {} {} {}",
-                        improved ? 1 : 0, x.cost(), x.constraint_violations());
+                logger.debug("2opt {} {}",
+                        x.cost(), x.constraint_violations());
             }
         } while (improved);
     }
