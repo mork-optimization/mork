@@ -95,10 +95,10 @@ jobs:
             any::forcats
             any::DT
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '21'
+          java-version: '25'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
       - name: Cache SonarCloud packages
