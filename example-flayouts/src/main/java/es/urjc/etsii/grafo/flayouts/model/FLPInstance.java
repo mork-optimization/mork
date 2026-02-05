@@ -14,21 +14,6 @@ public class FLPInstance extends Instance {
     private final int nrows;
 
     /**
-     * Maximum size of each row
-     */
-    private final int[] rowSizes;
-
-    /**
-     * Do all facilities have the same size?
-     */
-    private final boolean equalArea;
-
-    /**
-     * Is space allowed between facilities?
-     */
-    private final boolean allowSpace;
-
-    /**
      * Lock facilities to a given row, 0 indexed
      */
     private final Map<Integer, Integer> preassignments;
@@ -38,15 +23,16 @@ public class FLPInstance extends Instance {
     private final int[][] weigths;
 
     @JsonCreator
-    public FLPInstance(String name, int[] lengths, int[][] weigths, int nrows, int[] rowSizes, Map<Integer, Integer> preassignments, boolean equalArea, boolean allowSpace){
+    public FLPInstance(String name, int[] lengths, int[][] weigths, int nrows, Map<Integer, Integer> preassignments){
         super(name);
         this.lengths = lengths;
         this.weigths = weigths;
         this.nrows = nrows;
-        this.rowSizes = rowSizes;
         this.preassignments = preassignments;
-        this.equalArea = equalArea;
-        this.allowSpace = allowSpace;
+    }
+
+    public static FLPInstance DRFLP(String name, int[] lengths, int[][] weigths){
+        return new FLPInstance(name, lengths, weigths, 2, Collections.emptyMap());
     }
 
     /**

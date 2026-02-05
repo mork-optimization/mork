@@ -43,8 +43,7 @@ public class FLPInstanceImporter extends InstanceImporter<FLPInstance> {
 
         // Match instance filenames with names in previous paper and excel file
         String instanceName = filename.replace(".txt", "").replace("Am", "");
-        var instance = new FLPInstance(instanceName, lengths, flow);
-        return instance;
+        return FLPInstance.DRFLP(instanceName, lengths, flow);
     }
 
     private boolean isSimmetric(int[][] matrix){

@@ -162,19 +162,21 @@ public class FLPSolution extends Solution<FLPSolution, FLPInstance> {
 
     public double recalculateScore() {
         double[] centers = calculateCenters();
-        return totalDistanceNew(getInstance(), this.rowSize, centers);
+        return totalDistanceNew(getInstance(), this.rowSize, this.rows, centers);
     }
 
 
-    private static double totalDistanceNew(FLPInstance instance, int[] rowSize, int[][] data){
+    private static double totalDistanceNew(FLPInstance instance, int[] rowSize, int[][] data, double[] centers){
         double cost = 0;
-        for (int first_row = 0; first_row < data.length; first_row++) {
-            for (int first_pos = 0; first_pos < rowSize[first_row]; first_pos++) {
-                var first_facility = data[first_row][first_pos];
-                for (int second_row = 0; second_row < data.length; second_row++) {
-                    for (int second_pos = 0; second_pos < rowSize[second_row]; second_pos++) {
-                        var second_facility = data[second_row][second_pos];
-                        cost += Math.abs(first_facility.lastCenter - second_facility.lastCenter) * instance.flow(first_facility.facility, second_facility.facility);
+        for (int rowA = 0; rowA < data.length; rowA++) {
+            for (int posA = 0; posA < rowSize[rowA]; posA++) {
+                var facilityA = data[rowA][posA];
+                assert facilityA != FREE_SPACE;
+                for (int rowB = 0; rowB < data.length; rowB++) {
+                    for (int posB = 0; posB < rowSize[rowB]; posB++) {
+                        var facilityB = data[rowB][posB];
+                        assert facilityB != FREE_SPACE;
+                        cost += Math.abs(centers[facilityA] - centers[facilityB]) * instance.flow(facilityA, facilityB);
                     }
                 }
             }
@@ -183,26 +185,25 @@ public class FLPSolution extends Solution<FLPSolution, FLPInstance> {
     }
 
 
-    public double partialCost(final int row, final int index1, final int index2){
+    public double partialCost(int row, int index1, int index2){
         var instance = getInstance();
-        double total = 0;
-        // TODO validate
+        double cost = 0;
         for (int i = index1; i <= index2; i++) {
             for (int currentRow = 0; currentRow < rows.length; currentRow++) {
                 for (int k = 0; k < this.rowSize[currentRow]; k++) {
-                    final var b1 = rows[row][i];
-                    final var b2 = rows[currentRow][k];
-                    final double cost = Math.abs(b1.lastCenter - b2.lastCenter) * instance.flow(b1.facility, b2.facility);
+                    var b1 = rows[row][i];
+                    var b2 = rows[currentRow][k];
+                    double partialCost = Math.abs(center[b1] - center[b2]) * instance.flow(b1, b2);
                     if(currentRow == row && k >= index1 && k <= index2){
                         // Si esta dentro del rango modificado evitamos contar doble
-                        total += cost / 2;
+                        cost += partialCost / 2;
                     } else {
-                        total += cost;
+                        cost += partialCost;
                     }
                 }
             }
         }
-        return total;
+        return cost;
     }
 
     protected double[] calculateCenters() {
@@ -222,22 +223,7 @@ public class FLPSolution extends Solution<FLPSolution, FLPInstance> {
         return c;
     }
 
-    public static double evaluate(FLPInstance instance, int[][] facilitiesIds){
-        double[][] centers = centers(instance, facilitiesIds);
-        double cost = 0;
-        for (int first_row = 0; first_row < facilitiesIds.length; first_row++) {
-            for (int first_pos = 0; first_pos < facilitiesIds[first_row].length; first_pos++) {
-                var first_facility = facilitiesIds[first_row][first_pos];
-                for (int second_row = 0; second_row < facilitiesIds.length; second_row++) {
-                    for (int second_pos = 0; second_pos < facilitiesIds[second_row].length; second_pos++) {
-                        var second_facility = facilitiesIds[second_row][second_pos];
-                        cost += Math.abs(centers[first_row][first_pos] - centers[second_row][second_pos]) * instance.flow(first_facility, second_facility);
-                    }
-                }
-            }
-        }
-        return cost / 2;
-    }
+
 
     /**
      * Generate a string representation of this solution. Used when printing progress to console,
