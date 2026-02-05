@@ -10,3 +10,4 @@ panel==1.7.5
 plotly==6.3.0
 sympy==1.14.0
 lxml==6.0.0
+alive_progress==3.3.0

@@ -175,8 +175,8 @@ public class Context {
         return data;
     }
 
-    public static void addTimeEvent(boolean enter, long when, String clazz, String methodName){
-        get().timeEvents.add(new TimeStatsEvent(enter, when, clazz, methodName));
+    public static void addTimeEvent(String clazz, String methodName, long enter, long exit){
+        get().timeEvents.add(new TimeStatsEvent(clazz, methodName, enter, exit));
     }
 
     /**

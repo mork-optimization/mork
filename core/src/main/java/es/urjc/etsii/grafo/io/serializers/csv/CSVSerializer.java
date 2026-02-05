@@ -1,8 +1,6 @@
 package es.urjc.etsii.grafo.io.serializers.csv;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.dataformat.csv.CsvMapper;
-import com.fasterxml.jackson.dataformat.csv.CsvSchema;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
@@ -11,6 +9,8 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.Context;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import tools.jackson.dataformat.csv.CsvMapper;
+import tools.jackson.dataformat.csv.CsvSchema;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -19,7 +19,6 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 
 /**
  * CSV serializer. By changing the separator in the configuration from ',' to '\t', can serialize to other formats such as TSV.
@@ -39,12 +38,16 @@ public class CSVSerializer<S extends Solution<S, I>, I extends Instance> extends
     public CSVSerializer(CSVConfig config, List<ReferenceResultProvider> referenceResultProviders) {
         super(config, referenceResultProviders);
         this.config = config;
-        this.csvMapper = new CsvMapper();
-        csvMapper.setVisibility(csvMapper.getSerializationConfig().getDefaultVisibilityChecker()
-                .withFieldVisibility(JsonAutoDetect.Visibility.ANY)
+        var csvBuilder = CsvMapper.builder();
+
+        csvBuilder.changeDefaultVisibility(h ->
+                h.withFieldVisibility(JsonAutoDetect.Visibility.ANY)
                 .withGetterVisibility(JsonAutoDetect.Visibility.NONE)
                 .withSetterVisibility(JsonAutoDetect.Visibility.NONE)
-                .withCreatorVisibility(JsonAutoDetect.Visibility.NONE));
+                .withCreatorVisibility(JsonAutoDetect.Visibility.NONE)
+        );
+
+        csvMapper = csvBuilder.build();
     }
 
     /**

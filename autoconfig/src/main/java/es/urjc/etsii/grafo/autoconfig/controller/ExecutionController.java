@@ -12,14 +12,12 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ServerErrorException;
 
-import javax.ws.rs.ServerErrorException;
-import javax.ws.rs.core.Response;
 import java.util.List;
 
 import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
@@ -65,8 +63,9 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
             var result = this.orquestrator.iraceSingleCallback(config);
             return ResponseEntity.ok(result.toIraceResultString());
         } catch (Exception e) {
-            log.error("Error executing single request. Raw request: {}", decoded);
-            throw new ServerErrorException(Response.Status.INTERNAL_SERVER_ERROR, e);
+            String errorMessage = String.format("Error executing single request: %s", decoded);
+            log.error(errorMessage, e);
+            throw new ServerErrorException(errorMessage, e);
         }
     }
 
@@ -85,8 +84,9 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
             var results = this.orquestrator.iraceMultiCallback(configs);
             return ResponseEntity.ok(results);
         } catch (Exception e){
-            log.error("Error executing batch request: {}, raw data: {}", configs, decoded);
-            throw new ServerErrorException(Response.Status.INTERNAL_SERVER_ERROR, e);
+            String formattedMsg = String.format("Error executing batch request. Configs:  %s, data: %s", configs, decoded);
+            log.error(formattedMsg, e);
+            throw new ServerErrorException(formattedMsg, e);
         }
     }
 

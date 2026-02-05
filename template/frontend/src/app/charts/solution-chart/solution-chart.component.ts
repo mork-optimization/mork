@@ -94,8 +94,8 @@ export class SolutionChartComponent {
   renderSolution(event: SolutionGeneratedEvent){
     // const solution = event.solution;
     // const newData = [];
-    // for (let i = 0; i < event.solution!.solutionData.length; i++) {
-    //   const row = event.solution!.solutionData[i];
+    // for (let i = 0; i < event.solution!.rows.length; i++) {
+    //   const row = event.solution!.rows[i];
     //   const rowSize = event.solution!.rowSizes[i];
     //   let acc = 0;
     //   for (let j = 0; j < rowSize; j++) {

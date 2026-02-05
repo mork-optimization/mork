@@ -1,0 +1,63 @@
+ * t_number.h: New. Define t_number type.
+	
+ * mymalloc.h (malloc_shared): New macro. Create shared memory.
+   (create_shared_*_vector,create_shared_*_matrix): New.
+   (vector_*_read, matrix_*_read, matrix_*_fprint_fmt, vector_*_print,
+    vector_*_fprint, vector_*_fprint_fmt, sort2_*_inc): New functions
+   defined for bool, int, double, long long, and int_fast64_t.
+	
+ * common.h (DEBUG1,DEBUG2,DEBUG3,DEBUG4): New macros.
+   (__pure_func,__const_func): Replace __pure and __const.
+   Include stdbool.h. Elide __attribute__() if not available.
+   
+ * work.h (strcmpconst): Delete.
+   (strequal): New.
+   (fequals,fless,fless_or_equal,fgreater,fgreater_or_equal): New
+   functions.
+
+0.04
+
+ * parameter.c (param_double): Handle NULL correctly.
+ * work.c : new function fprintf_int_vector replaces fprintf_vector.
+
+0.03
+
+ * work.c : new functions mean(), variance() and sd() compute sample
+   mean, sample variance and standard deviation of a vector of double
+   data.
+
+ * timer.c: removed all asserts(). If elapsed time is negative, it is
+   taken as a resolution / fp-rounding issue and the elapsed time is
+   considered zero (for DEBUG >= 2 a warning will be shown in stderr).
+
+ * parameter.c: Macro PARAMCMP replaced by static inline function.
+
+
+0.02
+
+ * Makefile: new gcc flags: -fno-common -W
+
+ * myrandom.c :  asserts check if DEBUG > 0
+
+ * myrandom.h mymalloc.c mymalloc.h parameter.c parameter.h: Added
+   `const` and `inline` keywords
+
+ * New parameter configuration:
+
+       (in your header file)
+       #define PARAMETER_FILENAME foo.h
+       (in foo.h)
+       DEFINE_PARAMETER(label, short, long, description)
+
+       for example:
+       DEFINE_PARAMETER(PARAM_VERSION,"-v","--version","print version")
+
+ * Added some DEBUG asserts in timer.c and macros to calculate CPU and
+   wall time.
+
+
+
+0.01
+
+ * First version under Subversion control. Sorry, no history of
+   changes before this point.

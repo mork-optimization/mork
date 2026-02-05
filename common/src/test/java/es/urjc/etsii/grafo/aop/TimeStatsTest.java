@@ -40,10 +40,10 @@ public class TimeStatsTest {
         var timeData = Context.Configurator.getAndResetTimeEvents();
         Map<String, List<TimeStatsEvent>> organizedData = timeData.stream().collect(Collectors.groupingBy(TimeStatsEvent::method));
         Assertions.assertEquals(4, organizedData.size());
-        Assertions.assertEquals(2, organizedData.get("algorithm").size());
-        Assertions.assertEquals(2, organizedData.get("construct").size());
-        Assertions.assertEquals(2, organizedData.get("improve").size());
-        Assertions.assertEquals(2, organizedData.get("work1").size());
+        Assertions.assertEquals(1, organizedData.get("algorithm").size());
+        Assertions.assertEquals(1, organizedData.get("construct").size());
+        Assertions.assertEquals(1, organizedData.get("improve").size());
+        Assertions.assertEquals(1, organizedData.get("work1").size());
         Assertions.assertNull(organizedData.get("work2"));
         Metrics.disableMetrics();
     }

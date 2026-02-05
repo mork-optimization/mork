@@ -48,7 +48,7 @@ public abstract class GRASPListManager<M extends Move<S, I>, S extends Solution<
      * @param move     Chosen move
      * @param index index of the chosen move in the candidate list
      * @param candidateList original candidate list
-     * @return an UNSORTED candidate list, where the best candidate is on the first position and the worst in the last
+     * @return an UNSORTED candidate list
      */
     public abstract List<M> updateCandidateList(S solution, M move, List<M> candidateList, int index);
 

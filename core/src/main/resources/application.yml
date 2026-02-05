@@ -75,6 +75,10 @@ irace:
   # Maximum number of algorithm executions
   maxExperiments: 10000
 
+  # If true, tries to enforce the time limit specified by the TimeLimitCalculator implemented by the user.
+  # If timecontrol is true, but no valid TimeLimitCalculator is found, the solver will throw an exception.
+  timecontrol: false
+
 # Event system integrations/configuration
 event:
   # Stop webserver after all work is done?

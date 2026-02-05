@@ -2,12 +2,27 @@
 # CONFIGURATION #
 #################
 import panel as pn
+from alive_progress import alive_bar
 
 pn.extension('mathjax', 'plotly', 'katex')
 
+# Maximum number of box depth when stacking in the tree plot
+# Lower levels than MAX_DEPTH are hidden at first, but are shown
+# later if MAX_DEPTH changes when their parent component is clicked
+MAX_DEPTH=5
+
+# Minimum number of different values than an instance feature must have
+# Instance features that do not have enough values will be discarded
 MIN_POINTS = 5
-DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD = 0.8  # double parameter, double improvemenent or reject
+
+# Penalization applied when using two instance features instead of one, to avoid overfitting.
+# If using two instance features do not improve by at least 20% <--> 0. value to the best single feature,
+# they are ranked lower or even discarded
+DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD = 0.8
+
+
 NEW_LINE = "<br>"  # HTML line break, used in component names
+# Minimum value that a double can be before it is considered equal to 0.
 MIN_VALUE = 0.000_000_001
 
 import argparse
@@ -53,7 +68,7 @@ mysymbols = {}
 
 class CustomStrPrinter(StrPrinter):
     def _print_Float(self, expr):
-        return '{:.2f}'.format(expr)
+        return '{:.2g}'.format(expr)
 
 
 # All generated plotly graphs by ID
@@ -276,10 +291,10 @@ def fold_profiler_data_csv(path: str) -> any:
 
         events = []
         for line in csv_file:
-            when, enter, clazz, method = line.strip().split(',')
-            events.append({'when': int(when), 'enter': enter == '1', 'clazz': clazz, 'method': method})
+            clazz, method, enter, exit = line.strip().split(',')
+            events.append({'clazz': clazz, 'method': method, 'when': int(enter), 'enter': True})
+            events.append({'clazz': clazz, 'method': method, 'when': int(exit), 'enter': False})
 
-        events.sort(key=lambda x: x['when'])
         return instance, algorithm, iteration, events
 
 
@@ -297,74 +312,95 @@ def fold_profiler_data_json(path: str) -> any:
     # Build a list of events and a stack for exclusive time calculation
     events = []
     for i in jsondata['timeData']:
-        events.append({'when': i['when'], 'enter': i['enter'], 'clazz': i['clazz'], 'method': i['method']})
-    events.sort(key=lambda x: x['when'])
+        if 'when' in i:
+            events.append({'clazz': i['clazz'], 'method': i['method'], 'when': i['when'], 'enter': i['enter']})
+        else:
+            events.append({'clazz': i['clazz'], 'method': i['method'], 'when': i['enter'], 'enter': True, 'l': i['exit']-i['enter']})
+            events.append({'clazz': i['clazz'], 'method': i['method'], 'when': i['exit'], 'enter': False, 'l': i['exit']-i['enter']})
 
+    # Sort by when, if when is equal, then first enter true than enter false, if both are equal, then length from greater to smallest if enter is true, from smallest to greatest if enter is false
+    #events.sort(key=lambda x: (x['when'], 1 if x['enter'] else 0, -x.get('l', 0) if x['enter'] else x.get('l', 0)))
+    events.sort(key=lambda x: (x['when']))
     return instance, algorithm, iteration, events
 
 
 def fold_profiler_data(path: str) -> DataFrame:
     timestats = []
 
-    for f in os.listdir(path):
-        fullpath = join(path, f)
-        if f.endswith(".csv"):
-            instance, algorithm, iteration, events = fold_profiler_data_csv(fullpath)
-        elif f.endswith(".json"):
-            (instance, algorithm, iteration, events) = fold_profiler_data_json(fullpath)
-        else:
-            print(f"Skipping file {f}, not a CSV or JSON")
-            continue
-
-        if not events:
-            print(f"No events returned by loader for file {f}, skipping")
-            continue
-
-        stack = []
-
-        for i in events:
-            name = f"{i['clazz']}{NEW_LINE}{i['method']}"
-            if i['enter']:
-                stack.append({'name': name, 'when': i['when'], 'children_time': 0})
+    files = os.listdir(path)
+    with alive_bar(len(files), force_tty=True) as bar:
+        bar.title = f"Loading data"
+        for f in files:
+            fullpath = join(path, f)
+            if f.endswith(".csv"):
+                instance, algorithm, iteration, events = fold_profiler_data_csv(fullpath)
+            elif f.endswith(".json"):
+                instance, algorithm, iteration, events = fold_profiler_data_json(fullpath)
             else:
-                full_name = get_full_name(stack)
-                current = stack.pop()
-                if name != current['name']:
-                    raise Exception(f"Unexpected stack frame: {name} != {current['name']}")
+                print(f"Skipping file {f}, not a CSV or JSON")
+                continue
 
-                exec_time = (i['when'] - current['when']) / 1_000_000  # nanos to millis
-                exclusive_time = exec_time - current['children_time']
+            events.sort(key=lambda x: x['when'])
 
-                # Add exclusive time to parent if exists
-                if stack:
-                    stack[-1]['children_time'] += exec_time
+            if not events:
+                #print(f"No events returned by loader for file {f}, skipping")
+                continue
 
-                parent, child = full_name.rsplit("/", 1) if "/" in full_name else ("", full_name)
-                timestats.append({
-                    'instance': instance,
-                    'iter': iteration,
-                    'component': full_name,
-                    'parent': parent,
-                    'child': child,
-                    'time': exec_time,
-                    'time_exclusive': exclusive_time
-                })
+            stack = []
 
-    df_forcount = pd.DataFrame(timestats)
-    df_forcount.sort_values(by=['instance', 'component', 'iter'], inplace=True)
+            for i in events:
+                name = f"{i['clazz']}{NEW_LINE}{i['method']}"
+                if i['enter']:
+                    stack.append({'name': name, 'when': i['when'], 'children_time': 0})
+                else:
+                    full_name = get_full_name(stack)
+                    current = stack.pop()
+                    if name != current['name']:
+                        raise Exception(f"Unexpected stack frame: {name} != {current['name']}")
+
+                    exec_time = (i['when'] - current['when']) / 1_000_000  # nanos to millis
+                    exclusive_time = exec_time - current['children_time']
+
+                    # Add exclusive time to parent if exists
+                    if stack:
+                        stack[-1]['children_time'] += exec_time
+
+                    parent, child = full_name.rsplit("/", 1) if "/" in full_name else ("", full_name)
+                    timestats.append((
+                        instance,
+                        iteration,
+                        full_name,
+                        parent,
+                        child,
+                        exec_time,
+                        exclusive_time
+                    ))
+            bar()
+    print("Initializing count dataframe...")
+    df_forcount = pd.DataFrame(timestats, columns=['instance', 'iter', 'component', 'parent', 'child', 'time', 'time_exclusive'])
+    print("Initializing times dataframe...")
     df_fortimes = df_forcount.copy()
 
+    print("Preparing data... (step 1/8)")
     df_forcount.drop(columns=['time_exclusive'], inplace=True)
+    print("Preparing data... (step 2/8)")
     df_forcount = df_forcount.groupby(['instance', 'component', 'parent', 'child', 'iter'], as_index=False).agg(
         {'time': 'count'})
+    print("Preparing data... (step 3/8)")
     df_forcount.drop(columns=['iter'], inplace=True)
+    print("Preparing data... (step 4/8)")
     df_forcount = df_forcount.groupby(['instance', 'component', 'parent', 'child'], as_index=False).mean()
 
+    print("Preparing data... (step 5/8)")
     df_fortimes.drop(columns=['iter'], inplace=True)
+    print("Preparing data... (step 6/8)")
     df_fortimes = df_fortimes.groupby(['instance', 'component', 'parent', 'child'], as_index=False).mean()
 
+    print("Preparing data... (step 7/8)")
     df = df_fortimes.merge(df_forcount, on=['instance', 'component', 'parent', 'child'], suffixes=('', '_count'))
 
+    print("Preparing data... (step 8/8)")
+    df.sort_values(by=['instance', 'component'], inplace=True)
     return df
 
 
@@ -510,6 +546,9 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
         elif warn.args[0] == 'Covariance of the parameters could not be estimated':
             # Bad / failed fit
             return None
+        elif "divide by zero encountered in log" in warn.args[0]:
+            # ignore
+            return None
         else:
             logging.warning(f"{f}: {warn}")
             return None
@@ -518,7 +557,7 @@ def calculate_fitting_func(x: Series, y: Series, f: ComplexityFunction, instance
         return None
 
 
-def calculate_fitting_funcs(data: DataFrame, component: str, feature: str, property_src: str) -> list[Fit]:
+def calculate_fitting_funcs(data: DataFrame, component: str, feature: str, property_src: str, analyze_bar) -> list[Fit]:
     xy = data[data['component'] == component][[feature, property_src]]
 
     x, y = xy[feature], xy[property_src].to_numpy()
@@ -526,6 +565,7 @@ def calculate_fitting_funcs(data: DataFrame, component: str, feature: str, prope
     fits = []
     for f in fitting_functions_single:
         fit = calculate_fitting_func(x, y, f, [feature])
+        analyze_bar()
         if fit:
             fits.append(fit)
 
@@ -533,7 +573,7 @@ def calculate_fitting_funcs(data: DataFrame, component: str, feature: str, prope
 
 
 def calculate_fitting_funcs2(data: DataFrame, component: str, feature1: str, feature2: str,
-                             property_src: str) -> list[Fit]:
+                             property_src: str, analyze_bar) -> list[Fit]:
     xy = data[data['component'] == component][[feature1, feature2, property_src]]
 
     if len(xy) < MIN_POINTS:
@@ -546,6 +586,7 @@ def calculate_fitting_funcs2(data: DataFrame, component: str, feature1: str, fea
     fits = []
     for f in fitting_functions_double:
         fit = calculate_fitting_func(x, y, f, [feature1, feature2])
+        analyze_bar()
         if fit:
             fit.mse = fit.mse / DOUBLE_IMPROVEMENT_ACCEPT_TRESHOLD
             fits.append(fit)
@@ -553,16 +594,16 @@ def calculate_fitting_funcs2(data: DataFrame, component: str, feature1: str, fea
     return fits
 
 
-def find_best_instance_property(features: list[str], data: DataFrame, component: str, prop_src: str) -> list[Fit]:
+def find_best_instance_property(features: list[str], data: DataFrame, component: str, prop_src: str, analyze_bar) -> list[Fit]:
     fits_single: list[Fit] = []
     for feature in features:
-        fits_single += calculate_fitting_funcs(data, component, feature, prop_src)
+        fits_single += calculate_fitting_funcs(data, component, feature, prop_src, analyze_bar)
 
     Fit.sort(fits_single)
     fits_double: list[Fit] = []
     for i in range(len(features)):
         for j in range(i + 1, len(features)):
-            fits_double += calculate_fitting_funcs2(data, component, features[i], features[j], prop_src)
+            fits_double += calculate_fitting_funcs2(data, component, features[i], features[j], prop_src, analyze_bar)
 
     Fit.sort(fits_double)
 
@@ -575,35 +616,43 @@ def find_best_instance_property(features: list[str], data: DataFrame, component:
 def try_analyze_all_property_sources(instance_features: list[str], data: DataFrame):
     treemap_labels = []
     failed_components = []
-    for component_name in data['component'].unique():
-        complexities = {}
-        for property_source in PROPERTY_SOURCES:
-            # If all values are equal, they do not depend on any instance property, skip estimation
-            uniq  = np.unique(data[data['component'] == component_name][property_source])
-            if len(uniq) == 1:
-                complexities[property_source] = [Fit(sympify(uniq[0]), [], [0, 0], 0, [uniq[0], 0], {}, pd.DataFrame())]
-            else:
-                complexities[property_source] = find_best_instance_property(instance_features, data, component_name,
-                                                                        property_source)
-            # If all fits have failed, skip property
-            if not complexities[property_source]:
-                failed_components.append(component_name)
-                print(f"Failed to calculate complexity of component {component_name}, skipping")
-                return None
-            best = complexities[property_source][0]
-            for i in range(len(complexities[property_source])):
-                current = complexities[property_source][i]
-                f_chart = generate_f_chart(data, current, component_name, property_source)
-                current.chart = f_chart
-                # Fits are sorted from better to worse, so if there is a collision, the previous fit is better
-                if current.name_simple() not in fits_by_id[component_name][property_source]:
-                    fits_by_id[component_name][property_source][current.name_simple()] = current
 
-            print(
-                f"{component_name.replace(NEW_LINE, '::')} ({property_source}) --> Θ({best.name_simple()}) - {Fit.get_metric_name()}: {best.get_metric_value():.2f}")
-            treemap_labels.append(
-                {"component": component_name, "property_source": property_source, "calc_function": best.name_calc(),
-                 Fit.get_metric_name(): best.get_metric_value()})
+    unique_components = data['component'].unique()
+
+    n_f = len(instance_features)
+    n_features_funcs = n_f*(n_f - 1)//2 * len(fitting_functions_double) + n_f * len(fitting_functions_single)
+    total = n_features_funcs * len(unique_components) * len(PROPERTY_SOURCES)
+    with alive_bar(total, force_tty=True, enrich_print=False) as analyze_bar:
+        for component_name in unique_components:
+            complexities = {}
+            for property_source in PROPERTY_SOURCES:
+                # If all values are equal, they do not depend on any instance property, skip estimation
+                uniq  = np.unique(data[data['component'] == component_name][property_source])
+                if len(uniq) == 1:
+                    complexities[property_source] = [Fit(sympify(uniq[0]), [], [0, 0], 0, [uniq[0], 0], {}, pd.DataFrame())]
+                    analyze_bar(n_features_funcs)
+                else:
+                    complexities[property_source] = find_best_instance_property(instance_features, data, component_name,
+                                                                            property_source, analyze_bar)
+                # If all fits have failed, skip property
+                if not complexities[property_source]:
+                    failed_components.append(component_name)
+                    print(f"Failed to calculate complexity of component {component_name}, skipping")
+                    return None
+                best = complexities[property_source][0]
+                for i in range(len(complexities[property_source])):
+                    current = complexities[property_source][i]
+                    f_chart = generate_f_chart(data, current, component_name, property_source)
+                    current.chart = f_chart
+                    # Fits are sorted from better to worse, so if there is a collision, the previous fit is better
+                    if current.name_simple() not in fits_by_id[component_name][property_source]:
+                        fits_by_id[component_name][property_source][current.name_simple()] = current
+
+                print(
+                    f"{component_name.replace(NEW_LINE, '::')} ({property_source}) --> Θ({best.name_simple()}) - {Fit.get_metric_name()}: {best.get_metric_value():.2f}")
+                treemap_labels.append(
+                    {"component": component_name, "property_source": property_source, "calc_function": best.name_calc(),
+                     Fit.get_metric_name(): best.get_metric_value()})
 
     if not treemap_labels:
         print("No components to show, skipping treemap generation")
@@ -669,6 +718,9 @@ def mse(formula, instance_features, data: DataFrame, component_name: str, proper
     mse = np.mean((xy[property_source] - xy.y_estimated) ** 2)
     return float(mse)  # np uses 'floating' type
 
+def f_short(f):
+    # f is a column in a dataframe, create a new column with f to string and if longer than 40 chars cut string
+    return f.str.slice(0, 40)
 
 def analyze_complexity(root_component_id: str, instance_features: list[str], data: DataFrame):
     treemap_data = try_analyze_all_property_sources(instance_features, data)
@@ -692,14 +744,24 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
         labels=treemap_data.child,
         parents=treemap_data.parent,
         customdata=np.stack(
-            (treemap_data.time_total, treemap_data.f_comb, treemap_data.f_simpl, treemap_data.f_simpl_excl,
-             treemap_data[Fit.get_metric_name()], treemap_data.mse_comb, treemap_data.mse_simpl,
-             treemap_data.mse_simpl_excl, treemap_data.time, treemap_data.time_count, treemap_data.time_total_excl,
-             treemap_data.time_exclusive), axis=-1),
-        hovertemplate='<b>%{label} </b> <br> Total T(ms): %{customdata[0]:.2f} (%{customdata[8]:.2f} * %{customdata[9]:.2f}) <br> Exclusive T(ms): %{customdata[10]:.2f} (%{customdata[11]:.2f} * %{customdata[9]:.2f})<br> Global (MSE: %{customdata[5]:.1f}): %{customdata[1]} <br> Combined (MSE: %{customdata[6]:.1f}): %{customdata[2]} <br> Exclusive (MSE: %{customdata[7]:.1f}): %{customdata[3]}<extra></extra>',
-        # <extra></extra> hides the extra tooltips that contains traceid by default
+            (
+                treemap_data.time_total, treemap_data.time, treemap_data.time_count,
+                treemap_data.time_total_excl, treemap_data.time_exclusive, treemap_data.time_count,
+                treemap_data.mse_comb, f_short(treemap_data.f_comb),
+                treemap_data.mse_simpl, f_short(treemap_data.f_simpl),
+                treemap_data.mse_simpl_excl, f_short(treemap_data.f_simpl_excl),
+            ), axis=-1),
+        hovertemplate='''
+<b>%{label} </b> <br>
+Total T(ms): %{customdata[0]:.2f} (%{customdata[1]:.2f} * %{customdata[2]:.2f}) <br>
+Exclusive T(ms): %{customdata[3]:.2f} (%{customdata[4]:.2f} * %{customdata[5]:.2f})<br>
+Whitebox (MSE: %{customdata[6]:.1f}): %{customdata[7]} <br>
+Blackbox (MSE: %{customdata[8]:.1f}): %{customdata[9]} <br>
+Exclusive (MSE: %{customdata[10]:.1f}): %{customdata[11]}
+<extra></extra>
+        ''',
         marker=dict(
-            colors=treemap_data.time,
+            colors=treemap_data.time_total_excl_scaled,
             colorscale='RdYlGn_r',
             pad=dict(t=50, r=15, b=15, l=15),
             cmin=0,
@@ -711,7 +773,7 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
             ),
         ),
 
-        maxdepth=3,
+        maxdepth=MAX_DEPTH,
         legend="legend"
     ))
 
@@ -781,7 +843,6 @@ def analyze_complexity(root_component_id: str, instance_features: list[str], dat
     root_panel = pn.FlexBox(control_pane, detail_pane)
     return root_panel
 
-
 def main():
     parser = argparse.ArgumentParser(
         description='Creates a set of instances to use during the experimentation',
@@ -791,6 +852,8 @@ def main():
     parser.add_argument('-i', '--data', required=False, default="solutions",
                         help="Path to folder which contains profiler data. Data can be stored in either CSV files or JSON, see docs for more details on the format.")
 
+    # parser.add_argument('-dfi', '--dataframe-input', required=False, help="Path to cached dataframe")
+    # parser.add_argument('-dfo', '--dataframe-output', required=False, help="Generate a cached dataframe")
     args = parser.parse_args()
 
     if not isfile(args.properties):
