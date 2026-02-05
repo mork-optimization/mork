@@ -1,8 +1,5 @@
 package es.urjc.etsii.grafo.autoconfig.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
@@ -17,10 +14,13 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerErrorException;
+import tools.jackson.core.StreamReadConstraints;
+import tools.jackson.core.json.JsonFactory;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
-
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 
 /**
  * API endpoints related to experiment and run execution.
@@ -45,7 +45,11 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
      */
     public ExecutionController(IraceOrchestrator<S, I> orquestrator) {
         this.orquestrator = orquestrator;
-        this.json = new ObjectMapper().configure(FAIL_ON_UNKNOWN_PROPERTIES, false); // ignore unmapped properties such as bounds
+        var jsonFactory = JsonFactory.builder()
+                .streamReadConstraints(StreamReadConstraints.builder().maxStringLength(Integer.MAX_VALUE).build())
+                .build();
+        this.json = new ObjectMapper(jsonFactory);
+        this.json.deserializationConfig().without(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     }
 
     /**
@@ -76,7 +80,7 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
      * @return run result
      */
     @PostMapping("/batchExecute")
-    public ResponseEntity<List<ExecuteResponse>> batchExecute(@RequestBody ExecuteRequest request) throws JsonProcessingException {
+    public ResponseEntity<List<ExecuteResponse>> batchExecute(@RequestBody ExecuteRequest request) {
         log.trace("Batch execute request: {}", request);
         var decoded = validateAndPrepare(request, this.orquestrator.getIntegrationKey());
         List<IraceExecuteConfig> configs = json.readValue(decoded, new TypeReference<>() {});
