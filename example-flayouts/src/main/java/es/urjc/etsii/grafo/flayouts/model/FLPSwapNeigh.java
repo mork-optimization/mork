@@ -109,26 +109,26 @@ public class FLPSwapNeigh extends RandomizableNeighborhood<FLPSwapNeigh.SwapMove
             return after - before;
         }
 
-        public static double consecutiveSwapCost(FLPSolution solution, int row, int leftIndex, int rightIndex) {
-            int rowSize = solution.rowSize[row];
-            var rowData = solution.rows[row];
+        public static double consecutiveSwapCost(FLPSolution solution, int rowIdx, int leftIndex, int rightIndex) {
+            int rowSize = solution.rowSize[rowIdx];
+            var rowData = solution.rows[rowIdx];
             var instance = solution.getInstance();
 
             assert leftIndex < rightIndex : String.format("Left index (%s) must be strictly smaller than right index (%s)", leftIndex, rightIndex);
             assert rightIndex < rowSize : String.format("Out of bounds, max is %s, given %s", rowSize, rightIndex);
             assert leftIndex >= 0 : String.format("Out of bounds, min is %s, given %s", 0, leftIndex);
 
-            var leftBox = rowData[leftIndex];
-            var rightBox = rowData[rightIndex];
+            var leftFacility = rowData[leftIndex];
+            var rightFacility = rowData[rightIndex];
 
-            double changedAreaStart = leftBox.lastCenter - leftBox.facility.width / 2.0D;
-            double newLeftCenter = changedAreaStart + rightBox.facility.width / 2.0D;
-            double newRightCenter = changedAreaStart + rightBox.facility.width + leftBox.facility.width / 2.0D;
+            double changedAreaStart = solution.center[leftFacility] - instance.length(leftFacility) / 2.0D;
+            double newLeftCenter = changedAreaStart + instance.length(rightFacility) / 2.0D;
+            double newRightCenter = changedAreaStart + instance.length(rightFacility) + instance.length(leftFacility) / 2.0D;
 
 
             // Distance moved, used absolute values
-            double distanceChangeRight2Left = rightBox.lastCenter - newLeftCenter;
-            double distanceChangeLeft2Right = newRightCenter - leftBox.lastCenter;
+            double distanceChangeRight2Left = solution.center[rightFacility] - newLeftCenter;
+            double distanceChangeLeft2Right = newRightCenter - solution.center[leftFacility];
             double costChange = 0;
 
             // AREAS EXPLANATION
@@ -142,46 +142,42 @@ public class FLPSwapNeigh extends RandomizableNeighborhood<FLPSwapNeigh.SwapMove
             for (int i = 0; i < leftIndex; i++) {
                 var otherbox = rowData[i];
                 // Left box moves right increases cost
-                costChange += distanceChangeLeft2Right * instance.flow(leftBox.facility, otherbox.facility);
+                costChange += distanceChangeLeft2Right * instance.flow(leftFacility, otherbox);
                 // Right cost moves left decreases cost
-                costChange -= distanceChangeRight2Left * instance.flow(rightBox.facility, otherbox.facility);
+                costChange -= distanceChangeRight2Left * instance.flow(rightFacility, otherbox);
             }
 
             // Area 2
             for (int i = rightIndex + 1; i < rowSize; i++) {
                 var otherbox = rowData[i];
                 // Left box moves right decreases cost
-                costChange -= distanceChangeLeft2Right * instance.flow(leftBox.facility, otherbox.facility);
+                costChange -= distanceChangeLeft2Right * instance.flow(leftFacility, otherbox);
                 // Right cost moves left increases cost
-                costChange += distanceChangeRight2Left * instance.flow(rightBox.facility, otherbox.facility);
+                costChange += distanceChangeRight2Left * instance.flow(rightFacility, otherbox);
             }
 
             // Area 3: All rows different from current
             for (int currentRow = 0; currentRow < solution.rows.length; currentRow++) {
-                if (currentRow == row) continue; // Current row already calculated by Area 1 and Area 2
+                if (currentRow == rowIdx) continue; // Current row already calculated by Area 1 and Area 2
                 for (int i = 0; i < solution.rowSize[currentRow]; i++) {
-                    var otherBox = solution.rows[currentRow][i];
-                    int leftBoxWeight = instance.flow(otherBox.facility, leftBox.facility);
-                    double beforeLeftCost = Math.abs(otherBox.lastCenter - leftBox.lastCenter);
-                    double afterLeftCost = Math.abs(otherBox.lastCenter - newRightCenter);
+                    var otherFacility = solution.rows[currentRow][i];
+                    double beforeLeftCost = Math.abs(solution.center[otherFacility] - solution.center[leftFacility]);
+                    double afterLeftCost = Math.abs(solution.center[otherFacility] - newRightCenter);
+                    costChange += (afterLeftCost - beforeLeftCost) * instance.flow(otherFacility, leftFacility);
 
-                    // Changed
-                    costChange += (afterLeftCost - beforeLeftCost) * leftBoxWeight;
-
-                    int rightBoxWeight = instance.flow(otherBox.facility, rightBox.facility);
-                    double beforeRightCost = Math.abs(otherBox.lastCenter - rightBox.lastCenter);
-                    double afterRightCost = Math.abs(otherBox.lastCenter - newLeftCenter);
-                    costChange += (afterRightCost - beforeRightCost) * rightBoxWeight;
+                    double beforeRightCost = Math.abs(solution.center[otherFacility] - solution.center[rightFacility]);
+                    double afterRightCost = Math.abs(solution.center[otherFacility] - newLeftCenter);
+                    costChange += (afterRightCost - beforeRightCost) * instance.flow(otherFacility, rightFacility);
                 }
             }
 
             // Do fake move
-            leftBox.lastCenter = newRightCenter;
-            rightBox.lastCenter = newLeftCenter;
+            solution.center[leftFacility] = newRightCenter;
+            solution.center[rightFacility] = newLeftCenter;
 
             // COST IS NOT UPDATED, but dont need to right?
-            rowData[leftIndex] = rightBox;
-            rowData[rightIndex] = leftBox;
+            rowData[leftIndex] = rightFacility;
+            rowData[rightIndex] = leftFacility;
 
             return costChange;
         }
