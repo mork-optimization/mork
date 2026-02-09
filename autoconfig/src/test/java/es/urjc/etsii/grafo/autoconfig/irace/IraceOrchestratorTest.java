@@ -44,8 +44,10 @@ class IraceOrchestratorTest {
                 "2",
                 "1234567",
                 "instances/benchmark/40-02.txt",
-                "ROOT=VNS ROOT_VNS.constructive=DRFPRandomConstructive",
-                "ROOT_VNS.improver=NullImprover ROOT_VNS.maxK=429922341",
+                "ROOT=VNS",
+                "ROOT_VNS.constructive=DRFPRandomConstructive",
+                "ROOT_VNS.improver=NullImprover",
+                "ROOT_VNS.maxK=429922341",
                 "ROOT_VNS.shake=DestroyRebuild",
                 "ROOT_VNS.shake_DestroyRebuild.constructive=DRFPRandomConstructive",
                 "ROOT_VNS.shake_DestroyRebuild.destructive=NullDestructive"
@@ -56,7 +58,7 @@ class IraceOrchestratorTest {
         Assertions.assertEquals(1234567, parsedConfig.getSeed());
         Assertions.assertEquals("instances/benchmark/40-02.txt", parsedConfig.getInstanceName());
         var algConfig = parsedConfig.getAlgorithmConfig();
-        Assertions.assertEquals(5, algConfig.getConfig().size());
+        Assertions.assertEquals(7, algConfig.getConfig().size());
         Assertions.assertEquals("DRFPRandomConstructive", algConfig.getValue("ROOT_VNS.shake_DestroyRebuild.constructive", "fail"));
     }
 
