@@ -18,7 +18,17 @@ public class IraceExecuteConfig {
     private int seed;
 
     @JsonProperty("configuration")
-    private Map<String, Object> configuration;
+    private Map<String, String> configuration;
+
+    public static IraceExecuteConfig of(String name, int instanceId, String instance, int seed, Map<String, String> configuration) {
+        IraceExecuteConfig config = new IraceExecuteConfig();
+        config.setName(name);
+        config.setInstanceId(instanceId);
+        config.setInstance(instance);
+        config.setSeed(seed);
+        config.setConfiguration(configuration);
+        return config;
+    }
 
     protected IraceExecuteConfig() {}
 
@@ -54,11 +64,11 @@ public class IraceExecuteConfig {
         this.seed = seed;
     }
 
-    public Map<String, Object> getConfiguration() {
+    public Map<String, String> getConfiguration() {
         return configuration;
     }
 
-    public void setConfiguration(Map<String, Object> configuration) {
+    public void setConfiguration(Map<String, String> configuration) {
         this.configuration = configuration;
     }
 

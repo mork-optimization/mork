@@ -37,28 +37,6 @@ trainInstancesDir = "__INSTANCES_PATH__"
 ## The script called for each configuration that launches the program to be
 ## tuned.  See templates/target-runner.tmpl
 targetRunner <- function(experiment, scenario) {
-  #
-  # configuration.id <- experiment$id.configuration
-  # instance.id <- experiment$id.instance
-  # seed <- experiment$seed
-  # configuration <- experiment$configuration
-  # instance <- experiment$instance
-  # switches <- experiment$switches
-  # bound <- experiment$bound
-  # integration_key <- "__INTEGRATION_KEY__"
-  # url <- "http://127.0.0.1:__PORT__/execute"
-  # cmdline <- paste(configuration.id, instance.id, seed, instance, bound,
-  #                  buildCommandLine(configuration, switches))
-  # enc_cmdline <- base64encode(charToRaw(cmdline))
-  # data <- paste0('{"config":"', enc_cmdline, '", "key":"', integration_key, '"}')
-  #
-  # response <- POST(url, content_type_json(), body = data)
-  # text_response <- content(response, as = "text")
-  #
-  # v.output <- parse.output(text_response, verbose = FALSE)
-  # cost <- v.output[1]
-  # time <- v.output[2]
-  # return(list(cost = cost, time = time))
   stop("targetRunner should never be called, targetRunnerParallel is responsible for handling the experiment")
 }
 
@@ -78,22 +56,23 @@ targetRunner <- function(experiment, scenario) {
 ## help(target.runner.default) for details.
 targetRunnerParallel <- function(experiments, exec_target_runner, scenario, target_runner) {
   library("httr")
-  library("base64enc")
-  library("rjson")
-  integration_key <- "__INTEGRATION_KEY__"
+  key <- "__INTEGRATION_KEY__"
   url <- "http://127.0.0.1:__PORT__/batchExecute"
 
-  enc_cmdline <- base64encode(charToRaw(toJSON(experiments)))
-  data <- paste0('{"config":"', enc_cmdline, '", "key":"', integration_key, '"}')
+  data <- list(
+    experiments = experiments,
+    key = key
+  )
 
   response <- POST(url, content_type_json(), timeout(24*3600), body = data)
   parsed_response <- content(response, as = "parsed")
-  for (i in 1:length(parsed_response)) {
-    if (parsed_response[[i]]$cost == "NaN") {
-      parsed_response[[i]]$cost <- Inf
-      parsed_response[[i]]$time <- 0
+  parsed_response <- lapply(parsed_response, function(x) {
+    if (x$cost == "NaN") {
+      x$cost <- Inf
+      x$time <- 0
     }
-  }
+    x
+  })
 
   return(parsed_response)
 }
