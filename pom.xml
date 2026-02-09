@@ -51,7 +51,7 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <jackson.version>3.0.4</jackson.version>
         <springboot.version>4.0.2</springboot.version>
-        <mdependency.version>3.9.0</mdependency.version>
+        <mdependency.version>3.10.0</mdependency.version>
         <msurefire.version>3.5.4</msurefire.version>
         <mcompiler.version>3.14.1</mcompiler.version>
         <msource.version>3.4.0</msource.version>
