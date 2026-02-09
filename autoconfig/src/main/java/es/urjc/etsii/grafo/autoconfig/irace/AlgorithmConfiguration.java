@@ -45,7 +45,7 @@ public class AlgorithmConfiguration {
         Map<String, String> config = new HashMap<>();
         for (String arg : args) {
             String[] keyValue = arg.split("=");
-            if (keyValue.length == 1) {
+            if (keyValue.length != 2) {
                 throw new IllegalArgumentException("Invalid algorithm parameter, length != 2: " + Arrays.toString(keyValue));
             }
             if (config.containsKey(keyValue[0])) {

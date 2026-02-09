@@ -108,7 +108,7 @@ public class FilterConfig {
             ctor.setAccessible(true);
             return ctor.newInstance();
         } catch (Exception e){
-            throw new IllegalArgumentException("Failed to instantiate filter '" + clazz.getName() + "'. Ensure it has a public no-arg constructor.", e);
+            throw new IllegalArgumentException("Failed to instantiate filter '" + clazz.getName() + "'. Ensure it has a no-arg constructor.", e);
         }
     }
 

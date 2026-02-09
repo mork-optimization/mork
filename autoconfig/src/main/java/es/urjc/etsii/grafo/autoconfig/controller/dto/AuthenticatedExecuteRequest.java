@@ -21,7 +21,7 @@ public class AuthenticatedExecuteRequest {
      */
     public void checkValid(String integrationKey) {
         if(this.key == null || this.key.isBlank()) {
-            throw new IllegalArgumentException("Integration key cannot be null");
+            throw new IllegalArgumentException("Integration key cannot be empty");
         }
 
         if (!getKey().equals(integrationKey)) {

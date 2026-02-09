@@ -64,7 +64,7 @@ targetRunnerParallel <- function(experiments, exec_target_runner, scenario, targ
     key = key
   )
 
-  response <- POST(url, content_type_json(), timeout(24*3600), body = data)
+  response <- POST(url, timeout(24*3600), body = data, encode = "json")
   parsed_response <- content(response, as = "parsed")
   parsed_response <- lapply(parsed_response, function(x) {
     if (x$cost == "NaN") {

@@ -46,9 +46,9 @@ public class MultiExecuteRequest extends AuthenticatedExecuteRequest{
      */
     @Override
     public String toString() {
-        return "SingleExecuteRequest{" +
+        return "MultiExecuteRequest{" +
                 "key='" + key + '\'' +
-                ", exps='" + experiments + '\'' +
+                ", experiments='" + experiments + '\'' +
                 '}';
     }
 }
