@@ -14,8 +14,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerErrorException;
-import tools.jackson.databind.DeserializationFeature;
-import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
 
@@ -33,8 +31,6 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
 
     private final IraceOrchestrator<S, I> orquestrator;
 
-    private final ObjectMapper json;
-
     /**
      * Create a new execution controller
      *
@@ -42,7 +38,6 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
      */
     public ExecutionController(IraceOrchestrator<S, I> orquestrator) {
         this.orquestrator = orquestrator;
-        this.json = new ObjectMapper();
     }
 
     /**
