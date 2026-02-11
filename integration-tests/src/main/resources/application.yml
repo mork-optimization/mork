@@ -89,8 +89,9 @@ event:
   # Stop webserver after all work is done?
   # If true, app will stop after all experiments finish executing, and front end will stop loading. (DEFAULT)
   # If false, webserver will keep executing, and front will be available until manually stopped by the user.
+  # For integration tests, this must be false so that irace can make HTTP callbacks during execution.
   webserver:
-    stopOnExecutionEnd: true
+    stopOnExecutionEnd: false
 
   # Enable message notifications to any given user on experiment end. See
   telegram:
