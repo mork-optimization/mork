@@ -65,9 +65,17 @@ targetRunnerParallel <- function(experiments, exec_target_runner, scenario, targ
   )
 
   response <- POST(url, timeout(24*3600), body = data, encode = "json")
-  parsed_response <- content(response, as = "parsed")
+  if (http_error(response)) {
+    stop(paste("Middleware error:", http_status(response)$message))
+  }
+
+  parsed_response <- content(response, as = "parsed", type = "application/json")
+  if (!is.list(parsed_response)) {
+    stop(paste("Expected a list from middleware, but got:", class(parsed_response)))
+  }
+
   parsed_response <- lapply(parsed_response, function(x) {
-    if (x$cost == "NaN") {
+    if (is.null(x$cost) || x$cost == "NaN") {
       x$cost <- Inf
       x$time <- 0
     }

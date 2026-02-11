@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.autoconfig.inventory;
 
-import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.util.ReflectionUtil;
 
 import java.util.Set;

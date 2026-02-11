@@ -1,7 +1,5 @@
 package es.urjc.etsii.morktests;
 
-import es.urjc.etsii.grafo.autoconfigtests.Main;
-import es.urjc.etsii.grafo.solver.Mork;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -11,10 +9,14 @@ import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.Duration;
 
+import static es.urjc.etsii.morktests.TestUtils.runJavaProcess;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class IraceIntegrationTest {
+
 
     @BeforeAll
     static void setup() throws IOException {
@@ -30,12 +32,12 @@ public class IraceIntegrationTest {
     }
 
     @Test
-    void launchAutoconfig() {
-        var success = Mork.start(new String[]{
+    void launchAutoconfig() throws Exception {
+        int exit = runJavaProcess(Duration.ofMinutes(10),
                 "--autoconfig",
-                "--instances.path.default=instancesautoconfig/autoconfig",
-        }, Main.AC_OBJECTIVE);
-        assertTrue(success);
+                "--whitelist=ACITestWhitelist",
+                "--instances.path.default=instancesautoconfig/autoconfig");
+        assertEquals(0, exit);
         assertTrue(Files.exists(Path.of("plots.pdf")));
         assertTrue(Files.exists(Path.of("irace.Rdata")));
         assertTrue(Files.exists(Path.of("log-ablation.Rdata")));
