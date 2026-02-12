@@ -56,7 +56,7 @@ public S improve(S solution) {
 | **Best Improvement** | Always selects best move | [Best Improvement](best-improvement.md) |
 | **First Improvement** | Accepts first improvement found | [First Improvement](first-improvement.md) |
 | **VND** | Systematic multi-neighborhood search | [VND](../metaheuristics/vnd.md) |
-| **Simulated Annealing** | Probabilistic acceptance (used as improver) | [SA](simulated-annealing.md) |
+| **Simulated Annealing** | Probabilistic acceptance (used as improver) | [SA](../metaheuristics/simulated-annealing.md) |
 
 ## How to Use
 

@@ -37,7 +37,7 @@ Components that take a solution and try to improve it. These methods cannot retu
 | **Local Search** | Base class for local search algorithms that explore solution neighborhoods | [Local Search Documentation](improvers/local-search.md) |
 | **Best Improvement LS** | Local search that always picks the best move in the neighborhood | [Best Improvement Documentation](improvers/best-improvement.md) |
 | **First Improvement LS** | Local search that applies the first improving move found | [First Improvement Documentation](improvers/first-improvement.md) |
-| **Simulated Annealing (as Improver)** | SA can be used as an improvement method with temperature-based acceptance | [SA Improver Documentation](improvers/simulated-annealing.md) |
+| **Simulated Annealing (as Improver)** | SA can be used as an improvement method with temperature-based acceptance | [SA Documentation](metaheuristics/simulated-annealing.md) |
 
 ## Shake/Perturbation Methods
 
