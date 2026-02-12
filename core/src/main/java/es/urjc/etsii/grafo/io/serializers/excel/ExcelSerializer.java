@@ -125,9 +125,16 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
             var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
 
-            var areaString = String.format("%s1:%s%s", convertNumToColString(0), convertNumToColString(getCommonHeaders().length-1), 1_000_000);
+            // Extract custom properties from results
+            Set<String> customPropertyKeysSet = new LinkedHashSet<>();
+            for (var result : results) {
+                customPropertyKeysSet.addAll(result.getSolutionProperties().keySet());
+            }
+            String[] customProperties = customPropertyKeysSet.toArray(new String[0]);
+
+            var areaString = String.format("%s1:%s%s", convertNumToColString(0), convertNumToColString(getCommonHeaders().length + customProperties.length - 1), 1_000_000);
             var area = new AreaReference(areaString, SpreadsheetVersion.EXCEL2007);
-            headRawSheet(rawSheet);
+            headRawSheet(rawSheet, customProperties);
             fillPivotSheet(pivotSheet, area, rawSheet);
 
             // Check and fill instance sheet if appropiate
@@ -390,7 +397,13 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     public void fillRawSheet(SXSSFSheet rawSheet, boolean maximizing, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders) {
         // Best values per instance
         Map<String, Double> bestValuesPerInstance = bestResultPerInstance(Context.getMainObjective(), results, referenceResultProviders, maximizing);
-        String[] customProperties = new String[0]; // TODO review and adapt impl
+        
+        // Extract unique custom property keys from all results
+        Set<String> customPropertyKeysSet = new LinkedHashSet<>();
+        for (var result : results) {
+            customPropertyKeysSet.addAll(result.getSolutionProperties().keySet());
+        }
+        String[] customProperties = customPropertyKeysSet.toArray(new String[0]);
 
         // Create headers
         String[] commonHeaders = getCommonHeaders();
@@ -429,6 +442,13 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             data[i][BEST_KNOWN_FOR_INSTANCE.getIndex()] = String.format("%s(%s, %s, %s)", function, refScoreCol, refInstanceNameCol, refCurrentInstance);
             data[i][IS_BEST_KNOWN.getIndex()] = String.format("IF(%s=%s,1,0)", refBestKnownForInstance, refCurrentScore);
             data[i][DEV_TO_BEST.getIndex()] = String.format("ABS(%s-%s)/%s", refCurrentScore, refBestKnownForInstance, refBestKnownForInstance);
+            
+            // Fill custom properties
+            var solutionProps = r.getSolutionProperties();
+            for (int j = 0; j < customProperties.length; j++) {
+                String propName = customProperties[j];
+                data[i][commonHeaders.length + j] = solutionProps.getOrDefault(propName, "");
+            }
         }
 
         int currentRow = cutOff;
@@ -471,9 +491,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         }
     }
 
-    public void headRawSheet(SXSSFSheet rawSheet) {
-        String[] customProperties = new String[0];
-
+    public void headRawSheet(SXSSFSheet rawSheet, String[] customProperties) {
         // Create headers
         String[] commonHeaders = getCommonHeaders();
         String[] headers = ArrayUtil.merge(commonHeaders, customProperties);

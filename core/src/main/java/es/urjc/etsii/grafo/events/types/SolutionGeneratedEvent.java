@@ -34,20 +34,22 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
     private final long timeToBest;
     private final Algorithm<S,I> algorithm;
     private final SoftReference<S> solution;
+    private final Map<String, Object> solutionProperties;
 
     /**
      * Create a new SolutionGeneratedEvent
      *
-     * @param iteration       solution iteration
-     * @param solution        generated solution
-     * @param experimentName  experiment name
-     * @param algorithm       algorithm that generated this solution
-     * @param executionTime   time used to generate this solution
-     * @param timeToBest      time needed ot reach the best solution. timeToBest = totalTime - timeSinceLastModification
-     * @param metrics         both framework calculated and user defined metrics
-     * @param timeStatsEvents
+     * @param iteration         solution iteration
+     * @param solution          generated solution
+     * @param experimentName    experiment name
+     * @param algorithm         algorithm that generated this solution
+     * @param executionTime     time used to generate this solution
+     * @param timeToBest        time needed ot reach the best solution. timeToBest = totalTime - timeSinceLastModification
+     * @param solutionProperties custom properties computed for the solution
+     * @param metrics           both framework calculated and user defined metrics
+     * @param timeStatsEvents   time statistics events
      */
-    public SolutionGeneratedEvent(boolean success, String iteration, String instancePath, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest, MetricsStorage metrics, List<TimeStatsEvent> timeStatsEvents) {
+    public SolutionGeneratedEvent(boolean success, String iteration, String instancePath, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest, Map<String, Object> solutionProperties, MetricsStorage metrics, List<TimeStatsEvent> timeStatsEvents) {
         super();
         this.success = success;
         this.iteration = iteration;
@@ -57,6 +59,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
         this.algorithm = algorithm;
         this.executionTime = executionTime;
         this.timeToBest = timeToBest;
+        this.solutionProperties = solutionProperties != null ? solutionProperties : Map.of();
         this.algorithmName = algorithm.getName();
         this.metrics = metrics;
         this.timeStatsEvents = timeStatsEvents;
@@ -165,5 +168,13 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
      */
     public boolean isSuccess() {
         return success;
+    }
+
+    /**
+     * Get custom properties computed for this solution
+     * @return Map where key is property name, value is the computed property value
+     */
+    public Map<String, Object> getSolutionProperties() {
+        return solutionProperties;
     }
 }
