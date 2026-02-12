@@ -139,7 +139,7 @@ Common JMH command-line options:
 
 ## Requirements
 
-- Java 17 or higher
+- Java 21 or higher
 - Maven 3.6+
 - At least 2GB of available memory for running benchmarks
 
