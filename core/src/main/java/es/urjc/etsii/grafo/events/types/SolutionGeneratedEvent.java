@@ -44,7 +44,7 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
      * @param experimentName    experiment name
      * @param algorithm         algorithm that generated this solution
      * @param executionTime     time used to generate this solution
-     * @param timeToBest        time needed ot reach the best solution. timeToBest = totalTime - timeSinceLastModification
+     * @param timeToBest        time needed to reach the best solution. timeToBest = totalTime - timeSinceLastModification
      * @param solutionProperties custom properties computed for the solution
      * @param metrics           both framework calculated and user defined metrics
      * @param timeStatsEvents   time statistics events

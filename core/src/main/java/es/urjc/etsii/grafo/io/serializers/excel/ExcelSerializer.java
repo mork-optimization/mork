@@ -447,7 +447,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             var solutionProps = r.getSolutionProperties();
             for (int j = 0; j < customProperties.length; j++) {
                 String propName = customProperties[j];
-                data[i][commonHeaders.length + j] = solutionProps.getOrDefault(propName, "");
+                data[i][commonHeaders.length + j] = solutionProps.getOrDefault(propName, null);
             }
         }
 
