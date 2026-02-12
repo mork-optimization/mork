@@ -34,9 +34,6 @@ irace:
   # False: use GraalVM implementation, does not need R installed locally
   # True: Use shell to execute R scripts, R/Rscript need to be locally installed and in path
   shell: true
-  
-  # Maximum number of algorithm executions
-  maxExperiments: 10000
 ```
 
 In order to use Irace, you need to either use GraalVM (and set `irace.shell` to `false`) or install R/Rscript locally (and set `irace.shell` to `true`).
