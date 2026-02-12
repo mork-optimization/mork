@@ -18,6 +18,8 @@
     <properties>
         <jmh.version>1.37</jmh.version>
         <uberjar.name>benchmarks</uberjar.name>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
     </properties>
 
     <dependencies>
