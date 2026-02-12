@@ -1,15 +1,12 @@
 package es.urjc.etsii.grafo.autoconfig.controller;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteRequest;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.MultiExecuteRequest;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.SingleExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
-import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
+import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -17,10 +14,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerErrorException;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.List;
-
-import static com.fasterxml.jackson.databind.DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES;
 
 /**
  * API endpoints related to experiment and run execution.
@@ -45,7 +42,7 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
      */
     public ExecutionController(IraceOrchestrator<S, I> orquestrator) {
         this.orquestrator = orquestrator;
-        this.json = new ObjectMapper().configure(FAIL_ON_UNKNOWN_PROPERTIES, false); // ignore unmapped properties such as bounds
+        this.json = new ObjectMapper();
     }
 
     /**
@@ -55,15 +52,17 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
      * @return run result
      */
     @PostMapping("/execute")
-    public ResponseEntity<String> execute(@RequestBody ExecuteRequest request) {
+    public ResponseEntity<String> execute(@RequestBody SingleExecuteRequest request) {
         log.trace("Execute request: {}", request);
-        var decoded = validateAndPrepare(request, this.orquestrator.getIntegrationKey());
+        request.checkValid(this.orquestrator.getIntegrationKey());
+
+        var exp = request.getExperiment();
         try {
-            var config = IraceUtil.toIraceRuntimeConfig(decoded);
+            var config = new IraceRuntimeConfiguration(exp);
             var result = this.orquestrator.iraceSingleCallback(config);
             return ResponseEntity.ok(result.toIraceResultString());
         } catch (Exception e) {
-            String errorMessage = String.format("Error executing single request: %s", decoded);
+            String errorMessage = String.format("Error executing single request: %s", exp);
             log.error(errorMessage, e);
             throw new ServerErrorException(errorMessage, e);
         }
@@ -76,31 +75,17 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
      * @return run result
      */
     @PostMapping("/batchExecute")
-    public ResponseEntity<List<ExecuteResponse>> batchExecute(@RequestBody ExecuteRequest request) throws JsonProcessingException {
+    public ResponseEntity<List<ExecuteResponse>> batchExecute(@RequestBody MultiExecuteRequest request) {
         log.trace("Batch execute request: {}", request);
-        var decoded = validateAndPrepare(request, this.orquestrator.getIntegrationKey());
-        List<IraceExecuteConfig> configs = json.readValue(decoded, new TypeReference<>() {});
+        request.checkValid(this.orquestrator.getIntegrationKey());
+
         try {
-            var results = this.orquestrator.iraceMultiCallback(configs);
+            var results = this.orquestrator.iraceMultiCallback(request.getExperiments());
             return ResponseEntity.ok(results);
         } catch (Exception e){
-            String formattedMsg = String.format("Error executing batch request. Configs:  %s, data: %s", configs, decoded);
+            String formattedMsg = String.format("Error executing batch request. Exps:  %s", request.getExperiments());
             log.error(formattedMsg, e);
             throw new ServerErrorException(formattedMsg, e);
         }
-    }
-
-    public static String validateAndPrepare(ExecuteRequest request, String integrationKey) {
-        if (!request.isValid()) {
-            throw new IllegalArgumentException("ExecuteRequest failed validation");
-        }
-        if (!request.getKey().equals(integrationKey)) {
-            throw new IllegalArgumentException(String.format("Invalid integration key, got %s", request.getKey()));
-        }
-        String decoded = StringUtil.b64decode(request.getConfig());
-        if (decoded.isBlank()) {
-            throw new IllegalArgumentException("Empty decoded config");
-        }
-        return decoded;
     }
 }

@@ -29,15 +29,6 @@ if (!require(httr)) {
   library(httr)
 }
 
-if (!require(rjson)) {
-  install.packages("rjson", type = "source", repos = "http://cran.us.r-project.org")
-  library(rjson)
-}
-
-if (!require(base64enc)) {
-  install.packages("base64enc", type = "source", repos = "http://cran.us.r-project.org")
-  library(base64enc)
-}
 
 scenario <- readScenario(filename = "scenario.txt", scenario = defaultScenario())
 checkIraceScenario(scenario = scenario)

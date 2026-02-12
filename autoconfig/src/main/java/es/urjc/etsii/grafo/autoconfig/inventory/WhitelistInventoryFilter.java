@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.autoconfig.inventory;
 
-import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.util.ReflectionUtil;
 
 import java.util.Set;
@@ -8,7 +7,6 @@ import java.util.Set;
 /**
  * Includes ONLY the given classes/interfaces and their implementations, ignores the rest. By default, includes nothing
  */
-@InheritedComponent
 public abstract class WhitelistInventoryFilter implements IInventoryFilter {
 
     protected final Set<Class<?>> whitelistedClasses;

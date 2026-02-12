@@ -282,8 +282,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
         log.debug("Config {}. Built algorithm: {}", config, algorithm);
         // Configure randoms for reproducible experimentation
-        long seed = Long.parseLong(config.getSeed());
-        Context.Configurator.resetRandom(solverConfig.getRandomType(), seed);
+        Context.Configurator.resetRandom(solverConfig.getRandomType(), config.getSeed());
 
         // Execute
         return singleExecution(algorithm, instance);
@@ -316,7 +315,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 var futures = new ArrayList<Future<ExecuteResponse>>();
                 for (IraceExecuteConfig config : configs) {
                     futures.add(executor.submit(() -> {
-                        var iraceConfig = IraceUtil.toIraceRuntimeConfig(config);
+                        var iraceConfig = new IraceRuntimeConfiguration(config);
                         return iraceSingleCallback(iraceConfig);
                     }));
                 }
@@ -326,7 +325,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         } else {
             var results = new ArrayList<ExecuteResponse>();
             for (IraceExecuteConfig config : configs) {
-                var iraceConfig = IraceUtil.toIraceRuntimeConfig(config);
+                var iraceConfig = new IraceRuntimeConfiguration(config);
                 results.add(iraceSingleCallback(iraceConfig));
             }
             return results;
