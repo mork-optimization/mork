@@ -23,6 +23,7 @@
         <module>autoconfig</module>
         <module>integration-tests</module>
         <module>aggregate-report</module>
+        <module>benchmarks</module>
     </modules>
 
     <licenses>
