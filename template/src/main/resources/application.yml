@@ -74,9 +74,12 @@ solver:
   # Enable or disable metrics tracking. Force enabled if using autoconfig.
   metrics: false
 
-# Enable irace integration? Check IRACE Wiki section before enabling
+# IRACE integration configuration. To enable IRACE mode, run with --irace or --autoconfig command line argument.
+# See https://mork-optimization.readthedocs.io/en/latest/features/irace/ for more details.
 irace:
-  enabled: false
+  # Note: The 'enabled' property is deprecated and no longer used. 
+  # Use --irace or --autoconfig command line argument to activate IRACE mode.
+  # enabled: false
 
   # False: (EXPERIMENTAL) use GraalVM implementation, does not need R installed locally
   # True: (RECOMMENDED) Use shell to execute R scripts, R / Rscript need to be locally installed and in path

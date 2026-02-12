@@ -12,18 +12,32 @@ https://cran.r-project.org/web/packages/irace/vignettes/irace-package.pdf
 
 # Requirements
 
+## Activating IRACE mode
+
+To execute MORK in IRACE mode, you must use the `--irace` or `--autoconfig` command-line argument when running your application:
+
+```bash
+# Run with irace mode
+java -jar your-application.jar --irace
+
+# Or use the autoconfig alias
+java -jar your-application.jar --autoconfig
+```
+
+When running in IRACE mode, user defined experiments are ignored, and a special tuning experiment is executed using the user provided scenario.
+
+## Configuring R integration
+
 Inside the default `application.yml` you may see a section similar to this:
 ```YML
-# Enable irace integration? Check IRACE Wiki section before enabling
 irace:
-  enabled: false
-
   # False: use GraalVM implementation, does not need R installed locally
   # True: Use shell to execute R scripts, R/Rscript need to be locally installed and in path
   shell: true
+  
+  # Maximum number of algorithm executions
+  maxExperiments: 10000
 ```
-
-When `irace.enabled` is true, user defined experiments are ignored, and a special tuning experiment is executed using the user provided scenario.
 
 In order to use Irace, you need to either use GraalVM (and set `irace.shell` to `false`) or install R/Rscript locally (and set `irace.shell` to `true`).
 
@@ -85,4 +99,4 @@ Check full parameter.txt and scenario.txt documentation in [the official Irace m
 
 More information in the guidelines provided in the published article: ["The irace package: Iterated racing for automatic algorithm configuration"](https://doi.org/10.1016/j.orp.2016.09.002), or in the *irace* package documentation: ["The irace Package: User Guide"](https://cran.r-project.org/web/packages/irace/vignettes/irace-package.pdf).
 
-**Reminder!**:  When the irace option is activated ( `irace.enabled = true` ), no other user defined experiments will execute.
+**Reminder!**:  When running MORK with the `--irace` or `--autoconfig` command-line argument, no other user defined experiments will execute.
