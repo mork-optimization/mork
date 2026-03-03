@@ -1,0 +1,6 @@
+title: Shakes & Perturbations
+nav:
+    - shake.md
+    - random-move.md
+    - destructive.md
+    - destroy-rebuild.md

@@ -1,0 +1,7 @@
+nav:
+    - intro.md
+    - components.md
+    - metaheuristics
+    - constructors
+    - improvers
+    - shakes
