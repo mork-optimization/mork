@@ -30,8 +30,10 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 import static es.urjc.etsii.grafo.testutil.TestHelperFactory.referencesGenerator;
@@ -192,49 +194,58 @@ public class ExcelSerializerTest {
         }
     }
 
-//    @Test
-//    void writeExcelWithCustomProperties(boolean useJavaCalculation, @TempDir Path temp) throws IOException {
-//        var instance = new TestInstance("writeInstanceSheetTest");
-//        instance.setProperty("customProperty", 1234567);
-//        var excel = initExcel(useJavaCalculation, Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));
-//        var excelPath = temp.resolve("instanceSheet.xlsx");
-//        var data = solutionWithCustomPropertiesGenerator();
-//        excel.serializeResults("TestExperiment", data, excelPath);
-//        File excelFile = excelPath.toFile();
-//
-//        try (var wb = new XSSFWorkbook(new FileInputStream(excelFile))) {
-//            XSSFSheet instanceSheet = wb.getSheet(ExcelSerializer.RAW_SHEET);
-//            Iterator<Row> rowIterator = instanceSheet.iterator();
-//
-//            Assertions.assertTrue(rowIterator.hasNext(), "Missing headers in raw result sheet");
-//            var header = rowIterator.next();
-//            Assertions.assertEquals(11, header.getLastCellNum(), "Missing headers in instance sheet");
-//            // Get the index of "prop1"
-//            var prop1Index = -1;
-//            for (int i = 0; i < header.getLastCellNum(); i++) {
-//                if (header.getCell(i).getStringCellValue().equals("prop1")) {
-//                    prop1Index = i;
-//                    break;
-//                }
-//            }
-//            Assertions.assertTrue(prop1Index >= 0, "Missing prop1 header in raw result sheet");
-//            // Get the index of "prop2"
-//            var prop2Index = -1;
-//            for (int i = 0; i < header.getLastCellNum(); i++) {
-//                if (header.getCell(i).getStringCellValue().equals("prop2")) {
-//                    prop2Index = i;
-//                    break;
-//                }
-//            }
-//            Assertions.assertTrue(prop2Index >= 0, "Missing prop2 header in raw result sheet");
-//            Assertions.assertTrue(rowIterator.hasNext(), "Missing values in raw result sheet");
-//            var firstData = rowIterator.next();
-//            Assertions.assertEquals(4, firstData.getCell(prop1Index).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
-//            Assertions.assertEquals(1, firstData.getCell(prop2Index).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
-//            var secondData = rowIterator.next();
-//            Assertions.assertEquals(6, secondData.getCell(prop1Index).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
-//            Assertions.assertEquals(2, secondData.getCell(prop2Index).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
-//        }
-//    }
+    @Test
+    void writeExcelWithCustomProperties(@TempDir Path temp) throws IOException {
+        var instance = new TestInstance("writeCustomPropsTest");
+        var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));
+        var excelPath = temp.resolve("customProperties.xlsx");
+        
+        // Create events with custom properties
+        var data = Arrays.asList(
+                TestHelperFactory.solutionGenerated("writeCustomPropsTest", "TestExp", "Alg1", 1, 100.0, 1000, 500, Map.of("prop1", 4, "prop2", 1)),
+                TestHelperFactory.solutionGenerated("writeCustomPropsTest", "TestExp", "Alg1", 2, 95.0, 1100, 600, Map.of("prop1", 6, "prop2", 2))
+        );
+        
+        excel.serializeResults("TestExperiment", data, excelPath);
+        File excelFile = excelPath.toFile();
+
+        try (var wb = new XSSFWorkbook(new FileInputStream(excelFile))) {
+            XSSFSheet rawSheet = wb.getSheet(ExcelSerializer.RAW_SHEET);
+            Iterator<Row> rowIterator = rawSheet.iterator();
+
+            Assertions.assertTrue(rowIterator.hasNext(), "Missing headers in raw result sheet");
+            var header = rowIterator.next();
+            Assertions.assertEquals(11, header.getLastCellNum(), "Should have 9 common headers + 2 custom property headers");
+            
+            // Find the index of "prop1"
+            var prop1Index = -1;
+            for (int i = 0; i < header.getLastCellNum(); i++) {
+                if (header.getCell(i) != null && "prop1".equals(header.getCell(i).getStringCellValue())) {
+                    prop1Index = i;
+                    break;
+                }
+            }
+            Assertions.assertTrue(prop1Index >= 0, "Missing prop1 header in raw result sheet");
+            
+            // Find the index of "prop2"
+            var prop2Index = -1;
+            for (int i = 0; i < header.getLastCellNum(); i++) {
+                if (header.getCell(i) != null && "prop2".equals(header.getCell(i).getStringCellValue())) {
+                    prop2Index = i;
+                    break;
+                }
+            }
+            Assertions.assertTrue(prop2Index >= 0, "Missing prop2 header in raw result sheet");
+            
+            Assertions.assertTrue(rowIterator.hasNext(), "Missing values in raw result sheet");
+            var firstData = rowIterator.next();
+            Assertions.assertEquals(4.0, firstData.getCell(prop1Index).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
+            Assertions.assertEquals(1.0, firstData.getCell(prop2Index).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
+            
+            var secondData = rowIterator.next();
+            Assertions.assertEquals(6.0, secondData.getCell(prop1Index).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
+            Assertions.assertEquals(2.0, secondData.getCell(prop2Index).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
+        }
+    }
 
 }
