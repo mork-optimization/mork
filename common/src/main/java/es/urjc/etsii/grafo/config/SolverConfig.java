@@ -40,6 +40,11 @@ public class SolverConfig {
     private boolean parallelExecutor = false;
 
     /**
+     * Enable the progress bar in the terminal while solving
+     */
+    private boolean progressBar = true;
+
+    /**
      * Number of workers to use if parallelExecutor is enabled
      */
     private int nWorkers = -1;
@@ -355,5 +360,21 @@ public class SolverConfig {
      */
     public void setTimeStats(boolean timeStats) {
         this.timeStats = timeStats;
+    }
+
+    /**
+     * Check if we should show a progress bar while solving
+     * @return true if we should show the progress bar while solving, false otherwise
+     */
+    public boolean isProgressBar() {
+        return progressBar;
+    }
+
+    /**
+     * Enable or disable progress bar
+     * @param progressBar true to enable progress bar, false to disable
+     */
+    public void setProgressBar(boolean progressBar) {
+        this.progressBar = progressBar;
     }
 }

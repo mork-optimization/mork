@@ -22,6 +22,7 @@ import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.TimeUtil;
+import me.tongfei.progressbar.DelegatingProgressBarConsumer;
 import me.tongfei.progressbar.ProgressBar;
 import me.tongfei.progressbar.ProgressBarBuilder;
 import me.tongfei.progressbar.ProgressBarStyle;
@@ -261,7 +262,14 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
                 .setStyle(ProgressBarStyle.COLORFUL_UNICODE_BAR);
     }
 
+
     public ProgressBar getGlobalSolvingProgressBar(String expName, Map<String, Map<Algorithm<S, I>, List<WorkUnit<S, I>>>> workUnits) {
+        if(!this.solverConfig.isProgressBar()){
+            return getPBarBuilder(expName)
+                    .setInitialMax(0)
+                    .setConsumer(new DelegatingProgressBarConsumer(__ -> {}))
+                    .build();
+        }
         int totalUnits = 0;
         for (var v1 : workUnits.values()) {
             for (var v2 : v1.values()) {
