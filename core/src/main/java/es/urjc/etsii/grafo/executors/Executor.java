@@ -180,7 +180,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             io.exportSolution(r, SolutionExportFrequency.ALL);
         }
 
-        var solutionGenerated = new SolutionGeneratedEvent<>(r.success(), r.iteration(), r.instancePath(), r.solution(), r.experimentName(), r.algorithm(), r.executionTime(), r.timeToTarget(), r.metrics(), r.timeData());
+        var solutionGenerated = new SolutionGeneratedEvent<>(r.success(), r.iteration(), r.instancePath(), r.solution(), r.experimentName(), r.algorithm(), r.executionTime(), r.timeToTarget(), r.solutionProperties(), r.metrics(), r.timeData());
         EventPublisher.getInstance().publishEvent(solutionGenerated);
         if (log.isDebugEnabled()) {
             log.debug(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.iteration(), nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
