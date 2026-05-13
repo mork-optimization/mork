@@ -5,13 +5,17 @@ import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
 import me.tongfei.progressbar.ProgressBar;
+import org.apache.commons.io.input.BOMInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.ref.SoftReference;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -95,8 +99,10 @@ public class InstanceManager<I extends Instance> {
     private List<String> listIndexFile(String instancePath) {
         Path indexFile = Path.of(instancePath);
         var parentPath = indexFile.getParent();
-        try (var stream = Files.lines(indexFile)){
-            return stream
+        try (var in = BOMInputStream.builder().setInputStream(Files.newInputStream(indexFile)).get();
+             var reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
+            return reader.lines()
+                    .map(line -> line.startsWith("\uFEFF") ? line.substring(1) : line)
                     .filter(p -> !p.startsWith("#"))
                     .filter(p -> !p.isBlank())
                     .map(Path::of)

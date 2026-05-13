@@ -104,6 +104,21 @@ class InstanceManagerTest {
     }
 
     @Test
+    void testIndexFileWithBomAndComment() throws IOException {
+        Files.writeString(indexFile.toPath(), "\uFEFF#comment\nTestInstance3\n\nTestInstance1\n");
+
+        var manager = buildManager(true, indexFile.getAbsolutePath());
+        var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
+
+        assertEquals(2, instances.size());
+        Assertions.assertTrue(instances.contains(instance1File.getAbsolutePath()));
+        Assertions.assertTrue(instances.contains(instance3File.getAbsolutePath()));
+        verify(instanceImporter, times(1)).importInstance(instance1File.getAbsolutePath());
+        verify(instanceImporter, times(1)).importInstance(instance3File.getAbsolutePath());
+        verifyNoMoreInteractions(instanceImporter);
+    }
+
+    @Test
     void checkCache(){
         var manager = buildManager(true, instancePath);
         var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
