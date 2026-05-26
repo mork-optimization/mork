@@ -4,10 +4,12 @@ import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.exception.InstanceImportException;
 import es.urjc.etsii.grafo.util.IOUtil;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.io.input.BOMInputStream;
 
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 
 
 /**
@@ -26,7 +28,8 @@ public abstract class InstanceImporter<I extends Instance> {
      * @return The instance object that represents this object
      */
     public I importInstance(String instancePath){
-        try (var reader = new BufferedReader(new InputStreamReader(IOUtil.getInputStream(instancePath)))) {
+        try (var in = BOMInputStream.builder().setInputStream(IOUtil.getInputStream(instancePath)).get();
+             var reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             var suggestedInstanceId = FilenameUtils.getName(instancePath);
             return importInstance(reader, suggestedInstanceId);
         } catch (Exception e) {
