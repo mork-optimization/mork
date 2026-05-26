@@ -1,7 +1,10 @@
 package es.urjc.etsii.grafo.autoconfig.controller;
 
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.MultiExecuteRequest;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.SingleExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
+import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import org.slf4j.Logger;
