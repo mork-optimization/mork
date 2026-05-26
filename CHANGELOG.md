@@ -4,6 +4,7 @@
 - (Breaking) Simplify VNS implementation. New doc page for VNS.
 - (Breaking) Minimum required Java version is now Java 25 LTS.
 - (New) Support tar and tar.gz compressed instance files, in addition to existing zip and 7z formats.
+- (New) Auto detect if instance files contain BOM (Byte Order Mark) and remove it.
 - (New) #129: Faster Excel serializer and allow users to easily extend the raw data.
 - (New) Python tools module, refactor complexity analysis & instance selector scripts
 - (Fix) Irace v4.2 integration
