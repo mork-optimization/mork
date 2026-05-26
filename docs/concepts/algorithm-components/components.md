@@ -23,8 +23,6 @@ Components that build initial solutions from scratch. These methods create feasi
 |-------------|-------------|---------------|
 | **Constructive (Base)** | Abstract base class for all constructive methods | [Constructive Documentation](constructors/constructive.md) |
 | **GRASP Constructive** | Greedy Randomized Adaptive Search Procedure for construction phase | [GRASP Documentation](constructors/grasp.md) |
-| **Greedy Random GRASP** | GRASP variant that builds solutions element by element with randomized greedy selection | [Greedy Random Documentation](constructors/greedy-random-grasp.md) |
-| **Random Greedy GRASP** | GRASP variant that randomizes the order before applying greedy selection | [Random Greedy Documentation](constructors/random-greedy-grasp.md) |
 | **Reconstructive** | Specialized constructor for rebuilding partially destroyed solutions | [Reconstructive Documentation](constructors/reconstructive.md) |
 
 ## Improvement Methods
