@@ -13,7 +13,6 @@ High-level algorithmic strategies that guide the search process. These are the m
 | **Iterated Greedy (IG)** | Destruction-reconstruction metaheuristic that iteratively destroys and rebuilds solutions | [IG Documentation](metaheuristics/iterated-greedy.md) |
 | **Scatter Search** | Population-based metaheuristic using reference sets and solution combination | [Scatter Search Documentation](metaheuristics/scatter-search.md) |
 | **Multi-Start Algorithm** | Simple but effective strategy that runs constructive+improvement methods multiple times | [Multi-Start Documentation](metaheuristics/multi-start.md) |
-| **Variable Neighborhood Descent (VND)** | Systematic exploration of multiple neighborhood structures in a descent manner | [VND Documentation](metaheuristics/vnd.md) |
 
 ## Constructive Methods
 
@@ -36,6 +35,7 @@ Components that take a solution and try to improve it. These methods cannot retu
 | **LocalSearchBestImprovement** | Local search that always picks the best improving move in the neighborhood | [Best-improvement strategy](improvers/local-search.md#localsearchbestimprovement) |
 | **LocalSearchFirstImprovement** | Local search that applies the first improving move found | [First-improvement strategy](improvers/local-search.md#localsearchfirstimprovement) |
 | **Simulated Annealing (as Improver)** | SA can be used as an improvement method with temperature-based acceptance | [SA Documentation](metaheuristics/simulated-annealing.md) |
+| **Variable Neighborhood Descent (VND)** | Systematic exploration of multiple neighborhood structures in a descent manner | [VND Documentation](metaheuristics/vnd.md) |
 
 ## Shake/Perturbation Methods
 
@@ -45,7 +45,6 @@ Components that perturb solutions to escape local optima. Unlike improvers, thes
 |--------------|-------------|---------------|
 | **Shake (Base)** | Abstract base class for all perturbation methods | [Shake Documentation](shakes/shake.md) |
 | **Destructive** | Interface for destruction operators that remove parts of a solution | [Destructive Documentation](shakes/destructive.md) |
-| **Destroy-Rebuild** | Combined operator that destroys part of a solution and rebuilds it | [Destroy-Rebuild Documentation](shakes/destroy-rebuild.md) |
 | **Random Move Shake** | Simple perturbation that applies random moves to the solution | [Random Move Documentation](shakes/random-move.md) |
 
 ## Component Integration
@@ -73,33 +72,6 @@ Components are designed to be:
 - **Composable**: Components can be combined in different ways to create complex algorithms
 - **Reusable**: The same component can be used in multiple algorithms
 - **Extensible**: Easy to create new components by extending existing ones
-
-### Example: Building a GRASP Algorithm
-
-```java
-// Create components
-var constructor = new MyGRASPConstructive(0.3); // alpha = 0.3
-var improver = new MyLocalSearch();
-
-// Combine into an algorithm
-var grasp = new MultiStartAlgorithm<>(
-    "GRASP",
-    constructor,
-    improver,
-    100  // iterations
-);
-```
-
-### Example: Building VNS
-
-```java
-var vns = new VNSBuilder<MySolution, MyInstance>()
-    .withConstructive(new MyConstructive())
-    .withImprover(new MyLocalSearch())
-    .withShake(new MyShake())
-    .withNeighChange(5)  // kmax = 5
-    .build("VNS");
-```
 
 ## Advanced Topics
 
