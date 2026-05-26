@@ -87,21 +87,22 @@ public class Compression {
 
         @Override
         public InputStream getEntryInputStream(String path, String entryName) throws IOException {
-            var tarFile = getTarInputStream(path);
-            TarArchiveEntry entry;
-            while ((entry = tarFile.getNextEntry()) != null){
-                if (entry.getName().equals(entryName)) {
-                    int size = Math.toIntExact(entry.getSize());
-                    byte[] data = new byte[size];
-                    int bytesRead = tarFile.read(data);
-                    if (bytesRead != size) {
-                        throw new IOException("Entry size does not match expected size");
+            try(var tarFile = getTarInputStream(path)){
+                TarArchiveEntry entry;
+                while ((entry = tarFile.getNextEntry()) != null){
+                    if (entry.getName().equals(entryName)) {
+                        int size = Math.toIntExact(entry.getSize());
+                        byte[] data = new byte[size];
+                        int bytesRead = tarFile.read(data);
+                        if (bytesRead != size) {
+                            throw new IOException("Entry size does not match expected size");
+                        }
+                        return new ByteArrayInputStream(data);
                     }
-                    return new ByteArrayInputStream(data);
                 }
-            }
 
-            throw new IOException("Entry not found: %s, path: %s".formatted(entryName, path));
+                throw new IOException("Entry not found: %s, path: %s".formatted(entryName, path));
+            }
         }
 
         private static TarArchiveInputStream getTarInputStream(String path) throws IOException {

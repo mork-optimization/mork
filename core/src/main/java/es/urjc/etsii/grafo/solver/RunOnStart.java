@@ -21,7 +21,7 @@ public class RunOnStart implements CommandLineRunner {
         this.orchestrators = new HashMap<>();
         for(var o: orchestrators){
             for(var name: o.getNames()){
-                name = name.replaceAll("[-_]", "").toLowerCase();
+                name = normalizeName(name);
                 log.debug("Registering orchestrator: {} as {}", o.getClass().getSimpleName(), name);
                 this.orchestrators.put(name, o);
             }
@@ -37,7 +37,7 @@ public class RunOnStart implements CommandLineRunner {
     public AbstractOrchestrator getOrchestrator(String[] args) {
         AbstractOrchestrator orchestrator = null;
         for(var string: args){
-            var name = string.replaceAll("[-_]", "").toLowerCase();
+            var name = resolveOrchestratorName(string);
             if(orchestrators.containsKey(name)){
                 orchestrator = orchestrators.get(name);
             }
@@ -51,5 +51,17 @@ public class RunOnStart implements CommandLineRunner {
             }
         }
         return orchestrator;
+    }
+
+    private String resolveOrchestratorName(String arg) {
+        var name = normalizeName(arg);
+        if ("follower".equals(name) && orchestrators.containsKey("irace")) {
+            return "irace";
+        }
+        return name;
+    }
+
+    private static String normalizeName(String value) {
+        return value.replaceAll("[-_]", "").toLowerCase();
     }
 }

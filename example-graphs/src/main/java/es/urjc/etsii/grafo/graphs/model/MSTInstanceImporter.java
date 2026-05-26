@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.graphs.model;
 
+import es.urjc.etsii.grafo.exception.InstanceImportException;
 import es.urjc.etsii.grafo.io.InstanceImporter;
 
 import java.io.BufferedReader;
@@ -25,7 +26,11 @@ public class MSTInstanceImporter extends InstanceImporter<MSTInstance> {
      */
     @Override
     public MSTInstance importInstance(BufferedReader reader, String suggestedName) throws IOException {
-        var parts = reader.readLine().split("\\s+");
+        String line = reader.readLine();
+        if(line == null){
+            throw new InstanceImportException("Empty instance file");
+        }
+        var parts = line.split("\\s+");
 
         if (suggestedName.endsWith(".gen")){
             int v = parseInt(parts[0]);

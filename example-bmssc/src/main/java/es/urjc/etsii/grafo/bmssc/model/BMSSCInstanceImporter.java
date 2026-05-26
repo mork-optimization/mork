@@ -16,7 +16,11 @@ public class BMSSCInstanceImporter extends InstanceImporter<BMSSCInstance> {
     @Override
     public BMSSCInstance importInstance(BufferedReader reader, String filename) throws IOException {
         // Create and return instance object from file data
-        String[] header = reader.readLine().split(SEPARATOR);
+        String line = reader.readLine();
+        if(line == null){
+            throw new InstanceImportException("Empty instance file");
+        }
+        String[] header = line.split(SEPARATOR);
         if(header.length != 3){
             throw new InstanceImportException("Invalid instance header, expected 3 fields, got: " + header.length);
         }

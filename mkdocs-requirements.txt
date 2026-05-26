@@ -3,3 +3,4 @@ Pygments
 mkdocs-awesome-pages-plugin
 mkdocs-material
 mkdocs-material[imaging]
+mkdocs-git-revision-date-localized-plugin

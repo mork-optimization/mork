@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
+import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
+
 /**
  * <p>Irace run configuration. Contains all data provided by irace for any given run</p>
  */
@@ -8,7 +10,7 @@ public class IraceRuntimeConfiguration {
     //candidateConfiguration, instanceId, seed, instancePath, config, isMaximizing
     private final String candidateConfiguration;
     private final String instanceId;
-    private final String seed;
+    private final long seed;
     private final String instanceName;
     private final AlgorithmConfiguration algorithmConfiguration;
 
@@ -21,7 +23,7 @@ public class IraceRuntimeConfiguration {
      * @param instanceName           intance name
      * @param algorithmConfiguration                    algorithm configuration
      */
-    public IraceRuntimeConfiguration(String candidateConfiguration, String instanceId, String seed, String instanceName, AlgorithmConfiguration algorithmConfiguration) {
+    public IraceRuntimeConfiguration(String candidateConfiguration, String instanceId, long seed, String instanceName, AlgorithmConfiguration algorithmConfiguration) {
         this.candidateConfiguration = candidateConfiguration;
         this.instanceId = instanceId;
         this.algorithmConfiguration = algorithmConfiguration;
@@ -29,8 +31,16 @@ public class IraceRuntimeConfiguration {
         this.seed = seed;
     }
 
-    public IraceRuntimeConfiguration(String name, int instanceId, int seed, String instance, AlgorithmConfiguration algorithmConfiguration) {
-        this(name, String.valueOf(instanceId), String.valueOf(seed), instance, algorithmConfiguration);
+    public IraceRuntimeConfiguration(String name, int instanceId, long seed, String instance, AlgorithmConfiguration algorithmConfiguration) {
+        this(name, String.valueOf(instanceId), seed, instance, algorithmConfiguration);
+    }
+
+    public IraceRuntimeConfiguration(IraceExecuteConfig config) {
+        this.candidateConfiguration = config.getName();
+        this.instanceId = String.valueOf(config.getInstanceId());
+        this.instanceName = config.getInstance();
+        this.seed = config.getSeed();
+        this.algorithmConfiguration = new AlgorithmConfiguration(config.getConfiguration());
     }
 
     public AlgorithmConfiguration getAlgorithmConfig() {
@@ -51,7 +61,7 @@ public class IraceRuntimeConfiguration {
      *
      * @return a {@link java.lang.String} object.
      */
-    public String getSeed() {
+    public long getSeed() {
         return seed;
     }
 

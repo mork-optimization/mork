@@ -8,7 +8,7 @@ import es.urjc.etsii.grafo.autoconfigtests.components.SlowConstructive;
 
 import java.util.Set;
 
-public class ACWhitelist extends WhitelistInventoryFilter {
+public class ACITestWhitelist extends WhitelistInventoryFilter {
     @Override
     public Set<Class<?>> getWhitelist() {
         return Set.of(

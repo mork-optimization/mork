@@ -79,8 +79,8 @@ public class AutoconfigDebugController {
             return Map.of("error", "Invalid URL format. Expected format: /toIraceConfig/{commandLine}");
         }
         String cmdline = URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
-        cmdline = cleanCmdLine(cmdline);
-        Map<String, String> params = extractParameters(cmdline);
+        String[] args = cleanCmdLine(cmdline);
+        Map<String, String> params = extractParameters(args);
         var line1 = new StringBuilder();
         var line2 = new StringBuilder();
         for(var entry: params.entrySet()){
@@ -90,9 +90,9 @@ public class AutoconfigDebugController {
         return Map.of("iraceConfig", line1.toString().trim() + "\n" + line2.toString().trim());
     }
 
-    private static Map<String, String> extractParameters(String cmdline) {
+    private static Map<String, String> extractParameters(String[] args) {
         Map<String, String> params = new LinkedHashMap<>();
-        for(var pair: cmdline.split("\\s+")) {
+        for(var pair: args) {
             if (pair.contains("=")) {
                 var parts = pair.split("=");
                 if (parts.length == 2) {
@@ -115,11 +115,11 @@ public class AutoconfigDebugController {
             return Map.of("error", "Invalid URL format. Expected format: /toIraceConfig/{commandLine}");
         }
         String cmdline = URLDecoder.decode(parts[1], StandardCharsets.UTF_8);
-        cmdline = cleanCmdLine(cmdline);
+        String[] args = cleanCmdLine(cmdline);
 
         var config = cmdline.startsWith("ROOT")?
-                new IraceRuntimeConfiguration("Unknown", "Unknown", "Unknown", "Unknown", new AlgorithmConfiguration(cmdline.split("\\s+"))):
-                IraceUtil.toIraceRuntimeConfig(cmdline);
+                new IraceRuntimeConfiguration("Unknown", "Unknown", -1, "Unknown", new AlgorithmConfiguration(args)):
+                IraceUtil.toIraceRuntimeConfig(args);
         var algorithmString = this.algorithmGenerator.asParseableAlgorithm(config.getAlgorithmConfig());
         return Map.of("config", config, "algorithmString", algorithmString);
     }
@@ -129,9 +129,11 @@ public class AutoconfigDebugController {
         return this.orchestrator.getSlowRuns();
     }
 
-    private String cleanCmdLine(String cmdline) {
+    private String[] cleanCmdLine(String cmdline) {
         cmdline = cmdline.trim();
-        return cmdline.contains("middleware.sh") ? Arrays.stream(cmdline.split("\\s+")).skip(1).collect(Collectors.joining(" ")) : cmdline;
+        var args = cmdline.split("\\s+");
+        args = Arrays.stream(args).filter(s -> !s.contains("middleware.sh")).toArray(String[]::new);
+        return args;
     }
 
     @GetMapping("/auto/debug/history")
