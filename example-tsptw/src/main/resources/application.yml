@@ -78,7 +78,7 @@ solver:
 # IRACE integration configuration. To enable IRACE mode, run with --irace or --autoconfig command line argument.
 # See https://mork-optimization.readthedocs.io/en/latest/features/irace/ for more details.
 irace:
-  # Note: The 'enabled' property is deprecated and no longer used. 
+  # Note: The 'enabled' property is deprecated and no longer used.
   # Use --irace or --autoconfig command line argument to activate IRACE mode.
   # enabled: false
 
