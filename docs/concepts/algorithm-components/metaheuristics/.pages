@@ -1,0 +1,8 @@
+title: Metaheuristics
+nav:
+    - vns.md
+    - simulated-annealing.md
+    - iterated-greedy.md
+    - scatter-search.md
+    - multi-start.md
+    - vnd.md
