@@ -1,392 +1,196 @@
 # Local Search
 
-Local Search is a fundamental improvement method that iteratively explores the neighborhood of a solution, applying moves that improve the objective function until a local optimum is reached.
+Local search is the main family of improvement procedures in Mork. It starts from a feasible solution, explores a `Neighborhood<M, S, I>`, executes an improving move, and repeats until no improving move remains or time runs out.
+
+In the current API, the concrete strategies are:
+
+- `LocalSearchBestImprovement<M, S, I>`
+- `LocalSearchFirstImprovement<M, S, I>`
+
+There are no standalone `BestImprovement` or `FirstImprovement` improver classes.
 
 ## Overview
 
-Local Search defines a **neighborhood structure** (set of possible moves) and systematically explores it, accepting moves that improve the solution.
+`LocalSearch<M, S, I>` is the shared base class for local-search improvers. It combines:
+
+- an `Objective<M, S, I>` used to evaluate moves;
+- a `Neighborhood<M, S, I>` that generates candidate moves;
+- a strategy-specific `getMove(solution)` implementation that decides which improving move to execute next.
 
 ```mermaid
 graph TD
-    A[Current Solution] --> B[Generate Neighborhood]
-    B --> C[Evaluate Moves]
-    C --> D{Improving Move?}
-    D -->|Yes| E[Apply Best/First Move]
+    A[Current Solution] --> B[Explore Neighborhood]
+    B --> C[Pick Improving Move]
+    C --> D{Move found?}
+    D -->|Yes| E[Execute Move]
     E --> A
-    D -->|No| F[Local Optimum Reached]
+    D -->|No| F[Local Optimum]
 ```
 
-## Key Concepts
+## How it works in Mork
 
-### Neighborhood
+The shared loop in `LocalSearch` is:
 
-A **neighborhood** N(s) of a solution s is the set of solutions reachable by applying a single move:
-
-```
-N(s) = {s' : s' can be obtained from s by applying one move}
-```
-
-### Local Optimum
-
-A solution s* is a **local optimum** if:
-
-```
-∀s' ∈ N(s*): f(s*) ≤ f(s')  (for minimization)
+```text
+improve(solution):
+    while time remains:
+        move = getMove(solution)
+        if move == null:
+            stop
+        move.execute(solution)
 ```
 
-### Move
+The important design point is that `LocalSearch` does not generate moves itself. Move generation lives in the `Neighborhood`, while the concrete subclass decides how to select the next move from the explored neighborhood.
 
-A **move** is an operation that transforms one solution into another:
-- **Swap**: Exchange two elements
-- **Insert**: Move an element to a different position
-- **2-opt**: Reverse a subsequence (TSP)
-- **k-opt**: More complex rearrangements
+## Using a neighborhood
 
-## Algorithm Outline
-
-```
-LocalSearch(solution):
-    while (true) {
-        neighborhood = generateNeighborhood(solution)
-        bestMove = null
-        
-        for (move in neighborhood) {
-            if (move.improves(solution)) {
-                if (bestMove == null || move.isBetterThan(bestMove)) {
-                    bestMove = move
-                    if (FIRST_IMPROVEMENT) break  // Accept immediately
-                }
-            }
-        }
-        
-        if (bestMove != null) {
-            apply(bestMove, solution)
-        } else {
-            break  // Local optimum
-        }
-    }
-    
-    return solution
-```
-
-## How to Use
-
-### Basic Implementation
+`Neighborhood<M, S, I>` is the extension point used by local search.
 
 ```java
-public abstract class LocalSearch<S extends Solution<S, I>, I extends Instance>
-        extends Improver<S, I> {
-    
-    protected final boolean firstImprovement;
-    
-    public LocalSearch(String name, boolean firstImprovement) {
-        super(name);
-        this.firstImprovement = firstImprovement;
-    }
-    
-    @Override
-    public S improve(S solution) {
-        boolean improved = true;
-        
-        while (improved && !TimeControl.isTimeUp()) {
-            improved = false;
-            var moves = generateMoves(solution);
-            
-            if (firstImprovement) {
-                // First improvement: accept first improving move
-                for (Move move : moves) {
-                    if (move.improves(solution)) {
-                        move.apply(solution);
-                        improved = true;
-                        break;
-                    }
-                }
-            } else {
-                // Best improvement: find best move
-                Move bestMove = null;
-                double bestDelta = 0;
-                
-                for (Move move : moves) {
-                    double delta = move.evaluate(solution);
-                    if (delta < bestDelta) {
-                        bestDelta = delta;
-                        bestMove = move;
-                    }
-                }
-                
-                if (bestMove != null) {
-                    bestMove.apply(solution);
-                    improved = true;
-                }
-            }
-        }
-        
-        return solution;
-    }
-    
-    protected abstract Iterable<Move> generateMoves(S solution);
-}
-```
+public class MyNeighborhood
+        extends Neighborhood<MyMove, MySolution, MyInstance> {
 
-### Concrete Example: TSP 2-Opt
-
-```java
-public class TwoOptLS extends LocalSearch<TSPSolution, TSPInstance> {
-    
-    public TwoOptLS(boolean firstImprovement) {
-        super("2-Opt", firstImprovement);
-    }
-    
     @Override
-    protected Iterable<Move> generateMoves(TSPSolution solution) {
-        List<TwoOptMove> moves = new ArrayList<>();
-        int n = solution.size();
-        
-        for (int i = 0; i < n - 1; i++) {
-            for (int j = i + 2; j < n; j++) {
-                moves.add(new TwoOptMove(i, j));
-            }
-        }
-        
-        return moves;
-    }
-}
-
-class TwoOptMove implements Move {
-    private final int i, j;
-    
-    @Override
-    public double evaluate(TSPSolution solution) {
-        // Calculate change in tour length if we reverse segment [i+1, j]
-        var instance = solution.getInstance();
-        int before_i = solution.get(i);
-        int after_i = solution.get(i + 1);
-        int before_j = solution.get(j);
-        int after_j = solution.get((j + 1) % solution.size());
-        
-        double currentCost = instance.distance(before_i, after_i) 
-                           + instance.distance(before_j, after_j);
-        double newCost = instance.distance(before_i, before_j) 
-                       + instance.distance(after_i, after_j);
-        
-        return newCost - currentCost;
-    }
-    
-    @Override
-    public void apply(TSPSolution solution) {
-        solution.reverse(i + 1, j);
+    public ExploreResult<MyMove, MySolution, MyInstance> explore(MySolution solution) {
+        return ExploreResult.fromList(
+            solution.getCandidates().stream()
+                .map(candidate -> new MyMove(solution, candidate))
+                .toList()
+        );
     }
 }
 ```
 
-## Variants
+The neighborhood can return:
 
-### 1. Best Improvement
+- a list-backed result, which is convenient when all moves are already materialized;
+- or a streamed result, which is useful when moves should be generated lazily.
 
-See [Best Improvement Local Search](best-improvement.md) - explores entire neighborhood, applies best move.
+That distinction matters because the concrete local-search strategies exploit both forms differently.
 
-### 2. First Improvement
+## Creating a local search improver
 
-See [First Improvement Local Search](first-improvement.md) - applies first improving move found.
-
-### 3. Random Descent
-
-```java
-public class RandomDescent<S extends Solution<S, I>, I extends Instance>
-        extends LocalSearch<S, I> {
-    
-    @Override
-    public S improve(S solution) {
-        boolean improved = true;
-        
-        while (improved && !TimeControl.isTimeUp()) {
-            var moves = new ArrayList<>(generateMoves(solution));
-            Collections.shuffle(moves);  // Random order
-            
-            improved = false;
-            for (Move move : moves) {
-                if (move.improves(solution)) {
-                    move.apply(solution);
-                    improved = true;
-                    break;
-                }
-            }
-        }
-        
-        return solution;
-    }
-}
-```
-
-## Implementation Strategies
-
-### Efficient Move Evaluation
+The simplest way is to instantiate one of the two existing concrete classes with a neighborhood.
 
 ```java
-// Bad: Full re-evaluation
-double evaluate(Move move, Solution solution) {
-    Solution copy = solution.clone();
-    move.apply(copy);
-    return copy.getScore() - solution.getScore();
-}
+var bestImprovement = new LocalSearchBestImprovement<MyMove, MySolution, MyInstance>(
+    new MyNeighborhood()
+);
 
-// Good: Incremental evaluation
-double evaluate(Move move, Solution solution) {
-    return move.evaluateDelta(solution);  // Calculate change only
-}
-```
-
-### Move Caching
-
-```java
-public class CachedLocalSearch<S extends Solution<S, I>, I extends Instance>
-        extends LocalSearch<S, I> {
-    
-    private List<Move> cachedMoves;
-    private Map<Move, Double> cachedDeltas;
-    
-    @Override
-    public S improve(S solution) {
-        // Generate and cache all moves once
-        cachedMoves = new ArrayList<>(generateMoves(solution));
-        cachedDeltas = new HashMap<>();
-        
-        boolean improved = true;
-        while (improved && !TimeControl.isTimeUp()) {
-            improved = false;
-            Move bestMove = null;
-            double bestDelta = 0;
-            
-            for (Move move : cachedMoves) {
-                // Use cached delta if valid
-                double delta = cachedDeltas.computeIfAbsent(move, 
-                    m -> m.evaluate(solution));
-                
-                if (delta < bestDelta) {
-                    bestDelta = delta;
-                    bestMove = move;
-                }
-            }
-            
-            if (bestMove != null) {
-                bestMove.apply(solution);
-                // Invalidate affected deltas
-                invalidateAffectedDeltas(bestMove);
-                improved = true;
-            }
-        }
-        
-        return solution;
-    }
-}
-```
-
-## Neighborhood Design
-
-### Small Neighborhoods
-
-Fast but may get stuck:
-- **Swap**: O(n²) moves
-- **Insert**: O(n²) moves
-
-### Large Neighborhoods
-
-Slower but better quality:
-- **k-opt (k>2)**: Exponential in k
-- **Block moves**: O(n³) or more
-- **Variable size**: Adaptive neighborhood size
-
-### Multiple Neighborhoods
-
-Use VND to systematically explore multiple neighborhoods:
-
-```java
-var vnd = new VND<>(
-    "Multi-Neighborhood",
-    List.of(
-        new SwapLS<>(),
-        new InsertLS<>(),
-        new TwoOptLS<>()
-    )
+var firstImprovement = new LocalSearchFirstImprovement<MyMove, MySolution, MyInstance>(
+    new MyNeighborhood()
 );
 ```
 
-## Related Java Classes
-
-- **[`LocalSearch<S, I>`](../../../../apidocs/es/urjc/etsii/grafo/improve/ls/LocalSearch.html)**: Base local search class
-- **[`BestImprovementLS<S, I>`](../../../../apidocs/es/urjc/etsii/grafo/improve/ls/LocalSearchBestImprovement.html)**: Best improvement variant
-- **[`FirstImprovementLS<S, I>`](../../../../apidocs/es/urjc/etsii/grafo/improve/ls/LocalSearchFirstImprovement.html)**: First improvement variant
-- **[`Improver<S, I>`](../../../../apidocs/es/urjc/etsii/grafo/improve/Improver.html)**: Base improver class
-- **[`VND<S, I>`](../../../../apidocs/es/urjc/etsii/grafo/improve/VND.html)**: Variable neighborhood descent
-
-## Example Use Cases
-
-### TSP with Multiple Neighborhoods
+If needed, you can also provide an explicit objective instead of relying on the main objective from the execution context.
 
 ```java
-// 2-opt
-public class TwoOptLS extends LocalSearch<TSPSolution, TSPInstance> { /* ... */ }
-
-// Or-opt
-public class OrOptLS extends LocalSearch<TSPSolution, TSPInstance> { /* ... */ }
-
-// 3-opt
-public class ThreeOptLS extends LocalSearch<TSPSolution, TSPInstance> { /* ... */ }
-
-// Combine with VND
-var vnd = new VND<>("TSP-VND", List.of(
-    new TwoOptLS(true),      // Fast 2-opt
-    new OrOptLS(true),       // Medium Or-opt
-    new ThreeOptLS(false)    // Slower 3-opt (best improvement)
-));
+var ls = new LocalSearchBestImprovement<MyMove, MySolution, MyInstance>(
+    myObjective,
+    new MyNeighborhood()
+);
 ```
 
-### VRP Intra-Route and Inter-Route
+## Strategy specifics
+
+### LocalSearchBestImprovement
+
+`LocalSearchBestImprovement<M, S, I>` explores the neighborhood and executes the **best improving move** available in the current iteration.
+
+```text
+BestImprovement(solution):
+    moves = neighborhood.explore(solution)
+    bestMove = best improving move in moves
+    if bestMove exists:
+        execute bestMove
+    else:
+        stop
+```
+
+Behavior in the current implementation:
+
+- if the explored neighborhood is list-backed, Mork uses `objective.bestMove(...)`;
+- if it is stream-backed, Mork reduces the stream using the objective;
+- after selecting the best candidate, the move is executed only if it actually improves the solution.
+
+Use `LocalSearchBestImprovement` when:
+
+- neighborhood exploration is reasonably small or moderate;
+- move quality matters more than per-iteration speed;
+- you want the steepest-descent style behavior.
 
 ```java
-// Within same route
-public class IntraRouteSwap extends LocalSearch<VRPSolution, VRPInstance> { /* ... */ }
-
-// Between different routes
-public class InterRouteSwap extends LocalSearch<VRPSolution, VRPInstance> { /* ... */ }
-
-// Relocate customer
-public class RelocateLS extends LocalSearch<VRPSolution, VRPInstance> { /* ... */ }
+var improver = new LocalSearchBestImprovement<MyMove, MySolution, MyInstance>(
+    new MyNeighborhood()
+);
 ```
 
-## Best Practices
+### LocalSearchFirstImprovement
 
-1. **Incremental evaluation**: Never clone solutions to evaluate moves
-2. **Early termination**: Check `TimeControl.isTimeUp()` in loops
-3. **Choose appropriate variant**: First improvement for speed, best for quality
-4. **Multiple neighborhoods**: Use VND for better local optima
-5. **Problem-specific moves**: Design moves that exploit problem structure
-6. **Efficient data structures**: Use appropriate structures for move generation
+`LocalSearchFirstImprovement<M, S, I>` explores the neighborhood and executes the **first move that improves** the current solution.
 
-## Performance Tips
+```text
+FirstImprovement(solution):
+    moves = neighborhood.explore(solution)
+    for move in moves:
+        if move improves:
+            execute move
+            stop iteration
+    stop if no improving move exists
+```
 
-- **Lazy evaluation**: Only evaluate moves that pass cheap feasibility checks
-- **Move ordering**: Evaluate more promising moves first
-- **Parallel evaluation**: Evaluate independent moves in parallel
-- **Aspiration criteria**: Sometimes accept slightly worsening moves to escape plateaus
+Behavior in the current implementation:
 
-## When to Use
+- if the neighborhood is list-backed, Mork scans the move list in order and returns the first improving move;
+- if it is stream-backed, Mork filters improving moves and returns any matching candidate;
+- if no improving move exists, the local search ends.
 
-**Local Search is ideal for:**
-- Finding good solutions quickly
-- Improving constructed solutions
-- As part of metaheuristics (GRASP, ILS, VNS)
-- Problems with well-defined neighborhoods
+Use `LocalSearchFirstImprovement` when:
 
-**Consider alternatives when:**
-- Solutions have many local optima (use metaheuristics)
-- Evaluation is very expensive (use sampling-based methods)
-- Need global optimum guarantee (use exact methods)
+- neighborhoods are large;
+- improving moves are usually easy to find;
+- lower iteration cost matters more than picking the single best move every time.
 
-## References
+```java
+var improver = new LocalSearchFirstImprovement<MyMove, MySolution, MyInstance>(
+    new MyNeighborhood()
+);
+```
 
-[1] Aarts, E., & Lenstra, J. K. (Eds.). (2003). *Local search in combinatorial optimization*. Princeton University Press.
+## Best vs first improvement
 
-[2] Hoos, H. H., & Stützle, T. (2004). *Stochastic local search: Foundations and applications*. Elsevier.
+| Aspect | `LocalSearchBestImprovement` | `LocalSearchFirstImprovement` |
+| --- | --- | --- |
+| Selection rule | Best improving move in the explored neighborhood | First improving move found |
+| Typical iteration cost | Higher | Lower |
+| Dependence on move order | Lower | Higher |
+| Good fit | Smaller neighborhoods, quality-oriented search | Larger neighborhoods, faster descent |
 
-[3] Johnson, D. S., & McGeoch, L. A. (1997). The traveling salesman problem: A case study in local optimization. *Local Search in Combinatorial Optimization*, 215-310.
+## Using local search inside an algorithm
+
+```java
+var algorithm = new MultiStartAlgorithm<>(
+    "MultiStart+LS",
+    constructive,
+    new LocalSearchBestImprovement<>(new MyNeighborhood()),
+    100
+);
+```
+
+Local search is also a common improvement phase in GRASP, VNS, and other multi-phase metaheuristics.
+
+## Best practices
+
+1. Put neighborhood logic in `Neighborhood`, not inside the improver.
+2. Generate moves lazily when the neighborhood can be large.
+3. Use best improvement when you can afford broader exploration each iteration.
+4. Use first improvement when iteration speed and quick progress are more important.
+5. Make sure candidate moves remain valid for the current solution state.
+
+## Related Java classes
+
+- `es.urjc.etsii.grafo.improve.ls.LocalSearch`
+- `es.urjc.etsii.grafo.improve.ls.LocalSearchBestImprovement`
+- `es.urjc.etsii.grafo.improve.ls.LocalSearchFirstImprovement`
+- `es.urjc.etsii.grafo.solution.neighborhood.Neighborhood`
+- `es.urjc.etsii.grafo.improve.Improver`

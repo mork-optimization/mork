@@ -6,13 +6,16 @@ GRASP (Greedy Randomized Adaptive Search Procedure) is a constructive method tha
 
 ```mermaid
 graph TD
-    A[Start with Partial Solution] --> B[buildInitialCandidateList]
-    C --> D[Choose move using GRASP strategy]
-    D --> E[Execute move]
-    E --> F[updateCandidateList]
-    F --> G{Candidate list empty?}
-    G -->|No| D
-    G -->|Yes| H[afterGRASP]
+    A[construct solution] --> B[beforeGRASP]
+    B --> C[Select alpha]
+    C --> D[buildInitialCandidateList]
+    D --> E{Candidate list empty?}
+    E -->|No| F[getCandidateIndex]
+    F --> H[Execute move]
+    H --> I[updateCandidateList]
+    I --> E
+    E -->|Yes| J[afterGRASP]
+    J --> K[return solution]
 ```
 
 
