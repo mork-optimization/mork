@@ -203,6 +203,9 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         try {
             if (isAutoconfigEnabled) {
                 var nodes = this.algorithmCandidateGenerator.buildTree(solverConfig.getTreeDepth(), solverConfig.getMaxDerivationRepetition());
+                if(nodes.isEmpty()){
+                    throw new IllegalStateException("No valid algorithm found, cannot generate irace parameters");
+                }
                 var iraceParams = this.algorithmCandidateGenerator.toIraceParams(nodes);
                 this.nIraceParameters = iraceParams.size();
                 var sb = new StringBuilder();
