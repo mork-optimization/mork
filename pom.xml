@@ -58,7 +58,7 @@
         <mjavadoc.version>3.12.0</mjavadoc.version>
         <mjar.version>3.5.0</mjar.version>
         <mgpg.version>3.2.8</mgpg.version>
-        <mjacoco.version>0.8.14</mjacoco.version>
+        <mjacoco.version>0.8.15</mjacoco.version>
         <mclean.version>3.5.0</mclean.version>
         <graalvm.version>25.0.3</graalvm.version>
         <maspectj.version>1.16.0</maspectj.version>
