@@ -90,13 +90,8 @@ public class AlgorithmCandidateGenerator {
             componentParameters.add(cp);
             if (cp.recursive()) {
                 // Parameter has a known algorithm component type, for example Improver<S,I>
-                // Add all implementations to the exploration queue
-                for (var candidate : byType.get(p.getType())) {
-                    if (notVisited.contains(candidate)) {
-                        notVisited.remove(candidate);
-                        queue.add(candidate);
-                    }
-                }
+                // Add only the candidates accepted for this parameter to the exploration queue.
+                addRecursiveCandidates(queue, notVisited, cp.getValues());
             }
         }
         return Optional.of(componentParameters);
@@ -110,15 +105,20 @@ public class AlgorithmCandidateGenerator {
                 cp.setValues(candidates.toArray());
                 // Parameter has a known algorithm component type, for example Improver<S,I>
                 // Add all implementations to the exploration queue
-                for (var candidate : candidates) {
-                    if (notVisited.contains(candidate)) {
-                        notVisited.remove(candidate);
-                        queue.add(candidate);
-                    }
-                }
+                addRecursiveCandidates(queue, notVisited, cp.getValues());
             }
         }
         return params;
+    }
+
+    private static void addRecursiveCandidates(Queue<Class<?>> queue, Set<Class<?>> notVisited, Object[] candidates) {
+        for (var candidate : candidates) {
+            var candidateClass = (Class<?>) candidate;
+            if (notVisited.contains(candidateClass)) {
+                notVisited.remove(candidateClass);
+                queue.add(candidateClass);
+            }
+        }
     }
 
     protected ComponentParameter toComponentParameter(Map<Class<?>, Collection<Class<?>>> types, Parameter p) {
@@ -128,20 +128,35 @@ public class AlgorithmCandidateGenerator {
         if (!isValidParamName(name)) {
             throw new IllegalArgumentException(String.format("Invalid parameter name %s, must match[a-zA-Z][a-zA-Z0-9]*)", name));
         }
+        validateAnnotations(p);
         if (p.isAnnotationPresent(IntegerParam.class)) {
-            return ComponentParameter.from(name, type, p.getAnnotation(IntegerParam.class));
+            var annotation = p.getAnnotation(IntegerParam.class);
+            validateIntegerParameter(p, annotation);
+            return ComponentParameter.from(name, type, annotation);
         }
         if (p.isAnnotationPresent(RealParam.class)) {
-            return ComponentParameter.from(name, type, p.getAnnotation(RealParam.class));
+            var annotation = p.getAnnotation(RealParam.class);
+            validateRealParameter(p, annotation);
+            return ComponentParameter.from(name, type, annotation);
         }
         if (p.isAnnotationPresent(CategoricalParam.class)) {
+            validateStringValues(p, p.getAnnotation(CategoricalParam.class).strings());
             return ComponentParameter.from(name, type, p.getAnnotation(CategoricalParam.class));
         }
         if (p.isAnnotationPresent(OrdinalParam.class)) {
+            validateStringValues(p, p.getAnnotation(OrdinalParam.class).strings());
             return ComponentParameter.from(name, type, p.getAnnotation(OrdinalParam.class));
         }
         if (p.isAnnotationPresent(ProvidedParam.class)) {
             return ComponentParameter.from(name, type, p.getAnnotation(ProvidedParam.class));
+        }
+        if (p.isAnnotationPresent(ComponentParam.class)) {
+            if (!types.containsKey(type)) {
+                throw new IllegalArgumentException(String.format(
+                        "Parameter %s is annotated with @ComponentParam, but type %s is not a known algorithm component type",
+                        describe(p), type.getSimpleName()));
+            }
+            return ComponentParameter.from(name, type, filterCandidates(p, types.get(type)));
         }
 
 //        if (collectedClasses.contains(type)) {
@@ -153,6 +168,97 @@ public class AlgorithmCandidateGenerator {
             return ComponentParameter.from(name, type, types.get(type));
         }
         return null;
+    }
+
+    private static void validateAnnotations(Parameter p) {
+        int nAnnotations = 0;
+        nAnnotations += p.isAnnotationPresent(IntegerParam.class) ? 1 : 0;
+        nAnnotations += p.isAnnotationPresent(RealParam.class) ? 1 : 0;
+        nAnnotations += p.isAnnotationPresent(CategoricalParam.class) ? 1 : 0;
+        nAnnotations += p.isAnnotationPresent(OrdinalParam.class) ? 1 : 0;
+        nAnnotations += p.isAnnotationPresent(ProvidedParam.class) ? 1 : 0;
+        nAnnotations += p.isAnnotationPresent(ComponentParam.class) ? 1 : 0;
+        if (nAnnotations > 1) {
+            throw new IllegalArgumentException("Parameter %s has multiple autoconfig parameter annotations; use exactly one".formatted(describe(p)));
+        }
+    }
+
+    private static void validateIntegerParameter(Parameter p, IntegerParam annotation) {
+        if (annotation.min() > annotation.max()) {
+            throw new IllegalArgumentException("Invalid @IntegerParam range for %s: min %s > max %s".formatted(describe(p), annotation.min(), annotation.max()));
+        }
+        if (!isIntegerType(p.getType())) {
+            throw new IllegalArgumentException("@IntegerParam can only be used on integer-compatible parameters. Found %s in %s".formatted(p.getType().getSimpleName(), describe(p)));
+        }
+    }
+
+    private static void validateRealParameter(Parameter p, RealParam annotation) {
+        if (annotation.min() > annotation.max()) {
+            throw new IllegalArgumentException("Invalid @RealParam range for %s: min %s > max %s".formatted(describe(p), annotation.min(), annotation.max()));
+        }
+        if (!Double.isFinite(annotation.min()) || !Double.isFinite(annotation.max())) {
+            throw new IllegalArgumentException("Invalid @RealParam range for %s: min and max must be finite".formatted(describe(p)));
+        }
+        if (!isRealType(p.getType())) {
+            throw new IllegalArgumentException("@RealParam can only be used on real-compatible parameters. Found %s in %s".formatted(p.getType().getSimpleName(), describe(p)));
+        }
+    }
+
+    private static void validateStringValues(Parameter p, String[] values) {
+        if (values.length == 0) {
+            throw new IllegalArgumentException("Categorical and ordinal params must have at least one value. Found 0 values in %s".formatted(describe(p)));
+        }
+    }
+
+    private static boolean isIntegerType(Class<?> type) {
+        return type == byte.class || type == Byte.class
+                || type == short.class || type == Short.class
+                || type == int.class || type == Integer.class
+                || type == long.class || type == Long.class
+                || type == String.class;
+    }
+
+    private static boolean isRealType(Class<?> type) {
+        return type == float.class || type == Float.class
+                || type == double.class || type == Double.class
+                || type == String.class;
+    }
+
+    private static Collection<Class<?>> filterCandidates(Parameter p, Collection<Class<?>> candidates) {
+        var componentParam = p.getAnnotation(ComponentParam.class);
+        Class<?>[] disallowed = componentParam.disallowed();
+        if (disallowed.length == 0) {
+            return candidates;
+        }
+
+        for (var disallowedClass : disallowed) {
+            if (!p.getType().isAssignableFrom(disallowedClass)) {
+                throw new IllegalArgumentException(String.format(
+                        "Invalid @ComponentParam restriction in %s: disallowed class %s is not assignable to parameter type %s",
+                        describe(p), disallowedClass.getSimpleName(), p.getType().getSimpleName()));
+            }
+        }
+
+        var filtered = new ArrayList<Class<?>>();
+        for (var candidate : candidates) {
+            if (!isDisallowed(candidate, disallowed)) {
+                filtered.add(candidate);
+            }
+        }
+        return filtered;
+    }
+
+    private static boolean isDisallowed(Class<?> candidate, Class<?>[] disallowed) {
+        for (var disallowedClass : disallowed) {
+            if (disallowedClass.isAssignableFrom(candidate)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String describe(Parameter p) {
+        return "%s parameter %s".formatted(p.getDeclaringExecutable(), p.getName());
     }
 
     public Map<Class<?>, List<ComponentParameter>> componentParams() {

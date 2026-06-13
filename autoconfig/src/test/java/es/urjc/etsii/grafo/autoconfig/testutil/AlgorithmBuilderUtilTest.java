@@ -1,11 +1,14 @@
 package es.urjc.etsii.grafo.autoconfig.testutil;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
+import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
+import es.urjc.etsii.grafo.autoconfig.fill.AlgorithmNameParam;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.FakeGRASPConstructive;
 import es.urjc.etsii.grafo.autoconfig.fakecomponents.TestAlgorithmA;
 import es.urjc.etsii.grafo.autoconfig.fill.ObjectiveParamProvider;
+import es.urjc.etsii.grafo.autoconfig.fill.ParameterProvider;
 import es.urjc.etsii.grafo.autoconfig.testutil.findautoconfig.Has0;
 import es.urjc.etsii.grafo.autoconfig.testutil.findautoconfig.Has1;
 import es.urjc.etsii.grafo.autoconfig.testutil.findautoconfig.Has2;
@@ -362,6 +365,14 @@ class AlgorithmBuilderUtilTest {
     }
 
     @Test
+    void providedParamAmbiguityIsRejected() {
+        var providers = List.of(new AlgorithmNameParam(), new DuplicateNameProvider());
+
+        assertThrows(IllegalArgumentException.class, () -> AlgorithmBuilderUtil.findConstructor(NeedsProvidedName.class, Map.of(), providers));
+        assertThrows(IllegalArgumentException.class, () -> AlgorithmBuilderUtil.getProvidedValue(String.class, "name", providers));
+    }
+
+    @Test
     void testObjectiveConversion(){
         var obj = (Objective<?, ?, ?>) prepareParameterValue(defaultMin.getName(), Objective.class);
         assertSame(defaultMin, obj);
@@ -373,5 +384,22 @@ class AlgorithmBuilderUtilTest {
 
     private enum FakeEnum {
         A, B, C
+    }
+
+    public static class NeedsProvidedName {
+        public NeedsProvidedName(@ProvidedParam String name) {
+        }
+    }
+
+    private static class DuplicateNameProvider extends ParameterProvider {
+        @Override
+        public boolean provides(Class<?> type, String paramName) {
+            return type == String.class && paramName.equals("name");
+        }
+
+        @Override
+        public Object getValue(Class<?> type, String paramName) {
+            return "duplicated";
+        }
     }
 }
