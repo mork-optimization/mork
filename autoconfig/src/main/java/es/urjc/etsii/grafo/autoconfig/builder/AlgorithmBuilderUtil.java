@@ -73,10 +73,17 @@ public class AlgorithmBuilderUtil {
     }
 
     public static Object getProvidedValue(Class<?> pType, String pName, List<ParameterProvider> paramProviders) {
+        ParameterProvider matchingProvider = null;
         for (var provider : paramProviders) {
             if (provider.provides(pType, pName)) {
-                return provider.getValue(pType, pName);
+                if (matchingProvider != null) {
+                    throw new IllegalArgumentException("Multiple providers available for p {type=%s, name=%s}: %s and %s".formatted(pType, pName, matchingProvider, provider));
+                }
+                matchingProvider = provider;
             }
+        }
+        if (matchingProvider != null) {
+            return matchingProvider.getValue(pType, pName);
         }
         throw new IllegalArgumentException("No providers available for p {type=%s, name=%s}, list %s".formatted(pType, pName, paramProviders));
     }
@@ -208,7 +215,7 @@ public class AlgorithmBuilderUtil {
                 // Value must be in at least one provider
                 int countProviders = countProviders(paramsProviders, cpName, cpClass);
                 if (countProviders > 1) {
-                    debugMsgs.add(String.format("Warning: Parameter %s with type %s is provided my multiple providers: %s", cpName, cpClass, paramsProviders));
+                    throw new IllegalArgumentException(String.format("Parameter %s with type %s is provided by multiple providers: %s", cpName, cpClass, paramsProviders));
                 }
                 if (countProviders == 0) {
                     debugMsgs.add(String.format("No provider found for parameter %s with type %s", cpName, cpClass));
