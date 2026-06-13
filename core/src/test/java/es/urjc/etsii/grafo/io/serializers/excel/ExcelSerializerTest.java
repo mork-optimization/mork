@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
-import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
@@ -20,8 +19,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 
 import java.io.File;
@@ -30,7 +27,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -201,7 +197,7 @@ public class ExcelSerializerTest {
         var excelPath = temp.resolve("customProperties.xlsx");
         
         // Create events with custom properties
-        var data = Arrays.asList(
+        var data = List.of(
                 TestHelperFactory.solutionGenerated("writeCustomPropsTest", "TestExp", "Alg1", 1, 100.0, 1000, 500, Map.of("prop1", 4, "prop2", 1)),
                 TestHelperFactory.solutionGenerated("writeCustomPropsTest", "TestExp", "Alg1", 2, 95.0, 1100, 600, Map.of("prop1", 6, "prop2", 2))
         );
@@ -246,6 +242,21 @@ public class ExcelSerializerTest {
             Assertions.assertEquals(6.0, secondData.getCell(prop1Index).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
             Assertions.assertEquals(2.0, secondData.getCell(prop2Index).getNumericCellValue(), "Data of solution custom properties is not correct in raw result sheet");
         }
+    }
+
+    @Test
+    void rejectNonScalarCustomProperties(@TempDir Path temp) {
+        var instance = new TestInstance("rejectNonScalarCustomPropertiesTest");
+        var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));
+        var excelPath = temp.resolve("invalidCustomProperties.xlsx");
+
+        var data = List.of(
+                TestHelperFactory.solutionGenerated("rejectNonScalarCustomPropertiesTest", "TestExp", "Alg1", 1, 100.0, 1000, 500, Map.<String, Object>of("notScalar", List.of(1, 2, 3)))
+        );
+
+        var exception = Assertions.assertThrows(RuntimeException.class, () -> excel.serializeResults("TestExperiment", data, excelPath));
+        Assertions.assertInstanceOf(IllegalArgumentException.class, exception.getCause());
+        Assertions.assertTrue(exception.getCause().getMessage().contains("notScalar"));
     }
 
 }

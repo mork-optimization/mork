@@ -125,14 +125,10 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
             var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
 
-            // Extract custom properties from results
-            Set<String> customPropertyKeysSet = new LinkedHashSet<>();
-            for (var result : results) {
-                customPropertyKeysSet.addAll(result.getSolutionProperties().keySet());
-            }
-            String[] customProperties = customPropertyKeysSet.toArray(new String[0]);
+            String[] customProperties = getCustomPropertyHeaders(results);
+            String[] headers = getRawHeaders(customProperties);
 
-            var areaString = String.format("%s1:%s%s", convertNumToColString(0), convertNumToColString(getCommonHeaders().length + customProperties.length - 1), 1_000_000);
+            var areaString = String.format("%s1:%s%s", convertNumToColString(0), convertNumToColString(headers.length - 1), 1_000_000);
             var area = new AreaReference(areaString, SpreadsheetVersion.EXCEL2007);
             headRawSheet(rawSheet, customProperties);
             fillPivotSheet(pivotSheet, area, rawSheet);
@@ -142,7 +138,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
 
             fillOtherDataSheet(otherDataSheet);
 
-            fillRawSheet(rawSheet, maximizing, results, referenceResultProviders);
+            fillRawSheet(rawSheet, maximizing, results, referenceResultProviders, customProperties);
 
             if(this.excelCustomizer.isPresent()){
                 var realExcelCustomizer = excelCustomizer.get();
@@ -328,6 +324,62 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         };
     }
 
+    protected String[] getRawHeaders(String[] customProperties) {
+        return ArrayUtil.merge(getCommonHeaders(), customProperties);
+    }
+
+    protected String[] getCustomPropertyHeaders(List<? extends SolutionGeneratedEvent<?, ?>> results) {
+        Set<String> customPropertyKeys = new TreeSet<>();
+        Set<String> commonHeaders = Set.of(getCommonHeaders());
+
+        for (var result : results) {
+            for (var property : result.getSolutionProperties().entrySet()) {
+                String propertyName = property.getKey();
+                validateCustomPropertyName(propertyName, commonHeaders);
+                validateCustomPropertyValue(propertyName, property.getValue(), result);
+                customPropertyKeys.add(propertyName);
+            }
+        }
+
+        return customPropertyKeys.toArray(new String[0]);
+    }
+
+    private static void validateCustomPropertyName(String propertyName, Set<String> commonHeaders) {
+        if (propertyName == null) {
+            throw new IllegalArgumentException("Solution property names exported to Excel cannot be null");
+        }
+        if (commonHeaders.contains(propertyName)) {
+            throw new IllegalArgumentException(String.format("Solution property '%s' cannot be exported to Excel because it duplicates a built-in raw sheet header", propertyName));
+        }
+    }
+
+    private static void validateCustomPropertyValue(String propertyName, Object value, SolutionGeneratedEvent<?, ?> result) {
+        if (isExcelScalarValue(value)) {
+            return;
+        }
+
+        String valueType = value.getClass().getSimpleName();
+        throw new IllegalArgumentException(String.format(
+                "Solution property '%s' for instance '%s', algorithm '%s', iteration '%s' cannot be exported to Excel. Solution properties must be null, finite Number, String or Boolean, but found %s: %s",
+                propertyName,
+                result.getInstanceName(),
+                result.getAlgorithmName(),
+                result.getIteration(),
+                valueType,
+                value
+        ));
+    }
+
+    private static boolean isExcelScalarValue(Object value) {
+        if (value == null || value instanceof String || value instanceof Boolean) {
+            return true;
+        }
+        if (value instanceof Number n) {
+            return Double.isFinite(n.doubleValue());
+        }
+        return false;
+    }
+
     /**
      * Get best result for a given instance
      *
@@ -386,28 +438,13 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         ARRAY_FORMULA
     }
 
-    /**
-     * Write data to raw sheet
-     *
-     * @param rawSheet sheet reference where data should be written to
-     * @param maximizing true if this is a maximizing problem, false otherwise
-     * @param results list of results to serialize
-     * @param referenceResultProviders reference result providers if available
-     */
-    public void fillRawSheet(SXSSFSheet rawSheet, boolean maximizing, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders) {
+    protected void fillRawSheet(SXSSFSheet rawSheet, boolean maximizing, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders, String[] customProperties) {
         // Best values per instance
         Map<String, Double> bestValuesPerInstance = bestResultPerInstance(Context.getMainObjective(), results, referenceResultProviders, maximizing);
-        
-        // Extract unique custom property keys from all results
-        Set<String> customPropertyKeysSet = new LinkedHashSet<>();
-        for (var result : results) {
-            customPropertyKeysSet.addAll(result.getSolutionProperties().keySet());
-        }
-        String[] customProperties = customPropertyKeysSet.toArray(new String[0]);
 
         // Create headers
-        String[] commonHeaders = getCommonHeaders();
-        String[] headers = ArrayUtil.merge(commonHeaders, customProperties);
+        String[] headers = getRawHeaders(customProperties);
+        int customPropertiesStartIndex = headers.length - customProperties.length;
 
         int nColumns = headers.length;
         int cutOff = results.size() + 1;
@@ -447,7 +484,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             var solutionProps = r.getSolutionProperties();
             for (int j = 0; j < customProperties.length; j++) {
                 String propName = customProperties[j];
-                data[i][commonHeaders.length + j] = solutionProps.getOrDefault(propName, null);
+                data[i][customPropertiesStartIndex + j] = solutionProps.get(propName);
             }
         }
 
@@ -493,8 +530,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
 
     public void headRawSheet(SXSSFSheet rawSheet, String[] customProperties) {
         // Create headers
-        String[] commonHeaders = getCommonHeaders();
-        String[] headers = ArrayUtil.merge(commonHeaders, customProperties);
+        String[] headers = getRawHeaders(customProperties);
         var headerRow = rawSheet.createRow(0);
         for (int i = 0; i < headers.length; i++) {
             var cell = headerRow.createCell(i);

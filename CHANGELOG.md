@@ -11,6 +11,7 @@
 - (Fix) #228: Instance selector failed to copy instances if they were not in the root instance folder
 - (Fix) #300: Use algorithmName in Algorithm::toString when possible, fallback to current class name.
 - (Fix) #301: Warning if SOLVER_NWORKERS exceeds physical CPU cores in configuration
+- (Fix) #208: Custom solution properties missing from Excel report
 - (New) #129: New Excel serializer, allows users to extend the raw data and should have better performance in most cases.
 - (New) Update dependencies, biggest change is migration to Spring Boot 4 and Jackson 3.
 

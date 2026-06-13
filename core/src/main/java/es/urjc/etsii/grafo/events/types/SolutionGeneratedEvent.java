@@ -39,15 +39,35 @@ public class SolutionGeneratedEvent<S extends Solution<S,I>, I extends Instance>
     /**
      * Create a new SolutionGeneratedEvent
      *
+     * @param success           true if the solution was generated successfully
      * @param iteration         solution iteration
+     * @param instancePath      instance path
      * @param solution          generated solution
      * @param experimentName    experiment name
      * @param algorithm         algorithm that generated this solution
      * @param executionTime     time used to generate this solution
      * @param timeToBest        time needed to reach the best solution. timeToBest = totalTime - timeSinceLastModification
-     * @param solutionProperties custom properties computed for the solution
      * @param metrics           both framework calculated and user defined metrics
      * @param timeStatsEvents   time statistics events
+     */
+    public SolutionGeneratedEvent(boolean success, String iteration, String instancePath, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest, MetricsStorage metrics, List<TimeStatsEvent> timeStatsEvents) {
+        this(success, iteration, instancePath, solution, experimentName, algorithm, executionTime, timeToBest, Map.of(), metrics, timeStatsEvents);
+    }
+
+    /**
+     * Create a new SolutionGeneratedEvent
+     *
+     * @param success            true if the solution was generated successfully
+     * @param iteration          solution iteration
+     * @param instancePath       instance path
+     * @param solution           generated solution
+     * @param experimentName     experiment name
+     * @param algorithm          algorithm that generated this solution
+     * @param executionTime      time used to generate this solution
+     * @param timeToBest         time needed to reach the best solution. timeToBest = totalTime - timeSinceLastModification
+     * @param solutionProperties custom properties computed for the solution
+     * @param metrics            both framework calculated and user defined metrics
+     * @param timeStatsEvents    time statistics events
      */
     public SolutionGeneratedEvent(boolean success, String iteration, String instancePath, S solution, String experimentName, Algorithm<S, I> algorithm, long executionTime, long timeToBest, Map<String, Object> solutionProperties, MetricsStorage metrics, List<TimeStatsEvent> timeStatsEvents) {
         super();
