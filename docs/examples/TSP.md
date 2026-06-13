@@ -799,7 +799,7 @@ evolves over the time. The result should be similar than the following image:
 ## 6. _Irace_
 !!! danger
     This section is outdated, and will be rewritten soon using the new Autoconfig module.
-    We recommend to skip this section for now, and ask for support if necessary.
+    We recommend to skip this section for now and use the [Autoconfig](../features/autoconfig.md) guide instead.
 
 
 In short, Irace is a software package that implements a number of automatic configuration procedures, that allows us to
@@ -940,5 +940,4 @@ using it right now. Experience has shown that writing assertions while programmi
 effective ways to detect and correct bugs. As an added benefit, assertions serve to document the inner workings of your
 program, enhancing maintainability. By default, assertions are disabled at runtime. To enable assertions use
 the `-enableassertions`, or `-ea`, as a program argument.
-
 
