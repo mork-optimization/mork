@@ -126,7 +126,7 @@ public class AlgorithmCandidateGenerator {
         var type = p.getType();
         var name = p.getName();
         if (!isValidParamName(name)) {
-            throw new IllegalArgumentException(String.format("Invalid parameter name %s, must match[a-zA-Z][a-zA-Z0-9]*)", name));
+            throw new IllegalArgumentException(String.format("Invalid parameter name %s, must match ([a-zA-Z][a-zA-Z0-9]*)", name));
         }
         validateAnnotations(p);
         if (p.isAnnotationPresent(IntegerParam.class)) {
