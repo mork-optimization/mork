@@ -3,12 +3,19 @@ package es.urjc.etsii.grafo.annotations;
 import java.lang.annotation.*;
 
 /**
- * Declares how to generate values for a primitive parameter (int, double, etc) using the same strategies as Irace.
- * See section 5.1.1 Parameter Types in the official irace manual for more details
+ * Declares a categorical tunable parameter using the same categorical parameter type as irace.
+ * Values are provided as strings and converted at runtime to the constructor parameter type when possible
+ * (for example String, boolean, enum, numeric values, or objectives by name).
+ * At least one value must be provided.
+ * See section 5.1.1 Parameter Types in the official irace manual for more details.
  */
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
 public @interface CategoricalParam {
+    /**
+     * Candidate values for this parameter.
+     * @return non-empty list of categorical values
+     */
     String[] strings() default {};
 }
