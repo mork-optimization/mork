@@ -18,9 +18,10 @@ import org.slf4j.LoggerFactory;
  * function of the current one. The search ends when all neighbor solutions are worse  meaning that a local optimum
  * is found.
  * <p>
- * There exist two typical strategies to explore the corresponding neighborhood:
- * best improvement and first improvement. To use or extend those procedures see {@link LocalSearchBestImprovement}
- * and {@link LocalSearchFirstImprovement} respectively.
+ * Typical strategies to explore the corresponding neighborhood include:
+ * best improvement, first improvement and cached best improvement. To use or extend those procedures see
+ * {@link LocalSearchBestImprovement}, {@link LocalSearchFirstImprovement} and
+ * {@link LocalSearchCachedBestImprovement} respectively.
  *
  * @param <M> type of move
  * @param <S> type of the problem solution

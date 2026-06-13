@@ -19,7 +19,7 @@ An algorithm is a high level component which implements an strategy to generate 
 
 Traditionally, algorithms have been classified in two main categories: exact and heuristic. Exact algorithms are guaranteed to find the optimal solution, while heuristic algorithms are not. Heuristic algorithms are usually faster than exact algorithms, and are used when the problem is too large to be solved exactly in a reasonable amount of time. However, they cannot usually guarantee the optimality of the solution found.
 Both kind of algorithms can be easily implemented, but the framework is focused on heuristic algorithms, and does not currently provide any exact algorithm implementation.
-An example algorithm method is GRASP, which is a heuristic algorithm that iteratively constructs a solution, and then applies an improvement method to each built solution, which is usually a best improvement or first improvement local search.
+An example algorithm method is GRASP, which is a heuristic algorithm that iteratively constructs a solution, and then applies an improvement method to each built solution, which is usually a best improvement, cached best improvement, or first improvement local search.
 Its implementation can be as simple as:
 
 ```java
@@ -193,4 +193,3 @@ Any Java class is automatically detected by the Mork engine as an algorithm comp
 
 !!! tip
     Remember: all algorithm component types provided by Mork are annotated, so you do not need to use the `@AlgorithmComponent` annotation if your components extend `Algorithm`, `Constructive`, `Improver`, etc., or any other component type class.
-

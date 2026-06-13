@@ -705,10 +705,14 @@ D <-> E, and finally, `null`.
 #### Local Search experiments
 
 Defining a local search experiment is as easy as defining a constructive experiment. Copy the `ConstructiveExperiment` class
-in the same folder and rename it to `LocalSearchExperiment`. In Mork, there are already implemented two different type of local searches: `LocalSearchFirstImprovement` and `LocalSearchBestImprovement`. The first one follows a first improvement
-strategy, i.e., as soon as it finds a move that results on an improvement, it is executed. The second one follows the best
-improvement strategy, it explores all solutions of a neighborhood and execute the best possible move, the move that
-results in the best solution of the neighborhood. In this experiment we are going to define 5 algorithms:
+in the same folder and rename it to `LocalSearchExperiment`. Mork provides several local search variants:
+`LocalSearchFirstImprovement`, `LocalSearchBestImprovement`, and `LocalSearchCachedBestImprovement`. The first one follows
+a first improvement strategy, i.e., as soon as it finds a move that results on an improvement, it is executed. The second
+one follows the best improvement strategy: it explores all solutions of a neighborhood and executes the best possible
+move, the move that results in the best solution of the neighborhood. The cached best improvement variant explores the
+full neighborhood to keep the best `N` moves, then tries to refresh those cached moves in later iterations before doing
+another full exploration. Cached best improvement can only be used with moves that implement `RefreshableMove`. In this
+experiment we are going to define 5 algorithms:
 
 - Random constructive:
 - Insert Neighborhood following a first and best improvement strategy
@@ -809,7 +813,8 @@ documentation: ["The irace Package: User Guide"](https://cran.r-project.org/web/
 To implement irace, please, have a look to [the documentation](../features/irace.md) for further details. Anyway, in
 this section, we will explain how to implement irace for the TSP. Particularly, we will generate an experiment to
 determine which is the best local search for the TSP:
-First or Best improvement local search, and Insert or Swap Neighborhood.
+First or Best improvement local search, and Insert or Swap Neighborhood. `LocalSearchCachedBestImprovement` can also be
+tested in problems where the selected moves implement `RefreshableMove`.
 
 1. Configure an irace experiment.
 2. Define the parameters to test.
@@ -826,7 +831,7 @@ method `public Algorithm<TSPSolution, TSPInstance> buildAlgorithm(IraceRuntimeCo
 generate an Algorithm based on `IraceRuntimeConfiguration` object. This object contains the configuration of the
 experiment and will be defined in the next section. To obtain the configuration parameter, the
 method `String getValue(String s)` have to be called. In this case, two parameters has to be defined: the strategy of
-the local search (first or best); and the neighborhood (insert or swap).
+the local search (first or best; cached best is available for refreshable moves); and the neighborhood (insert or swap).
 
 ```
 public class IraceExperiment extends IraceAlgorithmGenerator<TSPSolution, TSPInstance> {
@@ -935,6 +940,5 @@ using it right now. Experience has shown that writing assertions while programmi
 effective ways to detect and correct bugs. As an added benefit, assertions serve to document the inner workings of your
 program, enhancing maintainability. By default, assertions are disabled at runtime. To enable assertions use
 the `-enableassertions`, or `-ea`, as a program argument.
-
 
 
