@@ -10,13 +10,13 @@ public class AlgorithmNameParam extends ParameterProvider {
 
     @Override
     public boolean provides(Class<?> type, String paramName) {
-        return generateValuesForNames.contains(paramName);
+        return type == String.class && generateValuesForNames.contains(paramName);
     }
 
     @Override
     public Object getValue(Class<?> type, String paramName) {
-        if(!generateValuesForNames.contains(paramName)){
-            throw new IllegalArgumentException("Algorithm names generated only for parameter names %s, given %s".formatted(generateValuesForNames, paramName));
+        if(!provides(type, paramName)){
+            throw new IllegalArgumentException("Algorithm names generated only for String parameters named %s, given {type=%s, name=%s}".formatted(generateValuesForNames, type, paramName));
         }
         return StringUtil.randomAlgorithmName();
     }
