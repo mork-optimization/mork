@@ -81,7 +81,7 @@ Components are automatically detected by the framework when annotated with `@Alg
 
 ### Automatic Algorithm Configuration
 
-Components can be automatically configured using irace integration. See [irace documentation](../../features/irace.md) for details.
+Components can be automatically configured using the autoconfig module and irace integration. See [Autoconfig](../../features/autoconfig.md) for component annotations and [irace documentation](../../features/irace.md) for execution details.
 
 ### Custom Component Types
 

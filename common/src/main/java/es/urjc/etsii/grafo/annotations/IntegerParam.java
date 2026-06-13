@@ -3,8 +3,10 @@ package es.urjc.etsii.grafo.annotations;
 import java.lang.annotation.*;
 
 /**
- * Declares how to generate values for a primitive parameter (int, double, etc) using the same strategies as Irace.
- * See section 5.1.1 Parameter Types in the official irace manual for more details
+ * Declares an integer tunable parameter using the same integer parameter type as irace.
+ * Use this annotation on integer-compatible constructor parameters such as int, long, short, byte,
+ * their wrapper types, or String when the constructor expects the raw value.
+ * See section 5.1.1 Parameter Types in the official irace manual for more details.
  */
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)

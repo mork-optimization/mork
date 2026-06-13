@@ -109,6 +109,5 @@ var solution = constructor.construct(newSolution(instance));
 
 1. Constructive methods MUST return feasible solutions. The framework validates this and will complain if any solution is not feasible after the construction phase.
 2. We recommend implementing Moves to model changes to the solution, and use them in the constructive methods. This is not mandatory. // TODO document example using addmove.
-3. Do create parameters to configure the constructive behaviour, and expose them in the class constructor. Configuration parameters should be final. If using autoconfig, annotate them with `@*Param` annotations so the autoconfig module can infer the correct usage of your classes.
+3. Do create parameters to configure the constructive behaviour, and expose them in the class constructor. Configuration parameters should be final. If using autoconfig, annotate them with `@*Param` annotations so the autoconfig module can infer the correct usage of your classes. See [Autoconfig](../../../features/autoconfig.md) for the full annotation reference.
 4. Do NOT store state as fields in the constructive class. All state must be either as local variables, or in the solution class. It will never work as you expect.
-

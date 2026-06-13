@@ -60,7 +60,13 @@ gu install R
 - Set `irace.shell` to `true`
 
 # How to use it
-There are three main things that have to be done in order to use Irace.
+Mork supports two irace workflows:
+
+- Automatic configuration generation, where Mork discovers annotated components and generates the irace parameter space. See [Autoconfig](autoconfig.md).
+- Manual configuration, where you implement an `AlgorithmBuilder` and maintain `parameters.txt` yourself.
+
+This doc page documents the second use case. For the automatic configuration generation method, see the [Autoconfig](autoconfig.md) doc page.
+There are three main things that have to be done in order to use Irace manually.
 1. Configuring dynamic algorithm generation.
 2. Defining algorithm parameters to test.
 3. Adjusting scenario options.
@@ -89,7 +95,7 @@ Each target parameter has an associated type that defines its domain and the way
 
  - The `name` of the parameter as an unquoted alphanumeric string.
  - A `label` for this parameter. This label will be later used in the `getValue` method of the `IraceConfiguration` object. Unless you have a reason not to, it is a good idea to match the name plus the equals sign. (i.e:  if the parameter name is `alpha`, use `alpha=` as the label value.
- - The `type` of the parameter, either integer, real, ordinal or categorical, given as **a single letter**: ‘i’, ‘r’, ‘o’ or ‘c’.
+ - The `type` of the parameter, either integer, real, ordinal or categorical, given as **a single letter**: `i`, `r`, `o` or `c`.
  - The `range` or set of values of the parameter delimited by parentheses. e.g., (0,1) or (a,b,c,d).
  - An optional `condition` that determines whether the parameter is enabled or disabled, thus making the parameter conditional. If the condition evaluates to false, then no value is assigned to this parameter, and neither the parameter value nor the corresponding label are passed to algorithm. **The condition must be a valid R logical expression**.
 
