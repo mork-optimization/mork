@@ -4,6 +4,8 @@ import es.urjc.etsii.grafo.util.random.RandomType;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
+import java.util.Objects;
+
 /**
  * Configuration file based on application.yml file.
  * {@see application.yml}
@@ -53,6 +55,11 @@ public class SolverConfig {
      * Execute benchmark before starting solver
      */
     private boolean benchmark = false;
+
+    /**
+     * JVM warm-up configuration. Disabled by default.
+     */
+    private WarmupConfig warmup = new WarmupConfig();
 
     /**
      * Tree depth when using automatic configuration
@@ -223,6 +230,14 @@ public class SolverConfig {
         this.benchmark = benchmark;
     }
 
+    public WarmupConfig getWarmup() {
+        return warmup;
+    }
+
+    public void setWarmup(WarmupConfig warmup) {
+        this.warmup = Objects.requireNonNullElseGet(warmup, WarmupConfig::new);
+    }
+
     /**
      * <p>Getter for the field <code>randomType</code>.</p>
      *
@@ -376,5 +391,66 @@ public class SolverConfig {
      */
     public void setProgressBar(boolean progressBar) {
         this.progressBar = progressBar;
+    }
+
+    /**
+     * Configuration for warming up the JVM before running measured experiments.
+     */
+    public static class WarmupConfig {
+        /**
+         * Enable JVM warm-up before each experiment.
+         */
+        private boolean enabled = false;
+
+        /**
+         * Instance path to use for warm-up. If empty, Mork will select one automatically.
+         */
+        private String instancePath = "";
+
+        /**
+         * Number of times each algorithm should run on the warm-up instance.
+         */
+        private int repetitions = 5;
+
+        /**
+         * Optional warm-up time limit in milliseconds. If zero or negative, use the normal time control configuration.
+         */
+        private long maxMillis = 0;
+
+        public boolean isEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(boolean enabled) {
+            this.enabled = enabled;
+        }
+
+        public String getInstancePath() {
+            return instancePath;
+        }
+
+        public void setInstancePath(String instancePath) {
+            this.instancePath = instancePath == null ? "" : instancePath;
+        }
+
+        public boolean hasInstancePath() {
+            return instancePath != null && !instancePath.isBlank();
+        }
+
+        public int getRepetitions() {
+            return repetitions;
+        }
+
+        public void setRepetitions(int repetitions) {
+            this.repetitions = repetitions;
+        }
+
+        public long getMaxMillis() {
+            return Math.max(0, maxMillis);
+        }
+
+        public void setMaxMillis(long maxMillis) {
+            this.maxMillis = maxMillis;
+        }
     }
 }

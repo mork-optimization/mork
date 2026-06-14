@@ -21,6 +21,10 @@ decompression only happens in memory when required. From the user point of view,
 same method of the `InstanceImporter` is called, regardless of the file being compressed or not. If the compressed file
 contains multiple files or directories, they are recursively enumerated.
 
+Internally, entries inside compressed files are represented as "load paths" using the format
+`archive.zip!path/inside/archive.txt`. The part before `!` is the real filesystem path to the archive; the part after
+`!` is the entry path inside the archive.
+
 ### Path is a directory
 If the path is a directory, the instance manager will enumerate all files in the directory,
 and load each file as an instance. If the directory contains directories, they will be recursively enumerated.
@@ -32,7 +36,7 @@ They are specially useful when instances are extremely big, to avoid data duplic
 
 For example, if we have a folder called "instances", which contains all the known instances in the literature for the problem we are currently solving, 
 we may want to execute only a subset of this instance set, for example when running preliminary experiments. An easy way to do this is to create a new instance folder, called `preliminary-instances`, and copy the instances that we want to run there. However, this approach has the downside of duplicating the data, which can be a problem if the instances are huge.
-As an alternative, we can create a file inside the `instances` folder, called `preliminary.index`, which contains the names of the instances that we want to run. The instance manager will read this file, and load only the instances that are listed there, ignoring the rest.
+As an alternative, we can create a file inside the `instances` folder, called `preliminary.index`, which contains the instance load paths that we want to run. The instance manager will read this file, and load only the instances that are listed there, ignoring the rest. Index entries may be regular paths or compressed load tokens such as `data.zip!folder/instance.txt`.
 
 !!! info
     Note that a index files are identified by the `.index` extension, and are ignored when enumerating instances if they are not explicitly configured as the `instance.path` properties. 
@@ -131,3 +135,19 @@ However, if the instances are huge, you do not need to solve the instances in an
 !!! tip
     As a general rule, do not use automatic parallelization if instances are huge. The reason for this is that multiple threads can be solving different instances, and therefore Mork will be forced to keep multiple instances in memory at the same time, which can produce out-of-memory errors.
 
+## JVM warm-up instance
+
+Short experiments can be affected by the JVM switching from interpreted execution to compiled code while measured runs are already in progress. To reduce this effect, Mork can run each algorithm on a warm-up instance before publishing normal experiment events or exporting measured solutions.
+
+Enable it with:
+
+```yml
+solver:
+  warmup:
+    enabled: true
+    instance-path: ''
+    repetitions: 5
+    max-millis: 0
+```
+
+If `solver.warmup.instance-path` is empty, Mork selects the warm-up instance automatically. With `instances.preload=true`, it uses the instance with the smallest load time measured during validation. If those validation load times are no longer available from cache, or if preload is disabled, it falls back to the smallest instance file size. You can set `solver.warmup.instance-path` to force a specific fast instance instead.

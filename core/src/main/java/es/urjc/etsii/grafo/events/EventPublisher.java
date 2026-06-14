@@ -23,7 +23,7 @@ public class EventPublisher {
     /**
      * Disable event propagation
      */
-    private boolean blockEvents = false;
+    private volatile boolean blockEvents = false;
 
     /**
      * Spring integration constructor
@@ -70,6 +70,15 @@ public class EventPublisher {
      */
     public void block() {
         this.blockEvents = true;
+    }
+
+    /**
+     * Check if event dispatching is currently blocked.
+     *
+     * @return true if events are blocked, false otherwise
+     */
+    public boolean isBlocked() {
+        return this.blockEvents;
     }
 
     /**

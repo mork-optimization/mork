@@ -57,7 +57,7 @@ instances:
 
   # Loads all instances in RAM before starting each experiment.
   # Can be disabled for example in problems where instances are huge in order to save some RAM.
-  # Warning: Disabling it reverts instance solve order to instance name (lexicographically)
+  # Warning: Disabling it reverts instance solve order to instance path (lexicographically)
   preload: true
 
   path:
@@ -94,6 +94,15 @@ solver:
 
   # Execute benchmark before starting solver? False to skip benchmark.
   benchmark: true
+
+  # JVM warm-up before measured experiment executions.
+  # If enabled and instance-path is empty, Mork automatically selects a small/fast instance.
+  warmup:
+    enabled: false
+    instance-path: ''
+    repetitions: 5
+    # Optional warm-up time limit in milliseconds. Set 0 to use normal time control behavior.
+    max-millis: 0
 
   # Autoconfig properties
   ## Tree depth when using automatic configuration

@@ -136,6 +136,14 @@ public class IOUtilTest {
     }
 
     @Test
+    void compressedLoadPathParts() {
+        String token = "folder/archive.zip!instances/f1/hello-world.txt";
+
+        Assertions.assertEquals("folder/archive.zip", IOUtil.containerPath(token));
+        Assertions.assertEquals("instances/f1/hello-world.txt", IOUtil.entryPath(token));
+    }
+
+    @Test
     void testZip() throws IOException {
         var entries = IOUtil.iterate("src/test/resources/instances.zip");
         assertEntries(entries);
@@ -181,4 +189,3 @@ public class IOUtilTest {
     }
 
 }
-

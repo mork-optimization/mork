@@ -18,7 +18,7 @@ public abstract class Instance implements Comparable<Instance>{
 
     /**
      * Creates a new instance
-     * @param id instance id or instance name
+     * @param id logical instance id or name. This value is used in results, logs and reference lookups.
      */
     protected Instance(String id) {
         this.id = id;
@@ -36,25 +36,27 @@ public abstract class Instance implements Comparable<Instance>{
     }
 
     /**
-     * Returns the Instance name
+     * Returns the logical instance id or name.
      *
-     * @return instance name
+     * @return instance id
      */
     public String getId() {
         return id;
     }
 
     /**
-     * Set instance path, used by the framework
-     * @param path instance absolute path where it was loaded from
+     * Set instance load path, used by the framework.
+     *
+     * @param path path or compressed load token where it was loaded from. It may be relative.
      */
     protected void setPath(String path) {
         this.path = path;
     }
 
     /**
-     * Get instance absolute path
-     * @return instance path where it was first loaded from
+     * Get instance load path.
+     *
+     * @return path or compressed load path where it was first loaded from. It may be relative.
      */
     public String getPath() {
         return path;

@@ -115,6 +115,10 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
 
         var instancePaths = instanceManager.getInstanceSolveOrder(experiment.name());
         verifyWorkloadLimit(solverConfig, instancePaths, experiment.algorithms());
+        if (solverConfig.getWarmup().isEnabled()) {
+            var warmupInstancePath = instanceManager.getWarmupInstancePath(experiment.name(), instancePaths);
+            executor.warmup(experiment, warmupInstancePath);
+        }
         EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(experiment.name(), instancePaths));
         executor.executeExperiment(experiment, instancePaths, startTimestamp);
         long experimentExecutionTime = System.nanoTime() - startTime;
@@ -122,10 +126,10 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
         log.info("Finished running experiment: {}", experiment.name());
     }
 
-    public static void verifyWorkloadLimit(SolverConfig config, List<String> instanceNames, List<?> experiment) {
-        int calculatedWorkload = instanceNames.size() * experiment.size() * config.getRepetitions();
+    public static void verifyWorkloadLimit(SolverConfig config, List<String> instancePaths, List<?> experiment) {
+        int calculatedWorkload = instancePaths.size() * experiment.size() * config.getRepetitions();
         if(calculatedWorkload >= MAX_WORKLOAD){
-            throw new ResourceLimitException(String.format("Maximum workload exceeded, reduce instances, number of algorithms or repetitions: %s * %s * %s = %s >= %s%nTip: You may decrease the number of iterations using a multistart algorithm without changing the result", instanceNames.size(), experiment.size(), config.getRepetitions(), calculatedWorkload, MAX_WORKLOAD));
+            throw new ResourceLimitException(String.format("Maximum workload exceeded, reduce instances, number of algorithms or repetitions: %s * %s * %s = %s >= %s%nTip: You may decrease the number of iterations using a multistart algorithm without changing the result", instancePaths.size(), experiment.size(), config.getRepetitions(), calculatedWorkload, MAX_WORKLOAD));
         }
     }
 }

@@ -1,25 +1,26 @@
 package es.urjc.etsii.grafo.io;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
+import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.executors.Executor;
+import es.urjc.etsii.grafo.util.Compression;
 import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
 import me.tongfei.progressbar.ProgressBar;
 import org.apache.commons.io.input.BOMInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.ref.SoftReference;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static es.urjc.etsii.grafo.util.IOUtil.checkExists;
@@ -36,11 +37,11 @@ public class InstanceManager<I extends Instance> {
     private static final int MAX_LENGTH = 300;
     public static final String INDEX_SUFFIX = ".index";
 
-    protected final SoftReference<I> EMPTY = new SoftReference<>(null);
     protected final InstanceConfiguration instanceConfiguration;
     protected final InstanceImporter<I> instanceImporter;
 
-    protected final Map<String, SoftReference<I>> cacheByPath;
+    protected final InstanceCache<I> cache;
+    protected final WarmupInstanceSelector<I> warmupSelector;
     protected final Map<String, List<String>> solveOrderByExperiment;
 
 
@@ -48,13 +49,16 @@ public class InstanceManager<I extends Instance> {
      * Build instance manager
      *
      * @param instanceConfiguration instance configuration
+     * @param solverConfig          solver configuration
      * @param instanceImporter      instance importer
      */
-    public InstanceManager(InstanceConfiguration instanceConfiguration, InstanceImporter<I> instanceImporter) {
+    @Autowired
+    public InstanceManager(InstanceConfiguration instanceConfiguration, SolverConfig solverConfig, InstanceImporter<I> instanceImporter) {
         this.instanceConfiguration = instanceConfiguration;
         this.instanceImporter = instanceImporter;
-        this.cacheByPath = new ConcurrentHashMap<>();
-        this.solveOrderByExperiment = new ConcurrentHashMap<>();
+        this.cache = new InstanceCache<>();
+        this.warmupSelector = new WarmupInstanceSelector<>(solverConfig, instanceConfiguration, this.cache);
+        this.solveOrderByExperiment = new HashMap<>();
     }
 
 
@@ -67,19 +71,19 @@ public class InstanceManager<I extends Instance> {
      *
      * @param expName experiment name as string
      * @param preload if true load instances to use comparator to sort them, if false uses lexicograph sort by path name
-     * @return Ordered list of instance identifiers, that can be later used by the getInstance method. Instances should be solved in the returned order.
+     * @return Ordered list of instance load paths, that can be later used by the getInstance method. Instances should be solved in the returned order.
      */
     public synchronized List<String> getInstanceSolveOrder(String expName, boolean preload) {
         return this.solveOrderByExperiment.computeIfAbsent(expName, s -> {
-            String instancePath = this.instanceConfiguration.getPath(expName);
-            checkExists(instancePath);
-            List<String> instances = isIndexFile(instancePath)?
-                    listIndexFile(instancePath):
-                    listNormalFile(instancePath);
+            String configuredPath = this.instanceConfiguration.getPath(expName);
+            checkExists(configuredPath);
+            List<String> instancePaths = isIndexFile(configuredPath)?
+                    listIndexFile(configuredPath):
+                    listNormalFile(configuredPath);
 
             List<String> sortedInstances = preload?
-                    validateAndSort(expName, instances):
-                    lexicSort(instances);
+                    validateAndSort(expName, instancePaths):
+                    lexicSort(instancePaths);
             return sortedInstances;
         });
     }
@@ -98,28 +102,39 @@ public class InstanceManager<I extends Instance> {
 
     private List<String> listIndexFile(String instancePath) {
         Path indexFile = Path.of(instancePath);
-        var parentPath = indexFile.getParent();
+        var parentPath = Optional.ofNullable(indexFile.getParent()).orElse(Path.of("."));
         try (var in = BOMInputStream.builder().setInputStream(Files.newInputStream(indexFile)).get();
              var reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             return reader.lines()
                     .map(line -> line.startsWith("\uFEFF") ? line.substring(1) : line)
+                    .map(String::trim)
                     .filter(p -> !p.startsWith("#"))
                     .filter(p -> !p.isBlank())
-                    .map(Path::of)
-                    .map(parentPath::resolve)
-                    .map(Path::toAbsolutePath)
-                    .map(Path::toString)
-                    .map(IOUtil::checkExists)
+                    .map(path -> resolveIndexEntry(parentPath, path))
+                    .map(IOUtil::checkLoadPathExists)
                     .toList();
         } catch (IOException e){
             throw new RuntimeException(e);
         }
     }
 
+    private static String resolveIndexEntry(Path parentPath, String instancePath) {
+        int index = instancePath.indexOf(Compression.SEP);
+        if (index < 0) {
+            return parentPath.resolve(Path.of(instancePath)).toAbsolutePath().toString();
+        }
+        String container = instancePath.substring(0, index);
+        String entry = instancePath.substring(index);
+        return parentPath.resolve(Path.of(container)).toAbsolutePath() + entry;
+    }
+
     private boolean isIndexFile(String instancePath) {
         var file = new File(instancePath);
-        log.debug("Not an index file: {}", instancePath);
-        return file.isFile() && instancePath.endsWith(INDEX_SUFFIX);
+        boolean isIndex = file.isFile() && instancePath.endsWith(INDEX_SUFFIX);
+        if (!isIndex) {
+            log.debug("Not an index file: {}", instancePath);
+        }
+        return isIndex;
     }
 
     protected List<String> validateAndSort(String expName, List<String> instancePaths) {
@@ -131,13 +146,23 @@ public class InstanceManager<I extends Instance> {
             log.debug("Loading instance: {}", path);
             I instance = loadInstance(path);
             instances.add(instance);
-            cacheByPath.put(instance.getId(), new SoftReference<>(instance));
         }
         Collections.sort(instances);
         validate(instances, expName);
         sortedInstances = instances.stream().map(Instance::getPath).collect(Collectors.toList());
         logInstances(sortedInstances);
         return sortedInstances;
+    }
+
+    /**
+     * Select the instance path that should be used for JVM warm-up.
+     *
+     * @param expName       experiment name
+     * @param instancePaths solve order load paths for the experiment
+     * @return warm-up instance load paths
+     */
+    public String getWarmupInstancePath(String expName, List<String> instancePaths) {
+        return this.warmupSelector.select(expName, instancePaths);
     }
 
     private static void logInstances(List<String> sortedInstances) {
@@ -186,18 +211,16 @@ public class InstanceManager<I extends Instance> {
     }
 
     /**
-     * Returns an instance given a path
+     * Returns an instance given a load path.
      *
-     * @param path Path of instance to load
+     * @param path path or compressed load path of the instance to load
      * @return Loaded instance
      */
     public synchronized I getInstance(String path) {
-        I instance = this.cacheByPath.getOrDefault(path, EMPTY).get();
+        I instance = this.cache.get(path);
         if (instance == null) {
-            // Load and put in cache
             instance = loadInstance(path);
         }
-
         return instance;
     }
 
@@ -212,15 +235,15 @@ public class InstanceManager<I extends Instance> {
 
         instance.setPath(IOUtil.relativizePath(path));
 
-        this.cacheByPath.put(path, new SoftReference<>(instance));
+        this.cache.put(path, instance);
         return instance;
     }
 
     /**
      * Purge instance cache
      */
-    public void purgeCache() {
-        this.cacheByPath.clear();
+    public synchronized void purgeCache() {
+        this.cache.clear();
     }
 
     public InstanceImporter<I> getUserImporterImplementation() {

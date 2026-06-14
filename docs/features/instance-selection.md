@@ -10,8 +10,8 @@ Any JAR file built con Mork v0.18 or later, can be invoked as follows:
 java -jar MyProblem.jar --instance-selector
 ```
 
-Selected instances are copied to the output folder, 
-along some diagrams explaining the decisions taken along the process.
+Selected instances are written to an index file in the output folder,
+along with a CSV manifest and diagrams explaining the decisions taken along the process.
 
 **Demo**
 <video controls style="width: 100%">
@@ -55,7 +55,7 @@ The behaviour of the instance selector can be easily configured, using the follo
 | Property                           | Description                                                                                          | Default value                         |  
 |------------------------------------|------------------------------------------------------------------------------------------------------|---------------------------------------|
 | `instances.preliminar-percentage`  | Which proportion of the total set of instances should <br>be selected. Value must be in range (0, 1) | 0.15                                  |
-| `instances.preliminar-output-path` | Where should be the preliminary instances be copied,<br> and where to save the generated diagrams    | output                                |
+| `instances.preliminar-output-path` | Where to save the preliminary instance index,<br> manifest and generated diagrams                    | output                                |
 | `instances.for-selection`          | Path to the whole set of instances                                                                   | Property <br>`instances.path.default` |
 
 For example, to use a 20% preliminary set size, and output results to folder preliminar-output, the command would be similar to:
@@ -69,22 +69,11 @@ The instance selector will load all instances specified in property `instances.f
 If the folder contains folders inside, they will be recursively enumerated. For each instance, all declared properties are calculated, and non-numeric properties are ignored.
 A CSV file with the raw property data is exported as `instance_properties.csv`, with a content similar to the following:
 ```csv
-id,avgWeights,maxWeights,minWeights,n
-A60_01.txt,2.00,3.86,0.46,60.0
-A60_02.txt,1.14,2.7,0.26,60.0
-A60_03.txt,0.96,2.68,0.13,60.0
-A60_04.txt,0.51,1.18,0.0,60.0
-A60_05.txt,0.63,1.41,0.05,60.0
-A70_01.txt,1.09,2.74,0.18,70.0
-A70_02.txt,1.28,2.64,0.12,70.0
-A70_03.txt,1.03,2.2,0.15,70.0
-A70_04.txt,0.67,1.31,0.14,70.0
-A70_05.txt,3.19,6.71,0.47,70.0
-sko56_01.txt,2.72,3.66,1.87,56.0
-sko56_02.txt,2.72,3.66,1.87,56.0
-sko56_03.txt,2.72,3.66,1.87,56.0
-sko56_04.txt,2.72,3.66,1.87,56.0
-sko56_05.txt,2.72,3.66,1.87,56.0
+id,path,avgWeights,maxWeights,minWeights,n
+A60_01.txt,instances/A60_01.txt,2.00,3.86,0.46,60.0
+A60_02.txt,instances/A60_02.txt,1.14,2.7,0.26,60.0
+A70_01.txt,instances/A70_01.txt,1.09,2.74,0.18,70.0
+compressed_01.txt,instances/data.zip!compressed_01.txt,2.72,3.66,1.87,56.0
 ```
 
 ### Correlation and filtering
@@ -116,3 +105,5 @@ While the second one can be used to visually validate the quality of the cluster
 The last step consists on ranking the instances in each cluster according to their distance to the cluster centroid,
 and selecting the top instances for each cluster, up to the number of instances requested. 
 The amount of selected preliminary instances is the multiplication of the ratio defined by the user and the total number of instances detected.
+The selector writes the selected load tokens to `$output/selected_instances.index`. Configure `instances.path.default`
+with that file to run the preliminary set without copying the original instances.
