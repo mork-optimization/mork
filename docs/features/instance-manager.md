@@ -131,3 +131,19 @@ However, if the instances are huge, you do not need to solve the instances in an
 !!! tip
     As a general rule, do not use automatic parallelization if instances are huge. The reason for this is that multiple threads can be solving different instances, and therefore Mork will be forced to keep multiple instances in memory at the same time, which can produce out-of-memory errors.
 
+## JVM warm-up instance
+
+Short experiments can be affected by the JVM switching from interpreted execution to compiled code while measured runs are already in progress. To reduce this effect, Mork can run each algorithm on a warm-up instance before publishing normal experiment events or exporting measured solutions.
+
+Enable it with:
+
+```yml
+solver:
+  warmup:
+    enabled: true
+    instance-path: ''
+    repetitions: 5
+    max-millis: 0
+```
+
+If `solver.warmup.instance-path` is empty, Mork selects the warm-up instance automatically. With `instances.preload=true`, it uses the instance with the smallest load time measured during validation. With preload disabled, it falls back to the smallest instance file size. You can set `solver.warmup.instance-path` to force a specific fast instance instead.

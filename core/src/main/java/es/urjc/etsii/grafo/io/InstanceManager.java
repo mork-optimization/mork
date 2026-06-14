@@ -1,13 +1,16 @@
 package es.urjc.etsii.grafo.io;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
+import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.executors.Executor;
+import es.urjc.etsii.grafo.util.Compression;
 import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
 import me.tongfei.progressbar.ProgressBar;
 import org.apache.commons.io.input.BOMInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.BufferedReader;
@@ -38,6 +41,7 @@ public class InstanceManager<I extends Instance> {
 
     protected final SoftReference<I> EMPTY = new SoftReference<>(null);
     protected final InstanceConfiguration instanceConfiguration;
+    protected final SolverConfig solverConfig;
     protected final InstanceImporter<I> instanceImporter;
 
     protected final Map<String, SoftReference<I>> cacheByPath;
@@ -48,10 +52,13 @@ public class InstanceManager<I extends Instance> {
      * Build instance manager
      *
      * @param instanceConfiguration instance configuration
+     * @param solverConfig          solver configuration
      * @param instanceImporter      instance importer
      */
-    public InstanceManager(InstanceConfiguration instanceConfiguration, InstanceImporter<I> instanceImporter) {
+    @Autowired
+    public InstanceManager(InstanceConfiguration instanceConfiguration, SolverConfig solverConfig, InstanceImporter<I> instanceImporter) {
         this.instanceConfiguration = instanceConfiguration;
+        this.solverConfig = solverConfig;
         this.instanceImporter = instanceImporter;
         this.cacheByPath = new ConcurrentHashMap<>();
         this.solveOrderByExperiment = new ConcurrentHashMap<>();
@@ -138,6 +145,62 @@ public class InstanceManager<I extends Instance> {
         sortedInstances = instances.stream().map(Instance::getPath).collect(Collectors.toList());
         logInstances(sortedInstances);
         return sortedInstances;
+    }
+
+    /**
+     * Select the instance path that should be used for JVM warm-up.
+     *
+     * @param expName       experiment name
+     * @param instancePaths solve order for the experiment
+     * @return warm-up instance path
+     */
+    public String getWarmupInstancePath(String expName, List<String> instancePaths) {
+        var warmupConfig = this.solverConfig.getWarmup();
+        if (warmupConfig.hasInstancePath()) {
+            return warmupConfig.getInstancePath().trim();
+        }
+        if (instancePaths.isEmpty()) {
+            throw new IllegalArgumentException("Cannot select a warm-up instance for an empty experiment: " + expName);
+        }
+        return this.instanceConfiguration.isPreload() ?
+                selectFastestLoadedInstance(instancePaths) :
+                selectSmallestInstanceFile(instancePaths);
+    }
+
+    private String selectFastestLoadedInstance(List<String> instancePaths) {
+        return instancePaths.stream()
+                .min(Comparator.comparingLong(this::loadTimeNanos).thenComparing(Comparator.naturalOrder()))
+                .orElseThrow();
+    }
+
+    private long loadTimeNanos(String instancePath) {
+        var instance = getInstance(instancePath);
+        var loadTime = instance.getPropertyOrDefault(Instance.LOAD_TIME_NANOS, Long.MAX_VALUE);
+        if (loadTime instanceof Number number) {
+            return number.longValue();
+        }
+        return Long.MAX_VALUE;
+    }
+
+    private String selectSmallestInstanceFile(List<String> instancePaths) {
+        return instancePaths.stream()
+                .min(Comparator.comparingLong(this::fileSize).thenComparing(Comparator.naturalOrder()))
+                .orElseThrow();
+    }
+
+    private long fileSize(String instancePath) {
+        var path = containerPath(instancePath);
+        try {
+            return Files.size(Path.of(path));
+        } catch (IOException | RuntimeException e) {
+            log.warn("Could not determine instance size for warm-up auto-selection, using lowest priority: {}", instancePath);
+            return Long.MAX_VALUE;
+        }
+    }
+
+    private static String containerPath(String instancePath) {
+        int index = instancePath.indexOf(Compression.SEP);
+        return index < 0 ? instancePath : instancePath.substring(0, index);
     }
 
     private static void logInstances(List<String> sortedInstances) {

@@ -57,17 +57,16 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     private final ExceptionHandler<S, I> exceptionHandler;
 
 
-
     /**
      * If time control is enabled, remove it and check ellapsed time to see if too many time has been spent
      *
-     * @param <S>                 Solution class
-     * @param <I>                 Instance class
-     * @param timeLimitCalculator time limit calculator if implemented
-     * @param workUnit            current work unit
+     * @param <S>                Solution class
+     * @param <I>                Instance class
+     * @param timeControlEnabled true if time control was enabled for this work unit
+     * @param workUnit           current work unit
      */
-    public static <S extends Solution<S, I>, I extends Instance> void endTimeControl(Optional<TimeLimitCalculator<S, I>> timeLimitCalculator, WorkUnit<S, I> workUnit) {
-        if (timeLimitCalculator.isPresent()) {
+    public static <S extends Solution<S, I>, I extends Instance> void endTimeControl(boolean timeControlEnabled, WorkUnit<S, I> workUnit) {
+        if (timeControlEnabled) {
             if (TimeControl.remaining() < -TimeUtil.secsToNanos(EXTRA_SECS_BEFORE_WARNING)) {
                 log.warn("Algorithm takes too long to stop after time is up. Instance {}, algorithm {}", workUnit.instancePath(), workUnit.algorithm());
             }
@@ -105,6 +104,50 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, long startTimestamp);
 
     /**
+     * Execute a warm-up pass before measured experiment executions start.
+     *
+     * @param experiment   experiment definition
+     * @param instancePath warm-up instance path
+     */
+    public void warmup(Experiment<S, I> experiment, String instancePath) {
+        var warmupConfig = solverConfig.getWarmup();
+        if (!warmupConfig.isEnabled()) {
+            return;
+        }
+        if (instancePath == null || instancePath.isBlank()) {
+            throw new IllegalArgumentException("Warm-up is enabled but no warm-up instance path was provided");
+        }
+
+        int repetitions = warmupConfig.getRepetitions();
+        long startTime = System.nanoTime();
+        var events = EventPublisher.getInstance();
+        boolean shouldUnblockEvents = events != null && !events.isBlocked();
+        log.info("Warming up JVM for experiment {} using instance {} ({} repetitions per algorithm)",
+                experiment.name(), instancePath, repetitions);
+        if (shouldUnblockEvents) {
+            events.block();
+        }
+        try {
+            for (var algorithm : experiment.algorithms()) {
+                for (int i = 0; i < repetitions; i++) {
+                    var workUnit = new WorkUnit<>(experiment.name(), instancePath, algorithm, i);
+                    var result = doWork(workUnit, warmupConfig.getMaxMillis());
+                    if (!result.success()) {
+                        throw new IllegalStateException("JVM warm-up failed for experiment %s, instance %s, algorithm %s"
+                                .formatted(experiment.name(), instancePath, algorithm.getName()));
+                    }
+                }
+            }
+        } finally {
+            if (shouldUnblockEvents) {
+                events.unblock();
+            }
+        }
+        long elapsed = System.nanoTime() - startTime;
+        log.info("Finished JVM warm-up for experiment {} in {} (s)", experiment.name(), String.format("%.2f", nanosToSecs(elapsed)));
+    }
+
+    /**
      * Allocate resources and prepare for execution
      */
     public abstract void startup();
@@ -120,19 +163,35 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
      * @param workUnit Minimum unit of work, cannot be divided further.
      */
     protected WorkUnitResult<S, I> doWork(WorkUnit<S, I> workUnit) {
+        return doWork(workUnit, 0);
+    }
+
+    /**
+     * Execute a single iteration for the given (experiment, instance, algorithm, iterationId)
+     *
+     * @param workUnit             Minimum unit of work, cannot be divided further.
+     * @param overrideMaxMillis    if positive, override the regular time limit with this duration in milliseconds
+     */
+    protected WorkUnitResult<S, I> doWork(WorkUnit<S, I> workUnit, long overrideMaxMillis) {
         S solution = null;
         I instance = this.instanceManager.getInstance(workUnit.instancePath());
         Algorithm<S, I> algorithm = workUnit.algorithm();
+        boolean timeControlEnabled = false;
 
         long startTime = UNDEF_TIME, endTime = UNDEF_TIME;
 
         try {
             // Preparate current work unit
             Context.Configurator.resetRandom(solverConfig, workUnit.i());
-            if (this.timeLimitCalculator.isPresent()) {
+            if (overrideMaxMillis > 0) {
+                TimeControl.setMaxExecutionTime(overrideMaxMillis, TimeUnit.MILLISECONDS);
+                TimeControl.start();
+                timeControlEnabled = true;
+            } else if (this.timeLimitCalculator.isPresent()) {
                 long maxDuration = this.timeLimitCalculator.get().timeLimitInMillis(instance, algorithm);
                 TimeControl.setMaxExecutionTime(maxDuration, TimeUnit.MILLISECONDS);
                 TimeControl.start();
+                timeControlEnabled = true;
             }
 
             if (solverConfig.isMetrics()) {
@@ -152,7 +211,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             endTime = System.nanoTime();
 
             // Prepare work unit results and cleanup
-            endTimeControl(timeLimitCalculator, workUnit);
+            endTimeControl(timeControlEnabled, workUnit);
+            timeControlEnabled = false;
             Context.validate(solution);
 
             long timeToTarget = solution.getLastModifiedTime() - startTime;
@@ -167,6 +227,9 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
                     endTime = System.nanoTime();
                 }
                 totalTime = endTime - startTime;
+            }
+            if (timeControlEnabled && TimeControl.isEnabled()) {
+                endTimeControl(true, workUnit);
             }
             exceptionHandler.handleException(workUnit.experimentName(), workUnit.i(), e, Optional.ofNullable(solution), instance, workUnit.algorithm());
             EventPublisher.getInstance().publishEvent(new ErrorEvent(e));

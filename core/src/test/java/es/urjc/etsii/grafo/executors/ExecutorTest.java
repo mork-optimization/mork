@@ -3,6 +3,9 @@ package es.urjc.etsii.grafo.executors;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.config.SolverConfig;
+import es.urjc.etsii.grafo.events.EventPublisher;
+import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
+import es.urjc.etsii.grafo.events.types.PingEvent;
 import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
@@ -18,12 +21,15 @@ import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
+import es.urjc.etsii.grafo.util.random.RandomType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -130,6 +136,64 @@ class ExecutorTest {
         verify(this.validator, atLeastOnce()).validate(solution);
     }
 
+    @Test
+    public void warmupRunsAlgorithmsWithoutExportingResults(){
+        var warmupInstance = new TestInstance("warmup");
+        when(instanceManager.getInstance("warmup")).thenReturn(warmupInstance);
+
+        var solverConfig = new SolverConfig();
+        solverConfig.setRandomType(RandomType.DEFAULT);
+        solverConfig.getWarmup().setEnabled(true);
+        solverConfig.getWarmup().setRepetitions(2);
+
+        var warmupExecutor = new TestExecutor(
+                Optional.of(this.validator),
+                Optional.of(this.timeLimitCalculator),
+                this.ioManager,
+                this.instanceManager,
+                solverConfig,
+                List.of(new NopExceptionHandler()),
+                referenceResultManager);
+        var algorithm = new CountingAlgorithm("warmupAlgorithm");
+        var experiment = new Experiment<>("WarmupExperiment", ExecutorTest.class, List.of(algorithm));
+
+        warmupExecutor.warmup(experiment, "warmup");
+
+        assertEquals(2, algorithm.calls.get());
+        verify(ioManager, never()).exportSolution(any(), any());
+    }
+
+    @Test
+    public void warmupBlocksEventsPublishedByAlgorithm(){
+        var applicationEventPublisher = mock(ApplicationEventPublisher.class);
+        var eventPublisher = new EventPublisher(applicationEventPublisher);
+        try {
+            var warmupInstance = new TestInstance("warmup");
+            when(instanceManager.getInstance("warmup")).thenReturn(warmupInstance);
+
+            var solverConfig = new SolverConfig();
+            solverConfig.setRandomType(RandomType.DEFAULT);
+            solverConfig.getWarmup().setEnabled(true);
+
+            var warmupExecutor = new TestExecutor(
+                    Optional.of(this.validator),
+                    Optional.of(this.timeLimitCalculator),
+                    this.ioManager,
+                    this.instanceManager,
+                    solverConfig,
+                    List.of(new NopExceptionHandler()),
+                    referenceResultManager);
+            var experiment = new Experiment<>("WarmupExperiment", ExecutorTest.class, List.of(new EventPublishingAlgorithm()));
+
+            warmupExecutor.warmup(experiment, "warmup");
+
+            verify(applicationEventPublisher, after(100).never()).publishEvent(isA(PingEvent.class));
+        } finally {
+            eventPublisher.unblock();
+            eventPublisher.publishEvent(new ExecutionEndedEvent(0));
+        }
+    }
+
 
 
 
@@ -169,6 +233,37 @@ class ExecutorTest {
         @Override
         public void shutdown() {
             // No resources to clean
+        }
+    }
+
+    private static class CountingAlgorithm extends Algorithm<TestSolution, TestInstance> {
+        private final AtomicInteger calls = new AtomicInteger();
+
+        private CountingAlgorithm(String algorithmName) {
+            super(algorithmName);
+        }
+
+        @Override
+        public TestSolution algorithm(TestInstance instance) {
+            calls.incrementAndGet();
+            var solution = new TestSolution(instance, 8.0);
+            solution.notifyUpdate();
+            return solution;
+        }
+    }
+
+    private static class EventPublishingAlgorithm extends Algorithm<TestSolution, TestInstance> {
+
+        private EventPublishingAlgorithm() {
+            super("eventPublishingAlgorithm");
+        }
+
+        @Override
+        public TestSolution algorithm(TestInstance instance) {
+            EventPublisher.getInstance().publishEvent(new PingEvent());
+            var solution = new TestSolution(instance, 8.0);
+            solution.notifyUpdate();
+            return solution;
         }
     }
 }

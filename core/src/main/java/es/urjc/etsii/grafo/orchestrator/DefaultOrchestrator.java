@@ -115,6 +115,10 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
 
         var instancePaths = instanceManager.getInstanceSolveOrder(experiment.name());
         verifyWorkloadLimit(solverConfig, instancePaths, experiment.algorithms());
+        if (solverConfig.getWarmup().isEnabled()) {
+            var warmupInstancePath = instanceManager.getWarmupInstancePath(experiment.name(), instancePaths);
+            executor.warmup(experiment, warmupInstancePath);
+        }
         EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(experiment.name(), instancePaths));
         executor.executeExperiment(experiment, instancePaths, startTimestamp);
         long experimentExecutionTime = System.nanoTime() - startTime;
