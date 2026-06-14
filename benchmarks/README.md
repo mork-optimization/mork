@@ -1,151 +1,93 @@
 # Mork Benchmarks
 
-This module contains JMH (Java Microbenchmark Harness) benchmarks for the Mork framework, focusing on performance comparisons between the standard Java `HashSet` and the custom `BitSet` implementation.
+This module contains JMH benchmarks for comparing CPU time between Java
+`HashSet<Integer>` and Mork's integer `BitSet` implementation.
 
-## Benchmark Tests
+The benchmark data is deterministic. For every `(universeSize, fillRatio)` pair,
+the input elements are sampled without replacement, so the configured fill ratio
+matches the actual set cardinality.
 
-### SetAddBenchmark
-Compares the performance of adding elements to HashSet vs BitSet across different data sizes (100, 1000, 10000 elements) and fill ratios (50%, 90%).
+## Benchmarks
 
-**Measures:** Average time per operation in nanoseconds
+### SetConstructionBenchmark
+
+Builds a new set from the same unique integer elements.
 
 ### SetContainsBenchmark
-Compares the performance of lookup/contains operations between HashSet and BitSet.
 
-**Measures:** Average time for 1000 lookups in nanoseconds
+Runs lookup batches against pre-built sets. The `hitRatio` parameter controls
+how many lookup keys are present in the set.
 
 ### SetIterationBenchmark
-Compares the performance of iterating over all elements in HashSet vs BitSet.
 
-**Measures:** Average time to iterate over all elements in nanoseconds
+Iterates over a pre-built set and consumes every stored integer.
 
-### SetRemoveBenchmark
-Compares the performance of removing elements from HashSet vs BitSet.
+## Build
 
-**Measures:** Average time per operation in nanoseconds
+Requirements:
 
-### SetMemoryBenchmark
-Measures memory allocation patterns between HashSet and BitSet across different sizes (1000, 10000, 100000 elements).
+- Java 25 or newer for building and running the benchmarks.
+- Maven wrapper from the repository root.
 
-**Measures:** Average and sample time, allocation rate tracking
-
-### SetMixedOperationsBenchmark
-Simulates realistic workloads with mixed operations (add, contains, remove) to compare overall performance.
-
-**Measures:** Average time per mixed workload in microseconds
-
-## Building the Benchmarks
-
-To build the benchmark uber JAR:
+From the repository root:
 
 ```bash
-cd benchmarks
-mvn clean package
+./mvnw -pl benchmarks -am package -DskipTests
 ```
 
-This will create `target/benchmarks.jar` containing all benchmarks and dependencies.
+On Windows:
 
-## Running Benchmarks
+```powershell
+.\mvnw.cmd -pl benchmarks -am package "-DskipTests"
+```
 
-### Run All Benchmarks
+The runnable JMH jar is created at:
+
+```text
+benchmarks/target/benchmarks.jar
+```
+
+## Run
+
+List available benchmarks:
 
 ```bash
-java -jar target/benchmarks.jar
+java -jar benchmarks/target/benchmarks.jar -l
 ```
 
-### Run Specific Benchmark
+If `java` on your `PATH` points to an older runtime, use the Java 21+ executable
+directly, for example:
 
 ```bash
-# Run only add benchmarks
-java -jar target/benchmarks.jar SetAddBenchmark
-
-# Run only contains benchmarks
-java -jar target/benchmarks.jar SetContainsBenchmark
+$JAVA_HOME/bin/java -jar benchmarks/target/benchmarks.jar -l
 ```
 
-### Run with Custom Parameters
+Run the full benchmark suite:
 
 ```bash
-# Run with specific parameters
-java -jar target/benchmarks.jar SetAddBenchmark -p size=1000 -p fillRatio=0.9
-
-# Run with specific warmup and measurement iterations
-java -jar target/benchmarks.jar -wi 5 -i 10
+java -jar benchmarks/target/benchmarks.jar
 ```
 
-### Run with Profilers
-
-JMH includes several profilers to get additional insights:
+Run one benchmark with selected parameters:
 
 ```bash
-# List available profilers
-java -jar target/benchmarks.jar -lprof
-
-# Run with GC profiler
-java -jar target/benchmarks.jar -prof gc
-
-# Run with stack profiler
-java -jar target/benchmarks.jar -prof stack
-
-# Run with allocation profiler (requires -javaagent)
-java -jar target/benchmarks.jar -prof "async:libPath=/path/to/libasyncProfiler.so;output=flamegraph"
+java -jar benchmarks/target/benchmarks.jar SetContainsBenchmark -p universeSize=16384 -p fillRatio=0.50 -p hitRatio=0.50
 ```
 
-### Save Results
+Use more forks or iterations for decision-grade results:
 
 ```bash
-# Save results to JSON
-java -jar target/benchmarks.jar -rf json -rff results.json
-
-# Save results to CSV
-java -jar target/benchmarks.jar -rf csv -rff results.csv
+java -jar benchmarks/target/benchmarks.jar -f 5 -wi 10 -i 20 -rf json -rff benchmark-results.json
 ```
 
-## Understanding Results
+## Parameters
 
-The benchmarks measure:
-
-- **CPU Performance**: All benchmarks measure execution time (throughput)
-- **Memory Impact**: SetMemoryBenchmark runs with specific GC settings to track allocation patterns
-- **Different Use Cases**:
-  - Small datasets (100-1000 elements): Typical for small optimization problems
-  - Medium datasets (10000 elements): Common in many algorithms
-  - Large datasets (100000 elements): Stress testing for memory benchmarks
-
-### Expected Results
-
-**BitSet Advantages:**
-- Lower memory footprint for dense sets (high fill ratios)
-- Faster operations when elements are small integers
-- More predictable performance characteristics
-
-**HashSet Advantages:**
-- Better for sparse sets (low fill ratios)
-- Can handle any object type, not just integers
-- No capacity limit requirement
-
-## JMH Options
-
-Common JMH command-line options:
-
-- `-h`: Display help
-- `-l`: List available benchmarks
-- `-lprof`: List available profilers
-- `-wi <count>`: Number of warmup iterations
-- `-i <count>`: Number of measurement iterations
-- `-f <count>`: Number of forks
-- `-t <count>`: Number of threads
-- `-p <param>=<value>`: Set benchmark parameter
-
-## Requirements
-
-- Java 21 or higher
-- Maven 3.6+
-- At least 2GB of available memory for running benchmarks
+- `universeSize`: maximum number of integers representable in the benchmark set.
+- `fillRatio`: fraction of the universe stored in the set.
+- `hitRatio`: fraction of lookup keys that are present in the set, only used by `SetContainsBenchmark`.
 
 ## Notes
 
-- Benchmarks may take several minutes to complete
-- Results can vary based on JVM version, hardware, and system load
-- For production decisions, always run benchmarks on target hardware
-- The benchmarks use a fixed random seed (42) for reproducibility
+- These benchmarks report CPU timing only.
+- Run benchmarks on an idle machine and on the target Java/runtime version.
+- Treat results as comparative data for these integer-set workloads, not as a universal ranking of either collection type.
