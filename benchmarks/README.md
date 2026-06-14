@@ -1,26 +1,16 @@
 # Mork Benchmarks
 
-This module contains JMH benchmarks for comparing elapsed time (wall-clock) between Java
+This module contains JMH benchmarks.
+
+## Benchmarks
+
+### HashSet<Integer> vs Mork BitSet
+Comparing elapsed time (wall-clock) between Java
 `HashSet<Integer>` and Mork's integer `BitSet` implementation.
 
 The benchmark data is deterministic. For every `(universeSize, fillRatio)` pair,
 the input elements are sampled without replacement, so the configured fill ratio
 matches the actual set cardinality.
-
-## Benchmarks
-
-### SetConstructionBenchmark
-
-Builds a new set from the same unique integer elements.
-
-### SetContainsBenchmark
-
-Runs lookup batches against pre-built sets. The `hitRatio` parameter controls
-how many lookup keys are present in the set.
-
-### SetIterationBenchmark
-
-Iterates over a pre-built set and consumes every stored integer.
 
 ## Build
 
@@ -88,6 +78,6 @@ java -jar benchmarks/target/benchmarks.jar -f 5 -wi 10 -i 20 -rf json -rff bench
 
 ## Notes
 
-- These benchmarks report elapsed (wall-clock) timing only.
+- These benchmarks report elapsed timing only.
 - Run benchmarks on an idle machine and on the target Java/runtime version.
 - Treat results as comparative data for these integer-set workloads, not as a universal ranking of either collection type.
