@@ -88,6 +88,6 @@ java -jar benchmarks/target/benchmarks.jar -f 5 -wi 10 -i 20 -rf json -rff bench
 
 ## Notes
 
-- These benchmarks report CPU timing only.
+- These benchmarks report elapsed (wall-clock) timing only.
 - Run benchmarks on an idle machine and on the target Java/runtime version.
 - Treat results as comparative data for these integer-set workloads, not as a universal ranking of either collection type.
