@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.io;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.executors.Executor;
+import es.urjc.etsii.grafo.util.Compression;
 import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
 import me.tongfei.progressbar.ProgressBar;
@@ -70,19 +71,19 @@ public class InstanceManager<I extends Instance> {
      *
      * @param expName experiment name as string
      * @param preload if true load instances to use comparator to sort them, if false uses lexicograph sort by path name
-     * @return Ordered list of instance identifiers, that can be later used by the getInstance method. Instances should be solved in the returned order.
+     * @return Ordered list of instance load paths, that can be later used by the getInstance method. Instances should be solved in the returned order.
      */
     public synchronized List<String> getInstanceSolveOrder(String expName, boolean preload) {
         return this.solveOrderByExperiment.computeIfAbsent(expName, s -> {
-            String instancePath = this.instanceConfiguration.getPath(expName);
-            checkExists(instancePath);
-            List<String> instances = isIndexFile(instancePath)?
-                    listIndexFile(instancePath):
-                    listNormalFile(instancePath);
+            String configuredPath = this.instanceConfiguration.getPath(expName);
+            checkExists(configuredPath);
+            List<String> instancePaths = isIndexFile(configuredPath)?
+                    listIndexFile(configuredPath):
+                    listNormalFile(configuredPath);
 
             List<String> sortedInstances = preload?
-                    validateAndSort(expName, instances):
-                    lexicSort(instances);
+                    validateAndSort(expName, instancePaths):
+                    lexicSort(instancePaths);
             return sortedInstances;
         });
     }
@@ -101,22 +102,30 @@ public class InstanceManager<I extends Instance> {
 
     private List<String> listIndexFile(String instancePath) {
         Path indexFile = Path.of(instancePath);
-        var parentPath = indexFile.getParent();
+        var parentPath = Optional.ofNullable(indexFile.getParent()).orElse(Path.of("."));
         try (var in = BOMInputStream.builder().setInputStream(Files.newInputStream(indexFile)).get();
              var reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
             return reader.lines()
                     .map(line -> line.startsWith("\uFEFF") ? line.substring(1) : line)
+                    .map(String::trim)
                     .filter(p -> !p.startsWith("#"))
                     .filter(p -> !p.isBlank())
-                    .map(Path::of)
-                    .map(parentPath::resolve)
-                    .map(Path::toAbsolutePath)
-                    .map(Path::toString)
-                    .map(IOUtil::checkExists)
+                    .map(path -> resolveIndexEntry(parentPath, path))
+                    .map(IOUtil::checkLoadPathExists)
                     .toList();
         } catch (IOException e){
             throw new RuntimeException(e);
         }
+    }
+
+    private static String resolveIndexEntry(Path parentPath, String instancePath) {
+        int index = instancePath.indexOf(Compression.SEP);
+        if (index < 0) {
+            return parentPath.resolve(Path.of(instancePath)).toAbsolutePath().toString();
+        }
+        String container = instancePath.substring(0, index);
+        String entry = instancePath.substring(index);
+        return parentPath.resolve(Path.of(container)).toAbsolutePath() + entry;
     }
 
     private boolean isIndexFile(String instancePath) {
@@ -149,8 +158,8 @@ public class InstanceManager<I extends Instance> {
      * Select the instance path that should be used for JVM warm-up.
      *
      * @param expName       experiment name
-     * @param instancePaths solve order for the experiment
-     * @return warm-up instance path
+     * @param instancePaths solve order load paths for the experiment
+     * @return warm-up instance load paths
      */
     public String getWarmupInstancePath(String expName, List<String> instancePaths) {
         return this.warmupSelector.select(expName, instancePaths);
@@ -202,9 +211,9 @@ public class InstanceManager<I extends Instance> {
     }
 
     /**
-     * Returns an instance given a path
+     * Returns an instance given a load path.
      *
-     * @param path Path of instance to load
+     * @param path path or compressed load path of the instance to load
      * @return Loaded instance
      */
     public synchronized I getInstance(String path) {

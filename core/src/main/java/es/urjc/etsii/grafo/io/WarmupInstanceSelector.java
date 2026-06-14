@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.io;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
-import es.urjc.etsii.grafo.util.Compression;
+import es.urjc.etsii.grafo.util.IOUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,18 +52,32 @@ class WarmupInstanceSelector<I extends Instance> {
     }
 
     private String selectFastestLoadedInstance(List<String> instancePaths) {
-        return instancePaths.stream()
-                .min(Comparator.comparingLong(this::loadTimeNanos).thenComparing(Comparator.naturalOrder()))
+        var loadTimes = instancePaths.stream()
+                .map(instancePath -> new InstanceLoadTime(instancePath, loadTimeNanos(instancePath)))
+                .toList();
+        long missingLoadTimes = loadTimes.stream().filter(loadTime -> loadTime.nanos() == null).count();
+        if (missingLoadTimes > 0) {
+            log.warn(
+                    "Cannot use validation load times for warm-up selection because {} of {} instances are not cached. Falling back to smallest instance file.",
+                    missingLoadTimes,
+                    instancePaths.size()
+            );
+            return selectSmallestInstanceFile(instancePaths);
+        }
+
+        return loadTimes.stream()
+                .min(Comparator.comparingLong(InstanceLoadTime::nanos).thenComparing(InstanceLoadTime::path))
+                .map(InstanceLoadTime::path)
                 .orElseThrow();
     }
 
-    private long loadTimeNanos(String instancePath) {
+    private Long loadTimeNanos(String instancePath) {
         var instance = this.cache.get(instancePath);
         if (instance == null) {
-            return Long.MAX_VALUE;
+            return null;
         }
         var loadTime = instance.getPropertyOrDefault(Instance.LOAD_TIME_NANOS, Long.MAX_VALUE);
-        return loadTime instanceof Number number ? number.longValue() : Long.MAX_VALUE;
+        return loadTime instanceof Number number ? number.longValue() : null;
     }
 
     private String selectSmallestInstanceFile(List<String> instancePaths) {
@@ -83,7 +97,8 @@ class WarmupInstanceSelector<I extends Instance> {
     }
 
     private static String containerPath(String instancePath) {
-        int index = instancePath.indexOf(Compression.SEP);
-        return index < 0 ? instancePath : instancePath.substring(0, index);
+        return IOUtil.containerPath(instancePath);
     }
+
+    private record InstanceLoadTime(String path, Long nanos) {}
 }

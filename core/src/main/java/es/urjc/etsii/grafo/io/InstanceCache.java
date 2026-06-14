@@ -1,14 +1,13 @@
 package es.urjc.etsii.grafo.io;
 
-import es.urjc.etsii.grafo.util.Compression;
+import es.urjc.etsii.grafo.util.IOUtil;
 
 import java.lang.ref.SoftReference;
-import java.nio.file.Path;
-import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
- * Memory-sensitive cache for loaded instances, keyed by canonical path.
+ * Memory-sensitive cache for loaded instances, keyed by canonical load path.
  * Uses {@link SoftReference} so that cached instances can be reclaimed
  * by the garbage collector under memory pressure, avoiding OOM errors
  * when working with large instance data.
@@ -17,12 +16,12 @@ import java.util.Map;
  */
 class InstanceCache<I extends Instance> {
 
-    private final Map<String, SoftReference<I>> cache = new HashMap<>();
+    private final Map<String, SoftReference<I>> cache = new ConcurrentHashMap<>();
 
     /**
-     * Retrieve a cached instance by path, or null if not cached or already evicted.
+     * Retrieve a cached instance by load path, or null if not cached or already evicted.
      *
-     * @param path instance path (any format — will be canonicalized)
+     * @param path instance load path. It may be absolute, relative, or compressed.
      * @return cached instance, or null
      */
     I get(String path) {
@@ -31,9 +30,9 @@ class InstanceCache<I extends Instance> {
     }
 
     /**
-     * Store an instance in the cache under its canonical path.
+     * Store an instance in the cache under its canonical load path.
      *
-     * @param path     instance path used for loading
+     * @param path     instance load path used for loading
      * @param instance loaded instance
      */
     void put(String path, I instance) {
@@ -48,20 +47,12 @@ class InstanceCache<I extends Instance> {
     }
 
     /**
-     * Normalize an instance path to a canonical absolute form.
-     * Handles compressed paths (containing {@link Compression#SEP}) by
-     * resolving only the container portion to an absolute path.
+     * Normalize an instance load path to a canonical absolute form.
      *
-     * @param instancePath raw instance path
-     * @return canonical path
+     * @param instancePath raw instance load path
+     * @return canonical load path
      */
     static String canonicalize(String instancePath) {
-        int index = instancePath.indexOf(Compression.SEP);
-        if (index < 0) {
-            return Path.of(instancePath).toAbsolutePath().toString();
-        }
-        String container = instancePath.substring(0, index);
-        String entry = instancePath.substring(index);
-        return Path.of(container).toAbsolutePath() + entry;
+        return IOUtil.absoluteLoadPath(instancePath);
     }
 }

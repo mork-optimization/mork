@@ -82,10 +82,10 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
      * {@inheritDoc}
      */
     @Override
-    public void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, long startTimestamp) {
+    public void executeExperiment(Experiment<S, I> experiment, List<String> instancePaths, long startTimestamp) {
         var algorithms = experiment.algorithms();
         var experimentName = experiment.name();
-        var workUnits = getOrderedWorkUnits(experiment, instanceNames, solverConfig.getRepetitions());
+        var workUnits = getOrderedWorkUnits(experiment, instancePaths, solverConfig.getRepetitions());
 
         var events = EventPublisher.getInstance();
 
@@ -94,7 +94,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
             var futures = submitAll(workUnits);
 
             // Simulate sequential execution to trigger all events in correct order
-            // K: Instance name --> V: List of WorkUnits
+            // K: Instance load path --> V: List of WorkUnits
             for (var e : futures.entrySet()) {
                 WorkUnitResult<S, I> instanceBest = null;
                 var instancePath = e.getKey();

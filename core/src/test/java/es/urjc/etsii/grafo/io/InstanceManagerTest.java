@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestInstanceImporter;
+import es.urjc.etsii.grafo.util.IOUtil;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -125,6 +126,29 @@ class InstanceManagerTest {
     }
 
     @Test
+    void testIndexFileWithCompressedRelativeLoadPath() throws IOException {
+        Path targetDirectory = Path.of("target");
+        Files.createDirectories(targetDirectory);
+        Path indexDirectory = Files.createTempDirectory(targetDirectory, "compressed-index");
+        Path sourceArchive = Path.of("src/test/resources/instzip/data1.zip");
+        Path archive = indexDirectory.resolve("data1.zip");
+        Files.copy(sourceArchive, archive);
+        String compressedEntry = IOUtil.entryPath(IOUtil.iterate(archive.toString()).get(0));
+        Path compressedIndexFile = indexDirectory.resolve("instances.index");
+        Files.writeString(compressedIndexFile, "data1.zip!" + compressedEntry);
+
+        var manager = buildManager(false, compressedIndexFile.toString(), new TestInstanceImporter());
+        var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
+
+        assertEquals(1, instances.size());
+        assertEquals(
+                InstanceCache.canonicalize(archive.toAbsolutePath() + "!" + compressedEntry),
+                InstanceCache.canonicalize(instances.get(0))
+        );
+        Assertions.assertNotNull(manager.getInstance(instances.get(0)));
+    }
+
+    @Test
     void checkCache(){
         var manager = buildManager(true, instancePath);
         var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
@@ -186,6 +210,23 @@ class InstanceManagerTest {
         ));
 
         assertEquals(instance2File.getAbsolutePath(), selected);
+    }
+
+    @Test
+    void warmupAutoFallsBackToSmallestFileWhenLoadedTimesAreUnavailable() throws IOException {
+        Files.writeString(instance1File.toPath(), "1234");
+        Files.writeString(instance2File.toPath(), "123456");
+        Files.writeString(instance3File.toPath(), "1");
+
+        var manager = buildManager(true, instancePath);
+        var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
+        clearInvocations(instanceImporter);
+        manager.purgeCache();
+
+        var selected = manager.getWarmupInstancePath(TEST_EXPERIMENT, instances);
+
+        assertEquals(instance3File.getAbsolutePath(), selected);
+        verifyNoInteractions(instanceImporter);
     }
 
     @SuppressWarnings("unchecked")

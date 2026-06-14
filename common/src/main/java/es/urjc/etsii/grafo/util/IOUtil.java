@@ -57,6 +57,18 @@ public class IOUtil {
     }
 
     /**
+     * Verify that the container represented by the given load path exists.
+     * For compressed paths, only the archive path before {@link Compression#SEP} is checked.
+     *
+     * @param loadPath regular path or compressed load path
+     * @return the original load path
+     */
+    public static String checkLoadPathExists(String loadPath) {
+        checkExists(containerPath(loadPath));
+        return loadPath;
+    }
+
+    /**
      * Check that the given path is a folder
      *
      * @param path path to check
@@ -106,9 +118,7 @@ public class IOUtil {
      */
     public static void extractResource(String path, String target, boolean isJar, boolean autodelete) {
         Path pTarget;
-        try (var inStream = isJar ?
-                IOUtil.class.getResourceAsStream("/BOOT-INF/classes/" + path) :
-                Files.newInputStream(new File("src/main/resources/", path).toPath())) {
+        try (var inStream = getResourceAsStream(path, isJar)) {
             pTarget = Path.of(target);
             Files.write(pTarget, inStream.readAllBytes());
         } catch (IOException e){
@@ -117,6 +127,24 @@ public class IOUtil {
         if (autodelete) {
             pTarget.toFile().deleteOnExit();
         }
+    }
+
+    private static InputStream getResourceAsStream(String path, boolean isJar) throws IOException {
+        InputStream inStream = IOUtil.class.getClassLoader().getResourceAsStream(path);
+        if (inStream != null) {
+            return inStream;
+        }
+        if (isJar) {
+            inStream = IOUtil.class.getResourceAsStream("/BOOT-INF/classes/" + path);
+            if (inStream != null) {
+                return inStream;
+            }
+        }
+        Path sourcePath = new File("src/main/resources/", path).toPath();
+        if (Files.exists(sourcePath)) {
+            return Files.newInputStream(sourcePath);
+        }
+        throw new IOException("Resource not found: " + path);
     }
 
 
@@ -231,9 +259,8 @@ public class IOUtil {
             return Files.newInputStream(Path.of(path));
         }
         // Compressed file, find the entry and return the input stream
-        var split = path.split(Compression.SEP);
-        var archivePath = split[0];
-        var entryPath = split[1];
+        var archivePath = containerPath(path);
+        var entryPath = entryPath(path);
         var fileExtension = FilenameUtils.getExtension(archivePath);
         var archiver = SUPPORTED_ARCHIVES.get(fileExtension);
         if (archiver == null) {
@@ -241,6 +268,48 @@ public class IOUtil {
         }
 
         return archiver.getEntryInputStream(archivePath, entryPath);
+    }
+
+    /**
+     * Return the filesystem container path for a load path.
+     *
+     * @param loadPath regular path or compressed load path
+     * @return regular path, or compressed archive path for compressed load paths
+     */
+    public static String containerPath(String loadPath) {
+        int index = loadPath.indexOf(Compression.SEP);
+        return index < 0 ? loadPath : loadPath.substring(0, index);
+    }
+
+    /**
+     * Return the archive entry path from a compressed load path.
+     *
+     * @param loadPath compressed load path
+     * @return archive entry path
+     */
+    public static String entryPath(String loadPath) {
+        int index = loadPath.indexOf(Compression.SEP);
+        if (index < 0) {
+            throw new IllegalArgumentException("Path is not compressed: " + loadPath);
+        }
+        return loadPath.substring(index + Compression.SEP.length());
+    }
+
+    /**
+     * Normalize a load path to an absolute form.
+     * For compressed paths, only the archive container is converted to an absolute path.
+     *
+     * @param loadPath regular path or compressed load path
+     * @return absolute load path
+     */
+    public static String absoluteLoadPath(String loadPath) {
+        int index = loadPath.indexOf(Compression.SEP);
+        if (index < 0) {
+            return Path.of(loadPath).toAbsolutePath().toString();
+        }
+        String container = loadPath.substring(0, index);
+        String entry = loadPath.substring(index);
+        return Path.of(container).toAbsolutePath() + entry;
     }
 
     public static String relativizePath(String path){

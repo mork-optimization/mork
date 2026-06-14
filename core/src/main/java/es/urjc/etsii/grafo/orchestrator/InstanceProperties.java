@@ -53,10 +53,10 @@ public class InstanceProperties<I extends Instance> extends AbstractOrchestrator
         if (path != null && !path.isBlank()) {
             instanceConfiguration.getPaths().put("default", path);
         }
-        var instanceIDs = this.instanceManager.getInstanceSolveOrder("default", false);
+        var instancePaths = this.instanceManager.getInstanceSolveOrder("default", false);
         log.info("Analyzing instances...");
-        var properties = instancesToPropertyMatrix(instanceIDs);
-        log.info("Writting CSV...");
+        var properties = instancesToPropertyMatrix(instancePaths);
+        log.info("Writing CSV...");
         writeCSV(Path.of(DEFAULT_OUTPUT_PATH), properties);
         log.info("Finished writing CSV");
     }
@@ -78,19 +78,19 @@ public class InstanceProperties<I extends Instance> extends AbstractOrchestrator
         }
     }
 
-    protected Object[][] instancesToPropertyMatrix(List<String> instanceIDs) {
+    protected Object[][] instancesToPropertyMatrix(List<String> instancePaths) {
         Object[][] instanceProperties = null;
         int nProperties = -1;
 
-        try (var pb = Executor.getPBarBuilder("Instance analysis").setInitialMax(instanceIDs.size()).build()) {
-            for (int row = 0; row < instanceIDs.size(); row++) {
-                var id = instanceIDs.get(row);
-                pb.setExtraMessage(FilenameUtils.getName(id));
-                var instance = this.instanceManager.getInstance(id);
+        try (var pb = Executor.getPBarBuilder("Instance analysis").setInitialMax(instancePaths.size()).build()) {
+            for (int row = 0; row < instancePaths.size(); row++) {
+                var instancePath = instancePaths.get(row);
+                pb.setExtraMessage(FilenameUtils.getName(instancePath));
+                var instance = this.instanceManager.getInstance(instancePath);
                 var properties = filterProperties(instance);
                 if (instanceProperties == null) {
                     nProperties = properties.size();
-                    instanceProperties = new Object[instanceIDs.size() + 1][nProperties + 2]; // +1 for title row, +2 for instance id and path
+                    instanceProperties = new Object[instancePaths.size() + 1][nProperties + 2]; // +1 for title row, +2 for instance id and path
                     instanceProperties[0][0] = "id";
                     instanceProperties[0][1] = "path";
                     int idx = 2;

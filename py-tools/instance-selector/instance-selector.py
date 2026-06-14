@@ -4,6 +4,7 @@ import os
 
 import math  # math
 from os.path import join
+from pathlib import Path
 
 import pandas as pd  # data manipulation and analysis
 import numpy as np  # working with arrays and matrices
@@ -13,8 +14,7 @@ from sklearn import preprocessing  # standardization  of data
 from sklearn.decomposition import PCA  # principal component analysis
 from sklearn.cluster import KMeans  # K-Means clustering
 from sklearn.metrics import pairwise_distances  # Compute the distance matrix between two vectors
-from yellowbrick.cluster import KElbowVisualizer, \
-    SilhouetteVisualizer  # implements the “elbow” method to help data scientists select the optimal number of clusters by fitting the model with a range of values for K
+from yellowbrick.cluster import KElbowVisualizer, SilhouetteVisualizer  # elbow method helpers
 
 import matplotlib
 matplotlib.use('Agg')
@@ -31,6 +31,8 @@ warnings.filterwarnings("ignore",category=FutureWarning)
 
 DEFAULT_COLORS = ['red', 'green', 'blue', 'orange', 'purple', 'cyan', 'brown', 'olive', 'gray', 'olive', 'crimson',
                   'teal']
+SELECTED_INDEX_FILENAME = "selected_instances.index"
+SELECTED_MANIFEST_FILENAME = "selected_instances.csv"
 
 
 def load_df(path: str) -> DataFrame:
@@ -124,6 +126,7 @@ def select_instances(original_df: DataFrame, filtered_df: DataFrame, kmeans: KMe
 
     clusters = {}
     clusters["ClusterId"] = labels
+    clusters["Row"] = original_df.index
     clusters["Instance"] = [name for name in original_df["id"]]
     clusters["Distances"] = distancesToCentroid
     cluster_df = pd.DataFrame(clusters)
@@ -138,7 +141,7 @@ def select_instances(original_df: DataFrame, filtered_df: DataFrame, kmeans: KMe
     sorted_df.sort(key=lambda x: -len(x))
 
     instance_remaining = math.ceil(size * len(labels))
-    preliminary_instances = []
+    preliminary_rows = []
     aux = [i for i in sorted_df.copy()]
 
     stopAt = instance_remaining
@@ -148,29 +151,35 @@ def select_instances(original_df: DataFrame, filtered_df: DataFrame, kmeans: KMe
         if len(cluster) == 0:
             stopAt += 1
         else:
-            instance = cluster[0][1]
-            preliminary_instances.append(instance)
+            row = int(cluster[0][1])
+            preliminary_rows.append(row)
             aux[takeFromCluster % len(aux)] = np.delete(cluster, 0, 0)
 
         takeFromCluster += 1
 
-    return preliminary_instances
+    return preliminary_rows
 
 
-def cp_instances(original_df: DataFrame, chosen_instances: list[str], output_folder: str):
-    try:
-        preliminary_instance_path = join(output_folder, "instances")
-        os.mkdir(preliminary_instance_path)
-        for i in chosen_instances:
-            instance_path = original_df.loc[original_df["id"] == i]["path"].values[0]
-            dst = join(output_folder, "instances", i)
-            if not os.path.exists(os.path.dirname(dst)):
-                os.makedirs(os.path.dirname(dst))
-            print(f"Copying {instance_path} to {dst}")
-            shutil.copyfile(instance_path, dst)
-        print('Chosen instances have been copied to ', preliminary_instance_path)
-    except e:
-        print("Error copying preliminary instances, copy them manually: ", e)
+def absolute_load_token(load_token: str) -> str:
+    if "!" not in load_token:
+        return str(Path(load_token).resolve())
+    archive_path, entry_path = load_token.split("!", maxsplit=1)
+    return str(Path(archive_path).resolve()) + "!" + entry_path
+
+
+def write_selected_manifest(original_df: DataFrame, chosen_rows: list[int], output_folder: str):
+    selected_df = original_df.iloc[chosen_rows].copy()
+    selected_df["path"] = selected_df["path"].map(absolute_load_token)
+
+    index_path = join(output_folder, SELECTED_INDEX_FILENAME)
+    manifest_path = join(output_folder, SELECTED_MANIFEST_FILENAME)
+    with open(index_path, "w", encoding="utf-8") as index_file:
+        for instance_path in selected_df["path"]:
+            index_file.write(f"{instance_path}\n")
+    selected_df.to_csv(manifest_path, index=False)
+
+    print(f"Selected instance index written to {index_path}")
+    print(f"Selected instance manifest written to {manifest_path}")
 
 
 
@@ -187,7 +196,7 @@ def main():
     args = parser.parse_args()
 
     shutil.rmtree(args.output, ignore_errors=True)
-    os.mkdir(args.output)
+    os.makedirs(args.output)
     print(f"Loading CSV {args.properties}")
     original_df = load_df(args.properties)
     print(f"Preparing data")
@@ -207,7 +216,8 @@ def main():
     save_pairplot(pca_df, args.output, labels)
     print(f"Selecting instances according to centroid distance")
     size = float(args.size)
-    chosen_instances = select_instances(original_df, pca_df, kmeans, labels, n_clusters, size)
+    chosen_rows = select_instances(original_df, pca_df, kmeans, labels, n_clusters, size)
+    chosen_instances = original_df.iloc[chosen_rows]["id"].to_list()
     n_preliminar_instances = math.ceil(size * len(labels))
     print(f"""
         SUMMARY:
@@ -218,7 +228,7 @@ def main():
          - Number of clusters: {n_clusters}
          - Selected instances: {chosen_instances}
         """)
-    cp_instances(original_df, chosen_instances, args.output)
+    write_selected_manifest(original_df, chosen_rows, args.output)
     print(f"All done, bye!")
 
 

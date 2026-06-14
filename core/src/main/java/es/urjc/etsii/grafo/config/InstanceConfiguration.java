@@ -62,7 +62,7 @@ public class InstanceConfiguration {
     /**
      * Loads all instances in RAM before starting each experiment.
      * Can be disabled for example in problems where instances are huge in order to save some RAM.
-     * Warning: Disabling it reverts instance solve order to instance name (lexicographically)
+     * Warning: Disabling it reverts instance solve order to instance load path (lexicographically)
      *
      * @param preload change preload configuration to the value given by this parameter
      */

@@ -57,7 +57,7 @@ instances:
 
   # Loads all instances in RAM before starting each experiment.
   # Can be disabled for example in problems where instances are huge in order to save some RAM.
-  # Warning: Disabling it reverts instance solve order to instance name (lexicographically)
+  # Warning: Disabling it reverts instance solve order to instance path (lexicographically)
   preload: true
 
   path:

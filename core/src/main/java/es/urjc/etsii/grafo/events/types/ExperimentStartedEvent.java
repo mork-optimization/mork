@@ -7,17 +7,17 @@ import java.util.List;
  */
 public class ExperimentStartedEvent extends MorkEvent{
     private final String experimentName;
-    private final List<String> instanceNames;
+    private final List<String> instancePaths;
 
     /**
      * Create a new ExperimentStartedEvent
      *
      * @param experimentName experiment name
-     * @param instanceNames instance names
+     * @param instancePaths instance load paths
      */
-    public ExperimentStartedEvent(String experimentName, List<String> instanceNames) {
+    public ExperimentStartedEvent(String experimentName, List<String> instancePaths) {
         this.experimentName = experimentName;
-        this.instanceNames = instanceNames;
+        this.instancePaths = instancePaths;
     }
 
     /**
@@ -30,11 +30,11 @@ public class ExperimentStartedEvent extends MorkEvent{
     }
 
     /**
-     * Get instance names
+     * Get instance load paths.
      *
-     * @return list of instance names
+     * @return list of instance load paths
      */
     public List<String> getInstanceNames() {
-        return instanceNames;
+        return instancePaths;
     }
 }

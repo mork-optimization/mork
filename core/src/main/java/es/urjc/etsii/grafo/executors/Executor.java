@@ -101,7 +101,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         this.referenceResultManager = referenceResultManager;
     }
 
-    public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instanceNames, long startTimestamp);
+    public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instancePaths, long startTimestamp);
 
     /**
      * Execute a warm-up pass before measured experiment executions start.
@@ -279,7 +279,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
      * Create workunits with solve order
      *
      * @param experiment       experiment definition
-     * @param instancePaths    instance name list
+     * @param instancePaths    instance load path list
      * @param repetitions      how many times should we repeat the (instance, algorithm) pair
      * @return Map of workunits per instance
      */

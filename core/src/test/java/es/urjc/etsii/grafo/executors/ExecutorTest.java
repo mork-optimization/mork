@@ -221,7 +221,7 @@ class ExecutorTest {
         }
 
         @Override
-        public void executeExperiment(Experiment<TestSolution, TestInstance> experiment, List<String> instanceNames, long startTimestamp) {
+        public void executeExperiment(Experiment<TestSolution, TestInstance> experiment, List<String> instancePaths, long startTimestamp) {
 
         }
 
