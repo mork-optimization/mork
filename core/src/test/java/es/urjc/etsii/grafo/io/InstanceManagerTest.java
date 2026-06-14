@@ -12,6 +12,7 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -185,6 +186,40 @@ class InstanceManagerTest {
         ));
 
         assertEquals(instance2File.getAbsolutePath(), selected);
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test
+    void warmupAutoSelectionUsesCachedLoadTimesForRelativizedSolveOrderPaths() throws IOException {
+        Path targetDirectory = Path.of("target");
+        Files.createDirectories(targetDirectory);
+        Path relativeFolder = Files.createTempDirectory(targetDirectory, "warmup-cache");
+        var slowFile = relativeFolder.resolve("SlowInstance").toFile();
+        var fastFile = relativeFolder.resolve("FastInstance").toFile();
+        slowFile.createNewFile();
+        fastFile.createNewFile();
+
+        String slowPath = slowFile.getAbsolutePath();
+        String fastPath = fastFile.getAbsolutePath();
+        var slowInstance = new TestInstance("SlowInstance");
+        slowInstance.setPath(slowPath);
+        var fastInstance = new TestInstance("FastInstance");
+        fastInstance.setPath(fastPath);
+
+        InstanceImporter<TestInstance> importer = mock(InstanceImporter.class);
+        when(importer.importInstance(slowPath)).thenReturn(slowInstance);
+        when(importer.importInstance(fastPath)).thenReturn(fastInstance);
+
+        var manager = buildManager(true, relativeFolder.toString(), importer);
+        var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
+        manager.getInstance(slowPath).setProperty(Instance.LOAD_TIME_NANOS, 30L);
+        manager.getInstance(fastPath).setProperty(Instance.LOAD_TIME_NANOS, 10L);
+        clearInvocations(importer);
+
+        var selected = manager.getWarmupInstancePath(TEST_EXPERIMENT, instances);
+
+        assertEquals(fastInstance.getPath(), selected);
+        verifyNoInteractions(importer);
     }
 
     @Test

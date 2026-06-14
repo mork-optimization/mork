@@ -3,7 +3,6 @@ package es.urjc.etsii.grafo.io;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.executors.Executor;
-import es.urjc.etsii.grafo.util.Compression;
 import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
 import me.tongfei.progressbar.ProgressBar;
@@ -17,12 +16,10 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStreamReader;
-import java.lang.ref.SoftReference;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 import static es.urjc.etsii.grafo.util.IOUtil.checkExists;
@@ -39,12 +36,11 @@ public class InstanceManager<I extends Instance> {
     private static final int MAX_LENGTH = 300;
     public static final String INDEX_SUFFIX = ".index";
 
-    protected final SoftReference<I> EMPTY = new SoftReference<>(null);
     protected final InstanceConfiguration instanceConfiguration;
-    protected final SolverConfig solverConfig;
     protected final InstanceImporter<I> instanceImporter;
 
-    protected final Map<String, SoftReference<I>> cacheByPath;
+    protected final InstanceCache<I> cache;
+    protected final WarmupInstanceSelector<I> warmupSelector;
     protected final Map<String, List<String>> solveOrderByExperiment;
 
 
@@ -58,10 +54,10 @@ public class InstanceManager<I extends Instance> {
     @Autowired
     public InstanceManager(InstanceConfiguration instanceConfiguration, SolverConfig solverConfig, InstanceImporter<I> instanceImporter) {
         this.instanceConfiguration = instanceConfiguration;
-        this.solverConfig = solverConfig;
         this.instanceImporter = instanceImporter;
-        this.cacheByPath = new ConcurrentHashMap<>();
-        this.solveOrderByExperiment = new ConcurrentHashMap<>();
+        this.cache = new InstanceCache<>();
+        this.warmupSelector = new WarmupInstanceSelector<>(solverConfig, instanceConfiguration, this.cache);
+        this.solveOrderByExperiment = new HashMap<>();
     }
 
 
@@ -125,8 +121,11 @@ public class InstanceManager<I extends Instance> {
 
     private boolean isIndexFile(String instancePath) {
         var file = new File(instancePath);
-        log.debug("Not an index file: {}", instancePath);
-        return file.isFile() && instancePath.endsWith(INDEX_SUFFIX);
+        boolean isIndex = file.isFile() && instancePath.endsWith(INDEX_SUFFIX);
+        if (!isIndex) {
+            log.debug("Not an index file: {}", instancePath);
+        }
+        return isIndex;
     }
 
     protected List<String> validateAndSort(String expName, List<String> instancePaths) {
@@ -138,7 +137,6 @@ public class InstanceManager<I extends Instance> {
             log.debug("Loading instance: {}", path);
             I instance = loadInstance(path);
             instances.add(instance);
-            cacheByPath.put(instance.getId(), new SoftReference<>(instance));
         }
         Collections.sort(instances);
         validate(instances, expName);
@@ -155,52 +153,7 @@ public class InstanceManager<I extends Instance> {
      * @return warm-up instance path
      */
     public String getWarmupInstancePath(String expName, List<String> instancePaths) {
-        var warmupConfig = this.solverConfig.getWarmup();
-        if (warmupConfig.hasInstancePath()) {
-            return warmupConfig.getInstancePath().trim();
-        }
-        if (instancePaths.isEmpty()) {
-            throw new IllegalArgumentException("Cannot select a warm-up instance for an empty experiment: " + expName);
-        }
-        return this.instanceConfiguration.isPreload() ?
-                selectFastestLoadedInstance(instancePaths) :
-                selectSmallestInstanceFile(instancePaths);
-    }
-
-    private String selectFastestLoadedInstance(List<String> instancePaths) {
-        return instancePaths.stream()
-                .min(Comparator.comparingLong(this::loadTimeNanos).thenComparing(Comparator.naturalOrder()))
-                .orElseThrow();
-    }
-
-    private long loadTimeNanos(String instancePath) {
-        var instance = getInstance(instancePath);
-        var loadTime = instance.getPropertyOrDefault(Instance.LOAD_TIME_NANOS, Long.MAX_VALUE);
-        if (loadTime instanceof Number number) {
-            return number.longValue();
-        }
-        return Long.MAX_VALUE;
-    }
-
-    private String selectSmallestInstanceFile(List<String> instancePaths) {
-        return instancePaths.stream()
-                .min(Comparator.comparingLong(this::fileSize).thenComparing(Comparator.naturalOrder()))
-                .orElseThrow();
-    }
-
-    private long fileSize(String instancePath) {
-        var path = containerPath(instancePath);
-        try {
-            return Files.size(Path.of(path));
-        } catch (IOException | RuntimeException e) {
-            log.warn("Could not determine instance size for warm-up auto-selection, using lowest priority: {}", instancePath);
-            return Long.MAX_VALUE;
-        }
-    }
-
-    private static String containerPath(String instancePath) {
-        int index = instancePath.indexOf(Compression.SEP);
-        return index < 0 ? instancePath : instancePath.substring(0, index);
+        return this.warmupSelector.select(expName, instancePaths);
     }
 
     private static void logInstances(List<String> sortedInstances) {
@@ -255,12 +208,10 @@ public class InstanceManager<I extends Instance> {
      * @return Loaded instance
      */
     public synchronized I getInstance(String path) {
-        I instance = this.cacheByPath.getOrDefault(path, EMPTY).get();
+        I instance = this.cache.get(path);
         if (instance == null) {
-            // Load and put in cache
             instance = loadInstance(path);
         }
-
         return instance;
     }
 
@@ -275,15 +226,15 @@ public class InstanceManager<I extends Instance> {
 
         instance.setPath(IOUtil.relativizePath(path));
 
-        this.cacheByPath.put(path, new SoftReference<>(instance));
+        this.cache.put(path, instance);
         return instance;
     }
 
     /**
      * Purge instance cache
      */
-    public void purgeCache() {
-        this.cacheByPath.clear();
+    public synchronized void purgeCache() {
+        this.cache.clear();
     }
 
     public InstanceImporter<I> getUserImporterImplementation() {
