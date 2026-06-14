@@ -18,8 +18,8 @@
     <properties>
         <jmh.version>1.37</jmh.version>
         <uberjar.name>benchmarks</uberjar.name>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
         <maven.source.skip>true</maven.source.skip>
         <maven.javadoc.skip>true</maven.javadoc.skip>
     </properties>
