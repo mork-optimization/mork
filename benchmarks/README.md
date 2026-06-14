@@ -1,6 +1,6 @@
 # Mork Benchmarks
 
-This module contains JMH benchmarks for comparing CPU time between Java
+This module contains JMH benchmarks for comparing elapsed time (wall-clock) between Java
 `HashSet<Integer>` and Mork's integer `BitSet` implementation.
 
 The benchmark data is deterministic. For every `(universeSize, fillRatio)` pair,
