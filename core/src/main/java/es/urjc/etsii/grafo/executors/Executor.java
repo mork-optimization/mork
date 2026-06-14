@@ -119,6 +119,9 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         }
 
         int repetitions = warmupConfig.getRepetitions();
+        if (repetitions <= 0) {
+            throw new IllegalArgumentException("Warm-up repetitions must be >= 1, was: " + repetitions);
+        }
         long startTime = System.nanoTime();
         var events = EventPublisher.getInstance();
         boolean shouldUnblockEvents = events != null && !events.isBlocked();
