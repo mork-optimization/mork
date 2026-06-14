@@ -55,7 +55,7 @@ List available benchmarks:
 java -jar benchmarks/target/benchmarks.jar -l
 ```
 
-If `java` on your `PATH` points to an older runtime, use the Java 21+ executable
+If `java` on your `PATH` points to an older runtime, use the Java 25+ executable
 directly, for example:
 
 ```bash
