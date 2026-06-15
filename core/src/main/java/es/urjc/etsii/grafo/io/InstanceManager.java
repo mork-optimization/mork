@@ -43,6 +43,7 @@ public class InstanceManager<I extends Instance> {
     protected final InstanceCache<I> cache;
     protected final WarmupInstanceSelector<I> warmupSelector;
     protected final Map<String, List<String>> solveOrderByExperiment;
+    protected final Map<String, Map<String, String>> authorizedLoadPathsByExperiment;
 
 
     /**
@@ -59,6 +60,7 @@ public class InstanceManager<I extends Instance> {
         this.cache = new InstanceCache<>();
         this.warmupSelector = new WarmupInstanceSelector<>(solverConfig, instanceConfiguration, this.cache);
         this.solveOrderByExperiment = new HashMap<>();
+        this.authorizedLoadPathsByExperiment = new HashMap<>();
     }
 
 
@@ -193,6 +195,66 @@ public class InstanceManager<I extends Instance> {
         List<String> sortedInstances = new ArrayList<>(instancePaths);
         Collections.sort(sortedInstances);
         return sortedInstances;
+    }
+
+    /**
+     * Verify that a user supplied load path belongs to the configured instance source for an experiment.
+     * This is intended for external callbacks, where the path is supplied by a client instead of being
+     * produced by {@link #getInstanceSolveOrder(String)}.
+     *
+     * @param expName       experiment name
+     * @param requestedPath user supplied instance load path
+     * @return the canonical configured load path that should be used for loading
+     */
+    public synchronized String requireConfiguredInstancePath(String expName, String requestedPath) {
+        Objects.requireNonNull(requestedPath, "Instance path cannot be null");
+        if (requestedPath.isBlank()) {
+            throw new IllegalArgumentException("Instance path cannot be blank");
+        }
+
+        var authorizedLoadPaths = this.authorizedLoadPathsByExperiment.computeIfAbsent(expName, this::buildAuthorizedLoadPaths);
+        var canonicalRequestedPath = canonicalizeForAuthorization(requestedPath);
+        var authorizedPath = authorizedLoadPaths.get(canonicalRequestedPath);
+        if (authorizedPath == null) {
+            var relativeToConfiguredPath = resolveIndexEntry(configuredPathBase(expName), requestedPath);
+            authorizedPath = authorizedLoadPaths.get(canonicalizeForAuthorization(relativeToConfiguredPath));
+        }
+        if (authorizedPath == null) {
+            throw new IllegalArgumentException("Requested instance path is not configured for experiment %s: %s".formatted(expName, requestedPath));
+        }
+        return authorizedPath;
+    }
+
+    private Map<String, String> buildAuthorizedLoadPaths(String expName) {
+        String configuredPath = this.instanceConfiguration.getPath(expName);
+        checkExists(configuredPath);
+        List<String> instancePaths = isIndexFile(configuredPath)?
+                listIndexFile(configuredPath):
+                listNormalFile(configuredPath);
+
+        Map<String, String> authorizedLoadPaths = new HashMap<>();
+        for (String path : instancePaths) {
+            authorizedLoadPaths.put(canonicalizeForAuthorization(path), path);
+        }
+        return authorizedLoadPaths;
+    }
+
+    private Path configuredPathBase(String expName) {
+        Path configuredPath = Path.of(this.instanceConfiguration.getPath(expName));
+        if (Files.isDirectory(configuredPath)) {
+            return configuredPath;
+        }
+        return Optional.ofNullable(configuredPath.getParent()).orElse(Path.of("."));
+    }
+
+    private static String canonicalizeForAuthorization(String loadPath) {
+        int index = loadPath.indexOf(Compression.SEP);
+        if (index < 0) {
+            return Path.of(loadPath).toAbsolutePath().normalize().toString();
+        }
+        String container = loadPath.substring(0, index);
+        String entry = loadPath.substring(index);
+        return Path.of(container).toAbsolutePath().normalize() + entry;
     }
 
 

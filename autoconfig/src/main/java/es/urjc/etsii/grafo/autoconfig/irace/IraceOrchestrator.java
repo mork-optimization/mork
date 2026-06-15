@@ -55,6 +55,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
     private static final Logger log = LoggerFactory.getLogger(IraceOrchestrator.class);
     private static final String IRACE_EXPNAME = "irace autoconfig";
+    private static final String IRACE_INSTANCE_PATH_KEY = "irace";
     public static final String K_INTEGRATION_KEY = "__INTEGRATION_KEY__";
     public static final String K_INSTANCES_PATH = "__INSTANCES_PATH__";
     public static final String K_TARGET_RUNNER = "__TARGET_RUNNER__";
@@ -231,7 +232,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private Map<String, String> getSubstitutions(String integrationKey, SolverConfig solverConfig, InstanceConfiguration instanceConfiguration, ServerProperties server) {
         return Map.of(
                 K_INTEGRATION_KEY, integrationKey,
-                K_INSTANCES_PATH, instanceConfiguration.getPath("irace"),
+                K_INSTANCES_PATH, instanceConfiguration.getPath(IRACE_INSTANCE_PATH_KEY),
                 K_TARGET_RUNNER, "./middleware.sh",
                 K_PARALLEL, nParallel(solverConfig),
                 K_MAX_EXP, calculateMaxExperiments(isAutoconfigEnabled, solverConfig, nIraceParameters),
@@ -273,7 +274,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      */
     public ExecuteResponse iraceSingleCallback(IraceRuntimeConfiguration config) {
         storeConfig(config);
-        var instance = instanceManager.getInstance(config.getInstanceName());
+        var instancePath = instanceManager.requireConfiguredInstancePath(IRACE_INSTANCE_PATH_KEY, config.getInstanceName());
+        var instance = instanceManager.getInstance(instancePath);
         Algorithm<S, I> algorithm;
         try {
             algorithm = buildAlgorithm(config);

@@ -149,6 +149,69 @@ class InstanceManagerTest {
     }
 
     @Test
+    void configuredFolderAuthorizesNormalizedRequestedPath(){
+        var manager = buildManager(false, instancePath);
+        Path requestedPath = instance1File.toPath().getParent()
+                .resolve("folder")
+                .resolve("..")
+                .resolve(instance1File.getName());
+
+        var authorizedPath = manager.requireConfiguredInstancePath(TEST_EXPERIMENT, requestedPath.toString());
+
+        assertEquals(instance1File.getAbsolutePath(), authorizedPath);
+        assertEquals(instance2File.getAbsolutePath(), manager.requireConfiguredInstancePath(TEST_EXPERIMENT, instance2File.getName()));
+        verifyNoInteractions(instanceImporter);
+    }
+
+    @Test
+    void configuredFolderRejectsTraversalOutsideConfiguredPath() throws IOException {
+        Path tempRoot = Path.of(instancePath);
+        Path configuredFolder = Files.createDirectory(tempRoot.resolve("configured"));
+        Files.createFile(configuredFolder.resolve("AllowedInstance"));
+        Path outsideFile = Files.createFile(tempRoot.resolve("OutsideInstance"));
+        var manager = buildManager(false, configuredFolder.toString());
+        Path traversalPath = configuredFolder.resolve("..").resolve(outsideFile.getFileName());
+
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> manager.requireConfiguredInstancePath(TEST_EXPERIMENT, traversalPath.toString()));
+        verifyNoInteractions(instanceImporter);
+    }
+
+    @Test
+    void configuredIndexAuthorizesOnlyListedEntries(){
+        var manager = buildManager(false, indexFile.getAbsolutePath());
+
+        var authorizedPath = manager.requireConfiguredInstancePath(TEST_EXPERIMENT, instance1File.getAbsolutePath());
+
+        assertEquals(instance1File.getAbsolutePath(), authorizedPath);
+        assertEquals(instance3File.getAbsolutePath(), manager.requireConfiguredInstancePath(TEST_EXPERIMENT, instance3File.getName()));
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> manager.requireConfiguredInstancePath(TEST_EXPERIMENT, instance2File.getAbsolutePath()));
+        verifyNoInteractions(instanceImporter);
+    }
+
+    @Test
+    void configuredArchiveAuthorizesKnownCompressedEntryOnly() throws IOException {
+        Path targetDirectory = Path.of("target");
+        Files.createDirectories(targetDirectory);
+        Path archiveDirectory = Files.createTempDirectory(targetDirectory, "authorized-archive");
+        Path sourceArchive = Path.of("src/test/resources/instzip/data1.zip");
+        Path archive = archiveDirectory.resolve("data1.zip");
+        Files.copy(sourceArchive, archive);
+        String authorizedLoadPath = IOUtil.iterate(archive.toString()).get(0);
+        String compressedEntry = IOUtil.entryPath(authorizedLoadPath);
+        String normalizedRequest = archiveDirectory.resolve(".").resolve("data1.zip") + "!" + compressedEntry;
+        var manager = buildManager(false, archive.toString(), new TestInstanceImporter());
+
+        var authorizedPath = manager.requireConfiguredInstancePath(TEST_EXPERIMENT, normalizedRequest);
+
+        assertEquals(authorizedLoadPath, authorizedPath);
+        assertEquals(authorizedLoadPath, manager.requireConfiguredInstancePath(TEST_EXPERIMENT, archive.getFileName() + "!" + compressedEntry));
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> manager.requireConfiguredInstancePath(TEST_EXPERIMENT, archive + "!missing-entry.txt"));
+    }
+
+    @Test
     void checkCache(){
         var manager = buildManager(true, instancePath);
         var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
