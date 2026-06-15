@@ -15,6 +15,8 @@
 - (Fix) #300: Use algorithmName in Algorithm::toString when possible, fallback to current class name.
 - (Fix) #301: Warning if SOLVER_NWORKERS exceeds physical CPU cores in configuration
 - (Fix) #208: Custom solution properties missing from Excel report
+- (Fix) Restrict paths when running in autoconfig / irace / follower mode to those declared in the experiment
+- (Fix) Instance selector: create an index file instead of copying files. Fix bug related to compressed files.
 
 
 # v0.21
