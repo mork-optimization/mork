@@ -11,6 +11,7 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ArrayUtil;
 import es.urjc.etsii.grafo.util.BenchmarkUtil;
 import es.urjc.etsii.grafo.util.Context;
+import es.urjc.etsii.grafo.util.ExceptionUtil;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
 import org.apache.poi.ss.util.AreaReference;
@@ -115,44 +116,53 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         log.debug("Exporting result data to XLSX...");
 
         File f = p.toFile();
-        var excelBook = new XSSFWorkbook();
 
-        try (
-                var outputStream = new FileOutputStream(f);
-                var streamExcelBook = new SXSSFWorkbook(excelBook, 100, true);
-        ) {
-            var rawSheet = streamExcelBook.createSheet(RAW_SHEET);
-            var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
-            var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
-
+        try {
+            prepareInstancePropertyData(experimentName);
             String[] customProperties = getCustomPropertyHeaders(results);
             String[] headers = getRawHeaders(customProperties);
+            var excelBook = new XSSFWorkbook();
 
-            var areaString = String.format("%s1:%s%s", convertNumToColString(0), convertNumToColString(headers.length - 1), 1_000_000);
-            var area = new AreaReference(areaString, SpreadsheetVersion.EXCEL2007);
-            headRawSheet(rawSheet, customProperties);
-            fillPivotSheet(pivotSheet, area, rawSheet);
+            try (
+                    var outputStream = new FileOutputStream(f);
+                    var streamExcelBook = new SXSSFWorkbook(excelBook, 100, true);
+            ) {
+                var rawSheet = streamExcelBook.createSheet(RAW_SHEET);
+                var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
+                var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
 
-            // Check and fill instance sheet if appropiate
-            fillInstanceSheet(experimentName, excelBook);
+                var areaString = String.format("%s1:%s%s", convertNumToColString(0), convertNumToColString(headers.length - 1), 1_000_000);
+                var area = new AreaReference(areaString, SpreadsheetVersion.EXCEL2007);
+                headRawSheet(rawSheet, customProperties);
+                fillPivotSheet(pivotSheet, area, rawSheet);
 
-            fillOtherDataSheet(otherDataSheet);
+                // Check and fill instance sheet if appropiate
+                fillInstanceSheet(experimentName, excelBook);
 
-            fillRawSheet(rawSheet, maximizing, results, referenceResultProviders, customProperties);
+                fillOtherDataSheet(otherDataSheet);
 
-            if(this.excelCustomizer.isPresent()){
-                var realExcelCustomizer = excelCustomizer.get();
-                log.debug("Calling Excel customizer: {}", realExcelCustomizer.getClass().getSimpleName());
-                realExcelCustomizer.customize(excelBook);
-            } else {
-                log.debug("ExcelCustomizer implementation not found");
+                fillRawSheet(rawSheet, maximizing, results, referenceResultProviders, customProperties);
+
+                if(this.excelCustomizer.isPresent()){
+                    var realExcelCustomizer = excelCustomizer.get();
+                    log.debug("Calling Excel customizer: {}", realExcelCustomizer.getClass().getSimpleName());
+                    realExcelCustomizer.customize(excelBook);
+                } else {
+                    log.debug("ExcelCustomizer implementation not found");
+                }
+                // Excel should recalculate on open always
+                streamExcelBook.setForceFormulaRecalculation(true);
+                streamExcelBook.write(outputStream);
+                log.debug("XLSX created successfully");
             }
-            // Excel should recalculate on open always
-            streamExcelBook.setForceFormulaRecalculation(true);
-            streamExcelBook.write(outputStream);
-            log.debug("XLSX created successfully");
         } catch (Exception e) {
-            throw new RuntimeException(String.format("Exception while trying to save Excel file: %s, reason: %s", f.getAbsolutePath(), e.getClass().getSimpleName()), e);
+            Throwable rootCause = ExceptionUtil.getRootCause(e);
+            throw new RuntimeException(String.format(
+                    "Exception while trying to save Excel file: %s. Root cause: %s: %s",
+                    f.getAbsolutePath(),
+                    rootCause.getClass().getSimpleName(),
+                    rootCause.getMessage()
+            ), e);
         }
     }
 
@@ -193,16 +203,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         }
 
         log.debug("Creating instance sheet...");
-        var keys = Instance.getUniquePropertiesKeys().toArray(new String[0]);
-
-        if (keys.length == 0) {
-            log.debug("Instance sheet enabled, but no data available, skipping");
-            this.instancePropertyData = new Object[][]{{"Instance sheet is enabled but no properties found for any instance, remember to define properties using Instance::setProperty. If you do not want to use this feature, set serializers.xlsx.instance-sheet-enabled to false"}};
-        } else {
-            if(this.instancePropertyData == null){
-                this.instancePropertyData = getInstancePropertyData(expName, keys);
-            }
-        }
+        prepareInstancePropertyData(expName);
         var sheet = excelBook.createSheet(INSTANCE_SHEET);
 
         // Write matrix data to cell Excel sheet
@@ -217,6 +218,23 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         log.debug("Instance sheet created");
     }
 
+    private void prepareInstancePropertyData(String expName) {
+        if(!this.config.isInstanceSheetEnabled()){
+            return;
+        }
+
+        var keys = Instance.getUniquePropertiesKeys().toArray(new String[0]);
+
+        if (keys.length == 0) {
+            log.debug("Instance sheet enabled, but no data available, skipping");
+            this.instancePropertyData = new Object[][]{{"Instance sheet is enabled but no properties found for any instance, remember to define properties using Instance::setProperty. If you do not want to use this feature, set serializers.xlsx.instance-sheet-enabled to false"}};
+        } else {
+            if(this.instancePropertyData == null){
+                this.instancePropertyData = getInstancePropertyData(expName, keys);
+            }
+        }
+    }
+
     private Object[][] getInstancePropertyData(String expName, String[] keys) {
         List<Object[]> properties = new ArrayList<>();
         Object[] header = new Object[keys.length + 1];
@@ -227,11 +245,28 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             Object[] row = new Object[keys.length+1];
             row[0] = instance.getId();
             for (int i = 0; i < keys.length; i++) {
-                row[i+1] = instance.getPropertyOrDefault(keys[i], "");
+                Object value = instance.getPropertyOrDefault(keys[i], "");
+                validateInstancePropertyValue(keys[i], value, instance);
+                row[i+1] = value;
             }
             properties.add(row);
         });
         return properties.toArray(new Object[0][]);
+    }
+
+    private static void validateInstancePropertyValue(String propertyName, Object value, Instance instance) {
+        if (isExcelScalarValue(value)) {
+            return;
+        }
+
+        throw new IllegalArgumentException(String.format(
+                "Instance property '%s' for instance '%s' cannot be exported to Excel sheet '%s'. Supported values are null, finite Number, String or Boolean, but found %s: %s",
+                propertyName,
+                instance.getId(),
+                INSTANCE_SHEET,
+                describeValueType(value),
+                value
+        ));
     }
 
     private void fillPivotSheet(XSSFSheet pivotSheet, AreaReference sourceDataArea, SXSSFSheet source) {
@@ -358,16 +393,19 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             return;
         }
 
-        String valueType = value.getClass().getSimpleName();
         throw new IllegalArgumentException(String.format(
                 "Solution property '%s' for instance '%s', algorithm '%s', iteration '%s' cannot be exported to Excel. Solution properties must be null, finite Number, String or Boolean, but found %s: %s",
                 propertyName,
                 result.getInstanceName(),
                 result.getAlgorithmName(),
                 result.getIteration(),
-                valueType,
+                describeValueType(value),
                 value
         ));
+    }
+
+    private static String describeValueType(Object value) {
+        return value == null ? "null" : value.getClass().getName();
     }
 
     private static boolean isExcelScalarValue(Object value) {
@@ -567,26 +605,34 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         switch (type) {
             case FORMULA -> {
                 if (!(d instanceof String)) {
-                    throw new IllegalArgumentException("Trying to set cell as formula but not a String: " + d);
+                    throw invalidFormulaCellValue(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), d);
                 }
                 cell.setCellFormula((String) d);
             }
             case ARRAY_FORMULA -> {
                 if (!(d instanceof String)) {
-                    throw new IllegalArgumentException("Trying to set cell as formula but not a String: " + d);
+                    throw invalidFormulaCellValue(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), d);
                 }
                 String[] parts = ((String) d).split("·");
                 if (parts.length != 2) {
-                    throw new IllegalArgumentException("Invalid setArrayFormula: " + d);
+                    throw new IllegalArgumentException(String.format(
+                            "Invalid setArrayFormula at Excel sheet '%s' cell %s: %s",
+                            cell.getSheet().getSheetName(),
+                            excelCellAddress(cell.getRowIndex(), cell.getColumnIndex()),
+                            d
+                    ));
                 }
                 cell.getSheet().setArrayFormula(parts[0], CellRangeAddress.valueOf(parts[1]));
             }
             case VALUE -> {
                 switch (d) {
-                    case Number n -> cell.setCellValue(n.doubleValue());
+                    case Number n -> {
+                        validateFiniteNumber(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), n);
+                        cell.setCellValue(n.doubleValue());
+                    }
                     case String s -> cell.setCellValue(s);
                     case Boolean b -> cell.setCellValue(b);
-                    default -> throw new IllegalArgumentException("Invalid datatype: " + d.getClass().getSimpleName());
+                    default -> throw invalidValueCellValue(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), d);
                 }
             }
         }
@@ -607,28 +653,72 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         switch (type) {
             case FORMULA -> {
                 if (!(d instanceof String)) {
-                    throw new IllegalArgumentException("Trying to set cell as formula but not a String: " + d);
+                    throw invalidFormulaCellValue(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), d);
                 }
                 cell.setCellFormula((String) d);
             }
             case ARRAY_FORMULA -> {
                 if (!(d instanceof String)) {
-                    throw new IllegalArgumentException("Trying to set cell as formula but not a String: " + d);
+                    throw invalidFormulaCellValue(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), d);
                 }
                 String[] parts = ((String) d).split("·");
                 if (parts.length != 2) {
-                    throw new IllegalArgumentException("Invalid setArrayFormula: " + d);
+                    throw new IllegalArgumentException(String.format(
+                            "Invalid setArrayFormula at Excel sheet '%s' cell %s: %s",
+                            cell.getSheet().getSheetName(),
+                            excelCellAddress(cell.getRowIndex(), cell.getColumnIndex()),
+                            d
+                    ));
                 }
                 cell.getSheet().setArrayFormula(parts[0], CellRangeAddress.valueOf(parts[1]));
             }
             case VALUE -> {
                 switch (d) {
-                    case Number n -> cell.setCellValue(n.doubleValue());
+                    case Number n -> {
+                        validateFiniteNumber(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), n);
+                        cell.setCellValue(n.doubleValue());
+                    }
                     case String s -> cell.setCellValue(s);
                     case Boolean b -> cell.setCellValue(b);
-                    default -> throw new IllegalArgumentException("Invalid datatype: " + d.getClass().getSimpleName());
+                    default -> throw invalidValueCellValue(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), d);
                 }
             }
         }
+    }
+
+    private static void validateFiniteNumber(String sheetName, int rowIndex, int columnIndex, Number value) {
+        if (!Double.isFinite(value.doubleValue())) {
+            throw new IllegalArgumentException(String.format(
+                    "Cannot write non-finite number to Excel sheet '%s' cell %s. Supported values are null, finite Number, String or Boolean, but found %s: %s",
+                    sheetName,
+                    excelCellAddress(rowIndex, columnIndex),
+                    describeValueType(value),
+                    value
+            ));
+        }
+    }
+
+    private static IllegalArgumentException invalidFormulaCellValue(String sheetName, int rowIndex, int columnIndex, Object value) {
+        return new IllegalArgumentException(String.format(
+                "Cannot write Excel formula at sheet '%s' cell %s because value must be a String, but found %s: %s",
+                sheetName,
+                excelCellAddress(rowIndex, columnIndex),
+                describeValueType(value),
+                value
+        ));
+    }
+
+    private static IllegalArgumentException invalidValueCellValue(String sheetName, int rowIndex, int columnIndex, Object value) {
+        return new IllegalArgumentException(String.format(
+                "Cannot write value to Excel sheet '%s' cell %s. Supported values are null, finite Number, String or Boolean, but found %s: %s",
+                sheetName,
+                excelCellAddress(rowIndex, columnIndex),
+                describeValueType(value),
+                value
+        ));
+    }
+
+    private static String excelCellAddress(int rowIndex, int columnIndex) {
+        return convertNumToColString(columnIndex) + (rowIndex + 1);
     }
 }

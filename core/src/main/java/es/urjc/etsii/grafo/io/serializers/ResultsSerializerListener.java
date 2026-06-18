@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.ExceptionUtil;
 import es.urjc.etsii.grafo.util.IOUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -71,14 +72,44 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
                 String filename = getFilename(config, expName, expStart);
                 Path realFile = Path.of(config.getFolder(), filename);
                 Path tempFile = Path.of(config.getFolder(), filename + TEMP_SUFFIX);
-                serializer.serializeResults(expName, data, tempFile);
                 try {
+                    serializer.serializeResults(expName, data, tempFile);
                     Files.move(tempFile, realFile, StandardCopyOption.REPLACE_EXISTING);
-                } catch (IOException e){
-                    logger.error("Failed to move results file {} after serializer executed, error: {}", realFile, e.getMessage());
+                } catch (IOException | RuntimeException e) {
+                    throw buildSerializationException(serializer, expName, frequency, data.size(), tempFile, realFile, "executing serializer", e);
                 }
             }
         }
+    }
+
+    private SerializerExecutionException buildSerializationException(
+            ResultsSerializer<S, I> serializer,
+            String expName,
+            ResultExportFrequency frequency,
+            int resultCount,
+            Path tempFile,
+            Path realFile,
+            String operation,
+            Exception cause
+    ) {
+        Throwable rootCause = ExceptionUtil.getRootCause(cause);
+        return new SerializerExecutionException(String.format(
+                "Result serializer '%s' failed while %s for experiment '%s' with frequency '%s'. Result count: %s. Temp file: %s. Final file: %s. Root cause: %s: %s",
+                serializerName(serializer),
+                operation,
+                expName,
+                frequency,
+                resultCount,
+                tempFile.toAbsolutePath(),
+                realFile.toAbsolutePath(),
+                rootCause.getClass().getSimpleName(),
+                rootCause.getMessage()
+        ), cause);
+    }
+
+    private String serializerName(ResultsSerializer<S, I> serializer) {
+        String simpleName = serializer.getClass().getSimpleName();
+        return simpleName.isBlank() ? serializer.getClass().getName() : simpleName;
     }
 
     /**

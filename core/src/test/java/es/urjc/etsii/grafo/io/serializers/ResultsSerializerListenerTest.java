@@ -6,6 +6,7 @@ import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.*;
 import es.urjc.etsii.grafo.util.Context;
+import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -110,5 +111,25 @@ public class ResultsSerializerListenerTest {
         verify(this.serializer1, times(0)).serializeResults(anyString(), anyList(), any());
         verify(this.serializer2, times(0)).serializeResults(anyString(), anyList(), any());
         verify(this.serializer3, times(0)).serializeResults(anyString(), anyList(), any());
+    }
+
+    @Test
+    public void wrapSerializerFailuresWithContext() {
+        doThrow(new IllegalArgumentException("boom")).when(this.serializer2).serializeResults(anyString(), anyList(), any());
+
+        var exception = Assertions.assertThrows(
+                SerializerExecutionException.class,
+                () -> this.listener.saveOnExperimentEnd(TestHelperFactory.experimentEnd(expName))
+        );
+
+        String message = exception.getMessage();
+        Assertions.assertTrue(message.contains("Result serializer"));
+        Assertions.assertTrue(message.contains("executing serializer"));
+        Assertions.assertTrue(message.contains(expName));
+        Assertions.assertTrue(message.contains(ResultExportFrequency.EXPERIMENT_END.name()));
+        Assertions.assertTrue(message.contains("Result count: " + data.size()));
+        Assertions.assertTrue(message.contains(".tmp"));
+        Assertions.assertTrue(message.contains("Root cause: IllegalArgumentException: boom"));
+        Assertions.assertInstanceOf(IllegalArgumentException.class, exception.getCause());
     }
 }

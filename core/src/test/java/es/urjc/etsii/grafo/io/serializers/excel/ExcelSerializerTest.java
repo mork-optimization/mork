@@ -27,6 +27,7 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -257,6 +258,25 @@ public class ExcelSerializerTest {
         var exception = Assertions.assertThrows(RuntimeException.class, () -> excel.serializeResults("TestExperiment", data, excelPath));
         Assertions.assertInstanceOf(IllegalArgumentException.class, exception.getCause());
         Assertions.assertTrue(exception.getCause().getMessage().contains("notScalar"));
+    }
+
+    @Test
+    void rejectNonScalarInstanceProperties(@TempDir Path temp) {
+        var instance = new TestInstance("rejectNonScalarInstancePropertiesTest");
+        instance.setProperty("test", new HashSet<>());
+        var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));
+        var excelPath = temp.resolve("invalidInstanceProperties.xlsx");
+
+        var data = solutionGenerator();
+
+        var exception = Assertions.assertThrows(RuntimeException.class, () -> excel.serializeResults("TestExperiment", data, excelPath));
+        Assertions.assertInstanceOf(IllegalArgumentException.class, exception.getCause());
+        String causeMessage = exception.getCause().getMessage();
+        Assertions.assertTrue(causeMessage.contains("Instance property 'test'"));
+        Assertions.assertTrue(causeMessage.contains("rejectNonScalarInstancePropertiesTest"));
+        Assertions.assertTrue(causeMessage.contains("Instances"));
+        Assertions.assertTrue(causeMessage.contains("HashSet"));
+        Assertions.assertTrue(exception.getMessage().contains("Root cause: IllegalArgumentException"));
     }
 
 }
