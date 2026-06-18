@@ -340,6 +340,9 @@
                 <extensions>true</extensions>
                 <configuration>
                     <publishingServerId>central</publishingServerId>
+                    <excludeArtifacts>
+                        <excludeArtifact>mork-benchmarks</excludeArtifact>
+                    </excludeArtifacts>
                 </configuration>
             </plugin>
         </plugins>
