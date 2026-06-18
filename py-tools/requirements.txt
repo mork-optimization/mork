@@ -7,7 +7,7 @@ yellowbrick==1.5
 argparse==1.4.0
 setuptools==80.9.0
 panel==1.7.5
-plotly==6.3.0
+plotly==6.8.0
 sympy==1.14.0
 lxml==6.1.0
 alive_progress==3.3.0
