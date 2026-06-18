@@ -17,7 +17,7 @@
 - (Fix) #208: Custom solution properties missing from Excel report
 - (Fix) Restrict paths when running in autoconfig / irace / follower mode to those declared in the experiment
 - (Fix) Instance selector: create an index file instead of copying files. Fix bug related to compressed files.
-
+- (Fix) Improve exception handling in serializing, add missing context.
 
 # v0.21
 - (New) Objective class: a class that represents an objective function of a problem. Each Objective has a name, a direction (minimize or maximize), and functions for extracting the value of the objective from Moves and from Solutions. See docs for a detailed description.
