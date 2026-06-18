@@ -121,12 +121,13 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             prepareInstancePropertyData(experimentName);
             String[] customProperties = getCustomPropertyHeaders(results);
             String[] headers = getRawHeaders(customProperties);
-            var excelBook = new XSSFWorkbook();
 
             try (
-                    var outputStream = new FileOutputStream(f);
-                    var streamExcelBook = new SXSSFWorkbook(excelBook, 100, true);
+                    var streamExcelBook = new SXSSFWorkbook();
+                    var outputStream = new FileOutputStream(f)
             ) {
+                streamExcelBook.setCompressTempFiles(true);
+                var excelBook = streamExcelBook.getXSSFWorkbook();
                 var rawSheet = streamExcelBook.createSheet(RAW_SHEET);
                 var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
                 var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
