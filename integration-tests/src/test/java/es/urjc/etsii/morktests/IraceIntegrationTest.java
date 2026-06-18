@@ -36,6 +36,8 @@ public class IraceIntegrationTest {
         int exit = runJavaProcess(Duration.ofMinutes(10),
                 "--autoconfig",
                 "--whitelist=ACITestWhitelist",
+                "--solver.minimum-number-of-experiments=200",
+                "--solver.experiments-per-parameter=10",
                 "--instances.path.default=instancesautoconfig/autoconfig");
         assertEquals(0, exit);
         assertTrue(Files.exists(Path.of("plots.pdf")));

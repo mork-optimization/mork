@@ -9,6 +9,9 @@ public class Main {
     public static final Objective<?, ACSolution, ACInstance> AC_OBJECTIVE = Objective.ofMaximizing("TestMaximize", ACSolution::getScore, null);
 
     public static void main(String[] args) {
-        Mork.start(args, AC_OBJECTIVE);
+        boolean success = Mork.start(args, AC_OBJECTIVE);
+        if (!success) {
+            System.exit(1);
+        }
     }
 }
