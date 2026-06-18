@@ -5,6 +5,7 @@
     <!-- Project name and current version -->
     <artifactId>tsptw</artifactId>
     <version>0.23-SNAPSHOT</version>
+    <name>TSP with Time-Windows Example</name>
 
     <!-- Automatic configuration, can be overridden -->
     <parent>

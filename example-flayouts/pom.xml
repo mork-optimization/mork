@@ -5,6 +5,7 @@
     <!-- Project name and current version -->
     <artifactId>flayouts</artifactId>
     <version>0.23-SNAPSHOT</version>
+    <name>Facility Layouts Examples</name>
 
     <!-- Automatic configuration, can be overridden -->
     <parent>

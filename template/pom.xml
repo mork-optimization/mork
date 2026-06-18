@@ -4,6 +4,7 @@
 
     <!-- Project name and current version -->
     <artifactId>__RNAME__</artifactId>
+    <name>__RNAME__</name>
     <version>0.23-SNAPSHOT</version>
 
     <!-- Automatic configuration, can be overridden -->

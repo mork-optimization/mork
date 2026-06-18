@@ -5,6 +5,7 @@
     <!-- Project name and current version -->
     <artifactId>vrpod</artifactId>
     <version>0.23-SNAPSHOT</version>
+    <name>Vehicle Routing Example</name>
 
     <!-- Automatic configuration, can be overridden -->
     <parent>
