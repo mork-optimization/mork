@@ -4,14 +4,14 @@
 
     <!-- Project name and current version -->
     <artifactId>graphs</artifactId>
-    <version>0.22</version>
+    <version>0.22-SNAPSHOT</version>
     <name>Graph Problem Examples</name>
 
     <!-- Automatic configuration, can be overridden -->
     <parent>
         <groupId>es.urjc.etsii.grafo</groupId>
         <artifactId>mork-parent</artifactId>
-        <version>0.22</version>
+        <version>0.22-SNAPSHOT</version>
     </parent>
 
     <dependencies>
