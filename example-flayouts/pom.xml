@@ -4,14 +4,14 @@
 
     <!-- Project name and current version -->
     <artifactId>flayouts</artifactId>
-    <version>0.22</version>
+    <version>0.23-SNAPSHOT</version>
     <name>Facility Layouts Examples</name>
 
     <!-- Automatic configuration, can be overridden -->
     <parent>
         <groupId>es.urjc.etsii.grafo</groupId>
         <artifactId>mork-parent</artifactId>
-        <version>0.22</version>
+        <version>0.23-SNAPSHOT</version>
     </parent>
 
     <dependencies>
