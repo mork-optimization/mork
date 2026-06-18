@@ -4,7 +4,7 @@
 
     <!-- Project name and current version -->
     <artifactId>mork-benchmarks</artifactId>
-    <version>0.22-SNAPSHOT</version>
+    <version>0.22</version>
     <name>mork-benchmarks</name>
     <description>Benchmarking tests for Mork framework using JMH</description>
 
@@ -12,7 +12,7 @@
     <parent>
         <groupId>es.urjc.etsii.grafo</groupId>
         <artifactId>mork-parent</artifactId>
-        <version>0.22-SNAPSHOT</version>
+        <version>0.22</version>
     </parent>
 
     <properties>
