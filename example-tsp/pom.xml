@@ -4,14 +4,14 @@
 
     <!-- Project name and current version -->
     <artifactId>tsp</artifactId>
-    <version>0.23-SNAPSHOT</version>
+    <version>0.22</version>
     <name>Traveling Salesman Example</name>
 
     <!-- Automatic configuration, can be overridden -->
     <parent>
         <groupId>es.urjc.etsii.grafo</groupId>
         <artifactId>mork-parent</artifactId>
-        <version>0.23-SNAPSHOT</version>
+        <version>0.22</version>
     </parent>
 
     <dependencies>
