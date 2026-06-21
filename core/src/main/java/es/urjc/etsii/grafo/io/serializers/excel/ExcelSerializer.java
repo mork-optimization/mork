@@ -83,6 +83,12 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
      */
     public static final double NEGATIVE_INFINITY = -1e99;
 
+    /**
+     * Display elapsed times with at most two decimal places while preserving the
+     * full numeric value stored in the workbook.
+     */
+    static final String TIME_NUMBER_FORMAT = "0.##";
+
     private final boolean maximizing;
     private final Optional<ExcelCustomizer> excelCustomizer;
     private final ExcelConfig config;
@@ -270,7 +276,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         ));
     }
 
-    private void fillPivotSheet(XSSFSheet pivotSheet, AreaReference sourceDataArea, SXSSFSheet source) {
+    void fillPivotSheet(XSSFSheet pivotSheet, AreaReference sourceDataArea, SXSSFSheet source) {
         // Generate tables like
         /*                  ____________________________________________________________________________________
          *  ______________ |                Algorithm 1              |                Algorithm 2              |
@@ -313,19 +319,19 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         }
 
         if(config.isAvgTimeEnabled()){
-            pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, RawSheetCol.TOTAL_TIME.getIndex(), "Avg. Total T(s)");
+            pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, RawSheetCol.TOTAL_TIME.getIndex(), "Avg. Total T(s)", TIME_NUMBER_FORMAT);
         }
 
         if(config.isTotalTimeEnabled()){
-            pivotTable.addColumnLabel(DataConsolidateFunction.SUM, RawSheetCol.TOTAL_TIME.getIndex(), "Sum Total T(s)");
+            pivotTable.addColumnLabel(DataConsolidateFunction.SUM, RawSheetCol.TOTAL_TIME.getIndex(), "Sum Total T(s)", TIME_NUMBER_FORMAT);
         }
 
         if(config.isAvgTTBEnabled()){
-            pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, RawSheetCol.TTB.getIndex(), "Avg. TTB(s)");
+            pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, RawSheetCol.TTB.getIndex(), "Avg. TTB(s)", TIME_NUMBER_FORMAT);
         }
 
         if(config.isTotalTTBEnabled()){
-            pivotTable.addColumnLabel(DataConsolidateFunction.SUM, RawSheetCol.TTB.getIndex(), "Sum TTB(s)");
+            pivotTable.addColumnLabel(DataConsolidateFunction.SUM, RawSheetCol.TTB.getIndex(), "Sum TTB(s)", TIME_NUMBER_FORMAT);
         }
 
         if(config.isSumBestKnownEnabled()){
