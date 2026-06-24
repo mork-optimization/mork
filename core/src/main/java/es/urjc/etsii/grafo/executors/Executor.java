@@ -14,6 +14,7 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
 import es.urjc.etsii.grafo.metrics.Metrics;
+import es.urjc.etsii.grafo.terminal.ProgressAwareProgressBarConsumer;
 import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Objective;
@@ -325,6 +326,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
                 .setUpdateIntervalMillis(100)
                 .continuousUpdate()
                 .setTaskName(taskname)
+                .setConsumer(new ProgressAwareProgressBarConsumer())
                 .setStyle(ProgressBarStyle.COLORFUL_UNICODE_BAR);
     }
 

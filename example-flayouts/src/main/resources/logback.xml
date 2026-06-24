@@ -22,10 +22,9 @@
     <logger name="org.springframework" level="WARN"/>
 
     <!-- Console appender, to write logs to the console -->
-    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <appender name="STDOUT" class="es.urjc.etsii.grafo.terminal.ProgressAwareConsoleAppender">
         <encoder>
-            <!-- The pattern deletes the current line using ANSI scape sequences, so the progress bar is not printed multiple times -->
-            <pattern>\\u001b[2K\r%clr([%d{HH:mm:ss}]){faint} %clr(%-5level) %clr(%-26.26logger{25}){cyan} %clr(:){faint} %m%n</pattern>
+            <pattern>%clr([%d{HH:mm:ss}]){faint} %clr(%-5level) %clr(%-26.26logger{25}){cyan} %clr(:){faint} %m%n</pattern>
         </encoder>
         <filter class="ch.qos.logback.classic.filter.ThresholdFilter">
             <!-- We can filter the logs printed to the console, for example to print only INFO
