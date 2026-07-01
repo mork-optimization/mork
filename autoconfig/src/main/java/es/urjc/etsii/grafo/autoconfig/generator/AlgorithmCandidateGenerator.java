@@ -205,7 +205,7 @@ public class AlgorithmCandidateGenerator {
     }
 
     private static void validateStringValues(Parameter p, String[] values) {
-        if (values.length == 0) {
+        if (values.length == 0 && !p.getType().isEnum()) {
             throw new IllegalArgumentException("Categorical and ordinal params must have at least one value. Found 0 values in %s".formatted(describe(p)));
         }
     }

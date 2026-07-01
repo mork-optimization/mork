@@ -1,7 +1,9 @@
 package es.urjc.etsii.grafo.autoconfig.generator;
 
+import es.urjc.etsii.grafo.annotations.CategoricalParam;
 import es.urjc.etsii.grafo.annotations.ComponentParam;
 import es.urjc.etsii.grafo.annotations.IntegerParam;
+import es.urjc.etsii.grafo.annotations.OrdinalParam;
 import es.urjc.etsii.grafo.annotations.RealParam;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
@@ -91,6 +93,56 @@ class AlgorithmCandidateGeneratorValidationTest {
         assertThrows(IllegalArgumentException.class, () -> generator.toComponentParameter(Map.of(), parameter));
     }
 
+    @Test
+    void categoricalParamInfersAllEnumValuesWhenEmpty() throws NoSuchMethodException {
+        var parameter = firstParameter(DefaultCategoricalEnumHolder.class);
+
+        ComponentParameter componentParameter = generator.toComponentParameter(Map.of(), parameter);
+
+        assertArrayEquals(new Object[]{"LOW", "MEDIUM", "HIGH"}, componentParameter.getValues());
+    }
+
+    @Test
+    void ordinalParamInfersAllEnumValuesWhenEmpty() throws NoSuchMethodException {
+        var parameter = firstParameter(DefaultOrdinalEnumHolder.class);
+
+        ComponentParameter componentParameter = generator.toComponentParameter(Map.of(), parameter);
+
+        assertArrayEquals(new Object[]{"LOW", "MEDIUM", "HIGH"}, componentParameter.getValues());
+    }
+
+    @Test
+    void explicitCategoricalEnumValuesArePreserved() throws NoSuchMethodException {
+        var parameter = firstParameter(ExplicitCategoricalEnumHolder.class);
+
+        ComponentParameter componentParameter = generator.toComponentParameter(Map.of(), parameter);
+
+        assertArrayEquals(new Object[]{"HIGH", "LOW"}, componentParameter.getValues());
+    }
+
+    @Test
+    void explicitOrdinalEnumOrderIsPreserved() throws NoSuchMethodException {
+        var parameter = firstParameter(ExplicitOrdinalEnumHolder.class);
+
+        ComponentParameter componentParameter = generator.toComponentParameter(Map.of(), parameter);
+
+        assertArrayEquals(new Object[]{"HIGH", "LOW"}, componentParameter.getValues());
+    }
+
+    @Test
+    void emptyCategoricalParamStillRejectsNonEnums() throws NoSuchMethodException {
+        var parameter = firstParameter(EmptyCategoricalStringHolder.class);
+
+        assertThrows(IllegalArgumentException.class, () -> generator.toComponentParameter(Map.of(), parameter));
+    }
+
+    @Test
+    void emptyOrdinalParamStillRejectsNonEnums() throws NoSuchMethodException {
+        var parameter = firstParameter(EmptyOrdinalBooleanHolder.class);
+
+        assertThrows(IllegalArgumentException.class, () -> generator.toComponentParameter(Map.of(), parameter));
+    }
+
     private static Parameter firstParameter(Class<?> clazz) throws NoSuchMethodException {
         return clazz.getConstructors()[0].getParameters()[0];
     }
@@ -127,6 +179,42 @@ class AlgorithmCandidateGeneratorValidationTest {
 
     public static class InvalidRealIntegerHolder {
         public InvalidRealIntegerHolder(@RealParam(min = 0, max = 1) int value) {
+        }
+    }
+
+    private enum TestLevel {
+        LOW,
+        MEDIUM,
+        HIGH
+    }
+
+    public static class DefaultCategoricalEnumHolder {
+        public DefaultCategoricalEnumHolder(@CategoricalParam TestLevel value) {
+        }
+    }
+
+    public static class DefaultOrdinalEnumHolder {
+        public DefaultOrdinalEnumHolder(@OrdinalParam TestLevel value) {
+        }
+    }
+
+    public static class ExplicitCategoricalEnumHolder {
+        public ExplicitCategoricalEnumHolder(@CategoricalParam(strings = {"HIGH", "LOW"}) TestLevel value) {
+        }
+    }
+
+    public static class ExplicitOrdinalEnumHolder {
+        public ExplicitOrdinalEnumHolder(@OrdinalParam(strings = {"HIGH", "LOW"}) TestLevel value) {
+        }
+    }
+
+    public static class EmptyCategoricalStringHolder {
+        public EmptyCategoricalStringHolder(@CategoricalParam String value) {
+        }
+    }
+
+    public static class EmptyOrdinalBooleanHolder {
+        public EmptyOrdinalBooleanHolder(@OrdinalParam boolean value) {
         }
     }
 
