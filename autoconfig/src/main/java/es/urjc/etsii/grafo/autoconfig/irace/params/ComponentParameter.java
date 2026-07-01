@@ -30,12 +30,12 @@ public class ComponentParameter {
     }
 
     public static ComponentParameter from(String name, Class<?> javaType, CategoricalParam p) {
-        var values = checkLength(p.strings());
+        var values = resolveStringValues(javaType, p.strings());
         return new ComponentParameter(name, javaType, CATEGORICAL, values);
     }
 
     public static ComponentParameter from(String name, Class<?> javaType, OrdinalParam p) {
-        var values = checkLength(p.strings());
+        var values = resolveStringValues(javaType, p.strings());
         return new ComponentParameter(name, javaType, ORDINAL, values);
     }
 
@@ -52,7 +52,7 @@ public class ComponentParameter {
     }
 
     public static ComponentParameter from(String name, Class<?> javaType, Collection<Class<?>> candidates) {
-        Class[] names = new Class[candidates.size()];
+        Class<?>[] names = new Class<?>[candidates.size()];
         var iterator = candidates.iterator();
         for (int i = 0; i < candidates.size(); i++) {
             names[i] = iterator.next();
@@ -65,6 +65,21 @@ public class ComponentParameter {
             throw new IllegalArgumentException("Categorical and ordinal params must have at least one value, 0 provided");
         }
         return values;
+    }
+
+    private static Object[] resolveStringValues(Class<?> javaType, String[] values) {
+        if (values.length > 0) {
+            return values;
+        }
+        if (!javaType.isEnum()) {
+            return checkLength(values);
+        }
+        var enumValues = javaType.getEnumConstants();
+        var enumNames = new String[enumValues.length];
+        for (int i = 0; i < enumValues.length; i++) {
+            enumNames[i] = ((Enum<?>) enumValues[i]).name();
+        }
+        return checkLength(enumNames);
     }
 
     public String getName() {
