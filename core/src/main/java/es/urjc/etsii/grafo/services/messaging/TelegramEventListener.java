@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.services.messaging;
 
-import es.urjc.etsii.grafo.events.AbstractEventListener;
 import es.urjc.etsii.grafo.events.MorkEventListener;
 import es.urjc.etsii.grafo.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
@@ -11,7 +10,7 @@ import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 /**
  * Sends telegram messages on certain MorkEvents
  */
-public class TelegramEventListener extends AbstractEventListener {
+public class TelegramEventListener {
 
     private final TelegramService telegramService;
     private volatile boolean errorNotified = false;

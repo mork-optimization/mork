@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.orchestrator;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
-import es.urjc.etsii.grafo.events.EventPublisher;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.executors.Executor;
@@ -27,24 +27,27 @@ public class InstanceProperties<I extends Instance> extends AbstractOrchestrator
     public static final Set<String> ignoredProperties = Set.of(Instance.LOAD_TIME_NANOS);
     protected final InstanceManager<I> instanceManager;
     protected final InstanceConfiguration instanceConfiguration;
+    protected final MorkEventPublisher eventPublisher;
 
     public InstanceProperties(
             InstanceManager<I> instanceManager,
-            InstanceConfiguration instanceConfiguration
+            InstanceConfiguration instanceConfiguration,
+            MorkEventPublisher eventPublisher
     ) {
         this.instanceManager = instanceManager;
         this.instanceConfiguration = instanceConfiguration;
+        this.eventPublisher = eventPublisher;
     }
 
     @Override
     public void run(String... args) {
         long start = System.nanoTime();
         try {
-            EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectivesW(), List.of("Instance analysis")));
+            eventPublisher.publish(new ExecutionStartedEvent(Context.getObjectivesW(), List.of("Instance analysis")));
             analyzeInstances();
         } finally {
             long end = System.nanoTime();
-            EventPublisher.getInstance().publishEvent(new ExecutionEndedEvent(end - start));
+            eventPublisher.publish(new ExecutionEndedEvent(end - start));
         }
     }
 

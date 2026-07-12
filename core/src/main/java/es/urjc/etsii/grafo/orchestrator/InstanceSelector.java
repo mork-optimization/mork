@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.orchestrator;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
-import es.urjc.etsii.grafo.events.EventPublisher;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.io.Instance;
@@ -20,23 +20,24 @@ public class InstanceSelector<I extends Instance> extends InstanceProperties<I> 
 
     public InstanceSelector(
             InstanceManager<I> instanceManager,
-            InstanceConfiguration instanceConfiguration
+            InstanceConfiguration instanceConfiguration,
+            MorkEventPublisher eventPublisher
     ) {
-        super(instanceManager, instanceConfiguration);
+        super(instanceManager, instanceConfiguration, eventPublisher);
     }
 
     @Override
     public void run(String... args) {
         long start = System.nanoTime();
         try {
-            EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectivesW(), List.of("Instance analysis")));
+            eventPublisher.publish(new ExecutionStartedEvent(Context.getObjectivesW(), List.of("Instance analysis")));
             analyzeInstances();
             log.info("Launching selector");
             selectInstances();
             log.info("Completed");
         } finally {
             long end = System.nanoTime();
-            EventPublisher.getInstance().publishEvent(new ExecutionEndedEvent(end - start));
+            eventPublisher.publish(new ExecutionEndedEvent(end - start));
         }
     }
 

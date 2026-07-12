@@ -1,19 +1,17 @@
 # Event system
 
 ## What
-Events are actions or occurrences in any part of the application, that may or may not be handled by listeners. Events are propagated to event listeners asynchronously when certain actions happen (an instance is loaded, a solution is generated, an experiment ends, etc.)
+Events are actions or occurrences in any part of the application, that may or may not be handled by listeners. Events are queued by Mork and dispatched from a single event dispatcher thread when certain actions happen (an instance is loaded, a solution is generated, an experiment ends, etc.).
 
 ## Why
 Events allow users to easily extend the framework functionality without directly modifying it. Any application component can listen to events and react to them, even triggering events in response.
-Although not being able to immediately execute a method when something happens may appear a disadvantage, the asynchronous nature of events allows us implement complex behaviour 
-behind the scene, such as a concurrent or distributed experiment executor, while providing a very simple interface.
+Although not being able to immediately execute a method when something happens may appear a disadvantage, the dispatcher keeps user listener code outside the solver's critical path while preserving a simple interface.
 
 ## Event guarantees
 
 - Events are inmutable
 - Events cannot be canceled or deleted once triggered
-- All Mork events (in general, any event triggered by the framework) are guaranteed to be dispatched 
-in the correct order, even if the execution order (such us when using a concurrent executor) is not defined.
+- All Mork events are assigned an increasing event id and dispatched in queue order, even when the execution order itself is not deterministic, such as when using a concurrent executor.
 
 ## Event lifecycle
 Event lifecycle or dispatch order. You may safely assume that the solver engine behaves like a state machine transitioning using the events defined in the diagram.
@@ -65,11 +63,11 @@ Most event names are self-explanatory, in case not:
 # Implementing an event listener
 
 ## Backend
-Extend `AbstractEventListener` and create methods annotated by `@MorkEventListener.` For example, the telegram bot is implemented using a listener as follows:
+Create methods annotated by `@MorkEventListener.` Classes with `@MorkEventListener` methods are discovered automatically; users do not need to extend a base listener class or add Spring annotations. For example, the telegram bot is implemented using a listener as follows:
 
 ```Java
 
-public class TelegramEventListener extends AbstractEventListener {
+public class TelegramEventListener {
 
     private final TelegramService telegramService;
     private volatile boolean errorNotified = false;
@@ -116,5 +114,62 @@ If you want to listen to all framework events use the method `onAnyEvent()`.
 # Using custom events
 Triggering custom events is extremely easy, for example in custom algorithms such as genetic algorithms.
 
-Just extend `MorkEvent` class, fill with data from any part of your code, and propagate to the framework using `EventPublisher.getInstance().publishEvent(event)`.
-Remember that all events are processed asynchronously, and they MUST be immutable (i.e do not implement any setter).
+Just extend `MorkEvent`, fill it with data from any part of your code, and propagate it to the framework using `MorkEventPublisher`.
+
+```java
+public class PopulationUpdatedEvent extends MorkEvent {
+    private final int generation;
+    private final double bestScore;
+
+    public PopulationUpdatedEvent(int generation, double bestScore) {
+        this.generation = generation;
+        this.bestScore = bestScore;
+    }
+
+    public int getGeneration() {
+        return generation;
+    }
+
+    public double getBestScore() {
+        return bestScore;
+    }
+}
+
+public class GeneticAlgorithm extends Algorithm<MySolution, MyInstance> {
+
+    private final MorkEventPublisher eventPublisher;
+
+    public GeneticAlgorithm(MorkEventPublisher eventPublisher) {
+        this.eventPublisher = eventPublisher;
+    }
+
+    @Override
+    public MySolution algorithm(MyInstance instance) {
+        // [...]
+        eventPublisher.publish(new PopulationUpdatedEvent(generation, bestScore));
+        // [...]
+    }
+}
+```
+
+Events should be immutable, so prefer final fields and avoid setters.
+
+# Event API
+The REST and WebSocket APIs expose event envelopes. Each envelope contains the event metadata and the event payload:
+
+```json
+{
+  "eventId": 42,
+  "type": "SolutionGeneratedEvent",
+  "timestamp": 1782912345678,
+  "workerName": "worker-1",
+  "payload": {
+    "resultId": "d290f1ee-6c54-4b01-90e6-d701748f0851",
+    "experimentName": "default",
+    "instanceName": "instance-01",
+    "algorithmName": "myAlgorithm"
+  }
+}
+```
+
+Use the payload when reacting to event-specific fields. Use `resultId` from `SolutionGeneratedEvent` to retrieve heavy solution data from server-side services such as `ResultStore`.

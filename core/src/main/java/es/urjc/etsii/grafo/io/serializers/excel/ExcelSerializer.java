@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
-import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
@@ -118,7 +118,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     }
 
     /** {@inheritDoc} */
-    public void _serializeResults(String experimentName, List<SolutionGeneratedEvent<S, I>> results, Path p) {
+    public void _serializeResults(String experimentName, List<WorkUnitResult<S, I>> results, Path p) {
         log.debug("Exporting result data to XLSX...");
 
         File f = p.toFile();
@@ -370,7 +370,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         return ArrayUtil.merge(getCommonHeaders(), customProperties);
     }
 
-    protected String[] getCustomPropertyHeaders(List<? extends SolutionGeneratedEvent<?, ?>> results) {
+    protected String[] getCustomPropertyHeaders(List<? extends WorkUnitResult<?, ?>> results) {
         Set<String> customPropertyKeys = new TreeSet<>();
         Set<String> commonHeaders = Set.of(getCommonHeaders());
 
@@ -395,7 +395,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         }
     }
 
-    private static void validateCustomPropertyValue(String propertyName, Object value, SolutionGeneratedEvent<?, ?> result) {
+    private static void validateCustomPropertyValue(String propertyName, Object value, WorkUnitResult<?, ?> result) {
         if (isExcelScalarValue(value)) {
             return;
         }
@@ -433,12 +433,12 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
      * @param maximizing true if this is a maximizing problem, false otherwise
      * @return best value known for a given instance
      */
-    protected static Map<String, Double> bestResultPerInstance(Objective<?, ?, ?> objective, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> providers, boolean maximizing) {
+    protected static Map<String, Double> bestResultPerInstance(Objective<?, ?, ?> objective, List<? extends WorkUnitResult<?, ?>> results, List<ReferenceResultProvider> providers, boolean maximizing) {
 
         Map<String, Double> ourBestValuePerInstance = results
                 .stream()
                 .collect(Collectors.toMap(
-                        SolutionGeneratedEvent::getInstanceName,
+                        WorkUnitResult::getInstanceName,
                         solGenEvent -> solGenEvent.getObjectives().get(objective.getName()),
                         (a, b) -> maximizing ? Math.max(a, b) : Math.min(a, b)
                 ));
@@ -483,7 +483,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         ARRAY_FORMULA
     }
 
-    protected void fillRawSheet(SXSSFSheet rawSheet, boolean maximizing, List<? extends SolutionGeneratedEvent<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders, String[] customProperties) {
+    protected void fillRawSheet(SXSSFSheet rawSheet, boolean maximizing, List<? extends WorkUnitResult<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders, String[] customProperties) {
         // Best values per instance
         Map<String, Double> bestValuesPerInstance = bestResultPerInstance(Context.getMainObjective(), results, referenceResultProviders, maximizing);
 

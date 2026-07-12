@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.io.serializers.csv;
 
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
@@ -53,7 +53,7 @@ public class CSVSerializer<S extends Solution<S, I>, I extends Instance> extends
     /**
      * {@inheritDoc}
      */
-    public void _serializeResults(String experimentName, List<SolutionGeneratedEvent<S, I>> results, Path p) {
+    public void _serializeResults(String experimentName, List<WorkUnitResult<S, I>> results, Path p) {
         log.debug("Exporting result data to CSV...");
         var mainObjName = Context.getMainObjective().getName();
 

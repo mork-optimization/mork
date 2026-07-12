@@ -1,6 +1,7 @@
 # Developing
 - (Fix) Progress bar in console was drawn incorrectly while printing logs to console.
 - (Fix) Improve Excel serializer in some edge cases, print time with default with 2 decimals in pivot table.
+- (New) Autoconfig improvement: Categorical and ordinal params now pick all values if none are explicitly provided and target type is an enum.
 
 # v0.22
 - (Breaking) Simplify VNS implementation. New doc page for VNS.

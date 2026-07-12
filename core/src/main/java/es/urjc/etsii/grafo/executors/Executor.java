@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.executors;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.config.SolverConfig;
-import es.urjc.etsii.grafo.events.EventPublisher;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.exception.ExceptionHandler;
@@ -15,6 +15,7 @@ import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.terminal.ProgressAwareProgressBarConsumer;
+import es.urjc.etsii.grafo.results.ResultStore;
 import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Objective;
@@ -54,6 +55,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     protected final InstanceManager<I> instanceManager;
     protected final ReferenceResultManager referenceResultManager;
     protected final SolverConfig solverConfig;
+    protected final MorkEventPublisher eventPublisher;
+    protected final ResultStore<S, I> resultStore;
 
     private final ExceptionHandler<S, I> exceptionHandler;
 
@@ -91,7 +94,10 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             IOManager<S, I> io,
             InstanceManager<I> instanceManager,
             SolverConfig solverConfig,
-            List<ExceptionHandler<S, I>> exceptionHandlers, ReferenceResultManager referenceResultManager) {
+            List<ExceptionHandler<S, I>> exceptionHandlers,
+            ReferenceResultManager referenceResultManager,
+            MorkEventPublisher eventPublisher,
+            ResultStore<S, I> resultStore) {
         this.timeLimitCalculator = timeLimitCalculator;
         this.solverConfig = solverConfig;
         this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
@@ -100,6 +106,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         this.io = io;
         this.instanceManager = instanceManager;
         this.referenceResultManager = referenceResultManager;
+        this.eventPublisher = eventPublisher;
+        this.resultStore = resultStore;
     }
 
     public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instancePaths, long startTimestamp);
@@ -124,14 +132,9 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             throw new IllegalArgumentException("Warm-up repetitions must be >= 1, was: " + repetitions);
         }
         long startTime = System.nanoTime();
-        var events = EventPublisher.getInstance();
-        boolean shouldUnblockEvents = events != null && !events.isBlocked();
         log.info("Warming up JVM for experiment {} using instance {} ({} repetitions per algorithm)",
                 experiment.name(), instancePath, repetitions);
-        if (shouldUnblockEvents) {
-            events.block();
-        }
-        try {
+        try (var ignored = eventPublisher.mute()) {
             for (var algorithm : experiment.algorithms()) {
                 for (int i = 0; i < repetitions; i++) {
                     var workUnit = new WorkUnit<>(experiment.name(), instancePath, algorithm, i);
@@ -141,10 +144,6 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
                                 .formatted(experiment.name(), instancePath, algorithm.getName()));
                     }
                 }
-            }
-        } finally {
-            if (shouldUnblockEvents) {
-                events.unblock();
             }
         }
         long elapsed = System.nanoTime() - startTime;
@@ -236,7 +235,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
                 endTimeControl(true, workUnit);
             }
             exceptionHandler.handleException(workUnit.experimentName(), workUnit.i(), e, Optional.ofNullable(solution), instance, workUnit.algorithm());
-            EventPublisher.getInstance().publishEvent(new ErrorEvent(e));
+            eventPublisher.publish(new ErrorEvent(e));
             var timeData = Context.Configurator.getAndResetTimeEvents();
             return WorkUnitResult.failure(workUnit, instance.getId(), totalTime, UNDEF_TIME, timeData);
         }
@@ -248,8 +247,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             io.exportSolution(r, SolutionExportFrequency.ALL);
         }
 
-        var solutionGenerated = new SolutionGeneratedEvent<>(r.success(), r.iteration(), r.instancePath(), r.solution(), r.experimentName(), r.algorithm(), r.executionTime(), r.timeToTarget(), r.solutionProperties(), r.metrics(), r.timeData());
-        EventPublisher.getInstance().publishEvent(solutionGenerated);
+        resultStore.store(r);
+        eventPublisher.publish(new SolutionGeneratedEvent(r));
         if (log.isDebugEnabled()) {
             log.debug(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.iteration(), nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
         }

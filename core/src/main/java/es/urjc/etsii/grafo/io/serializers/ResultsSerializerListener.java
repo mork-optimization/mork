@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.io.serializers;
 
-import es.urjc.etsii.grafo.events.AbstractEventStorage;
+import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.events.MorkEventListener;
 import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
-import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.results.ResultStore;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ExceptionUtil;
 import es.urjc.etsii.grafo.util.IOUtil;
@@ -33,7 +33,7 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
     /**
      * Access to historic event stream
      */
-    private final AbstractEventStorage<S,I> eventStorage;
+    private final ResultStore<S,I> resultStore;
 
     /**
      * List of declared result serializers
@@ -42,11 +42,11 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
 
     /**
      * Construct a result serializer listener.
-     * @param eventStorage Event storage service
+     * @param resultStore result storage service
      * @param serializers List of available Result Serializers
      */
-    public ResultsSerializerListener(AbstractEventStorage<S,I> eventStorage, List<ResultsSerializer<S,I>> serializers) {
-        this.eventStorage = eventStorage;
+    public ResultsSerializerListener(ResultStore<S,I> resultStore, List<ResultsSerializer<S,I>> serializers) {
+        this.resultStore = resultStore;
         this.serializers = serializers;
     }
 
@@ -140,9 +140,9 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
         );
     }
 
-    public List<SolutionGeneratedEvent<S,I>> getExpData(String expName){
-        long solutionsInMemory = this.eventStorage.solutionsInMemory(expName);
-        var expData = eventStorage.getGeneratedSolEventForExp(expName).toList();
+    public List<WorkUnitResult<S,I>> getExpData(String expName){
+        long solutionsInMemory = this.resultStore.solutionsInMemory(expName);
+        var expData = resultStore.getResultsForExperiment(expName).toList();
         logger.debug("Solutions in memory: {} of {}", solutionsInMemory, expData.size());
         return expData;
     }

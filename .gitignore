@@ -46,6 +46,10 @@ venv
 docs/apidocs
 solutions*
 results*
+!core/src/main/java/es/urjc/etsii/grafo/results/
+!core/src/main/java/es/urjc/etsii/grafo/results/**
+!core/src/test/java/es/urjc/etsii/grafo/results/
+!core/src/test/java/es/urjc/etsii/grafo/results/**
 log*
 .benchmark
 **/docs

@@ -4,7 +4,7 @@ import es.urjc.etsii.grafo.tsp.model.TSPInstance;
 import es.urjc.etsii.grafo.tsp.model.TSPInstanceImporter;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
-import es.urjc.etsii.grafo.events.EventPublisher;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.orchestrator.InstanceProperties;
 import es.urjc.etsii.grafo.orchestrator.InstanceSelector;
@@ -14,7 +14,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.context.ApplicationEventPublisher;
 
 import java.io.File;
 import java.io.IOException;
@@ -52,9 +51,8 @@ class InstanceSelectorTest {
         config.setPreliminarOutputPath(tmpFolderF.getAbsolutePath());
 
         var instanceManager = new InstanceManager<>(config, solverConfigForTest(), new TSPInstanceImporter());
-        var eventMock = Mockito.mock(ApplicationEventPublisher.class);
-        new EventPublisher(eventMock);
-        var selector = new InstanceSelector<>(instanceManager, config); // The Python part is not actually tested!
+        var eventPublisher = Mockito.mock(MorkEventPublisher.class);
+        var selector = new InstanceSelector<>(instanceManager, config, eventPublisher); // The Python part is not actually tested!
         selector.run();
 
         verifyCSV(nInstances);

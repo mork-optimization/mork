@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.restcontroller;
 
-import es.urjc.etsii.grafo.events.EventPublisher;
-import es.urjc.etsii.grafo.events.MemoryEventStorage;
-import es.urjc.etsii.grafo.events.types.MorkEvent;
+import es.urjc.etsii.grafo.events.EventEnvelope;
+import es.urjc.etsii.grafo.events.InMemoryEventLog;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.PingEvent;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,15 +18,18 @@ import java.util.List;
 @CrossOrigin
 public class EventController {
 
-    private final MemoryEventStorage memoryEventStorage;
+    private final InMemoryEventLog eventLog;
+    private final MorkEventPublisher eventPublisher;
 
     /**
      * Create controller, done by Spring
      *
-     * @param memoryEventStorage event storage
+     * @param eventLog event replay log
+     * @param eventPublisher event publisher
      */
-    public EventController(MemoryEventStorage memoryEventStorage) {
-        this.memoryEventStorage = memoryEventStorage;
+    public EventController(InMemoryEventLog eventLog, MorkEventPublisher eventPublisher) {
+        this.eventLog = eventLog;
+        this.eventPublisher = eventPublisher;
     }
 
     /**
@@ -37,8 +40,8 @@ public class EventController {
      * @return Events in range [from, to).
      */
     @GetMapping("/events")
-    public List<MorkEvent> getEvents(@RequestParam int from, @RequestParam int to) {
-        return memoryEventStorage.getEvents(from, to);
+    public List<EventEnvelope> getEvents(@RequestParam int from, @RequestParam int to) {
+        return eventLog.getEvents(from, to);
     }
 
     /**
@@ -47,8 +50,8 @@ public class EventController {
      * @return last event
      */
     @GetMapping("/lastevent")
-    public MorkEvent getLastEvent(){
-        return memoryEventStorage.getLastEvent();
+    public EventEnvelope getLastEvent(){
+        return eventLog.getLastEvent();
     }
 
     /**
@@ -59,7 +62,7 @@ public class EventController {
     @GetMapping("/ping")
     public PingEvent ping(){
         var ping = new PingEvent();
-        EventPublisher.getInstance().publishEvent(ping);
+        eventPublisher.publish(ping);
         return ping;
     }
 }

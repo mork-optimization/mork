@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.executors;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.config.SolverConfig;
-import es.urjc.etsii.grafo.events.EventPublisher;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.AlgorithmProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.AlgorithmProcessingStartedEvent;
 import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
@@ -17,6 +17,7 @@ import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.util.ConcurrencyUtil;
+import es.urjc.etsii.grafo.results.ResultStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -54,9 +55,11 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
             IOManager<S, I> io,
             InstanceManager<I> instanceManager,
             List<ExceptionHandler<S,I>> exceptionHandlers,
-            ReferenceResultManager referenceResultManager
+            ReferenceResultManager referenceResultManager,
+            MorkEventPublisher eventPublisher,
+            ResultStore<S, I> resultStore
     ) {
-        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager);
+        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore);
         this.nWorkers = solverConfig.getnWorkers();
     }
 
@@ -87,8 +90,6 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
         var experimentName = experiment.name();
         var workUnits = getOrderedWorkUnits(experiment, instancePaths, solverConfig.getRepetitions());
 
-        var events = EventPublisher.getInstance();
-
         try (var pb = getGlobalSolvingProgressBar(experimentName, workUnits)) {
             // Launch execution of all work units in parallel
             var futures = submitAll(workUnits);
@@ -101,13 +102,13 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
                 var instanceName = instanceName(instancePath);
                 long instanceStartTime = System.nanoTime();
                 var refValues = referenceResultManager.getRefValueForAllObjectives(instanceName, false);
-                events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), refValues));
+                eventPublisher.publish(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), refValues));
 
                 pb.setExtraMessage(instanceName);
                 for (var algorithmWork : e.getValue().entrySet()) {
                     WorkUnitResult<S, I> algorithmBest = null;
                     var algorithm = algorithmWork.getKey();
-                    events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                    eventPublisher.publish(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
                     log.debug("Running algorithm {} for instance {}", algorithm.getName(), instanceName);
                     for (var workUnit : algorithmWork.getValue()) {
                         var workUnitResult = ConcurrencyUtil.await(workUnit);
@@ -123,7 +124,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
                     if(solverConfig.getRepetitions() > 1){
                         exportAlgorithmInstanceSolution(algorithmBest);
                     }
-                    events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                    eventPublisher.publish(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
 
                 }
 
@@ -132,7 +133,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
                     exportInstanceSolution(instanceBest);
                 }
                 long totalInstanceTime = System.nanoTime() - instanceStartTime;
-                events.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
+                eventPublisher.publish(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
             }
         }
 

@@ -3,8 +3,8 @@ package es.urjc.etsii.grafo.executors;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.config.SolverConfig;
-import es.urjc.etsii.grafo.events.EventPublisher;
-import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
+import es.urjc.etsii.grafo.events.InMemoryEventLog;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.PingEvent;
 import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
@@ -14,6 +14,7 @@ import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
+import es.urjc.etsii.grafo.results.ResultStore;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.solution.ValidationResult;
@@ -25,6 +26,7 @@ import es.urjc.etsii.grafo.util.random.RandomType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.util.List;
 import java.util.Map;
@@ -52,6 +54,8 @@ class ExecutorTest {
     SolutionValidator<TestSolution, TestInstance> validator;
     TimeLimitCalculator<TestSolution, TestInstance> timeLimitCalculator;
     IOManager<TestSolution, TestInstance> ioManager;
+    MorkEventPublisher eventPublisher;
+    ResultStore<TestSolution, TestInstance> resultStore;
 
     Executor<TestSolution, TestInstance> executor;
 
@@ -79,6 +83,9 @@ class ExecutorTest {
         when(timeLimitCalculator.timeLimitInMillis(any(TestInstance.class), any(Algorithm.class))).thenReturn(1_000L);
 
         this.ioManager = mock(IOManager.class);
+        this.eventPublisher = mock(MorkEventPublisher.class);
+        when(this.eventPublisher.mute()).thenReturn(() -> {});
+        this.resultStore = new ResultStore<>();
 
         this.referenceResultManager = new ReferenceResultManager(List.of(this.referenceResultProvider));
         Context.Configurator.setRefResultManager(referenceResultManager);
@@ -94,7 +101,9 @@ class ExecutorTest {
                 this.instanceManager,
                 new SolverConfig(), // Not relevant for this test? leave with default values
                 List.of(new NopExceptionHandler()),
-                referenceResultManager);
+                referenceResultManager,
+                eventPublisher,
+                resultStore);
     }
 
     @Test
@@ -153,7 +162,9 @@ class ExecutorTest {
                 this.instanceManager,
                 solverConfig,
                 List.of(new NopExceptionHandler()),
-                referenceResultManager);
+                referenceResultManager,
+                eventPublisher,
+                resultStore);
         var algorithm = new CountingAlgorithm("warmupAlgorithm");
         var experiment = new Experiment<>("WarmupExperiment", ExecutorTest.class, List.of(algorithm));
 
@@ -166,7 +177,9 @@ class ExecutorTest {
     @Test
     public void warmupBlocksEventsPublishedByAlgorithm(){
         var applicationEventPublisher = mock(ApplicationEventPublisher.class);
-        var eventPublisher = new EventPublisher(applicationEventPublisher);
+        var messagingTemplate = mock(SimpMessagingTemplate.class);
+        var eventLog = new InMemoryEventLog();
+        var eventPublisher = new MorkEventPublisher(applicationEventPublisher, messagingTemplate, eventLog);
         try {
             var warmupInstance = new TestInstance("warmup");
             when(instanceManager.getInstance("warmup")).thenReturn(warmupInstance);
@@ -182,15 +195,16 @@ class ExecutorTest {
                     this.instanceManager,
                     solverConfig,
                     List.of(new NopExceptionHandler()),
-                    referenceResultManager);
-            var experiment = new Experiment<>("WarmupExperiment", ExecutorTest.class, List.of(new EventPublishingAlgorithm()));
+                    referenceResultManager,
+                    eventPublisher,
+                    new ResultStore<>());
+            var experiment = new Experiment<>("WarmupExperiment", ExecutorTest.class, List.of(new EventPublishingAlgorithm(eventPublisher)));
 
             warmupExecutor.warmup(experiment, "warmup");
 
             verify(applicationEventPublisher, after(100).never()).publishEvent(isA(PingEvent.class));
         } finally {
-            eventPublisher.unblock();
-            eventPublisher.publishEvent(new ExecutionEndedEvent(0));
+            eventPublisher.destroy();
         }
     }
 
@@ -213,11 +227,13 @@ class ExecutorTest {
                 IOManager<TestSolution, TestInstance> io, InstanceManager<TestInstance> instanceManager,
                 SolverConfig solverConfig,
                 List<ExceptionHandler<TestSolution, TestInstance>> exceptionHandlers,
-                ReferenceResultManager referenceResultManager
+                ReferenceResultManager referenceResultManager,
+                MorkEventPublisher eventPublisher,
+                ResultStore<TestSolution, TestInstance> resultStore
 
         ) {
             super(solutionValidator, timeLimitCalculator,
-                    io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager);
+                    io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore);
         }
 
         @Override
@@ -253,14 +269,16 @@ class ExecutorTest {
     }
 
     private static class EventPublishingAlgorithm extends Algorithm<TestSolution, TestInstance> {
+        private final MorkEventPublisher eventPublisher;
 
-        private EventPublishingAlgorithm() {
+        private EventPublishingAlgorithm(MorkEventPublisher eventPublisher) {
             super("eventPublishingAlgorithm");
+            this.eventPublisher = eventPublisher;
         }
 
         @Override
         public TestSolution algorithm(TestInstance instance) {
-            EventPublisher.getInstance().publishEvent(new PingEvent());
+            eventPublisher.publish(new PingEvent());
             var solution = new TestSolution(instance, 8.0);
             solution.notifyUpdate();
             return solution;

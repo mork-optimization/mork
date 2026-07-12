@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.events.types;
 
 import es.urjc.etsii.grafo.solution.Objective;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -10,7 +11,7 @@ import java.util.Map;
  */
 public class ExecutionStartedEvent extends MorkEvent {
 
-    private final Map<String, Objective<?, ?, ?>> objectives;
+    private final Map<String, String> objectives;
     private final List<String> experimentNames;
 
     /**
@@ -20,7 +21,11 @@ public class ExecutionStartedEvent extends MorkEvent {
      * @param experimentNames experiment names
      */
     public ExecutionStartedEvent(Map<String, Objective<?, ?, ?>> objectives, List<String> experimentNames) {
-        this.objectives = objectives;
+        LinkedHashMap<String, String> map = new LinkedHashMap<>();
+        for (var e : objectives.entrySet()) {
+            map.putIfAbsent(e.getKey(), e.getValue().getFMode().name());
+        }
+        this.objectives = map;
         this.experimentNames = experimentNames;
     }
 
@@ -33,7 +38,7 @@ public class ExecutionStartedEvent extends MorkEvent {
         return experimentNames;
     }
 
-    public Map<String, Objective<?, ?, ?>> getObjectives() {
+    public Map<String, String> getObjectives() {
         return objectives;
     }
 }

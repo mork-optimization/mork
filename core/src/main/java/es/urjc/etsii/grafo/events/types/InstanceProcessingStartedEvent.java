@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * Triggered when starting an experiment before any other action occurs
@@ -11,7 +12,7 @@ import java.util.Map;
 public class InstanceProcessingStartedEvent extends MorkEvent{
     private final String experimentName;
     private final String instanceName;
-    private final List<? extends Algorithm<?,?>> algorithms;
+    private final List<String> algorithms;
     private final int repetitions;
     private final Map<String, Double> refValues;
 
@@ -22,12 +23,12 @@ public class InstanceProcessingStartedEvent extends MorkEvent{
      * @param instanceName instance name
      * @param algorithms list of algorithms to execute in the current experiment
      * @param repetitions number of repetitions for each (instance, algorithm) pair
-     * @param refValues best value for the given instance if known.
+     * @param refValues best values for the given instance, keyed by objective name
      */
     public InstanceProcessingStartedEvent(String experimentName, String instanceName, List<? extends Algorithm<?, ?>> algorithms, int repetitions, Map<String, Double> refValues) {
         this.experimentName = experimentName;
         this.instanceName = instanceName;
-        this.algorithms = algorithms;
+        this.algorithms = algorithms.stream().map(Algorithm::getName).collect(Collectors.toList());
         this.repetitions = repetitions;
         this.refValues = refValues;
     }
@@ -51,9 +52,9 @@ public class InstanceProcessingStartedEvent extends MorkEvent{
     }
 
     /**
-     * Get reference value for instance if available
+     * Get reference values for the instance.
      *
-     * @return reference value, or empty if not configured via a ReferenceResultProvider
+     * @return reference values keyed by objective name, or an empty map if none are configured
      */
     public Map<String, Double> getRefValues() {
         return refValues;
@@ -64,7 +65,7 @@ public class InstanceProcessingStartedEvent extends MorkEvent{
      *
      * @return list of algorithms
      */
-    public List<? extends Algorithm<?,?>> getAlgorithms() {
+    public List<String> getAlgorithms() {
         return algorithms;
     }
 

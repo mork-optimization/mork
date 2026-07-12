@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.services.messaging;
 
-import es.urjc.etsii.grafo.events.AbstractEventListener;
 import org.telegram.telegrambots.bots.DefaultBotOptions;
 import org.telegram.telegrambots.bots.TelegramLongPollingBot;
 import org.telegram.telegrambots.meta.TelegramBotsApi;
@@ -9,6 +8,7 @@ import org.telegram.telegrambots.meta.api.objects.Update;
 import org.telegram.telegrambots.meta.exceptions.TelegramApiException;
 import org.telegram.telegrambots.meta.generics.BotSession;
 import org.telegram.telegrambots.updatesreceivers.DefaultBotSession;
+import org.springframework.stereotype.Component;
 
 import java.util.logging.Logger;
 
@@ -17,13 +17,12 @@ import java.util.logging.Logger;
  * Particularly, this bot will be generally used to send the following message when the experiment ends:
  *     Experiment {{experimentName}} ended. Execution time: {{time}} seconds
  */
-public class TelegramService extends AbstractEventListener {
+@Component
+public class TelegramService {
 
     private static final Logger log = Logger.getLogger(MorkTelegramBot.class.getName());
     private static final int longPollingTimeoutInSeconds = 10;
     private final TelegramConfig telegramConfig;
-
-    private volatile boolean errorNotified = false;
 
     private MorkTelegramBot telegramBot;
     private BotSession session;

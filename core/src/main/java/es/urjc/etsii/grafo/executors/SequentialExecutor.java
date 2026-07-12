@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.executors;
 
 import es.urjc.etsii.grafo.config.SolverConfig;
-import es.urjc.etsii.grafo.events.EventPublisher;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.AlgorithmProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.AlgorithmProcessingStartedEvent;
 import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
@@ -15,6 +15,7 @@ import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
+import es.urjc.etsii.grafo.results.ResultStore;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnExpression;
@@ -47,9 +48,11 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
             InstanceManager<I> instanceManager,
             SolverConfig solverConfig,
             List<ExceptionHandler<S,I>> exceptionHandlers,
-            ReferenceResultManager referenceResultManager
+            ReferenceResultManager referenceResultManager,
+            MorkEventPublisher eventPublisher,
+            ResultStore<S, I> resultStore
     ) {
-        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager);
+        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore);
     }
 
     /**
@@ -57,8 +60,6 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
      */
     @Override
     public void executeExperiment(Experiment<S, I> experiment, List<String> instancePaths, long startTimestamp) {
-        var events = EventPublisher.getInstance();
-
         var algorithms = experiment.algorithms();
         var experimentName = experiment.name();
         var workUnits = getOrderedWorkUnits(experiment, instancePaths, solverConfig.getRepetitions());
@@ -72,12 +73,12 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                 pb.setExtraMessage(instanceName);
                 long instanceStartTime = System.nanoTime();
                 var refValues = referenceResultManager.getRefValueForAllObjectives(instanceName, false);
-                events.publishEvent(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), refValues));
+                eventPublisher.publish(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), refValues));
 
                 for (var algorithmWork : instanceWork.getValue().entrySet()) {
                     WorkUnitResult<S, I> algorithmBest = null;
                     var algorithm = algorithmWork.getKey();
-                    events.publishEvent(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                    eventPublisher.publish(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
                     logger.debug("Running algorithm {} for instance {}", algorithm.getName(), instanceName);
                     for (var workUnit : algorithmWork.getValue()) {
                         var workUnitResult = doWork(workUnit);
@@ -92,14 +93,15 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                     assert algorithmBest != null;
                     if(solverConfig.getRepetitions() > 1){
                         exportAlgorithmInstanceSolution(algorithmBest);
-                    }                    events.publishEvent(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                    }
+                    eventPublisher.publish(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
                 }
                 assert instanceBest != null;
                 if(algorithms.size() > 1){
                     exportInstanceSolution(instanceBest);
                 }
                 long totalInstanceTime = System.nanoTime() - instanceStartTime;
-                events.publishEvent(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
+                eventPublisher.publish(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
             }
         }
 

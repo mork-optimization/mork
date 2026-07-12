@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.io.serializers;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
-import es.urjc.etsii.grafo.events.AbstractEventStorage;
-import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.executors.WorkUnitResult;
+import es.urjc.etsii.grafo.results.ResultStore;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.*;
 import es.urjc.etsii.grafo.util.Context;
@@ -22,13 +22,13 @@ public class ResultsSerializerListenerTest {
     private static final Objective<TestMove, TestSolution, TestInstance> OBJ_MIN = Objective.of("Test", FMode.MINIMIZE, TestSolution::getScore, TestMove::getScoreChange);
 
     private final String expName = "TestExp";
-    private AbstractEventStorage<TestSolution, TestInstance> eventStorage;
+    private ResultStore<TestSolution, TestInstance> resultStore;
     private ResultsSerializer<TestSolution, TestInstance> serializer1; // After each instance should be triggered
     private ResultsSerializer<TestSolution, TestInstance> serializer2; // Only triggered after the experiment ends
     private ResultsSerializer<TestSolution, TestInstance> serializer3; // Always disabled
 
 
-    private List<SolutionGeneratedEvent<TestSolution,TestInstance>> data;
+    private List<WorkUnitResult<TestSolution,TestInstance>> data;
 
     private ResultsSerializerListener<TestSolution, TestInstance> listener;
 
@@ -50,9 +50,9 @@ public class ResultsSerializerListenerTest {
             return null;
         };
 
-        this.eventStorage = (AbstractEventStorage<TestSolution, TestInstance>) mock(AbstractEventStorage.class);
-        when(eventStorage.solutionsInMemory(expName)).thenReturn((long) data.size());
-        when(eventStorage.getGeneratedSolEventForExp(expName)).thenReturn(data.stream());
+        this.resultStore = (ResultStore<TestSolution, TestInstance>) mock(ResultStore.class);
+        when(resultStore.solutionsInMemory(expName)).thenReturn((long) data.size());
+        when(resultStore.getResultsForExperiment(expName)).thenReturn(data.stream());
 
 
         this.serializer1 = mock(ResultsSerializer.class);
@@ -67,7 +67,7 @@ public class ResultsSerializerListenerTest {
         when(this.serializer3.getConfig()).thenReturn(TestSerializerConfigUtils.create(false, ResultExportFrequency.EXPERIMENT_END, temp));
         doAnswer(answer).when(this.serializer3).serializeResults(anyString(), anyList(), any());
 
-        this.listener = new ResultsSerializerListener<>(this.eventStorage, Arrays.asList(this.serializer1, this.serializer2, this.serializer3));
+        this.listener = new ResultsSerializerListener<>(this.resultStore, Arrays.asList(this.serializer1, this.serializer2, this.serializer3));
     }
 
 

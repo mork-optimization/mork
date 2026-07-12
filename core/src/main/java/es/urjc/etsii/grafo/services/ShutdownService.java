@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.services;
 
-import es.urjc.etsii.grafo.events.EventAsyncConfigurer;
 import es.urjc.etsii.grafo.events.EventWebserverConfig;
 import es.urjc.etsii.grafo.events.MorkEventListener;
 import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
@@ -21,19 +20,16 @@ public class ShutdownService {
     private static final Logger log = LoggerFactory.getLogger(ShutdownService.class);
 
     private final ConfigurableApplicationContext appContext;
-    private final EventAsyncConfigurer eventAsyncConfigurer;
     private final boolean stopOnExperimentEnd;
 
     /**
      * <p>Constructor for ShutdownService.</p>
      *
      * @param appContext a {@link org.springframework.context.ApplicationContext} object.
-     * @param eventAsyncConfigurer a {@link EventAsyncConfigurer} object.
      * @param eventWebserverConfig a {@link EventWebserverConfig} object.
      */
-    public ShutdownService(ApplicationContext appContext, EventAsyncConfigurer eventAsyncConfigurer, EventWebserverConfig eventWebserverConfig) {
+    public ShutdownService(ApplicationContext appContext, EventWebserverConfig eventWebserverConfig) {
         this.appContext = (ConfigurableApplicationContext) appContext;
-        this.eventAsyncConfigurer = eventAsyncConfigurer;
         this.stopOnExperimentEnd = eventWebserverConfig.isStopOnExecutionEnd();
     }
 
@@ -62,8 +58,6 @@ public class ShutdownService {
         new Thread(() ->{
             try {
                 Thread.sleep(unit.toMillis(time));
-                log.debug("Shutting down Async Executor");
-                eventAsyncConfigurer.shutdownAsyncExecutor();
                 log.debug("Closing context and exiting");
                 appContext.close();
             } catch (InterruptedException e) {

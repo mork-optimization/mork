@@ -4,7 +4,6 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
-import es.urjc.etsii.grafo.autoconfig.controller.IraceUtil;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
@@ -12,7 +11,7 @@ import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
-import es.urjc.etsii.grafo.events.EventPublisher;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
@@ -85,6 +84,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final AlgorithmBuilder<S, I> algorithmBuilder;
     private final InstanceManager<I> instanceManager;
     private final Optional<SolutionValidator<S, I>> validator;
+    private final MorkEventPublisher eventPublisher;
 
     private final Optional<TimeLimitCalculator<S, I>> timeLimitCalculator;
 
@@ -122,7 +122,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             List<SolutionBuilder<S, I>> solutionBuilders,
             List<AlgorithmBuilder<S, I>> algorithmBuilders,
             Optional<SolutionValidator<S, I>> validator, Optional<TimeLimitCalculator<S, I>> timeLimitCalculator,
-            AlgorithmCandidateGenerator algorithmCandidateGenerator
+            AlgorithmCandidateGenerator algorithmCandidateGenerator,
+            MorkEventPublisher eventPublisher
     ) {
         this.solverConfig = solverConfig;
         this.iraceConfig = iraceConfig;
@@ -137,6 +138,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         this.algorithmBuilder = decideImplementation(algorithmBuilders, AutomaticAlgorithmBuilder.class);
         this.algorithmCandidateGenerator = algorithmCandidateGenerator;
         this.validator = validator;
+        this.eventPublisher = eventPublisher;
     }
 
 
@@ -171,19 +173,19 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         log.info("Ready to start!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
-        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectivesW(), experimentName));
+        eventPublisher.publish(new ExecutionStartedEvent(Context.getObjectivesW(), experimentName));
         try {
             launchIrace();
         } finally {
             long totalExecutionTime = System.nanoTime() - startTime;
-            EventPublisher.getInstance().publishEvent(new ExecutionEndedEvent(totalExecutionTime));
+            eventPublisher.publish(new ExecutionEndedEvent(totalExecutionTime));
             log.info("Total execution time: {} (s)", nanosToSecs(totalExecutionTime));
         }
     }
 
     private void launchIrace() {
         log.info("Running experiment: IRACE autoconfig");
-        EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(IRACE_EXPNAME, new ArrayList<>()));
+        eventPublisher.publish(new ExperimentStartedEvent(IRACE_EXPNAME, new ArrayList<>()));
         // Users must implement an Instance Importer to explain how to load instances
         // Use that class to see if the project is executing inside a JAR file or inside an IDE, to appropriately fix path
         // TODO: Review and improve
@@ -196,7 +198,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         iraceIntegration.runIrace(isJAR);
         long end = System.nanoTime();
         log.info("Finished running experiment: IRACE autoconfig");
-        EventPublisher.getInstance().publishEvent(new ExperimentEndedEvent(IRACE_EXPNAME, end - start, startTimestamp));
+        eventPublisher.publish(new ExperimentEndedEvent(IRACE_EXPNAME, end - start, startTimestamp));
     }
 
     private void extractIraceFiles(boolean isJar) {

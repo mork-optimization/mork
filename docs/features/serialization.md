@@ -75,19 +75,20 @@ Any dependency can be declared in the constructor of your implementation, and it
 ```java
 public class MyExcelCustomizer extends ExcelCustomizer {
 
-    private final AbstractEventStorage<MySolution, MyInstance> events;
-    public MyExcelCustomizer(AbstractEventStorage<MySolution, MyInstance> events) {
-        this.events = events;
+    private final ResultStore<MySolution, MyInstance> resultStore;
+
+    public MyExcelCustomizer(ResultStore<MySolution, MyInstance> resultStore) {
+        this.resultStore = resultStore;
     }
 
     @Override
     public void customize(XSSFWorkbook excelBook) {
         var sheet = excelBook.createSheet("MyCustomSheet");
 
-        var allSolutions = this.events.getEventsByType(SolutionGeneratedEvent.class).toList();
-        for(var event: allSolutions){
-            double score = event.getScore();
-            long execTime = event.getExecutionTime();
+        var results = this.resultStore.getResultsForExperiment("default").toList();
+        for(var result: results){
+            double score = result.getScore();
+            long execTime = result.getExecutionTime();
             
             // Do some processing and write it to the excel file!
             sheet.createRow(); 
@@ -96,7 +97,7 @@ public class MyExcelCustomizer extends ExcelCustomizer {
     }
 }
 ```
-See [event docs](events.md) for more information about how the event system works. All events generated during the execution are available using an `AbstractEventStorage`.
+See [event docs](events.md) for more information about how the event system works. Generated solutions are available through `ResultStore`, which stores full `WorkUnitResult` instances separately from the lightweight event payloads.
 It is guaranteed that the customize method will be invoked **after** the default Excel sheets are generated, so you may always modify the existing data and adapt it to your needs.
 
 Mork uses Apache POI 5 to create the XLSX files, see the [official Javadoc](https://poi.apache.org/apidocs/index.html) for more information on how to
@@ -247,4 +248,3 @@ All algorithms implemented in Mork register the changes to the objective functio
 Metrics.add(BestObjective.class, solution.getScore());
 ```
 where `solution` is the best solution managed by the algorithm.
-

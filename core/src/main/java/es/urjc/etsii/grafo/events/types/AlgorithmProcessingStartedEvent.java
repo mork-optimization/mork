@@ -10,7 +10,7 @@ import es.urjc.etsii.grafo.solution.Solution;
 public class AlgorithmProcessingStartedEvent<S extends Solution<S, I>, I extends Instance> extends MorkEvent {
     private final String experimentName;
     private final String instanceName;
-    private final Algorithm<S,I> algorithm;
+    private final String algorithmName;
     private final int repetitions;
 
     /**
@@ -24,7 +24,7 @@ public class AlgorithmProcessingStartedEvent<S extends Solution<S, I>, I extends
     public AlgorithmProcessingStartedEvent(String experimentName, String instanceName, Algorithm<S, I> algorithm, int repetitions) {
         this.experimentName = experimentName;
         this.instanceName = instanceName;
-        this.algorithm = algorithm;
+        this.algorithmName = algorithm.getName();
         this.repetitions = repetitions;
     }
 
@@ -52,8 +52,8 @@ public class AlgorithmProcessingStartedEvent<S extends Solution<S, I>, I extends
      *
      * @return list of algorithms
      */
-    public Algorithm<S, I> getAlgorithm() {
-        return algorithm;
+    public String getAlgorithmName() {
+        return algorithmName;
     }
 
     /**

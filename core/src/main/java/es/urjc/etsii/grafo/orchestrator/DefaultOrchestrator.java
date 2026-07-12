@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.orchestrator;
 
 import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.SolverConfig;
-import es.urjc.etsii.grafo.events.EventPublisher;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
@@ -40,6 +40,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
     private final Optional<SolutionValidator<S, I>> validator;
     private final Executor<S, I> executor;
     private final SolverConfig solverConfig;
+    private final MorkEventPublisher eventPublisher;
 
     /**
      * <p>Constructor for UserExperimentOrchestrator.</p>
@@ -55,7 +56,8 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
             InstanceManager<I> instanceManager,
             ExperimentManager<S, I> experimentManager,
             Optional<SolutionValidator<S,I>> validator,
-            Executor<S, I> executor
+            Executor<S, I> executor,
+            MorkEventPublisher eventPublisher
     ) {
         this.solverConfig = solverConfig;
         this.blockConfig = blockConfig;
@@ -63,6 +65,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
         this.experimentManager = experimentManager;
         this.validator = validator;
         this.executor = executor;
+        this.eventPublisher = eventPublisher;
     }
 
     protected void runBenchmark() {
@@ -93,7 +96,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
         if(experiments.size() > 1){
             log.info("Experiments to execute: {}", experiments.keySet());
         }
-        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectivesW(), new ArrayList<>(experiments.keySet())));
+        eventPublisher.publish(new ExecutionStartedEvent(Context.getObjectivesW(), new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
         try {
             executor.startup();
@@ -103,7 +106,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
         } finally {
             executor.shutdown();
             long totalExecutionTime = System.nanoTime() - startTime;
-            EventPublisher.getInstance().publishEvent(new ExecutionEndedEvent(totalExecutionTime));
+            eventPublisher.publish(new ExecutionEndedEvent(totalExecutionTime));
             log.info("Total execution time: {} (s)", String.format("%.2f", nanosToSecs(totalExecutionTime)));
         }
     }
@@ -119,10 +122,10 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
             var warmupInstancePath = instanceManager.getWarmupInstancePath(experiment.name(), instancePaths);
             executor.warmup(experiment, warmupInstancePath);
         }
-        EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(experiment.name(), instancePaths));
+        eventPublisher.publish(new ExperimentStartedEvent(experiment.name(), instancePaths));
         executor.executeExperiment(experiment, instancePaths, startTimestamp);
         long experimentExecutionTime = System.nanoTime() - startTime;
-        EventPublisher.getInstance().publishEvent(new ExperimentEndedEvent(experiment.name(), experimentExecutionTime, startTimestamp));
+        eventPublisher.publish(new ExperimentEndedEvent(experiment.name(), experimentExecutionTime, startTimestamp));
         log.info("Finished running experiment: {}", experiment.name());
     }
 
