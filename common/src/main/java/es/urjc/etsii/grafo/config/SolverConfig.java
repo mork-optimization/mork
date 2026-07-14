@@ -193,14 +193,18 @@ public class SolverConfig {
 
     /**
      * <p>Getter for the field <code>nWorkers</code>.</p>
-     * If nWorkers was set to 0 or a negative value, returns availableProcessors() / 2
+     * If nWorkers was set to 0 or a negative value, returns half the available processors, with a minimum of one worker.
      * @return a int.
      */
     public int getnWorkers() {
         if (nWorkers < 1) {
-            return Runtime.getRuntime().availableProcessors() / 2;
+            return defaultWorkerCount(Runtime.getRuntime().availableProcessors());
         }
         return nWorkers;
+    }
+
+    static int defaultWorkerCount(int availableProcessors) {
+        return Math.max(1, availableProcessors / 2);
     }
 
     /**

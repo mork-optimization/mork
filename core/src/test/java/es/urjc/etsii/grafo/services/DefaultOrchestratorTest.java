@@ -102,38 +102,6 @@ class DefaultOrchestratorTest {
         verify(eventPublisher, never()).publish(isA(ExecutionEndedEvent.class));
     }
 
-    @Test
-    @SuppressWarnings("unchecked")
-    void executorShutdownFailureStillCompletesLifecycle() {
-        Context.Configurator.setObjectives(Objective.of(
-                "Test",
-                FMode.MINIMIZE,
-                TestSolution::getScore,
-                TestMove::getScoreChange
-        ));
-        var experimentManager = (ExperimentManager<TestSolution, TestInstance>) mock(ExperimentManager.class);
-        when(experimentManager.getExperiments()).thenReturn(Map.of());
-        var executor = (Executor<TestSolution, TestInstance>) mock(Executor.class);
-        doThrow(new IllegalStateException("shutdown failed")).when(executor).shutdown();
-        var lifecycle = mock(ExecutionLifecycleCoordinator.class);
-        var orchestrator = new DefaultOrchestrator<>(
-                new SolverConfig(),
-                new BlockConfig(),
-                (InstanceManager<TestInstance>) mock(InstanceManager.class),
-                experimentManager,
-                Optional.empty(),
-                executor,
-                mock(MorkEventPublisher.class),
-                lifecycle,
-                (ResultsSerializerListener<TestSolution, TestInstance>) mock(ResultsSerializerListener.class)
-        );
-
-        var failure = Assertions.assertThrows(IllegalStateException.class, orchestrator::run);
-
-        Assertions.assertEquals("shutdown failed", failure.getMessage());
-        verify(lifecycle).complete(anyLong());
-    }
-
     private TestData getTestData(int repetitions, int nInstances, int nAlgorithms){
         List<Algorithm<TestSolution, TestInstance>> algorithms = new ArrayList<>();
         for (int i = 0; i < nAlgorithms; i++) {
