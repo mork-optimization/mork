@@ -169,12 +169,13 @@ var improver = new LocalSearchFirstImprovement<MyMove, MySolution, MyInstance>(
 ## Using local search inside an algorithm
 
 ```java
-var algorithm = new MultiStartAlgorithm<>(
-    "MultiStart+LS",
-    constructive,
-    new LocalSearchBestImprovement<>(new MyNeighborhood()),
-    100
-);
+// MultiStartAlgorithm wraps another Algorithm: build the base algorithm first...
+var base = new SimpleAlgorithm<>("MultiStart+LS", constructive,
+    new LocalSearchBestImprovement<>(new MyNeighborhood()));
+// ...and then wrap it, configuring the number of iterations through the builder
+var algorithm = new MultiStartAlgorithmBuilder<MySolution, MyInstance>()
+    .withMaxIterations(100)
+    .build(base);
 ```
 
 Local search is also a common improvement phase in GRASP, VNS, and other multi-phase metaheuristics.

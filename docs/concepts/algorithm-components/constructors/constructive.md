@@ -88,12 +88,12 @@ See [GRASP documentation](grasp.md) for details on Greedy Randomized Adaptive Se
 var constructor = new MyGreedyConstructive();
 var improver = new MyLocalSearch();
 
-var multiStart = new MultiStartAlgorithm<>(
-    "GRASP",
-    constructor,
-    improver,
-    100  // iterations
-);
+// MultiStartAlgorithm wraps another Algorithm, so first build the base algorithm...
+var base = new SimpleAlgorithm<>("GRASP", constructor, improver);
+// ...and then wrap it, configuring the number of iterations through the builder
+var multiStart = new MultiStartAlgorithmBuilder<MySolution, MyInstance>()
+    .withMaxIterations(100)
+    .build(base);
 ```
 
 ### Standalone

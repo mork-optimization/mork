@@ -4,7 +4,7 @@ In this page, we will learn how to create an empty Mork project
 
 ## Requirements
 Before creating a project, you will need to have installed a recent Java SDK and an IDE.
-We recommend using the latest LTS Java version (Java 17, as of 2022), and IntelliJ as IDE, 
+We recommend using the latest LTS Java version (Java 25, as of 2026), and IntelliJ as IDE, 
 either the community or professional edition.
 
 !!! tip

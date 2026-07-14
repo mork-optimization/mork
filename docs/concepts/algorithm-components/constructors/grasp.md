@@ -92,8 +92,10 @@ Greedy Random GRASP evaluates the full candidate list, keeps the moves whose sco
 - for minimization, the acceptance limit is `min + alpha * (max - min)`;
 - for maximization, the acceptance limit is `max + alpha * (min - max)`.
 
-All moves whose value is `>=` to the limit are accepted to the restricted candidate list. 
-A random move is returned from the restricted candidate list.
+A move is accepted into the restricted candidate list when its value is **at least as good as
+the limit**, evaluated with `objective.isBetterOrEqual(value, limit)`. Because the check is
+direction-aware, for maximization this means `value >= limit`, while for minimization it means
+`value <= limit`. A random move is then returned from the restricted candidate list.
 
 Builder example:
 
@@ -171,12 +173,12 @@ var constructive = new GraspBuilder<MyMove, MySolution, MyInstance>()
     .withListManager(new MyListManager())
     .build();
 
-var algorithm = new MultiStartAlgorithm<>(
-    "GRASP",
-    constructive,
-    new MyLocalSearch(),
-    100
-);
+// MultiStartAlgorithm wraps another Algorithm: build the base algorithm first...
+var base = new SimpleAlgorithm<>("GRASP", constructive, new MyLocalSearch());
+// ...and then wrap it, configuring the number of iterations through the builder
+var algorithm = new MultiStartAlgorithmBuilder<MySolution, MyInstance>()
+    .withMaxIterations(100)
+    .build(base);
 ```
 
 

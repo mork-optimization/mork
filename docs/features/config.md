@@ -25,9 +25,9 @@ java -jar myproject.jar
 ```
 Note that the equivalent environment variable for a property is calculated as: `-` are removed, `.` replaced with `_`, and the string is uppercased.
 Environment variables can useful for configuring a given environment for all experiments. Example: if I have a powerful server with 96 real cores (no hyper-threading)
-I can export the property `SOLVER_NWORKERS`, and `SOLVER_PARALLELEXEUCUTOR`, such as:
+I can export the property `SOLVER_NWORKERS`, and `SOLVER_PARALLELEXECUTOR`, such as:
 ```bash
-export SOLVER_PARALLELEXEUCUTOR=true
+export SOLVER_PARALLELEXECUTOR=true
 export SOLVER_NWORKERS=96
 ```
 This way, any experiment launched in this machine will automatically use the parallel executor with 96 cores. This can be automated using `.bashrc` if using Bash, or `.zshrc` if using zsh.

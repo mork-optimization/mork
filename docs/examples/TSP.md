@@ -22,7 +22,7 @@ from *[The Trials And Tribulations Of The Traveling Salesman](https://medium.com
 
 ### 1.1 Prerequisites
 
-- Java 17 is required to run. Please download and install a recent JDK.
+- Java 25 is required to run. Please download and install a recent JDK.
 - [Maven](https://maven.apache.org/)
 - This is not really a prerequisite, but we recommend using an IDE, such as [IntelliJ IDEA](https://www.jetbrains.com/idea/).
   
@@ -133,7 +133,7 @@ $$
 If you are interested in a deep description of the instances to test the proposed algorithm with other type of instance,
 have a look to the [TSPLIB documentation](http://comopt.ifi.uni-heidelberg.de/software/TSPLIB95/tsp95.pdf).
 
-Then, open file `TSPInstance.java` located in `src/main/java/es/urjc/etsii/grafo/TSP/model`. This class will represent 
+Then, open file `TSPInstance.java` located in `src/main/java/es/urjc/etsii/grafo/tsp/model` (the project name is lowercased in the package path). This class will represent 
 an instance of the problem, i.e., a list of x/y coordinates. Therefore, we will carry out the following tasks:
 
 - Define a structure that represents 2D coordinates.
@@ -722,10 +722,10 @@ experiment we are going to define 5 algorithms:
 public List<Algorithm<TSPSolution, TSPInstance>> getAlgorithms() {  
   var algorithms = new ArrayList<Algorithm<TSPSolution, TSPInstance>>();
   algorithms.add(new SimpleAlgorithm<>("Random", new TSPRandomConstructive()));  
-  algorithms.add(new SimpleAlgorithm<>("Random-FI-Insert", new TSPRandomConstructive(),new LocalSearchFirstImprovement<>(super.isMaximizing(), new InsertNeighborhood())));  
-  algorithms.add(new SimpleAlgorithm<>("Random-BI-Insert", new TSPRandomConstructive(),new LocalSearchBestImprovement<>(super.isMaximizing(), new InsertNeighborhood())));  
-  algorithms.add(new SimpleAlgorithm<>("Random-FI-Swap", new TSPRandomConstructive(),new LocalSearchFirstImprovement<>(super.isMaximizing(), new SwapNeighborhood())));  
-  algorithms.add(new SimpleAlgorithm<>("Random-BI-Swap", new TSPRandomConstructive(),new LocalSearchBestImprovement<>(super.isMaximizing(), new SwapNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm<>("Random-FI-Insert", new TSPRandomConstructive(),new LocalSearchFirstImprovement<>(new InsertNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm<>("Random-BI-Insert", new TSPRandomConstructive(),new LocalSearchBestImprovement<>(new InsertNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm<>("Random-FI-Swap", new TSPRandomConstructive(),new LocalSearchFirstImprovement<>(new SwapNeighborhood())));  
+  algorithms.add(new SimpleAlgorithm<>("Random-BI-Swap", new TSPRandomConstructive(),new LocalSearchBestImprovement<>(new SwapNeighborhood())));  
   return algorithms;
 }
 ```
