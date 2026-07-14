@@ -25,6 +25,11 @@ and interactive data automatically without intervention. By default, the Excel f
 one with the raw data and another one with an interactive pivot table that allows us to quickly filter and 
 analyze the results.
 
+The raw results are stored in an Excel table named `RawResultsTable`, and the pivot table uses that table as its
+source. To add results manually, paste rows with the same columns into the first row directly below the raw results
+table, then refresh the pivot table using **Data > Refresh All**. Excel expands the source table automatically, so
+the pivot source range does not need to be edited. The first raw-data header contains the same instructions as a note.
+
 ### Configuring pivot table fields
 
 Although the fields in the pivot table can be configured in Excel, in order to save time we can optionally configure them directly

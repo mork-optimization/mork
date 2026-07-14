@@ -14,6 +14,7 @@ import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.ExceptionUtil;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
+import org.apache.poi.ss.usermodel.Table;
 import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellReference;
@@ -59,6 +60,11 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     public static final String RAW_SHEET = "Raw Results";
 
     /**
+     * Raw results table name
+     */
+    public static final String RAW_TABLE = "RawResultsTable";
+
+    /**
      * Pivot table sheet name
      */
     public static final String PIVOT_SHEET = "Pivot Table";
@@ -88,6 +94,9 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
      * full numeric value stored in the workbook.
      */
     static final String TIME_NUMBER_FORMAT = "0.##";
+
+    static final String RAW_TABLE_INSTRUCTIONS = "To add results, paste rows with the same columns into the first row " +
+            "directly below this table, then refresh the Pivot Table using Data > Refresh All.";
 
     private final boolean maximizing;
     private final Optional<ExcelCustomizer> excelCustomizer;
@@ -127,40 +136,50 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             prepareInstancePropertyData(experimentName);
             String[] customProperties = getCustomPropertyHeaders(results);
             String[] headers = getRawHeaders(customProperties);
+            Object[][] rawData = buildRawSheetData(maximizing, results, referenceResultProviders, headers, customProperties);
 
-            try (
-                    var streamExcelBook = new SXSSFWorkbook();
-                    var outputStream = new FileOutputStream(f)
-            ) {
-                streamExcelBook.setCompressTempFiles(true);
-                var excelBook = streamExcelBook.getXSSFWorkbook();
-                var rawSheet = streamExcelBook.createSheet(RAW_SHEET);
-                var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
-                var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
+            try (var excelBook = new XSSFWorkbook()) {
+                var rawXssfSheet = excelBook.createSheet(RAW_SHEET);
+                headRawSheet(rawXssfSheet, customProperties);
+                var rawTable = createRawTable(rawXssfSheet, rawData.length, headers.length);
 
-                var areaString = String.format("%s1:%s%s", convertNumToColString(0), convertNumToColString(headers.length - 1), 1_000_000);
-                var area = new AreaReference(areaString, SpreadsheetVersion.EXCEL2007);
-                headRawSheet(rawSheet, customProperties);
-                fillPivotSheet(pivotSheet, area, rawSheet);
+                try (
+                        var streamExcelBook = new SXSSFWorkbook(excelBook);
+                        var outputStream = new FileOutputStream(f)
+                ) {
+                    streamExcelBook.setCompressTempFiles(true);
 
-                // Check and fill instance sheet if appropiate
-                fillInstanceSheet(experimentName, excelBook);
+                    // Create XSSF-only sheets after wrapping the workbook so SXSSF does not replace their sheet data.
+                    var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
+                    var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
+                    fillPivotSheet(pivotSheet, rawTable);
 
-                fillOtherDataSheet(otherDataSheet);
+                    // The XSSF header was needed to initialize the table and pivot cache. Stream it with the remaining
+                    // raw data so it is included when SXSSF replaces the sheet data during workbook serialization.
+                    rawXssfSheet.removeRow(rawXssfSheet.getRow(0));
+                    addRawTableInstructions(rawXssfSheet);
+                    var rawSheet = streamExcelBook.getSheet(RAW_SHEET);
+                    headRawSheet(rawSheet, customProperties);
 
-                fillRawSheet(rawSheet, maximizing, results, referenceResultProviders, customProperties);
+                    // Check and fill instance sheet if appropiate
+                    fillInstanceSheet(experimentName, excelBook);
 
-                if(this.excelCustomizer.isPresent()){
-                    var realExcelCustomizer = excelCustomizer.get();
-                    log.debug("Calling Excel customizer: {}", realExcelCustomizer.getClass().getSimpleName());
-                    realExcelCustomizer.customize(excelBook);
-                } else {
-                    log.debug("ExcelCustomizer implementation not found");
+                    fillOtherDataSheet(otherDataSheet);
+
+                    writeRawSheetData(rawSheet, rawData);
+
+                    if(this.excelCustomizer.isPresent()){
+                        var realExcelCustomizer = excelCustomizer.get();
+                        log.debug("Calling Excel customizer: {}", realExcelCustomizer.getClass().getSimpleName());
+                        realExcelCustomizer.customize(excelBook);
+                    } else {
+                        log.debug("ExcelCustomizer implementation not found");
+                    }
+                    // Excel should recalculate on open always
+                    streamExcelBook.setForceFormulaRecalculation(true);
+                    streamExcelBook.write(outputStream);
+                    log.debug("XLSX created successfully");
                 }
-                // Excel should recalculate on open always
-                streamExcelBook.setForceFormulaRecalculation(true);
-                streamExcelBook.write(outputStream);
-                log.debug("XLSX created successfully");
             }
         } catch (Exception e) {
             Throwable rootCause = ExceptionUtil.getRootCause(e);
@@ -201,6 +220,35 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         var row4 = sheet.createRow(4);
         writeCell(row4.createCell(0), "N Processors", CType.VALUE);
         writeCell(row4.createCell(1), benchmarkInfo.info().nProcessors(), CType.VALUE);
+    }
+
+    private Table createRawTable(XSSFSheet rawSheet, int rawDataRows, int columnCount) {
+        int lastRow = Math.max(1, rawDataRows - 1);
+        var tableArea = new AreaReference(
+                new CellReference(0, 0),
+                new CellReference(lastRow, columnCount - 1),
+                SpreadsheetVersion.EXCEL2007
+        );
+        var table = rawSheet.createTable(tableArea);
+        table.setName(RAW_TABLE);
+        table.setDisplayName(RAW_TABLE);
+        table.setStyleName("TableStyleLight1");
+        table.getCTTable().addNewAutoFilter().setRef(tableArea.formatAsString());
+        return table;
+    }
+
+    private void addRawTableInstructions(XSSFSheet rawSheet) {
+        var creationHelper = rawSheet.getWorkbook().getCreationHelper();
+        var anchor = creationHelper.createClientAnchor();
+        anchor.setCol1(0);
+        anchor.setCol2(4);
+        anchor.setRow1(0);
+        anchor.setRow2(4);
+
+        var comment = rawSheet.createDrawingPatriarch().createCellComment(anchor);
+        comment.setAddress(0, 0);
+        comment.setAuthor("Mork");
+        comment.setString(creationHelper.createRichTextString(RAW_TABLE_INSTRUCTIONS));
     }
 
     protected void fillInstanceSheet(String expName, XSSFWorkbook excelBook) {
@@ -276,7 +324,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         ));
     }
 
-    void fillPivotSheet(XSSFSheet pivotSheet, AreaReference sourceDataArea, SXSSFSheet source) {
+    void fillPivotSheet(XSSFSheet pivotSheet, Table sourceTable) {
         // Generate tables like
         /*                  ____________________________________________________________________________________
          *  ______________ |                Algorithm 1              |                Algorithm 2              |
@@ -286,7 +334,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
            .....................................................................................................
          *  etc
          */
-        var pivotTable = pivotSheet.createPivotTable(sourceDataArea, new CellReference(0, 0), source);
+        var pivotTable = pivotSheet.createPivotTable(sourceTable, new CellReference(0, 0));
 
         var ctptd = pivotTable.getCTPivotTableDefinition();
         ctptd.setColGrandTotals(config.isColumnGrandTotal());
@@ -483,18 +531,24 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         ARRAY_FORMULA
     }
 
-    protected void fillRawSheet(SXSSFSheet rawSheet, boolean maximizing, List<? extends WorkUnitResult<?, ?>> results, List<ReferenceResultProvider> referenceResultProviders, String[] customProperties) {
+    private Object[][] buildRawSheetData(
+            boolean maximizing,
+            List<? extends WorkUnitResult<?, ?>> results,
+            List<ReferenceResultProvider> referenceResultProviders,
+            String[] headers,
+            String[] customProperties
+    ) {
         // Best values per instance
         Map<String, Double> bestValuesPerInstance = bestResultPerInstance(Context.getMainObjective(), results, referenceResultProviders, maximizing);
 
-        // Create headers
-        String[] headers = getRawHeaders(customProperties);
         int customPropertiesStartIndex = headers.length - customProperties.length;
 
         int nColumns = headers.length;
+        long rowsForProvider = (long) referenceResultProviders.size() * bestValuesPerInstance.size();
+        long dataRowCount = results.size() + rowsForProvider;
+        validateRawDataRowCount(dataRowCount);
         int cutOff = results.size() + 1;
-        int rowsForProvider = referenceResultProviders.size() * bestValuesPerInstance.size();
-        int nRows = cutOff + rowsForProvider;
+        int nRows = Math.toIntExact(dataRowCount + 1);
 
         // Create matrix data
         Object[][] data = new Object[nRows][nColumns];
@@ -563,13 +617,44 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             }
         }
 
-        // Write matrix data to cell Excel sheet
+        return data;
+    }
+
+    static void validateRawDataRowCount(long dataRowCount) {
+        int maxDataRows = SpreadsheetVersion.EXCEL2007.getMaxRows() - 1;
+        if (dataRowCount > maxDataRows) {
+            throw new IllegalArgumentException(String.format(
+                    "Cannot export %s raw result rows to XLSX: Excel supports at most %s data rows after the header",
+                    dataRowCount,
+                    maxDataRows
+            ));
+        }
+    }
+
+    private void writeRawSheetData(SXSSFSheet rawSheet, Object[][] data) {
+        if (data.length == 1) {
+            var blankRow = rawSheet.createRow(1);
+            for (int j = 0; j < data[0].length; j++) {
+                blankRow.createCell(j).setBlank();
+            }
+            return;
+        }
+
         for (int i = 1; i < data.length; i++) {
             var row = rawSheet.createRow(i);
             for (int j = 0; j < data[i].length; j++) {
                 var cell = row.createCell(j);
                 writeCell(cell, data[i][j], getCTypeForIndex(j));
             }
+        }
+    }
+
+    private void headRawSheet(XSSFSheet rawSheet, String[] customProperties) {
+        String[] headers = getRawHeaders(customProperties);
+        var headerRow = rawSheet.createRow(0);
+        for (int i = 0; i < headers.length; i++) {
+            var cell = headerRow.createCell(i);
+            writeCell(cell, headers[i], CType.VALUE);
         }
     }
 
