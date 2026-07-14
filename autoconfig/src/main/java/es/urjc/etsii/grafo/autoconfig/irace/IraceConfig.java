@@ -11,7 +11,7 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "irace")
 public class IraceConfig {
     private boolean enabled;
-    private boolean shell;
+    private Boolean shell;
     private boolean auc = false;
     private boolean timecontrol = false;
 
@@ -34,21 +34,35 @@ public class IraceConfig {
     }
 
     /**
-     * Execute Irace in shell or using GraalVM?
+     * Legacy R execution option. R scripts are now always executed through
+     * the configured {@code Rscript} command.
      *
-     * @return true if irace should be executed using ShellRLangRunner, false to use GraalRLangRunner
+     * @return true unless the removed embedded execution mode was explicitly requested
+     * @deprecated remove this property from application configuration
      */
+    @Deprecated(forRemoval = true)
     public boolean isShell() {
-        return shell;
+        return shell == null || shell;
     }
 
     /**
-     * Execute Irace in shell or using GraalVM?
+     * Bind the legacy R execution option for an actionable migration error.
      *
-     * @param shell true to execute irace using ShellRLangRunner, false to use GraalRLangRunner
+     * @param shell legacy option value
+     * @deprecated remove this property from application configuration
      */
+    @Deprecated(forRemoval = true)
     public void setShell(boolean shell) {
         this.shell = shell;
+    }
+
+    void validateRScriptExecution() {
+        if (Boolean.FALSE.equals(shell)) {
+            throw new IllegalStateException(
+                    "irace.shell=false is no longer supported. Install GNU R so that Rscript is available " +
+                            "and remove the irace.shell property."
+            );
+        }
     }
 
     /**

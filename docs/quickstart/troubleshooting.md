@@ -2,25 +2,6 @@
 
 Explanation of different problems, errors and exceptions that may be found while using the framework.
 
-## IllegalStateException: No language ...
-An exception such as:
-```text
-Exception in thread "Thread-2" java.lang.IllegalStateException: No language and polyglot implementation was found on the classpath. Make sure the truffle-api.jar is on the classpath.
-	at org.graalvm.polyglot.Engine$PolyglotInvalid.noPolyglotImplementationFound(Engine.java:1001)
-	at org.graalvm.polyglot.Engine$PolyglotInvalid.createHostAccess(Engine.java:991)
-	at org.graalvm.polyglot.Engine$Builder.build(Engine.java:626)
-	at org.graalvm.polyglot.Context$Builder.build(Context.java:1827)
-	at es.urjc.etsii.grafo.autoconfig.irace.runners.GraalRLangRunner.lambda$execute$0(GraalRLangRunner.java:45)
-	at java.base/java.lang.Thread.run(Thread.java:833)
-```
-Cause: Multilang support is required due to config parameters, but the current JVM is not GraalVM. 
-Context: Multilang support is required to execute Irace if R is not installed locally and `irace.shell` is false. 
-
-There are two options to fix the previous problem:
-- A: Install R locally and set `irace.shell=true`
-- B: Install GraalVM and launch the application using GraalVM, instead of the standard JVM.
-
-
 ## The algorithm X does not have public constructors
 Algorithms that do not have public constructors use [the builder pattern](https://stackoverflow.com/questions/328496/when-would-you-use-the-builder-pattern). Use the static method, example: `SimulatedAnnealing.builder()`.
 

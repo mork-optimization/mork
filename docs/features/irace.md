@@ -34,30 +34,16 @@ When running in IRACE tuning mode, user defined experiments are ignored, and a s
 
 ## Configuring R integration
 
-Inside the default `application.yml` you may see a section similar to this:
-```YML
-irace:
-  # False: use GraalVM implementation, does not need R installed locally
-  # True: Use shell to execute R scripts, R/Rscript need to be locally installed and in path
-  shell: true
-```
+Local IRACE tuning runs R scripts through the `Rscript` executable. Install
+[R for your environment](https://cran.r-project.org/bin/) and ensure both `R`
+and `Rscript` are available on `PATH` before starting Mork with `--irace` or
+`--autoconfig`.
 
-In order to use Irace, you need to either use GraalVM (and set `irace.shell` to `false`) or install R/Rscript locally (and set `irace.shell` to `true`).
+Verify the installation from your terminal:
 
-## Option A: Using GraalVM
-- Install and configure the GraalVM, the recommended way is to use [sdkman](https://sdkman.io/).
-- Follow the instructions in https://www.graalvm.org/reference-manual/r/
-- Set `irace.shell` to `false`.
 ```bash
-# Example installation instructions
-sdk install java 21.3.0.r17-grl # Use sdk list java to see latest available GraalVM version
-gu install R
+Rscript --version
 ```
-
-## Option B: Using native R
-- Install and configure R for your environment: https://cran.r-project.org/bin/
-- Test that R and Rscript are available as commands in your favorite console.
-- Set `irace.shell` to `true`
 
 # How to use it
 Mork supports two irace workflows:

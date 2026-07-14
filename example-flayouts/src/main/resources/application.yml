@@ -81,10 +81,6 @@ irace:
   # Use --irace or --autoconfig command line argument to activate IRACE mode.
   # enabled: false
 
-  # False: (EXPERIMENTAL) use GraalVM implementation, does not need R installed locally
-  # True: (RECOMMENDED) Use shell to execute R scripts, R / Rscript need to be locally installed and in path
-  shell: true
-
   # Maximum number of algorithm executions
   maxExperiments: 10000
 

@@ -1,12 +1,16 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.autoconfig.r.RLangRunner;
+import es.urjc.etsii.grafo.autoconfig.r.RExecutionRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.nio.file.Path;
+import java.util.Map;
 
+import static es.urjc.etsii.grafo.util.IOUtil.copyWithSubstitutions;
 import static es.urjc.etsii.grafo.util.IOUtil.getInputStreamForIrace;
 
 /**
@@ -16,17 +20,21 @@ import static es.urjc.etsii.grafo.util.IOUtil.getInputStreamForIrace;
 @Service
 public class IraceIntegration {
     private static final Logger log = LoggerFactory.getLogger(IraceIntegration.class.getName());
+    private static final String RUNNER_SCRIPT = "runner.R";
 
     private final RLangRunner runner;
+    private final IraceConfig config;
 
     /**
      * <p>Constructor for IraceIntegration.</p>
      *
-     * @param runner a {@link RLangRunner} object.
+     * @param runner a {@link RLangRunner} object
+     * @param config Irace configuration
      */
-    public IraceIntegration(RLangRunner runner) {
+    public IraceIntegration(RLangRunner runner, IraceConfig config) {
         log.debug("Using R runner: {}", runner.getClass().getSimpleName());
         this.runner = runner;
+        this.config = config;
     }
 
     /**
@@ -35,9 +43,20 @@ public class IraceIntegration {
      * @param isJAR a boolean.
      */
     public void runIrace(boolean isJAR){
+        config.validateRScriptExecution();
+        Path workingDirectory = Path.of("").toAbsolutePath().normalize();
+        Path script = workingDirectory.resolve(RUNNER_SCRIPT);
         try {
-            var inputStream = getInputStreamForIrace("runner.R", isJAR);
-            runner.execute(inputStream);
+            try (var inputStream = getInputStreamForIrace(RUNNER_SCRIPT, isJAR)) {
+                copyWithSubstitutions(inputStream, script, Map.of());
+            }
+            var result = runner.execute(new RExecutionRequest(script, workingDirectory, Map.of()));
+            if (!result.successful()) {
+                throw new IllegalStateException(
+                        "Rscript process failed with exit code %s. Review %s and %s"
+                                .formatted(result.exitCode(), result.stdoutLog(), result.stderrLog())
+                );
+            }
         } catch (IOException e) {
             throw new IllegalStateException("Cannot load R runner", e);
         }
