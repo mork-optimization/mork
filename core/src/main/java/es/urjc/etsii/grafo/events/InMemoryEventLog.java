@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.events;
 
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 
 /**
@@ -11,7 +11,7 @@ import java.util.List;
 @Service
 public class InMemoryEventLog {
 
-    private final List<EventEnvelope> events = new ArrayList<>();
+    private final LinkedHashMap<Integer, EventEnvelope> events = new LinkedHashMap<>();
 
     /**
      * Store a published event envelope.
@@ -19,10 +19,13 @@ public class InMemoryEventLog {
      * @param envelope event envelope
      */
     public synchronized void append(EventEnvelope envelope) {
-        if (envelope.eventId() != events.size()) {
-            throw new IllegalStateException("Invalid event id %s, expected %s".formatted(envelope.eventId(), events.size()));
+        if (!events.isEmpty() && envelope.eventId() <= events.lastEntry().getKey()) {
+            throw new IllegalStateException(
+                    "Event ids must be strictly increasing: %s followed %s"
+                            .formatted(envelope.eventId(), events.lastEntry().getKey())
+            );
         }
-        events.add(envelope);
+        events.put(envelope.eventId(), envelope);
     }
 
     /**
@@ -39,8 +42,9 @@ public class InMemoryEventLog {
         if (to < from) {
             throw new IllegalArgumentException("Invalid parameters: 'to' is less than 'from', %s < %s".formatted(to, from));
         }
-        int end = Math.min(to, events.size());
-        return new ArrayList<>(events.subList(from, end));
+        return events.values().stream()
+                .filter(event -> event.eventId() >= from && event.eventId() < to)
+                .toList();
     }
 
     /**
@@ -50,10 +54,11 @@ public class InMemoryEventLog {
      * @return event envelope
      */
     public synchronized EventEnvelope getEvent(int id) {
-        if (id < 0 || id >= events.size()) {
+        var event = events.get(id);
+        if (event == null) {
             throw new IllegalArgumentException("No event with ID " + id);
         }
-        return events.get(id);
+        return event;
     }
 
     /**
@@ -65,7 +70,7 @@ public class InMemoryEventLog {
         if (events.isEmpty()) {
             throw new IllegalStateException("No events have been published yet");
         }
-        return events.getLast();
+        return events.lastEntry().getValue();
     }
 
     /**

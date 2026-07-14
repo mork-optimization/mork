@@ -1,9 +1,6 @@
 package es.urjc.etsii.grafo.io.serializers;
 
 import es.urjc.etsii.grafo.executors.WorkUnitResult;
-import es.urjc.etsii.grafo.events.MorkEventListener;
-import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
-import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.results.ResultStore;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -23,7 +20,11 @@ import java.util.Date;
 import java.util.List;
 
 /**
- * Retrieve results and export to disk when appropriate
+ * Synchronously retrieves results and exports them to disk when requested by
+ * the execution workflow.
+ *
+ * <p>Serialization deliberately is not event driven: callers must finish the
+ * applicable serialization before publishing the corresponding ending event.</p>
  */
 @Component
 public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instance> {
@@ -31,7 +32,7 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
     private static final String TEMP_SUFFIX = ".tmp";
 
     /**
-     * Access to historic event stream
+     * Access to stored experiment results
      */
     private final ResultStore<S,I> resultStore;
 
@@ -47,38 +48,77 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
      */
     public ResultsSerializerListener(ResultStore<S,I> resultStore, List<ResultsSerializer<S,I>> serializers) {
         this.resultStore = resultStore;
-        this.serializers = serializers;
+        this.serializers = List.copyOf(serializers);
     }
 
     /**
-     * Save results using each serializer with the given frequency
+     * Serialize the current experiment results with serializers configured to
+     * run after each instance.
      *
      * @param expName experiment name, as defined in the configuration
      * @param expStart experiment start time, as UNIX timestamp
-     * @param frequency save frequency, will check each serializer config
-     *                  and skip if the frequency configured does not match
      */
-    public void saveOnFreq(String expName, long expStart, ResultExportFrequency frequency){
+    public void serializePerInstance(String expName, long expStart) {
+        serialize(expName, expStart, ResultExportFrequency.PER_INSTANCE);
+    }
+
+    /**
+     * Serialize the final experiment results with serializers configured to
+     * run after the experiment.
+     *
+     * @param expName experiment name, as defined in the configuration
+     * @param expStart experiment start time, as UNIX timestamp
+     */
+    public void serializeAtExperimentEnd(String expName, long expStart) {
+        try {
+            serialize(expName, expStart, ResultExportFrequency.EXPERIMENT_END);
+        } finally {
+            resultStore.releaseSolutionsForExperiment(expName);
+        }
+    }
+
+    private void serialize(String expName, long expStart, ResultExportFrequency frequency) {
         var data = getExpData(expName);
         if (data.isEmpty()) {
             logger.warn("Cannot save empty list of results, skipping result serialization.");
             return;
         }
 
+        SerializerExecutionException firstFailure = null;
         for(var serializer: serializers){
-            var config = serializer.getConfig();
-            if (config.isEnabled() && config.getFrequency() == frequency) {
+            Path realFile = null;
+            Path tempFile = null;
+            try {
+                var config = serializer.getConfig();
+                if (!config.isEnabled() || config.getFrequency() != frequency) {
+                    continue;
+                }
                 IOUtil.createFolder(config.getFolder());
                 String filename = getFilename(config, expName, expStart);
-                Path realFile = Path.of(config.getFolder(), filename);
-                Path tempFile = Path.of(config.getFolder(), filename + TEMP_SUFFIX);
-                try {
-                    serializer.serializeResults(expName, data, tempFile);
-                    Files.move(tempFile, realFile, StandardCopyOption.REPLACE_EXISTING);
-                } catch (IOException | RuntimeException e) {
-                    throw buildSerializationException(serializer, expName, frequency, data.size(), tempFile, realFile, "executing serializer", e);
+                realFile = Path.of(config.getFolder(), filename);
+                tempFile = Path.of(config.getFolder(), filename + TEMP_SUFFIX);
+                serializer.serializeResults(expName, data, tempFile);
+                Files.move(tempFile, realFile, StandardCopyOption.REPLACE_EXISTING);
+            } catch (IOException | RuntimeException e) {
+                var failure = buildSerializationException(
+                        serializer,
+                        expName,
+                        frequency,
+                        data.size(),
+                        tempFile,
+                        realFile,
+                        "preparing or executing serializer",
+                        e
+                );
+                if (firstFailure == null) {
+                    firstFailure = failure;
+                } else {
+                    firstFailure.addSuppressed(failure);
                 }
             }
+        }
+        if (firstFailure != null) {
+            throw firstFailure;
         }
     }
 
@@ -100,11 +140,15 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
                 expName,
                 frequency,
                 resultCount,
-                tempFile.toAbsolutePath(),
-                realFile.toAbsolutePath(),
+                resolvedPath(tempFile),
+                resolvedPath(realFile),
                 rootCause.getClass().getSimpleName(),
                 rootCause.getMessage()
         ), cause);
+    }
+
+    private String resolvedPath(Path path) {
+        return path == null ? "<not resolved>" : path.toAbsolutePath().toString();
     }
 
     private String serializerName(ResultsSerializer<S, I> serializer) {
@@ -112,39 +156,8 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
         return simpleName.isBlank() ? serializer.getClass().getName() : simpleName;
     }
 
-    /**
-     * <p>Save results when experiment ends.</p>
-     *
-     * @param event a {@link ExperimentEndedEvent} object.
-     */
-    @MorkEventListener
-    public void saveOnExperimentEnd(ExperimentEndedEvent event){
-        saveOnFreq(
-                event.getExperimentName(),
-                event.getExperimentStartTime(),
-                ResultExportFrequency.EXPERIMENT_END
-        );
-    }
-
-    /**
-     * Save results each time an instance processing ends
-     *
-     * @param event a {@link ExperimentEndedEvent} object.
-     */
-    @MorkEventListener
-    public void saveOnInstanceEnd(InstanceProcessingEndedEvent event){
-        saveOnFreq(
-                event.getExperimentName(),
-                event.getExperimentStartTime(),
-                ResultExportFrequency.PER_INSTANCE
-        );
-    }
-
-    public List<WorkUnitResult<S,I>> getExpData(String expName){
-        long solutionsInMemory = this.resultStore.solutionsInMemory(expName);
-        var expData = resultStore.getResultsForExperiment(expName).toList();
-        logger.debug("Solutions in memory: {} of {}", solutionsInMemory, expData.size());
-        return expData;
+    private List<WorkUnitResult<S,I>> getExpData(String expName){
+        return resultStore.getResultsForExperiment(expName);
     }
 
     /**

@@ -1,17 +1,15 @@
 package es.urjc.etsii.grafo.events.types;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
-import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solution.Solution;
-
 /**
  * Triggered when starting an experiment before any other action occurs
  */
-public class AlgorithmProcessingStartedEvent<S extends Solution<S, I>, I extends Instance> extends MorkEvent {
-    private final String experimentName;
-    private final String instanceName;
-    private final String algorithmName;
-    private final int repetitions;
+public record AlgorithmProcessingStartedEvent(
+        String experimentName,
+        String instanceName,
+        String algorithmName,
+        int repetitions
+) implements MorkEvent {
 
     /**
      * Create a new AlgorithmProcessingStartedEvent
@@ -21,47 +19,12 @@ public class AlgorithmProcessingStartedEvent<S extends Solution<S, I>, I extends
      * @param algorithm algorithm that is going to be executed
      * @param repetitions number of repetitions for each (instance, algorithm) pair
      */
-    public AlgorithmProcessingStartedEvent(String experimentName, String instanceName, Algorithm<S, I> algorithm, int repetitions) {
-        this.experimentName = experimentName;
-        this.instanceName = instanceName;
-        this.algorithmName = algorithm.getName();
-        this.repetitions = repetitions;
-    }
-
-    /**
-     * Get current experiment name
-     *
-     * @return current experiment name
-     */
-    public String getExperimentName() {
-        return experimentName;
-    }
-
-    /**
-     * Get current instance name
-     *
-     * @return instance name
-     */
-    public String getInstanceName() {
-        return instanceName;
-    }
-
-
-    /**
-     * algorithm that is going to be executed
-     *
-     * @return list of algorithms
-     */
-    public String getAlgorithmName() {
-        return algorithmName;
-    }
-
-    /**
-     * Get number of repetitions for each (instance, algorithm) pair.
-     *
-     * @return number of repetitions for each (instance, algorithm) pair.
-     */
-    public int getRepetitions() {
-        return repetitions;
+    public AlgorithmProcessingStartedEvent(
+            String experimentName,
+            String instanceName,
+            Algorithm<?, ?> algorithm,
+            int repetitions
+    ) {
+        this(experimentName, instanceName, algorithm.getName(), repetitions);
     }
 }

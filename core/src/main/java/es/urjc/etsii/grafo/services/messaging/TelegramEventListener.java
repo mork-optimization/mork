@@ -32,7 +32,7 @@ public class TelegramEventListener {
     @MorkEventListener
     public void onExperimentEnd(ExperimentEndedEvent event) {
         if (!telegramService.ready()) return;
-        telegramService.sendMessage(String.format("Experiment %s ended. Execution time: %s seconds", event.getExperimentName(), nanosToSecs(event.getExecutionTime())));
+        telegramService.sendMessage(String.format("Experiment %s ended. Execution time: %s seconds", event.experimentName(), nanosToSecs(event.executionTime())));
     }
 
     /**
@@ -46,7 +46,7 @@ public class TelegramEventListener {
         // Only notify first error to prevent spamming
         if (!errorNotified) {
             errorNotified = true;
-            var t = event.getThrowable();
+            var t = event.throwable();
             telegramService.sendMessage(String.format("Execution Error: %s. Further errors will NOT be notified.", t));
         }
     }

@@ -14,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.UUID;
 
 @RestController
 public class DotGenerator {
@@ -98,10 +99,10 @@ public class DotGenerator {
     }
 
     @GetMapping("/api/generategraph/{resultId}")
-    public String getSolutionAsDotString(@PathVariable String resultId) throws IOException {
-        var result =  resultStore.findResult(resultId);
-        if(result.isPresent() && result.get().getSolution().isPresent()){
-            var solution = (TSPSolution) result.get().getSolution().get();
+    public String getSolutionAsDotString(@PathVariable UUID resultId) throws IOException {
+        var storedSolution = resultStore.findSolution(resultId);
+        if (storedSolution.isPresent()) {
+            var solution = (TSPSolution) storedSolution.get();
             var viz = Graphviz.fromString(generateDotDiagram(solution));
             BufferedImage image = viz.render(Format.PNG).toImage();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();

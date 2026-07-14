@@ -12,18 +12,20 @@ import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
-import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
+import es.urjc.etsii.grafo.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentStartedEvent;
 import es.urjc.etsii.grafo.exception.IllegalAlgorithmConfigException;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.io.serializers.ResultsSerializerListener;
 import es.urjc.etsii.grafo.metrics.MetricUtil;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
 import es.urjc.etsii.grafo.services.ReflectiveSolutionBuilder;
+import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -85,6 +87,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final InstanceManager<I> instanceManager;
     private final Optional<SolutionValidator<S, I>> validator;
     private final MorkEventPublisher eventPublisher;
+    private final ExecutionLifecycleCoordinator lifecycleCoordinator;
+    private final ResultsSerializerListener<S, I> resultsSerializer;
 
     private final Optional<TimeLimitCalculator<S, I>> timeLimitCalculator;
 
@@ -123,7 +127,9 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             List<AlgorithmBuilder<S, I>> algorithmBuilders,
             Optional<SolutionValidator<S, I>> validator, Optional<TimeLimitCalculator<S, I>> timeLimitCalculator,
             AlgorithmCandidateGenerator algorithmCandidateGenerator,
-            MorkEventPublisher eventPublisher
+            MorkEventPublisher eventPublisher,
+            ExecutionLifecycleCoordinator lifecycleCoordinator,
+            ResultsSerializerListener<S, I> resultsSerializer
     ) {
         this.solverConfig = solverConfig;
         this.iraceConfig = iraceConfig;
@@ -139,6 +145,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         this.algorithmCandidateGenerator = algorithmCandidateGenerator;
         this.validator = validator;
         this.eventPublisher = eventPublisher;
+        this.lifecycleCoordinator = lifecycleCoordinator;
+        this.resultsSerializer = resultsSerializer;
     }
 
 
@@ -178,7 +186,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             launchIrace();
         } finally {
             long totalExecutionTime = System.nanoTime() - startTime;
-            eventPublisher.publish(new ExecutionEndedEvent(totalExecutionTime));
+            lifecycleCoordinator.complete(totalExecutionTime);
             log.info("Total execution time: {} (s)", nanosToSecs(totalExecutionTime));
         }
     }
@@ -198,6 +206,12 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         iraceIntegration.runIrace(isJAR);
         long end = System.nanoTime();
         log.info("Finished running experiment: IRACE autoconfig");
+        try {
+            resultsSerializer.serializeAtExperimentEnd(IRACE_EXPNAME, startTimestamp);
+        } catch (RuntimeException e) {
+            log.error("Final result serialization failed for experiment {}", IRACE_EXPNAME, e);
+            eventPublisher.publish(new ErrorEvent(e));
+        }
         eventPublisher.publish(new ExperimentEndedEvent(IRACE_EXPNAME, end - start, startTimestamp));
     }
 

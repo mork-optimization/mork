@@ -21,7 +21,22 @@ public class TestHelperFactory {
     public static WorkUnitResult<TestSolution, TestInstance> solutionGenerated(String instanceName, String expName, String algName, int iter, double score, long time, long ttb, Map<String, Object> solutionProperties){
         var solution = new TestSolution(new TestInstance(instanceName), score);
         var algorithm = new TestAlgorithm(algName);
-        return new WorkUnitResult<>(true, expName, instanceName, instanceName, algorithm, String.valueOf(iter), solution, solutionProperties, time, ttb, new MetricsStorage(), new ArrayList<>());
+        return new WorkUnitResult<>(
+                UUID.randomUUID(),
+                true,
+                expName,
+                instanceName,
+                instanceName,
+                algorithm,
+                String.valueOf(iter),
+                solution,
+                Map.of("Test", score),
+                solutionProperties,
+                time,
+                ttb,
+                new MetricsStorage(),
+                new ArrayList<>()
+        );
     }
 
     public static InstanceProcessingEndedEvent instanceEnd(){

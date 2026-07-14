@@ -25,6 +25,11 @@ class MorkEventListenerTypeFilterTest {
     }
 
     @Test
+    void matchesInterfaceMorkEventListenerMethods() throws IOException {
+        assertTrue(matches(InterfaceListener.class));
+    }
+
+    @Test
     void ignoresClassesWithoutMorkEventListenerMethods() throws IOException {
         assertFalse(matches(NoListener.class));
     }
@@ -47,6 +52,17 @@ class MorkEventListenerTypeFilterTest {
     }
 
     static class InheritedListener extends BaseListener {
+    }
+
+    interface ListenerContract {
+        @MorkEventListener
+        void onPing(PingEvent event);
+    }
+
+    static class InterfaceListener implements ListenerContract {
+        @Override
+        public void onPing(PingEvent event) {
+        }
     }
 
     static class NoListener {

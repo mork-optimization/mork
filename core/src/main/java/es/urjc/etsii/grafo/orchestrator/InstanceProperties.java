@@ -2,14 +2,11 @@ package es.urjc.etsii.grafo.orchestrator;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
-import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.solution.Move;
-import es.urjc.etsii.grafo.solution.Objective;
-import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
 import es.urjc.etsii.grafo.util.Context;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
@@ -28,15 +25,18 @@ public class InstanceProperties<I extends Instance> extends AbstractOrchestrator
     protected final InstanceManager<I> instanceManager;
     protected final InstanceConfiguration instanceConfiguration;
     protected final MorkEventPublisher eventPublisher;
+    protected final ExecutionLifecycleCoordinator lifecycleCoordinator;
 
     public InstanceProperties(
             InstanceManager<I> instanceManager,
             InstanceConfiguration instanceConfiguration,
-            MorkEventPublisher eventPublisher
+            MorkEventPublisher eventPublisher,
+            ExecutionLifecycleCoordinator lifecycleCoordinator
     ) {
         this.instanceManager = instanceManager;
         this.instanceConfiguration = instanceConfiguration;
         this.eventPublisher = eventPublisher;
+        this.lifecycleCoordinator = lifecycleCoordinator;
     }
 
     @Override
@@ -47,7 +47,7 @@ public class InstanceProperties<I extends Instance> extends AbstractOrchestrator
             analyzeInstances();
         } finally {
             long end = System.nanoTime();
-            eventPublisher.publish(new ExecutionEndedEvent(end - start));
+            lifecycleCoordinator.complete(end - start);
         }
     }
 

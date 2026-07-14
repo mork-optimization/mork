@@ -21,7 +21,9 @@ import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
-@SpringBootTest(classes = {Mork.class})
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+
+@SpringBootTest(classes = {Mork.class}, properties = "event.webserver.stopOnExecutionEnd=false")
 @ActiveProfiles(profiles = {"test", "testsequential", "user-experiment"})
 @DirtiesContext
 class SequentialTest {
@@ -38,8 +40,8 @@ class SequentialTest {
 
     @Test
     void testExecutor() {
-        // Launch basic experiment
-        defaultOrchestrator.run();
+        // The command-line runner executes the experiment while loading the context.
+        assertNotNull(defaultOrchestrator);
     }
 
     @AfterAll

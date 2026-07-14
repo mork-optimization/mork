@@ -8,6 +8,7 @@ import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.orchestrator.InstanceProperties;
 import es.urjc.etsii.grafo.orchestrator.InstanceSelector;
+import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.BeforeAll;
@@ -52,7 +53,8 @@ class InstanceSelectorTest {
 
         var instanceManager = new InstanceManager<>(config, solverConfigForTest(), new TSPInstanceImporter());
         var eventPublisher = Mockito.mock(MorkEventPublisher.class);
-        var selector = new InstanceSelector<>(instanceManager, config, eventPublisher); // The Python part is not actually tested!
+        var lifecycleCoordinator = Mockito.mock(ExecutionLifecycleCoordinator.class);
+        var selector = new InstanceSelector<>(instanceManager, config, eventPublisher, lifecycleCoordinator); // The Python part is not actually tested!
         selector.run();
 
         verifyCSV(nInstances);

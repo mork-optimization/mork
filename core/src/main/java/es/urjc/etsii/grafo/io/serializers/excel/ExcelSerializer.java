@@ -375,7 +375,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         Set<String> commonHeaders = Set.of(getCommonHeaders());
 
         for (var result : results) {
-            for (var property : result.getSolutionProperties().entrySet()) {
+            for (var property : result.solutionProperties().entrySet()) {
                 String propertyName = property.getKey();
                 validateCustomPropertyName(propertyName, commonHeaders);
                 validateCustomPropertyValue(propertyName, property.getValue(), result);
@@ -401,11 +401,11 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         }
 
         throw new IllegalArgumentException(String.format(
-                "Solution property '%s' for instance '%s', algorithm '%s', iteration '%s' cannot be exported to Excel. Solution properties must be null, finite Number, String or Boolean, but found %s: %s",
+                "Solution property '%s' for instance '%s', algorithm '%s', iteration '%s' cannot be exported to Excel. Solution properties must be a finite Number, String or Boolean, but found %s: %s",
                 propertyName,
-                result.getInstanceName(),
-                result.getAlgorithmName(),
-                result.getIteration(),
+                result.instanceId(),
+                result.algorithm().getName(),
+                result.iteration(),
                 describeValueType(value),
                 value
         ));
@@ -416,7 +416,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     }
 
     private static boolean isExcelScalarValue(Object value) {
-        if (value == null || value instanceof String || value instanceof Boolean) {
+        if (value instanceof String || value instanceof Boolean) {
             return true;
         }
         if (value instanceof Number n) {
@@ -438,8 +438,8 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         Map<String, Double> ourBestValuePerInstance = results
                 .stream()
                 .collect(Collectors.toMap(
-                        WorkUnitResult::getInstanceName,
-                        solGenEvent -> solGenEvent.getObjectives().get(objective.getName()),
+                        WorkUnitResult::instanceId,
+                        result -> result.objectives().get(objective.getName()),
                         (a, b) -> maximizing ? Math.max(a, b) : Math.min(a, b)
                 ));
 
@@ -505,12 +505,12 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         for (int i = 1; i < cutOff; i++) {
             var r = results.get(i - 1);
 
-            data[i][INSTANCE_NAME.getIndex()] = r.getInstanceName();
-            data[i][ALG_NAME.getIndex()] = r.getAlgorithmName();
-            data[i][ITERATION.getIndex()] = r.getIteration();
-            data[i][SCORE.getIndex()] = r.getObjectives().get(mainObjName);
-            data[i][TOTAL_TIME.getIndex()] = nanosToSecs(r.getExecutionTime());
-            data[i][TTB.getIndex()] = nanosToSecs(r.getTimeToBest());
+            data[i][INSTANCE_NAME.getIndex()] = r.instanceId();
+            data[i][ALG_NAME.getIndex()] = r.algorithm().getName();
+            data[i][ITERATION.getIndex()] = r.iteration();
+            data[i][SCORE.getIndex()] = r.objectives().get(mainObjName);
+            data[i][TOTAL_TIME.getIndex()] = nanosToSecs(r.executionTime());
+            data[i][TTB.getIndex()] = nanosToSecs(r.timeToTarget());
             int excelRowIndex = i + 1; // Current row +1 because Excel starts indexing rows on 1.
 
             // MINIFS/MAXIFS (scores, instancenames, instancename)
@@ -526,7 +526,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             data[i][DEV_TO_BEST.getIndex()] = String.format("ABS(%s-%s)/%s", refCurrentScore, refBestKnownForInstance, refBestKnownForInstance);
             
             // Fill custom properties
-            var solutionProps = r.getSolutionProperties();
+            var solutionProps = r.solutionProperties();
             for (int j = 0; j < customProperties.length; j++) {
                 String propName = customProperties[j];
                 data[i][customPropertiesStartIndex + j] = solutionProps.get(propName);

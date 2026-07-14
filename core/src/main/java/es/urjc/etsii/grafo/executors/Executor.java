@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.ErrorEvent;
+import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
 import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.exceptions.DefaultExceptionHandler;
@@ -13,6 +14,7 @@ import es.urjc.etsii.grafo.experiment.reference.ReferenceResultManager;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
+import es.urjc.etsii.grafo.io.serializers.ResultsSerializerListener;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.terminal.ProgressAwareProgressBarConsumer;
 import es.urjc.etsii.grafo.results.ResultStore;
@@ -57,6 +59,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     protected final SolverConfig solverConfig;
     protected final MorkEventPublisher eventPublisher;
     protected final ResultStore<S, I> resultStore;
+    protected final ResultsSerializerListener<S, I> resultsSerializer;
 
     private final ExceptionHandler<S, I> exceptionHandler;
 
@@ -97,7 +100,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             List<ExceptionHandler<S, I>> exceptionHandlers,
             ReferenceResultManager referenceResultManager,
             MorkEventPublisher eventPublisher,
-            ResultStore<S, I> resultStore) {
+            ResultStore<S, I> resultStore,
+            ResultsSerializerListener<S, I> resultsSerializer) {
         this.timeLimitCalculator = timeLimitCalculator;
         this.solverConfig = solverConfig;
         this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
@@ -108,6 +112,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         this.referenceResultManager = referenceResultManager;
         this.eventPublisher = eventPublisher;
         this.resultStore = resultStore;
+        this.resultsSerializer = resultsSerializer;
     }
 
     public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instancePaths, long startTimestamp);
@@ -254,6 +259,37 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         }
     }
 
+    /**
+     * Serialize the current experiment snapshot before its instance-ended event.
+     * Serialization failures are reported without interrupting workflow finalization.
+     */
+    protected void serializePerInstance(String experimentName, long experimentStartTimestamp) {
+        try {
+            resultsSerializer.serializePerInstance(experimentName, experimentStartTimestamp);
+        } catch (RuntimeException e) {
+            log.error("Per-instance result serialization failed for experiment {}", experimentName, e);
+            eventPublisher.publish(new ErrorEvent(e));
+        }
+    }
+
+    /**
+     * Complete instance processing after its synchronous serialization attempt.
+     */
+    protected void finishInstance(
+            String experimentName,
+            String instanceName,
+            long executionTime,
+            long experimentStartTimestamp
+    ) {
+        serializePerInstance(experimentName, experimentStartTimestamp);
+        eventPublisher.publish(new InstanceProcessingEndedEvent(
+                experimentName,
+                instanceName,
+                executionTime,
+                experimentStartTimestamp
+        ));
+    }
+
     protected void exportAlgorithmInstanceSolution(WorkUnitResult<S, I> r) {
         if(!r.success()){
             log.debug("Skipping export of failed WUR: {}", r);
@@ -313,7 +349,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             return false;
         }
         Objective<?, S, I> objective = Context.getMainObjective();
-        return objective.isBetter(candidate.solution(), best.solution());
+        return objective.isBetter(candidate.mainObjectiveValue(), best.mainObjectiveValue());
     }
 
     public String instanceName(String instancePath) {

@@ -4,13 +4,13 @@ import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.AlgorithmProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.AlgorithmProcessingStartedEvent;
-import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.InstanceProcessingStartedEvent;
 import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultManager;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.io.serializers.ResultsSerializerListener;
 import es.urjc.etsii.grafo.services.IOManager;
 import es.urjc.etsii.grafo.services.TimeLimitCalculator;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -50,9 +50,10 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
             List<ExceptionHandler<S,I>> exceptionHandlers,
             ReferenceResultManager referenceResultManager,
             MorkEventPublisher eventPublisher,
-            ResultStore<S, I> resultStore
+            ResultStore<S, I> resultStore,
+            ResultsSerializerListener<S, I> resultsSerializer
     ) {
-        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore);
+        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore, resultsSerializer);
     }
 
     /**
@@ -78,7 +79,7 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                 for (var algorithmWork : instanceWork.getValue().entrySet()) {
                     WorkUnitResult<S, I> algorithmBest = null;
                     var algorithm = algorithmWork.getKey();
-                    eventPublisher.publish(new AlgorithmProcessingStartedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                    eventPublisher.publish(new AlgorithmProcessingStartedEvent(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
                     logger.debug("Running algorithm {} for instance {}", algorithm.getName(), instanceName);
                     for (var workUnit : algorithmWork.getValue()) {
                         var workUnitResult = doWork(workUnit);
@@ -94,14 +95,14 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                     if(solverConfig.getRepetitions() > 1){
                         exportAlgorithmInstanceSolution(algorithmBest);
                     }
-                    eventPublisher.publish(new AlgorithmProcessingEndedEvent<>(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                    eventPublisher.publish(new AlgorithmProcessingEndedEvent(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
                 }
                 assert instanceBest != null;
                 if(algorithms.size() > 1){
                     exportInstanceSolution(instanceBest);
                 }
                 long totalInstanceTime = System.nanoTime() - instanceStartTime;
-                eventPublisher.publish(new InstanceProcessingEndedEvent(experimentName, instanceName, totalInstanceTime, startTimestamp));
+                finishInstance(experimentName, instanceName, totalInstanceTime, startTimestamp);
             }
         }
 

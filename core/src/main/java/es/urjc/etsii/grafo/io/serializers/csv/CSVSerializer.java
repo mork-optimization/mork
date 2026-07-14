@@ -59,10 +59,10 @@ public class CSVSerializer<S extends Solution<S, I>, I extends Instance> extends
 
         var instaceNames = new HashSet<String>();
         var data = new ArrayList<CSVRow>(results.size());
-        for (var event : results) {
-            double score = event.getObjectives().getOrDefault(mainObjName, Double.NaN);
-            data.add(new CSVRow(event.getInstanceName(), event.getAlgorithmName(), String.valueOf(event.getIteration()), score, event.getExecutionTime(), event.getTimeToBest()));
-            instaceNames.add(event.getInstanceName());
+        for (var result : results) {
+            double score = result.objectives().getOrDefault(mainObjName, Double.NaN);
+            data.add(new CSVRow(result.instanceId(), result.algorithm().getName(), result.iteration(), score, result.executionTime(), result.timeToTarget()));
+            instaceNames.add(result.instanceId());
         }
 
         // Add reference results if available
