@@ -26,13 +26,14 @@ Components that build initial solutions from scratch. These methods create feasi
 
 ## Improvement Methods
 
-Components that take a solution and try to improve it. These methods cannot return worse solutions than their input.
+Components that take a solution and try to improve it. By convention, they should return a result that is at least as good as their input under the configured objective; custom implementations are responsible for preserving this contract.
 
 | Improver | Description | Documentation |
 |----------|-------------|---------------|
 | **Improver (Base)** | Abstract base class for all improvement methods | [Improver Documentation](improvers/improver.md) |
 | **Local Search** | Base class for local search algorithms that explore neighborhoods and host the supported descent strategies | [Local Search Documentation](improvers/local-search.md) |
 | **LocalSearchBestImprovement** | Local search that always picks the best improving move in the neighborhood | [Best-improvement strategy](improvers/local-search.md#localsearchbestimprovement) |
+| **LocalSearchCachedBestImprovement** | Heuristic best improvement that reuses and refreshes cached candidates | [Cached best-improvement strategy](improvers/local-search.md#localsearchcachedbestimprovement) |
 | **LocalSearchFirstImprovement** | Local search that applies the first improving move found | [First-improvement strategy](improvers/local-search.md#localsearchfirstimprovement) |
 | **Simulated Annealing (as Improver)** | SA can be used as an improvement method with temperature-based acceptance | [SA Documentation](metaheuristics/simulated-annealing.md) |
 | **Variable Neighborhood Descent (VND)** | Systematic exploration of multiple neighborhood structures in a descent manner | [VND Documentation](metaheuristics/vnd.md) |

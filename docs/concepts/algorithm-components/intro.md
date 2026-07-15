@@ -68,12 +68,11 @@ Constructive methods receive an empty solution and initialize it. Solutions crea
 
 ### Improver
 
-Improvement methods receive a feasible solutions, and try to improve its objective function score.
-Improver methods **cannot** return a solution with worse score that the input solution. 
-A classic example of an improver method are local search methods. Note that solutions returned from 
-an improvement method are not guaranteed to be optimal, but they are guaranteed to be at least as good as the input solution.
-Calling a local search method with a solution that is already at a local optima will return the same solution,
-as the local search method will not able to improve it.
+Improvement methods receive a feasible solution and try to improve its objective function score.
+By convention, an improver should return a solution that is at least as good as its input under the configured objective. Custom implementations are responsible for preserving the contract, and the framework may trigger an exception if this contract is broken.
+A classic example of an improver is a local search method. Solutions returned from an improvement method are not guaranteed to be optimal.
+Calling a local search method with a solution that is already at a local optimum will return the same solution,
+as the local search method will not be able to improve it.
 Note that the fact that the improvement method returns a solution, does not guarantee that the solution is cloned. 
 For performance reasons, the improvement method is allowed to modify the solution in place.
 If you want to keep a copy of the original solution, clone it by using the `Solution::cloneSolution` before calling the improvement method.
