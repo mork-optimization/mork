@@ -128,14 +128,15 @@ public class MyAlgorithm<S extends Solution<S, I>, I extends Instance> extends A
     }
 
     protected S constructionPhase(I instance){
+        Objective<?, S, I> objective = Context.getMainObjective();
         var bestSolution = constructionStep(instance);
-        Metrics.add(BestObjective.class, bestSolution.getScore());
+        Metrics.addCurrentObjectives(bestSolution);
         for (int i = 1; i < n && !TimeControl.isTimeUp(); i++) {
             var solution = constructionStep(instance);
-            if(solution.isBetterThan(bestSolution)){
+            if(objective.isBetter(solution, bestSolution)){
                 log.debug("Improved best solution. {} --> {}", bestSolution, solution);
                 bestSolution = solution;
-                Metrics.add(BestObjective.class, bestSolution.getScore());
+                Metrics.addCurrentObjectives(bestSolution);
             }
         }
         log.debug("Best Construction: {}", bestSolution);
@@ -156,7 +157,7 @@ public class MyAlgorithm<S extends Solution<S, I>, I extends Instance> extends A
         }
         solution = improver.improve(solution);
         Context.validate(solution);
-        Metrics.add(BestObjective.class, solution.getScore());
+        Metrics.addCurrentObjectives(solution);
         log.debug("After LS: {}", solution);
         return solution;
     }

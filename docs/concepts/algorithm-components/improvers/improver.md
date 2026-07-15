@@ -41,12 +41,12 @@ solution = improver.improve(solution);
 ### Multi-Start Algorithm example
 
 ```java
-var multiStart = new MultiStartAlgorithm<>(
-    "GRASP",
-    constructor,
-    improver,  // Improver is applied to each constructed solution
-    100
-);
+// MultiStartAlgorithm wraps another Algorithm. The improver is applied to each
+// constructed solution by the wrapped SimpleAlgorithm.
+var base = new SimpleAlgorithm<>("GRASP", constructor, improver);
+var multiStart = new MultiStartAlgorithmBuilder<MySolution, MyInstance>()
+    .withMaxIterations(100)
+    .build(base);
 ```
 
 ## Implementation Guidelines
@@ -58,7 +58,10 @@ public class MyImprover<S extends Solution<S, I>, I extends Instance>
         extends Improver<S, I> {
     
     public MyImprover() {
-        super("MyImprover");
+        // Improver's constructor takes the Objective used to compare solutions.
+        // Forward the main objective from the execution context (or accept an
+        // Objective as a constructor parameter if you need a custom one).
+        super(Context.getMainObjective());
     }
     
     @Override
@@ -104,10 +107,9 @@ solution = improver3.improve(solution);
 Most algorithms require an improver as an argument. It is always valid to generate an improver that does nothing, example:
 
 ```java
-var algorithm = new MultiStartAlgorithm<>(
-    "OnlyConstruct",
-    constructor,
-    Improver.nul(),  // Null Improver does nothing --> Skips improvement phase
-    100
-);
+// Improver.nul() does nothing --> Skips improvement phase
+var base = new SimpleAlgorithm<>("OnlyConstruct", constructor, Improver.nul());
+var algorithm = new MultiStartAlgorithmBuilder<MySolution, MyInstance>()
+    .withMaxIterations(100)
+    .build(base);
 ```
