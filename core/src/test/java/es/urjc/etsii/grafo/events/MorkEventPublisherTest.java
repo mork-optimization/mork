@@ -2,7 +2,6 @@ package es.urjc.etsii.grafo.events;
 
 import es.urjc.etsii.grafo.events.types.PingEvent;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
@@ -22,10 +21,10 @@ class MorkEventPublisherTest {
 
     @Test
     void publishQueuesEventsAndDispatchesEnvelopes() throws InterruptedException {
-        var listenerPublisher = mock(ApplicationEventPublisher.class);
+        var listener = mock(MorkEventListener.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
         var eventLog = new InMemoryEventLog();
-        var publisher = new MorkEventPublisher(listenerPublisher, messagingTemplate, eventLog);
+        var publisher = new MorkEventPublisher(List.of(listener), messagingTemplate, eventLog);
         var dispatchThread = new AtomicReference<String>();
         var latch = new CountDownLatch(1);
         long earliestAcceptance = System.currentTimeMillis();
@@ -34,7 +33,7 @@ class MorkEventPublisherTest {
             dispatchThread.set(Thread.currentThread().getName());
             latch.countDown();
             return null;
-        }).when(listenerPublisher).publishEvent(isA(PingEvent.class));
+        }).when(listener).onEvent(isA(PingEvent.class));
 
         try {
             publisher.publish(new PingEvent());
@@ -57,10 +56,10 @@ class MorkEventPublisherTest {
 
     @Test
     void mutedPublishDropsEventsUntilScopeCloses() {
-        var listenerPublisher = mock(ApplicationEventPublisher.class);
+        var listener = mock(MorkEventListener.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
         var eventLog = new InMemoryEventLog();
-        var publisher = new MorkEventPublisher(listenerPublisher, messagingTemplate, eventLog);
+        var publisher = new MorkEventPublisher(List.of(listener), messagingTemplate, eventLog);
 
         try {
             try (var ignored = publisher.mute()) {
@@ -69,7 +68,7 @@ class MorkEventPublisherTest {
 
             publisher.publish(new PingEvent());
 
-            verify(listenerPublisher, timeout(1_000).times(1)).publishEvent(isA(PingEvent.class));
+            verify(listener, timeout(1_000).times(1)).onEvent(isA(PingEvent.class));
             assertEquals(1, eventLog.size());
         } finally {
             publisher.destroy();
@@ -78,10 +77,10 @@ class MorkEventPublisherTest {
 
     @Test
     void destroyDrainsQueuedEvents() {
-        var listenerPublisher = mock(ApplicationEventPublisher.class);
+        var listener = mock(MorkEventListener.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
         var eventLog = new InMemoryEventLog();
-        var publisher = new MorkEventPublisher(listenerPublisher, messagingTemplate, eventLog);
+        var publisher = new MorkEventPublisher(List.of(listener), messagingTemplate, eventLog);
 
         for (int i = 0; i < 10; i++) {
             publisher.publish(new PingEvent());
@@ -90,7 +89,7 @@ class MorkEventPublisherTest {
         publisher.destroy();
 
         assertEquals(10, eventLog.size());
-        verify(listenerPublisher, times(10)).publishEvent(isA(PingEvent.class));
+        verify(listener, times(10)).onEvent(isA(PingEvent.class));
     }
 
     @Test
@@ -100,7 +99,7 @@ class MorkEventPublisherTest {
         var eventLog = new InMemoryEventLog();
         context.registerBean(
                 MorkEventPublisher.class,
-                () -> new MorkEventPublisher(context, messagingTemplate, eventLog)
+                () -> new MorkEventPublisher(List.of(), messagingTemplate, eventLog)
         );
         context.refresh();
         var publisher = context.getBean(MorkEventPublisher.class);
@@ -114,18 +113,22 @@ class MorkEventPublisherTest {
     }
 
     @Test
-    void sinkFailuresAreIsolatedAndDoNotStopLaterEvents() {
-        var listenerPublisher = mock(ApplicationEventPublisher.class);
+    void sinkAndListenerFailuresAreIsolatedAndDoNotStopLaterEvents() {
+        var failingListener = mock(MorkEventListener.class);
+        var successfulListener = mock(MorkEventListener.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
         var eventLog = new InMemoryEventLog();
-        var publisher = new MorkEventPublisher(listenerPublisher, messagingTemplate, eventLog);
+        var publisher = new MorkEventPublisher(
+                List.of(failingListener, successfulListener),
+                messagingTemplate,
+                eventLog
+        );
 
         doThrow(new IllegalStateException("conversion failed"))
                 .doNothing()
                 .when(messagingTemplate).convertAndSend(eq("/topic/events"), any(EventEnvelope.class));
         doThrow(new IllegalStateException("listener failed"))
-                .doNothing()
-                .when(listenerPublisher).publishEvent(isA(PingEvent.class));
+                .when(failingListener).onEvent(isA(PingEvent.class));
 
         publisher.publish(new PingEvent());
         publisher.publish(new PingEvent());
@@ -133,12 +136,13 @@ class MorkEventPublisherTest {
 
         assertEquals(2, eventLog.size());
         verify(messagingTemplate, times(2)).convertAndSend(eq("/topic/events"), any(EventEnvelope.class));
-        verify(listenerPublisher, times(2)).publishEvent(isA(PingEvent.class));
+        verify(failingListener, times(2)).onEvent(isA(PingEvent.class));
+        verify(successfulListener, times(2)).onEvent(isA(PingEvent.class));
     }
 
     @Test
     void eventLogRecoversAfterATransientAppendFailure() {
-        var listenerPublisher = mock(ApplicationEventPublisher.class);
+        var listener = mock(MorkEventListener.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
         var eventLog = new InMemoryEventLog() {
             private boolean failNextAppend = true;
@@ -152,7 +156,7 @@ class MorkEventPublisherTest {
                 super.append(envelope);
             }
         };
-        var publisher = new MorkEventPublisher(listenerPublisher, messagingTemplate, eventLog);
+        var publisher = new MorkEventPublisher(List.of(listener), messagingTemplate, eventLog);
 
         publisher.publish(new PingEvent());
         publisher.publish(new PingEvent());
@@ -160,16 +164,16 @@ class MorkEventPublisherTest {
 
         assertEquals(1, eventLog.size());
         assertEquals(1, eventLog.getEvent(1).eventId());
-        verify(listenerPublisher, times(2)).publishEvent(isA(PingEvent.class));
+        verify(listener, times(2)).onEvent(isA(PingEvent.class));
         verify(messagingTemplate, times(2)).convertAndSend(eq("/topic/events"), any(EventEnvelope.class));
     }
 
     @Test
     void queueExhaustionFailsFastWithoutLosingAcceptedEvents() throws InterruptedException {
-        var listenerPublisher = mock(ApplicationEventPublisher.class);
+        var listener = mock(MorkEventListener.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
         var eventLog = new InMemoryEventLog();
-        var publisher = new MorkEventPublisher(listenerPublisher, messagingTemplate, eventLog, 2);
+        var publisher = new MorkEventPublisher(List.of(listener), messagingTemplate, eventLog, 2);
         var listenerEntered = new CountDownLatch(1);
         var releaseListener = new CountDownLatch(1);
         var listenerCalls = new AtomicInteger();
@@ -180,7 +184,7 @@ class MorkEventPublisherTest {
                 assertTrue(releaseListener.await(5, TimeUnit.SECONDS));
             }
             return null;
-        }).when(listenerPublisher).publishEvent(isA(PingEvent.class));
+        }).when(listener).onEvent(isA(PingEvent.class));
 
         try {
             publisher.publish(new PingEvent());
@@ -201,10 +205,10 @@ class MorkEventPublisherTest {
 
     @Test
     void drainProcessesEventsPublishedRecursivelyByListeners() {
-        var listenerPublisher = mock(ApplicationEventPublisher.class);
+        var listener = mock(MorkEventListener.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
         var eventLog = new InMemoryEventLog();
-        var publisher = new MorkEventPublisher(listenerPublisher, messagingTemplate, eventLog);
+        var publisher = new MorkEventPublisher(List.of(listener), messagingTemplate, eventLog);
         var listenerCalls = new AtomicInteger();
 
         doAnswer(invocation -> {
@@ -212,7 +216,7 @@ class MorkEventPublisherTest {
                 publisher.publish(new PingEvent());
             }
             return null;
-        }).when(listenerPublisher).publishEvent(isA(PingEvent.class));
+        }).when(listener).onEvent(isA(PingEvent.class));
 
         publisher.publish(new PingEvent());
         publisher.drainAndStop();
@@ -224,10 +228,10 @@ class MorkEventPublisherTest {
 
     @Test
     void dispatcherCannotSynchronouslyDrainButCanStillPublishRecursivelyWhileExternalDrainRuns() {
-        var listenerPublisher = mock(ApplicationEventPublisher.class);
+        var listener = mock(MorkEventListener.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
         var eventLog = new InMemoryEventLog();
-        var publisher = new MorkEventPublisher(listenerPublisher, messagingTemplate, eventLog);
+        var publisher = new MorkEventPublisher(List.of(listener), messagingTemplate, eventLog);
         var listenerCalls = new AtomicInteger();
         var rejection = new AtomicReference<IllegalStateException>();
 
@@ -237,7 +241,7 @@ class MorkEventPublisherTest {
                 publisher.publish(new PingEvent());
             }
             return null;
-        }).when(listenerPublisher).publishEvent(isA(PingEvent.class));
+        }).when(listener).onEvent(isA(PingEvent.class));
 
         publisher.publish(new PingEvent());
         publisher.drainAndStop();
@@ -250,10 +254,9 @@ class MorkEventPublisherTest {
 
     @Test
     void finalEventAcceptanceAndDrainingTransitionRejectLaterExternalEvents() {
-        var listenerPublisher = mock(ApplicationEventPublisher.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
         var eventLog = new InMemoryEventLog();
-        var publisher = new MorkEventPublisher(listenerPublisher, messagingTemplate, eventLog);
+        var publisher = new MorkEventPublisher(List.of(), messagingTemplate, eventLog);
 
         publisher.publishFinalAndBeginDraining(new PingEvent());
 
@@ -265,10 +268,10 @@ class MorkEventPublisherTest {
 
     @Test
     void dispatcherInitiatedDestroyStillDrainsRecursiveEventsAndStops() {
-        var listenerPublisher = mock(ApplicationEventPublisher.class);
+        var listener = mock(MorkEventListener.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
         var eventLog = new InMemoryEventLog();
-        var publisher = new MorkEventPublisher(listenerPublisher, messagingTemplate, eventLog);
+        var publisher = new MorkEventPublisher(List.of(listener), messagingTemplate, eventLog);
         var listenerCalls = new AtomicInteger();
 
         doAnswer(invocation -> {
@@ -277,11 +280,11 @@ class MorkEventPublisherTest {
                 publisher.publish(new PingEvent());
             }
             return null;
-        }).when(listenerPublisher).publishEvent(isA(PingEvent.class));
+        }).when(listener).onEvent(isA(PingEvent.class));
 
         publisher.publish(new PingEvent());
 
-        verify(listenerPublisher, timeout(1_000).times(2)).publishEvent(isA(PingEvent.class));
+        verify(listener, timeout(1_000).times(2)).onEvent(isA(PingEvent.class));
         publisher.destroy();
         assertEquals(2, eventLog.size());
         assertThrows(IllegalStateException.class, () -> publisher.publish(new PingEvent()));
@@ -289,9 +292,9 @@ class MorkEventPublisherTest {
 
     @Test
     void externalPublicationsAreRejectedOnceDrainingStarts() throws Exception {
-        var listenerPublisher = mock(ApplicationEventPublisher.class);
+        var listener = mock(MorkEventListener.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
-        var publisher = new MorkEventPublisher(listenerPublisher, messagingTemplate, new InMemoryEventLog(), 10);
+        var publisher = new MorkEventPublisher(List.of(listener), messagingTemplate, new InMemoryEventLog(), 10);
         var listenerEntered = new CountDownLatch(1);
         var releaseListener = new CountDownLatch(1);
         var drainThreadStarted = new CountDownLatch(1);
@@ -300,7 +303,7 @@ class MorkEventPublisherTest {
             listenerEntered.countDown();
             assertTrue(releaseListener.await(5, TimeUnit.SECONDS));
             return null;
-        }).when(listenerPublisher).publishEvent(isA(PingEvent.class));
+        }).when(listener).onEvent(isA(PingEvent.class));
 
         publisher.publish(new PingEvent());
         assertTrue(listenerEntered.await(1, TimeUnit.SECONDS));

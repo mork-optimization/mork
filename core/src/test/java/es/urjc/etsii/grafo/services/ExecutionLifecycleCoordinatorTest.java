@@ -2,14 +2,15 @@ package es.urjc.etsii.grafo.services;
 
 import es.urjc.etsii.grafo.events.EventWebserverConfig;
 import es.urjc.etsii.grafo.events.InMemoryEventLog;
+import es.urjc.etsii.grafo.events.MorkEventListener;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
 import es.urjc.etsii.grafo.events.types.PingEvent;
 import org.junit.jupiter.api.Test;
 import org.springframework.context.ConfigurableApplicationContext;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
@@ -71,7 +72,7 @@ class ExecutionLifecycleCoordinatorTest {
     @Test
     void contextClosesAfterFinalEventAndRecursiveEventsAreConsumed() throws InterruptedException {
         var context = mock(ConfigurableApplicationContext.class);
-        var listenerPublisher = mock(ApplicationEventPublisher.class);
+        var listener = mock(MorkEventListener.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
         var eventLog = new InMemoryEventLog();
         var publisherRef = new AtomicReference<MorkEventPublisher>();
@@ -83,14 +84,14 @@ class ExecutionLifecycleCoordinatorTest {
                 publisherRef.get().publish(new PingEvent());
             }
             return null;
-        }).when(listenerPublisher).publishEvent(org.mockito.ArgumentMatchers.any(Object.class));
+        }).when(listener).onEvent(org.mockito.ArgumentMatchers.any());
         doAnswer(invocation -> {
             eventCountAtClose.set(eventLog.size());
             closeLatch.countDown();
             return null;
         }).when(context).close();
 
-        var publisher = new MorkEventPublisher(listenerPublisher, messagingTemplate, eventLog);
+        var publisher = new MorkEventPublisher(List.of(listener), messagingTemplate, eventLog);
         publisherRef.set(publisher);
         var config = new EventWebserverConfig();
         config.setStopOnExecutionEnd(true);

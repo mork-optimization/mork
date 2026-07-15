@@ -4,9 +4,9 @@ import es.urjc.etsii.grafo.events.types.MorkEvent;
 import es.urjc.etsii.grafo.util.ExceptionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Component;
 
@@ -28,7 +28,7 @@ public class MorkEventPublisher implements DisposableBean {
     private final BlockingQueue<QueueItem> eventQueue;
     private final int queueCapacity;
     private final AtomicInteger muteDepth = new AtomicInteger();
-    private final ApplicationEventPublisher listenerPublisher;
+    private final Iterable<MorkEventListener> listeners;
     private final SimpMessagingTemplate messagingTemplate;
     private final InMemoryEventLog eventLog;
     private final Thread dispatcherThread;
@@ -40,21 +40,36 @@ public class MorkEventPublisher implements DisposableBean {
     /**
      * Build event publisher, creating the single dispatcher thread.
      *
-     * @param listenerPublisher Spring event publisher used to notify backend listeners
+     * @param listeners backend event listeners provided by Spring
      * @param messagingTemplate websocket messaging template
      * @param eventLog in-memory replay log
      */
     @Autowired
     public MorkEventPublisher(
-            ApplicationEventPublisher listenerPublisher,
+            ObjectProvider<MorkEventListener> listeners,
             SimpMessagingTemplate messagingTemplate,
             InMemoryEventLog eventLog
     ) {
-        this(listenerPublisher, messagingTemplate, eventLog, DEFAULT_QUEUE_CAPACITY);
+        this(listeners, messagingTemplate, eventLog, DEFAULT_QUEUE_CAPACITY);
+    }
+
+    /**
+     * Build an event publisher with an explicit listener collection.
+     *
+     * @param listeners backend event listeners
+     * @param messagingTemplate websocket messaging template
+     * @param eventLog in-memory replay log
+     */
+    public MorkEventPublisher(
+            Iterable<MorkEventListener> listeners,
+            SimpMessagingTemplate messagingTemplate,
+            InMemoryEventLog eventLog
+    ) {
+        this(listeners, messagingTemplate, eventLog, DEFAULT_QUEUE_CAPACITY);
     }
 
     MorkEventPublisher(
-            ApplicationEventPublisher listenerPublisher,
+            Iterable<MorkEventListener> listeners,
             SimpMessagingTemplate messagingTemplate,
             InMemoryEventLog eventLog,
             int queueCapacity
@@ -62,7 +77,7 @@ public class MorkEventPublisher implements DisposableBean {
         if (queueCapacity <= 0) {
             throw new IllegalArgumentException("Event queue capacity must be greater than zero");
         }
-        this.listenerPublisher = listenerPublisher;
+        this.listeners = listeners;
         this.messagingTemplate = messagingTemplate;
         this.eventLog = eventLog;
         this.queueCapacity = queueCapacity;
@@ -224,10 +239,20 @@ public class MorkEventPublisher implements DisposableBean {
             logSinkFailure("websocket", event, e);
         }
 
+        dispatchToListeners(event);
+    }
+
+    private void dispatchToListeners(MorkEvent event) {
         try {
-            listenerPublisher.publishEvent(event);
+            for (var listener : listeners) {
+                try {
+                    listener.onEvent(event);
+                } catch (Throwable e) {
+                    logSinkFailure("backend listener " + listener.getClass().getName(), event, e);
+                }
+            }
         } catch (Throwable e) {
-            logSinkFailure("backend listener", event, e);
+            logSinkFailure("backend listener discovery", event, e);
         }
     }
 

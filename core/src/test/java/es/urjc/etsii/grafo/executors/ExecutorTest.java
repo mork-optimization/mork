@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.InMemoryEventLog;
+import es.urjc.etsii.grafo.events.MorkEventListener;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
@@ -28,7 +29,6 @@ import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.random.RandomType;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 
 import java.util.List;
@@ -183,10 +183,10 @@ class ExecutorTest {
 
     @Test
     public void warmupBlocksEventsPublishedByAlgorithm(){
-        var applicationEventPublisher = mock(ApplicationEventPublisher.class);
+        var listener = mock(MorkEventListener.class);
         var messagingTemplate = mock(SimpMessagingTemplate.class);
         var eventLog = new InMemoryEventLog();
-        var eventPublisher = new MorkEventPublisher(applicationEventPublisher, messagingTemplate, eventLog);
+        var eventPublisher = new MorkEventPublisher(List.of(listener), messagingTemplate, eventLog);
         try {
             var warmupInstance = new TestInstance("warmup");
             when(instanceManager.getInstance("warmup")).thenReturn(warmupInstance);
@@ -210,7 +210,7 @@ class ExecutorTest {
 
             warmupExecutor.warmup(experiment, "warmup");
 
-            verify(applicationEventPublisher, after(100).never()).publishEvent(isA(PingEvent.class));
+            verify(listener, after(100).never()).onEvent(isA(PingEvent.class));
         } finally {
             eventPublisher.destroy();
         }

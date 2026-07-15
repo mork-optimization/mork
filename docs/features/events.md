@@ -70,47 +70,34 @@ Most event names are self-explanatory, in case not:
 ## Implementing an event listener
 
 ### Backend
-Create methods annotated with `@MorkEventListener`. Classes with `@MorkEventListener` methods are discovered automatically, including annotated methods inherited through superclasses and interfaces; users do not need to extend a base listener class or add Spring annotations. For example, the Telegram bot can be implemented using a listener as follows:
+Implement `MorkEventListener`. Implementations are discovered automatically by Mork if they follow the template structure. If they are not discovered automatically, you can add the `@Component` or another Spring stereotype. Mork will invoke each listener directly on its dispatcher thread. Use pattern matching to select the event types the listener consumes. As an example, this is how the Telegram integration works:
 
-```Java
+```java
 
-public class TelegramEventListener {
+public class TelegramEventListener implements MorkEventListener {
 
     private final TelegramService telegramService;
-    private volatile boolean errorNotified = false;
 
     public TelegramEventListener(TelegramService telegramService) {
         this.telegramService = telegramService;
     }
 
-    // Notify user when experiment ends
-    @MorkEventListener
-    public void onExperimentEnd(ExperimentEndedEvent event) {
-        if (!telegramService.ready()) return;
-        telegramService.sendMessage(String.format("Experiment %s ended. Execution time: %s seconds", event.experimentName(), event.executionTime() / 1_000_000_000));
-    }
-
-    // Notify user of the first error
-    @MorkEventListener
-    public void onError(ErrorEvent event) {
-        if (!telegramService.ready()) return;
-        // Only notify first error to prevent spamming
-        if (!errorNotified) {
-            errorNotified = true;
-            var t = event.throwable();
-            telegramService.sendMessage(String.format("Execution Error: %s. Further errors will NOT be notified.", t));
+    @Override
+    public void onEvent(MorkEvent event) {
+        switch (event) {
+            case ExperimentEndedEvent experimentEndedEvent -> notifyExperimentEnd(experimentEndedEvent);
+            case ErrorEvent errorEvent -> notifyError(errorEvent);
+            case ExecutionEndedEvent ignored -> telegramService.stop();
+            default -> {
+                // Ignore event types we are not interested in
+            }
         }
     }
 
-    // Stop Telegram bot when execution ends
-    @MorkEventListener
-    public void onExecutionEnd(ExecutionEndedEvent event) {
-        telegramService.stop();
-    }
 }
 ```
 
-If you want to listen to all framework events, accept the marker interface `MorkEvent` as the listener parameter.
+Every listener receives the `MorkEvent` marker type and decides which payload types it consumes. An exception from one listener is logged and does not prevent the remaining listeners or later events from being dispatched. Listener classes may request  `MorkEventPublisher` via the constructor and publish their own events, but be careful of infinite recursion.
 
 ### Frontend
 

@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.solver;
 
 import com.fasterxml.jackson.core.StreamReadConstraints;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
-import es.urjc.etsii.grafo.events.MorkEventListenerTypeFilter;
+import es.urjc.etsii.grafo.events.MorkEventListener;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.services.BannerProvider;
 import es.urjc.etsii.grafo.solution.Move;
@@ -25,7 +25,7 @@ import org.springframework.context.annotation.FilterType;
         basePackages = "${advanced.scan-pkgs:es.urjc.etsii}",
         includeFilters = {
                 @ComponentScan.Filter(InheritedComponent.class),
-                @ComponentScan.Filter(type = FilterType.CUSTOM, classes = MorkEventListenerTypeFilter.class)
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = MorkEventListener.class)
         }
 )
 public class Mork {

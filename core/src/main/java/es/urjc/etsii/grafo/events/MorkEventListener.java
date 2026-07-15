@@ -1,22 +1,23 @@
 package es.urjc.etsii.grafo.events;
 
-import org.springframework.context.event.EventListener;
-
-import java.lang.annotation.ElementType;
-import java.lang.annotation.Retention;
-import java.lang.annotation.RetentionPolicy;
-import java.lang.annotation.Target;
-
+import es.urjc.etsii.grafo.events.types.MorkEvent;
 
 /**
  * Listen for Mork events.
  *
  * Events are already dispatched from the Mork event dispatcher thread, outside the
- * solver hot path. Listener methods therefore execute synchronously in event
- * order unless they explicitly delegate work elsewhere.
+ * solver hot path. Listeners therefore execute synchronously in event order unless
+ * they explicitly delegate work elsewhere. Implementations under Mork's configured
+ * scan packages are discovered automatically and do not need a Spring stereotype.
  */
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-@EventListener
-public @interface MorkEventListener {
+@FunctionalInterface
+public interface MorkEventListener {
+
+    /**
+     * Handle a Mork event. Implementations may use pattern matching to select
+     * the event types they consume.
+     *
+     * @param event dispatched event
+     */
+    void onEvent(MorkEvent event);
 }

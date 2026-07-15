@@ -2,7 +2,6 @@ package es.urjc.etsii.grafo.io.serializers;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.executors.WorkUnitResult;
-import es.urjc.etsii.grafo.events.MorkEventListener;
 import es.urjc.etsii.grafo.results.ResultStore;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.*;
@@ -217,13 +216,5 @@ public class ResultsSerializerListenerTest {
 
         Assertions.assertNull(realStore.findResult(result.resultId()).orElseThrow().solution());
         Assertions.assertSame(result.solution(), realStore.findSolution(result.resultId()).orElseThrow());
-    }
-
-    @Test
-    public void isNotAnEventListener() {
-        boolean hasListenerMethod = Arrays.stream(ResultsSerializerListener.class.getDeclaredMethods())
-                .anyMatch(method -> method.isAnnotationPresent(MorkEventListener.class));
-
-        Assertions.assertFalse(hasListenerMethod);
     }
 }

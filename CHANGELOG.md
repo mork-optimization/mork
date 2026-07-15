@@ -1,4 +1,5 @@
 # Developing
+- (Breaking) Replace Spring-annotated Mork event listener methods with direct `MorkEventListener` implementations.
 - (Fix) Progress bar in console was drawn incorrectly while printing logs to console.
 - (Fix) Improve Excel serializer in some edge cases, print time with default with 2 decimals in pivot table.
 - (Fix) Build Excel pivot table from the generated raw-data table instead of reserving rows beforehand.
