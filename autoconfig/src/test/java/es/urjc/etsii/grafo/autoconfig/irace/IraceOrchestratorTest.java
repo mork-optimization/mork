@@ -1,20 +1,69 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.autoconfig.controller.IraceUtil;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.MultiExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.SingleExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.config.SolverConfig;
+import es.urjc.etsii.grafo.config.BlockConfig;
+import es.urjc.etsii.grafo.config.InstanceConfiguration;
+import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
+import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.io.serializers.ResultsSerializerListener;
+import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
+import es.urjc.etsii.grafo.services.TimeLimitCalculator;
+import es.urjc.etsii.grafo.solution.SolutionValidator;
+import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.web.server.autoconfigure.ServerProperties;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator.DEFAULT_IRACE_EXPERIMENTS;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 
 class IraceOrchestratorTest {
+    @Test
+    @SuppressWarnings("unchecked")
+    void followerModeDoesNotPublishTerminalEventsOrRequestShutdown() {
+        var eventPublisher = mock(MorkEventPublisher.class);
+        var lifecycle = mock(ExecutionLifecycleCoordinator.class);
+        var resultsSerializer = (ResultsSerializerListener<TestSolution, TestInstance>) mock(ResultsSerializerListener.class);
+        var orchestrator = new IraceOrchestrator<>(
+                new SolverConfig(),
+                new BlockConfig(),
+                mock(IraceConfig.class),
+                new ServerProperties(),
+                new InstanceConfiguration(),
+                mock(IraceIntegration.class),
+                (InstanceManager<TestInstance>) mock(InstanceManager.class),
+                List.of((SolutionBuilder<TestSolution, TestInstance>) mock(SolutionBuilder.class)),
+                List.of((AlgorithmBuilder<TestSolution, TestInstance>) mock(AlgorithmBuilder.class)),
+                Optional.empty(),
+                Optional.empty(),
+                mock(es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator.class),
+                eventPublisher,
+                lifecycle,
+                resultsSerializer
+        );
+
+        orchestrator.run("--follower");
+
+        verifyNoInteractions(eventPublisher, resultsSerializer);
+        verify(lifecycle, never()).complete(anyLong());
+    }
+
     @Test
     void testNParallel() {
         var config = new SolverConfig();

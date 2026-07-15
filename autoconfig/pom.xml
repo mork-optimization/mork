@@ -32,13 +32,6 @@
       <version>4.13.2</version>
     </dependency>
 
-    <!-- Call other languages from Java, useful for Irace -->
-    <dependency>
-      <groupId>org.graalvm.sdk</groupId>
-      <artifactId>graal-sdk</artifactId>
-      <version>${graalvm.version}</version>
-    </dependency>
-
     <dependency>
       <!-- Testing dependencies -->
       <groupId>org.springframework.boot</groupId>

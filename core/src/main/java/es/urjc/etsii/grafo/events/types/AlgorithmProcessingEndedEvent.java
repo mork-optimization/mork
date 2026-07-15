@@ -1,17 +1,15 @@
 package es.urjc.etsii.grafo.events.types;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
-import es.urjc.etsii.grafo.io.Instance;
-import es.urjc.etsii.grafo.solution.Solution;
-
 /**
  * Triggered after ending an experiment
  */
-public class AlgorithmProcessingEndedEvent<S extends Solution<S, I>, I extends Instance> extends MorkEvent {
-    private final String experimentName;
-    private final String instanceName;
-    private final Algorithm<S,I> algorithm;
-    private final int repetitions;
+public record AlgorithmProcessingEndedEvent(
+        String experimentName,
+        String instanceName,
+        String algorithmName,
+        int repetitions
+) implements MorkEvent {
 
     /**
      * Create a new instance processing ended event.
@@ -21,44 +19,12 @@ public class AlgorithmProcessingEndedEvent<S extends Solution<S, I>, I extends I
      * @param algorithm algorithm that finished executing
      * @param repetitions
      */
-    public AlgorithmProcessingEndedEvent(String experimentName, String instanceName, Algorithm<S, I> algorithm, int repetitions) {
-        this.experimentName = experimentName;
-        this.instanceName = instanceName;
-        this.algorithm = algorithm;
-        this.repetitions = repetitions;
-    }
-
-    /**
-     * Get current experiment name
-     *
-     * @return experiment name
-     */
-    public String getExperimentName() {
-        return experimentName;
-    }
-
-    /**
-     * Get instance name
-     *
-     * @return instance name
-     */
-    public String getInstanceName() {
-        return instanceName;
-    }
-
-    /**
-     * Get algorithm that finished executing for the current instance
-     * @return algorithm reference
-     */
-    public Algorithm<S, I> getAlgorithm() {
-        return algorithm;
-    }
-
-    /**
-     * How many times is the pair (instance, algorithm) executed?
-     * @return
-     */
-    public int getRepetitions() {
-        return repetitions;
+    public AlgorithmProcessingEndedEvent(
+            String experimentName,
+            String instanceName,
+            Algorithm<?, ?> algorithm,
+            int repetitions
+    ) {
+        this(experimentName, instanceName, algorithm.getName(), repetitions);
     }
 }

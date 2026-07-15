@@ -26,7 +26,7 @@ public class TelegramEventListenerTest {
     @Test
     public void readyCheckOnError(){
         given(telegramService.ready()).willReturn(false);
-        telegramEventListener.onError(new ErrorEvent(fakeException));
+        telegramEventListener.onEvent(new ErrorEvent(fakeException));
 
         verify(telegramService).ready();
         verifyNoMoreInteractions(telegramService);
@@ -35,14 +35,14 @@ public class TelegramEventListenerTest {
     @Test
     public void onError(){
         given(telegramService.ready()).willReturn(true);
-        telegramEventListener.onError(new ErrorEvent(fakeException));
+        telegramEventListener.onEvent(new ErrorEvent(fakeException));
         verify(telegramService).sendMessage(anyString());
     }
 
     @Test
     public void readyCheckOnExperimentEnd(){
         given(telegramService.ready()).willReturn(false);
-        telegramEventListener.onExperimentEnd(new ExperimentEndedEvent("name", 1000, System.currentTimeMillis()));
+        telegramEventListener.onEvent(new ExperimentEndedEvent("name", 1000, System.currentTimeMillis()));
 
         verify(telegramService).ready();
         verifyNoMoreInteractions(telegramService);
@@ -51,13 +51,13 @@ public class TelegramEventListenerTest {
     @Test
     public void onExperimentEnd(){
         given(telegramService.ready()).willReturn(true);
-        telegramEventListener.onExperimentEnd(new ExperimentEndedEvent("name", 1000, System.currentTimeMillis()));
+        telegramEventListener.onEvent(new ExperimentEndedEvent("name", 1000, System.currentTimeMillis()));
         verify(telegramService).sendMessage(anyString());
     }
 
     @Test
     public void onExecutionEnd(){
-        telegramEventListener.onExecutionEnd(new ExecutionEndedEvent(1000));
+        telegramEventListener.onEvent(new ExecutionEndedEvent(1000));
         verify(telegramService).stop();
     }
 

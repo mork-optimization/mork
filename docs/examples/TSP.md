@@ -890,16 +890,11 @@ modify are: `trainInstancesDir`, `maxExperiments`, `targetRunnerParallel`, among
 
 ### Execute irace
 
-To execute irace, first, go to `application.yml` and enable irace:
+The default R runner requires R and `Rscript` to be installed locally and
+available on `PATH`. Then start the application with IRACE mode enabled:
 
-```yml
-# Enable irace integration? Check IRACE Wiki section before enabling
-irace:
-enabled: false
-
-# False: use GraalVM implementation, does not need R installed locally
-# True: Use shell to execute R scripts, R/Rscript need to be locally installed and in path
-shell: true
+```bash
+java -jar your-application.jar --irace
 ```
 
 Now, it's the moment when you wait up to a few hours until it ends. The time it takes to find the best configuration depends
@@ -940,4 +935,3 @@ using it right now. Experience has shown that writing assertions while programmi
 effective ways to detect and correct bugs. As an added benefit, assertions serve to document the inner workings of your
 program, enhancing maintainability. By default, assertions are disabled at runtime. To enable assertions use
 the `-enableassertions`, or `-ea`, as a program argument.
-

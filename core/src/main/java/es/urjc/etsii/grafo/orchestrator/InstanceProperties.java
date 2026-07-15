@@ -1,15 +1,12 @@
 package es.urjc.etsii.grafo.orchestrator;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
-import es.urjc.etsii.grafo.events.EventPublisher;
-import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
-import es.urjc.etsii.grafo.solution.Move;
-import es.urjc.etsii.grafo.solution.Objective;
-import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
 import es.urjc.etsii.grafo.util.Context;
 import org.apache.commons.io.FilenameUtils;
 import org.slf4j.Logger;
@@ -27,24 +24,30 @@ public class InstanceProperties<I extends Instance> extends AbstractOrchestrator
     public static final Set<String> ignoredProperties = Set.of(Instance.LOAD_TIME_NANOS);
     protected final InstanceManager<I> instanceManager;
     protected final InstanceConfiguration instanceConfiguration;
+    protected final MorkEventPublisher eventPublisher;
+    protected final ExecutionLifecycleCoordinator lifecycleCoordinator;
 
     public InstanceProperties(
             InstanceManager<I> instanceManager,
-            InstanceConfiguration instanceConfiguration
+            InstanceConfiguration instanceConfiguration,
+            MorkEventPublisher eventPublisher,
+            ExecutionLifecycleCoordinator lifecycleCoordinator
     ) {
         this.instanceManager = instanceManager;
         this.instanceConfiguration = instanceConfiguration;
+        this.eventPublisher = eventPublisher;
+        this.lifecycleCoordinator = lifecycleCoordinator;
     }
 
     @Override
     public void run(String... args) {
         long start = System.nanoTime();
         try {
-            EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectivesW(), List.of("Instance analysis")));
+            eventPublisher.publish(new ExecutionStartedEvent(Context.getObjectivesW(), List.of("Instance analysis")));
             analyzeInstances();
         } finally {
             long end = System.nanoTime();
-            EventPublisher.getInstance().publishEvent(new ExecutionEndedEvent(end - start));
+            lifecycleCoordinator.complete(end - start);
         }
     }
 

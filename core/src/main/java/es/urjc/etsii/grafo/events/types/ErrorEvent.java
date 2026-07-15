@@ -1,10 +1,15 @@
 package es.urjc.etsii.grafo.events.types;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 /**
  * Triggers when an unhandled exception or throwable reaches the default Mork exception handler.
  */
-public class ErrorEvent extends MorkEvent {
-    private final Throwable t;
+public record ErrorEvent(
+        @JsonIgnore Throwable throwable,
+        String exceptionType,
+        String message
+) implements MorkEvent {
 
     /**
      * Create a new error event from a throwable
@@ -12,15 +17,6 @@ public class ErrorEvent extends MorkEvent {
      * @param t Throwable
      */
     public ErrorEvent(Throwable t) {
-        this.t = t;
-    }
-
-    /**
-     * Get error event cause
-     *
-     * @return error cause
-     */
-    public Throwable getThrowable() {
-        return t;
+        this(t, t.getClass().getSimpleName(), t.getMessage());
     }
 }

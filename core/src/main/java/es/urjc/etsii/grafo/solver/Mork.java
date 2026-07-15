@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.solver;
 
 import com.fasterxml.jackson.core.StreamReadConstraints;
-import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
+import es.urjc.etsii.grafo.events.MorkEventListener;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.services.BannerProvider;
 import es.urjc.etsii.grafo.solution.Move;
@@ -14,15 +14,20 @@ import org.slf4j.Logger;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.ComponentScan;
-import org.springframework.scheduling.annotation.EnableAsync;
+import org.springframework.context.annotation.FilterType;
 
 
 /**
  * This class is in charge of launching Mork.
  */
 @SpringBootApplication
-@EnableAsync
-@ComponentScan(basePackages = "${advanced.scan-pkgs:es.urjc.etsii}", includeFilters = @ComponentScan.Filter(InheritedComponent.class))
+@ComponentScan(
+        basePackages = "${advanced.scan-pkgs:es.urjc.etsii}",
+        includeFilters = {
+                @ComponentScan.Filter(InheritedComponent.class),
+                @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = MorkEventListener.class)
+        }
+)
 public class Mork {
 
     private static final Logger log = org.slf4j.LoggerFactory.getLogger(Mork.class);

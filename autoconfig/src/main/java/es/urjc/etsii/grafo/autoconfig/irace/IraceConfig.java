@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "irace")
 public class IraceConfig {
     private boolean enabled;
-    private boolean shell;
     private boolean auc = false;
     private boolean timecontrol = false;
 
@@ -31,24 +30,6 @@ public class IraceConfig {
      */
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
-    }
-
-    /**
-     * Execute Irace in shell or using GraalVM?
-     *
-     * @return true if irace should be executed using ShellRLangRunner, false to use GraalRLangRunner
-     */
-    public boolean isShell() {
-        return shell;
-    }
-
-    /**
-     * Execute Irace in shell or using GraalVM?
-     *
-     * @param shell true to execute irace using ShellRLangRunner, false to use GraalRLangRunner
-     */
-    public void setShell(boolean shell) {
-        this.shell = shell;
     }
 
     /**
