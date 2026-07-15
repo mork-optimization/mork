@@ -34,10 +34,11 @@ When running in IRACE tuning mode, user defined experiments are ignored, and a s
 
 ## Configuring R integration
 
-Local IRACE tuning runs R scripts through the `Rscript` executable. Install
-[R for your environment](https://cran.r-project.org/bin/) and ensure both `R`
-and `Rscript` are available on `PATH` before starting Mork with `--irace` or
-`--autoconfig`.
+By default, local IRACE tuning runs R scripts through the `Rscript` executable.
+Install [R for your environment](https://cran.r-project.org/bin/) and ensure both
+`R` and `Rscript` are available on `PATH` before starting Mork with `--irace` or
+`--autoconfig`. Applications may provide a custom Spring bean implementing
+`RLangRunner` when R scripts must be executed by another mechanism.
 
 Verify the installation from your terminal:
 

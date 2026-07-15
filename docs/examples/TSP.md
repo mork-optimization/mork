@@ -890,7 +890,7 @@ modify are: `trainInstancesDir`, `maxExperiments`, `targetRunnerParallel`, among
 
 ### Execute irace
 
-To execute IRACE, first ensure that R and `Rscript` are installed locally and
+The default R runner requires R and `Rscript` to be installed locally and
 available on `PATH`. Then start the application with IRACE mode enabled:
 
 ```bash

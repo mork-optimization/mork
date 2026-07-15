@@ -11,7 +11,6 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "irace")
 public class IraceConfig {
     private boolean enabled;
-    private Boolean shell;
     private boolean auc = false;
     private boolean timecontrol = false;
 
@@ -31,38 +30,6 @@ public class IraceConfig {
      */
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
-    }
-
-    /**
-     * Legacy R execution option. R scripts are now always executed through
-     * the configured {@code Rscript} command.
-     *
-     * @return true unless the removed embedded execution mode was explicitly requested
-     * @deprecated remove this property from application configuration
-     */
-    @Deprecated(forRemoval = true)
-    public boolean isShell() {
-        return shell == null || shell;
-    }
-
-    /**
-     * Bind the legacy R execution option for an actionable migration error.
-     *
-     * @param shell legacy option value
-     * @deprecated remove this property from application configuration
-     */
-    @Deprecated(forRemoval = true)
-    public void setShell(boolean shell) {
-        this.shell = shell;
-    }
-
-    void validateRScriptExecution() {
-        if (Boolean.FALSE.equals(shell)) {
-            throw new IllegalStateException(
-                    "irace.shell=false is no longer supported. Install GNU R so that Rscript is available " +
-                            "and remove the irace.shell property."
-            );
-        }
     }
 
     /**

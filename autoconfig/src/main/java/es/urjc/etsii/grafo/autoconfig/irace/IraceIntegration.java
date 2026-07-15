@@ -23,18 +23,15 @@ public class IraceIntegration {
     private static final String RUNNER_SCRIPT = "runner.R";
 
     private final RLangRunner runner;
-    private final IraceConfig config;
 
     /**
      * <p>Constructor for IraceIntegration.</p>
      *
      * @param runner a {@link RLangRunner} object
-     * @param config Irace configuration
      */
-    public IraceIntegration(RLangRunner runner, IraceConfig config) {
+    public IraceIntegration(RLangRunner runner) {
         log.debug("Using R runner: {}", runner.getClass().getSimpleName());
         this.runner = runner;
-        this.config = config;
     }
 
     /**
@@ -43,7 +40,6 @@ public class IraceIntegration {
      * @param isJAR a boolean.
      */
     public void runIrace(boolean isJAR){
-        config.validateRScriptExecution();
         Path workingDirectory = Path.of("").toAbsolutePath().normalize();
         Path script = workingDirectory.resolve(RUNNER_SCRIPT);
         try {
@@ -53,12 +49,12 @@ public class IraceIntegration {
             var result = runner.execute(new RExecutionRequest(script, workingDirectory, Map.of()));
             if (!result.successful()) {
                 throw new IllegalStateException(
-                        "Rscript process failed with exit code %s. Review %s and %s"
+                        "R execution failed with exit code %s. Review %s and %s"
                                 .formatted(result.exitCode(), result.stdoutLog(), result.stderrLog())
                 );
             }
         } catch (IOException e) {
-            throw new IllegalStateException("Cannot load R runner", e);
+            throw new IllegalStateException("Cannot prepare R execution", e);
         }
     }
 }

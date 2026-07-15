@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.autoconfig.r;
 
-import es.urjc.etsii.grafo.autoconfig.irace.IraceConfig;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceIntegration;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
@@ -57,7 +56,7 @@ class RRunnerConfigurationTest {
     }
 
     @Configuration(proxyBeanMethods = false)
-    @Import({IraceConfig.class, IraceIntegration.class})
+    @Import(IraceIntegration.class)
     static class IraceConsumerConfiguration {
     }
 
