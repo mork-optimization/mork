@@ -200,7 +200,7 @@ public class YourProblemSolutionSerializer extends SolutionSerializer<YourSoluti
 }
 ```
 
-`WorkUnitResult` is a record. Use record accessors such as `resultId()`, `solution()`, `executionTime()`, `objectives()`, and `solutionProperties()`, plus the derived `mainObjectiveValue()` method.Objective values and custom properties are evaluated and cached when the result is created, so later solution mutation does not change serialized result metadata.
+`WorkUnitResult` is a record. Use record accessors such as `resultId()`, `solution()`, `executionTime()`, `objectives()`, and `solutionProperties()`, plus the derived `mainObjectiveValue()` method. Objective values and custom properties are evaluated and cached when the result is created, so later solution mutation does not change serialized result metadata.
 
 Note: If the method `export(BufferedWriter writer, WorkUnitResult<YourSolutionType, YourInstanceType> result)` does not provide enough flexibility, 
 for example if you want to export the solution as an image, you may leave it empty and override 
