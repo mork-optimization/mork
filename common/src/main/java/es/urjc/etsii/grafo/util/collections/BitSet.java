@@ -6,7 +6,7 @@ import java.util.stream.Stream;
 import java.util.stream.StreamSupport;
 
 /**
- * Fast integer set implementation based on JDK BitSet class
+ * Fast integer set implementation based on the JDK {@code BitSet} class.
  */
 public class BitSet extends AbstractSet<Integer> {
 
@@ -563,6 +563,47 @@ public class BitSet extends AbstractSet<Integer> {
         return sum;
     }
 
+    @Override
+    public boolean equals(Object object) {
+        if (this == object) {
+            return true;
+        }
+        if (!(object instanceof BitSet other)) {
+            return super.equals(object);
+        }
+
+        int commonWords = Math.min(this.words.length, other.words.length);
+        for (int i = 0; i < commonWords; i++) {
+            if (this.words[i] != other.words[i]) {
+                return false;
+            }
+        }
+        for (int i = commonWords; i < this.words.length; i++) {
+            if (this.words[i] != 0) {
+                return false;
+            }
+        }
+        for (int i = commonWords; i < other.words.length; i++) {
+            if (other.words[i] != 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    public int hashCode() {
+        int hash = 0;
+        for (int wordIndex = 0; wordIndex < words.length; wordIndex++) {
+            long word = words[wordIndex];
+            while (word != 0) {
+                hash += wordIndex * BITS_PER_WORD + Long.numberOfTrailingZeros(word);
+                word &= word - 1;
+            }
+        }
+        return hash;
+    }
+
     /**
      * Performs a logical <b>AND</b> of this target bit set with the
      * argument bit set. This bit set is modified so that each bit in it
@@ -664,68 +705,9 @@ public class BitSet extends AbstractSet<Integer> {
 //        }
     }
 
-    /**
-     * Returns the hash code value for this bit set. The hash code depends
-     * only on which bits are set within this {@code BitSet}.
-     *
-     * <p>The hash code is defined to be the result of the following
-     * calculation:
-     * <pre> {@code
-     * public int hashCode() {
-     *     long h = 1234;
-     *     long[] words = toLongArray();
-     *     for (int i = words.length; --i >= 0; )
-     *         h ^= words[i] * (i + 1);
-     *     return (int)((h >> 32) ^ h);
-     * }}</pre>
-     * Note that the hash code changes if the set of bits is altered.
-     *
-     * @return the hash code value for this bit set
-     */
-    @Override
-    public int hashCode() {
-        return Arrays.hashCode(this.words);
-    }
-
     @Override
     public Iterator<Integer> iterator() {
         return new BitSetIterator();
-    }
-
-    /**
-     * Compares this object against the specified object.
-     * The result is {@code true} if and only if the argument is
-     * not {@code null} and is a {@code BitSet} object that has
-     * exactly the same set of bits set to {@code true} as this bit
-     * set. That is, for every nonnegative {@code int} index {@code k},
-     * <pre>((BitSet)obj).get(k) == this.get(k)</pre>
-     * must be true. IMPORTANT: The current sizes of the two bit sets ARE COMPARED FIRST.
-     *
-     * @param obj the object to compare with
-     * @return {@code true} if the objects are the same;
-     * {@code false} otherwise
-     * @see #size()
-     */
-    public boolean equals(Object obj) {
-        if (!(obj instanceof BitSet set)) {
-            return false;
-        }
-        if (this == obj) {
-            return true;
-        }
-
-        if (words.length != set.words.length) {
-            return false;
-        }
-
-        // Check words in use by both BitSets
-        for (int i = 0; i < words.length; i++) {
-            if (words[i] != set.words[i]) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**
@@ -797,7 +779,10 @@ public class BitSet extends AbstractSet<Integer> {
 
     @Override
     public boolean contains(Object o) {
-        return this.get((int) o);
+        if (!(o instanceof Integer value)) {
+            return false;
+        }
+        return value >= 0 && value < this.capacity && this.get(value);
     }
 
     @Override
@@ -819,13 +804,16 @@ public class BitSet extends AbstractSet<Integer> {
 
     @Override
     public boolean containsAll(Collection<?> c) {
-        if(c instanceof BitSet set){
-            for (int i = 0; i < this.words.length; i++) {
-                long a = this.words[i];
-                long b = set.words[i];
-                boolean contained = (a & b) == b;
-                if(!contained){
-                    return false; // short
+        if (c instanceof BitSet set) {
+            int commonWords = Math.min(this.words.length, set.words.length);
+            for (int i = 0; i < commonWords; i++) {
+                if ((this.words[i] & set.words[i]) != set.words[i]) {
+                    return false;
+                }
+            }
+            for (int i = commonWords; i < set.words.length; i++) {
+                if (set.words[i] != 0) {
+                    return false;
                 }
             }
             return true;
@@ -1042,7 +1030,7 @@ public class BitSet extends AbstractSet<Integer> {
     private class BitSetIterator implements Iterator<Integer> {
 
         private int lastReturned = -1;
-        private int nextIdx = nextSetBit(0);
+        private int nextIdx = capacity == 0 ? -1 : nextSetBit(0);
 
         @Override
         public boolean hasNext() {

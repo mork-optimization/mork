@@ -2,6 +2,7 @@
 - (Breaking) Remove the obsolete `irace.shell` property; R execution is selected through `RLangRunner` implementations.
 - (Breaking) Replace Spring-annotated Mork event listener methods with direct `MorkEventListener` implementations.
 - (Fix) Progress bar in console was drawn incorrectly while printing logs to console.
+- (Fix) Make the custom `BitSet` follow the `Set` equality and hash-code contract, with specialized fast paths for `BitSet` instances.
 - (Fix) Improve Excel serializer in some edge cases, print time with default with 2 decimals in pivot table.
 - (Fix) Build Excel pivot table from the generated raw-data table instead of reserving rows beforehand.
 - (New) Autoconfig improvement: Categorical and ordinal params now pick all values if none are explicitly provided and target type is an enum.

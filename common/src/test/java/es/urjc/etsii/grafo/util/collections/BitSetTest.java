@@ -309,6 +309,77 @@ public class BitSetTest {
     }
 
     @Test
+    void equalityFollowsSetContractAcrossImplementations() {
+        var elements = List.of(0, 1, 63, 64);
+        var bitSet = new BitSet(65, elements);
+        var differentCapacity = new BitSet(257, elements);
+        Set<Integer> hashSet = new HashSet<>(elements);
+        Set<Integer> immutableSet = Set.copyOf(elements);
+        Set<Integer> firstView = Collections.unmodifiableSet(bitSet);
+        Set<Integer> secondView = Collections.unmodifiableSet(bitSet);
+        Set<Integer> differentBackingView = Collections.unmodifiableSet(differentCapacity);
+        var equalSets = List.of(
+                bitSet,
+                differentCapacity,
+                hashSet,
+                immutableSet,
+                firstView,
+                secondView,
+                differentBackingView
+        );
+
+        for (var left : equalSets) {
+            for (var right : equalSets) {
+                assertEquals(left, right);
+                assertEquals(left.hashCode(), right.hashCode());
+            }
+        }
+
+        var uniqueSets = new HashSet<Set<Integer>>();
+        uniqueSets.addAll(equalSets);
+        assertEquals(1, uniqueSets.size());
+    }
+
+    @Test
+    void equalityAndContainsAllHandleDifferentCapacities() {
+        var small = BitSet.of(64, 1);
+        var largeWithDifferentElement = BitSet.of(128, 65);
+        var largeSuperset = BitSet.of(128, 1, 65);
+
+        assertNotEquals(small, largeWithDifferentElement);
+        assertNotEquals(largeWithDifferentElement, small);
+        assertFalse(small.containsAll(largeWithDifferentElement));
+        assertFalse(largeWithDifferentElement.containsAll(small));
+        assertFalse(small.containsAll(largeSuperset));
+        assertTrue(largeSuperset.containsAll(small));
+    }
+
+    @Test
+    void containsReturnsFalseForUnsupportedOrOutOfCapacityValues() {
+        var set = BitSet.of(10, 1, 3, 5);
+
+        assertFalse(set.contains(null));
+        assertFalse(set.contains("1"));
+        assertFalse(set.contains(-1));
+        assertFalse(set.contains(10));
+        assertFalse(set.containsAll(Set.of(10)));
+    }
+
+    @Test
+    void zeroCapacitySetHasStandardEmptySetBehavior() {
+        var empty = new BitSet(0);
+        Set<Integer> standardEmpty = Set.of();
+        Set<Integer> view = Collections.unmodifiableSet(empty);
+
+        assertEquals(empty, standardEmpty);
+        assertEquals(standardEmpty, empty);
+        assertEquals(empty, view);
+        assertEquals(view, empty);
+        assertEquals(0, empty.hashCode());
+        assertFalse(empty.iterator().hasNext());
+    }
+
+    @Test
     void testNot(){
         var set1 = BitSet.of(100, 1, 7, 9);
         var set2 = BitSet.not(set1);
@@ -548,7 +619,7 @@ public class BitSetTest {
     void testEquals(){
         var set = of(10, 1, 3, 5);
         assertNotEquals(set, this);
-        assertNotEquals(set, of(1024, 1, 3, 5));
+        assertEquals(set, of(1024, 1, 3, 5));
         assertEquals(set, of(10, 1, 3, 5));
         assertEquals(set, set);
         assertNotEquals(set, of(10, 1, 5));
