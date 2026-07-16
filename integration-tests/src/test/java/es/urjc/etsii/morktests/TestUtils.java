@@ -1,9 +1,12 @@
 package es.urjc.etsii.morktests;
 
 import es.urjc.etsii.grafo.autoconfigtests.Main;
+import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,5 +33,13 @@ public class TestUtils {
             throw new RuntimeException("Subprocess did not finish within timeout: " + timeout);
         }
         return p.exitValue();
+    }
+
+    static void deleteGeneratedFiles(Path... paths) throws IOException {
+        for (Path path : paths) {
+            if (Files.exists(path)) {
+                FileUtils.forceDelete(path.toFile());
+            }
+        }
     }
 }
