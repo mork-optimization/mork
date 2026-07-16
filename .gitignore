@@ -47,6 +47,7 @@ docs/apidocs
 /solutions*
 /results*
 /log*
+log.txt
 .benchmark
 **/docs
 /example-graphs/instances/
