@@ -31,6 +31,11 @@
             <artifactId>mork-common</artifactId>
         </dependency>
 
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>mork-moocore</artifactId>
+        </dependency>
+
         <!-- JMH Core -->
         <dependency>
             <groupId>org.openjdk.jmh</groupId>

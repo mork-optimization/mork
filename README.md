@@ -75,6 +75,7 @@ The current development version is a Maven project structured in the following m
 |-------------------|---------------------------------------------------------------------------------------------------------------------------------------|
 | common            | Basic and fundamental Mork classes / building blocks: algorithms, solutions, instances, helper methods, etc.                          |
 | core              | Mork engine: this is where the magic happens. Parallelization, report generation, web interface, dependency injection, and much more! |
+| moocore-java      | Pure Java multi-objective indicators, Pareto operations, EAF ...                                                                      |
 | autoconfig        | Automatic configuration procedures that allow you to easily tune algorithms.                                                          |
 | template          | Base project used by the web generator to create the project zip files.                                                               |
 | example-tsp       | Example project implementation using Mork, the classic Travelling Salesman Problem.                                                   |

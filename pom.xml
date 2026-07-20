@@ -20,6 +20,7 @@
         <module>example-graphs</module>
         <module>example-vrpod</module>
         <module>common</module>
+        <module>moocore-java</module>
         <module>autoconfig</module>
         <module>integration-tests</module>
         <module>aggregate-report</module>
@@ -94,6 +95,12 @@
             <dependency>
                 <groupId>es.urjc.etsii.grafo</groupId>
                 <artifactId>mork-common</artifactId>
+                <version>0.23-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>mork-moocore</artifactId>
                 <version>0.23-SNAPSHOT</version>
             </dependency>
 
