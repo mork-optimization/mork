@@ -35,7 +35,8 @@ class ProgressAwareTerminalTest {
 
         String terminalOutput = terminalOutput();
         assertTrue(terminalOutput.contains("hello\n"));
-        assertTrue(terminalOutput.endsWith("\r\u001B[2KExperiment 50%"));
+        assertTrue(terminalOutput.contains("Experiment 50%\r" + " ".repeat("Experiment 50%".length()) + "\rhello\n"));
+        assertTrue(terminalOutput.endsWith("\rExperiment 50%"));
         assertEquals(2, countOccurrences(terminalOutput, "Experiment 50%"));
     }
 
@@ -48,7 +49,7 @@ class ProgressAwareTerminalTest {
 
         String terminalOutput = terminalOutput();
         assertTrue(terminalOutput.contains("line 1\nline 2\n"));
-        assertTrue(terminalOutput.endsWith("\r\u001B[2KExperiment 75%"));
+        assertTrue(terminalOutput.endsWith("\rExperiment 75%"));
     }
 
     @Test
@@ -58,7 +59,37 @@ class ProgressAwareTerminalTest {
         byte[] logBytes = "partial log".getBytes(StandardCharsets.UTF_8);
         ProgressAwareTerminal.writeLog(logBytes, 0, logBytes.length);
 
-        assertTrue(terminalOutput().contains("partial log" + System.lineSeparator() + "\r\u001B[2KExperiment 25%"));
+        assertTrue(terminalOutput().contains("partial log" + System.lineSeparator() + "\rExperiment 25%"));
+    }
+
+    @Test
+    void progressIsOverwrittenBeforeWritingTabbedLogMessage() throws IOException {
+        String progress = "progress text remains here";
+        consumer.accept(progress);
+
+        byte[] logBytes = "\t6.\tT(s): 37.919\n".getBytes(StandardCharsets.UTF_8);
+        ProgressAwareTerminal.writeLog(logBytes, 0, logBytes.length);
+
+        assertTrue(terminalOutput().contains(progress + "\r" + " ".repeat(progress.length()) + "\r\t6.\tT(s): 37.919\n"));
+    }
+
+    @Test
+    void shorterProgressOverwritesFullPreviousProgressLine() {
+        consumer.accept("Long progress line");
+
+        consumer.accept("Short");
+
+        assertTrue(terminalOutput().contains("Long progress line\r" + " ".repeat("Long progress line".length()) + "\rShort"));
+    }
+
+    @Test
+    void ansiSequencesDoNotAddToProgressDisplayLength() {
+        String coloredProgress = "\u001B[33mProgress\u001B[0m";
+        consumer.accept(coloredProgress);
+
+        consumer.clear();
+
+        assertTrue(terminalOutput().endsWith(coloredProgress + "\r" + " ".repeat("Progress".length()) + "\r"));
     }
 
     @Test
