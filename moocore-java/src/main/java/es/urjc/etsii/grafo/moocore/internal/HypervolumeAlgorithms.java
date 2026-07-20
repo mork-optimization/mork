@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MPL-2.0
 package es.urjc.etsii.grafo.moocore.internal;
 
+import es.urjc.etsii.grafo.moocore.internal.Hypervolume4d.Node;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -10,6 +12,8 @@ import java.util.Map;
 import java.util.TreeMap;
 
 public final class HypervolumeAlgorithms {
+
+    private static final int INCLUSION_EXCLUSION_MAX_POINTS = 12;
 
     private HypervolumeAlgorithms() {
     }
@@ -28,10 +32,6 @@ public final class HypervolumeAlgorithms {
         boolean[] directions = MatrixUtils.directions(maximise, objectives);
         double[] ref = MatrixUtils.toMinimisation(MatrixUtils.vector(reference, objectives, "reference"), directions);
         double[][] points = MatrixUtils.toMinimisation(input, directions);
-        points = relevantNondominated(points, ref);
-        if (points.length == 0) {
-            return 0.0;
-        }
         return hypervolumeMinimisation(points, ref, objectives);
     }
 
@@ -124,7 +124,70 @@ public final class HypervolumeAlgorithms {
         if (dimensions == 3) {
             return hypervolume3d(points, reference);
         }
-        return new DimensionSweep(points, reference).compute();
+        if (dimensions == 4) {
+            return Hypervolume4d.compute(points, reference);
+        }
+        double[][] relevant = relevant(points, reference);
+        if (relevant.length == 0) {
+            return 0.0;
+        }
+        if (relevant.length <= INCLUSION_EXCLUSION_MAX_POINTS) {
+            return inclusionExclusion(relevant, reference, dimensions);
+        }
+        return new DimensionSweep(relevant, reference).compute();
+    }
+
+    private static double inclusionExclusion(double[][] points, double[] reference, int dimensions) {
+        double[] sums = new double[2];
+        for (double[] point : points) {
+            sums[1] += boxVolume(point, reference, dimensions);
+        }
+        double[][] bounds = new double[points.length - 1][dimensions];
+        int[] starts = new int[Math.max(0, points.length - 2)];
+        for (int first = 0; first < points.length - 1; first++) {
+            int second = first + 1;
+            while (true) {
+                upperBound(bounds[0], points[first], points[second], dimensions);
+                sums[0] += boxVolume(bounds[0], reference, dimensions);
+                if (second == points.length - 1) {
+                    break;
+                }
+
+                int index = ++second;
+                int top = 0;
+                while (true) {
+                    double[] parent = bounds[top];
+                    top++;
+                    double[] child = bounds[top];
+                    upperBound(child, points[index], parent, dimensions);
+                    sums[top & 1] += boxVolume(child, reference, dimensions);
+                    index++;
+                    if (index < points.length) {
+                        starts[top - 1] = index;
+                    } else if (top > 1) {
+                        top -= 2;
+                        index = starts[top];
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+        return sums[1] - sums[0];
+    }
+
+    private static void upperBound(double[] target, double[] left, double[] right, int dimensions) {
+        for (int objective = 0; objective < dimensions; objective++) {
+            target[objective] = Math.max(left[objective], right[objective]);
+        }
+    }
+
+    private static double boxVolume(double[] point, double[] reference, int dimensions) {
+        double volume = 1.0;
+        for (int objective = 0; objective < dimensions; objective++) {
+            volume *= reference[objective] - point[objective];
+        }
+        return volume;
     }
 
     private static double hypervolume2d(double[][] input, double[] reference) {
@@ -226,14 +289,14 @@ public final class HypervolumeAlgorithms {
     }
 
     /**
-     * Dimension sweep for four or more objectives. The linked-list recurrence follows the
-     * Fonseca-Paquete-Lopez-Ibanez algorithm used by upstream moocore's MPL-2.0 c/hv.c,
-     * with the three-dimensional base case implemented by {@link SkylineArea}.
+     * Dimension sweep for five or more objectives. It follows upstream's
+     * Fonseca-Paquete-Lopez-Ibanez recurrence and stops at an HV4D+ base case.
      */
     private static final class DimensionSweep {
-        private static final int STOP_DIMENSION = 2;
+        private static final int STOP_DIMENSION = 3;
 
         private final Node head;
+        private final Hypervolume4d.BaseList baseList;
         private final double[] reference;
         private final double[] bound;
         private final int dimensions;
@@ -241,25 +304,27 @@ public final class HypervolumeAlgorithms {
         private DimensionSweep(double[][] points, double[] reference) {
             this.reference = reference;
             dimensions = reference.length;
-            int linkedDimensions = dimensions - STOP_DIMENSION;
-            head = new Node(null, linkedDimensions);
+            int higherDimensions = dimensions - STOP_DIMENSION - 1;
+            int partialDimensions = dimensions - STOP_DIMENSION;
+            head = new Node(null, higherDimensions, partialDimensions);
             Node[] nodes = new Node[points.length];
             for (int i = 0; i < points.length; i++) {
-                nodes[i] = new Node(points[i], linkedDimensions);
+                nodes[i] = new Node(points[i], higherDimensions, partialDimensions);
             }
-            for (int objective = STOP_DIMENSION; objective < dimensions; objective++) {
-                int link = objective - STOP_DIMENSION;
+            baseList = Hypervolume4d.createBaseList(nodes, reference);
+            for (int objective = STOP_DIMENSION + 1; objective < dimensions; objective++) {
+                int link = objective - STOP_DIMENSION - 1;
                 Node[] sorted = nodes.clone();
                 int coordinate = objective;
                 Arrays.sort(sorted, Comparator.comparingDouble(node -> node.point[coordinate]));
-                head.next[link] = sorted[0];
-                sorted[0].previous[link] = head;
+                head.higherNext[link] = sorted[0];
+                sorted[0].higherPrevious[link] = head;
                 for (int i = 1; i < sorted.length; i++) {
-                    sorted[i - 1].next[link] = sorted[i];
-                    sorted[i].previous[link] = sorted[i - 1];
+                    sorted[i - 1].higherNext[link] = sorted[i];
+                    sorted[i].higherPrevious[link] = sorted[i - 1];
                 }
-                sorted[sorted.length - 1].next[link] = head;
-                head.previous[link] = sorted[sorted.length - 1];
+                sorted[sorted.length - 1].higherNext[link] = head;
+                head.higherPrevious[link] = sorted[sorted.length - 1];
             }
             bound = new double[dimensions];
             Arrays.fill(bound, -Double.MAX_VALUE);
@@ -270,13 +335,10 @@ public final class HypervolumeAlgorithms {
         }
 
         private double recursive(int dimension, int count) {
-            if (dimension == STOP_DIMENSION) {
-                return hypervolume3d();
-            }
-
-            int link = dimension - STOP_DIMENSION;
-            Node highest = head.previous[link];
-            for (Node node = highest; node != head; node = node.previous[link]) {
+            int link = dimension - STOP_DIMENSION - 1;
+            int areaIndex = dimension - STOP_DIMENSION;
+            Node highest = head.higherPrevious[link];
+            for (Node node = highest; node != head; node = node.higherPrevious[link]) {
                 if (node.ignore < dimension) {
                     node.ignore = 0;
                 }
@@ -284,114 +346,118 @@ public final class HypervolumeAlgorithms {
 
             Node next = head;
             while (count > 1 && (highest.point[dimension] > bound[dimension]
-                    || highest.previous[link].point[dimension] >= bound[dimension])) {
+                    || highest.higherPrevious[link].point[dimension] >= bound[dimension])) {
                 delete(highest, dimension);
                 next = highest;
-                highest = highest.previous[link];
+                highest = highest.higherPrevious[link];
                 count--;
             }
 
             double volume = 0.0;
             if (count > 1) {
-                Node previous = highest.previous[link];
-                volume = previous.volume[link]
-                        + previous.area[link] * (highest.point[dimension] - previous.point[dimension]);
+                Node previous = highest.higherPrevious[link];
+                volume = previous.volume[areaIndex]
+                        + previous.area[areaIndex]
+                        * (highest.point[dimension] - previous.point[dimension]);
             } else {
                 double area = 1.0;
-                for (int objective = 0; objective <= STOP_DIMENSION; objective++) {
+                for (int objective = 0; objective < STOP_DIMENSION; objective++) {
                     area *= reference[objective] - highest.point[objective];
                 }
                 highest.area[0] = area;
-                for (int i = 1; i <= link; i++) {
-                    int objective = STOP_DIMENSION + i;
+                for (int i = 1; i <= areaIndex; i++) {
+                    int objective = STOP_DIMENSION + i - 1;
                     highest.area[i] = highest.area[i - 1]
                             * (reference[objective] - highest.point[objective]);
                 }
             }
 
             while (true) {
-                highest.volume[link] = volume;
-                Node previous = highest.previous[link];
+                highest.volume[areaIndex] = volume;
+                Node previous = highest.higherPrevious[link];
                 if (highest.ignore >= dimension) {
-                    highest.area[link] = previous.area[link];
+                    highest.area[areaIndex] = previous.area[areaIndex];
                 } else {
-                    highest.area[link] = recursive(dimension - 1, count);
-                    if (highest.area[link] <= previous.area[link]) {
+                    if (dimension - 1 == STOP_DIMENSION) {
+                        highest.area[areaIndex] = previous.area[areaIndex]
+                                + oneContribution4d(highest);
+                    } else {
+                        highest.area[areaIndex] = recursive(dimension - 1, count);
+                    }
+                    if (highest.ignore == dimension - 1) {
                         highest.ignore = dimension;
                     }
                 }
 
                 if (next == head) {
-                    volume += highest.area[link]
+                    volume += highest.area[areaIndex]
                             * (reference[dimension] - highest.point[dimension]);
                     return volume;
                 }
-                volume += highest.area[link] * (next.point[dimension] - highest.point[dimension]);
+                volume += highest.area[areaIndex]
+                        * (next.point[dimension] - highest.point[dimension]);
                 bound[dimension] = next.point[dimension];
                 reinsert(next, dimension);
                 count++;
                 highest = next;
-                next = next.next[link];
+                next = next.higherNext[link];
             }
         }
 
-        private double hypervolume3d() {
-            Node node = head.next[0];
-            SkylineArea area = new SkylineArea(reference[0], reference[1]);
-            double volume = 0.0;
-            while (node != head) {
-                double coordinate = node.point[2];
-                while (node != head && node.point[2] == coordinate) {
-                    area.add(node.point[0], node.point[1]);
-                    node = node.next[0];
-                }
-                double nextCoordinate = node == head ? reference[2] : node.point[2];
-                volume += area.area * Math.max(0.0, nextCoordinate - coordinate);
+        private double oneContribution4d(Node candidate) {
+            double contribution = Hypervolume4d.contribution(baseList, candidate);
+            if (contribution <= 0.0) {
+                candidate.ignore = STOP_DIMENSION;
+                return 0.0;
             }
-            return volume;
+            return contribution;
         }
 
         private void delete(Node node, int dimension) {
-            for (int objective = STOP_DIMENSION; objective < dimension; objective++) {
-                int link = objective - STOP_DIMENSION;
-                node.previous[link].next[link] = node.next[link];
-                node.next[link].previous[link] = node.previous[link];
+            for (int objective = STOP_DIMENSION + 1; objective < dimension; objective++) {
+                int link = objective - STOP_DIMENSION - 1;
+                node.higherPrevious[link].higherNext[link] = node.higherNext[link];
+                node.higherNext[link].higherPrevious[link] = node.higherPrevious[link];
                 bound[objective] = Math.min(bound[objective], node.point[objective]);
             }
+            deleteBase(node);
+            bound[STOP_DIMENSION] = Math.min(bound[STOP_DIMENSION],
+                    node.point[STOP_DIMENSION]);
         }
 
         private void reinsert(Node node, int dimension) {
-            for (int objective = STOP_DIMENSION; objective < dimension; objective++) {
-                int link = objective - STOP_DIMENSION;
+            for (int objective = STOP_DIMENSION + 1; objective < dimension; objective++) {
+                int link = objective - STOP_DIMENSION - 1;
+                node.higherPrevious[link].higherNext[link] = node;
+                node.higherNext[link].higherPrevious[link] = node;
+                bound[objective] = Math.min(bound[objective], node.point[objective]);
+            }
+            reinsertBase(node);
+            bound[STOP_DIMENSION] = Math.min(bound[STOP_DIMENSION],
+                    node.point[STOP_DIMENSION]);
+        }
+
+        private static void deleteBase(Node node) {
+            for (int link = 0; link < 2; link++) {
+                node.previous[link].next[link] = node.next[link];
+                node.next[link].previous[link] = node.previous[link];
+            }
+        }
+
+        private static void reinsertBase(Node node) {
+            for (int link = 0; link < 2; link++) {
                 node.previous[link].next[link] = node;
                 node.next[link].previous[link] = node;
-                bound[objective] = Math.min(bound[objective], node.point[objective]);
             }
         }
 
         private int countNodes() {
             int count = 0;
-            for (Node node = head.next[0]; node != head; node = node.next[0]) {
+            for (Node node = baseList.second().next[0];
+                 node != baseList.last(); node = node.next[0]) {
                 count++;
             }
             return count;
-        }
-
-        private static final class Node {
-            private final double[] point;
-            private final Node[] next;
-            private final Node[] previous;
-            private final double[] area;
-            private final double[] volume;
-            private int ignore;
-
-            private Node(double[] point, int linkedDimensions) {
-                this.point = point;
-                next = new Node[linkedDimensions];
-                previous = new Node[linkedDimensions];
-                area = new double[linkedDimensions];
-                volume = new double[linkedDimensions];
-            }
         }
     }
 

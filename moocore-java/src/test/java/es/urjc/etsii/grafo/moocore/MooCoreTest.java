@@ -227,7 +227,34 @@ class MooCoreTest {
                     }
                 }
                 assertEquals(bruteForceHypervolume(points, reference),
-                        MooCore.hypervolume(points, reference), 1e-9);
+                        MooCore.hypervolume(points, reference), 1e-9,
+                        "dimensions=" + dimensions + ", iteration=" + iteration
+                                + ", points=" + Arrays.deepToString(points));
+            }
+        }
+    }
+
+    @Test
+    void exactHypervolumeMatchesAtInclusionExclusionBoundary() {
+        Random random = new Random(92);
+        for (int dimensions : new int[]{5, 9}) {
+            double[] reference = new double[dimensions];
+            Arrays.fill(reference, 1.0);
+            for (int size : new int[]{12, 13}) {
+                double[][] points = new double[size][dimensions];
+                for (double[] point : points) {
+                    double sum = 0.0;
+                    for (int objective = 0; objective < dimensions; objective++) {
+                        point[objective] = random.nextDouble();
+                        sum += point[objective];
+                    }
+                    for (int objective = 0; objective < dimensions; objective++) {
+                        point[objective] *= 0.5 / sum;
+                    }
+                }
+                assertEquals(bruteForceHypervolume(points, reference),
+                        MooCore.hypervolume(points, reference), 1e-9,
+                        "dimensions=" + dimensions + ", size=" + size);
             }
         }
     }

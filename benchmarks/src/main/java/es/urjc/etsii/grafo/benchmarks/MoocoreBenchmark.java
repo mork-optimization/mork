@@ -136,12 +136,18 @@ public class MoocoreBenchmark {
         @Param({"2", "3", "4"})
         int objectives;
 
+        @Param("RANDOM")
+        ParetoShape shape;
+
         double[][] points;
         double[] reference;
 
         @Setup(Level.Trial)
         public void setup() {
-            points = randomPoints(size, objectives, 29L);
+            points = switch (shape) {
+                case RANDOM -> randomPoints(size, objectives, 29L);
+                case SIMPLEX -> simplexPoints(size, objectives, 29L);
+            };
             reference = new double[objectives];
             for (int objective = 0; objective < objectives; objective++) {
                 reference[objective] = 1.0;
