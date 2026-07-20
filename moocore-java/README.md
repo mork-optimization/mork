@@ -66,9 +66,10 @@ double[][] attainment = MooCore.eaf(runs.points(), runs.sets(),
 - Blank-line/comment-separated dataset parsing, XZ input, a checksummed local cache, and retrying downloads for large
   testsuite datasets.
 
-Exact hypervolume supports 1 to 31 objectives. The distance, epsilon, normalisation, and dominance families support up
-to 255 objectives. EAF is defined here for two or three objectives; EAF differences and weighted methods are currently
-two-dimensional, matching upstream's current restrictions.
+Exact hypervolume supports 1 to 31 objectives. Distance and epsilon indicators have no objective-count ceiling;
+normalisation, dominance, and Pareto ranking support up to 255 objectives. EAF is defined here for two or three
+objectives; EAF differences and weighted methods are currently two-dimensional, matching upstream's current
+restrictions.
 
 The deterministic quasi-Monte Carlo methods reproduce upstream numerical results within floating-point tolerance. Seeded
 stochastic methods are reproducible within Java, but do not promise the same random stream as C, Python, or R.

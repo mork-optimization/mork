@@ -60,8 +60,8 @@ public final class Indicators {
 
     public static double epsilonMultiplicative(double[][] input, double[][] reference,
                                                 boolean[] maximise) {
-        int objectives = MatrixUtils.validate(input, 1, 255);
-        MatrixUtils.validate(reference, 1, 255);
+        int objectives = MatrixUtils.validate(input, 1);
+        MatrixUtils.validate(reference, 1);
         if (reference[0].length != objectives) {
             throw new IllegalArgumentException("points and reference must have the same number of objectives");
         }
@@ -139,8 +139,8 @@ public final class Indicators {
 
     private static PreparedSets prepare(double[][] input, double[][] reference,
                                         boolean[] maximise, boolean positive) {
-        int objectives = MatrixUtils.validate(input, 1, 255);
-        MatrixUtils.validate(reference, 1, 255);
+        int objectives = MatrixUtils.validate(input, 1);
+        MatrixUtils.validate(reference, 1);
         if (reference[0].length != objectives) {
             throw new IllegalArgumentException("points and reference must have the same number of objectives");
         }

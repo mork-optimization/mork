@@ -91,6 +91,27 @@ class MooCoreTest {
     }
 
     @Test
+    void paretoRanksTreatSignedZerosAsEqual() {
+        double[][] positiveZeroFirst = {{0.0}, {-0.0}, {1.0}, {-1.0}};
+        double[][] negativeZeroFirst = {{-0.0}, {0.0}, {1.0}, {-1.0}};
+        int[] minimising = {1, 1, 2, 0};
+        int[] maximising = {1, 1, 0, 2};
+
+        assertArrayEquals(minimising, MooCore.paretoRank(positiveZeroFirst));
+        assertArrayEquals(minimising, MooCore.paretoRank(negativeZeroFirst));
+        assertArrayEquals(maximising,
+                MooCore.paretoRank(positiveZeroFirst, new boolean[]{true}));
+        assertArrayEquals(maximising,
+                MooCore.paretoRank(negativeZeroFirst, new boolean[]{true}));
+    }
+
+    @Test
+    void paretoRanksHandleDegenerateMatrices() {
+        assertArrayEquals(new int[0], MooCore.paretoRank(new double[0][]));
+        assertArrayEquals(new int[5], MooCore.paretoRank(new double[5][0]));
+    }
+
+    @Test
     void computesDistanceAndEpsilonIndicators() {
         double[][] points = {{1, 2}, {2, 1}};
         double[][] reference = {{1, 1}, {2, 2}};
@@ -99,6 +120,26 @@ class MooCoreTest {
         assertEquals(1.0, MooCore.averageHausdorffDistance(points, reference, 1), TOLERANCE);
         assertEquals(1.0, MooCore.epsilonAdditive(points, reference), TOLERANCE);
         assertEquals(2.0, MooCore.epsilonMultiplicative(points, reference), TOLERANCE);
+    }
+
+    @Test
+    void computesIndicatorsAboveTheCDimensionLimit() {
+        for (int dimensions : new int[]{256, 300}) {
+            double[][] points = new double[2][dimensions];
+            Arrays.fill(points[0], 1.0);
+            Arrays.fill(points[1], 2.0);
+            double[][] reference = new double[1][dimensions];
+            Arrays.fill(reference[0], 1.5);
+            double distance = 0.5 * Math.sqrt(dimensions);
+
+            assertEquals(distance, MooCore.igd(points, reference), TOLERANCE);
+            assertEquals(0.0, MooCore.igdPlus(points, reference), TOLERANCE);
+            assertEquals(distance,
+                    MooCore.averageHausdorffDistance(points, reference, 1), TOLERANCE);
+            assertEquals(-0.5, MooCore.epsilonAdditive(points, reference), TOLERANCE);
+            assertEquals(2.0 / 3.0,
+                    MooCore.epsilonMultiplicative(points, reference), TOLERANCE);
+        }
     }
 
     @Test
@@ -307,9 +348,31 @@ class MooCoreTest {
     @Test
     void handlesEmptyPointCollectionsWhereDefined() {
         assertArrayEquals(new boolean[0], MooCore.isNondominated(new double[0][]));
+        for (HypervolumeApproximation method : HypervolumeApproximation.values()) {
+            assertEquals(0.0, MooCore.approximateHypervolume(
+                    new double[0][], new double[]{4, 4}, new boolean[]{false}, 10, 0, method));
+        }
         assertArrayEquals(new double[0],
                 MooCore.hypervolumeContributions(new double[0][], new double[]{10, 10}));
         assertEquals(0.0, MooCore.hypervolume(new double[0][], new double[]{10, 10}));
+
+        double[][] rectangles = {{1, 1, 3, 3, 2}};
+        assertEquals(0.0, MooCore.weightedHypervolume(
+                new double[0][], rectangles, new double[]{4}));
+        assertEquals(0.0, MooCore.totalWeightedHypervolume(
+                new double[0][], rectangles, new double[]{4}, new double[]{1}, 0.1));
+        assertThrows(IllegalArgumentException.class, () -> MooCore.totalWeightedHypervolume(
+                new double[0][], rectangles, new double[]{4}));
+
+        assertEquals(0.0, MooCore.hypeWeightedHypervolume(
+                new double[0][], new double[]{4}, new double[]{1}, new boolean[]{false},
+                10, 0, HypeDistribution.UNIFORM, null));
+        assertEquals(0.0, MooCore.hypeWeightedHypervolume(
+                new double[0][], new double[]{4}, new double[]{1}, new boolean[]{false},
+                10, 0, HypeDistribution.EXPONENTIAL, new double[]{0.2}));
+        assertEquals(0.0, MooCore.hypeWeightedHypervolume(
+                new double[0][], new double[]{4}, new double[]{1}, new boolean[]{false},
+                10, 0, HypeDistribution.POINT, new double[]{2, 2}));
         assertThrows(IllegalArgumentException.class, () -> MooCore.anyDominated(new double[0][]));
     }
 

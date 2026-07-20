@@ -12,6 +12,10 @@ public final class MatrixUtils {
     private MatrixUtils() {
     }
 
+    public static int validate(double[][] points, int minimumObjectives) {
+        return validate(points, minimumObjectives, Integer.MAX_VALUE);
+    }
+
     public static int validate(double[][] points, int minimumObjectives, int maximumObjectives) {
         if (points == null) {
             throw new IllegalArgumentException("points cannot be null");

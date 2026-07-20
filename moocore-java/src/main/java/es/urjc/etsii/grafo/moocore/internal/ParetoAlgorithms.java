@@ -56,7 +56,16 @@ public final class ParetoAlgorithms {
     }
 
     public static int[] ranks(double[][] input, boolean[] maximise) {
-        int objectives = MatrixUtils.validate(input, 1, 255);
+        if (input == null) {
+            throw new IllegalArgumentException("points cannot be null");
+        }
+        if (input.length == 0) {
+            return new int[0];
+        }
+        int objectives = MatrixUtils.validate(input, 0, 255);
+        if (objectives == 0) {
+            return new int[input.length];
+        }
         boolean[] directions = MatrixUtils.directions(maximise, objectives);
         double[][] points = MatrixUtils.toMinimisation(input, directions);
         if (objectives == 1) {
@@ -267,7 +276,7 @@ public final class ParetoAlgorithms {
     private static int[] ranks1d(double[][] points) {
         double[] sorted = new double[points.length];
         for (int i = 0; i < points.length; i++) {
-            sorted[i] = points[i][0];
+            sorted[i] = canonicalZero(points[i][0]);
         }
         Arrays.sort(sorted);
         Map<Double, Integer> rank = new HashMap<>();
@@ -279,9 +288,13 @@ public final class ParetoAlgorithms {
         }
         int[] result = new int[points.length];
         for (int i = 0; i < points.length; i++) {
-            result[i] = rank.get(points[i][0]);
+            result[i] = rank.get(canonicalZero(points[i][0]));
         }
         return result;
+    }
+
+    private static double canonicalZero(double value) {
+        return value == 0.0 ? 0.0 : value;
     }
 
     private static int[] ranks2d(double[][] points) {

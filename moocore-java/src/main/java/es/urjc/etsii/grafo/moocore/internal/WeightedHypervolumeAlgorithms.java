@@ -12,7 +12,7 @@ public final class WeightedHypervolumeAlgorithms {
 
     public static double rectangles(double[][] points, double[][] rectangles,
                                     double[] reference, boolean[] maximise) {
-        int dimensions = MatrixUtils.validate(points, 2, 2);
+        int dimensions = validateTwoDimensionalPoints(points);
         boolean[] directions = MatrixUtils.directions(maximise, dimensions);
         if (rectangles == null) {
             throw new IllegalArgumentException("rectangles cannot be null");
@@ -55,10 +55,13 @@ public final class WeightedHypervolumeAlgorithms {
         if (!(scaleFactor > 0.0 && scaleFactor <= 1.0)) {
             throw new IllegalArgumentException("scaleFactor must be in (0, 1]");
         }
-        int dimensions = MatrixUtils.validate(points, 2, 2);
+        int dimensions = validateTwoDimensionalPoints(points);
         double[] ref = MatrixUtils.vector(reference, dimensions, "reference");
         double[] ideal;
         if (configuredIdeal == null || configuredIdeal.length == 0) {
+            if (points.length == 0) {
+                throw new IllegalArgumentException("ideal cannot be inferred from an empty front");
+            }
             boolean[] directions = MatrixUtils.directions(maximise, dimensions);
             ideal = new double[dimensions];
             for (int objective = 0; objective < dimensions; objective++) {
@@ -75,9 +78,12 @@ public final class WeightedHypervolumeAlgorithms {
     public static double hype(double[][] input, double[] reference, double[] ideal,
                               boolean[] maximise, int samples, long seed,
                               HypeDistribution distribution, double[] mu) {
-        int dimensions = MatrixUtils.validate(input, 2, 2);
+        int dimensions = validateTwoDimensionalPoints(input);
         if (samples <= 0) {
             throw new IllegalArgumentException("samples must be positive");
+        }
+        if (distribution == null) {
+            throw new IllegalArgumentException("distribution cannot be null");
         }
         boolean[] directions = MatrixUtils.directions(maximise, dimensions);
         double[][] points = MatrixUtils.toMinimisation(input, directions);
@@ -94,6 +100,9 @@ public final class WeightedHypervolumeAlgorithms {
         }
         if (distribution == HypeDistribution.UNIFORM && parameter != null) {
             throw new IllegalArgumentException("uniform distribution does not accept mu");
+        }
+        if (points.length == 0) {
+            return 0.0;
         }
 
         double[][] normalized = new double[points.length][2];
@@ -144,6 +153,13 @@ public final class WeightedHypervolumeAlgorithms {
         }
         double volume = (ref[0] - idealPoint[0]) * (ref[1] - idealPoint[1]);
         return volume * dominated / samples;
+    }
+
+    private static int validateTwoDimensionalPoints(double[][] points) {
+        if (points == null) {
+            throw new IllegalArgumentException("points cannot be null");
+        }
+        return points.length == 0 ? 2 : MatrixUtils.validate(points, 2, 2);
     }
 
     private static boolean isDominated(double x, double y, double[][] points) {

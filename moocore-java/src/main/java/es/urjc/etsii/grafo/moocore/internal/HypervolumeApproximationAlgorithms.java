@@ -16,10 +16,19 @@ public final class HypervolumeApproximationAlgorithms {
 
     public static double approximate(double[][] input, double[] reference, boolean[] maximise,
                                      long samples, long seed, HypervolumeApproximation method) {
-        int dimensions = MatrixUtils.validate(input, 1, 31);
+        if (input == null) {
+            throw new IllegalArgumentException("points cannot be null");
+        }
         if (samples <= 0 || samples > 2_147_483_648L) {
             throw new IllegalArgumentException("samples must be in [1, 2147483648]");
         }
+        if (input.length == 0) {
+            int dimensions = emptyDimensions(reference, maximise);
+            MatrixUtils.vector(reference, dimensions, "reference");
+            MatrixUtils.directions(maximise, dimensions);
+            return 0.0;
+        }
+        int dimensions = MatrixUtils.validate(input, 1, 31);
         if (dimensions == 1) {
             return HypervolumeAlgorithms.hypervolume(input, reference, maximise);
         }
@@ -49,6 +58,20 @@ public final class HypervolumeApproximationAlgorithms {
             case RPHI_FWE_PLUS -> rPhi(points, samples);
         };
         return sphereConstant(dimensions) * expected / samples;
+    }
+
+    private static int emptyDimensions(double[] reference, boolean[] maximise) {
+        if (reference == null || reference.length == 0) {
+            throw new IllegalArgumentException("reference cannot be empty");
+        }
+        int dimensions = reference.length;
+        if (dimensions == 1 && maximise != null && maximise.length > 1) {
+            dimensions = maximise.length;
+        }
+        if (dimensions > 31) {
+            throw new UnsupportedOperationException("at most 31 objectives are supported");
+        }
+        return dimensions;
     }
 
     private static double monteCarlo(double[][] points, long samples, long seed) {
