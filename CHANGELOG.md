@@ -6,6 +6,7 @@
 - (Fix) Improve Excel serializer in some edge cases, print time with default with 2 decimals in pivot table.
 - (Fix) Build Excel pivot table from the generated raw-data table instead of reserving rows beforehand.
 - (New) Autoconfig improvement: Categorical and ordinal params now pick all values if none are explicitly provided and target type is an enum.
+- (New) AlgorithmBuilder::buildFromStringParams(name, config) that sets a custom algorithm name (by default a rando one is generated).
 
 # v0.22
 - (Breaking) Simplify VNS implementation. New doc page for VNS.
