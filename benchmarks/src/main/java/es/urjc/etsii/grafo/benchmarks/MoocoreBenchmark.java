@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 package es.urjc.etsii.grafo.benchmarks;
 
+import es.urjc.etsii.grafo.moocore.HypeDistribution;
 import es.urjc.etsii.grafo.moocore.MooCore;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -66,8 +67,24 @@ public class MoocoreBenchmark {
     }
 
     @Benchmark
+    public double[] hypervolumeContributions(HypervolumeContributionState state) {
+        return MooCore.hypervolumeContributions(state.points, state.reference);
+    }
+
+    @Benchmark
     public double[][] eaf(EafState state) {
         return MooCore.eaf(state.points, state.sets);
+    }
+
+    @Benchmark
+    public double weightedHypervolume(WeightedHypervolumeState state) {
+        return MooCore.weightedHypervolume(state.points, state.rectangles, state.reference);
+    }
+
+    @Benchmark
+    public double hypeWeightedHypervolume(HypeState state) {
+        return MooCore.hypeWeightedHypervolume(state.points, state.reference, state.ideal,
+                new boolean[]{false}, state.samples, 47L, state.distribution, state.mu);
     }
 
     @State(Scope.Benchmark)
@@ -156,6 +173,34 @@ public class MoocoreBenchmark {
     }
 
     @State(Scope.Benchmark)
+    public static class HypervolumeContributionState {
+
+        @Param({"100", "500"})
+        int size;
+
+        @Param({"2", "3"})
+        int objectives;
+
+        @Param({"RANDOM", "SIMPLEX"})
+        ParetoShape shape;
+
+        double[][] points;
+        double[] reference;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            points = switch (shape) {
+                case RANDOM -> randomPoints(size, objectives, 31L);
+                case SIMPLEX -> simplexPoints(size, objectives, 31L);
+            };
+            reference = new double[objectives];
+            for (int objective = 0; objective < objectives; objective++) {
+                reference[objective] = 1.0;
+            }
+        }
+    }
+
+    @State(Scope.Benchmark)
     public static class EafState {
 
         @Param({"100", "1000"})
@@ -164,16 +209,79 @@ public class MoocoreBenchmark {
         @Param({"2", "3"})
         int objectives;
 
+        @Param({"RANDOM", "SIMPLEX"})
+        ParetoShape shape;
+
         double[][] points;
         int[] sets;
 
         @Setup(Level.Trial)
         public void setup() {
-            points = randomPoints(size, objectives, 41L);
+            points = switch (shape) {
+                case RANDOM -> randomPoints(size, objectives, 41L);
+                case SIMPLEX -> simplexPoints(size, objectives, 41L);
+            };
             sets = new int[size];
             for (int row = 0; row < size; row++) {
                 sets[row] = row % 10;
             }
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class WeightedHypervolumeState {
+
+        @Param({"100", "1000"})
+        int size;
+
+        @Param({"10", "100"})
+        int rectangleCount;
+
+        @Param({"RANDOM", "SIMPLEX"})
+        ParetoShape shape;
+
+        double[][] points;
+        double[][] rectangles;
+        double[] reference;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            points = switch (shape) {
+                case RANDOM -> randomPoints(size, 2, 43L);
+                case SIMPLEX -> simplexPoints(size, 2, 43L);
+            };
+            rectangles = weightedRectangles(rectangleCount);
+            reference = new double[]{1.0, 1.0};
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class HypeState {
+
+        @Param("100")
+        int size;
+
+        @Param("10000")
+        int samples;
+
+        @Param({"UNIFORM", "EXPONENTIAL", "POINT"})
+        HypeDistribution distribution;
+
+        double[][] points;
+        double[] reference;
+        double[] ideal;
+        double[] mu;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            points = randomPoints(size, 2, 47L);
+            reference = new double[]{1.0, 1.0};
+            ideal = new double[]{0.0, 0.0};
+            mu = switch (distribution) {
+                case UNIFORM -> null;
+                case EXPONENTIAL -> new double[]{0.2};
+                case POINT -> new double[]{0.5, 0.5};
+            };
         }
     }
 
@@ -203,6 +311,18 @@ public class MoocoreBenchmark {
             }
         }
         return points;
+    }
+
+    private static double[][] weightedRectangles(int count) {
+        double[][] rectangles = new double[count][5];
+        for (int i = 0; i < count; i++) {
+            rectangles[i][0] = i / (double) count;
+            rectangles[i][1] = 0.0;
+            rectangles[i][2] = (i + 1.0) / count;
+            rectangles[i][3] = 1.0;
+            rectangles[i][4] = 0.5 + (i % 7) / 7.0;
+        }
+        return rectangles;
     }
 
     private static double[][] chainPoints(int size, int objectives) {

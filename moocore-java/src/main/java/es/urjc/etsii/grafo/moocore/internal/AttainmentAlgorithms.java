@@ -5,13 +5,11 @@ import es.urjc.etsii.grafo.moocore.EafDifferenceFormat;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 import java.util.TreeSet;
 
 public final class AttainmentAlgorithms {
@@ -71,120 +69,75 @@ public final class AttainmentAlgorithms {
     }
 
     private static List<List<double[]>> surfaces2d(GroupedPoints grouped, int[] levels) {
-        Integer[] order = new Integer[grouped.points.length];
-        for (int i = 0; i < order.length; i++) {
-            order[i] = i;
-        }
-        Arrays.sort(order, Comparator.comparingDouble(index -> grouped.points[index][0]));
-        double[] bestY = new double[grouped.numberOfSets];
-        Arrays.fill(bestY, Double.POSITIVE_INFINITY);
-        double[] previousY = new double[levels.length];
-        Arrays.fill(previousY, Double.POSITIVE_INFINITY);
-        List<List<double[]>> result = emptySurfaces(levels.length);
+        int count = grouped.points.length;
+        Integer[] byX = pointOrder(count);
+        Integer[] byY = pointOrder(count);
+        Arrays.sort(byX, (left, right) -> Double.compare(
+                grouped.points[left][0], grouped.points[right][0]));
+        Arrays.sort(byY, (left, right) -> Double.compare(
+                grouped.points[right][1], grouped.points[left][1]));
 
-        int index = 0;
-        while (index < order.length) {
-            double x = grouped.points[order[index]][0];
-            while (index < order.length && grouped.points[order[index]][0] == x) {
-                int pointIndex = order[index++];
-                int set = grouped.groupByPoint[pointIndex];
-                bestY[set] = Math.min(bestY[set], grouped.points[pointIndex][1]);
-            }
-            double[] orderedY = bestY.clone();
-            Arrays.sort(orderedY);
-            for (int surface = 0; surface < levels.length; surface++) {
-                double y = orderedY[levels[surface] - 1];
-                if (Double.isFinite(y) && y < previousY[surface]) {
-                    result.get(surface).add(new double[]{x, y});
-                    previousY[surface] = y;
+        int[] attained = new int[grouped.numberOfSets];
+        List<List<double[]>> result = emptySurfaces(levels.length);
+        for (int surface = 0; surface < levels.length; surface++) {
+            Arrays.fill(attained, 0);
+            int x = 0;
+            int y = 0;
+            int run = grouped.groupByPoint[byX[x]];
+            attained[run]++;
+            int attainedSets = 1;
+
+            do {
+                while (x < count - 1
+                        && (attainedSets < levels[surface]
+                        || grouped.points[byX[x]][0] == grouped.points[byX[x + 1]][0])) {
+                    x++;
+                    int point = byX[x];
+                    if (grouped.points[point][1] <= grouped.points[byY[y]][1]) {
+                        run = grouped.groupByPoint[point];
+                        if (attained[run] == 0) {
+                            attainedSets++;
+                        }
+                        attained[run]++;
+                    }
                 }
-            }
+                if (attainedSets < levels[surface]) {
+                    continue;
+                }
+
+                do {
+                    do {
+                        int point = byY[y];
+                        if (grouped.points[point][0] <= grouped.points[byX[x]][0]) {
+                            run = grouped.groupByPoint[point];
+                            attained[run]--;
+                            if (attained[run] == 0) {
+                                attainedSets--;
+                            }
+                        }
+                        y++;
+                    } while (y < count
+                            && grouped.points[byY[y]][1] == grouped.points[byY[y - 1]][1]);
+                } while (attainedSets >= levels[surface] && y < count);
+
+                result.get(surface).add(new double[]{
+                        grouped.points[byX[x]][0], grouped.points[byY[y - 1]][1]});
+            } while (x < count - 1 && y < count);
         }
         return result;
     }
 
     private static List<List<double[]>> surfaces3d(GroupedPoints grouped, int[] levels) {
-        List<List<double[]>> result = emptySurfaces(levels.length);
-        @SuppressWarnings("unchecked")
-        TreeMap<Double, Double>[] setFrontiers = new TreeMap[grouped.numberOfSets];
-        for (int set = 0; set < setFrontiers.length; set++) {
-            setFrontiers[set] = new TreeMap<>();
-        }
-        @SuppressWarnings("unchecked")
-        TreeMap<Double, Double>[] accumulated = new TreeMap[levels.length];
-        for (int surface = 0; surface < accumulated.length; surface++) {
-            accumulated[surface] = new TreeMap<>();
-        }
+        return Eaf3d.compute(grouped.points, grouped.groupByPoint,
+                grouped.numberOfSets, levels);
+    }
 
-        Integer[] order = new Integer[grouped.points.length];
-        for (int i = 0; i < order.length; i++) {
+    private static Integer[] pointOrder(int size) {
+        Integer[] order = new Integer[size];
+        for (int i = 0; i < size; i++) {
             order[i] = i;
         }
-        Arrays.sort(order, Comparator.comparingDouble(index -> grouped.points[index][0]));
-        int index = 0;
-        while (index < order.length) {
-            double x = grouped.points[order[index]][0];
-            while (index < order.length && grouped.points[order[index]][0] == x) {
-                int point = order[index++];
-                addToFrontier(setFrontiers[grouped.groupByPoint[point]],
-                        grouped.points[point][1], grouped.points[point][2]);
-            }
-            addSurfaceChanges(result, accumulated, setFrontiers, levels, x);
-        }
-        for (List<double[]> surface : result) {
-            surface.sort(AttainmentAlgorithms::compareLexicographically);
-        }
-        return result;
-    }
-
-    private static void addSurfaceChanges(List<List<double[]>> result,
-                                          TreeMap<Double, Double>[] accumulated,
-                                          TreeMap<Double, Double>[] setFrontiers,
-                                          int[] levels, double x) {
-        List<YzEvent> events = new ArrayList<>();
-        for (int set = 0; set < setFrontiers.length; set++) {
-            for (Map.Entry<Double, Double> entry : setFrontiers[set].entrySet()) {
-                events.add(new YzEvent(entry.getKey(), entry.getValue(), set));
-            }
-        }
-        events.sort(Comparator.comparingDouble(YzEvent::y));
-        double[] bestZ = new double[setFrontiers.length];
-        Arrays.fill(bestZ, Double.POSITIVE_INFINITY);
-        double[] previousZ = new double[levels.length];
-        Arrays.fill(previousZ, Double.POSITIVE_INFINITY);
-        int event = 0;
-        while (event < events.size()) {
-            double y = events.get(event).y;
-            while (event < events.size() && events.get(event).y == y) {
-                YzEvent current = events.get(event++);
-                bestZ[current.set] = Math.min(bestZ[current.set], current.z);
-            }
-            double[] ordered = bestZ.clone();
-            Arrays.sort(ordered);
-            for (int surface = 0; surface < levels.length; surface++) {
-                double z = ordered[levels[surface] - 1];
-                if (Double.isFinite(z) && z < previousZ[surface]) {
-                    previousZ[surface] = z;
-                    if (addToFrontier(accumulated[surface], y, z)) {
-                        result.get(surface).add(new double[]{x, y, z});
-                    }
-                }
-            }
-        }
-    }
-
-    private static boolean addToFrontier(TreeMap<Double, Double> frontier, double y, double z) {
-        Map.Entry<Double, Double> dominating = frontier.floorEntry(y);
-        if (dominating != null && dominating.getValue() <= z) {
-            return false;
-        }
-        Map.Entry<Double, Double> dominated = frontier.ceilingEntry(y);
-        while (dominated != null && dominated.getValue() >= z) {
-            frontier.remove(dominated.getKey());
-            dominated = frontier.ceilingEntry(y);
-        }
-        frontier.put(y, z);
-        return true;
+        return order;
     }
 
     private static double[][] differencePoints(GroupedPoints left, GroupedPoints right, int intervals) {
@@ -431,20 +384,7 @@ public final class AttainmentAlgorithms {
         }
     }
 
-    private static int compareLexicographically(double[] left, double[] right) {
-        for (int i = 0; i < left.length; i++) {
-            int comparison = Double.compare(left[i], right[i]);
-            if (comparison != 0) {
-                return comparison;
-            }
-        }
-        return 0;
-    }
-
     private record GroupedPoints(double[][] points, int[] groupByPoint, int numberOfSets) {
-    }
-
-    private record YzEvent(double y, double z, int set) {
     }
 
     private static final class RowKey {

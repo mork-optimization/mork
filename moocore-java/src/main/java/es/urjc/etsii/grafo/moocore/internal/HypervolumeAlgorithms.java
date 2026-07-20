@@ -47,6 +47,12 @@ public final class HypervolumeAlgorithms {
         boolean[] directions = MatrixUtils.directions(maximise, objectives);
         double[] ref = MatrixUtils.toMinimisation(MatrixUtils.vector(reference, objectives, "reference"), directions);
         double[][] points = MatrixUtils.toMinimisation(input, directions);
+        if (objectives == 2) {
+            return HypervolumeContributions2d.compute(points, ref, ignoreDominated);
+        }
+        if (objectives == 3 && ignoreDominated) {
+            return HypervolumeContributions3d.compute(points, ref);
+        }
         double[] result = new double[points.length];
         if (!ignoreDominated) {
             double total = hypervolumeMinimisation(relevant(points, ref), ref, objectives);

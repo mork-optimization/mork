@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.moocore.internal;
 
 import es.urjc.etsii.grafo.moocore.HypeDistribution;
 
+import java.util.Arrays;
 import java.util.random.RandomGenerator;
 
 public final class WeightedHypervolumeAlgorithms {
@@ -17,10 +18,11 @@ public final class WeightedHypervolumeAlgorithms {
         if (rectangles == null) {
             throw new IllegalArgumentException("rectangles cannot be null");
         }
-        double[][] minimisedPoints = MatrixUtils.toMinimisation(points, directions);
+        double[][] data = MatrixUtils.toMinimisation(points, directions);
         double[] ref = MatrixUtils.toMinimisation(
                 MatrixUtils.vector(reference, dimensions, "reference"), directions);
-        double result = 0.0;
+        double[][] processedRectangles = new double[rectangles.length][];
+        int rectangleCount = 0;
         for (double[] rectangle : rectangles) {
             if (rectangle == null || rectangle.length != 5) {
                 throw new IllegalArgumentException("each rectangle must contain lower x/y, upper x/y, and weight");
@@ -32,22 +34,18 @@ public final class WeightedHypervolumeAlgorithms {
                     transformed[objective + dimensions] = -rectangle[objective];
                 }
             }
-            double[] localReference = {
-                    Math.min(ref[0], transformed[2]),
-                    Math.min(ref[1], transformed[3])
-            };
-            if (transformed[0] >= localReference[0] || transformed[1] >= localReference[1]) {
-                continue;
+            for (int coordinate = 0; coordinate < dimensions * 2; coordinate++) {
+                transformed[coordinate] = Math.min(transformed[coordinate], ref[coordinate % dimensions]);
             }
-            double[][] clipped = new double[minimisedPoints.length][2];
-            for (int i = 0; i < minimisedPoints.length; i++) {
-                clipped[i][0] = Math.max(minimisedPoints[i][0], transformed[0]);
-                clipped[i][1] = Math.max(minimisedPoints[i][1], transformed[1]);
+            if (transformed[0] != transformed[2] && transformed[1] != transformed[3]) {
+                processedRectangles[rectangleCount++] = transformed;
             }
-            result += transformed[4] * HypervolumeAlgorithms.hypervolume(
-                    clipped, localReference, new boolean[]{false});
         }
-        return result;
+        if (data.length == 0 || rectangleCount == 0) {
+            return 0.0;
+        }
+        processedRectangles = Arrays.copyOf(processedRectangles, rectangleCount);
+        return rectangleSweep(data, processedRectangles);
     }
 
     public static double total(double[][] points, double[][] rectangles, double[] reference,
@@ -142,6 +140,8 @@ public final class WeightedHypervolumeAlgorithms {
                 }
                 case POINT -> {
                     double gaussian = random.nextGaussian();
+                    // The upstream bivariate sampler also draws the zero-weight residual.
+                    random.nextGaussian();
                     x = normalizedMu[0] + 0.25 * gaussian;
                     y = normalizedMu[1] + 0.25 * gaussian;
                 }
@@ -160,6 +160,59 @@ public final class WeightedHypervolumeAlgorithms {
             throw new IllegalArgumentException("points cannot be null");
         }
         return points.length == 0 ? 2 : MatrixUtils.validate(points, 2, 2);
+    }
+
+    private static double rectangleSweep(double[][] points, double[][] rectangles) {
+        Arrays.sort(points, (left, right) -> {
+            int byY = Double.compare(right[1], left[1]);
+            return byY != 0 ? byY : Double.compare(left[0], right[0]);
+        });
+        Arrays.sort(rectangles, (left, right) -> {
+            int byUpperY = Double.compare(right[3], left[3]);
+            return byUpperY != 0 ? byUpperY : Double.compare(left[2], right[2]);
+        });
+
+        double lastTop = rectangles[rectangles.length - 1][3];
+        double lastRight = -Double.MAX_VALUE;
+        for (double[] rectangle : rectangles) {
+            lastRight = Math.max(lastRight, rectangle[2]);
+        }
+
+        int pointIndex = 0;
+        double[] point = points[pointIndex];
+        double top = rectangles[0][3];
+        while (point[1] >= rectangles[0][3]) {
+            top = point[1];
+            pointIndex++;
+            if (pointIndex >= points.length || top == lastTop || point[0] >= lastRight) {
+                return 0.0;
+            }
+            point = points[pointIndex];
+        }
+
+        double weightedHypervolume = 0.0;
+        while (true) {
+            int rectangleIndex = 0;
+            do {
+                double[] rectangle = rectangles[rectangleIndex];
+                if (point[0] < rectangle[2] && rectangle[1] < top) {
+                    weightedHypervolume += (rectangle[2] - Math.max(point[0], rectangle[0]))
+                            * (Math.min(top, rectangle[3]) - Math.max(point[1], rectangle[1]))
+                            * rectangle[4];
+                }
+                rectangleIndex++;
+            } while (rectangleIndex < rectangles.length
+                    && point[1] < rectangles[rectangleIndex][3]);
+
+            do {
+                top = point[1];
+                pointIndex++;
+                if (pointIndex >= points.length || top == lastTop || point[0] >= lastRight) {
+                    return weightedHypervolume;
+                }
+                point = points[pointIndex];
+            } while (top == point[1] && point[1] >= rectangles[0][3]);
+        }
     }
 
     private static boolean isDominated(double x, double y, double[][] points) {

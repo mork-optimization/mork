@@ -323,6 +323,16 @@ class MooCoreTest {
     }
 
     @Test
+    void computesThreeDimensionalEafForOneSet() {
+        double[][] points = {{1, 3, 3}, {3, 1, 3}, {3, 3, 1}, {2, 2, 2}};
+        int[] sets = {1, 1, 1, 1};
+        double[][] expected = {
+                {1, 3, 3, 100}, {2, 2, 2, 100}, {3, 1, 3, 100}, {3, 3, 1, 100}
+        };
+        assertMatrixEquals(expected, MooCore.eaf(points, sets));
+    }
+
+    @Test
     void matchesDocumentedEafDifferenceOutputs() {
         double[][] left = {
                 {3, 2}, {2, 3},
@@ -393,6 +403,50 @@ class MooCoreTest {
         assertEquals(4.0, MooCore.weightedHypervolume(
                 new double[][]{{-2, -2}}, maximisingRectangles, new double[]{-6},
                 new boolean[]{true}), TOLERANCE);
+    }
+
+    @Test
+    void matchesUpstreamWeightedRectangleSweep() {
+        double[][] rectangles = {
+                {1, 3, 2, Double.POSITIVE_INFINITY, 1},
+                {1, 2, 3, 3, 1},
+                {2.5, 1, Double.POSITIVE_INFINITY, 2, 1},
+                {2, 3.5, 2.5, Double.POSITIVE_INFINITY, 2},
+                {2, 3, 3, 3.5, 2},
+                {3, 2.5, 4, 3, 2},
+                {3, 2, Double.POSITIVE_INFINITY, 2.5, 2},
+                {4, 2.5, Double.POSITIVE_INFINITY, 3, 1}
+        };
+        assertEquals(9.5, MooCore.weightedHypervolume(
+                new double[][]{{2, 2}}, rectangles, new double[]{6}), TOLERANCE);
+        assertEquals(12.5, MooCore.weightedHypervolume(
+                new double[][]{{1, 1}}, rectangles, new double[]{5}), TOLERANCE);
+        assertEquals(0.0, MooCore.weightedHypervolume(
+                new double[][]{{3, 3}}, rectangles, new double[]{5}), TOLERANCE);
+    }
+
+    @Test
+    void weightedRectangleSweepMatchesDefinition() {
+        Random random = new Random(61);
+        double[] reference = {1, 1};
+        for (int iteration = 0; iteration < 100; iteration++) {
+            double[][] points = new double[10][2];
+            for (double[] point : points) {
+                point[0] = random.nextDouble();
+                point[1] = random.nextDouble();
+            }
+            points = MooCore.filterDominated(points);
+            double[][] rectangles = new double[8][5];
+            for (double[] rectangle : rectangles) {
+                rectangle[0] = random.nextDouble();
+                rectangle[1] = random.nextDouble();
+                rectangle[2] = rectangle[0] + random.nextDouble() * (1.0 - rectangle[0]);
+                rectangle[3] = rectangle[1] + random.nextDouble() * (1.0 - rectangle[1]);
+                rectangle[4] = random.nextDouble() * 3.0;
+            }
+            assertEquals(weightedHypervolumeDefinition(points, rectangles, reference),
+                    MooCore.weightedHypervolume(points, rectangles, reference), TOLERANCE);
+        }
     }
 
     @Test
@@ -640,6 +694,28 @@ class MooCoreTest {
         boolean[] result = new boolean[directions.length];
         for (int objective = 0; objective < directions.length; objective++) {
             result[objective] = directions[(objective + shift) % directions.length];
+        }
+        return result;
+    }
+
+    private static double weightedHypervolumeDefinition(double[][] points, double[][] rectangles,
+                                                         double[] reference) {
+        double result = 0.0;
+        for (double[] rectangle : rectangles) {
+            double upperX = Math.min(rectangle[2], reference[0]);
+            double upperY = Math.min(rectangle[3], reference[1]);
+            double lowerX = Math.min(rectangle[0], reference[0]);
+            double lowerY = Math.min(rectangle[1], reference[1]);
+            if (lowerX == upperX || lowerY == upperY) {
+                continue;
+            }
+            double[][] clipped = new double[points.length][2];
+            for (int point = 0; point < points.length; point++) {
+                clipped[point][0] = Math.max(points[point][0], lowerX);
+                clipped[point][1] = Math.max(points[point][1], lowerY);
+            }
+            result += rectangle[4] * MooCore.hypervolume(
+                    clipped, new double[]{upperX, upperY});
         }
         return result;
     }
