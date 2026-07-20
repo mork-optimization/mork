@@ -161,7 +161,10 @@ public final class MooCore {
         Map<Integer, int[]> groups = MatrixUtils.groups(sets, points.length);
         boolean[] result = new boolean[points.length];
         for (int[] indices : groups.values()) {
-            double[][] group = MatrixUtils.rows(points, indices);
+            double[][] group = new double[indices.length][];
+            for (int i = 0; i < indices.length; i++) {
+                group[i] = points[indices[i]];
+            }
             boolean[] selected = isNondominated(group, maximise, keepWeakly);
             for (int i = 0; i < indices.length; i++) {
                 result[indices[i]] = selected[i];

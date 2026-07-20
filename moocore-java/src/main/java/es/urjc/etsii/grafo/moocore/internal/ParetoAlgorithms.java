@@ -3,7 +3,6 @@ package es.urjc.etsii.grafo.moocore.internal;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -23,36 +22,53 @@ public final class ParetoAlgorithms {
         }
         int objectives = MatrixUtils.validate(input, 1, 255);
         boolean[] directions = MatrixUtils.directions(maximise, objectives);
-        double[][] points = MatrixUtils.toMinimisation(input, directions);
+        double[][] points = toMinimisation(input, directions);
         if (objectives == 1) {
             return nondominated1d(points, keepWeakly);
+        }
+
+        if (objectives >= 4) {
+            return KungParetoAlgorithms.nondominated(points, keepWeakly);
         }
 
         List<UniquePoint> unique = unique(points);
         boolean[] uniqueNondominated;
         if (objectives == 2) {
             uniqueNondominated = nondominated2d(unique);
-        } else if (objectives == 3) {
-            uniqueNondominated = nondominated3d(unique);
-        } else if (objectives == 4) {
-            uniqueNondominated = nondominated4d(unique);
         } else {
-            uniqueNondominated = nondominatedNaive(unique, objectives);
+            uniqueNondominated = nondominated3d(unique);
         }
         return expand(unique, uniqueNondominated, input.length, keepWeakly);
     }
 
-    public static boolean anyDominated(double[][] points, boolean[] maximise, boolean keepWeakly) {
-        if (points == null || points.length == 0) {
+    public static boolean anyDominated(double[][] input, boolean[] maximise, boolean keepWeakly) {
+        if (input == null || input.length == 0) {
             throw new IllegalArgumentException("points cannot be empty");
         }
-        boolean[] nondominated = isNondominated(points, maximise, keepWeakly);
-        for (boolean value : nondominated) {
-            if (!value) {
-                return true;
+        int objectives = MatrixUtils.validate(input, 1, 255);
+        boolean[] directions = MatrixUtils.directions(maximise, objectives);
+        double[][] points = toMinimisation(input, directions);
+        if (objectives == 1) {
+            if (!keepWeakly) {
+                return points.length > 1;
             }
+            double first = points[0][0];
+            for (int row = 1; row < points.length; row++) {
+                if (points[row][0] != first) {
+                    return true;
+                }
+            }
+            return false;
         }
-        return false;
+        if (objectives >= 4) {
+            return KungParetoAlgorithms.anyDominated(points, keepWeakly);
+        }
+
+        List<UniquePoint> unique = unique(points);
+        if (!keepWeakly && unique.size() < points.length) {
+            return true;
+        }
+        return objectives == 2 ? anyDominated2d(unique) : anyDominated3d(unique);
     }
 
     public static int[] ranks(double[][] input, boolean[] maximise) {
@@ -67,45 +83,14 @@ public final class ParetoAlgorithms {
             return new int[input.length];
         }
         boolean[] directions = MatrixUtils.directions(maximise, objectives);
-        double[][] points = MatrixUtils.toMinimisation(input, directions);
+        double[][] points = toMinimisation(input, directions);
         if (objectives == 1) {
             return ranks1d(points);
         }
         if (objectives == 2) {
             return ranks2d(points);
         }
-
-        int[] ranks = new int[points.length];
-        boolean[] remaining = new boolean[points.length];
-        Arrays.fill(remaining, true);
-        int left = points.length;
-        int front = 0;
-        while (left > 0) {
-            int[] original = new int[left];
-            double[][] subset = new double[left][];
-            int next = 0;
-            for (int i = 0; i < points.length; i++) {
-                if (remaining[i]) {
-                    original[next] = i;
-                    subset[next++] = points[i];
-                }
-            }
-            boolean[] current = isNondominated(subset, new boolean[objectives], true);
-            int removed = 0;
-            for (int i = 0; i < current.length; i++) {
-                if (current[i]) {
-                    ranks[original[i]] = front;
-                    remaining[original[i]] = false;
-                    removed++;
-                }
-            }
-            if (removed == 0) {
-                throw new IllegalStateException("failed to identify a Pareto front");
-            }
-            left -= removed;
-            front++;
-        }
-        return ranks;
+        return KungParetoAlgorithms.ranks(points);
     }
 
     private static boolean[] nondominated1d(double[][] points, boolean keepWeakly) {
@@ -159,48 +144,36 @@ public final class ParetoAlgorithms {
         return result;
     }
 
-    private static boolean[] nondominated4d(List<UniquePoint> unique) {
-        Integer[] order = order(unique, 4);
-        double[] secondCoordinates = coordinates(unique, 1);
-        double[] thirdCoordinates = coordinates(unique, 2);
-        FenwickMinimum2d previous = new FenwickMinimum2d(secondCoordinates, thirdCoordinates, unique);
-        boolean[] result = new boolean[unique.size()];
+    private static boolean anyDominated2d(List<UniquePoint> unique) {
+        Integer[] order = order(unique, 2);
+        double bestSecond = Double.POSITIVE_INFINITY;
+        for (int index : order) {
+            double second = unique.get(index).values[1];
+            if (second >= bestSecond) {
+                return true;
+            }
+            bestSecond = second;
+        }
+        return false;
+    }
+
+    private static boolean anyDominated3d(List<UniquePoint> unique) {
+        Integer[] order = order(unique, 3);
+        TreeMap<Double, Double> skyline = new TreeMap<>();
         for (int index : order) {
             double[] point = unique.get(index).values;
-            int second = Arrays.binarySearch(secondCoordinates, point[1]) + 1;
-            int third = Arrays.binarySearch(thirdCoordinates, point[2]) + 1;
-            if (previous.minimum(second, third) > point[3]) {
-                result[index] = true;
-                previous.update(second, third, point[3]);
+            Map.Entry<Double, Double> floor = skyline.floorEntry(point[1]);
+            if (floor != null && floor.getValue() <= point[2]) {
+                return true;
             }
-        }
-        return result;
-    }
-
-    private static boolean[] nondominatedNaive(List<UniquePoint> unique, int objectives) {
-        boolean[] result = new boolean[unique.size()];
-        Arrays.fill(result, true);
-        for (int i = 0; i < unique.size(); i++) {
-            double[] candidate = unique.get(i).values;
-            for (int j = 0; j < unique.size(); j++) {
-                if (i != j && dominates(unique.get(j).values, candidate, objectives)) {
-                    result[i] = false;
-                    break;
-                }
+            Map.Entry<Double, Double> current = skyline.ceilingEntry(point[1]);
+            while (current != null && current.getValue() >= point[2]) {
+                skyline.remove(current.getKey());
+                current = skyline.ceilingEntry(point[1]);
             }
+            skyline.put(point[1], point[2]);
         }
-        return result;
-    }
-
-    private static boolean dominates(double[] left, double[] right, int objectives) {
-        boolean strict = false;
-        for (int objective = 0; objective < objectives; objective++) {
-            if (left[objective] > right[objective]) {
-                return false;
-            }
-            strict |= left[objective] < right[objective];
-        }
-        return strict;
+        return false;
     }
 
     private static Integer[] order(List<UniquePoint> unique, int objectives) {
@@ -220,21 +193,6 @@ public final class ParetoAlgorithms {
             return Integer.compare(unique.get(left).firstIndex, unique.get(right).firstIndex);
         });
         return order;
-    }
-
-    private static double[] coordinates(List<UniquePoint> points, int objective) {
-        double[] values = new double[points.size()];
-        for (int i = 0; i < points.size(); i++) {
-            values[i] = points.get(i).values[objective];
-        }
-        Arrays.sort(values);
-        int unique = 0;
-        for (double value : values) {
-            if (unique == 0 || value != values[unique - 1]) {
-                values[unique++] = value;
-            }
-        }
-        return Arrays.copyOf(values, unique);
     }
 
     private static List<UniquePoint> unique(double[][] points) {
@@ -295,6 +253,15 @@ public final class ParetoAlgorithms {
 
     private static double canonicalZero(double value) {
         return value == 0.0 ? 0.0 : value;
+    }
+
+    private static double[][] toMinimisation(double[][] points, boolean[] maximise) {
+        for (boolean direction : maximise) {
+            if (direction) {
+                return MatrixUtils.toMinimisation(points, maximise);
+            }
+        }
+        return points;
     }
 
     private static int[] ranks2d(double[][] points) {
@@ -389,76 +356,4 @@ public final class ParetoAlgorithms {
         }
     }
 
-    private static final class FenwickMinimum2d {
-        private final double[] globalThirdCoordinates;
-        private final double[][] thirdCoordinates;
-        private final double[][] minimum;
-
-        @SuppressWarnings("unchecked")
-        private FenwickMinimum2d(double[] seconds, double[] thirds, List<UniquePoint> points) {
-            globalThirdCoordinates = thirds;
-            List<Double>[] coordinates = new List[seconds.length + 1];
-            for (int i = 1; i < coordinates.length; i++) {
-                coordinates[i] = new ArrayList<>();
-            }
-            for (UniquePoint point : points) {
-                int second = Arrays.binarySearch(seconds, point.values[1]) + 1;
-                double third = point.values[2];
-                for (int i = second; i < coordinates.length; i += i & -i) {
-                    coordinates[i].add(third);
-                }
-            }
-            thirdCoordinates = new double[coordinates.length][];
-            minimum = new double[coordinates.length][];
-            for (int i = 1; i < coordinates.length; i++) {
-                coordinates[i].sort(Double::compare);
-                double[] unique = new double[coordinates[i].size()];
-                int size = 0;
-                for (double value : coordinates[i]) {
-                    if (size == 0 || value != unique[size - 1]) {
-                        unique[size++] = value;
-                    }
-                }
-                thirdCoordinates[i] = Arrays.copyOf(unique, size);
-                minimum[i] = new double[size + 1];
-                Arrays.fill(minimum[i], Double.POSITIVE_INFINITY);
-            }
-        }
-
-        private void update(int second, int third, double value) {
-            double coordinate = globalThirdCoordinates[third - 1];
-            for (int i = second; i < minimum.length; i += i & -i) {
-                int localThird = Arrays.binarySearch(thirdCoordinates[i], coordinate) + 1;
-                for (int j = localThird; j < minimum[i].length; j += j & -j) {
-                    minimum[i][j] = Math.min(minimum[i][j], value);
-                }
-            }
-        }
-
-        private double minimum(int second, int third) {
-            double result = Double.POSITIVE_INFINITY;
-            double coordinate = globalThirdCoordinates[third - 1];
-            for (int i = second; i > 0; i -= i & -i) {
-                int localThird = upperBound(thirdCoordinates[i], coordinate);
-                for (int j = localThird; j > 0; j -= j & -j) {
-                    result = Math.min(result, minimum[i][j]);
-                }
-            }
-            return result;
-        }
-
-        private static int upperBound(double[] values, double target) {
-            int low = 0;
-            int high = values.length;
-            while (low < high) {
-                int middle = (low + high) >>> 1;
-                if (values[middle] <= target) {
-                    low = middle + 1;
-                } else {
-                    high = middle;
-                }
-            }
-            return low;
-        }
-    }
 }

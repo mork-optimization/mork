@@ -85,12 +85,14 @@ still be read from a user-supplied path.
 git submodule update --init moocore testsuite
 ./mvnw -pl moocore-java -am -Pmoocore-testsuite -Dgpg.skip verify
 ./mvnw -pl benchmarks -am -DskipTests package
-java -jar benchmarks/target/benchmarks.jar MoocoreBenchmark
+java -jar benchmarks/target/benchmarks.jar MoocoreBenchmark.nondominated
+java -jar benchmarks/target/benchmarks.jar MoocoreBenchmark.nondominatedStress -prof gc
 ```
 
 Tests cover published examples, documented Python outputs, randomized cross-checks against simple definitions, mixed
 objective directions, packaged data, and edge cases. JMH cases cover dominance, ranking, exact hypervolume, and EAF
-across representative sizes and dimensions.
+across representative sizes and dimensions, including random, mutually nondominated simplex, and dominance-chain
+stress inputs in 4D, 5D, and 9D.
 
 The `moocore-testsuite` Maven profile also runs every recipe in the pinned upstream testsuite submodule: 107 recipes are
 checked against their numerical oracles and the two recipes without stable textual output check EAF polygon invariants.

@@ -75,6 +75,53 @@ class MooCoreTest {
     }
 
     @Test
+    void highDimensionalDispatchBoundariesMatchNaiveDefinition() {
+        Random random = new Random(71);
+        for (int dimensions : new int[]{4, 5, 9}) {
+            for (int size : new int[]{15, 16, 17, 18, 33}) {
+                for (int iteration = 0; iteration < 5; iteration++) {
+                    double[][] points = new double[size][dimensions];
+                    for (double[] point : points) {
+                        for (int objective = 0; objective < dimensions; objective++) {
+                            point[objective] = random.nextInt(6);
+                        }
+                    }
+                    assertParetoOperationsMatchNaive(points, new boolean[]{false});
+                }
+            }
+        }
+    }
+
+    @Test
+    void highDimensionalDegenerateCoordinatesAndDirectionsMatchNaiveDefinition() {
+        Random random = new Random(89);
+        double[][] points = new double[35][9];
+        for (double[] point : points) {
+            for (int objective = 0; objective < 3; objective++) {
+                point[objective] = random.nextInt(7);
+            }
+        }
+
+        boolean[] maximise = new boolean[9];
+        for (int objective = 0; objective < maximise.length; objective++) {
+            maximise[objective] = objective % 2 == 1;
+        }
+        for (int rotation = 0; rotation < points[0].length; rotation++) {
+            double[][] rotated = rotateObjectives(points, rotation);
+            boolean[] rotatedDirections = rotateDirections(maximise, rotation);
+            assertParetoOperationsMatchNaive(rotated, rotatedDirections);
+        }
+
+        double[][] equal = new double[18][9];
+        for (int row = 0; row < equal.length; row++) {
+            for (int objective = 0; objective < equal[row].length; objective++) {
+                equal[row][objective] = (row + objective) % 2 == 0 ? 0.0 : -0.0;
+            }
+        }
+        assertParetoOperationsMatchNaive(equal, new boolean[]{false});
+    }
+
+    @Test
     void paretoRanksMatchNaiveFrontExtraction() {
         Random random = new Random(47);
         for (int dimensions = 1; dimensions <= 6; dimensions++) {
@@ -521,6 +568,53 @@ class MooCoreTest {
             rank++;
         }
         return ranks;
+    }
+
+    private static void assertParetoOperationsMatchNaive(double[][] points, boolean[] maximise) {
+        double[][] minimising = copy(points);
+        for (int objective = 0; objective < minimising[0].length; objective++) {
+            boolean direction = maximise.length == 1 ? maximise[0] : maximise[objective];
+            if (direction) {
+                for (double[] point : minimising) {
+                    point[objective] = -point[objective];
+                }
+            }
+        }
+
+        boolean[] strictFront = naiveNondominated(minimising, false);
+        boolean[] weakFront = naiveNondominated(minimising, true);
+        assertArrayEquals(strictFront, MooCore.isNondominated(points, maximise, false));
+        assertArrayEquals(weakFront, MooCore.isNondominated(points, maximise, true));
+        assertEquals(hasFalse(strictFront), MooCore.anyDominated(points, maximise, false));
+        assertEquals(hasFalse(weakFront), MooCore.anyDominated(points, maximise, true));
+        assertArrayEquals(naiveRanks(minimising), MooCore.paretoRank(points, maximise));
+    }
+
+    private static boolean hasFalse(boolean[] values) {
+        for (boolean value : values) {
+            if (!value) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static double[][] rotateObjectives(double[][] points, int shift) {
+        double[][] result = new double[points.length][points[0].length];
+        for (int row = 0; row < points.length; row++) {
+            for (int objective = 0; objective < points[row].length; objective++) {
+                result[row][objective] = points[row][(objective + shift) % points[row].length];
+            }
+        }
+        return result;
+    }
+
+    private static boolean[] rotateDirections(boolean[] directions, int shift) {
+        boolean[] result = new boolean[directions.length];
+        for (int objective = 0; objective < directions.length; objective++) {
+            result[objective] = directions[(objective + shift) % directions.length];
+        }
+        return result;
     }
 
     private static double[][] copy(double[][] matrix) {

@@ -36,6 +36,31 @@ public class MoocoreBenchmark {
     }
 
     @Benchmark
+    public boolean[] nondominatedStress(ParetoStressState state) {
+        return MooCore.isNondominated(state.points);
+    }
+
+    @Benchmark
+    public boolean anyDominatedStress(ParetoStressState state) {
+        return MooCore.anyDominated(state.points);
+    }
+
+    @Benchmark
+    public double[][] filterDominatedStress(ParetoStressState state) {
+        return MooCore.filterDominated(state.points);
+    }
+
+    @Benchmark
+    public int[] paretoRankStress(ParetoStressState state) {
+        return MooCore.paretoRank(state.points);
+    }
+
+    @Benchmark
+    public int[] paretoRankChain(ParetoRankChainState state) {
+        return MooCore.paretoRank(state.points);
+    }
+
+    @Benchmark
     public double hypervolume(HypervolumeState state) {
         return MooCore.hypervolume(state.points, state.reference);
     }
@@ -59,6 +84,46 @@ public class MoocoreBenchmark {
         @Setup(Level.Trial)
         public void setup() {
             points = randomPoints(size, objectives, 17L);
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class ParetoStressState {
+
+        @Param({"500", "1000", "2000", "4000"})
+        int size;
+
+        @Param({"4", "5", "9"})
+        int objectives;
+
+        @Param({"RANDOM", "SIMPLEX"})
+        ParetoShape shape;
+
+        double[][] points;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            points = switch (shape) {
+                case RANDOM -> randomPoints(size, objectives, 53L);
+                case SIMPLEX -> simplexPoints(size, objectives, 53L);
+            };
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class ParetoRankChainState {
+
+        @Param({"100", "250", "500"})
+        int size;
+
+        @Param({"4", "5", "9"})
+        int objectives;
+
+        double[][] points;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            points = chainPoints(size, objectives);
         }
     }
 
@@ -115,5 +180,38 @@ public class MoocoreBenchmark {
             }
         }
         return points;
+    }
+
+    private static double[][] simplexPoints(int size, int objectives, long seed) {
+        Random random = new Random(seed);
+        double[][] points = new double[size][objectives];
+        for (int row = 0; row < size; row++) {
+            double total = 0.0;
+            for (int objective = 0; objective < objectives; objective++) {
+                double value = -Math.log(Math.max(random.nextDouble(), Double.MIN_NORMAL));
+                points[row][objective] = value;
+                total += value;
+            }
+            for (int objective = 0; objective < objectives; objective++) {
+                points[row][objective] /= total;
+            }
+        }
+        return points;
+    }
+
+    private static double[][] chainPoints(int size, int objectives) {
+        double[][] points = new double[size][objectives];
+        for (int row = 0; row < size; row++) {
+            double value = row;
+            for (int objective = 0; objective < objectives; objective++) {
+                points[row][objective] = value;
+            }
+        }
+        return points;
+    }
+
+    public enum ParetoShape {
+        RANDOM,
+        SIMPLEX
     }
 }

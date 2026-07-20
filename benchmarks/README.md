@@ -12,6 +12,13 @@ The benchmark data is deterministic. For every `(universeSize, fillRatio)` pair,
 the input elements are sampled without replacement, so the configured fill ratio
 matches the actual set cardinality.
 
+### Moocore Pareto algorithms
+
+`MoocoreBenchmark` covers Pareto filtering, early dominated-point detection,
+Pareto ranking, hypervolume, and EAF. The Pareto stress states use deterministic
+random, mutually nondominated simplex, and dominance-chain inputs. They cover
+4D, 5D, and 9D and include the 500, 1,000, 2,000, and 4,000-point scaling sizes.
+
 ## Build
 
 Requirements:
@@ -64,6 +71,12 @@ Run one benchmark with selected parameters:
 java -jar benchmarks/target/benchmarks.jar SetContainsBenchmark -p universeSize=16384 -p fillRatio=0.50 -p hitRatio=0.50
 ```
 
+Run the high-dimensional Pareto mask and allocation cases:
+
+```bash
+java -jar benchmarks/target/benchmarks.jar MoocoreBenchmark.nondominatedStress -p objectives=5,9 -p shape=RANDOM,SIMPLEX -prof gc
+```
+
 Use more forks or iterations for decision-grade results:
 
 ```bash
@@ -75,6 +88,9 @@ java -jar benchmarks/target/benchmarks.jar -f 5 -wi 10 -i 20 -rf json -rff bench
 - `universeSize`: maximum number of integers representable in the benchmark set.
 - `fillRatio`: fraction of the universe stored in the set.
 - `hitRatio`: fraction of lookup keys that are present in the set, only used by `SetContainsBenchmark`.
+- Pareto `size`: number of points.
+- Pareto `objectives`: point dimension.
+- Pareto `shape`: `RANDOM` or mutually nondominated `SIMPLEX`.
 
 ## Notes
 
