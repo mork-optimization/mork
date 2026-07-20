@@ -7,6 +7,8 @@ import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Random;
+import java.util.random.RandomGenerator;
+import java.util.random.RandomGeneratorFactory;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,6 +42,18 @@ class MooCoreTest {
         assertEquals(37.9999580554839, MooCore.approximateHypervolume(
                 points, new double[]{10, 10}, new boolean[]{false}, 262_144, 0,
                 HypervolumeApproximation.DZ2019_HW), 1e-9);
+    }
+
+    @Test
+    void seededMonteCarloHypervolumeIsReproducible() {
+        double[][] points = {{5, 5}, {4, 6}, {2, 7}, {7, 4}};
+        double first = MooCore.approximateHypervolume(
+                points, new double[]{10, 10}, new boolean[]{false}, 10_000, 42,
+                HypervolumeApproximation.DZ2019_MC);
+        double second = MooCore.approximateHypervolume(
+                points, new double[]{10, 10}, new boolean[]{false}, 10_000, 42,
+                HypervolumeApproximation.DZ2019_MC);
+        assertEquals(first, second, 0.0);
     }
 
     @Test
@@ -465,6 +479,10 @@ class MooCoreTest {
                 new boolean[]{false}, 100_000, 42, HypeDistribution.EXPONENTIAL,
                 new double[]{0.2});
         assertEquals(1.14624, exponential, 0.04);
+        assertEquals(exponential, MooCore.hypeWeightedHypervolume(
+                new double[][]{{2, 2}}, new double[]{4}, new double[]{1},
+                new boolean[]{false}, 100_000, 42, HypeDistribution.EXPONENTIAL,
+                new double[]{0.2}), 0.0);
 
         double point = MooCore.hypeWeightedHypervolume(
                 new double[][]{{2, 2}}, new double[]{4}, new double[]{1},
@@ -557,6 +575,12 @@ class MooCoreTest {
         double[][] second = MooCore.generateNondominatedSet(20, 4, NondominatedSetShape.SIMPLEX, 42);
         assertMatrixEquals(first, second);
         assertFalse(MooCore.anyDominated(first));
+
+        RandomGenerator expectedGenerator = RandomGeneratorFactory
+                .<RandomGenerator>of("Xoroshiro128PlusPlus").create(42);
+        double[][] expected = MooCore.generateNondominatedSet(
+                20, 4, NondominatedSetShape.SIMPLEX, expectedGenerator);
+        assertMatrixEquals(expected, first);
 
         long[][] integers = MooCore.generateIntegerNondominatedSet(20, 4,
                 NondominatedSetShape.CONCAVE_SPHERE, 42);

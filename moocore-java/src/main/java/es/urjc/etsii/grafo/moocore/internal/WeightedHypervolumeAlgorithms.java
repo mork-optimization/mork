@@ -119,7 +119,7 @@ public final class WeightedHypervolumeAlgorithms {
             }
         }
 
-        RandomGenerator random = new java.util.Random(seed);
+        RandomGenerator random = RandomGenerators.create(seed);
         int dominated = 0;
         for (int sample = 0; sample < samples; sample++) {
             double x;

@@ -8,6 +8,7 @@ import es.urjc.etsii.grafo.moocore.internal.HypervolumeApproximationAlgorithms;
 import es.urjc.etsii.grafo.moocore.internal.Indicators;
 import es.urjc.etsii.grafo.moocore.internal.MatrixUtils;
 import es.urjc.etsii.grafo.moocore.internal.ParetoAlgorithms;
+import es.urjc.etsii.grafo.moocore.internal.RandomGenerators;
 import es.urjc.etsii.grafo.moocore.internal.Transformations;
 import es.urjc.etsii.grafo.moocore.internal.WeightedHypervolumeAlgorithms;
 
@@ -22,7 +23,6 @@ import java.util.Map;
 import java.util.function.Function;
 import java.util.function.ToDoubleFunction;
 import java.util.random.RandomGenerator;
-import java.util.random.RandomGeneratorFactory;
 
 /** Static facade for multi-objective mathematical operations. */
 public final class MooCore {
@@ -224,7 +224,7 @@ public final class MooCore {
 
     public static double[][] generateNondominatedSet(int size, int objectives,
                                                      NondominatedSetShape shape, long seed) {
-        return Transformations.generate(size, objectives, shape, seededRandom(seed));
+        return Transformations.generate(size, objectives, shape, RandomGenerators.create(seed));
     }
 
     public static double[][] generateNondominatedSet(int size, int objectives,
@@ -235,7 +235,8 @@ public final class MooCore {
 
     public static long[][] generateIntegerNondominatedSet(int size, int objectives,
                                                           NondominatedSetShape shape, long seed) {
-        return Transformations.generateInteger(size, objectives, shape, seededRandom(seed));
+        return Transformations.generateInteger(
+                size, objectives, shape, RandomGenerators.create(seed));
     }
 
     public static double[][] eaf(double[][] points, int[] sets) {
@@ -495,10 +496,6 @@ public final class MooCore {
     public static Path getDatasetPath(String name, boolean force, int retries,
                                       Duration delay) throws IOException {
         return DatasetRepository.getPath(name, force, retries, delay);
-    }
-
-    private static RandomGenerator seededRandom(long seed) {
-        return RandomGeneratorFactory.<RandomGenerator>of("L64X128MixRandom").create(seed);
     }
 
     private static double averageWithinSets(double[][] points, int[] sets, Hypervolume indicator) {

@@ -75,7 +75,7 @@ public final class HypervolumeApproximationAlgorithms {
     }
 
     private static double monteCarlo(double[][] points, long samples, long seed) {
-        RandomGenerator random = new java.util.Random(seed);
+        RandomGenerator random = RandomGenerators.create(seed);
         int dimensions = points[0].length;
         double[] inverseDirection = new double[dimensions];
         double result = 0.0;

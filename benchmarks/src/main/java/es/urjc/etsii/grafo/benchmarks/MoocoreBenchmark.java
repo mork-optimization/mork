@@ -2,7 +2,9 @@
 package es.urjc.etsii.grafo.benchmarks;
 
 import es.urjc.etsii.grafo.moocore.HypeDistribution;
+import es.urjc.etsii.grafo.moocore.HypervolumeApproximation;
 import es.urjc.etsii.grafo.moocore.MooCore;
+import es.urjc.etsii.grafo.moocore.NondominatedSetShape;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
 import org.openjdk.jmh.annotations.Fork;
@@ -85,6 +87,18 @@ public class MoocoreBenchmark {
     public double hypeWeightedHypervolume(HypeState state) {
         return MooCore.hypeWeightedHypervolume(state.points, state.reference, state.ideal,
                 new boolean[]{false}, state.samples, 47L, state.distribution, state.mu);
+    }
+
+    @Benchmark
+    public double approximateHypervolumeMonteCarlo(HypervolumeApproximationState state) {
+        return MooCore.approximateHypervolume(state.points, state.reference,
+                new boolean[]{false}, state.samples, 59L, HypervolumeApproximation.DZ2019_MC);
+    }
+
+    @Benchmark
+    public double[][] generateNondominatedSet(NondominatedSetGenerationState state) {
+        return MooCore.generateNondominatedSet(
+                state.size, state.objectives, state.shape, 67L);
     }
 
     @State(Scope.Benchmark)
@@ -283,6 +297,44 @@ public class MoocoreBenchmark {
                 case POINT -> new double[]{0.5, 0.5};
             };
         }
+    }
+
+    @State(Scope.Benchmark)
+    public static class HypervolumeApproximationState {
+
+        @Param("100")
+        int size;
+
+        @Param({"2", "5", "9"})
+        int objectives;
+
+        @Param("10000")
+        int samples;
+
+        double[][] points;
+        double[] reference;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            points = randomPoints(size, objectives, 59L);
+            reference = new double[objectives];
+            for (int objective = 0; objective < objectives; objective++) {
+                reference[objective] = 1.0;
+            }
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class NondominatedSetGenerationState {
+
+        @Param({"100", "500"})
+        int size;
+
+        @Param({"2", "5"})
+        int objectives;
+
+        @Param({"SIMPLEX", "CONCAVE_SPHERE"})
+        NondominatedSetShape shape;
     }
 
     private static double[][] randomPoints(int size, int objectives, long seed) {
