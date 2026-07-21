@@ -133,6 +133,13 @@ test, and verify them with:
 Do not use this process to update stochastic expectations: Java methods deliberately use a different random
 stream from C, Python, and R.
 
+For native performance comparisons against Python `moocore` and the other
+packages in its published benchmark suite, follow the
+[cross-language benchmark instructions](../benchmarks/README.md#native-moocore-cross-language-comparison).
+The harness supplies identical prepared inputs to Python/C and Java, verifies
+the outputs before timing, and merges their native-runtime measurements without
+JNI or process-startup overhead.
+
 ## License
 
 Note that this module is licensed under MPL-2.0, as it is based on and would not be possible without the work of:
