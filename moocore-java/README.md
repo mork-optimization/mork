@@ -6,7 +6,7 @@ Function & Memory API.
 
 > [!WARNING]
 > This module is still experimental, and it is being currently being tested. Use at your own risk.
-> Do report any issues or inconsistencies detected so we can work on fixing them.
+> Report any issues or inconsistencies detected so we can work on fixing them.
 
 
 To use this module, add the following dependency to your `pom.xml` file:
@@ -71,8 +71,8 @@ normalisation, dominance, and Pareto ranking support up to 255 objectives. EAF i
 objectives; EAF differences and weighted methods are currently two-dimensional, matching upstream's current
 restrictions.
 
-The deterministic quasi-Monte Carlo methods reproduce upstream numerical results within floating-point tolerance. Seeded
-stochastic methods are reproducible within Java, but do not promise the same random stream as C, Python, or R.
+The deterministic quasi-Monte Carlo methods reproduce upstream numerical results within floating-point tolerance. 
+Stochastic methods are reproducible within Java, but do not promise the same random stream as C, Python, or R.
 
 `input1.dat` and `ran.10pts.9d.10` are packaged for offline use. Both come from the MPL-2.0 testsuite repository.
 Python-package-only datasets are deliberately not redistributed because that package is LGPL-2.1-or-later; they can
@@ -106,8 +106,32 @@ The dedicated `moocore Java upstream testsuite` workflow initializes both submod
 implementation, either submodule pin, its parent POM, or the workflow changes. It runs four deterministic shards in
 parallel; together they cover the same 109-recipe manifest.
 
-`tools/generate_reference_fixtures.py` can regenerate deterministic oracle values with an installed Python `moocore`. It
-is a development tool only; the Java artifact and its tests do not depend on Python.
+`tools/generate_reference_fixtures.py` can regenerate deterministic oracle values with an installed Python `moocore`.
+From the repository root, run:
+
+```shell
+python3 moocore-java/tools/generate_reference_fixtures.py \
+    moocore-java/target/python-reference-fixtures.json
+```
+
+The command uses the `moocore` installed in that Python environment and records its version in the
+`upstream_version` field. To use the Python binding from the pinned `moocore` submodule, install it first with
+`python3 -m pip install ./moocore/python`.
+
+The generated JSON is a review artifact; Maven does not read it automatically and the Java tests do not require
+Python. Compare its deterministic values with the expected values in
+`src/test/java/es/urjc/etsii/grafo/moocore/MooCoreTest.java`. The hypervolume, contribution, and R2 fields correspond to
+`computesPublishedIndicators`; the approximation fields correspond to `matchesDeterministicHypervolumeApproximations`;
+and the EAF-difference fields correspond to `matchesDocumentedEafDifferenceOutputs`. If an intentional upstream change
+requires updating those constants, review the numerical difference, copy the accepted values into the corresponding
+test, and verify them with:
+
+```shell
+./mvnw -pl moocore-java -am -Dgpg.skip test
+```
+
+Do not use this process to update stochastic expectations: Java methods deliberately use a different random
+stream from C, Python, and R.
 
 ## License
 
