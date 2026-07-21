@@ -76,6 +76,28 @@ public class Context {
         return (ContextData<S, I>) context.get();
     }
 
+    /**
+     * Temporarily suspend automatic objective tracking for the current thread.
+     * Suspensions may be nested and should be managed with try-with-resources.
+     * The suspension does not propagate to child threads.
+     *
+     * @return scope that resumes objective tracking when closed
+     */
+    public static ObjectiveTrackingScope suspendObjectiveTracking() {
+        ContextData<?, ?> contextData = get();
+        contextData.objectiveTrackingSuspensionDepth++;
+        return new ObjectiveTrackingScopeImpl(Thread.currentThread(), contextData);
+    }
+
+    /**
+     * Check whether automatic objective tracking is suspended for the current thread.
+     *
+     * @return true if objective tracking is suspended, false otherwise
+     */
+    public static boolean isObjectiveTrackingSuspended() {
+        return get().objectiveTrackingSuspensionDepth > 0;
+    }
+
     public static <S extends Solution<S,I>, I extends Instance> boolean validate(S solution){
         ContextData<S,I> ctx = get();
         if(!ctx.validationEnabled){
@@ -199,6 +221,41 @@ public class Context {
         public boolean multiObjective;
         public ReferenceResultManager referenceResultManager;
         public ParetoSet<S,I> paretoSet;
+        public int objectiveTrackingSuspensionDepth;
+    }
+
+    /**
+     * AutoCloseable objective tracking suspension scope.
+     */
+    public interface ObjectiveTrackingScope extends AutoCloseable {
+        @Override
+        void close();
+    }
+
+    private static final class ObjectiveTrackingScopeImpl implements ObjectiveTrackingScope {
+        private final Thread owner;
+        private final ContextData<?, ?> contextData;
+        private boolean closed;
+
+        private ObjectiveTrackingScopeImpl(Thread owner, ContextData<?, ?> contextData) {
+            this.owner = owner;
+            this.contextData = contextData;
+        }
+
+        @Override
+        public void close() {
+            if (closed) {
+                return;
+            }
+            if (Thread.currentThread() != owner) {
+                throw new IllegalStateException("Objective tracking scope must be closed by the thread that opened it");
+            }
+            if (contextData.objectiveTrackingSuspensionDepth <= 0) {
+                throw new IllegalStateException("Objective tracking suspension depth is already zero");
+            }
+            contextData.objectiveTrackingSuspensionDepth--;
+            closed = true;
+        }
     }
 
     public static class Configurator {
