@@ -98,6 +98,15 @@ final class KungParetoAlgorithms {
         return ranks;
     }
 
+    static int[] sortReverseLexicographically2d(double[][] points) {
+        int[] rows = identity(points.length);
+        int[] scratch = new int[points.length];
+        int[] counts = new int[256];
+        radixSortByCoordinate(points, rows, 0, scratch, counts);
+        radixSortByCoordinate(points, rows, 1, scratch, counts);
+        return rows;
+    }
+
     private static int[] maxima(double[][] points, int[] rows, int offset,
                                 int dimensions, boolean keepWeakly, Workspace workspace) {
         if (rows.length <= SMALL_THRESHOLD) {
@@ -418,10 +427,14 @@ final class KungParetoAlgorithms {
 
     private static void radixSortByCoordinate(double[][] points, int[] rows, int objective,
                                               Workspace workspace) {
-        int[] scratch = workspace.sortScratch;
+        radixSortByCoordinate(
+                points, rows, objective, workspace.sortScratch, workspace.radixCounts);
+    }
+
+    private static void radixSortByCoordinate(double[][] points, int[] rows, int objective,
+                                              int[] scratch, int[] counts) {
         int[] source = rows;
         int[] target = scratch;
-        int[] counts = workspace.radixCounts;
         for (int shift = 0; shift < Long.SIZE; shift += Byte.SIZE) {
             Arrays.fill(counts, 0);
             for (int i = 0; i < rows.length; i++) {

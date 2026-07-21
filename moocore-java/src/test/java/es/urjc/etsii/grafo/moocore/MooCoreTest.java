@@ -152,6 +152,38 @@ class MooCoreTest {
     }
 
     @Test
+    void twoDimensionalParetoOperationsMatchNaiveAcrossDirections() {
+        Random random = new Random(107);
+        boolean[][] directions = {{false}, {true}, {false, true}, {true, false}};
+        for (int size : new int[]{1, 2, 15, 16, 17, 64}) {
+            for (int iteration = 0; iteration < 30; iteration++) {
+                double[][] points = new double[size][2];
+                for (double[] point : points) {
+                    point[0] = random.nextInt(11) - 5;
+                    point[1] = random.nextInt(11) - 5;
+                }
+                double[][] original = copy(points);
+                for (boolean[] maximise : directions) {
+                    assertParetoOperationsMatchNaive(points, maximise);
+                }
+                assertMatrixEquals(original, points);
+            }
+        }
+
+        double[][] limits = {
+                {Double.NEGATIVE_INFINITY, 3.0},
+                {Double.NEGATIVE_INFINITY, 3.0},
+                {0.0, -0.0},
+                {-0.0, 0.0},
+                {Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY},
+                {Double.POSITIVE_INFINITY, Double.POSITIVE_INFINITY}
+        };
+        for (boolean[] maximise : directions) {
+            assertParetoOperationsMatchNaive(limits, maximise);
+        }
+    }
+
+    @Test
     void paretoRanksTreatSignedZerosAsEqual() {
         double[][] positiveZeroFirst = {{0.0}, {-0.0}, {1.0}, {-1.0}};
         double[][] negativeZeroFirst = {{-0.0}, {0.0}, {1.0}, {-1.0}};

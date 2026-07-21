@@ -31,13 +31,11 @@ public final class ParetoAlgorithms {
             return KungParetoAlgorithms.nondominated(points, keepWeakly);
         }
 
-        List<UniquePoint> unique = unique(points);
-        boolean[] uniqueNondominated;
         if (objectives == 2) {
-            uniqueNondominated = nondominated2d(unique);
-        } else {
-            uniqueNondominated = nondominated3d(unique);
+            return nondominated2d(points, keepWeakly);
         }
+        List<UniquePoint> unique = unique(points);
+        boolean[] uniqueNondominated = nondominated3d(unique);
         return expand(unique, uniqueNondominated, input.length, keepWeakly);
     }
 
@@ -64,11 +62,14 @@ public final class ParetoAlgorithms {
             return KungParetoAlgorithms.anyDominated(points, keepWeakly);
         }
 
+        if (objectives == 2) {
+            return anyDominated2d(points, keepWeakly);
+        }
         List<UniquePoint> unique = unique(points);
         if (!keepWeakly && unique.size() < points.length) {
             return true;
         }
-        return objectives == 2 ? anyDominated2d(unique) : anyDominated3d(unique);
+        return anyDominated3d(unique);
     }
 
     public static int[] ranks(double[][] input, boolean[] maximise) {
@@ -109,15 +110,23 @@ public final class ParetoAlgorithms {
         return result;
     }
 
-    private static boolean[] nondominated2d(List<UniquePoint> unique) {
-        Integer[] order = order(unique, 2);
-        boolean[] result = new boolean[unique.size()];
-        double bestSecond = Double.POSITIVE_INFINITY;
-        for (int index : order) {
-            double second = unique.get(index).values[1];
-            if (second < bestSecond) {
-                result[index] = true;
-                bestSecond = second;
+    private static boolean[] nondominated2d(double[][] points, boolean keepWeakly) {
+        int[] order = KungParetoAlgorithms.sortReverseLexicographically2d(points);
+        boolean[] result = new boolean[points.length];
+        Arrays.fill(result, true);
+        double previousFirst = points[order[0]][0];
+        double previousSecond = points[order[0]][1];
+        for (int position = 1; position < order.length; position++) {
+            int index = order[position];
+            double first = points[index][0];
+            double second = points[index][1];
+            if (previousFirst > first) {
+                previousFirst = first;
+                previousSecond = second;
+            } else if (!keepWeakly
+                    || previousFirst != first
+                    || previousSecond != second) {
+                result[index] = false;
             }
         }
         return result;
@@ -144,15 +153,21 @@ public final class ParetoAlgorithms {
         return result;
     }
 
-    private static boolean anyDominated2d(List<UniquePoint> unique) {
-        Integer[] order = order(unique, 2);
-        double bestSecond = Double.POSITIVE_INFINITY;
-        for (int index : order) {
-            double second = unique.get(index).values[1];
-            if (second >= bestSecond) {
+    private static boolean anyDominated2d(double[][] points, boolean keepWeakly) {
+        int[] order = KungParetoAlgorithms.sortReverseLexicographically2d(points);
+        double previousFirst = points[order[0]][0];
+        double previousSecond = points[order[0]][1];
+        for (int position = 1; position < order.length; position++) {
+            double first = points[order[position]][0];
+            double second = points[order[position]][1];
+            if (previousFirst > first) {
+                previousFirst = first;
+                previousSecond = second;
+            } else if (!keepWeakly
+                    || previousFirst != first
+                    || previousSecond != second) {
                 return true;
             }
-            bestSecond = second;
         }
         return false;
     }
@@ -265,33 +280,40 @@ public final class ParetoAlgorithms {
     }
 
     private static int[] ranks2d(double[][] points) {
-        List<UniquePoint> unique = unique(points);
-        Integer[] order = order(unique, 2);
-        double[] seconds = new double[unique.size()];
-        for (int i = 0; i < unique.size(); i++) {
-            seconds[i] = unique.get(i).values[1];
-        }
-        Arrays.sort(seconds);
-        int uniqueSeconds = 0;
-        for (double value : seconds) {
-            if (uniqueSeconds == 0 || value != seconds[uniqueSeconds - 1]) {
-                seconds[uniqueSeconds++] = value;
-            }
-        }
-        FenwickMaximum fronts = new FenwickMaximum(uniqueSeconds);
-        int[] uniqueRanks = new int[unique.size()];
-        for (int index : order) {
-            double second = unique.get(index).values[1];
-            int coordinate = Arrays.binarySearch(seconds, 0, uniqueSeconds, second) + 1;
-            int rank = fronts.maximum(coordinate);
-            uniqueRanks[index] = rank;
-            fronts.update(coordinate, rank + 1);
-        }
+        int[] order = KungParetoAlgorithms.sortReverseLexicographically2d(points);
         int[] result = new int[points.length];
-        for (int i = 0; i < unique.size(); i++) {
-            for (int original : unique.get(i).originalIndices) {
-                result[original] = uniqueRanks[i];
+        double[] frontLast = new double[points.length];
+        frontLast[0] = points[order[0]][0];
+        int numberOfFronts = 0;
+        int lastRank = 0;
+        for (int position = 1; position < order.length; position++) {
+            int index = order[position];
+            int previous = order[position - 1];
+            double first = points[index][0];
+            if (first == points[previous][0]
+                    && points[index][1] == points[previous][1]) {
+                result[index] = lastRank;
+                continue;
             }
+
+            if (first < frontLast[numberOfFronts]) {
+                int low = 0;
+                int high = numberOfFronts + 1;
+                while (low < high) {
+                    int middle = (low + high) >>> 1;
+                    if (first < frontLast[middle]) {
+                        high = middle;
+                    } else {
+                        low = middle + 1;
+                    }
+                }
+                lastRank = low;
+            } else {
+                numberOfFronts++;
+                lastRank = numberOfFronts;
+            }
+            frontLast[lastRank] = first;
+            result[index] = lastRank;
         }
         return result;
     }
@@ -329,30 +351,6 @@ public final class ParetoAlgorithms {
         @Override
         public int hashCode() {
             return hash;
-        }
-    }
-
-    private static final class FenwickMaximum {
-        private final int[] values;
-
-        private FenwickMaximum(int size) {
-            values = new int[size + 1];
-        }
-
-        private int maximum(int index) {
-            int maximum = 0;
-            while (index > 0) {
-                maximum = Math.max(maximum, values[index]);
-                index -= index & -index;
-            }
-            return maximum;
-        }
-
-        private void update(int index, int value) {
-            while (index < values.length) {
-                values[index] = Math.max(values[index], value);
-                index += index & -index;
-            }
         }
     }
 
