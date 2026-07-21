@@ -319,6 +319,38 @@ class MooCoreTest {
     }
 
     @Test
+    void threeDimensionalHypervolumeMatchesInclusionExclusionAcrossDirections() {
+        Random random = new Random(109);
+        boolean[][] directions = {
+                {false}, {true}, {false, false, true}, {true, false, true}
+        };
+        double[] reference = {5.0, 5.0, 5.0};
+        for (int iteration = 0; iteration < 50; iteration++) {
+            double[][] points = new double[10][3];
+            for (double[] point : points) {
+                point[0] = random.nextInt(13) - 4;
+                point[1] = random.nextInt(13) - 4;
+                point[2] = random.nextInt(5) - 2;
+            }
+            if (iteration % 2 == 0) {
+                points[9] = points[0].clone();
+            }
+            double[][] originalPoints = copy(points);
+            double[] originalReference = reference.clone();
+            for (boolean[] maximise : directions) {
+                assertEquals(
+                        bruteForceHypervolume(points, reference, maximise),
+                        MooCore.hypervolume(points, reference, maximise),
+                        TOLERANCE,
+                        "iteration=" + iteration
+                                + ", maximise=" + Arrays.toString(maximise));
+            }
+            assertMatrixEquals(originalPoints, points);
+            assertArrayEquals(originalReference, reference);
+        }
+    }
+
+    @Test
     void exactHypervolumeMatchesAtInclusionExclusionBoundary() {
         Random random = new Random(92);
         for (int dimensions : new int[]{5, 9}) {
@@ -691,6 +723,22 @@ class MooCoreTest {
             result += selected % 2 == 1 ? volume : -volume;
         }
         return result;
+    }
+
+    private static double bruteForceHypervolume(double[][] points, double[] reference,
+                                                 boolean[] maximise) {
+        double[][] minimising = copy(points);
+        double[] minimisingReference = reference.clone();
+        for (int objective = 0; objective < reference.length; objective++) {
+            boolean direction = maximise.length == 1 ? maximise[0] : maximise[objective];
+            if (direction) {
+                minimisingReference[objective] = -minimisingReference[objective];
+                for (double[] point : minimising) {
+                    point[objective] = -point[objective];
+                }
+            }
+        }
+        return bruteForceHypervolume(minimising, minimisingReference);
     }
 
     private static double naiveAdditiveEpsilon(double[][] points, double[][] reference,

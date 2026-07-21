@@ -9,7 +9,6 @@ import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TreeMap;
 
 public final class HypervolumeAlgorithms {
 
@@ -211,21 +210,7 @@ public final class HypervolumeAlgorithms {
     }
 
     private static double hypervolume3d(double[][] input, double[] reference) {
-        double[][] points = relevantNondominated(input, reference);
-        Arrays.sort(points, Comparator.comparingDouble(point -> point[2]));
-        SkylineArea area = new SkylineArea(reference[0], reference[1]);
-        double volume = 0.0;
-        int index = 0;
-        while (index < points.length) {
-            double z = points[index][2];
-            while (index < points.length && points[index][2] == z) {
-                area.add(points[index][0], points[index][1]);
-                index++;
-            }
-            double nextZ = index < points.length ? points[index][2] : reference[2];
-            volume += area.area * Math.max(0.0, nextZ - z);
-        }
-        return volume;
+        return Hypervolume3d.compute(input, reference);
     }
 
     private static double[][] relevantNondominated(double[][] input, double[] reference) {
@@ -254,44 +239,6 @@ public final class HypervolumeAlgorithms {
             }
         }
         return true;
-    }
-
-    private static final class SkylineArea {
-        private final double referenceX;
-        private final double referenceY;
-        private final TreeMap<Double, Double> skyline = new TreeMap<>();
-        private double area;
-
-        private SkylineArea(double referenceX, double referenceY) {
-            this.referenceX = referenceX;
-            this.referenceY = referenceY;
-        }
-
-        private void add(double x, double y) {
-            Map.Entry<Double, Double> floor = skyline.floorEntry(x);
-            if (floor != null && floor.getValue() <= y) {
-                return;
-            }
-            double cursor = x;
-            double envelope = floor == null ? referenceY : floor.getValue();
-            Map.Entry<Double, Double> next = skyline.ceilingEntry(x);
-            while (envelope > y && cursor < referenceX) {
-                double end = next == null ? referenceX : Math.min(next.getKey(), referenceX);
-                area += Math.max(0.0, end - cursor) * (envelope - y);
-                cursor = end;
-                if (next == null) {
-                    break;
-                }
-                envelope = next.getValue();
-                next = skyline.higherEntry(next.getKey());
-            }
-            Map.Entry<Double, Double> removable = skyline.ceilingEntry(x);
-            while (removable != null && removable.getValue() >= y) {
-                skyline.remove(removable.getKey());
-                removable = skyline.ceilingEntry(x);
-            }
-            skyline.put(x, y);
-        }
     }
 
     /**
