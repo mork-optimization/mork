@@ -106,16 +106,23 @@ public final class HypervolumeApproximationAlgorithms {
             coefficients[i] = Math.round(samples * fractional(value));
         }
         double[] angles = new double[angleCount];
+        double[] integrals = new double[angleCount];
+        double[] sine = new double[angleCount];
+        double[] cosine = new double[angleCount];
+        double[] direction = new double[dimensions];
         double[] inverseDirection = new double[dimensions];
+        for (int power = 0; power < angleCount; power++) {
+            integrals[power] = sinPowerIntegral(power, Math.PI * 0.5);
+        }
         double result = 0.0;
         for (long sample = 0; sample < samples; sample++) {
             double factor = sample + 1 < samples ? (sample + 1.0) / samples : 0.0;
             for (int i = 0; i < angleCount; i++) {
                 double uniform = fractional(factor * coefficients[i]);
                 int power = dimensions - i - 2;
-                angles[i] = inverseSinPowerIntegral(uniform, power);
+                angles[i] = inverseSinPowerIntegral(uniform, power, integrals[power]);
             }
-            huaWangDirection(inverseDirection, angles);
+            huaWangDirection(inverseDirection, angles, sine, cosine, direction);
             result += radialPower(points, inverseDirection);
         }
         return result;
@@ -161,15 +168,13 @@ public final class HypervolumeApproximationAlgorithms {
         return Math.pow(maximum, points[0].length);
     }
 
-    private static void huaWangDirection(double[] inverseDirection, double[] angles) {
+    private static void huaWangDirection(double[] inverseDirection, double[] angles,
+                                         double[] sine, double[] cosine, double[] direction) {
         int dimensions = inverseDirection.length;
-        double[] sine = new double[angles.length];
-        double[] cosine = new double[angles.length];
         for (int i = 0; i < angles.length; i++) {
             sine[i] = Math.sin(angles[i]);
             cosine[i] = Math.cos(angles[i]);
         }
-        double[] direction = new double[dimensions];
         for (int i = 0; i < dimensions - 1; i++) {
             direction[i] = sine[0];
         }
@@ -210,26 +215,22 @@ public final class HypervolumeApproximationAlgorithms {
         direction[dimensions - 1] = product * Math.cos(angle);
     }
 
-    private static double inverseSinPowerIntegral(double fraction, int power) {
+    private static double inverseSinPowerIntegral(double fraction, int power, double total) {
         if (fraction <= 0.0) {
             return 0.0;
         }
         if (fraction >= 1.0) {
             return Math.PI * 0.5;
         }
-        double total = sinPowerIntegral(power, Math.PI * 0.5);
         double target = fraction * total;
-        double low = 0.0;
-        double high = Math.PI * 0.5;
-        for (int iteration = 0; iteration < 60; iteration++) {
-            double middle = (low + high) * 0.5;
-            if (sinPowerIntegral(power, middle) < target) {
-                low = middle;
-            } else {
-                high = middle;
-            }
+        double angle = Math.PI * 0.5;
+        double residual = total - target;
+        while (Math.abs(residual) > 1e-15) {
+            double derivative = Math.pow(Math.sin(angle), power);
+            angle -= residual / derivative;
+            residual = sinPowerIntegral(power, angle) - target;
         }
-        return (low + high) * 0.5;
+        return angle;
     }
 
     private static double sinPowerIntegral(int power, double upper) {

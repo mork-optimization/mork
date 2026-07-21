@@ -57,6 +57,25 @@ class MooCoreTest {
     }
 
     @Test
+    void huaWangApproximationIsDeterministicAcrossSupportedDimensions() {
+        for (int dimensions : new int[]{2, 3, 6, 9, 16, 31}) {
+            double[][] points = new double[1][dimensions];
+            double[] reference = new double[dimensions];
+            Arrays.fill(reference, 1.0);
+            double first = MooCore.approximateHypervolume(
+                    points, reference, new boolean[]{false}, 256, 0,
+                    HypervolumeApproximation.DZ2019_HW);
+            double second = MooCore.approximateHypervolume(
+                    points, reference, new boolean[]{false}, 256, 0,
+                    HypervolumeApproximation.DZ2019_HW);
+
+            assertTrue(Double.isFinite(first), "dimensions=" + dimensions);
+            assertTrue(first > 0.0, "dimensions=" + dimensions);
+            assertEquals(first, second, 0.0, "dimensions=" + dimensions);
+        }
+    }
+
+    @Test
     void handlesDominanceDuplicatesAndDirections() {
         double[][] points = {{1, 1}, {0, 1}, {1, 0}, {1, 0}};
         assertArrayEquals(new boolean[]{false, true, true, false}, MooCore.isNondominated(points));
