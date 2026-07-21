@@ -1,1 +1,4 @@
-./moocore/python[benchmarks]
+./moocore/python
+numpy
+matplotlib
+py-cpuinfo

@@ -102,11 +102,10 @@ java -jar benchmarks/target/benchmarks.jar -f 5 -wi 10 -i 20 -rf json -rff bench
 
 ## Native moocore cross-language comparison
 
-The cross-language harness compares `mork-moocore` with Python `moocore` and
-the other implementations used by upstream's published Python benchmarks. It
-keeps the pinned `moocore` submodule unchanged and covers nondominance, Pareto
-ranking, exact hypervolume, hypervolume approximation, additive epsilon, and
-IGD+.
+The cross-language harness compares `mork-moocore` with the Python `moocore`
+public API backed by the native C implementation. It keeps the pinned
+`moocore` submodule unchanged and covers nondominance, Pareto ranking, exact
+hypervolume, hypervolume approximation, additive epsilon, and IGD+.
 
 The approximation matrix uses the Linear 3D, 4D, 6D, and 9D datasets and the
 Sphere 6D 1,000-point dataset available in the pinned testsuite. The latter is
@@ -121,8 +120,8 @@ fresh Python worker processes with calibrated batches. Both sides use three
 one-second warmup iterations followed by five one-second measurement
 iterations. There is no short or reduced measurement profile.
 The complete matrix may take several hours, depending on the CPU and on when
-the harness drops implementations that exceed its ten-second single-call
-limit.
+the harness drops later sizes after a Python call exceeds its ten-second
+single-call limit.
 
 ### Set up
 
@@ -136,7 +135,7 @@ python3 benchmarks/cross-language/setup_environment.py
 
 The script requires Java 25 or newer. It creates the ignored virtual
 environment `benchmarks/cross-language/venv`, installs every dependency from
-`benchmarks/cross-language/requirements.txt`, verifies all package adapters,
+`benchmarks/cross-language/requirements.txt`, verifies the Python/C API,
 and builds `benchmarks/target/benchmarks.jar`. Running it again safely updates
 the environment and rebuilds the JAR.
 
@@ -150,10 +149,9 @@ benchmarks/cross-language/venv/bin/python -m pip install \
 ```
 
 All dependencies are mandatory. If the runner finds a missing package, it
-stops before collecting measurements and prints the setup and manual commands;
-it never silently removes that implementation from the comparison. Packages
-may still be omitted from cases whose objective count or semantics they do not
-support, matching the upstream benchmark definitions.
+stops before collecting measurements and prints the setup and manual commands.
+The requirements intentionally contain no competing multi-objective Python
+packages; only local Python/C `moocore` and reporting utilities are installed.
 
 ### Run
 
@@ -173,6 +171,10 @@ benchmarks/cross-language/venv/bin/python \
     benchmarks/cross-language/run.py \
     --operations nondominated hypervolume
 ```
+
+The runner prints timestamped phase and per-case progress. Python worker JSON
+is written after each complete fork, while JMH writes one raw result file per
+operation.
 
 Use `--output` to select the result directory and `--java-jar` to use another
 JMH artifact. Generated inputs and results default to the ignored directory

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: MIT
-"""Create the complete environment for cross-language moocore benchmarks."""
+"""Create the environment for Java versus Python/C moocore benchmarks."""
 
 from __future__ import annotations
 

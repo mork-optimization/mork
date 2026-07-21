@@ -42,14 +42,122 @@ public final class Indicators {
     }
 
     public static double epsilonAdditive(double[][] input, double[][] reference, boolean[] maximise) {
-        PreparedSets sets = prepare(input, reference, maximise, false);
+        int objectives = MatrixUtils.validate(input, 1);
+        MatrixUtils.validate(reference, 1);
+        if (reference[0].length != objectives) {
+            throw new IllegalArgumentException("points and reference must have the same number of objectives");
+        }
+        boolean[] directions = MatrixUtils.directions(maximise, objectives);
+        if (objectives == 1) {
+            return epsilonAdditive1d(input, reference, directions[0]);
+        }
+
+        boolean anyMinimise = false;
+        boolean anyMaximise = false;
+        for (boolean direction : directions) {
+            anyMinimise |= !direction;
+            anyMaximise |= direction;
+        }
+        if (!anyMaximise) {
+            return epsilonAdditiveMinimise(input, reference);
+        }
+        if (!anyMinimise) {
+            return epsilonAdditiveMaximise(input, reference);
+        }
+        return epsilonAdditiveMixed(input, reference, directions);
+    }
+
+    private static double epsilonAdditive1d(double[][] points, double[][] reference,
+                                             boolean maximise) {
         double result = Double.NEGATIVE_INFINITY;
-        for (double[] target : sets.reference) {
+        for (double[] target : reference) {
             double bestPoint = Double.POSITIVE_INFINITY;
-            for (double[] point : sets.points) {
-                double worstObjective = Double.NEGATIVE_INFINITY;
-                for (int objective = 0; objective < point.length; objective++) {
-                    worstObjective = Math.max(worstObjective, point[objective] - target[objective]);
+            for (double[] point : points) {
+                double difference = maximise
+                        ? target[0] - point[0]
+                        : point[0] - target[0];
+                bestPoint = Math.min(bestPoint, difference);
+            }
+            result = Math.max(result, bestPoint);
+        }
+        return result;
+    }
+
+    private static double epsilonAdditiveMinimise(double[][] points, double[][] reference) {
+        double result = Double.NEGATIVE_INFINITY;
+        targetLoop:
+        for (double[] target : reference) {
+            double bestPoint = Double.POSITIVE_INFINITY;
+            for (double[] point : points) {
+                double worstObjective = Math.max(
+                        point[0] - target[0], point[1] - target[1]);
+                if (worstObjective >= bestPoint) {
+                    continue;
+                }
+                for (int objective = 2; objective < point.length; objective++) {
+                    worstObjective = Math.max(
+                            worstObjective, point[objective] - target[objective]);
+                }
+                if (worstObjective <= result) {
+                    continue targetLoop;
+                }
+                bestPoint = Math.min(bestPoint, worstObjective);
+            }
+            result = Math.max(result, bestPoint);
+        }
+        return result;
+    }
+
+    private static double epsilonAdditiveMaximise(double[][] points, double[][] reference) {
+        double result = Double.NEGATIVE_INFINITY;
+        targetLoop:
+        for (double[] target : reference) {
+            double bestPoint = Double.POSITIVE_INFINITY;
+            for (double[] point : points) {
+                double worstObjective = Math.max(
+                        target[0] - point[0], target[1] - point[1]);
+                if (worstObjective >= bestPoint) {
+                    continue;
+                }
+                for (int objective = 2; objective < point.length; objective++) {
+                    worstObjective = Math.max(
+                            worstObjective, target[objective] - point[objective]);
+                }
+                if (worstObjective <= result) {
+                    continue targetLoop;
+                }
+                bestPoint = Math.min(bestPoint, worstObjective);
+            }
+            result = Math.max(result, bestPoint);
+        }
+        return result;
+    }
+
+    private static double epsilonAdditiveMixed(double[][] points, double[][] reference,
+                                                boolean[] maximise) {
+        double result = Double.NEGATIVE_INFINITY;
+        targetLoop:
+        for (double[] target : reference) {
+            double bestPoint = Double.POSITIVE_INFINITY;
+            for (double[] point : points) {
+                double first = maximise[0]
+                        ? target[0] - point[0]
+                        : point[0] - target[0];
+                double second = maximise[1]
+                        ? target[1] - point[1]
+                        : point[1] - target[1];
+                double worstObjective = Math.max(first, second);
+                if (worstObjective >= bestPoint) {
+                    continue;
+                }
+                for (int objective = 2; objective < point.length; objective++) {
+                    double difference = maximise[objective]
+                            ? target[objective] - point[objective]
+                            : point[objective] - target[objective];
+                    worstObjective = Math.max(worstObjective, difference);
+                }
+                if (worstObjective <= result) {
+                    continue targetLoop;
                 }
                 bestPoint = Math.min(bestPoint, worstObjective);
             }

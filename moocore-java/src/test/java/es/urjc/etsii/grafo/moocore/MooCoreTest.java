@@ -184,6 +184,44 @@ class MooCoreTest {
     }
 
     @Test
+    void additiveEpsilonMatchesNaiveAcrossDirections() {
+        Random random = new Random(103);
+        for (int objectives = 1; objectives <= 12; objectives++) {
+            boolean[] mixed = new boolean[objectives];
+            for (int objective = 0; objective < objectives; objective++) {
+                mixed[objective] = objective % 2 == 0;
+            }
+            boolean[][] directions = {{false}, {true}, mixed};
+            for (int iteration = 0; iteration < 30; iteration++) {
+                double[][] points = new double[15][objectives];
+                double[][] reference = new double[17][objectives];
+                for (double[] point : points) {
+                    for (int objective = 0; objective < objectives; objective++) {
+                        point[objective] = random.nextInt(21) - 10;
+                    }
+                }
+                for (double[] target : reference) {
+                    for (int objective = 0; objective < objectives; objective++) {
+                        target[objective] = random.nextInt(21) - 10;
+                    }
+                }
+                double[][] originalPoints = copy(points);
+                double[][] originalReference = copy(reference);
+                for (boolean[] maximise : directions) {
+                    assertEquals(
+                            naiveAdditiveEpsilon(points, reference, maximise),
+                            MooCore.epsilonAdditive(points, reference, maximise),
+                            TOLERANCE,
+                            "objectives=" + objectives + ", iteration=" + iteration
+                                    + ", maximise=" + Arrays.toString(maximise));
+                }
+                assertMatrixEquals(originalPoints, points);
+                assertMatrixEquals(originalReference, reference);
+            }
+        }
+    }
+
+    @Test
     void computesIndicatorsAboveTheCDimensionLimit() {
         for (int dimensions : new int[]{256, 300}) {
             double[][] points = new double[2][dimensions];
@@ -619,6 +657,29 @@ class MooCoreTest {
                 volume *= Math.max(0.0, reference[objective] - lower);
             }
             result += selected % 2 == 1 ? volume : -volume;
+        }
+        return result;
+    }
+
+    private static double naiveAdditiveEpsilon(double[][] points, double[][] reference,
+                                                boolean[] maximise) {
+        double result = Double.NEGATIVE_INFINITY;
+        for (double[] target : reference) {
+            double bestPoint = Double.POSITIVE_INFINITY;
+            for (double[] point : points) {
+                double worstObjective = Double.NEGATIVE_INFINITY;
+                for (int objective = 0; objective < point.length; objective++) {
+                    boolean direction = maximise.length == 1
+                            ? maximise[0]
+                            : maximise[objective];
+                    double difference = direction
+                            ? target[objective] - point[objective]
+                            : point[objective] - target[objective];
+                    worstObjective = Math.max(worstObjective, difference);
+                }
+                bestPoint = Math.min(bestPoint, worstObjective);
+            }
+            result = Math.max(result, bestPoint);
         }
         return result;
     }

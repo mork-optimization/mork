@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: LGPL-2.1-or-later
-"""Compare Python/C moocore, other Python packages, and mork-moocore Java."""
+"""Compare Python/C moocore with mork-moocore Java."""
 
 from __future__ import annotations
 
@@ -12,7 +12,6 @@ import json
 import math
 import os
 import platform
-import random
 import statistics
 import struct
 import subprocess
@@ -39,21 +38,9 @@ SLOW_CASE_SECONDS = 10.0
 
 REQUIRED_IMPORTS = {
     "numpy": "numpy",
-    "pandas": "pandas",
     "matplotlib": "matplotlib",
     "py-cpuinfo": "cpuinfo",
     "moocore": "moocore",
-    "torch": "torch",
-    "botorch": "botorch",
-    "pymoo": "pymoo",
-    "DESDEO": "desdeo",
-    "paretoset": "paretoset",
-    "fast-pareto": "fast_pareto",
-    "Optuna": "optuna",
-    "patatune": "patatune",
-    "Nevergrad": "nevergrad",
-    "moarchiving": "moarchiving",
-    "jMetalPy": "jmetal",
 }
 
 OPERATIONS = (
@@ -64,6 +51,11 @@ OPERATIONS = (
     "epsilon_additive",
     "igd_plus",
 )
+
+
+def progress(message: str) -> None:
+    timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {message}", flush=True)
 
 
 @dataclass
@@ -481,137 +473,44 @@ def relative_error(exact: float, approximation: float) -> float:
     return abs(exact - approximation) / abs(exact)
 
 
-def make_adapters(case: Case, points: Any, reference_matrix: Any | None) -> dict[str, Callable[[], Any]]:
+def make_python_operation(
+    case: Case, points: Any, reference_matrix: Any | None
+) -> tuple[str, Callable[[], Any]]:
     import moocore
-    import numpy as np
 
     if case.operation == "nondominated":
-        import torch
-        from botorch.utils.multi_objective.pareto import is_non_dominated
-        from desdeo.tools.non_dominated_sorting import non_dominated
-        from fast_pareto import is_pareto_front
-        from optuna.study._multi_objective import _is_pareto_front
-        from patatune.util import get_dominated
-        from paretoset import paretoset
-        from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
-
-        torch_points = torch.from_numpy(points)
-        deduplicate = not bool(case.keep_weakly)
-        return {
-            "moocore": lambda: positions(moocore.is_nondominated(
+        return (
+            "moocore",
+            lambda: positions(moocore.is_nondominated(
                 points, maximise=True, keep_weakly=bool(case.keep_weakly)
             )),
-            "botorch": lambda: positions(is_non_dominated(
-                torch_points, deduplicate=deduplicate
-            )),
-            "paretoset (numba)": lambda: positions(paretoset(
-                points,
-                sense=points.shape[1] * ["max"],
-                distinct=deduplicate,
-                use_numba=True,
-            )),
-            "pymoo": lambda nds=NonDominatedSorting(): nds.do(
-                -points, only_non_dominated_front=True
-            ),
-            "desdeo": lambda: positions(non_dominated(-points)),
-            "fast-pareto": lambda: positions(is_pareto_front(
-                -points, assume_unique_lexsorted=False
-            )),
-            "optuna": lambda: positions(_is_pareto_front(
-                -points, assume_unique_lexsorted=False
-            )),
-            "patatune (numba)": lambda: positions(
-                np.logical_not(get_dominated(-points, 0))
-            ),
-        }
+        )
 
     if case.operation == "pareto_rank":
-        from desdeo.tools.non_dominated_sorting import fast_non_dominated_sort
-        from paretoset import paretorank
-        from pymoo.util.nds.non_dominated_sorting import NonDominatedSorting
-
-        return {
-            "moocore": lambda: moocore.pareto_rank(points),
-            "paretoset": lambda: paretorank(points, use_numba=True) - 1,
-            "pymoo": lambda nds=NonDominatedSorting(): nds.do(
-                points, return_rank=True
-            )[1],
-            "desdeo": lambda: fast_non_dominated_sort(points).argmax(axis=0),
-        }
+        return "moocore", lambda: moocore.pareto_rank(points)
 
     if case.operation == "hypervolume":
-        import torch
-        from botorch.utils.multi_objective.hypervolume import Hypervolume
-        from fast_pareto import hypervolume as fast_hypervolume
-        from moarchiving import get_mo_archive
-        from nevergrad.optimization.multiobjective import HypervolumeIndicator
-        from optuna._hypervolume import compute_hypervolume
-
         reference = reference_matrix[0]
-        adapters: dict[str, Callable[[], Any]] = {
-            "moocore": moocore.Hypervolume(ref=reference),
-            "optuna": lambda: compute_hypervolume(
-                points, reference_point=reference, assume_pareto=False
-            ),
-        }
-        if case.objectives < 6:
-            nevergrad_hv = HypervolumeIndicator(reference)
-            adapters["nevergrad"] = lambda: nevergrad_hv.compute(points)
-        if case.objectives < 5:
-            get_mo_archive.hypervolume_computation_float_type = float
-            get_mo_archive.hypervolume_final_float_type = float
-            adapters["moarchiving (float)"] = lambda: float(
-                get_mo_archive(points, reference_point=reference).hypervolume
-            )
-        if case.objectives < 4:
-            botorch_hv = Hypervolume(ref_point=torch.from_numpy(-reference))
-            torch_points = torch.from_numpy(-points)
-            adapters["botorch"] = lambda: float(botorch_hv.compute(torch_points))
-            adapters["fast-pareto"] = lambda: fast_hypervolume(
-                points, ref_point=reference, assume_pareto=False
-            )
-        return adapters
+        indicator = moocore.Hypervolume(ref=reference)
+        return "moocore", lambda: indicator(points)
 
     if case.operation == "hypervolume_approximation":
         reference = reference_matrix[0]
         method = case.method
-        adapters = {
-            f"moocore {method}": lambda: relative_error(
-                float(case.exact_hv),
-                moocore.hv_approx(
-                    points, ref=reference, nsamples=SAMPLES,
-                    seed=SEED, method=method
-                ),
-            )
-        }
-        if method == "DZ2019-MC":
-            from pymoo.indicators.hv.monte_carlo import ApproximateMonteCarloHypervolume
-
-            pymoo_hv = ApproximateMonteCarloHypervolume(ref_point=reference)
-            adapters["pymoo"] = lambda: relative_error(
-                float(case.exact_hv), float(pymoo_hv.add(points).hv)
-            )
-        return adapters
+        return f"moocore {method}", lambda: moocore.hv_approx(
+            points, ref=reference, nsamples=SAMPLES,
+            seed=SEED, method=method
+        )
 
     if case.operation == "epsilon_additive":
-        from jmetal.core.quality_indicator import EpsilonIndicator
-
-        indicator = EpsilonIndicator(reference_matrix)
-        return {
-            "moocore": lambda: moocore.epsilon_additive(
-                points, ref=reference_matrix
-            ),
-            "jMetalPy": lambda: indicator.compute(points),
-        }
+        return "moocore", lambda: moocore.epsilon_additive(
+            points, ref=reference_matrix
+        )
 
     if case.operation == "igd_plus":
-        from pymoo.indicators.igd_plus import IGDPlus
-
-        indicator = IGDPlus(reference_matrix)
-        return {
-            "moocore": lambda: moocore.igd_plus(points, ref=reference_matrix),
-            "pymoo": lambda: indicator(points),
-        }
+        return "moocore", lambda: moocore.igd_plus(
+            points, ref=reference_matrix
+        )
 
     raise ValueError(f"Unknown operation: {case.operation}")
 
@@ -628,15 +527,21 @@ def verify_python_result(case: Case, implementation: str, value: Any, oracle: An
         )
         return
     if case.operation == "hypervolume_approximation":
-        if not math.isfinite(float(value)):
+        actual = float(value)
+        if not math.isfinite(actual):
             raise AssertionError(
                 f"{implementation} returned a non-finite error for {case.case_id}"
             )
-        if case.method == "DZ2019-MC" and implementation.startswith("moocore"):
-            if float(value) > 0.05:
+        if case.method == "DZ2019-MC":
+            if relative_error(float(case.exact_hv), actual) > 0.05:
                 raise AssertionError(
                     f"{implementation} exceeds 5% relative error for {case.case_id}"
                 )
+        else:
+            np.testing.assert_allclose(
+                actual, float(oracle[0, 0]), rtol=1e-9, atol=1e-12,
+                err_msg=f"{implementation} differs for {case.case_id}",
+            )
         return
     np.testing.assert_allclose(
         float(value), float(oracle[0, 0]), rtol=1e-9, atol=1e-12,
@@ -690,50 +595,55 @@ def python_worker(manifest: Path, output: Path, fork: int) -> None:
     records = []
     skipped = []
     disabled: set[tuple[str, str, str]] = set()
-    for case in cases:
+    progress(f"Python fork {fork + 1}/{FORKS}: starting {len(cases)} cases")
+    for index, case in enumerate(cases, start=1):
+        progress(
+            f"Python fork {fork + 1}/{FORKS}: case {index}/{len(cases)} "
+            f"{case.case_id}"
+        )
         points, reference, oracle = case_data(case, manifest)
-        adapters = make_adapters(case, points, reference)
-        adapter_items = list(adapters.items())
-        random.Random(f"{fork}:{case.case_id}").shuffle(adapter_items)
-        for implementation, function in adapter_items:
-            group = (case.operation, case.dataset, implementation)
-            if group in disabled:
-                skipped.append({
-                    "case_id": case.case_id,
-                    "implementation": implementation,
-                    "reason": "earlier size exceeded the 10 second single-call limit",
-                })
-                continue
-            value = function()
-            verify_python_result(case, implementation, value, oracle)
-            samples, value, calibration_seconds = measure(function)
-            if not samples:
-                disabled.add(group)
-                skipped.append({
-                    "case_id": case.case_id,
-                    "implementation": implementation,
-                    "reason": (
-                        "single call exceeded the 10 second limit "
-                        f"({calibration_seconds:.3f} s)"
-                    ),
-                })
-                continue
-            verify_python_result(case, implementation, value, oracle)
-            records.append({
+        implementation, function = make_python_operation(
+            case, points, reference
+        )
+        group = (case.operation, case.dataset, implementation)
+        if group in disabled:
+            skipped.append({
                 "case_id": case.case_id,
-                "operation": case.operation,
-                "dataset": case.dataset,
-                "size": case.size,
-                "objectives": case.objectives,
-                "method": case.method,
                 "implementation": implementation,
-                "runtime": "python",
-                "fork": fork,
-                "samples_ns_op": samples,
+                "reason": "earlier size exceeded the 10 second single-call limit",
             })
+            continue
+        value = function()
+        verify_python_result(case, implementation, value, oracle)
+        samples, value, calibration_seconds = measure(function)
+        if not samples:
+            disabled.add(group)
+            skipped.append({
+                "case_id": case.case_id,
+                "implementation": implementation,
+                "reason": (
+                    "single call exceeded the 10 second limit "
+                    f"({calibration_seconds:.3f} s)"
+                ),
+            })
+            continue
+        verify_python_result(case, implementation, value, oracle)
+        records.append({
+            "case_id": case.case_id,
+            "operation": case.operation,
+            "dataset": case.dataset,
+            "size": case.size,
+            "objectives": case.objectives,
+            "method": case.method,
+            "implementation": implementation,
+            "runtime": "python",
+            "fork": fork,
+            "samples_ns_op": samples,
+        })
     with output.open("w", encoding="utf-8") as destination:
         json.dump({"records": records, "skipped": skipped}, destination, indent=2)
         destination.write("\n")
+    progress(f"Python fork {fork + 1}/{FORKS}: results written to {output}")
 
 
 def run_python_workers(manifest: Path, raw_directory: Path) -> list[Path]:
@@ -774,6 +684,7 @@ def run_java_benchmarks(
         case_ids = [case.case_id for case in cases if case.operation == operation]
         if not case_ids:
             continue
+        progress(f"Java JMH: starting {operation} ({len(case_ids)} cases)")
         output = raw_directory / f"jmh-{operation}.json"
         benchmark = (
             "es.urjc.etsii.grafo.benchmarks.CrossLanguageMoocoreBenchmark."
@@ -902,22 +813,10 @@ def command_output(command: list[str]) -> str | None:
 def distribution_versions() -> dict[str, str]:
     versions = {}
     for distribution in REQUIRED_IMPORTS:
-        candidates = {
-            "py-cpuinfo": ("py-cpuinfo",),
-            "fast-pareto": ("fast-pareto", "fast_pareto"),
-            "jMetalPy": ("jmetalpy",),
-            "DESDEO": ("desdeo",),
-            "Optuna": ("optuna",),
-            "Nevergrad": ("nevergrad",),
-        }.get(distribution, (distribution,))
-        version = None
-        for candidate in candidates:
-            try:
-                version = importlib.metadata.version(candidate)
-                break
-            except importlib.metadata.PackageNotFoundError:
-                continue
-        versions[distribution] = version or "unknown"
+        try:
+            versions[distribution] = importlib.metadata.version(distribution)
+        except importlib.metadata.PackageNotFoundError:
+            versions[distribution] = "unknown"
     return versions
 
 
@@ -989,7 +888,7 @@ def write_markdown(
             f"| {result['stdev_ns_op']:.3f} | {ratio_text} |"
         )
     if skipped:
-        lines.extend(["", "## Skipped slow or unsupported cases", ""])
+        lines.extend(["", "## Skipped slow cases", ""])
         for item in skipped:
             lines.append(
                 f"- `{item['case_id']}` / `{item['implementation']}`: {item['reason']}"
@@ -1121,14 +1020,17 @@ def main() -> None:
     output = arguments.output.resolve()
     raw_directory = output / "raw"
     raw_directory.mkdir(parents=True, exist_ok=True)
+    progress("Preparing shared inputs and Python correctness oracles")
     cases = prepare_cases(output, set(arguments.operations))
+    progress(f"Prepared {len(cases)} benchmark cases")
     manifest = output / "manifest.json"
     python_paths = run_python_workers(manifest, raw_directory)
     jmh_paths = run_java_benchmarks(
         cases, arguments.java_jar, output / "cases", raw_directory
     )
+    progress("Merging Python and Java results")
     merge_results(output, cases, python_paths, jmh_paths, arguments.java_jar)
-    print(f"Cross-language report: {output / 'report.md'}")
+    progress(f"Cross-language report: {output / 'report.md'}")
 
 
 if __name__ == "__main__":
