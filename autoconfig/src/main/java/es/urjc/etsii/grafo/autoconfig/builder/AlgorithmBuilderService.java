@@ -67,7 +67,8 @@ public class AlgorithmBuilderService {
     public Algorithm<?,?> buildAlgorithmFromString(String s){
         var component = buildAlgorithmComponentFromString(s);
         if(!(component instanceof Algorithm<?,?>)){
-            throw new AlgorithmParsingException(String.format("String does not represent an algorithm, built class type: %s", component.getClass().getSimpleName()));
+            String componentName = component == null? "null value": component.getClass().getSimpleName();
+            throw new AlgorithmParsingException(String.format("String does not represent an algorithm, built class type: %s", componentName));
         }
         return (Algorithm<?,?>) component;
     }
