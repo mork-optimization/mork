@@ -5,6 +5,7 @@
 - (Fix) Make the custom `BitSet` follow the `Set` equality and hash-code contract, with specialized fast paths for `BitSet` instances.
 - (Fix) Improve Excel serializer in some edge cases, print time with default with 2 decimals in pivot table.
 - (Fix) Build Excel pivot table from the generated raw-data table instead of reserving rows beforehand.
+- (New) Use Context.suspendObjectiveTracking inside a try block to temporaly disable tracking of objetive function. Used for example by Strategic Oscillation implementations.
 - (New) Autoconfig improvement: Categorical and ordinal params now pick all values if none are explicitly provided and target type is an enum.
 - (New) AlgorithmBuilder::buildFromStringParams(name, config) that sets a custom algorithm name (by default a rando one is generated).
 
