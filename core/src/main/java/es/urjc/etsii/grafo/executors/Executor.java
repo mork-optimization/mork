@@ -255,7 +255,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         resultStore.store(r);
         eventPublisher.publish(new SolutionGeneratedEvent(r));
         if (log.isDebugEnabled()) {
-            log.debug(String.format("\t%s.\tT(s): %.3f \tTTB(s): %.3f \t%s", r.iteration(), nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
+            log.debug(String.format("%4s.  T(s): %8.3f  TTB(s): %8.3f  %s", r.iteration(), nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
         }
     }
 
