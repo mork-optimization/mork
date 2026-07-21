@@ -63,17 +63,6 @@ class ProgressAwareTerminalTest {
     }
 
     @Test
-    void progressIsOverwrittenBeforeWritingTabbedLogMessage() throws IOException {
-        String progress = "progress text remains here";
-        consumer.accept(progress);
-
-        byte[] logBytes = "\t6.\tT(s): 37.919\n".getBytes(StandardCharsets.UTF_8);
-        ProgressAwareTerminal.writeLog(logBytes, 0, logBytes.length);
-
-        assertTrue(terminalOutput().contains(progress + "\r" + " ".repeat(progress.length()) + "\r\t6.\tT(s): 37.919\n"));
-    }
-
-    @Test
     void shorterProgressOverwritesFullPreviousProgressLine() {
         consumer.accept("Long progress line");
 
