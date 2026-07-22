@@ -23,12 +23,9 @@ on:
 
 jobs:
   upstream-testsuite:
-    name: Verify Java implementation (${{ matrix.shard }}/4)
+    name: Verify Java implementation
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    strategy:
-      matrix:
-        shard: [0, 1, 2, 3]
     steps:
       - uses: actions/checkout@v7
         with:
@@ -49,4 +46,4 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
 
       - name: Run Java and upstream regression tests
-        run: ./mvnw -B -ntp -pl moocore-java -am -Pmoocore-testsuite -Dgpg.skip -Dmoocore.testsuite.shard=${{ matrix.shard }}/4 verify
+        run: ./mvnw -B -ntp -pl moocore-java -am -Pmoocore-testsuite -Dgpg.skip verify

@@ -100,13 +100,11 @@ The `moocore-testsuite` Maven profile also runs every recipe in the pinned upstr
 checked against their numerical oracles and the two recipes without stable textual output check EAF polygon invariants.
 The profile verifies the expected testsuite Git revision and fails if any upstream `.test` recipe is absent from the
 explicit coverage manifest. To isolate a recipe or family while debugging, set a path substring, for example
-`-Dmoocore.testsuite.case=hv/`. The stable manifest can also be split across parallel runners with zero-based shards
-such as
-`-Dmoocore.testsuite.shard=0/4`.
+`-Dmoocore.testsuite.case=hv/`.
 
 The dedicated `moocore Java upstream testsuite` workflow initializes both submodules and runs this profile whenever the
-implementation, either submodule pin, its parent POM, or the workflow changes. It runs four deterministic shards in
-parallel; together they cover the same 109-recipe manifest.
+implementation, either submodule pin, its parent POM, or the workflow changes. The complete 109-recipe manifest runs
+in one job.
 
 `tools/generate_reference_fixtures.py` can regenerate deterministic oracle values with an installed Python `moocore`.
 From the repository root, run:

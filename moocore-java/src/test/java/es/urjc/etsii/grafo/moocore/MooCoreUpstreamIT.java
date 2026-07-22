@@ -33,29 +33,13 @@ class MooCoreUpstreamIT {
     @TestFactory
     Stream<DynamicTest> upstreamRegressionSuite() {
         String selected = System.getProperty("moocore.testsuite.case", "");
-        int[] shard = shard();
         List<DynamicTest> tests = new ArrayList<>();
-        for (int i = 0; i < cases.size(); i++) {
-            UpstreamCase testCase = cases.get(i);
-            if ((selected.isBlank() || testCase.path().contains(selected)) && i % shard[1] == shard[0]) {
+        for (UpstreamCase testCase : cases) {
+            if (selected.isBlank() || testCase.path().contains(selected)) {
                 tests.add(DynamicTest.dynamicTest(testCase.path(), () -> run(testCase)));
             }
         }
         return tests.stream();
-    }
-
-    private static int[] shard() {
-        String configured = System.getProperty("moocore.testsuite.shard", "0/1");
-        String[] parts = configured.split("/", -1);
-        if (parts.length != 2) {
-            throw new IllegalArgumentException("moocore.testsuite.shard must have the form index/count");
-        }
-        int index = Integer.parseInt(parts[0]);
-        int count = Integer.parseInt(parts[1]);
-        if (count < 1 || index < 0 || index >= count) {
-            throw new IllegalArgumentException("invalid moocore testsuite shard " + configured);
-        }
-        return new int[]{index, count};
     }
 
     private static void run(UpstreamCase testCase) throws Exception {
