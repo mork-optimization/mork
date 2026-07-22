@@ -64,6 +64,36 @@ public class MoocoreBenchmark {
     }
 
     @Benchmark
+    public double igd(IndicatorState state) {
+        return MooCore.igd(state.points, state.reference);
+    }
+
+    @Benchmark
+    public double igdPlus(IndicatorState state) {
+        return MooCore.igdPlus(state.points, state.reference);
+    }
+
+    @Benchmark
+    public double averageHausdorffDistance(IndicatorState state) {
+        return MooCore.averageHausdorffDistance(state.points, state.reference, state.p);
+    }
+
+    @Benchmark
+    public double epsilonAdditive(IndicatorState state) {
+        return MooCore.epsilonAdditive(state.points, state.reference);
+    }
+
+    @Benchmark
+    public double epsilonMultiplicative(IndicatorState state) {
+        return MooCore.epsilonMultiplicative(state.positivePoints, state.positiveReference);
+    }
+
+    @Benchmark
+    public double exactR2(ExactR2State state) {
+        return MooCore.exactR2(state.points, state.reference);
+    }
+
+    @Benchmark
     public double hypervolume(HypervolumeState state) {
         return MooCore.hypervolume(state.points, state.reference);
     }
@@ -155,6 +185,48 @@ public class MoocoreBenchmark {
         @Setup(Level.Trial)
         public void setup() {
             points = chainPoints(size, objectives);
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class IndicatorState {
+
+        @Param({"100", "500"})
+        int size;
+
+        @Param({"2", "5", "9"})
+        int objectives;
+
+        @Param("2")
+        int p;
+
+        double[][] points;
+        double[][] reference;
+        double[][] positivePoints;
+        double[][] positiveReference;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            points = randomPoints(size, objectives, 71L);
+            reference = randomPoints(size, objectives, 73L);
+            positivePoints = shifted(points, 0.5);
+            positiveReference = shifted(reference, 0.5);
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class ExactR2State {
+
+        @Param({"100", "1000", "10000"})
+        int size;
+
+        double[][] points;
+        double[] reference;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            points = randomPoints(size, 2, 79L);
+            reference = new double[]{0.0, 0.0};
         }
     }
 
@@ -375,6 +447,16 @@ public class MoocoreBenchmark {
             rectangles[i][4] = 0.5 + (i % 7) / 7.0;
         }
         return rectangles;
+    }
+
+    private static double[][] shifted(double[][] input, double offset) {
+        double[][] result = new double[input.length][input[0].length];
+        for (int row = 0; row < input.length; row++) {
+            for (int objective = 0; objective < input[row].length; objective++) {
+                result[row][objective] = input[row][objective] + offset;
+            }
+        }
+        return result;
     }
 
     private static double[][] chainPoints(int size, int objectives) {

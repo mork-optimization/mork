@@ -126,6 +126,60 @@ class MooCoreTest {
     }
 
     @Test
+    void rangeBasedParetoAlgorithmsMatchNaiveOnLargerInputs() {
+        Random random = new Random(113);
+        for (int dimensions : new int[]{3, 4, 5, 9}) {
+            for (int iteration = 0; iteration < 3; iteration++) {
+                double[][] points = new double[257][dimensions];
+                for (double[] point : points) {
+                    for (int objective = 0; objective < dimensions; objective++) {
+                        point[objective] = random.nextInt(31) - 15;
+                    }
+                }
+                boolean[] maximise = new boolean[dimensions];
+                for (int objective = 0; objective < dimensions; objective++) {
+                    maximise[objective] = objective % 2 == 1;
+                }
+                assertParetoOperationsMatchNaive(points, maximise);
+            }
+        }
+    }
+
+    @Test
+    void paretoAlgorithmsHandleLargeAntichainsChainsAndNonFiniteValues() {
+        for (int dimensions : new int[]{3, 5, 9}) {
+            double[][] antichain = new double[129][dimensions];
+            for (int row = 0; row < antichain.length; row++) {
+                antichain[row][0] = row;
+                antichain[row][1] = antichain.length - row;
+            }
+            boolean[] allSelected = new boolean[antichain.length];
+            Arrays.fill(allSelected, true);
+            assertArrayEquals(allSelected, MooCore.isNondominated(antichain));
+            assertFalse(MooCore.anyDominated(antichain));
+            assertArrayEquals(new int[antichain.length], MooCore.paretoRank(antichain));
+
+            double[][] chain = new double[129][dimensions];
+            int[] expectedRanks = new int[chain.length];
+            for (int row = 0; row < chain.length; row++) {
+                Arrays.fill(chain[row], row);
+                expectedRanks[row] = row;
+            }
+            assertTrue(MooCore.anyDominated(chain));
+            assertArrayEquals(expectedRanks, MooCore.paretoRank(chain));
+        }
+
+        double[][] limits = {
+                {Double.NEGATIVE_INFINITY, 1.0, Double.POSITIVE_INFINITY},
+                {Double.NEGATIVE_INFINITY, 1.0, Double.POSITIVE_INFINITY},
+                {-0.0, Double.NEGATIVE_INFINITY, 0.0},
+                {0.0, Double.POSITIVE_INFINITY, -0.0},
+                {Double.POSITIVE_INFINITY, 0.0, Double.NEGATIVE_INFINITY}
+        };
+        assertParetoOperationsMatchNaive(limits, new boolean[]{true, false, true});
+    }
+
+    @Test
     void highDimensionalDegenerateCoordinatesAndDirectionsMatchNaiveDefinition() {
         Random random = new Random(89);
         double[][] points = new double[35][9];
@@ -200,6 +254,11 @@ class MooCoreTest {
         for (boolean[] maximise : directions) {
             assertParetoOperationsMatchNaive(limits, maximise);
         }
+        for (double value : new double[]{Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY}) {
+            double[][] singleton = {{value, value}};
+            assertArrayEquals(new boolean[]{true}, MooCore.isNondominated(singleton));
+            assertFalse(MooCore.anyDominated(singleton));
+        }
     }
 
     @Test
@@ -268,6 +327,40 @@ class MooCoreTest {
                 }
                 assertMatrixEquals(originalPoints, points);
                 assertMatrixEquals(originalReference, reference);
+            }
+        }
+    }
+
+    @Test
+    void multiplicativeEpsilonMatchesNaiveAcrossDirections() {
+        Random random = new Random(127);
+        for (int objectives = 1; objectives <= 12; objectives++) {
+            boolean[] mixed = new boolean[objectives];
+            for (int objective = 0; objective < objectives; objective++) {
+                mixed[objective] = objective % 2 == 0;
+            }
+            boolean[][] directions = {{false}, {true}, mixed};
+            for (int iteration = 0; iteration < 20; iteration++) {
+                double[][] points = new double[15][objectives];
+                double[][] reference = new double[17][objectives];
+                for (double[] point : points) {
+                    for (int objective = 0; objective < objectives; objective++) {
+                        point[objective] = 0.25 + random.nextDouble() * 10.0;
+                    }
+                }
+                for (double[] target : reference) {
+                    for (int objective = 0; objective < objectives; objective++) {
+                        target[objective] = 0.25 + random.nextDouble() * 10.0;
+                    }
+                }
+                for (boolean[] maximise : directions) {
+                    assertEquals(
+                            naiveMultiplicativeEpsilon(points, reference, maximise),
+                            MooCore.epsilonMultiplicative(points, reference, maximise),
+                            TOLERANCE,
+                            "objectives=" + objectives + ", iteration=" + iteration
+                                    + ", maximise=" + Arrays.toString(maximise));
+                }
             }
         }
     }
@@ -775,6 +868,29 @@ class MooCoreTest {
                             ? target[objective] - point[objective]
                             : point[objective] - target[objective];
                     worstObjective = Math.max(worstObjective, difference);
+                }
+                bestPoint = Math.min(bestPoint, worstObjective);
+            }
+            result = Math.max(result, bestPoint);
+        }
+        return result;
+    }
+
+    private static double naiveMultiplicativeEpsilon(double[][] points, double[][] reference,
+                                                      boolean[] maximise) {
+        double result = Double.NEGATIVE_INFINITY;
+        for (double[] target : reference) {
+            double bestPoint = Double.POSITIVE_INFINITY;
+            for (double[] point : points) {
+                double worstObjective = Double.NEGATIVE_INFINITY;
+                for (int objective = 0; objective < point.length; objective++) {
+                    boolean direction = maximise.length == 1
+                            ? maximise[0]
+                            : maximise[objective];
+                    double ratio = direction
+                            ? target[objective] / point[objective]
+                            : point[objective] / target[objective];
+                    worstObjective = Math.max(worstObjective, ratio);
                 }
                 bestPoint = Math.min(bestPoint, worstObjective);
             }
