@@ -5,7 +5,7 @@
 Function & Memory API.
 
 > [!WARNING]
-> This module is still experimental, and it is being currently being tested. Use at your own risk.
+> This module is still experimental, and it is currently being tested. Use at your own risk.
 > Report any issues or inconsistencies detected so we can work on fixing them.
 
 
@@ -147,5 +147,4 @@ Note that this module is licensed under MPL-2.0, as it is based on and would not
 - 2005 Carlos M. Fonseca.
 - 2006-2008, 2015, 2025 Carlos M. Fonseca and Manuel Lopez-Ibanez.
 
-The original projects uses the LGL due to the AVL files, we do not need to use the LGLP because we use standard Java data structures instead.
 Other Mork modules remain under their existing license.
