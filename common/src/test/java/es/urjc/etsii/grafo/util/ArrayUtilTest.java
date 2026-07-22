@@ -261,6 +261,15 @@ class ArrayUtilTest {
         String[] expected = {"a", "b", "c", "d", "e", "f"};
         String[] flatten = ArrayUtil.flatten(original);
         Assertions.assertArrayEquals(expected, flatten);
+
+        Number[][] covariant = {new Integer[]{1}, new Double[]{2.0}};
+        Number[] flattenedCovariant = ArrayUtil.flatten(covariant);
+        Assertions.assertEquals(Number[].class, flattenedCovariant.getClass());
+        Assertions.assertArrayEquals(new Number[]{1, 2.0}, flattenedCovariant);
+
+        String[] flattenedEmpty = ArrayUtil.flatten(new String[0][]);
+        Assertions.assertEquals(String[].class, flattenedEmpty.getClass());
+        Assertions.assertArrayEquals(new String[0], flattenedEmpty);
     }
 
     @Test
@@ -388,6 +397,7 @@ class ArrayUtilTest {
         Assertions.assertEquals(2, ArrayUtil.minIndex(new int[]{-1, 0, -4123, -4123}));
         Assertions.assertEquals(3, ArrayUtil.minIndex(new int[]{-1, 0, -4123, -4124}));
         Assertions.assertEquals(0, ArrayUtil.minIndex(new int[]{0}));
+        Assertions.assertEquals(0, ArrayUtil.minIndex(new int[]{Integer.MAX_VALUE}));
     }
 
     @Test
@@ -397,6 +407,7 @@ class ArrayUtilTest {
         Assertions.assertEquals(2, ArrayUtil.minIndex(new long[]{-1, 0, -4123, -4123}));
         Assertions.assertEquals(3, ArrayUtil.minIndex(new long[]{-1, 0, -4123, -4124}));
         Assertions.assertEquals(0, ArrayUtil.minIndex(new long[]{0}));
+        Assertions.assertEquals(0, ArrayUtil.minIndex(new long[]{Long.MAX_VALUE}));
     }
 
     @Test
@@ -407,6 +418,7 @@ class ArrayUtilTest {
         Assertions.assertEquals(2, ArrayUtil.minIndex(new double[]{-1, 0, -4123, -4123}));
         Assertions.assertEquals(3, ArrayUtil.minIndex(new double[]{-1, 0, -4123, -4124}));
         Assertions.assertEquals(0, ArrayUtil.minIndex(new double[]{0}));
+        Assertions.assertEquals(0, ArrayUtil.minIndex(new double[]{Double.MAX_VALUE}));
     }
 
     @Test
@@ -505,6 +517,22 @@ class ArrayUtilTest {
         Assertions.assertEquals(1, statsInt.min());
         Assertions.assertEquals(1, statsLong.min());
         Assertions.assertEquals(1, statsDouble.min());
+
+        var highLongStats = ArrayUtil.stats(new long[]{Long.MAX_VALUE});
+        Assertions.assertEquals(Long.MAX_VALUE, highLongStats.min());
+        Assertions.assertEquals(Long.MAX_VALUE, highLongStats.max());
+
+        var lowLongStats = ArrayUtil.stats(new long[]{Long.MIN_VALUE});
+        Assertions.assertEquals(Long.MIN_VALUE, lowLongStats.min());
+        Assertions.assertEquals(Long.MIN_VALUE, lowLongStats.max());
+
+        var positiveInfinityStats = ArrayUtil.stats(new double[]{Double.POSITIVE_INFINITY});
+        Assertions.assertEquals(Double.POSITIVE_INFINITY, positiveInfinityStats.min());
+        Assertions.assertEquals(Double.POSITIVE_INFINITY, positiveInfinityStats.max());
+
+        var negativeInfinityStats = ArrayUtil.stats(new double[]{Double.NEGATIVE_INFINITY});
+        Assertions.assertEquals(Double.NEGATIVE_INFINITY, negativeInfinityStats.min());
+        Assertions.assertEquals(Double.NEGATIVE_INFINITY, negativeInfinityStats.max());
     }
 
     @Test

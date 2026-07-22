@@ -46,6 +46,10 @@ class CollectionUtilTest {
         var list = Arrays.asList(0, 1, 2, 3, 4, 5);
         CollectionUtil.reverse(list);
         assertEquals(list, Arrays.asList(5, 4, 3, 2, 1, 0));
+
+        var emptyList = new ArrayList<Integer>();
+        CollectionUtil.reverse(emptyList);
+        Assertions.assertTrue(emptyList.isEmpty());
     }
 
     @Test

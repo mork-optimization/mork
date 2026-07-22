@@ -43,6 +43,9 @@ public class CollectionUtil {
      * @param list list to reverse
      */
     public static void reverse(List<Integer> list) {
+        if (list.isEmpty()) {
+            return;
+        }
         reverseFragment(list, 0, list.size() - 1);
     }
 

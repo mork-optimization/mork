@@ -458,7 +458,8 @@ public class ArrayUtil {
         for (var row : data) {
             size += row.length;
         }
-        var type = Objects.requireNonNull(data[0].getClass().getComponentType());
+        var rowType = Objects.requireNonNull(data.getClass().getComponentType());
+        var type = Objects.requireNonNull(rowType.getComponentType());
         var result = (T[]) Array.newInstance(type, size);
 
         int left = 0;
@@ -667,16 +668,15 @@ public class ArrayUtil {
         if(values.length == 0){
             throw new IllegalArgumentException("Empty array");
         }
-        int min = Integer.MAX_VALUE;
-        int index = -1;
-        for (int i = 0; i < values.length; i++) {
+        int min = values[0];
+        int index = 0;
+        for (int i = 1; i < values.length; i++) {
             int v = values[i];
             if (v < min) {
                 index = i;
                 min = v;
             }
         }
-        assert index != -1;
         return index;
     }
 
@@ -690,16 +690,15 @@ public class ArrayUtil {
         if(values.length == 0){
             throw new IllegalArgumentException("Empty array");
         }
-        long min = Long.MAX_VALUE;
-        int index = -1;
-        for (int i = 0; i < values.length; i++) {
+        long min = values[0];
+        int index = 0;
+        for (int i = 1; i < values.length; i++) {
             long v = values[i];
             if (v < min) {
                 index = i;
                 min = v;
             }
         }
-        assert index != -1;
         return index;
     }
 
@@ -713,9 +712,12 @@ public class ArrayUtil {
         if(values.length == 0){
             throw new IllegalArgumentException("Empty array");
         }
-        double min = Double.MAX_VALUE;
-        int index = -1;
-        for (int i = 0; i < values.length; i++) {
+        if (Double.isNaN(values[0])) {
+            throw new IllegalArgumentException("NaN at index 0");
+        }
+        double min = values[0];
+        int index = 0;
+        for (int i = 1; i < values.length; i++) {
             double v = values[i];
             if (Double.isNaN(v)) {
                 throw new IllegalArgumentException("NaN at index " + i);
@@ -725,7 +727,6 @@ public class ArrayUtil {
                 min = v;
             }
         }
-        assert index != -1;
         return index;
     }
 
@@ -764,8 +765,8 @@ public class ArrayUtil {
     }
 
     public static LongStats stats(long[] data){
-        long min = Integer.MAX_VALUE;
-        long max = Integer.MIN_VALUE;
+        long min = Long.MAX_VALUE;
+        long max = Long.MIN_VALUE;
         long sum = 0;
 
         for (long n : data) {
@@ -784,8 +785,8 @@ public class ArrayUtil {
     }
 
     public static DoubleStats stats(double[] data){
-        double min = Double.MAX_VALUE;
-        double max = -Double.MAX_VALUE;
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
         double sum = 0;
 
         for (double n : data) {
