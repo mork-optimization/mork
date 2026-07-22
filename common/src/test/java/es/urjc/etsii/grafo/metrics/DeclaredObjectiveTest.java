@@ -1,18 +1,12 @@
 package es.urjc.etsii.grafo.metrics;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class DeclaredObjectiveTest {
-
-    @BeforeAll
-    public static void setup(){
-        Metrics.enableMetrics();
-    }
 
     @Test
     public void testSimple(){

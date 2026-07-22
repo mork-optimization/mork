@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.metrics;
 
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
@@ -12,6 +13,11 @@ class MetricsStorageTest {
         Metrics.enableMetrics();
         Metrics.register(TestMetric.class, TestMetric::new);
         Metrics.register(TestMetric2.class, TestMetric2::new);
+    }
+
+    @AfterAll
+    static void cleanUp() {
+        Metrics.disableMetrics();
     }
 
     static final long ERROR_MARGIN = 50_000_000; // 50ms
