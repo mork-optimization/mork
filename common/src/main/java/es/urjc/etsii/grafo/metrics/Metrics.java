@@ -216,7 +216,11 @@ public final class Metrics {
             var objective = (Objective<?, S, I>) obj;
             String name = objective.getName();
             ensureMetricInitialized(name, storage);
-            storage.metrics.get(name).add(objective.evalSol(solution));
+            AbstractMetric metric = storage.metrics.get(name);
+            if (metric == null) {
+                throw new IllegalStateException("No metric registered for objective " + name);
+            }
+            metric.add(objective.evalSol(solution));
         }
     }
 

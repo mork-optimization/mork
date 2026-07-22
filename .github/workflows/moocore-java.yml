@@ -1,0 +1,49 @@
+name: moocore upstream testsuite
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - master
+    paths:
+      - '.github/workflows/moocore-java.yml'
+      - '.gitmodules'
+      - 'pom.xml'
+      - 'moocore'
+      - 'testsuite'
+      - 'moocore-java/**'
+  pull_request:
+    paths:
+      - '.github/workflows/moocore-java.yml'
+      - '.gitmodules'
+      - 'pom.xml'
+      - 'moocore'
+      - 'testsuite'
+      - 'moocore-java/**'
+
+jobs:
+  upstream-testsuite:
+    name: Verify Java implementation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          submodules: recursive
+
+      - name: Set up JDK 25
+        uses: graalvm/setup-graalvm@v1
+        with:
+          java-version: '25'
+          distribution: 'graalvm'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Cache Maven packages
+        uses: actions/cache@v6
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
+          restore-keys: ${{ runner.os }}-m2-
+
+      - name: Run Java and upstream regression tests
+        run: ./mvnw -B -ntp -pl moocore-java -am -Pmoocore-testsuite -Dgpg.skip verify

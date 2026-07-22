@@ -24,6 +24,10 @@
         </dependency>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>mork-moocore</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork</artifactId>
         </dependency>
         <dependency>

@@ -8,6 +8,7 @@
 - (New) Use Context.suspendObjectiveTracking inside a try block to temporarily disable tracking of objective function. Used for example by Strategic Oscillation implementations.
 - (New) Autoconfig improvement: Categorical and ordinal params now pick all values if none are explicitly provided and target type is an enum.
 - (New) AlgorithmBuilder::buildFromStringParams(name, config) that sets a custom algorithm name (by default a rando one is generated).
+- (New) Experimental Moocore Java module
 
 # v0.22
 - (Breaking) Simplify VNS implementation. New doc page for VNS.
