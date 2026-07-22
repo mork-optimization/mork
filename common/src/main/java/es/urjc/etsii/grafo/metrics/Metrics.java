@@ -208,7 +208,7 @@ public final class Metrics {
     }
 
     public static <S extends Solution<S,I>, I extends Instance> void addCurrentObjectives(S solution){
-        if(!areMetricsEnabled()){
+        if(!areMetricsEnabled() || Context.isObjectiveTrackingSuspended()){
             return;
         }
         var storage = getCurrentThreadMetrics();

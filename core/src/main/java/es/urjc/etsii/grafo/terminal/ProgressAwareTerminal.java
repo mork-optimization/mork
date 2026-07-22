@@ -10,13 +10,14 @@ import java.util.concurrent.locks.ReentrantLock;
  */
 final class ProgressAwareTerminal {
 
-    private static final String CLEAR_CURRENT_LINE = "\r\u001B[2K";
+    private static final String CARRIAGE_RETURN = "\r";
     private static final int DEFAULT_TERMINAL_WIDTH = 80;
     private static final int CONSOLE_RIGHT_MARGIN = 1;
     private static final ReentrantLock LOCK = new ReentrantLock();
 
     private static OutputStream outputStream = System.out;
     private static String currentProgressLine;
+    private static int currentProgressDisplayLength;
     private static boolean progressVisible;
 
     private ProgressAwareTerminal() {
@@ -57,9 +58,15 @@ final class ProgressAwareTerminal {
     static void writeProgress(String progressLine, int maxRenderedLength) {
         LOCK.lock();
         try {
-            currentProgressLine = trimDisplayLength(progressLine, maxRenderedLength);
+            RenderedLine renderedLine = trimDisplayLength(progressLine, maxRenderedLength);
+            if (progressVisible) {
+                overwriteCurrentProgressLine();
+            } else {
+                writeString(CARRIAGE_RETURN);
+            }
+            currentProgressLine = renderedLine.value();
+            currentProgressDisplayLength = renderedLine.displayLength();
             progressVisible = true;
-            writeClearCurrentLine();
             writeString(currentProgressLine);
             flush();
         } catch (IOException e) {
@@ -73,11 +80,12 @@ final class ProgressAwareTerminal {
         LOCK.lock();
         try {
             if (progressVisible) {
-                writeClearCurrentLine();
+                overwriteCurrentProgressLine();
                 flush();
             }
             progressVisible = false;
             currentProgressLine = null;
+            currentProgressDisplayLength = 0;
         } catch (IOException e) {
             throw new IllegalStateException("Cannot clear progress bar from console", e);
         } finally {
@@ -94,6 +102,7 @@ final class ProgressAwareTerminal {
             }
             progressVisible = false;
             currentProgressLine = null;
+            currentProgressDisplayLength = 0;
         } catch (IOException e) {
             throw new IllegalStateException("Cannot close progress bar console writer", e);
         } finally {
@@ -106,7 +115,7 @@ final class ProgressAwareTerminal {
         try {
             boolean shouldRedrawProgress = progressVisible && currentProgressLine != null;
             if (shouldRedrawProgress) {
-                writeClearCurrentLine();
+                overwriteCurrentProgressLine();
             }
 
             outputStream.write(bytes, offset, length);
@@ -115,7 +124,7 @@ final class ProgressAwareTerminal {
                 if (length > 0 && !endsWithLineBreak(bytes, offset, length)) {
                     writeString(System.lineSeparator());
                 }
-                writeClearCurrentLine();
+                writeString(CARRIAGE_RETURN);
                 writeString(currentProgressLine);
             }
             flush();
@@ -129,8 +138,10 @@ final class ProgressAwareTerminal {
         return lastByte == '\n' || lastByte == '\r';
     }
 
-    private static void writeClearCurrentLine() throws IOException {
-        writeString(CLEAR_CURRENT_LINE);
+    private static void overwriteCurrentProgressLine() throws IOException {
+        writeString(CARRIAGE_RETURN);
+        writeString(" ".repeat(currentProgressDisplayLength));
+        writeString(CARRIAGE_RETURN);
     }
 
     private static void writeString(String value) throws IOException {
@@ -142,9 +153,9 @@ final class ProgressAwareTerminal {
         outputStream.flush();
     }
 
-    private static String trimDisplayLength(String value, int maxDisplayLength) {
+    private static RenderedLine trimDisplayLength(String value, int maxDisplayLength) {
         if (maxDisplayLength <= 0 || value == null || value.isEmpty()) {
-            return "";
+            return new RenderedLine("", 0);
         }
 
         int displayLength = 0;
@@ -167,7 +178,7 @@ final class ProgressAwareTerminal {
             displayLength += charDisplayLength;
             i += charCount;
         }
-        return result.toString();
+        return new RenderedLine(result.toString(), displayLength);
     }
 
     private static int findAnsiSequenceEnd(String value, int start) {
@@ -192,9 +203,12 @@ final class ProgressAwareTerminal {
         try {
             outputStream = target;
             currentProgressLine = null;
+            currentProgressDisplayLength = 0;
             progressVisible = false;
         } finally {
             LOCK.unlock();
         }
     }
+
+    private record RenderedLine(String value, int displayLength) {}
 }

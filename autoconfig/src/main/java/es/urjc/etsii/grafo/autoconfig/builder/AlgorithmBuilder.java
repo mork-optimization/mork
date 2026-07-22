@@ -35,4 +35,17 @@ public abstract class AlgorithmBuilder<S extends Solution<S,I>, I extends Instan
         String[] params = paramString.split("\\s+");
         return buildFromConfig(new AlgorithmConfiguration(params));
     }
+
+    /**
+     * Build an algorithm from a config string such as those returned by irace.
+     * Example: "constructive=random balanced=true initialmaxdiffratio=0.8193 cooldownexpratio=0.9438 cyclelength=9"
+     * @param algName algorithm name
+     * @param paramString config string with key-values for each parameter
+     * @return built algorithm
+     */
+    public Algorithm<S,I> buildFromStringParams(String algName, String paramString){
+        var algorithm = buildFromStringParams(paramString);
+        algorithm.setName(algName);
+        return algorithm;
+    }
 }
