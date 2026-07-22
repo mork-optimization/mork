@@ -1,2 +1,1 @@
-mvn clean install "-Dgpg.skip=true" -DskipTests
-
+.\mvnw.cmd clean install -DskipTests

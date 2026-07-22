@@ -83,9 +83,9 @@ still be read from a user-supplied path.
 ## Verification and benchmarks
 
 ```shell
-./mvnw -pl moocore-java -am -Dgpg.skip test
+./mvnw -pl moocore-java -am test
 git submodule update --init moocore testsuite
-./mvnw -pl moocore-java -am -Pmoocore-testsuite -Dgpg.skip verify
+./mvnw -pl moocore-java -am -Pmoocore-testsuite verify
 ./mvnw -pl benchmarks -am -DskipTests package
 java --add-modules jdk.incubator.vector -jar benchmarks/target/benchmarks.jar MoocoreBenchmark.nondominated
 java --add-modules jdk.incubator.vector -jar benchmarks/target/benchmarks.jar MoocoreBenchmark.nondominatedStress -prof gc
@@ -127,7 +127,7 @@ requires updating those constants, review the numerical difference, copy the acc
 test, and verify them with:
 
 ```shell
-./mvnw -pl moocore-java -am -Dgpg.skip test
+./mvnw -pl moocore-java -am test
 ```
 
 Do not use this process to update stochastic expectations: Java methods deliberately use a different random

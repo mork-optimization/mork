@@ -84,6 +84,25 @@ The current development version is a Maven project structured in the following m
 
 Remember depending on your needs when developing approaches using Mork you may easily add/remove module dependencies in the `pom.xml` file.
 
+### Releasing
+
+Releases require a clean Git working tree, a configured GPG key with a primed agent, and Maven Central credentials.
+Specify both the release version and the following development version:
+
+```shell
+./release.sh 0.23.1 0.24-SNAPSHOT
+```
+
+Validate the version changes and release preparation without committing, tagging, pushing, signing, or deploying:
+
+```shell
+./release.sh --dry-run 0.23.1 0.24-SNAPSHOT
+```
+
+Dry-run files are intentionally left for inspection and can be removed with `./mvnw release:clean`. The real release
+creates and pushes the release commit, `mork-parent-VERSION` tag, and next-development commit before deploying the
+signed artifacts through the `release` profile.
+
 
 ## Powered by Mork
 

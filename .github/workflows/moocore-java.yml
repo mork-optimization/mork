@@ -46,4 +46,4 @@ jobs:
           restore-keys: ${{ runner.os }}-m2-
 
       - name: Run Java and upstream regression tests
-        run: ./mvnw -B -ntp -pl moocore-java -am -Pmoocore-testsuite -Dgpg.skip verify
+        run: ./mvnw -B -ntp -pl moocore-java -am -Pmoocore-testsuite verify

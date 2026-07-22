@@ -61,6 +61,7 @@
         <mjavadoc.version>3.12.0</mjavadoc.version>
         <mjar.version>3.5.0</mjar.version>
         <mgpg.version>3.2.8</mgpg.version>
+        <mrelease.version>3.3.1</mrelease.version>
         <mjacoco.version>0.8.15</mjacoco.version>
         <mclean.version>3.5.0</mclean.version>
         <maspectj.version>1.16.0</maspectj.version>
@@ -273,17 +274,13 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>${mgpg.version}</version>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>${mrelease.version}</version>
+                <configuration>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <releaseProfiles>release</releaseProfiles>
+                    <tagNameFormat>@{project.artifactId}-@{project.version}</tagNameFormat>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -340,22 +337,46 @@
                     </compilerArgs>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.11.0</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <publishingServerId>central</publishingServerId>
-                    <excludeArtifacts>
-                        <excludeArtifact>mork-benchmarks</excludeArtifact>
-                    </excludeArtifacts>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 
     <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${mgpg.version}</version>
+                        <configuration>
+                            <bestPractices>true</bestPractices>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.11.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <excludeArtifacts>
+                                <excludeArtifact>mork-benchmarks</excludeArtifact>
+                            </excludeArtifacts>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>ultraclean</id>
             <build>
