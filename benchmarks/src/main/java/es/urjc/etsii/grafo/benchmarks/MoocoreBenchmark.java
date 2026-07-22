@@ -131,6 +131,12 @@ public class MoocoreBenchmark {
                 state.size, state.objectives, state.shape, 67L);
     }
 
+    @Benchmark
+    public double[][] normalise(NormaliseState state) {
+        return MooCore.normalise(state.points, state.targetRange, null, null,
+                new boolean[]{false});
+    }
+
     @State(Scope.Benchmark)
     public static class ParetoState {
 
@@ -407,6 +413,25 @@ public class MoocoreBenchmark {
 
         @Param({"SIMPLEX", "CONCAVE_SPHERE"})
         NondominatedSetShape shape;
+    }
+
+    @State(Scope.Benchmark)
+    public static class NormaliseState {
+
+        @Param({"100", "1000"})
+        int size;
+
+        @Param({"2", "5", "9", "32"})
+        int objectives;
+
+        double[][] points;
+        double[] targetRange;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            points = randomPoints(size, objectives, 83L);
+            targetRange = new double[]{-1.0, 1.0};
+        }
     }
 
     private static double[][] randomPoints(int size, int objectives, long seed) {

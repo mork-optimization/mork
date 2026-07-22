@@ -1,10 +1,16 @@
 // SPDX-License-Identifier: MPL-2.0
 package es.urjc.etsii.grafo.moocore.internal;
 
+import jdk.incubator.vector.DoubleVector;
+import jdk.incubator.vector.VectorOperators;
+import jdk.incubator.vector.VectorSpecies;
+
 import java.util.Arrays;
 
 /** Primitive-index implementation of the Kung-Luccio-Preparata maxima algorithm. */
 final class KungParetoAlgorithms {
+
+    private static final VectorSpecies<Double> DOUBLE_SPECIES = DoubleVector.SPECIES_PREFERRED;
 
     static final int SMALL_THRESHOLD = 16;
     static final int MERGE_THRESHOLD = 1_024;
@@ -449,10 +455,25 @@ final class KungParetoAlgorithms {
                                  int offset, int dimensions) {
         boolean less = false;
         boolean greater = false;
-        int end = offset + dimensions;
-        for (int objective = offset; objective < end; objective++) {
-            less |= points.get(left, objective) < points.get(right, objective);
-            greater |= points.get(left, objective) > points.get(right, objective);
+        double[] values = points.values();
+        int leftOffset = points.offset(left, offset);
+        int rightOffset = points.offset(right, offset);
+        int vectorBound = DOUBLE_SPECIES.loopBound(dimensions);
+        int objective = 0;
+        for (; objective < vectorBound; objective += DOUBLE_SPECIES.length()) {
+            DoubleVector leftValues = DoubleVector.fromArray(
+                    DOUBLE_SPECIES, values, leftOffset + objective);
+            DoubleVector rightValues = DoubleVector.fromArray(
+                    DOUBLE_SPECIES, values, rightOffset + objective);
+            less |= leftValues.compare(VectorOperators.LT, rightValues).anyTrue();
+            greater |= leftValues.compare(VectorOperators.GT, rightValues).anyTrue();
+            if (less && greater) {
+                return 0;
+            }
+        }
+        for (; objective < dimensions; objective++) {
+            less |= values[leftOffset + objective] < values[rightOffset + objective];
+            greater |= values[leftOffset + objective] > values[rightOffset + objective];
             if (less && greater) {
                 return 0;
             }
@@ -465,9 +486,22 @@ final class KungParetoAlgorithms {
 
     private static boolean weaklyDominates(FlatPoints points, int left, int right,
                                            int offset, int dimensions) {
-        int end = offset + dimensions;
-        for (int objective = offset; objective < end; objective++) {
-            if (points.get(left, objective) > points.get(right, objective)) {
+        double[] values = points.values();
+        int leftOffset = points.offset(left, offset);
+        int rightOffset = points.offset(right, offset);
+        int vectorBound = DOUBLE_SPECIES.loopBound(dimensions);
+        int objective = 0;
+        for (; objective < vectorBound; objective += DOUBLE_SPECIES.length()) {
+            DoubleVector leftValues = DoubleVector.fromArray(
+                    DOUBLE_SPECIES, values, leftOffset + objective);
+            DoubleVector rightValues = DoubleVector.fromArray(
+                    DOUBLE_SPECIES, values, rightOffset + objective);
+            if (leftValues.compare(VectorOperators.GT, rightValues).anyTrue()) {
+                return false;
+            }
+        }
+        for (; objective < dimensions; objective++) {
+            if (values[leftOffset + objective] > values[rightOffset + objective]) {
                 return false;
             }
         }
@@ -476,9 +510,22 @@ final class KungParetoAlgorithms {
 
     private static boolean equal(FlatPoints points, int left, int right,
                                  int offset, int dimensions) {
-        int end = offset + dimensions;
-        for (int objective = offset; objective < end; objective++) {
-            if (points.get(left, objective) != points.get(right, objective)) {
+        double[] values = points.values();
+        int leftOffset = points.offset(left, offset);
+        int rightOffset = points.offset(right, offset);
+        int vectorBound = DOUBLE_SPECIES.loopBound(dimensions);
+        int objective = 0;
+        for (; objective < vectorBound; objective += DOUBLE_SPECIES.length()) {
+            DoubleVector leftValues = DoubleVector.fromArray(
+                    DOUBLE_SPECIES, values, leftOffset + objective);
+            DoubleVector rightValues = DoubleVector.fromArray(
+                    DOUBLE_SPECIES, values, rightOffset + objective);
+            if (leftValues.compare(VectorOperators.NE, rightValues).anyTrue()) {
+                return false;
+            }
+        }
+        for (; objective < dimensions; objective++) {
+            if (values[leftOffset + objective] != values[rightOffset + objective]) {
                 return false;
             }
         }

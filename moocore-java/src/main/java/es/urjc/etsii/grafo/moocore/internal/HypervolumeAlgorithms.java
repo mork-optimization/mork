@@ -2,6 +2,9 @@
 package es.urjc.etsii.grafo.moocore.internal;
 
 import es.urjc.etsii.grafo.moocore.internal.Hypervolume4d.Node;
+import jdk.incubator.vector.DoubleVector;
+import jdk.incubator.vector.VectorOperators;
+import jdk.incubator.vector.VectorSpecies;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -12,6 +15,7 @@ import java.util.Map;
 public final class HypervolumeAlgorithms {
 
     private static final int INCLUSION_EXCLUSION_MAX_POINTS = 12;
+    private static final VectorSpecies<Double> DOUBLE_SPECIES = DoubleVector.SPECIES_PREFERRED;
 
     private HypervolumeAlgorithms() {
     }
@@ -185,14 +189,28 @@ public final class HypervolumeAlgorithms {
     }
 
     private static void upperBound(double[] target, double[] left, double[] right, int dimensions) {
-        for (int objective = 0; objective < dimensions; objective++) {
+        int vectorBound = DOUBLE_SPECIES.loopBound(dimensions);
+        int objective = 0;
+        for (; objective < vectorBound; objective += DOUBLE_SPECIES.length()) {
+            DoubleVector.fromArray(DOUBLE_SPECIES, left, objective)
+                    .max(DoubleVector.fromArray(DOUBLE_SPECIES, right, objective))
+                    .intoArray(target, objective);
+        }
+        for (; objective < dimensions; objective++) {
             target[objective] = Math.max(left[objective], right[objective]);
         }
     }
 
     private static double boxVolume(double[] point, double[] reference, int dimensions) {
-        double volume = 1.0;
-        for (int objective = 0; objective < dimensions; objective++) {
+        int vectorBound = DOUBLE_SPECIES.loopBound(dimensions);
+        DoubleVector products = DoubleVector.broadcast(DOUBLE_SPECIES, 1.0);
+        int objective = 0;
+        for (; objective < vectorBound; objective += DOUBLE_SPECIES.length()) {
+            products = products.mul(DoubleVector.fromArray(DOUBLE_SPECIES, reference, objective)
+                    .sub(DoubleVector.fromArray(DOUBLE_SPECIES, point, objective)));
+        }
+        double volume = products.reduceLanes(VectorOperators.MUL);
+        for (; objective < dimensions; objective++) {
             volume *= reference[objective] - point[objective];
         }
         return volume;

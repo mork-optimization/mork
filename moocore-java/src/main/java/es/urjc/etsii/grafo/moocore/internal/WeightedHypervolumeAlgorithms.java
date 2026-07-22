@@ -2,11 +2,16 @@
 package es.urjc.etsii.grafo.moocore.internal;
 
 import es.urjc.etsii.grafo.moocore.HypeDistribution;
+import jdk.incubator.vector.DoubleVector;
+import jdk.incubator.vector.VectorOperators;
+import jdk.incubator.vector.VectorSpecies;
 
 import java.util.Arrays;
 import java.util.random.RandomGenerator;
 
 public final class WeightedHypervolumeAlgorithms {
+
+    private static final VectorSpecies<Double> DOUBLE_SPECIES = DoubleVector.SPECIES_PREFERRED;
 
     private WeightedHypervolumeAlgorithms() {
     }
@@ -103,12 +108,13 @@ public final class WeightedHypervolumeAlgorithms {
             return 0.0;
         }
 
-        double[][] normalized = new double[points.length][2];
+        double[] normalizedX = new double[points.length];
+        double[] normalizedY = new double[points.length];
         for (int i = 0; i < points.length; i++) {
-            for (int objective = 0; objective < 2; objective++) {
-                normalized[i][objective] = (points[i][objective] - idealPoint[objective])
-                        / (ref[objective] - idealPoint[objective]);
-            }
+            normalizedX[i] = (points[i][0] - idealPoint[0])
+                    / (ref[0] - idealPoint[0]);
+            normalizedY[i] = (points[i][1] - idealPoint[1])
+                    / (ref[1] - idealPoint[1]);
         }
         double[] normalizedMu = null;
         if (distribution == HypeDistribution.POINT) {
@@ -147,7 +153,7 @@ public final class WeightedHypervolumeAlgorithms {
                 }
                 default -> throw new IllegalStateException("unexpected distribution");
             }
-            if (isDominated(x, y, normalized)) {
+            if (isDominated(x, y, normalizedX, normalizedY)) {
                 dominated++;
             }
         }
@@ -215,9 +221,22 @@ public final class WeightedHypervolumeAlgorithms {
         }
     }
 
-    private static boolean isDominated(double x, double y, double[][] points) {
-        for (double[] point : points) {
-            if (point[0] <= x && point[1] <= y) {
+    private static boolean isDominated(double x, double y, double[] pointsX, double[] pointsY) {
+        int vectorBound = DOUBLE_SPECIES.loopBound(pointsX.length);
+        DoubleVector sampleX = DoubleVector.broadcast(DOUBLE_SPECIES, x);
+        DoubleVector sampleY = DoubleVector.broadcast(DOUBLE_SPECIES, y);
+        int point = 0;
+        for (; point < vectorBound; point += DOUBLE_SPECIES.length()) {
+            if (DoubleVector.fromArray(DOUBLE_SPECIES, pointsX, point)
+                    .compare(VectorOperators.LE, sampleX)
+                    .and(DoubleVector.fromArray(DOUBLE_SPECIES, pointsY, point)
+                            .compare(VectorOperators.LE, sampleY))
+                    .anyTrue()) {
+                return true;
+            }
+        }
+        for (; point < pointsX.length; point++) {
+            if (pointsX[point] <= x && pointsY[point] <= y) {
                 return true;
             }
         }

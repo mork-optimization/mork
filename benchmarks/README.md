@@ -16,10 +16,14 @@ matches the actual set cardinality.
 
 `MoocoreBenchmark` covers Pareto filtering, early dominated-point detection,
 Pareto ranking, exact and approximate hypervolume, weighted and HypE
-hypervolume, EAF, and nondominated-set generation. The Pareto stress states use
+hypervolume, EAF, normalization, and nondominated-set generation. The Pareto stress states use
 deterministic random, mutually nondominated simplex, and dominance-chain
 inputs. They cover 4D, 5D, and 9D and include the 500, 1,000, 2,000, and
 4,000-point scaling sizes.
+
+The retained and rejected SIMD candidates, their controlled JMH comparisons,
+and final C+Python positioning are recorded in
+[`moocore-java-vector-api-audit.md`](moocore-java-vector-api-audit.md).
 
 ## Build
 

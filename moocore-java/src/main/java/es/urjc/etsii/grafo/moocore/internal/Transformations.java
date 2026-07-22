@@ -19,17 +19,25 @@ public final class Transformations {
         boolean[] directions = MatrixUtils.directions(maximise, objectives);
         double[] low = bounds(lower, input, objectives, true);
         double[] high = bounds(upper, input, objectives, false);
+        double[] start = new double[objectives];
+        double[] span = new double[objectives];
+        double[] denominator = new double[objectives];
+        for (int objective = 0; objective < objectives; objective++) {
+            start[objective] = directions[objective] ? targetRange[1] : targetRange[0];
+            double end = directions[objective] ? targetRange[0] : targetRange[1];
+            span[objective] = end - start[objective];
+            denominator[objective] = high[objective] - low[objective];
+        }
+
         double[][] result = new double[input.length][objectives];
         for (int row = 0; row < input.length; row++) {
             for (int objective = 0; objective < objectives; objective++) {
-                double start = directions[objective] ? targetRange[1] : targetRange[0];
-                double end = directions[objective] ? targetRange[0] : targetRange[1];
-                double denominator = high[objective] - low[objective];
-                if (denominator == 0.0) {
-                    result[row][objective] = start;
+                if (denominator[objective] == 0.0) {
+                    result[row][objective] = start[objective];
                 } else {
-                    double fraction = (input[row][objective] - low[objective]) / denominator;
-                    result[row][objective] = start + fraction * (end - start);
+                    double fraction = (input[row][objective] - low[objective])
+                            / denominator[objective];
+                    result[row][objective] = start[objective] + fraction * span[objective];
                 }
             }
         }

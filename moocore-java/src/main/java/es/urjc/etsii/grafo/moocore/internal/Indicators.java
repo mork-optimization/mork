@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: MPL-2.0
 package es.urjc.etsii.grafo.moocore.internal;
 
+import jdk.incubator.vector.DoubleVector;
+import jdk.incubator.vector.VectorOperators;
+import jdk.incubator.vector.VectorSpecies;
+
 public final class Indicators {
+
+    private static final VectorSpecies<Double> DOUBLE_SPECIES = DoubleVector.SPECIES_PREFERRED;
 
     private Indicators() {
     }
@@ -79,10 +85,8 @@ public final class Indicators {
                 if (worstObjective >= bestPoint) {
                     continue;
                 }
-                for (int objective = 2; objective < point.length; objective++) {
-                    worstObjective = Math.max(
-                            worstObjective, point[objective] - target[objective]);
-                }
+                worstObjective = maximumAdditiveDifference(
+                        point, target, worstObjective, false);
                 if (worstObjective <= result) {
                     continue targetLoop;
                 }
@@ -104,10 +108,8 @@ public final class Indicators {
                 if (worstObjective >= bestPoint) {
                     continue;
                 }
-                for (int objective = 2; objective < point.length; objective++) {
-                    worstObjective = Math.max(
-                            worstObjective, target[objective] - point[objective]);
-                }
+                worstObjective = maximumAdditiveDifference(
+                        point, target, worstObjective, true);
                 if (worstObjective <= result) {
                     continue targetLoop;
                 }
@@ -221,10 +223,8 @@ public final class Indicators {
                 if (worstObjective >= bestPoint) {
                     continue;
                 }
-                for (int objective = 2; objective < point.length; objective++) {
-                    worstObjective = Math.max(
-                            worstObjective, point[objective] / target[objective]);
-                }
+                worstObjective = maximumMultiplicativeRatio(
+                        point, target, worstObjective, false);
                 if (worstObjective <= result) {
                     continue targetLoop;
                 }
@@ -247,10 +247,8 @@ public final class Indicators {
                 if (worstObjective >= bestPoint) {
                     continue;
                 }
-                for (int objective = 2; objective < point.length; objective++) {
-                    worstObjective = Math.max(
-                            worstObjective, target[objective] / point[objective]);
-                }
+                worstObjective = maximumMultiplicativeRatio(
+                        point, target, worstObjective, true);
                 if (worstObjective <= result) {
                     continue targetLoop;
                 }
@@ -348,11 +346,7 @@ public final class Indicators {
         for (double[] target : targets) {
             double bestSquared = Double.POSITIVE_INFINITY;
             for (double[] point : points) {
-                double squared = 0.0;
-                for (int objective = 0; objective < point.length; objective++) {
-                    double difference = point[objective] - target[objective];
-                    squared += difference * difference;
-                }
+                double squared = squaredDistance(point, target);
                 if (Double.isNaN(squared)) {
                     return Double.NaN;
                 }
@@ -386,11 +380,7 @@ public final class Indicators {
         for (double[] target : targets) {
             double bestSquared = Double.POSITIVE_INFINITY;
             for (double[] point : points) {
-                double squared = 0.0;
-                for (int objective = 0; objective < point.length; objective++) {
-                    double difference = Math.max(point[objective] - target[objective], 0.0);
-                    squared += difference * difference;
-                }
+                double squared = squaredDistancePlus(point, target);
                 bestSquared = Math.min(bestSquared, squared);
                 if (bestSquared == 0.0) {
                     break;
@@ -399,6 +389,85 @@ public final class Indicators {
             sum += Math.sqrt(bestSquared);
         }
         return sum / targets.length;
+    }
+
+    private static double squaredDistance(double[] point, double[] target) {
+        int vectorBound = DOUBLE_SPECIES.loopBound(point.length);
+        DoubleVector squares = DoubleVector.zero(DOUBLE_SPECIES);
+        int objective = 0;
+        for (; objective < vectorBound; objective += DOUBLE_SPECIES.length()) {
+            DoubleVector difference = DoubleVector.fromArray(DOUBLE_SPECIES, point, objective)
+                    .sub(DoubleVector.fromArray(DOUBLE_SPECIES, target, objective));
+            squares = difference.fma(difference, squares);
+        }
+        double result = squares.reduceLanes(VectorOperators.ADD);
+        for (; objective < point.length; objective++) {
+            double difference = point[objective] - target[objective];
+            result += difference * difference;
+        }
+        return result;
+    }
+
+    private static double maximumAdditiveDifference(
+            double[] point, double[] target, double initial, boolean maximise) {
+        int objective = 2;
+        int vectorBound = objective + DOUBLE_SPECIES.loopBound(point.length - objective);
+        DoubleVector maximum = DoubleVector.broadcast(DOUBLE_SPECIES, initial);
+        for (; objective < vectorBound; objective += DOUBLE_SPECIES.length()) {
+            DoubleVector pointValues = DoubleVector.fromArray(DOUBLE_SPECIES, point, objective);
+            DoubleVector targetValues = DoubleVector.fromArray(DOUBLE_SPECIES, target, objective);
+            maximum = maximum.max(maximise
+                    ? targetValues.sub(pointValues)
+                    : pointValues.sub(targetValues));
+        }
+        double result = maximum.reduceLanes(VectorOperators.MAX);
+        for (; objective < point.length; objective++) {
+            double difference = maximise
+                    ? target[objective] - point[objective]
+                    : point[objective] - target[objective];
+            result = Math.max(result, difference);
+        }
+        return result;
+    }
+
+    private static double maximumMultiplicativeRatio(
+            double[] point, double[] target, double initial, boolean maximise) {
+        int objective = 2;
+        int vectorBound = objective + DOUBLE_SPECIES.loopBound(point.length - objective);
+        DoubleVector maximum = DoubleVector.broadcast(DOUBLE_SPECIES, initial);
+        for (; objective < vectorBound; objective += DOUBLE_SPECIES.length()) {
+            DoubleVector pointValues = DoubleVector.fromArray(DOUBLE_SPECIES, point, objective);
+            DoubleVector targetValues = DoubleVector.fromArray(DOUBLE_SPECIES, target, objective);
+            maximum = maximum.max(maximise
+                    ? targetValues.div(pointValues)
+                    : pointValues.div(targetValues));
+        }
+        double result = maximum.reduceLanes(VectorOperators.MAX);
+        for (; objective < point.length; objective++) {
+            double ratio = maximise
+                    ? target[objective] / point[objective]
+                    : point[objective] / target[objective];
+            result = Math.max(result, ratio);
+        }
+        return result;
+    }
+
+    private static double squaredDistancePlus(double[] point, double[] target) {
+        int vectorBound = DOUBLE_SPECIES.loopBound(point.length);
+        DoubleVector squares = DoubleVector.zero(DOUBLE_SPECIES);
+        int objective = 0;
+        for (; objective < vectorBound; objective += DOUBLE_SPECIES.length()) {
+            DoubleVector difference = DoubleVector.fromArray(DOUBLE_SPECIES, point, objective)
+                    .sub(DoubleVector.fromArray(DOUBLE_SPECIES, target, objective))
+                    .max(0.0);
+            squares = difference.fma(difference, squares);
+        }
+        double result = squares.reduceLanes(VectorOperators.ADD);
+        for (; objective < point.length; objective++) {
+            double difference = Math.max(point[objective] - target[objective], 0.0);
+            result += difference * difference;
+        }
+        return result;
     }
 
     private static double[][] toMinimisationIfNeeded(double[][] points, boolean[] maximise) {
