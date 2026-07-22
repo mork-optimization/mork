@@ -51,38 +51,38 @@ benchmarks/target/benchmarks.jar
 List available benchmarks:
 
 ```bash
-java -jar benchmarks/target/benchmarks.jar -l
+java --add-modules jdk.incubator.vector -jar benchmarks/target/benchmarks.jar -l
 ```
 
 If `java` on your `PATH` points to an older runtime, use the Java 25+ executable
 directly, for example:
 
 ```bash
-$JAVA_HOME/bin/java -jar benchmarks/target/benchmarks.jar -l
+$JAVA_HOME/bin/java --add-modules jdk.incubator.vector -jar benchmarks/target/benchmarks.jar -l
 ```
 
 Run the full benchmark suite:
 
 ```bash
-java -jar benchmarks/target/benchmarks.jar
+java --add-modules jdk.incubator.vector -jar benchmarks/target/benchmarks.jar
 ```
 
 Run one benchmark with selected parameters:
 
 ```bash
-java -jar benchmarks/target/benchmarks.jar SetContainsBenchmark -p universeSize=16384 -p fillRatio=0.50 -p hitRatio=0.50
+java --add-modules jdk.incubator.vector -jar benchmarks/target/benchmarks.jar SetContainsBenchmark -p universeSize=16384 -p fillRatio=0.50 -p hitRatio=0.50
 ```
 
 Run the high-dimensional Pareto mask and allocation cases:
 
 ```bash
-java -jar benchmarks/target/benchmarks.jar MoocoreBenchmark.nondominatedStress -p objectives=5,9 -p shape=RANDOM,SIMPLEX -prof gc
+java --add-modules jdk.incubator.vector -jar benchmarks/target/benchmarks.jar MoocoreBenchmark.nondominatedStress -p objectives=5,9 -p shape=RANDOM,SIMPLEX -prof gc
 ```
 
 Use more forks or iterations for decision-grade results:
 
 ```bash
-java -jar benchmarks/target/benchmarks.jar -f 5 -wi 10 -i 20 -rf json -rff benchmark-results.json
+java --add-modules jdk.incubator.vector -jar benchmarks/target/benchmarks.jar -f 5 -wi 10 -i 20 -rf json -rff benchmark-results.json
 ```
 
 ## Parameters
@@ -180,6 +180,23 @@ Use `--output` to select the result directory and `--java-jar` to use another
 JMH artifact. Generated inputs and results default to the ignored directory
 `benchmarks/target/cross-language`.
 
+Performance packages use a fixed representative checkpoint matrix. The first
+checkpoint measures both runtimes; later checkpoints reuse the unchanged
+native measurements:
+
+```shell
+benchmarks/cross-language/venv/bin/python benchmarks/cross-language/run.py \
+  --quick --output benchmarks/target/cross-language/stage-1-baseline \
+  --java-jar benchmarks/target/cross-language/jars/stage-1-baseline.jar
+
+benchmarks/cross-language/venv/bin/python benchmarks/cross-language/run.py \
+  --quick --reuse-python benchmarks/target/cross-language/stage-1-baseline \
+  --output benchmarks/target/cross-language/stage-2-sort-pareto \
+  --java-jar benchmarks/target/cross-language/jars/stage-2-sort-pareto.jar
+```
+
+Omit `--quick` and `--reuse-python` for the full final/overnight matrix.
+
 ### Timing and correctness boundaries
 
 Each input is prepared once, serialized as a little-endian binary matrix, and
@@ -203,6 +220,35 @@ The harness writes:
 - `plots/`: one comparison plot per operation and dataset.
 - `environment.json`: CPU, OS, Java, Python, package, compiler, and Git revision
   metadata.
+
+The default matrix covers nondominance, Pareto rank, exact and approximate
+hypervolume, hypervolume contributions, additive and multiplicative epsilon,
+IGD+, exact R2, EAF and EAF differences, rectangle-weighted hypervolume, and
+HypE weighted hypervolume.
+
+Performance work is recorded as named checkpoints. After running a checkpoint,
+collect representative Java allocations with:
+
+```shell
+benchmarks/cross-language/venv/bin/python \
+  benchmarks/cross-language/profile_gc.py \
+  --stage benchmarks/target/cross-language/stage-1-baseline \
+  --java-jar benchmarks/target/benchmarks.jar
+```
+
+Regenerate the tracked cumulative report by passing every checkpoint in order:
+
+```shell
+benchmarks/cross-language/venv/bin/python \
+  benchmarks/cross-language/update_performance_report.py \
+  --stage baseline=benchmarks/target/cross-language/stage-1-baseline \
+  --stage shared-kernels=benchmarks/target/cross-language/stage-2-shared-kernels
+```
+
+The report compares each checkpoint and each package's targeted operations directly
+with C+Python. A Java/C+Python ratio below 1.0 favors Java; a ratio above 1.0 favors
+C+Python. Allocation ratios use the Java baseline because the native harness does not
+provide equivalent allocation measurements.
 
 Run comparisons on an idle target machine. Compare implementations only within
 the same generated report; results from different machines, resolved package

@@ -73,6 +73,8 @@ restrictions.
 
 The deterministic quasi-Monte Carlo methods reproduce upstream numerical results within floating-point tolerance. 
 Stochastic methods are reproducible within Java, but do not promise the same random stream as C, Python, or R.
+The approximation kernels use Java 25's incubating Vector API directly. Applications that call them must start the
+JVM with `--add-modules jdk.incubator.vector`; the module's Maven test and benchmark configurations already do this.
 
 `input1.dat` and `ran.10pts.9d.10` are packaged for offline use. Both come from the MPL-2.0 testsuite repository.
 Python-package-only datasets are deliberately not redistributed because that package is LGPL-2.1-or-later; they can
@@ -85,8 +87,8 @@ still be read from a user-supplied path.
 git submodule update --init moocore testsuite
 ./mvnw -pl moocore-java -am -Pmoocore-testsuite -Dgpg.skip verify
 ./mvnw -pl benchmarks -am -DskipTests package
-java -jar benchmarks/target/benchmarks.jar MoocoreBenchmark.nondominated
-java -jar benchmarks/target/benchmarks.jar MoocoreBenchmark.nondominatedStress -prof gc
+java --add-modules jdk.incubator.vector -jar benchmarks/target/benchmarks.jar MoocoreBenchmark.nondominated
+java --add-modules jdk.incubator.vector -jar benchmarks/target/benchmarks.jar MoocoreBenchmark.nondominatedStress -prof gc
 ```
 
 Tests cover published examples, documented Python outputs, randomized cross-checks against simple definitions, mixed

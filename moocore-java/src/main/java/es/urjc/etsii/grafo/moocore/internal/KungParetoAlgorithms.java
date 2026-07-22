@@ -11,41 +11,43 @@ final class KungParetoAlgorithms {
     private static final int EARLY_DOMINANCE_PAIRS = 4_096;
     private static final int RADIX_SIZE = 256;
     private static final int RADIX_PASSES = Long.BYTES;
+    private static final int INSERTION_SORT_THRESHOLD = 128;
 
     private KungParetoAlgorithms() {
     }
 
-    static boolean[] nondominated(double[][] points, boolean keepWeakly) {
-        int[] rows = identity(points.length);
-        Workspace workspace = new Workspace(points.length);
-        int selected = nondominated(points, rows, points[0].length, keepWeakly, workspace);
-        boolean[] result = new boolean[points.length];
+    static boolean[] nondominated(FlatPoints points, boolean keepWeakly) {
+        int[] rows = identity(points.rows());
+        Workspace workspace = new Workspace(points.rows());
+        int selected = nondominated(
+                points, rows, points.objectives(), keepWeakly, workspace);
+        boolean[] result = new boolean[points.rows()];
         for (int i = 0; i < selected; i++) {
             result[rows[i]] = true;
         }
         return result;
     }
 
-    static boolean anyDominated(double[][] points, boolean keepWeakly) {
-        int dimensions = points[0].length;
+    static boolean anyDominated(FlatPoints points, boolean keepWeakly) {
+        int dimensions = points.objectives();
         int earlyResult = earlyDominanceCheck(points, dimensions, keepWeakly);
         if (earlyResult >= 0) {
             return earlyResult != 0;
         }
-        int[] rows = identity(points.length);
-        Workspace workspace = new Workspace(points.length);
-        return nondominated(points, rows, dimensions, keepWeakly, workspace) != points.length;
+        int[] rows = identity(points.rows());
+        Workspace workspace = new Workspace(points.rows());
+        return nondominated(points, rows, dimensions, keepWeakly, workspace) != points.rows();
     }
 
     /** Returns one for dominated, zero for an exhaustive antichain, and minus one at the cutoff. */
     private static int earlyDominanceCheck(
-            double[][] points, int dimensions, boolean keepWeakly) {
+            FlatPoints points, int dimensions, boolean keepWeakly) {
         int checked = 0;
-        for (int left = 0; left < points.length - 1; left++) {
-            for (int right = left + 1; right < points.length; right++) {
-                int comparison = dominance(points[left], points[right], 0, dimensions);
+        for (int left = 0; left < points.rows() - 1; left++) {
+            for (int right = left + 1; right < points.rows(); right++) {
+                int comparison = dominance(points, left, right, 0, dimensions);
                 if (comparison != 0
-                        || (!keepWeakly && equal(points[left], points[right], 0, dimensions))) {
+                        || (!keepWeakly && equal(points, left, right, 0, dimensions))) {
                     return 1;
                 }
                 if (++checked == EARLY_DOMINANCE_PAIRS) {
@@ -56,17 +58,17 @@ final class KungParetoAlgorithms {
         return 0;
     }
 
-    static int[] ranks(double[][] points) {
-        int dimensions = points[0].length;
-        int[] ranks = new int[points.length];
-        if (points.length < 2) {
+    static int[] ranks(FlatPoints points) {
+        int dimensions = points.objectives();
+        int[] ranks = new int[points.rows()];
+        if (points.rows() < 2) {
             return ranks;
         }
 
-        int[] active = identity(points.length);
-        int[] candidates = new int[points.length];
-        boolean[] currentFront = new boolean[points.length];
-        Workspace workspace = new Workspace(points.length);
+        int[] active = identity(points.rows());
+        int[] candidates = new int[points.rows()];
+        boolean[] currentFront = new boolean[points.rows()];
+        Workspace workspace = new Workspace(points.rows());
         if (dimensions == 3) {
             sortLexicographically(points, active, 0, active.length, 0, 3, workspace);
         } else {
@@ -135,23 +137,12 @@ final class KungParetoAlgorithms {
 
     static int[] sortByFirstObjective2d(double[][] points, boolean maximise) {
         int[] rows = identity(points.length);
-        boolean ascending = true;
-        boolean descending = true;
-        double previous = directedValue(points[0][0], maximise);
-        for (int row = 1; row < points.length && (ascending || descending); row++) {
-            double current = directedValue(points[row][0], maximise);
-            ascending &= numericCompare(previous, current) <= 0;
-            descending &= numericCompare(previous, current) >= 0;
-            previous = current;
-        }
-        if (ascending) {
+        int order = coordinateOrder(points, rows, 0, rows.length, 0, maximise);
+        if (order >= 0) {
             return rows;
         }
-        if (descending) {
-            for (int left = 0, right = rows.length - 1; left < right; left++, right--) {
-                rows[left] = right;
-                rows[right] = left;
-            }
+        if (order == -2) {
+            reverseStable(points, rows, 0, rows.length, 0, maximise);
             return rows;
         }
         RadixWorkspace workspace = new RadixWorkspace(points.length);
@@ -162,8 +153,7 @@ final class KungParetoAlgorithms {
     static int[] sortLexicographically2d(double[][] points) {
         int[] rows = identity(points.length);
         RadixWorkspace workspace = new RadixWorkspace(points.length);
-        radixSortByCoordinate(points, rows, 0, rows.length, 1, workspace);
-        radixSortByCoordinate(points, rows, 0, rows.length, 0, workspace);
+        sortLexicographically(points, rows, 0, rows.length, 0, 2, workspace);
         return rows;
     }
 
@@ -172,15 +162,25 @@ final class KungParetoAlgorithms {
         radixSortByCoordinate(points, rows, 0, length, objective, workspace);
     }
 
+    static void sortByCoordinate(double[][] points, int[] rows, int length,
+                                 int objective, boolean maximise) {
+        RadixWorkspace workspace = new RadixWorkspace(points.length);
+        radixSortByCoordinate(points, rows, 0, length, objective, maximise, workspace);
+    }
+
     static void sortLexicographically(double[][] points, int[] rows, int length,
                                       int... objectives) {
         RadixWorkspace workspace = new RadixWorkspace(points.length);
-        for (int i = objectives.length - 1; i >= 0; i--) {
-            radixSortByCoordinate(points, rows, 0, length, objectives[i], workspace);
+        if (objectives.length == 0) {
+            return;
+        }
+        radixSortByCoordinate(points, rows, 0, length, objectives[0], workspace);
+        for (int i = 1; i < objectives.length; i++) {
+            refineTiedRuns(points, rows, 0, length, objectives, i, workspace);
         }
     }
 
-    private static int nondominated(double[][] points, int[] rows, int dimensions,
+    private static int nondominated(FlatPoints points, int[] rows, int dimensions,
                                     boolean keepWeakly, Workspace workspace) {
         if (rows.length <= SMALL_THRESHOLD) {
             return maximaBruteForce(
@@ -191,7 +191,7 @@ final class KungParetoAlgorithms {
         return maxima(points, rows, 0, rows.length, 0, dimensions, keepWeakly, workspace);
     }
 
-    private static int maxima(double[][] points, int[] rows, int from, int to, int offset,
+    private static int maxima(FlatPoints points, int[] rows, int from, int to, int offset,
                               int dimensions, boolean keepWeakly, Workspace workspace) {
         if (to - from <= SMALL_THRESHOLD) {
             return maximaBruteForce(
@@ -201,7 +201,7 @@ final class KungParetoAlgorithms {
         return maximaKung(points, rows, from, to, offset, dimensions, keepWeakly, workspace);
     }
 
-    private static int maximaKung(double[][] points, int[] rows, int from, int to, int offset,
+    private static int maximaKung(FlatPoints points, int[] rows, int from, int to, int offset,
                                   int dimensions, boolean keepWeakly, Workspace workspace) {
         if (dimensions == 3) {
             return maxima3d(points, rows, from, to, offset, keepWeakly, workspace);
@@ -228,7 +228,7 @@ final class KungParetoAlgorithms {
         return leftEnd + rightSize;
     }
 
-    private static int mergeNextDimension(double[][] points, int[] rows,
+    private static int mergeNextDimension(FlatPoints points, int[] rows,
                                           int leftFrom, int leftTo,
                                           int rightFrom, int rightTo,
                                           int offset, int dimensions, Workspace workspace) {
@@ -253,7 +253,7 @@ final class KungParetoAlgorithms {
                 offset + 1, dimensions - 1, workspace);
     }
 
-    private static int merge(double[][] points, int[] rows,
+    private static int merge(FlatPoints points, int[] rows,
                              int leftFrom, int leftTo, int rightFrom, int rightTo,
                              int offset, int dimensions, Workspace workspace) {
         if (leftFrom == leftTo || rightFrom == rightTo) {
@@ -268,13 +268,14 @@ final class KungParetoAlgorithms {
                 offset, dimensions, workspace);
     }
 
-    private static int mergeWithoutBase(double[][] points, int[] rows,
+    private static int mergeWithoutBase(FlatPoints points, int[] rows,
                                         int leftFrom, int leftTo,
                                         int rightFrom, int rightTo,
                                         int offset, int dimensions, Workspace workspace) {
         int rightSplit = halfSizeWithoutSplittingDuplicates(
                 points, rows, rightFrom, rightTo, offset);
-        double pivot = points[rows[rightSplit == rightTo ? rightSplit - 1 : rightSplit]][offset];
+        double pivot = points.get(
+                rows[rightSplit == rightTo ? rightSplit - 1 : rightSplit], offset);
         int leftSplit = upperBound(points, rows, leftFrom, leftTo, offset, pivot);
 
         if (leftSplit == leftTo && rightSplit == rightTo) {
@@ -307,7 +308,7 @@ final class KungParetoAlgorithms {
         return rightFirstEnd + secondSize;
     }
 
-    private static int mergeBruteForce(double[][] points, int[] rows,
+    private static int mergeBruteForce(FlatPoints points, int[] rows,
                                        int leftFrom, int leftTo,
                                        int rightFrom, int rightTo,
                                        int offset, int dimensions) {
@@ -317,7 +318,7 @@ final class KungParetoAlgorithms {
             boolean dominated = false;
             for (int pointPosition = leftFrom; pointPosition < leftTo; pointPosition++) {
                 if (weaklyDominates(
-                        points[rows[pointPosition]], points[candidate], offset, dimensions)) {
+                        points, rows[pointPosition], candidate, offset, dimensions)) {
                     dominated = true;
                     break;
                 }
@@ -329,7 +330,7 @@ final class KungParetoAlgorithms {
         return write;
     }
 
-    private static int merge3d(double[][] points, int[] rows,
+    private static int merge3d(FlatPoints points, int[] rows,
                                int leftFrom, int leftTo, int rightFrom, int rightTo,
                                int offset, Workspace workspace) {
         PrimitiveSkyline skyline = workspace.skyline;
@@ -340,28 +341,28 @@ final class KungParetoAlgorithms {
              candidatePosition < rightTo;
              candidatePosition++) {
             int candidate = rows[candidatePosition];
-            double candidateFirst = points[candidate][offset];
+            double candidateFirst = points.get(candidate, offset);
             while (nextLeft < leftTo
-                    && numericCompare(points[rows[nextLeft]][offset], candidateFirst) <= 0) {
-                addToSkyline(skyline, points[rows[nextLeft]], offset + 1, offset + 2);
+                    && numericCompare(points.get(rows[nextLeft], offset), candidateFirst) <= 0) {
+                addToSkyline(skyline, points, rows[nextLeft], offset + 1, offset + 2);
                 nextLeft++;
             }
-            double second = canonicalZero(points[candidate][offset + 1]);
+            double second = canonicalZero(points.get(candidate, offset + 1));
             int previous = skyline.floor(second);
-            if (previous == 0 || skyline.value(previous) > points[candidate][offset + 2]) {
+            if (previous == 0 || skyline.value(previous) > points.get(candidate, offset + 2)) {
                 rows[write++] = candidate;
             }
         }
         return write;
     }
 
-    private static int maxima3d(double[][] points, int[] rows, int from, int to, int offset,
+    private static int maxima3d(FlatPoints points, int[] rows, int from, int to, int offset,
                                 boolean keepWeakly, Workspace workspace) {
         sortLexicographically(points, rows, from, to, offset, 3, workspace);
         return maxima3dSorted(points, rows, from, to, offset, keepWeakly, workspace);
     }
 
-    private static int maxima3dSorted(double[][] points, int[] rows, int from, int to, int offset,
+    private static int maxima3dSorted(FlatPoints points, int[] rows, int from, int to, int offset,
                                       boolean keepWeakly, Workspace workspace) {
         PrimitiveSkyline skyline = workspace.skyline;
         skyline.reset();
@@ -370,11 +371,11 @@ final class KungParetoAlgorithms {
         while (start < to) {
             int firstRow = rows[start];
             int end = start + 1;
-            while (end < to && equal(points[firstRow], points[rows[end]], offset, 3)) {
+            while (end < to && equal(points, firstRow, rows[end], offset, 3)) {
                 end++;
             }
-            double second = canonicalZero(points[firstRow][offset + 1]);
-            double third = points[firstRow][offset + 2];
+            double second = canonicalZero(points.get(firstRow, offset + 1));
+            double third = points.get(firstRow, offset + 2);
             int previous = skyline.floor(second);
             boolean dominated = previous != 0 && skyline.value(previous) <= third;
             if (!dominated) {
@@ -385,17 +386,17 @@ final class KungParetoAlgorithms {
                 } else {
                     rows[write++] = firstRow;
                 }
-                addToSkyline(skyline, points[firstRow], offset + 1, offset + 2);
+                addToSkyline(skyline, points, firstRow, offset + 1, offset + 2);
             }
             start = end;
         }
         return write;
     }
 
-    private static void addToSkyline(PrimitiveSkyline skyline, double[] point,
+    private static void addToSkyline(PrimitiveSkyline skyline, FlatPoints points, int row,
                                      int secondObjective, int thirdObjective) {
-        double second = canonicalZero(point[secondObjective]);
-        double third = point[thirdObjective];
+        double second = canonicalZero(points.get(row, secondObjective));
+        double third = points.get(row, thirdObjective);
         int previous = skyline.floor(second);
         if (previous != 0 && skyline.value(previous) <= third) {
             return;
@@ -407,7 +408,7 @@ final class KungParetoAlgorithms {
         skyline.add(second, third);
     }
 
-    private static int maximaBruteForce(double[][] points, int[] rows, int from, int to,
+    private static int maximaBruteForce(FlatPoints points, int[] rows, int from, int to,
                                         int offset, int dimensions, boolean keepWeakly,
                                         boolean[] selected) {
         Arrays.fill(selected, from, to, true);
@@ -417,7 +418,7 @@ final class KungParetoAlgorithms {
                     continue;
                 }
                 int comparison = dominance(
-                        points[rows[other]], points[rows[candidate]], offset, dimensions);
+                        points, rows[other], rows[candidate], offset, dimensions);
                 if (comparison < 0) {
                     selected[candidate] = false;
                     break;
@@ -425,7 +426,7 @@ final class KungParetoAlgorithms {
                 if (comparison > 0) {
                     selected[other] = false;
                 } else if (!keepWeakly
-                        && equal(points[rows[other]], points[rows[candidate]], offset, dimensions)) {
+                        && equal(points, rows[other], rows[candidate], offset, dimensions)) {
                     if (rows[other] < rows[candidate]) {
                         selected[candidate] = false;
                         break;
@@ -444,13 +445,14 @@ final class KungParetoAlgorithms {
         return write;
     }
 
-    private static int dominance(double[] left, double[] right, int offset, int dimensions) {
+    private static int dominance(FlatPoints points, int left, int right,
+                                 int offset, int dimensions) {
         boolean less = false;
         boolean greater = false;
         int end = offset + dimensions;
         for (int objective = offset; objective < end; objective++) {
-            less |= left[objective] < right[objective];
-            greater |= left[objective] > right[objective];
+            less |= points.get(left, objective) < points.get(right, objective);
+            greater |= points.get(left, objective) > points.get(right, objective);
             if (less && greater) {
                 return 0;
             }
@@ -461,21 +463,22 @@ final class KungParetoAlgorithms {
         return greater ? 1 : 0;
     }
 
-    private static boolean weaklyDominates(double[] left, double[] right,
+    private static boolean weaklyDominates(FlatPoints points, int left, int right,
                                            int offset, int dimensions) {
         int end = offset + dimensions;
         for (int objective = offset; objective < end; objective++) {
-            if (left[objective] > right[objective]) {
+            if (points.get(left, objective) > points.get(right, objective)) {
                 return false;
             }
         }
         return true;
     }
 
-    private static boolean equal(double[] left, double[] right, int offset, int dimensions) {
+    private static boolean equal(FlatPoints points, int left, int right,
+                                 int offset, int dimensions) {
         int end = offset + dimensions;
         for (int objective = offset; objective < end; objective++) {
-            if (left[objective] != right[objective]) {
+            if (points.get(left, objective) != points.get(right, objective)) {
                 return false;
             }
         }
@@ -483,15 +486,15 @@ final class KungParetoAlgorithms {
     }
 
     private static int halfSizeWithoutSplittingDuplicates(
-            double[][] points, int[] rows, int from, int to, int objective) {
+            FlatPoints points, int[] rows, int from, int to, int objective) {
         int middle = (from + to) >>> 1;
-        double value = points[rows[middle]][objective];
+        double value = points.get(rows[middle], objective);
         int left = middle;
-        while (left > from && points[rows[left - 1]][objective] == value) {
+        while (left > from && points.get(rows[left - 1], objective) == value) {
             left--;
         }
         int right = middle + 1;
-        while (right < to && points[rows[right]][objective] == value) {
+        while (right < to && points.get(rows[right], objective) == value) {
             right++;
         }
         if (left == from) {
@@ -503,13 +506,13 @@ final class KungParetoAlgorithms {
         return middle - left <= right - middle ? left : right;
     }
 
-    private static int upperBound(double[][] points, int[] rows, int from, int to,
+    private static int upperBound(FlatPoints points, int[] rows, int from, int to,
                                   int objective, double value) {
         int low = from;
         int high = to;
         while (low < high) {
             int middle = (low + high) >>> 1;
-            if (numericCompare(points[rows[middle]][objective], value) <= 0) {
+            if (numericCompare(points.get(rows[middle], objective), value) <= 0) {
                 low = middle + 1;
             } else {
                 high = middle;
@@ -518,17 +521,194 @@ final class KungParetoAlgorithms {
         return low;
     }
 
-    private static void sortByCoordinate(double[][] points, int[] rows, int from, int to,
+    private static void sortByCoordinate(FlatPoints points, int[] rows, int from, int to,
                                          int objective, RadixWorkspace workspace) {
         radixSortByCoordinate(points, rows, from, to, objective, workspace);
+    }
+
+    private static void sortLexicographically(FlatPoints points, int[] rows, int from, int to,
+                                              int offset, int dimensions,
+                                              RadixWorkspace workspace) {
+        radixSortByCoordinate(points, rows, from, to, offset, workspace);
+        for (int objective = offset + 1; objective < offset + dimensions; objective++) {
+            int start = from;
+            while (start < to) {
+                int end = start + 1;
+                while (end < to && equalPrefix(
+                        points, rows[start], rows[end], offset, objective)) {
+                    end++;
+                }
+                if (end - start > 1) {
+                    radixSortByCoordinate(points, rows, start, end, objective, workspace);
+                }
+                start = end;
+            }
+        }
     }
 
     private static void sortLexicographically(double[][] points, int[] rows, int from, int to,
                                               int offset, int dimensions,
                                               RadixWorkspace workspace) {
-        for (int objective = offset + dimensions - 1; objective >= offset; objective--) {
-            radixSortByCoordinate(points, rows, from, to, objective, workspace);
+        radixSortByCoordinate(points, rows, from, to, offset, workspace);
+        for (int objective = offset + 1; objective < offset + dimensions; objective++) {
+            int start = from;
+            while (start < to) {
+                int end = start + 1;
+                while (end < to && equalPrefix(
+                        points, rows[start], rows[end], offset, objective)) {
+                    end++;
+                }
+                if (end - start > 1) {
+                    radixSortByCoordinate(points, rows, start, end, objective, workspace);
+                }
+                start = end;
+            }
         }
+    }
+
+    private static void refineTiedRuns(double[][] points, int[] rows, int from, int to,
+                                       int[] objectives, int objectiveIndex,
+                                       RadixWorkspace workspace) {
+        int start = from;
+        while (start < to) {
+            int end = start + 1;
+            while (end < to && equalPrefix(
+                    points, rows[start], rows[end], objectives, objectiveIndex)) {
+                end++;
+            }
+            if (end - start > 1) {
+                radixSortByCoordinate(
+                        points, rows, start, end, objectives[objectiveIndex], workspace);
+            }
+            start = end;
+        }
+    }
+
+    private static void radixSortByCoordinate(FlatPoints points, int[] rows, int from, int to,
+                                              int objective, RadixWorkspace workspace) {
+        int size = to - from;
+        if (size < 2) {
+            return;
+        }
+
+        int order = coordinateOrder(points, rows, from, to, objective);
+        if (order >= 0) {
+            return;
+        }
+        if (order == -2) {
+            reverseStable(points, rows, from, to, objective);
+            return;
+        }
+        if (size <= INSERTION_SORT_THRESHOLD) {
+            insertionSort(points, rows, from, to, objective);
+            return;
+        }
+
+        int[] histogram = workspace.radixHistogram;
+        Arrays.fill(histogram, 0);
+        for (int i = from; i < to; i++) {
+            int row = rows[i];
+            long key = sortableKey(points.get(row, objective));
+            workspace.sortKeys[row] = key;
+            for (int pass = 0; pass < RADIX_PASSES; pass++) {
+                histogram[pass * RADIX_SIZE
+                        + (int) ((key >>> (pass * Byte.SIZE)) & 0xffL)]++;
+            }
+        }
+
+        int[] source = rows;
+        int[] target = workspace.sortScratch;
+        for (int pass = 0; pass < RADIX_PASSES; pass++) {
+            int histogramOffset = pass * RADIX_SIZE;
+            boolean invariant = false;
+            for (int bucket = 0; bucket < RADIX_SIZE; bucket++) {
+                if (histogram[histogramOffset + bucket] == size) {
+                    invariant = true;
+                    break;
+                }
+            }
+            if (invariant) {
+                continue;
+            }
+
+            int position = from;
+            for (int bucket = 0; bucket < RADIX_SIZE; bucket++) {
+                int count = histogram[histogramOffset + bucket];
+                histogram[histogramOffset + bucket] = position;
+                position += count;
+            }
+            int shift = pass * Byte.SIZE;
+            for (int i = from; i < to; i++) {
+                int row = source[i];
+                int bucket = (int) ((workspace.sortKeys[row] >>> shift) & 0xffL);
+                target[histogram[histogramOffset + bucket]++] = row;
+            }
+            int[] swap = source;
+            source = target;
+            target = swap;
+        }
+        if (source != rows) {
+            System.arraycopy(source, from, rows, from, size);
+        }
+    }
+
+    /** Returns zero for ascending, -2 for descending, and -1 for unordered. */
+    private static int coordinateOrder(FlatPoints points, int[] rows, int from, int to,
+                                       int objective) {
+        boolean ascending = true;
+        boolean descending = true;
+        double previous = points.get(rows[from], objective);
+        for (int i = from + 1; i < to && (ascending || descending); i++) {
+            double current = points.get(rows[i], objective);
+            int comparison = numericCompare(previous, current);
+            ascending &= comparison <= 0;
+            descending &= comparison >= 0;
+            previous = current;
+        }
+        if (ascending) {
+            return 0;
+        }
+        return descending ? -2 : -1;
+    }
+
+    private static void insertionSort(FlatPoints points, int[] rows, int from, int to,
+                                      int objective) {
+        for (int i = from + 1; i < to; i++) {
+            int row = rows[i];
+            double value = points.get(row, objective);
+            int position = i;
+            while (position > from
+                    && numericCompare(points.get(rows[position - 1], objective), value) > 0) {
+                rows[position] = rows[position - 1];
+                position--;
+            }
+            rows[position] = row;
+        }
+    }
+
+    private static void reverseStable(FlatPoints points, int[] rows, int from, int to,
+                                      int objective) {
+        reverse(rows, from, to);
+        int start = from;
+        while (start < to) {
+            double value = points.get(rows[start], objective);
+            int end = start + 1;
+            while (end < to && points.get(rows[end], objective) == value) {
+                end++;
+            }
+            reverse(rows, start, end);
+            start = end;
+        }
+    }
+
+    private static boolean equalPrefix(FlatPoints points, int left, int right,
+                                       int offset, int end) {
+        for (int objective = offset; objective < end; objective++) {
+            if (points.get(left, objective) != points.get(right, objective)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static void radixSortByCoordinate(double[][] points, int[] rows, int from, int to,
@@ -541,6 +721,19 @@ final class KungParetoAlgorithms {
                                               RadixWorkspace workspace) {
         int size = to - from;
         if (size < 2) {
+            return;
+        }
+
+        int order = coordinateOrder(points, rows, from, to, objective, maximise);
+        if (order >= 0) {
+            return;
+        }
+        if (order == -2) {
+            reverseStable(points, rows, from, to, objective, maximise);
+            return;
+        }
+        if (size <= INSERTION_SORT_THRESHOLD) {
+            insertionSort(points, rows, from, to, objective, maximise);
             return;
         }
 
@@ -590,6 +783,85 @@ final class KungParetoAlgorithms {
         if (source != rows) {
             System.arraycopy(source, from, rows, from, size);
         }
+    }
+
+    /** Returns zero for ascending, -2 for descending, and -1 for unordered. */
+    private static int coordinateOrder(double[][] points, int[] rows, int from, int to,
+                                       int objective, boolean maximise) {
+        boolean ascending = true;
+        boolean descending = true;
+        double previous = directedValue(points[rows[from]][objective], maximise);
+        for (int i = from + 1; i < to && (ascending || descending); i++) {
+            double current = directedValue(points[rows[i]][objective], maximise);
+            int comparison = numericCompare(previous, current);
+            ascending &= comparison <= 0;
+            descending &= comparison >= 0;
+            previous = current;
+        }
+        if (ascending) {
+            return 0;
+        }
+        return descending ? -2 : -1;
+    }
+
+    private static void insertionSort(double[][] points, int[] rows, int from, int to,
+                                      int objective, boolean maximise) {
+        for (int i = from + 1; i < to; i++) {
+            int row = rows[i];
+            double value = directedValue(points[row][objective], maximise);
+            int position = i;
+            while (position > from && numericCompare(
+                    directedValue(points[rows[position - 1]][objective], maximise), value) > 0) {
+                rows[position] = rows[position - 1];
+                position--;
+            }
+            rows[position] = row;
+        }
+    }
+
+    private static void reverseStable(double[][] points, int[] rows, int from, int to,
+                                      int objective, boolean maximise) {
+        reverse(rows, from, to);
+        int start = from;
+        while (start < to) {
+            double value = directedValue(points[rows[start]][objective], maximise);
+            int end = start + 1;
+            while (end < to
+                    && directedValue(points[rows[end]][objective], maximise) == value) {
+                end++;
+            }
+            reverse(rows, start, end);
+            start = end;
+        }
+    }
+
+    private static void reverse(int[] rows, int from, int to) {
+        for (int left = from, right = to - 1; left < right; left++, right--) {
+            int value = rows[left];
+            rows[left] = rows[right];
+            rows[right] = value;
+        }
+    }
+
+    private static boolean equalPrefix(double[][] points, int left, int right,
+                                       int offset, int end) {
+        for (int objective = offset; objective < end; objective++) {
+            if (points[left][objective] != points[right][objective]) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static boolean equalPrefix(double[][] points, int left, int right,
+                                       int[] objectives, int count) {
+        for (int i = 0; i < count; i++) {
+            int objective = objectives[i];
+            if (points[left][objective] != points[right][objective]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private static long sortableKey(double value) {

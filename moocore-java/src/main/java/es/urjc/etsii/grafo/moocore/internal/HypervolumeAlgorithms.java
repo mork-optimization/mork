@@ -5,7 +5,6 @@ import es.urjc.etsii.grafo.moocore.internal.Hypervolume4d.Node;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -288,20 +287,26 @@ public final class HypervolumeAlgorithms {
             for (int i = 0; i < points.length; i++) {
                 nodes[i] = new Node(points[i], higherDimensions, partialDimensions);
             }
-            baseList = Hypervolume4d.createBaseList(nodes, reference);
+            baseList = Hypervolume4d.createBaseList(nodes, points, reference);
+            int[] order = new int[nodes.length];
+            for (int i = 0; i < order.length; i++) {
+                order[i] = i;
+            }
             for (int objective = STOP_DIMENSION + 1; objective < dimensions; objective++) {
                 int link = objective - STOP_DIMENSION - 1;
-                Node[] sorted = nodes.clone();
-                int coordinate = objective;
-                Arrays.sort(sorted, Comparator.comparingDouble(node -> node.point[coordinate]));
-                head.higherNext[link] = sorted[0];
-                sorted[0].higherPrevious[link] = head;
-                for (int i = 1; i < sorted.length; i++) {
-                    sorted[i - 1].higherNext[link] = sorted[i];
-                    sorted[i].higherPrevious[link] = sorted[i - 1];
+                KungParetoAlgorithms.sortByCoordinate(points, order, order.length, objective);
+                Node first = nodes[order[0]];
+                head.higherNext[link] = first;
+                first.higherPrevious[link] = head;
+                for (int i = 1; i < order.length; i++) {
+                    Node previous = nodes[order[i - 1]];
+                    Node current = nodes[order[i]];
+                    previous.higherNext[link] = current;
+                    current.higherPrevious[link] = previous;
                 }
-                sorted[sorted.length - 1].higherNext[link] = head;
-                head.higherPrevious[link] = sorted[sorted.length - 1];
+                Node last = nodes[order[order.length - 1]];
+                last.higherNext[link] = head;
+                head.higherPrevious[link] = last;
             }
             bound = new double[dimensions];
             Arrays.fill(bound, -Double.MAX_VALUE);

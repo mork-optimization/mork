@@ -2,6 +2,9 @@
 package es.urjc.etsii.grafo.benchmarks;
 
 import es.urjc.etsii.grafo.moocore.HypervolumeApproximation;
+import es.urjc.etsii.grafo.moocore.Dataset;
+import es.urjc.etsii.grafo.moocore.EafDifferenceFormat;
+import es.urjc.etsii.grafo.moocore.HypeDistribution;
 import es.urjc.etsii.grafo.moocore.MooCore;
 import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.BenchmarkMode;
@@ -46,6 +49,11 @@ public class CrossLanguageMoocoreBenchmark {
     }
 
     @Benchmark
+    public double[] hypervolumeContributions(HypervolumeContributionState state) {
+        return MooCore.hypervolumeContributions(state.points, state.reference);
+    }
+
+    @Benchmark
     public double approximateHypervolume(HypervolumeApproximationState state) {
         return MooCore.approximateHypervolume(
                 state.points, state.reference, new boolean[]{false},
@@ -60,6 +68,38 @@ public class CrossLanguageMoocoreBenchmark {
     @Benchmark
     public double igdPlus(IgdPlusState state) {
         return MooCore.igdPlus(state.points, state.reference);
+    }
+
+    @Benchmark
+    public double exactR2(ExactR2State state) {
+        return MooCore.exactR2(state.points, state.reference);
+    }
+
+    @Benchmark
+    public double epsilonMultiplicative(MultiplicativeEpsilonState state) {
+        return MooCore.epsilonMultiplicative(state.points, state.reference);
+    }
+
+    @Benchmark
+    public double[][] eaf(EafState state) {
+        return MooCore.eaf(state.points, state.sets);
+    }
+
+    @Benchmark
+    public double[][] eafDifference(EafDifferenceState state) {
+        return MooCore.eafDifference(state.left, state.right, null,
+                new boolean[]{false}, state.format);
+    }
+
+    @Benchmark
+    public double weightedHypervolume(WeightedHypervolumeState state) {
+        return MooCore.weightedHypervolume(state.points, state.rectangles, state.reference);
+    }
+
+    @Benchmark
+    public double hypeWeightedHypervolume(HypeState state) {
+        return MooCore.hypeWeightedHypervolume(state.points, state.reference, state.ideal,
+                new boolean[]{false}, state.samples, state.seed, state.distribution, state.mu);
     }
 
     public abstract static class CaseState {
@@ -105,6 +145,18 @@ public class CrossLanguageMoocoreBenchmark {
         protected double[][] matrix(String key) {
             String caseDirectory = caseDirectory();
             return readMatrix(resolve(Path.of(caseDirectory).toAbsolutePath().normalize(), key));
+        }
+
+        protected int[] integerVector(String key) {
+            double[][] matrix = matrix(key);
+            int[] result = new int[matrix.length];
+            for (int row = 0; row < matrix.length; row++) {
+                if (matrix[row].length != 1 || matrix[row][0] != Math.rint(matrix[row][0])) {
+                    throw new IllegalStateException("Integer vector expected for " + caseId);
+                }
+                result[row] = (int) matrix[row][0];
+            }
+            return result;
         }
 
         private static String caseDirectory() {
@@ -203,6 +255,23 @@ public class CrossLanguageMoocoreBenchmark {
     }
 
     @State(Scope.Benchmark)
+    public static class HypervolumeContributionState extends ReferencedState {
+
+        @Param("unset")
+        public String selectedCaseId;
+
+        double[] reference;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            loadReferencedCase(selectedCaseId);
+            reference = vector(referenceMatrix, caseId);
+            assertVectorClose(matrix("oracle"),
+                    MooCore.hypervolumeContributions(points, reference), caseId);
+        }
+    }
+
+    @State(Scope.Benchmark)
     public static class HypervolumeApproximationState extends ReferencedState {
 
         @Param("unset")
@@ -267,6 +336,128 @@ public class CrossLanguageMoocoreBenchmark {
         }
     }
 
+    @State(Scope.Benchmark)
+    public static class ExactR2State extends ReferencedState {
+
+        @Param("unset")
+        public String selectedCaseId;
+
+        double[] reference;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            loadReferencedCase(selectedCaseId);
+            reference = vector(referenceMatrix, caseId);
+            assertClose(scalarOracle(), MooCore.exactR2(points, reference), caseId);
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class MultiplicativeEpsilonState extends ReferencedState {
+
+        @Param("unset")
+        public String selectedCaseId;
+
+        double[][] reference;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            loadReferencedCase(selectedCaseId);
+            reference = referenceMatrix;
+            assertClose(scalarOracle(), MooCore.epsilonMultiplicative(points, reference), caseId);
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class EafState extends CaseState {
+
+        @Param("unset")
+        public String selectedCaseId;
+
+        int[] sets;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            loadCase(selectedCaseId);
+            sets = integerVector("sets");
+            assertMatrixCloseUnordered(matrix("oracle"), MooCore.eaf(points, sets), caseId);
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class EafDifferenceState extends CaseState {
+
+        @Param("unset")
+        public String selectedCaseId;
+
+        Dataset left;
+        Dataset right;
+        EafDifferenceFormat format;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            loadCase(selectedCaseId);
+            left = new Dataset(points, integerVector("sets"));
+            right = new Dataset(matrix("rightPoints"), integerVector("rightSets"));
+            format = EafDifferenceFormat.valueOf(properties.getProperty("format"));
+            assertMatrixCloseUnordered(matrix("oracle"),
+                    MooCore.eafDifference(left, right, null,
+                            new boolean[]{false}, format), caseId);
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class WeightedHypervolumeState extends ReferencedState {
+
+        @Param("unset")
+        public String selectedCaseId;
+
+        double[] reference;
+        double[][] rectangles;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            loadReferencedCase(selectedCaseId);
+            reference = vector(referenceMatrix, caseId);
+            rectangles = matrix("auxiliary");
+            assertClose(scalarOracle(),
+                    MooCore.weightedHypervolume(points, rectangles, reference), caseId);
+        }
+    }
+
+    @State(Scope.Benchmark)
+    public static class HypeState extends ReferencedState {
+
+        @Param("unset")
+        public String selectedCaseId;
+
+        double[] reference;
+        double[] ideal;
+        int samples;
+        long seed;
+        HypeDistribution distribution;
+        double[] mu;
+
+        @Setup(Level.Trial)
+        public void setup() {
+            loadReferencedCase(selectedCaseId);
+            reference = vector(referenceMatrix, caseId);
+            ideal = vector(matrix("ideal"), caseId);
+            samples = integer("samples");
+            seed = longValue("seed");
+            distribution = HypeDistribution.valueOf(properties.getProperty("distribution"));
+            String configuredMu = properties.getProperty("mu");
+            mu = configuredMu == null || configuredMu.isBlank() ? null : vector(matrix("mu"), caseId);
+            double actual = MooCore.hypeWeightedHypervolume(points, reference, ideal,
+                    new boolean[]{false}, samples, seed, distribution, mu);
+            double expected = scalarOracle();
+            if (!Double.isFinite(actual) || relativeError(expected, actual) > 0.05) {
+                throw new IllegalStateException("HypE result exceeds 5% relative error for "
+                        + caseId + ": expected=" + expected + ", actual=" + actual);
+            }
+        }
+    }
+
     private static double[] vector(double[][] matrix, String caseId) {
         if (matrix.length != 1) {
             throw new IllegalStateException("Vector expected for " + caseId);
@@ -297,6 +488,56 @@ public class CrossLanguageMoocoreBenchmark {
                     "Result differs from Python for " + caseId + ": expected="
                             + expected + ", actual=" + actual + ", tolerance=" + tolerance);
         }
+    }
+
+    private static void assertVectorClose(double[][] expectedMatrix, double[] actual,
+                                          String caseId) {
+        if (expectedMatrix.length != actual.length) {
+            throw new IllegalStateException("Vector length differs for " + caseId);
+        }
+        for (int i = 0; i < actual.length; i++) {
+            if (expectedMatrix[i].length != 1) {
+                throw new IllegalStateException("Vector oracle expected for " + caseId);
+            }
+            assertClose(expectedMatrix[i][0], actual[i], caseId + " at index " + i);
+        }
+    }
+
+    private static void assertMatrixCloseUnordered(double[][] expected, double[][] actual,
+                                                    String caseId) {
+        if (expected.length != actual.length) {
+            throw new IllegalStateException("Matrix row count differs for " + caseId
+                    + ": expected=" + expected.length + ", actual=" + actual.length);
+        }
+        double[][] sortedExpected = expected.clone();
+        double[][] sortedActual = actual.clone();
+        Arrays.sort(sortedExpected, CrossLanguageMoocoreBenchmark::compareRows);
+        Arrays.sort(sortedActual, CrossLanguageMoocoreBenchmark::compareRows);
+        for (int row = 0; row < sortedExpected.length; row++) {
+            if (sortedExpected[row].length != sortedActual[row].length) {
+                throw new IllegalStateException("Matrix column count differs for " + caseId);
+            }
+            for (int column = 0; column < sortedExpected[row].length; column++) {
+                double expectedValue = sortedExpected[row][column];
+                double actualValue = sortedActual[row][column];
+                if (Double.doubleToLongBits(expectedValue) == Double.doubleToLongBits(actualValue)) {
+                    continue;
+                }
+                assertClose(expectedValue, actualValue,
+                        caseId + " at row " + row + ", column " + column);
+            }
+        }
+    }
+
+    private static int compareRows(double[] left, double[] right) {
+        int columns = Math.min(left.length, right.length);
+        for (int column = 0; column < columns; column++) {
+            int comparison = Double.compare(left[column], right[column]);
+            if (comparison != 0) {
+                return comparison;
+            }
+        }
+        return Integer.compare(left.length, right.length);
     }
 
     private static double[][] readMatrix(Path path) {

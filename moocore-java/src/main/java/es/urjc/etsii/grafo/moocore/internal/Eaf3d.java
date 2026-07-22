@@ -4,7 +4,6 @@ package es.urjc.etsii.grafo.moocore.internal;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.TreeMap;
 
 /** Three-dimensional dimension sweep from the upstream eaf3d implementation. */
 final class Eaf3d {
@@ -14,11 +13,11 @@ final class Eaf3d {
 
     static List<List<double[]>> compute(double[][] points, int[] pointSets,
                                         int numberOfSets, int[] requestedLevels) {
-        Point[] ordered = new Point[points.length];
+        int[] ordered = new int[points.length];
         for (int i = 0; i < points.length; i++) {
-            ordered[i] = new Point(points[i], pointSets[i]);
+            ordered[i] = i;
         }
-        Arrays.sort(ordered, (left, right) -> Double.compare(left.values[2], right.values[2]));
+        KungParetoAlgorithms.sortByCoordinate(points, ordered, ordered.length, 2);
 
         Frontier[] sets = frontiers(numberOfSets);
         Frontier[] levels = frontiers(numberOfSets);
@@ -28,30 +27,32 @@ final class Eaf3d {
             output[i] = new ArrayList<>();
         }
 
-        Point first = ordered[0];
-        sets[first.set].addSet(first.values);
-        levels[0].addInitial(first.values.clone());
+        int first = ordered[0];
+        sets[pointSets[first]].addSet(points[first]);
+        levels[0].addInitial(points[first].clone());
         boolean[] seenSet = new boolean[numberOfSets];
-        seenSet[first.set] = true;
+        seenSet[pointSets[first]] = true;
         int startAt = 0;
 
         SweepNode[] levelNodes = new SweepNode[numberOfSets];
         for (int pointIndex = 1; pointIndex < ordered.length; pointIndex++) {
-            Point current = ordered[pointIndex];
-            Frontier currentSet = sets[current.set];
-            SweepNode currentSetPrevious = currentSet.atLeft(current.values[0]);
-            if (currentSetPrevious.y <= current.values[1]) {
+            int current = ordered[pointIndex];
+            double[] currentPoint = points[current];
+            int currentPointSet = pointSets[current];
+            Frontier currentSet = sets[currentPointSet];
+            SweepNode currentSetPrevious = currentSet.atLeft(currentPoint[0]);
+            if (currentSetPrevious.y <= currentPoint[1]) {
                 continue;
             }
 
             int stopAt = 0;
             for (int level = startAt; level >= stopAt; level--) {
-                SweepNode left = levels[level].atLeft(current.values[0]);
-                if (left.y <= current.values[1]) {
+                SweepNode left = levels[level].atLeft(currentPoint[0]);
+                if (left.y <= currentPoint[1]) {
                     stopAt = level + 1;
                 } else if (left.y < currentSetPrevious.y) {
                     levelNodes[level] = SweepNode.intersection(
-                            current.values[0], left.y, left.next);
+                            currentPoint[0], left.y, left.next);
                 } else {
                     levelNodes[level] = levels[level].below(currentSetPrevious.y);
                 }
@@ -60,41 +61,41 @@ final class Eaf3d {
             SweepNode setNode = currentSetPrevious;
             do {
                 setNode = setNode.next;
-                double lowerBound = Math.max(setNode.y, current.values[1]);
+                double lowerBound = Math.max(setNode.y, currentPoint[1]);
                 for (int level = startAt; level >= stopAt; level--) {
                     SweepNode levelNode = levelNodes[level];
                     while (levelNode.y >= lowerBound
-                            && (levelNode.y > lowerBound || lowerBound > current.values[1])) {
+                            && (levelNode.y > lowerBound || lowerBound > currentPoint[1])) {
                         if (setNode.x <= levelNode.x) {
                             levelNode = levels[level].below(setNode.y);
                         } else {
                             levels[level + 1].addLevel(
-                                    new double[]{levelNode.x, levelNode.y, current.values[2]},
+                                    new double[]{levelNode.x, levelNode.y, currentPoint[2]},
                                     output[level + 1]);
                             levelNode = levelNode.next;
                         }
                     }
                     levelNodes[level] = levelNode;
                 }
-            } while (setNode.y > current.values[1]);
+            } while (setNode.y > currentPoint[1]);
 
             for (int level = startAt; level >= stopAt; level--) {
                 SweepNode levelNode = levelNodes[level];
                 if (levelNode.x < setNode.x) {
                     levels[level + 1].addLevel(
-                            new double[]{levelNode.x, current.values[1], current.values[2]},
+                            new double[]{levelNode.x, currentPoint[1], currentPoint[2]},
                             output[level + 1]);
                 }
             }
 
-            currentSet.addSet(current.values);
-            levels[stopAt].addLevel(current.values.clone(), output[stopAt]);
+            currentSet.addSet(currentPoint);
+            levels[stopAt].addLevel(currentPoint.clone(), output[stopAt]);
 
-            if (!seenSet[current.set]) {
+            if (!seenSet[currentPointSet]) {
                 if (startAt < numberOfSets - 2) {
                     startAt++;
                 }
-                seenSet[current.set] = true;
+                seenSet[currentPointSet] = true;
             }
         }
 
@@ -129,12 +130,9 @@ final class Eaf3d {
         return 0;
     }
 
-    private record Point(double[] values, int set) {
-    }
-
     private static final class Frontier {
-        private final TreeMap<Double, SweepNode> nodes = new TreeMap<>();
-        private final TreeMap<Double, SweepNode> nodesByY = new TreeMap<>();
+        private final PrimitiveIndex nodes = new PrimitiveIndex();
+        private final PrimitiveIndex nodesByY = new PrimitiveIndex();
 
         private Frontier() {
             SweepNode left = new SweepNode(Double.NEGATIVE_INFINITY, Double.POSITIVE_INFINITY,
@@ -149,15 +147,15 @@ final class Eaf3d {
         }
 
         private SweepNode atLeft(double x) {
-            return nodes.floorEntry(x).getValue();
+            return nodes.floor(x);
         }
 
         private SweepNode below(double y) {
-            return nodesByY.lowerEntry(y).getValue();
+            return nodesByY.lower(y);
         }
 
         private void addInitial(double[] point) {
-            SweepNode previous = nodes.firstEntry().getValue();
+            SweepNode previous = nodes.first();
             insertAfter(previous, new SweepNode(point));
         }
 
@@ -201,11 +199,11 @@ final class Eaf3d {
             if (equal != null) {
                 return equal.x > x ? equal : equal.previous;
             }
-            return nodesByY.higherEntry(y).getValue();
+            return nodesByY.higher(y);
         }
 
         private void appendTo(List<double[]> output) {
-            SweepNode node = nodes.firstEntry().getValue().next;
+            SweepNode node = nodes.first().next;
             while (node.next != null) {
                 output.add(node.values());
                 node = node.next;
@@ -229,6 +227,253 @@ final class Eaf3d {
         private static void link(SweepNode left, SweepNode right) {
             left.next = right;
             right.previous = left;
+        }
+    }
+
+    /** Array-backed AVL index with TreeMap-compatible replacement semantics. */
+    private static final class PrimitiveIndex {
+        private double[] keys = new double[16];
+        private SweepNode[] values = new SweepNode[16];
+        private int[] left = new int[16];
+        private int[] right = new int[16];
+        private int[] parent = new int[16];
+        private int[] height = new int[16];
+        private int root;
+        private int allocated;
+        private int free;
+
+        private SweepNode get(double key) {
+            int node = find(key);
+            return node == 0 ? null : values[node];
+        }
+
+        private SweepNode first() {
+            int node = root;
+            while (left[node] != 0) {
+                node = left[node];
+            }
+            return values[node];
+        }
+
+        private SweepNode floor(double key) {
+            int node = root;
+            int result = 0;
+            while (node != 0) {
+                int comparison = Double.compare(keys[node], key);
+                if (comparison <= 0) {
+                    result = node;
+                    node = right[node];
+                } else {
+                    node = left[node];
+                }
+            }
+            return values[result];
+        }
+
+        private SweepNode lower(double key) {
+            int node = root;
+            int result = 0;
+            while (node != 0) {
+                if (Double.compare(keys[node], key) < 0) {
+                    result = node;
+                    node = right[node];
+                } else {
+                    node = left[node];
+                }
+            }
+            return values[result];
+        }
+
+        private SweepNode higher(double key) {
+            int node = root;
+            int result = 0;
+            while (node != 0) {
+                if (Double.compare(keys[node], key) > 0) {
+                    result = node;
+                    node = left[node];
+                } else {
+                    node = right[node];
+                }
+            }
+            return values[result];
+        }
+
+        private void put(double key, SweepNode value) {
+            if (root == 0) {
+                root = allocate(key, value);
+                return;
+            }
+            int node = root;
+            while (true) {
+                int comparison = Double.compare(key, keys[node]);
+                if (comparison == 0) {
+                    values[node] = value;
+                    return;
+                }
+                int next = comparison < 0 ? left[node] : right[node];
+                if (next != 0) {
+                    node = next;
+                    continue;
+                }
+                int inserted = allocate(key, value);
+                parent[inserted] = node;
+                if (comparison < 0) {
+                    left[node] = inserted;
+                } else {
+                    right[node] = inserted;
+                }
+                rebalance(node);
+                return;
+            }
+        }
+
+        private void remove(double key, SweepNode expected) {
+            int requested = find(key);
+            if (requested == 0 || values[requested] != expected) {
+                return;
+            }
+            int removed = requested;
+            if (left[requested] != 0 && right[requested] != 0) {
+                removed = right[requested];
+                while (left[removed] != 0) {
+                    removed = left[removed];
+                }
+                keys[requested] = keys[removed];
+                values[requested] = values[removed];
+            }
+
+            int replacement = left[removed] != 0 ? left[removed] : right[removed];
+            int oldParent = parent[removed];
+            if (replacement != 0) {
+                parent[replacement] = oldParent;
+            }
+            if (oldParent == 0) {
+                root = replacement;
+            } else if (left[oldParent] == removed) {
+                left[oldParent] = replacement;
+            } else {
+                right[oldParent] = replacement;
+            }
+            rebalance(oldParent);
+            release(removed);
+        }
+
+        private int find(double key) {
+            int node = root;
+            while (node != 0) {
+                int comparison = Double.compare(key, keys[node]);
+                if (comparison == 0) {
+                    return node;
+                }
+                node = comparison < 0 ? left[node] : right[node];
+            }
+            return 0;
+        }
+
+        private int allocate(double key, SweepNode value) {
+            int node;
+            if (free != 0) {
+                node = free;
+                free = left[node];
+            } else {
+                node = ++allocated;
+                ensureCapacity(node);
+            }
+            keys[node] = key;
+            values[node] = value;
+            left[node] = 0;
+            right[node] = 0;
+            parent[node] = 0;
+            height[node] = 1;
+            return node;
+        }
+
+        private void release(int node) {
+            values[node] = null;
+            right[node] = 0;
+            parent[node] = 0;
+            height[node] = 0;
+            left[node] = free;
+            free = node;
+        }
+
+        private void ensureCapacity(int requested) {
+            if (requested < keys.length) {
+                return;
+            }
+            int capacity = keys.length << 1;
+            keys = Arrays.copyOf(keys, capacity);
+            values = Arrays.copyOf(values, capacity);
+            left = Arrays.copyOf(left, capacity);
+            right = Arrays.copyOf(right, capacity);
+            parent = Arrays.copyOf(parent, capacity);
+            height = Arrays.copyOf(height, capacity);
+        }
+
+        private void rebalance(int node) {
+            while (node != 0) {
+                updateHeight(node);
+                int subtreeRoot = node;
+                int balance = height[left[node]] - height[right[node]];
+                if (balance > 1) {
+                    if (height[left[left[node]]] < height[right[left[node]]]) {
+                        rotateLeft(left[node]);
+                    }
+                    subtreeRoot = rotateRight(node);
+                } else if (balance < -1) {
+                    if (height[right[right[node]]] < height[left[right[node]]]) {
+                        rotateRight(right[node]);
+                    }
+                    subtreeRoot = rotateLeft(node);
+                }
+                node = parent[subtreeRoot];
+            }
+        }
+
+        private int rotateLeft(int node) {
+            int newRoot = right[node];
+            int middle = left[newRoot];
+            replaceParent(node, newRoot);
+            left[newRoot] = node;
+            parent[node] = newRoot;
+            right[node] = middle;
+            if (middle != 0) {
+                parent[middle] = node;
+            }
+            updateHeight(node);
+            updateHeight(newRoot);
+            return newRoot;
+        }
+
+        private int rotateRight(int node) {
+            int newRoot = left[node];
+            int middle = right[newRoot];
+            replaceParent(node, newRoot);
+            right[newRoot] = node;
+            parent[node] = newRoot;
+            left[node] = middle;
+            if (middle != 0) {
+                parent[middle] = node;
+            }
+            updateHeight(node);
+            updateHeight(newRoot);
+            return newRoot;
+        }
+
+        private void replaceParent(int node, int replacement) {
+            int oldParent = parent[node];
+            parent[replacement] = oldParent;
+            if (oldParent == 0) {
+                root = replacement;
+            } else if (left[oldParent] == node) {
+                left[oldParent] = replacement;
+            } else {
+                right[oldParent] = replacement;
+            }
+        }
+
+        private void updateHeight(int node) {
+            height[node] = Math.max(height[left[node]], height[right[node]]) + 1;
         }
     }
 

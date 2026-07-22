@@ -69,13 +69,16 @@ public final class AttainmentAlgorithms {
     }
 
     private static List<List<double[]>> surfaces2d(GroupedPoints grouped, int[] levels) {
+        return surfaces2d(grouped, levels, -1);
+    }
+
+    private static List<List<double[]>> surfaces2d(
+            GroupedPoints grouped, int[] levels, int leftSets) {
         int count = grouped.points.length;
-        Integer[] byX = pointOrder(count);
-        Integer[] byY = pointOrder(count);
-        Arrays.sort(byX, (left, right) -> Double.compare(
-                grouped.points[left][0], grouped.points[right][0]));
-        Arrays.sort(byY, (left, right) -> Double.compare(
-                grouped.points[right][1], grouped.points[left][1]));
+        int[] byX = pointOrder(count);
+        int[] byY = pointOrder(count);
+        KungParetoAlgorithms.sortByCoordinate(grouped.points, byX, count, 0);
+        KungParetoAlgorithms.sortByCoordinate(grouped.points, byY, count, 1, true);
 
         int[] attained = new int[grouped.numberOfSets];
         List<List<double[]>> result = emptySurfaces(levels.length);
@@ -86,6 +89,10 @@ public final class AttainmentAlgorithms {
             int run = grouped.groupByPoint[byX[x]];
             attained[run]++;
             int attainedSets = 1;
+            int attainedLeft = leftSets >= 0 && run < leftSets ? 1 : 0;
+            int attainedRight = leftSets >= 0 && run >= leftSets ? 1 : 0;
+            int emittedLeft = 0;
+            int emittedRight = 0;
 
             do {
                 while (x < count - 1
@@ -97,6 +104,13 @@ public final class AttainmentAlgorithms {
                         run = grouped.groupByPoint[point];
                         if (attained[run] == 0) {
                             attainedSets++;
+                            if (leftSets >= 0) {
+                                if (run < leftSets) {
+                                    attainedLeft++;
+                                } else {
+                                    attainedRight++;
+                                }
+                            }
                         }
                         attained[run]++;
                     }
@@ -106,6 +120,8 @@ public final class AttainmentAlgorithms {
                 }
 
                 do {
+                    emittedLeft = attainedLeft;
+                    emittedRight = attainedRight;
                     do {
                         int point = byY[y];
                         if (grouped.points[point][0] <= grouped.points[byX[x]][0]) {
@@ -113,6 +129,13 @@ public final class AttainmentAlgorithms {
                             attained[run]--;
                             if (attained[run] == 0) {
                                 attainedSets--;
+                                if (leftSets >= 0) {
+                                    if (run < leftSets) {
+                                        attainedLeft--;
+                                    } else {
+                                        attainedRight--;
+                                    }
+                                }
                             }
                         }
                         y++;
@@ -120,8 +143,11 @@ public final class AttainmentAlgorithms {
                             && grouped.points[byY[y]][1] == grouped.points[byY[y - 1]][1]);
                 } while (attainedSets >= levels[surface] && y < count);
 
-                result.get(surface).add(new double[]{
-                        grouped.points[byX[x]][0], grouped.points[byY[y - 1]][1]});
+                double pointX = grouped.points[byX[x]][0];
+                double pointY = grouped.points[byY[y - 1]][1];
+                result.get(surface).add(leftSets < 0
+                        ? new double[]{pointX, pointY}
+                        : new double[]{pointX, pointY, emittedLeft, emittedRight});
             } while (x < count - 1 && y < count);
         }
         return result;
@@ -132,8 +158,8 @@ public final class AttainmentAlgorithms {
                 grouped.numberOfSets, levels);
     }
 
-    private static Integer[] pointOrder(int size) {
-        Integer[] order = new Integer[size];
+    private static int[] pointOrder(int size) {
+        int[] order = new int[size];
         for (int i = 0; i < size; i++) {
             order[i] = i;
         }
@@ -146,12 +172,13 @@ public final class AttainmentAlgorithms {
         for (int i = 0; i < levels.length; i++) {
             levels[i] = i + 1;
         }
-        List<List<double[]>> surfaces = surfaces2d(combined, levels);
+        List<List<double[]>> surfaces = surfaces2d(combined, levels, left.numberOfSets);
         List<double[]> result = new ArrayList<>();
         Set<RowKey> seen = new HashSet<>();
         for (List<double[]> surface : surfaces) {
             for (double[] point : surface) {
-                double color = differenceColor(point[0], point[1], left, right, intervals);
+                double color = differenceColor(
+                        point, left.numberOfSets, right.numberOfSets, intervals);
                 double[] row = {point[0], point[1], color};
                 if (seen.add(new RowKey(row))) {
                     result.add(row);
@@ -167,11 +194,12 @@ public final class AttainmentAlgorithms {
         for (int i = 0; i < levels.length; i++) {
             levels[i] = i + 1;
         }
-        List<List<double[]>> surfaces = surfaces2d(combined, levels);
+        List<List<double[]>> surfaces = surfaces2d(combined, levels, left.numberOfSets);
         List<double[]> result = new ArrayList<>();
         for (int upperLevel = 1; upperLevel < surfaces.size(); upperLevel++) {
             addRectanglesBetweenSurfaces(result, surfaces.get(upperLevel - 1),
-                    surfaces.get(upperLevel), left, right, intervals);
+                    surfaces.get(upperLevel), left.numberOfSets,
+                    right.numberOfSets, intervals);
         }
         return result.toArray(double[][]::new);
     }
@@ -184,8 +212,8 @@ public final class AttainmentAlgorithms {
     private static void addRectanglesBetweenSurfaces(List<double[]> rectangles,
                                                      List<double[]> lowerSurface,
                                                      List<double[]> upperSurface,
-                                                     GroupedPoints left,
-                                                     GroupedPoints right,
+                                                     int leftSets,
+                                                     int rightSets,
                                                      int intervals) {
         if (lowerSurface.isEmpty() || upperSurface.isEmpty()) {
             return;
@@ -201,13 +229,13 @@ public final class AttainmentAlgorithms {
             while (lower[1] < upper[1]) {
                 if (lower[0] < upper[0]) {
                     addRectangle(rectangles, lower[0], upper[1], upper[0], top,
-                            differenceColor(lower[0], lower[1], left, right, intervals));
+                            differenceColor(lower, leftSets, rightSets, intervals));
                 }
                 top = upper[1];
                 upperIndex++;
                 if (upperIndex >= upperSurface.size()) {
                     addRemainingRectangles(rectangles, lowerSurface, lowerIndex, top,
-                            left, right, intervals);
+                            leftSets, rightSets, intervals);
                     return;
                 }
                 upper = upperSurface.get(upperIndex);
@@ -215,7 +243,7 @@ public final class AttainmentAlgorithms {
 
             if (lower[0] < upper[0]) {
                 addRectangle(rectangles, lower[0], lower[1], upper[0], top,
-                        differenceColor(lower[0], lower[1], left, right, intervals));
+                        differenceColor(lower, leftSets, rightSets, intervals));
             }
             top = lower[1];
             lowerIndex++;
@@ -228,7 +256,7 @@ public final class AttainmentAlgorithms {
                 upperIndex++;
                 if (upperIndex >= upperSurface.size()) {
                     addRemainingRectangles(rectangles, lowerSurface, lowerIndex, top,
-                            left, right, intervals);
+                            leftSets, rightSets, intervals);
                     return;
                 }
                 upper = upperSurface.get(upperIndex);
@@ -240,13 +268,13 @@ public final class AttainmentAlgorithms {
                                                List<double[]> surface,
                                                int start,
                                                double top,
-                                               GroupedPoints left,
-                                               GroupedPoints right,
+                                               int leftSets,
+                                               int rightSets,
                                                int intervals) {
         for (int i = start; i < surface.size(); i++) {
             double[] point = surface.get(i);
             addRectangle(rectangles, point[0], point[1], Double.POSITIVE_INFINITY, top,
-                    differenceColor(point[0], point[1], left, right, intervals));
+                    differenceColor(point, leftSets, rightSets, intervals));
             top = point[1];
         }
     }
@@ -258,24 +286,11 @@ public final class AttainmentAlgorithms {
         }
     }
 
-    private static double differenceColor(double x, double y, GroupedPoints left,
-                                          GroupedPoints right, int intervals) {
-        double leftFraction = attainedCount(x, y, left) / (double) left.numberOfSets;
-        double rightFraction = attainedCount(x, y, right) / (double) right.numberOfSets;
+    private static double differenceColor(double[] point, int leftSets,
+                                          int rightSets, int intervals) {
+        double leftFraction = point[2] / leftSets;
+        double rightFraction = point[3] / rightSets;
         return intervals * (leftFraction - rightFraction);
-    }
-
-    private static int attainedCount(double x, double y, GroupedPoints grouped) {
-        boolean[] attained = new boolean[grouped.numberOfSets];
-        int count = 0;
-        for (int i = 0; i < grouped.points.length; i++) {
-            if (!attained[grouped.groupByPoint[i]]
-                    && grouped.points[i][0] <= x && grouped.points[i][1] <= y) {
-                attained[grouped.groupByPoint[i]] = true;
-                count++;
-            }
-        }
-        return count;
     }
 
     private static GroupedPoints group(double[][] input, int[] sets) {
@@ -345,19 +360,6 @@ public final class AttainmentAlgorithms {
         List<List<double[]>> result = new ArrayList<>(size);
         for (int i = 0; i < size; i++) {
             result.add(new ArrayList<>());
-        }
-        return result;
-    }
-
-    private static double[] uniqueCoordinates(double[][] points, int dimension) {
-        TreeSet<Double> values = new TreeSet<>();
-        for (double[] point : points) {
-            values.add(point[dimension]);
-        }
-        double[] result = new double[values.size()];
-        int index = 0;
-        for (double value : values) {
-            result[index++] = value;
         }
         return result;
     }

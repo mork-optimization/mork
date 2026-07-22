@@ -24,7 +24,7 @@ public final class ParetoAlgorithms {
             return nondominated2d(input, directions, keepWeakly);
         }
 
-        double[][] points = toMinimisation(input, directions);
+        FlatPoints points = FlatPoints.toMinimisation(input, directions);
         return KungParetoAlgorithms.nondominated(points, keepWeakly);
     }
 
@@ -50,7 +50,7 @@ public final class ParetoAlgorithms {
             return anyDominated2d(input, directions, keepWeakly);
         }
 
-        double[][] points = toMinimisation(input, directions);
+        FlatPoints points = FlatPoints.toMinimisation(input, directions);
         return KungParetoAlgorithms.anyDominated(points, keepWeakly);
     }
 
@@ -72,7 +72,7 @@ public final class ParetoAlgorithms {
         if (objectives == 2) {
             return ranks2d(input, directions);
         }
-        double[][] points = toMinimisation(input, directions);
+        FlatPoints points = FlatPoints.toMinimisation(input, directions);
         return KungParetoAlgorithms.ranks(points);
     }
 
@@ -187,15 +187,6 @@ public final class ParetoAlgorithms {
 
     private static double canonicalZero(double value) {
         return value == 0.0 ? 0.0 : value;
-    }
-
-    private static double[][] toMinimisation(double[][] points, boolean[] maximise) {
-        for (boolean direction : maximise) {
-            if (direction) {
-                return MatrixUtils.toMinimisation(points, maximise);
-            }
-        }
-        return points;
     }
 
     private static int[] ranks2d(double[][] points, boolean[] maximise) {

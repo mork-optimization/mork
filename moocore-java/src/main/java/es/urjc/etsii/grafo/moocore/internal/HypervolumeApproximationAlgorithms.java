@@ -2,14 +2,19 @@
 package es.urjc.etsii.grafo.moocore.internal;
 
 import es.urjc.etsii.grafo.moocore.HypervolumeApproximation;
+import jdk.incubator.vector.DoubleVector;
+import jdk.incubator.vector.VectorOperators;
+import jdk.incubator.vector.VectorSpecies;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.random.RandomGenerator;
 
 public final class HypervolumeApproximationAlgorithms {
 
     private static final double MINIMUM_WEIGHT = 1e-20;
+    private static final VectorSpecies<Double> DOUBLE_SPECIES = DoubleVector.SPECIES_PREFERRED;
+    private static final double[] SPHERE_CONSTANTS = sphereConstants();
+    private static final double[] SIN_POWER_HALF_PI = sinPowerHalfPi();
+    private static final double[] RECIPROCAL_PHI = reciprocalGoldenRatios();
 
     private HypervolumeApproximationAlgorithms() {
     }
@@ -34,24 +39,26 @@ public final class HypervolumeApproximationAlgorithms {
         }
         boolean[] directions = MatrixUtils.directions(maximise, dimensions);
         double[] ref = MatrixUtils.vector(reference, dimensions, "reference");
-        List<double[]> transformed = new ArrayList<>();
+        int stride = input.length;
+        double[] transformed = new double[dimensions * stride];
+        int validPoints = 0;
         for (double[] point : input) {
-            double[] distance = new double[dimensions];
             boolean valid = true;
             for (int objective = 0; objective < dimensions; objective++) {
-                distance[objective] = directions[objective]
+                double distance = directions[objective]
                         ? point[objective] - ref[objective]
                         : ref[objective] - point[objective];
-                valid &= distance[objective] > 0.0;
+                transformed[objective * stride + validPoints] = distance;
+                valid &= distance > 0.0;
             }
             if (valid) {
-                transformed.add(distance);
+                validPoints++;
             }
         }
-        if (transformed.isEmpty()) {
+        if (validPoints == 0) {
             return 0.0;
         }
-        double[][] points = transformed.toArray(double[][]::new);
+        RadialPoints points = new RadialPoints(transformed, validPoints, dimensions, stride);
         double expected = switch (method) {
             case DZ2019_MC -> monteCarlo(points, samples, seed);
             case DZ2019_HW -> huaWang(points, samples);
@@ -74,9 +81,9 @@ public final class HypervolumeApproximationAlgorithms {
         return dimensions;
     }
 
-    private static double monteCarlo(double[][] points, long samples, long seed) {
+    private static double monteCarlo(RadialPoints points, long samples, long seed) {
         RandomGenerator random = RandomGenerators.create(seed);
-        int dimensions = points[0].length;
+        int dimensions = points.dimensions;
         double[] inverseDirection = new double[dimensions];
         double result = 0.0;
         for (long sample = 0; sample < samples; sample++) {
@@ -95,8 +102,8 @@ public final class HypervolumeApproximationAlgorithms {
         return result;
     }
 
-    private static double huaWang(double[][] points, long samples) {
-        int dimensions = points[0].length;
+    private static double huaWang(RadialPoints points, long samples) {
+        int dimensions = points.dimensions;
         int angleCount = dimensions - 1;
         int prime = primeForDimension(angleCount);
         long[] coefficients = new long[angleCount];
@@ -106,21 +113,18 @@ public final class HypervolumeApproximationAlgorithms {
             coefficients[i] = Math.round(samples * fractional(value));
         }
         double[] angles = new double[angleCount];
-        double[] integrals = new double[angleCount];
         double[] sine = new double[angleCount];
         double[] cosine = new double[angleCount];
         double[] direction = new double[dimensions];
         double[] inverseDirection = new double[dimensions];
-        for (int power = 0; power < angleCount; power++) {
-            integrals[power] = sinPowerIntegral(power, Math.PI * 0.5);
-        }
         double result = 0.0;
         for (long sample = 0; sample < samples; sample++) {
             double factor = sample + 1 < samples ? (sample + 1.0) / samples : 0.0;
             for (int i = 0; i < angleCount; i++) {
                 double uniform = fractional(factor * coefficients[i]);
                 int power = dimensions - i - 2;
-                angles[i] = inverseSinPowerIntegral(uniform, power, integrals[power]);
+                angles[i] = inverseSinPowerIntegral(
+                        uniform, power, SIN_POWER_HALF_PI[power]);
             }
             huaWangDirection(inverseDirection, angles, sine, cosine, direction);
             result += radialPower(points, inverseDirection);
@@ -128,10 +132,10 @@ public final class HypervolumeApproximationAlgorithms {
         return result;
     }
 
-    private static double rPhi(double[][] points, long samples) {
-        int dimensions = points[0].length;
+    private static double rPhi(RadialPoints points, long samples) {
+        int dimensions = points.dimensions;
         int sequenceDimensions = dimensions - 1;
-        double reciprocalPhi = reciprocalGeneralizedGoldenRatio(sequenceDimensions);
+        double reciprocalPhi = RECIPROCAL_PHI[sequenceDimensions];
         double[] alpha = new double[sequenceDimensions];
         double[] uniform = new double[sequenceDimensions];
         double[] direction = new double[dimensions];
@@ -156,16 +160,31 @@ public final class HypervolumeApproximationAlgorithms {
         return result;
     }
 
-    private static double radialPower(double[][] points, double[] inverseDirection) {
+    private static double radialPower(RadialPoints points, double[] inverseDirection) {
         double maximum = 0.0;
-        for (double[] point : points) {
+        int width = DOUBLE_SPECIES.length();
+        int vectorBound = DOUBLE_SPECIES.loopBound(points.count);
+        int point = 0;
+        for (; point < vectorBound; point += width) {
+            DoubleVector minimum = DoubleVector.broadcast(
+                    DOUBLE_SPECIES, Double.POSITIVE_INFINITY);
+            for (int objective = 0; objective < points.dimensions; objective++) {
+                DoubleVector coordinate = DoubleVector.fromArray(
+                        DOUBLE_SPECIES, points.values, objective * points.stride + point);
+                minimum = minimum.min(coordinate.mul(inverseDirection[objective]));
+            }
+            maximum = Math.max(maximum, minimum.reduceLanes(VectorOperators.MAX));
+        }
+        for (; point < points.count; point++) {
             double minimum = Double.POSITIVE_INFINITY;
-            for (int objective = 0; objective < point.length; objective++) {
-                minimum = Math.min(minimum, point[objective] * inverseDirection[objective]);
+            for (int objective = 0; objective < points.dimensions; objective++) {
+                minimum = Math.min(minimum,
+                        points.values[objective * points.stride + point]
+                                * inverseDirection[objective]);
             }
             maximum = Math.max(maximum, minimum);
         }
-        return Math.pow(maximum, points[0].length);
+        return integerPower(maximum, points.dimensions);
     }
 
     private static void huaWangDirection(double[] inverseDirection, double[] angles,
@@ -226,7 +245,7 @@ public final class HypervolumeApproximationAlgorithms {
         double angle = Math.PI * 0.5;
         double residual = total - target;
         while (Math.abs(residual) > 1e-15) {
-            double derivative = Math.pow(Math.sin(angle), power);
+            double derivative = integerPower(Math.sin(angle), power);
             angle -= residual / derivative;
             residual = sinPowerIntegral(power, angle) - target;
         }
@@ -242,8 +261,15 @@ public final class HypervolumeApproximationAlgorithms {
         }
         double sine = Math.sin(upper);
         double cosine = Math.cos(upper);
-        return -cosine * Math.pow(sine, power - 1) / power
-                + (power - 1.0) / power * sinPowerIntegral(power - 2, upper);
+        int currentPower = (power & 1) == 0 ? 0 : 1;
+        double result = currentPower == 0 ? upper : 1.0 - cosine;
+        double sinePower = currentPower == 0 ? sine : sine * sine;
+        for (currentPower += 2; currentPower <= power; currentPower += 2) {
+            result = -cosine * sinePower / currentPower
+                    + (currentPower - 1.0) / currentPower * result;
+            sinePower *= sine * sine;
+        }
+        return result;
     }
 
     private static int primeForDimension(int dimensions) {
@@ -269,38 +295,64 @@ public final class HypervolumeApproximationAlgorithms {
     private static double reciprocalGeneralizedGoldenRatio(int dimensions) {
         double phi = 1.5;
         for (int iteration = 0; iteration < 80; iteration++) {
-            double power = Math.pow(phi, dimensions + 1);
+            double power = integerPower(phi, dimensions + 1);
             double value = power - phi - 1.0;
-            double derivative = (dimensions + 1.0) * Math.pow(phi, dimensions) - 1.0;
+            double derivative = (dimensions + 1.0) * integerPower(phi, dimensions) - 1.0;
             phi -= value / derivative;
         }
         return 1.0 / phi;
     }
 
     private static double sphereConstant(int dimensions) {
-        double sphereArea = 2.0 * Math.pow(Math.PI, dimensions / 2.0) / gamma(dimensions / 2.0);
-        return sphereArea / (dimensions * Math.pow(2.0, dimensions));
+        return SPHERE_CONSTANTS[dimensions];
     }
 
-    private static double gamma(double value) {
-        double[] coefficients = {
-                676.5203681218851, -1259.1392167224028, 771.32342877765313,
-                -176.61502916214059, 12.507343278686905, -0.13857109526572012,
-                9.9843695780195716e-6, 1.5056327351493116e-7
-        };
-        if (value < 0.5) {
-            return Math.PI / (Math.sin(Math.PI * value) * gamma(1.0 - value));
+    private static double[] sphereConstants() {
+        double[] result = new double[32];
+        result[1] = 1.0;
+        result[2] = Math.PI * 0.25;
+        for (int dimensions = 3; dimensions < result.length; dimensions++) {
+            result[dimensions] = result[dimensions - 2] * Math.PI / (2.0 * dimensions);
         }
-        double shifted = value - 1.0;
-        double sum = 0.99999999999980993;
-        for (int i = 0; i < coefficients.length; i++) {
-            sum += coefficients[i] / (shifted + i + 1.0);
+        return result;
+    }
+
+    private static double[] sinPowerHalfPi() {
+        double[] result = new double[31];
+        result[0] = Math.PI * 0.5;
+        result[1] = 1.0;
+        for (int power = 2; power < result.length; power++) {
+            result[power] = (power - 1.0) / power * result[power - 2];
         }
-        double t = shifted + coefficients.length - 0.5;
-        return Math.sqrt(2.0 * Math.PI) * Math.pow(t, shifted + 0.5) * Math.exp(-t) * sum;
+        return result;
+    }
+
+    private static double[] reciprocalGoldenRatios() {
+        double[] result = new double[31];
+        for (int dimensions = 1; dimensions < result.length; dimensions++) {
+            result[dimensions] = reciprocalGeneralizedGoldenRatio(dimensions);
+        }
+        return result;
+    }
+
+    private static double integerPower(double value, int exponent) {
+        double result = 1.0;
+        double factor = value;
+        int remaining = exponent;
+        while (remaining > 0) {
+            if ((remaining & 1) != 0) {
+                result *= factor;
+            }
+            factor *= factor;
+            remaining >>>= 1;
+        }
+        return result;
     }
 
     private static double fractional(double value) {
         return value - Math.floor(value);
+    }
+
+    private record RadialPoints(double[] values, int count, int dimensions, int stride) {
     }
 }

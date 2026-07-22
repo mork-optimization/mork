@@ -134,13 +134,14 @@ final class HypervolumeContributions3d {
             area += point.area;
 
             Node delimiter = point.currentNext[0];
-            double[] join = {delimiter.point[0], point.point[1]};
-            delimiter.area -= computeArea(join, point.head[1], delimiter.head[0], 0);
+            delimiter.area -= computeArea(
+                    delimiter.point[0], point.point[1],
+                    point.head[1], delimiter.head[0], 0);
 
             delimiter = point.currentNext[1];
-            join[0] = point.point[0];
-            join[1] = delimiter.point[1];
-            delimiter.area -= computeArea(join, point.head[0], delimiter.head[1], 1);
+            delimiter.area -= computeArea(
+                    point.point[0], delimiter.point[1],
+                    point.head[0], delimiter.head[1], 1);
 
             addNondominatedPoint(point);
             volume += area * (point.next.point[2] - point.point[2]);
@@ -214,13 +215,20 @@ final class HypervolumeContributions3d {
     }
 
     private static double computeArea(double[] point, Node boundary, Node inner, int dimension) {
+        return computeArea(point[0], point[1], boundary, inner, dimension);
+    }
+
+    private static double computeArea(
+            double x, double y, Node boundary, Node inner, int dimension) {
         int other = 1 - dimension;
-        double area = (boundary.point[other] - point[other])
-                * (inner.point[dimension] - point[dimension]);
-        while (point[other] < inner.point[other]) {
+        double pointDimension = dimension == 0 ? x : y;
+        double pointOther = other == 0 ? x : y;
+        double area = (boundary.point[other] - pointOther)
+                * (inner.point[dimension] - pointDimension);
+        while (pointOther < inner.point[other]) {
             boundary = inner;
             inner = inner.currentNext[dimension];
-            area += (boundary.point[other] - point[other])
+            area += (boundary.point[other] - pointOther)
                     * (inner.point[dimension] - boundary.point[dimension]);
         }
         return area;

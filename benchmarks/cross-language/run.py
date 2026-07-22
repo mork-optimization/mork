@@ -47,10 +47,32 @@ OPERATIONS = (
     "nondominated",
     "pareto_rank",
     "hypervolume",
+    "hypervolume_contributions",
     "hypervolume_approximation",
     "epsilon_additive",
+    "epsilon_multiplicative",
     "igd_plus",
+    "exact_r2",
+    "eaf",
+    "eaf_difference_points",
+    "eaf_difference_rectangles",
+    "weighted_hypervolume",
+    "hype_weighted_hypervolume",
 )
+
+
+def enable_quick_mode() -> None:
+    global FORKS, WARMUP_ITERATIONS, MEASUREMENT_ITERATIONS
+    global ITERATION_SECONDS, SLOW_CASE_SECONDS
+    FORKS = 1
+    WARMUP_ITERATIONS = 1
+    MEASUREMENT_ITERATIONS = 3
+    ITERATION_SECONDS = 0.25
+    SLOW_CASE_SECONDS = 3.0
+
+
+if os.environ.get("MOOCORE_BENCHMARK_QUICK") == "1":
+    enable_quick_mode()
 
 
 def progress(message: str) -> None:
@@ -71,6 +93,16 @@ class Case:
     keep_weakly: bool | None = None
     method: str | None = None
     exact_hv: float | None = None
+    sets: str | None = None
+    right_points: str | None = None
+    right_sets: str | None = None
+    auxiliary: str | None = None
+    ideal: str | None = None
+    mu: str | None = None
+    distribution: str | None = None
+    samples: int | None = None
+    seed: int | None = None
+    format: str | None = None
 
 
 def fail_missing_dependencies() -> None:
@@ -195,6 +227,25 @@ class CaseBuilder:
             properties["method"] = java_method(case.method)
             properties["samples"] = str(SAMPLES)
             properties["seed"] = str(SEED)
+        for field, key in (
+            ("sets", "sets"),
+            ("right_points", "rightPoints"),
+            ("right_sets", "rightSets"),
+            ("auxiliary", "auxiliary"),
+            ("ideal", "ideal"),
+            ("mu", "mu"),
+        ):
+            value = getattr(case, field)
+            if value is not None:
+                properties[key] = value
+        if case.distribution is not None:
+            properties["distribution"] = case.distribution.upper()
+        if case.samples is not None:
+            properties["samples"] = str(case.samples)
+        if case.seed is not None:
+            properties["seed"] = str(case.seed)
+        if case.format is not None:
+            properties["format"] = case.format.upper()
         self.case_dir.mkdir(parents=True, exist_ok=True)
         with (self.case_dir / f"{case.case_id}.properties").open(
             "w", encoding="utf-8"
@@ -230,6 +281,22 @@ def add_case(
     reference: Any | None = None,
     keep_weakly: bool | None = None,
     method: str | None = None,
+    sets_file: str | None = None,
+    sets: Any | None = None,
+    right_points_file: str | None = None,
+    right_points: Any | None = None,
+    right_sets_file: str | None = None,
+    right_sets: Any | None = None,
+    auxiliary_file: str | None = None,
+    auxiliary: Any | None = None,
+    ideal_file: str | None = None,
+    ideal: Any | None = None,
+    mu_file: str | None = None,
+    mu: Any | None = None,
+    distribution: str | None = None,
+    samples: int | None = None,
+    seed: int | None = None,
+    output_format: str | None = None,
 ) -> None:
     import moocore
     import numpy as np
@@ -239,6 +306,10 @@ def add_case(
         suffix = "-weak" if keep_weakly else "-strict"
     if method is not None:
         suffix = "-" + safe_id(method)
+    if distribution is not None:
+        suffix = "-" + safe_id(distribution)
+    if output_format is not None:
+        suffix = "-" + safe_id(output_format)
     case_id = f"{safe_id(operation)}-{safe_id(dataset)}-{size}{suffix}"
     selected = points[:size, :]
     exact_hv = None
@@ -250,6 +321,8 @@ def add_case(
         oracle = moocore.pareto_rank(selected).astype(float)
     elif operation == "hypervolume":
         oracle = [[moocore.hypervolume(selected, ref=reference)]]
+    elif operation == "hypervolume_contributions":
+        oracle = moocore.hv_contributions(selected, ref=reference)
     elif operation == "hypervolume_approximation":
         exact_hv = float(moocore.hypervolume(selected, ref=reference))
         if method == "DZ2019-MC":
@@ -261,8 +334,29 @@ def add_case(
             )]]
     elif operation == "epsilon_additive":
         oracle = [[moocore.epsilon_additive(selected, ref=reference)]]
+    elif operation == "epsilon_multiplicative":
+        oracle = [[moocore.epsilon_mult(selected, ref=reference)]]
     elif operation == "igd_plus":
         oracle = [[moocore.igd_plus(selected, ref=reference)]]
+    elif operation == "exact_r2":
+        oracle = [[moocore.r2_exact(selected, ref=reference)]]
+    elif operation == "eaf":
+        oracle = moocore.eaf(selected, sets=np.asarray(sets)[:size])
+    elif operation in ("eaf_difference_points", "eaf_difference_rectangles"):
+        left_matrix = np.column_stack((selected, np.asarray(sets)[:size]))
+        right_matrix = np.column_stack((right_points, right_sets))
+        oracle = moocore.eafdiff(
+            left_matrix, right_matrix,
+            rectangles=operation == "eaf_difference_rectangles",
+        )
+    elif operation == "weighted_hypervolume":
+        oracle = [[moocore.whv_rect(selected, auxiliary, ref=reference)]]
+    elif operation == "hype_weighted_hypervolume":
+        native_mu = float(mu[0]) if distribution == "exponential" else mu
+        oracle = [[moocore.whv_hype(
+            selected, ref=reference, ideal=ideal, nsamples=samples,
+            seed=seed, dist=distribution, mu=native_mu,
+        )]]
     else:
         raise ValueError(f"Unknown operation: {operation}")
     oracle_file = builder.oracle(case_id, np.asarray(oracle, dtype=float))
@@ -278,6 +372,16 @@ def add_case(
         keep_weakly=keep_weakly,
         method=method,
         exact_hv=exact_hv,
+        sets=sets_file,
+        right_points=right_points_file,
+        right_sets=right_sets_file,
+        auxiliary=auxiliary_file,
+        ideal=ideal_file,
+        mu=mu_file,
+        distribution=distribution,
+        samples=samples,
+        seed=seed,
+        format=output_format,
     ))
 
 
@@ -377,6 +481,27 @@ def prepare_cases(output: Path, selected_operations: set[str]) -> list[Case]:
                     reference_file, reference,
                 )
 
+    if "hypervolume_contributions" in selected_operations:
+        rng = np.random.default_rng(SEED + 1)
+        for objectives in (2, 3):
+            random_points = rng.random((1_000, objectives))
+            simplex_points = -np.log(np.maximum(
+                rng.random((1_000, objectives)), np.finfo(float).tiny
+            ))
+            simplex_points /= simplex_points.sum(axis=1, keepdims=True)
+            reference = np.ones(objectives)
+            reference_file = builder.matrix(
+                f"hvc-{objectives}d-reference", reference.reshape(1, -1)
+            )
+            for shape, points in (("random", random_points), ("simplex", simplex_points)):
+                name = f"{shape}-{objectives}d"
+                points_file = builder.matrix(f"hvc-{name}", points)
+                for size in (100, 500, 1_000):
+                    add_case(
+                        builder, "hypervolume_contributions", name, size,
+                        points_file, points, reference_file, reference,
+                    )
+
     if "hypervolume_approximation" in selected_operations:
         definitions = {
             "DTLZLinearShape.3d": (
@@ -436,6 +561,126 @@ def prepare_cases(output: Path, selected_operations: set[str]) -> list[Case]:
                 points_file, points, reference_file, reference,
             )
 
+    if "exact_r2" in selected_operations:
+        rng = np.random.default_rng(SEED + 2)
+        points = rng.random((1_000, 2))
+        reference = np.ones(2)
+        points_file = builder.matrix("exact-r2-random-2d", points)
+        reference_file = builder.matrix("exact-r2-reference", reference.reshape(1, -1))
+        for size in (100, 500, 1_000):
+            add_case(
+                builder, "exact_r2", "random-2d", size,
+                points_file, points, reference_file, reference,
+            )
+
+    if "epsilon_multiplicative" in selected_operations:
+        rng = np.random.default_rng(SEED + 3)
+        points = 0.1 + rng.random((1_000, 5))
+        reference = 0.1 + rng.random((1_000, 5))
+        points_file = builder.matrix("epsilon-multiplicative-points", points)
+        reference_file = builder.matrix("epsilon-multiplicative-reference", reference)
+        for size in (200, 600, 1_000):
+            add_case(
+                builder, "epsilon_multiplicative", "random-positive-5d", size,
+                points_file, points, reference_file, reference,
+            )
+
+    if "eaf" in selected_operations:
+        definitions = (
+            ("input1-2d", "input1.dat", (20, 50, 100)),
+            ("ran-3d", "ran.1000pts.3d.10", (100, 500, 1_000)),
+        )
+        for dataset_name, filename, sizes in definitions:
+            dataset = moocore.read_datasets(TESTSUITE_DATA / filename)
+            set_ids = np.unique(dataset[:, -1])
+            for size in sizes:
+                rows_per_set = size // len(set_ids)
+                selected_rows = np.vstack([
+                    dataset[dataset[:, -1] == set_id][:rows_per_set]
+                    for set_id in set_ids
+                ])
+                points = selected_rows[:, :-1]
+                sets = selected_rows[:, -1]
+                name = f"{dataset_name}-{size}"
+                points_file = builder.matrix(f"eaf-{name}-points", points)
+                sets_file = builder.matrix(f"eaf-{name}-sets", sets)
+                add_case(
+                    builder, "eaf", dataset_name, size,
+                    points_file, points, sets_file=sets_file, sets=sets,
+                )
+
+    if {"eaf_difference_points", "eaf_difference_rectangles"} & selected_operations:
+        rng = np.random.default_rng(SEED + 5)
+        for size in (100, 500):
+            left = rng.random((size, 2))
+            right = np.clip(rng.random((size, 2)) + np.array([0.03, -0.03]), 0.0, 1.0)
+            left_sets = np.arange(size) % 10 + 1
+            right_sets = np.arange(size) % 10 + 1
+            prefix = f"eaf-difference-random-2d-{size}"
+            left_file = builder.matrix(f"{prefix}-left", left)
+            left_sets_file = builder.matrix(f"{prefix}-left-sets", left_sets)
+            right_file = builder.matrix(f"{prefix}-right", right)
+            right_sets_file = builder.matrix(f"{prefix}-right-sets", right_sets)
+            for operation, output_format in (
+                ("eaf_difference_points", "POINTS"),
+                ("eaf_difference_rectangles", "RECTANGLES"),
+            ):
+                if operation not in selected_operations:
+                    continue
+                add_case(
+                    builder, operation, "random-2d", size,
+                    left_file, left,
+                    sets_file=left_sets_file, sets=left_sets,
+                    right_points_file=right_file, right_points=right,
+                    right_sets_file=right_sets_file, right_sets=right_sets,
+                    output_format=output_format,
+                )
+
+    if "weighted_hypervolume" in selected_operations:
+        rng = np.random.default_rng(SEED + 6)
+        points = rng.random((1_000, 2))
+        reference = np.ones(2)
+        rectangle_count = 100
+        rectangles = np.empty((rectangle_count, 5))
+        for row in range(rectangle_count):
+            rectangles[row] = (
+                row / rectangle_count, 0.0, (row + 1) / rectangle_count, 1.0,
+                0.5 + (row % 7) / 7.0,
+            )
+        points_file = builder.matrix("weighted-hv-points", points)
+        reference_file = builder.matrix("weighted-hv-reference", reference.reshape(1, -1))
+        rectangles_file = builder.matrix("weighted-hv-rectangles", rectangles)
+        for size in (100, 500, 1_000):
+            add_case(
+                builder, "weighted_hypervolume", "random-2d", size,
+                points_file, points, reference_file, reference,
+                auxiliary_file=rectangles_file, auxiliary=rectangles,
+            )
+
+    if "hype_weighted_hypervolume" in selected_operations:
+        rng = np.random.default_rng(SEED + 7)
+        points = rng.random((100, 2))
+        reference = np.ones(2)
+        ideal = np.zeros(2)
+        points_file = builder.matrix("hype-points", points)
+        reference_file = builder.matrix("hype-reference", reference.reshape(1, -1))
+        ideal_file = builder.matrix("hype-ideal", ideal.reshape(1, -1))
+        for distribution, mu in (
+            ("uniform", None),
+            ("exponential", np.array([0.2])),
+            ("point", np.array([0.5, 0.5])),
+        ):
+            mu_file = None if mu is None else builder.matrix(
+                f"hype-{distribution}-mu", mu.reshape(1, -1)
+            )
+            add_case(
+                builder, "hype_weighted_hypervolume", "random-2d", 100,
+                points_file, points, reference_file, reference,
+                ideal_file=ideal_file, ideal=ideal,
+                mu_file=mu_file, mu=mu, distribution=distribution,
+                samples=SAMPLES, seed=SEED,
+            )
+
     manifest = {"schema_version": 1, "cases": [asdict(case) for case in builder.cases]}
     with (output / "manifest.json").open("w", encoding="utf-8") as destination:
         json.dump(manifest, destination, indent=2)
@@ -451,20 +696,44 @@ def load_cases(manifest_path: Path) -> list[Case]:
     return [Case(**entry) for entry in manifest["cases"]]
 
 
-def case_data(case: Case, manifest_path: Path) -> tuple[Any, Any | None, Any]:
+def representative_cases(cases: list[Case]) -> list[Case]:
+    selected: dict[tuple[Any, ...], Case] = {}
+    for case in cases:
+        dataset = case.dataset if case.operation in {
+            "nondominated", "hypervolume_contributions"
+        } else None
+        key = (
+            case.operation, case.objectives, case.method, case.keep_weakly,
+            dataset, case.distribution, case.format,
+        )
+        current = selected.get(key)
+        if current is None or case.size > current.size:
+            selected[key] = case
+    return sorted(selected.values(), key=lambda case: case.case_id)
+
+
+def write_manifest(path: Path, cases: list[Case]) -> None:
+    payload = {"schema_version": 1, "cases": [asdict(case) for case in cases]}
+    with path.open("w", encoding="utf-8") as destination:
+        json.dump(payload, destination, indent=2)
+        destination.write("\n")
+
+
+def case_data(case: Case, manifest_path: Path) -> tuple[Any, Any | None, Any, dict[str, Any]]:
     case_directory = manifest_path.parent / "cases"
     points = read_matrix((case_directory / case.points).resolve())[:case.size, :]
     reference = None
     if case.reference is not None:
         reference = read_matrix((case_directory / case.reference).resolve())
     oracle = read_matrix((case_directory / case.oracle).resolve())
-    return points, reference, oracle
-
-
-def positions(values: Any) -> Any:
-    import numpy as np
-
-    return np.nonzero(np.asarray(values))[0]
+    extras = {}
+    for field in (
+        "sets", "right_points", "right_sets", "auxiliary", "ideal", "mu"
+    ):
+        path = getattr(case, field)
+        if path is not None:
+            extras[field] = read_matrix((case_directory / path).resolve())
+    return points, reference, oracle, extras
 
 
 def relative_error(exact: float, approximation: float) -> float:
@@ -474,16 +743,21 @@ def relative_error(exact: float, approximation: float) -> float:
 
 
 def make_python_operation(
-    case: Case, points: Any, reference_matrix: Any | None
+    case: Case, points: Any, reference_matrix: Any | None,
+    extras: dict[str, Any] | None = None,
 ) -> tuple[str, Callable[[], Any]]:
     import moocore
+    import numpy as np
+
+    if extras is None:
+        extras = {}
 
     if case.operation == "nondominated":
         return (
             "moocore",
-            lambda: positions(moocore.is_nondominated(
+            lambda: moocore.is_nondominated(
                 points, maximise=True, keep_weakly=bool(case.keep_weakly)
-            )),
+            ),
         )
 
     if case.operation == "pareto_rank":
@@ -493,6 +767,10 @@ def make_python_operation(
         reference = reference_matrix[0]
         indicator = moocore.Hypervolume(ref=reference)
         return "moocore", lambda: indicator(points)
+
+    if case.operation == "hypervolume_contributions":
+        reference = reference_matrix[0]
+        return "moocore", lambda: moocore.hv_contributions(points, ref=reference)
 
     if case.operation == "hypervolume_approximation":
         reference = reference_matrix[0]
@@ -512,6 +790,48 @@ def make_python_operation(
             points, ref=reference_matrix
         )
 
+    if case.operation == "epsilon_multiplicative":
+        return "moocore", lambda: moocore.epsilon_mult(
+            points, ref=reference_matrix
+        )
+
+    if case.operation == "exact_r2":
+        reference = reference_matrix[0]
+        return "moocore", lambda: moocore.r2_exact(points, ref=reference)
+
+    if case.operation == "eaf":
+        sets = extras["sets"][:, 0]
+        return "moocore", lambda: moocore.eaf(points, sets=sets)
+
+    if case.operation in ("eaf_difference_points", "eaf_difference_rectangles"):
+        left = np.column_stack((points, extras["sets"][:, 0]))
+        right = np.column_stack((
+            extras["right_points"], extras["right_sets"][:, 0]
+        ))
+        rectangles = case.operation == "eaf_difference_rectangles"
+        return "moocore", lambda: moocore.eafdiff(
+            left, right, rectangles=rectangles
+        )
+
+    if case.operation == "weighted_hypervolume":
+        reference = reference_matrix[0]
+        rectangles = extras["auxiliary"]
+        return "moocore", lambda: moocore.whv_rect(
+            points, rectangles, ref=reference
+        )
+
+    if case.operation == "hype_weighted_hypervolume":
+        reference = reference_matrix[0]
+        ideal = extras["ideal"][0]
+        mu_matrix = extras.get("mu")
+        mu = None if mu_matrix is None else (
+            float(mu_matrix[0, 0]) if mu_matrix.size == 1 else mu_matrix.reshape(-1)
+        )
+        return "moocore", lambda: moocore.whv_hype(
+            points, ref=reference, ideal=ideal, nsamples=case.samples,
+            seed=case.seed, dist=case.distribution, mu=mu,
+        )
+
     raise ValueError(f"Unknown operation: {case.operation}")
 
 
@@ -522,7 +842,28 @@ def verify_python_result(case: Case, implementation: str, value: Any, oracle: An
         expected = oracle[:, 0].astype(int)
         actual = np.asarray(value, dtype=int)
         np.testing.assert_array_equal(
-            actual, positions(expected) if case.operation == "nondominated" else expected,
+            actual, expected,
+            err_msg=f"{implementation} differs for {case.case_id}",
+        )
+        return
+    if case.operation == "hypervolume_contributions":
+        np.testing.assert_allclose(
+            np.asarray(value), oracle[:, 0], rtol=1e-9, atol=1e-12,
+            err_msg=f"{implementation} differs for {case.case_id}",
+        )
+        return
+    if case.operation in ("eaf", "eaf_difference_points", "eaf_difference_rectangles"):
+        actual = np.asarray(value)
+        expected = np.asarray(oracle)
+        if actual.shape != expected.shape:
+            raise AssertionError(
+                f"{implementation} shape differs for {case.case_id}: "
+                f"expected={expected.shape}, actual={actual.shape}"
+            )
+        actual = actual[np.lexsort(actual.T[::-1])]
+        expected = expected[np.lexsort(expected.T[::-1])]
+        np.testing.assert_allclose(
+            actual, expected, rtol=1e-9, atol=1e-12,
             err_msg=f"{implementation} differs for {case.case_id}",
         )
         return
@@ -541,6 +882,12 @@ def verify_python_result(case: Case, implementation: str, value: Any, oracle: An
             np.testing.assert_allclose(
                 actual, float(oracle[0, 0]), rtol=1e-9, atol=1e-12,
                 err_msg=f"{implementation} differs for {case.case_id}",
+            )
+        return
+    if case.operation == "hype_weighted_hypervolume":
+        if relative_error(float(oracle[0, 0]), float(value)) > 0.05:
+            raise AssertionError(
+                f"{implementation} exceeds 5% relative error for {case.case_id}"
             )
         return
     np.testing.assert_allclose(
@@ -601,9 +948,9 @@ def python_worker(manifest: Path, output: Path, fork: int) -> None:
             f"Python fork {fork + 1}/{FORKS}: case {index}/{len(cases)} "
             f"{case.case_id}"
         )
-        points, reference, oracle = case_data(case, manifest)
+        points, reference, oracle, extras = case_data(case, manifest)
         implementation, function = make_python_operation(
-            case, points, reference
+            case, points, reference, extras
         )
         group = (case.operation, case.dataset, implementation)
         if group in disabled:
@@ -670,9 +1017,17 @@ def benchmark_method(operation: str) -> str:
         "nondominated": "nondominated",
         "pareto_rank": "paretoRank",
         "hypervolume": "hypervolume",
+        "hypervolume_contributions": "hypervolumeContributions",
         "hypervolume_approximation": "approximateHypervolume",
         "epsilon_additive": "epsilonAdditive",
+        "epsilon_multiplicative": "epsilonMultiplicative",
         "igd_plus": "igdPlus",
+        "exact_r2": "exactR2",
+        "eaf": "eaf",
+        "eaf_difference_points": "eafDifference",
+        "eaf_difference_rectangles": "eafDifference",
+        "weighted_hypervolume": "weightedHypervolume",
+        "hype_weighted_hypervolume": "hypeWeightedHypervolume",
     }[operation]
 
 
@@ -680,6 +1035,7 @@ def run_java_benchmarks(
     cases: list[Case], jar: Path, case_directory: Path, raw_directory: Path
 ) -> list[Path]:
     outputs = []
+    iteration_time = f"{round(ITERATION_SECONDS * 1_000)}ms"
     for operation in OPERATIONS:
         case_ids = [case.case_id for case in cases if case.operation == operation]
         if not case_ids:
@@ -687,11 +1043,15 @@ def run_java_benchmarks(
         progress(f"Java JMH: starting {operation} ({len(case_ids)} cases)")
         output = raw_directory / f"jmh-{operation}.json"
         benchmark = (
-            "es.urjc.etsii.grafo.benchmarks.CrossLanguageMoocoreBenchmark."
+            "^es\\.urjc\\.etsii\\.grafo\\.benchmarks\\."
+            "CrossLanguageMoocoreBenchmark\\."
             + benchmark_method(operation)
+            + "$"
         )
         command = [
             "java",
+            "--add-modules",
+            "jdk.incubator.vector",
             "-jar",
             str(jar.resolve()),
             benchmark,
@@ -704,13 +1064,15 @@ def run_java_benchmarks(
             "-i",
             str(MEASUREMENT_ITERATIONS),
             "-w",
-            "1s",
+            iteration_time,
             "-r",
-            "1s",
+            iteration_time,
             "-rf",
             "json",
             "-rff",
             str(output.resolve()),
+            "-jvmArgsPrepend",
+            "--add-modules=jdk.incubator.vector",
         ]
         environment = os.environ.copy()
         environment["MOOCORE_CROSS_LANGUAGE_CASES"] = str(case_directory.resolve())
@@ -988,6 +1350,14 @@ def parse_arguments() -> argparse.Namespace:
     )
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--java-jar", type=Path, default=DEFAULT_JAR)
+    parser.add_argument(
+        "--quick", action="store_true",
+        help="Run a fixed representative matrix with short iterations.",
+    )
+    parser.add_argument(
+        "--reuse-python", type=Path,
+        help="Reuse Python worker results from a compatible checkpoint.",
+    )
     parser.add_argument("--worker", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--worker-output", type=Path, help=argparse.SUPPRESS)
     parser.add_argument("--fork-index", type=int, help=argparse.SUPPRESS)
@@ -997,6 +1367,9 @@ def parse_arguments() -> argparse.Namespace:
 
 def main() -> None:
     arguments = parse_arguments()
+    if arguments.quick:
+        os.environ["MOOCORE_BENCHMARK_QUICK"] = "1"
+        enable_quick_mode()
     if arguments.check_dependencies:
         fail_missing_dependencies()
         return
@@ -1020,11 +1393,29 @@ def main() -> None:
     output = arguments.output.resolve()
     raw_directory = output / "raw"
     raw_directory.mkdir(parents=True, exist_ok=True)
-    progress("Preparing shared inputs and Python correctness oracles")
-    cases = prepare_cases(output, set(arguments.operations))
-    progress(f"Prepared {len(cases)} benchmark cases")
     manifest = output / "manifest.json"
-    python_paths = run_python_workers(manifest, raw_directory)
+    if arguments.reuse_python is not None and manifest.is_file():
+        progress(f"Reusing prepared cases from {output}")
+        enabled = set(arguments.operations)
+        cases = [case for case in load_cases(manifest) if case.operation in enabled]
+        if arguments.quick:
+            cases = representative_cases(cases)
+        write_manifest(manifest, cases)
+    else:
+        progress("Preparing shared inputs and Python correctness oracles")
+        cases = prepare_cases(output, set(arguments.operations))
+        if arguments.quick:
+            cases = representative_cases(cases)
+            write_manifest(manifest, cases)
+    progress(f"Prepared {len(cases)} benchmark cases")
+    if arguments.reuse_python is None:
+        python_paths = run_python_workers(manifest, raw_directory)
+    else:
+        source = arguments.reuse_python.resolve() / "raw"
+        python_paths = sorted(source.glob("python-fork-*.json"))
+        if not python_paths:
+            raise SystemExit(f"No Python worker results found in {source}")
+        progress(f"Reusing Python measurements from {source.parent}")
     jmh_paths = run_java_benchmarks(
         cases, arguments.java_jar, output / "cases", raw_directory
     )
