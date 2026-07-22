@@ -167,7 +167,7 @@ benchmarks/cross-language/venv/bin/python \
     benchmarks/cross-language/run.py
 ```
 
-All six benchmark families run by default. To run selected families with the
+All benchmark families run by default. To run selected families with the
 same full measurement configuration:
 
 ```bash
@@ -200,6 +200,100 @@ benchmarks/cross-language/venv/bin/python benchmarks/cross-language/run.py \
 ```
 
 Omit `--quick` and `--reuse-python` for the full final/overnight matrix.
+
+### Full comparison and gap report on a clean server
+
+Use a JDK 25 or newer and verify that it contains the
+incubator Vector API before starting:
+
+```bash
+java -version
+java --list-modules | grep '^jdk.incubator.vector@'
+```
+
+The local `moocore/python` package builds its native C extension during setup,
+so the server also needs a C compiler, Python development headers, and the
+Python `venv` module. For example, Debian/Ubuntu systems typically provide
+these prerequisites through `build-essential`, `python3-dev`, and
+`python3-venv`. JDK 25 installation is distribution-specific.
+
+```bash
+# Check that Python >3.10 and a C/C++ compiler is available
+python3 --version
+cc --version
+```
+
+Make sure the server has the exact project revision and working-tree changes
+that should be measured. From the repository root, initialize the submodules
+and create the benchmark environment:
+
+```bash
+git submodule update --init moocore testsuite
+python3 benchmarks/cross-language/setup_environment.py
+```
+
+The setup command installs the pinned local C+Python implementation and Python
+reporting dependencies into `benchmarks/cross-language/venv`, checks the
+dependencies, and builds `benchmarks/target/benchmarks.jar`.
+
+Because the full run takes several hours, run it inside `tmux` or `screen`. For example:
+
+```bash
+tmux new -s moocore-full
+
+benchmarks/cross-language/venv/bin/python \
+    benchmarks/cross-language/run.py \
+    --output benchmarks/target/cross-language/intel-full \
+    --java-jar benchmarks/target/benchmarks.jar
+```
+
+Detach from `tmux` with `Ctrl-b d` and reconnect later with:
+
+```bash
+tmux attach -t moocore-full
+```
+
+Do not pass `--quick` or `--reuse-python`: omitting both forces a fresh full
+C+Python and Java run on the Intel machine. The runner creates
+`results.csv`, `results.json`, `report.md`, plots, raw samples, and environment
+metadata under `benchmarks/target/cross-language/intel-full`.
+
+After the runner exits successfully, calculate every Java gap against its
+matching C+Python case:
+
+```bash
+benchmarks/cross-language/venv/bin/python \
+    benchmarks/cross-language/calculate_gaps.py \
+    benchmarks/target/cross-language/intel-full/results.csv
+```
+
+This creates:
+
+- `benchmarks/target/cross-language/intel-full/gaps.md`: overall,
+  per-operation, method/objective, best/worst, and every per-case gap.
+- `benchmarks/target/cross-language/intel-full/gaps.csv`: the same per-case
+  data in machine-readable form.
+
+The gap is `(Java time / C+Python time - 1) * 100`. Negative values favor Java;
+positive values favor C+Python. The operation and overall summaries use a
+geometric mean of the per-case ratios.
+
+Both stages can be launched as one command inside `tmux`; the gap report runs
+only if the full benchmark succeeds:
+
+```bash
+benchmarks/cross-language/venv/bin/python \
+    benchmarks/cross-language/run.py \
+    --output benchmarks/target/cross-language/intel-full \
+    --java-jar benchmarks/target/benchmarks.jar \
+&& benchmarks/cross-language/venv/bin/python \
+    benchmarks/cross-language/calculate_gaps.py \
+    benchmarks/target/cross-language/intel-full/results.csv
+```
+
+Run the comparison on an otherwise idle machine. Do not combine C+Python data
+from one machine with Java data from another; CPU, JVM, compiler, and package
+metadata are recorded in `environment.json` for this reason.
 
 ### Timing and correctness boundaries
 
