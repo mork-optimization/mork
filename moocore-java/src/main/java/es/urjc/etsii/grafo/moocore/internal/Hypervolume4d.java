@@ -18,16 +18,17 @@ final class Hypervolume4d {
     }
 
     static double compute(double[][] input, double[] reference) {
-        List<double[]> relevant = new ArrayList<>();
-        for (double[] point : input) {
-            if (strictlyDominatesReference(point, reference)) {
-                relevant.add(point);
+        int[] order = new int[input.length];
+        int count = 0;
+        for (int row = 0; row < input.length; row++) {
+            if (strictlyDominatesReference(input[row], reference)) {
+                order[count++] = row;
             }
         }
-        if (relevant.isEmpty()) {
+        if (count == 0) {
             return 0.0;
         }
-        relevant.sort(Comparator.comparingDouble(point -> point[3]));
+        KungParetoAlgorithms.sortByCoordinate(input, order, count, 3);
 
         Node firstSentinel = new Node(new double[]{
                 -Double.MAX_VALUE, reference[1], -Double.MAX_VALUE, -Double.MAX_VALUE});
@@ -38,14 +39,14 @@ final class Hypervolume4d {
         resetSentinels(firstSentinel, secondSentinel, lastSentinel);
 
         Node previous = secondSentinel;
-        for (double[] point : relevant) {
-            Node node = new Node(point);
-            previous.next[1] = node;
-            node.previous[1] = previous;
+        for (int position = 0; position < count; position++) {
+            Node node = new Node(input[order[position]]);
+            previous.links[1] = node;
+            node.links[3] = previous;
             previous = node;
         }
-        previous.next[1] = lastSentinel;
-        lastSentinel.previous[1] = previous;
+        previous.links[1] = lastSentinel;
+        lastSentinel.links[3] = previous;
 
         return sweep(firstSentinel, secondSentinel, lastSentinel);
     }
@@ -69,12 +70,12 @@ final class Hypervolume4d {
         Arrays.sort(sorted, Comparator.comparingDouble(node -> node.point[objective]));
         Node previous = secondSentinel;
         for (Node node : sorted) {
-            previous.next[link] = node;
-            node.previous[link] = previous;
+            previous.links[link] = node;
+            node.links[2 + link] = previous;
             previous = node;
         }
-        previous.next[link] = lastSentinel;
-        lastSentinel.previous[link] = previous;
+        previous.links[link] = lastSentinel;
+        lastSentinel.links[2 + link] = previous;
     }
 
     /** Computes one 4D contribution using upstream's {@code onec4dplusU} sweep. */
@@ -82,14 +83,14 @@ final class Hypervolume4d {
         Node firstSentinel = list.first;
         Node secondSentinel = list.second;
         Node lastSentinel = list.last;
-        Node zFirst = secondSentinel.next[0];
-        Node zLast = lastSentinel.previous[0];
+        Node zFirst = secondSentinel.links[0];
+        Node zLast = lastSentinel.links[2];
         resetSentinels3d(firstSentinel, secondSentinel, lastSentinel);
         restartCurrentList(firstSentinel, secondSentinel);
 
         double[] candidatePoint = candidate.point;
-        if (secondSentinel.next[1] != candidate
-                || candidatePoint[3] == candidate.next[1].point[3]) {
+        if (secondSentinel.links[1] != candidate
+                || candidatePoint[3] == candidate.links[1].point[3]) {
             boolean added = false;
             int previousIgnore = candidate.ignore;
             candidate.ignore = 3;
@@ -108,7 +109,7 @@ final class Hypervolume4d {
                         added = true;
                     }
                 }
-                point = point.next[0];
+                point = point.links[0];
             }
             candidate.ignore = previousIgnore;
 
@@ -118,7 +119,7 @@ final class Hypervolume4d {
                 if (current[3] <= candidatePoint[3] && point.ignore < 3) {
                     equalZ.add(upperBound3d(current, candidatePoint));
                 }
-                if (!equalZ.isEmpty() && point.next[0].point[2] > current[2]) {
+                if (!equalZ.isEmpty() && point.links[0].point[2] > current[2]) {
                     if (equalZ.size() == 1) {
                         continueBaseUpdate(firstSentinel, secondSentinel, lastSentinel,
                                 new Node(equalZ.getFirst()), false);
@@ -136,27 +137,27 @@ final class Hypervolume4d {
                     }
                     equalZ.clear();
                 }
-                point = point.next[0];
+                point = point.links[0];
             }
         }
 
-        Node point = candidate.next[1];
+        Node point = candidate.links[1];
         while (point.point[3] <= candidatePoint[3]) {
-            point = point.next[1];
+            point = point.links[1];
         }
 
-        Node candidatePreviousZ = candidate.previous[0];
-        Node candidateNextZ = candidate.next[0];
+        Node candidatePreviousZ = candidate.links[2];
+        Node candidateNextZ = candidate.links[0];
         if (!restartBaseAndFindClosest(firstSentinel, secondSentinel, candidate)) {
             candidate.ignore = 3;
-            candidate.previous[0] = candidatePreviousZ;
-            candidate.next[0] = candidateNextZ;
+            candidate.links[2] = candidatePreviousZ;
+            candidate.links[0] = candidateNextZ;
             restoreZList(secondSentinel, lastSentinel, zFirst, zLast);
             return 0.0;
         }
         double volume = oneContribution3d(candidate);
-        candidate.previous[0] = candidatePreviousZ;
-        candidate.next[0] = candidateNextZ;
+        candidate.links[2] = candidatePreviousZ;
+        candidate.links[0] = candidateNextZ;
         double hypervolume = volume * (point.point[3] - candidatePoint[3]);
 
         while (point != lastSentinel) {
@@ -175,8 +176,8 @@ final class Hypervolume4d {
                     point.ignore = 3;
                 }
             }
-            hypervolume += volume * (point.next[1].point[3] - current[3]);
-            point = point.next[1];
+            hypervolume += volume * (point.links[1].point[3] - current[3]);
+            point = point.links[1];
         }
         restoreZList(secondSentinel, lastSentinel, zFirst, zLast);
         return hypervolume;
@@ -184,56 +185,56 @@ final class Hypervolume4d {
 
     private static void restoreZList(Node secondSentinel, Node lastSentinel,
                                      Node zFirst, Node zLast) {
-        secondSentinel.next[0] = zFirst;
-        zFirst.previous[0] = secondSentinel;
-        lastSentinel.previous[0] = zLast;
-        zLast.next[0] = lastSentinel;
+        secondSentinel.links[0] = zFirst;
+        zFirst.links[2] = secondSentinel;
+        lastSentinel.links[2] = zLast;
+        zLast.links[0] = lastSentinel;
     }
 
     private static boolean continueBaseUpdate(Node firstSentinel, Node secondSentinel,
                                               Node lastSentinel, Node newPoint,
                                               boolean equalZ) {
         double[] candidate = newPoint.point;
-        Node point = secondSentinel.currentNext[1];
+        Node point = secondSentinel.links[5];
         while (point.point[1] < candidate[1]) {
-            point = point.currentNext[1];
+            point = point.links[5];
         }
         if (point.point[1] != candidate[1] || point.point[0] > candidate[0]) {
-            point = point.currentNext[0];
+            point = point.links[4];
         }
         if (weaklyDominates3d(point.point, candidate)) {
             return false;
         }
 
         Node lexicographicPrevious = point;
-        point = point.currentNext[1];
+        point = point.links[5];
         if (equalZ) {
             while (point.point[0] >= candidate[0]) {
                 removeFromZ(point);
-                point = point.currentNext[1];
+                point = point.links[5];
             }
             if (point != firstSentinel) {
-                point.closest[0] = newPoint;
+                point.links[6] = newPoint;
             }
-            newPoint.previous[0] = lexicographicPrevious;
-            newPoint.next[0] = lexicographicPrevious.next[0];
-            newPoint.closest[1] = firstSentinel;
+            newPoint.links[2] = lexicographicPrevious;
+            newPoint.links[0] = lexicographicPrevious.links[0];
+            newPoint.links[7] = firstSentinel;
         } else {
-            newPoint.previous[0] = lastSentinel.previous[0];
-            newPoint.next[0] = lastSentinel;
+            newPoint.links[2] = lastSentinel.links[2];
+            newPoint.links[0] = lastSentinel;
             while (point.point[0] >= candidate[0]) {
-                point = point.currentNext[1];
+                point = point.links[5];
             }
-            newPoint.closest[1] = point;
+            newPoint.links[7] = point;
         }
 
-        newPoint.closest[0] = lexicographicPrevious;
-        lexicographicPrevious.currentNext[1] = newPoint;
-        newPoint.currentNext[0] = lexicographicPrevious;
-        newPoint.currentNext[1] = point;
-        point.currentNext[0] = newPoint;
-        newPoint.next[0].previous[0] = newPoint;
-        newPoint.previous[0].next[0] = newPoint;
+        newPoint.links[6] = lexicographicPrevious;
+        lexicographicPrevious.links[5] = newPoint;
+        newPoint.links[4] = lexicographicPrevious;
+        newPoint.links[5] = point;
+        point.links[4] = newPoint;
+        newPoint.links[0].links[2] = newPoint;
+        newPoint.links[2].links[0] = newPoint;
         return true;
     }
 
@@ -251,15 +252,15 @@ final class Hypervolume4d {
     private static double sweep(Node firstSentinel, Node secondSentinel, Node lastSentinel) {
         double volume = 0.0;
         double hypervolume = 0.0;
-        Node point = secondSentinel.next[1];
+        Node point = secondSentinel.links[1];
         while (point != lastSentinel) {
             if (restartBaseAndFindClosest(firstSentinel, secondSentinel, point)) {
                 volume += oneContribution3d(point);
                 addToZ(point);
                 updateLinks(lastSentinel, point);
             }
-            hypervolume += volume * (point.next[1].point[3] - point.point[3]);
-            point = point.next[1];
+            hypervolume += volume * (point.links[1].point[3] - point.point[3]);
+            point = point.links[1];
         }
         return hypervolume;
     }
@@ -274,7 +275,7 @@ final class Hypervolume4d {
         double closestX1 = closestX.point[1];
         double closestY0 = closestY.point[0];
         double closestY1 = closestY.point[1];
-        Node point = secondSentinel.next[0];
+        Node point = secondSentinel.links[0];
         restartCurrentList(firstSentinel, secondSentinel);
 
         while (true) {
@@ -293,10 +294,10 @@ final class Hypervolume4d {
                 return false;
             }
             if (!(lessZ || (equalZ && (lessY || (equalY && atMostX))))) {
-                newPoint.closest[0] = closestX;
-                newPoint.closest[1] = closestY;
-                newPoint.previous[0] = point.previous[0];
-                newPoint.next[0] = point;
+                newPoint.links[6] = closestX;
+                newPoint.links[7] = closestY;
+                newPoint.links[2] = point.links[2];
+                newPoint.links[0] = point;
                 return true;
             }
 
@@ -312,17 +313,17 @@ final class Hypervolume4d {
                 closestY0 = current[0];
                 closestY1 = current[1];
             }
-            point = point.next[0];
+            point = point.links[0];
         }
     }
 
     private static double oneContribution3d(Node newPoint) {
         setCurrentToClosest(newPoint);
         double[] candidate = newPoint.point;
-        double area = computeAreaNoInners(candidate, newPoint.currentNext[0], 1);
+        double area = computeAreaNoInners(candidate, newPoint.links[4], 1);
         double volume = 0.0;
         double lastZ = candidate[2];
-        Node point = newPoint.next[0];
+        Node point = newPoint.links[0];
 
         while (true) {
             double[] current = point.point;
@@ -333,34 +334,34 @@ final class Hypervolume4d {
 
             setCurrentToClosest(point);
             if (current[0] < candidate[0]) {
-                if (current[1] <= newPoint.currentNext[1].point[1]) {
+                if (current[1] <= newPoint.links[5].point[1]) {
                     double[] bound = {candidate[0], current[1]};
-                    area -= computeAreaNoInners(bound, newPoint.currentNext[1], 0);
-                    point.currentNext[1] = newPoint.currentNext[1];
-                    point.currentNext[0].currentNext[1] = point;
-                    newPoint.currentNext[1] = point;
+                    area -= computeAreaNoInners(bound, newPoint.links[5], 0);
+                    point.links[5] = newPoint.links[5];
+                    point.links[4].links[5] = point;
+                    newPoint.links[5] = point;
                 }
             } else if (current[1] < candidate[1]) {
-                if (current[0] <= newPoint.currentNext[0].point[0]) {
+                if (current[0] <= newPoint.links[4].point[0]) {
                     double[] bound = {current[0], candidate[1]};
-                    area -= computeAreaNoInners(bound, newPoint.currentNext[0], 1);
-                    point.currentNext[0] = newPoint.currentNext[0];
-                    point.currentNext[1].currentNext[0] = point;
-                    newPoint.currentNext[0] = point;
+                    area -= computeAreaNoInners(bound, newPoint.links[4], 1);
+                    point.links[4] = newPoint.links[4];
+                    point.links[5].links[4] = point;
+                    newPoint.links[4] = point;
                 }
             } else {
-                area -= computeAreaNoInners(current, point.currentNext[0], 1);
-                point.currentNext[1].currentNext[0] = point;
-                point.currentNext[0].currentNext[1] = point;
+                area -= computeAreaNoInners(current, point.links[4], 1);
+                point.links[5].links[4] = point;
+                point.links[4].links[5] = point;
             }
             lastZ = current[2];
-            point = point.next[0];
+            point = point.links[0];
         }
     }
 
     private static void updateLinks(Node lastSentinel, Node newPoint) {
         double[] candidate = newPoint.point;
-        Node point = newPoint.next[0];
+        Node point = newPoint.links[0];
         while (point != lastSentinel) {
             double[] current = point.point;
             if (current[0] <= candidate[0] && current[1] <= candidate[1]
@@ -371,25 +372,25 @@ final class Hypervolume4d {
                 if (candidate[1] <= current[1]) {
                     removeFromZ(point);
                 } else if (candidate[0] < current[0]
-                        && lexicographic102(candidate, point.closest[1].point)) {
-                    point.closest[1] = newPoint;
+                        && lexicographic102(candidate, point.links[7].point)) {
+                    point.links[7] = newPoint;
                 }
             } else if (candidate[1] < current[1]
-                    && lexicographic012(candidate, point.closest[0].point)) {
-                point.closest[0] = newPoint;
+                    && lexicographic012(candidate, point.links[6].point)) {
+                point.links[6] = newPoint;
             }
-            point = point.next[0];
+            point = point.links[0];
         }
     }
 
     private static double computeAreaNoInners(double[] point, Node boundary, int dimension) {
         int other = 1 - dimension;
-        Node next = boundary.currentNext[dimension];
+        Node next = boundary.links[4 + dimension];
         double area = (boundary.point[other] - point[other])
                 * (next.point[dimension] - point[dimension]);
         while (point[other] < next.point[other]) {
             boundary = next;
-            next = next.currentNext[dimension];
+            next = next.links[4 + dimension];
             area += (boundary.point[other] - point[other])
                     * (next.point[dimension] - boundary.point[dimension]);
         }
@@ -397,30 +398,30 @@ final class Hypervolume4d {
     }
 
     private static void addToZ(Node point) {
-        point.next[0] = point.previous[0].next[0];
-        point.next[0].previous[0] = point;
-        point.previous[0].next[0] = point;
+        point.links[0] = point.links[2].links[0];
+        point.links[0].links[2] = point;
+        point.links[2].links[0] = point;
     }
 
     private static void removeFromZ(Node point) {
-        point.previous[0].next[0] = point.next[0];
-        point.next[0].previous[0] = point.previous[0];
+        point.links[2].links[0] = point.links[0];
+        point.links[0].links[2] = point.links[2];
     }
 
     private static void restartCurrentList(Node firstSentinel, Node secondSentinel) {
-        firstSentinel.currentNext[0] = secondSentinel;
-        secondSentinel.currentNext[1] = firstSentinel;
+        firstSentinel.links[4] = secondSentinel;
+        secondSentinel.links[5] = firstSentinel;
     }
 
     private static void restoreCurrentLinks(Node point) {
         setCurrentToClosest(point);
-        point.currentNext[0].currentNext[1] = point;
-        point.currentNext[1].currentNext[0] = point;
+        point.links[4].links[5] = point;
+        point.links[5].links[4] = point;
     }
 
     private static void setCurrentToClosest(Node point) {
-        point.currentNext[0] = point.closest[0];
-        point.currentNext[1] = point.closest[1];
+        point.links[4] = point.links[6];
+        point.links[5] = point.links[7];
     }
 
     private static boolean lexicographic102(double[] left, double[] right) {
@@ -448,45 +449,45 @@ final class Hypervolume4d {
 
     private static void resetSentinels(Node first, Node second, Node last) {
         for (int dimension = 0; dimension < 2; dimension++) {
-            first.next[dimension] = second;
-            first.previous[dimension] = last;
-            second.next[dimension] = last;
-            second.previous[dimension] = first;
-            last.next[dimension] = first;
-            last.previous[dimension] = second;
+            first.links[dimension] = second;
+            first.links[2 + dimension] = last;
+            second.links[dimension] = last;
+            second.links[2 + dimension] = first;
+            last.links[dimension] = first;
+            last.links[2 + dimension] = second;
         }
-        first.closest[0] = second;
-        first.closest[1] = first;
-        second.closest[0] = second;
-        second.closest[1] = first;
-        last.closest[0] = second;
-        last.closest[1] = first;
+        first.links[6] = second;
+        first.links[7] = first;
+        second.links[6] = second;
+        second.links[7] = first;
+        last.links[6] = second;
+        last.links[7] = first;
     }
 
     private static void resetSentinels3d(Node first, Node second, Node last) {
-        first.next[0] = second;
-        first.previous[0] = last;
-        second.next[0] = last;
-        second.previous[0] = first;
-        last.next[0] = first;
-        last.previous[0] = second;
-        first.closest[0] = second;
-        first.closest[1] = first;
-        second.closest[0] = second;
-        second.closest[1] = first;
-        last.closest[0] = second;
-        last.closest[1] = first;
+        first.links[0] = second;
+        first.links[2] = last;
+        second.links[0] = last;
+        second.links[2] = first;
+        last.links[0] = first;
+        last.links[2] = second;
+        first.links[6] = second;
+        first.links[7] = first;
+        second.links[6] = second;
+        second.links[7] = first;
+        last.links[6] = second;
+        last.links[7] = first;
     }
 
     record BaseList(Node first, Node second, Node last) {
     }
 
     static final class Node {
+        private static final Node[] NO_NODES = new Node[0];
+        private static final double[] NO_VALUES = new double[0];
+
         final double[] point;
-        final Node[] next = new Node[2];
-        final Node[] previous = new Node[2];
-        final Node[] currentNext = new Node[2];
-        final Node[] closest = new Node[2];
+        final Node[] links = new Node[8];
         final Node[] higherNext;
         final Node[] higherPrevious;
         final double[] area;
@@ -499,10 +500,10 @@ final class Hypervolume4d {
 
         Node(double[] point, int higherDimensions, int partialDimensions) {
             this.point = point;
-            higherNext = new Node[higherDimensions];
-            higherPrevious = new Node[higherDimensions];
-            area = new double[partialDimensions];
-            volume = new double[partialDimensions];
+            higherNext = higherDimensions == 0 ? NO_NODES : new Node[higherDimensions];
+            higherPrevious = higherDimensions == 0 ? NO_NODES : new Node[higherDimensions];
+            area = partialDimensions == 0 ? NO_VALUES : new double[partialDimensions];
+            volume = partialDimensions == 0 ? NO_VALUES : new double[partialDimensions];
         }
     }
 }

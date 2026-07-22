@@ -1,38 +1,30 @@
 // SPDX-License-Identifier: MPL-2.0
 package es.urjc.etsii.grafo.moocore.internal;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.NavigableSet;
-import java.util.TreeSet;
-
 /** Upstream moocore's HVC3D+ dimension-sweep algorithm. */
 final class HypervolumeContributions3d {
-
-    private static final Comparator<Node> FRONTIER_ORDER = Comparator
-            .comparingDouble((Node node) -> node.point[1])
-            .thenComparing((Node left, Node right) -> Double.compare(right.point[0], left.point[0]))
-            .thenComparingInt(node -> node.index);
 
     private HypervolumeContributions3d() {
     }
 
     static double[] compute(double[][] points, double[] reference) {
         double[] contributions = new double[points.length];
-        List<Node> relevant = new ArrayList<>();
+        int[] order = new int[points.length];
+        int count = 0;
         for (int i = 0; i < points.length; i++) {
             if (strictlyDominatesReference(points[i], reference)) {
-                relevant.add(new Node(points[i], i));
+                order[count++] = i;
             }
         }
-        if (relevant.isEmpty()) {
+        if (count == 0) {
             return contributions;
         }
-        relevant.sort(Comparator
-                .comparingDouble((Node node) -> node.point[2])
-                .thenComparingDouble(node -> node.point[1])
-                .thenComparingDouble(node -> node.point[0]));
+        KungParetoAlgorithms.sortLexicographically(points, order, count, 2, 1, 0);
+        Node[] relevant = new Node[count];
+        for (int position = 0; position < count; position++) {
+            int row = order[position];
+            relevant[position] = new Node(points[row], row);
+        }
 
         Node firstSentinel = new Node(new double[]{
                 -Double.MAX_VALUE, reference[1], -Double.MAX_VALUE}, -3);
@@ -42,7 +34,7 @@ final class HypervolumeContributions3d {
                 -Double.MAX_VALUE, -Double.MAX_VALUE, reference[2]}, -1);
         resetSentinels(firstSentinel, secondSentinel, lastSentinel);
         linkByZ(relevant, secondSentinel, lastSentinel);
-        preprocess(firstSentinel, secondSentinel, lastSentinel);
+        preprocess(firstSentinel, secondSentinel, lastSentinel, count);
         sweep(firstSentinel, secondSentinel, lastSentinel);
 
         Node point = secondSentinel.next;
@@ -56,42 +48,63 @@ final class HypervolumeContributions3d {
     }
 
     private static void preprocess(Node firstSentinel, Node secondSentinel,
-                                   Node lastSentinel) {
-        NavigableSet<Node> frontier = new TreeSet<>(FRONTIER_ORDER);
+                                   Node lastSentinel, int count) {
+        KungParetoAlgorithms.PrimitiveSkyline frontier =
+                new KungParetoAlgorithms.PrimitiveSkyline(count + 2);
+        Node[] frontierNodes = new Node[count + 2];
+        int secondSentinelIndex = count;
+        int firstSentinelIndex = count + 1;
+        frontierNodes[secondSentinelIndex] = secondSentinel;
+        frontierNodes[firstSentinelIndex] = firstSentinel;
+
         Node point = secondSentinel.next;
-        frontier.add(secondSentinel);
-        frontier.add(point);
-        frontier.add(firstSentinel);
+        frontierNodes[0] = point;
+        frontier.add(canonicalZero(secondSentinel.point[1]), secondSentinel.point[0],
+                secondSentinelIndex);
+        frontier.add(canonicalZero(point.point[1]), point.point[0], 0);
+        frontier.add(canonicalZero(firstSentinel.point[1]), firstSentinel.point[0],
+                firstSentinelIndex);
         point.closest[0] = secondSentinel;
         point.closest[1] = firstSentinel;
 
+        int pointIndex = 1;
         point = point.next;
         while (point != lastSentinel) {
+            frontierNodes[pointIndex] = point;
             Node next = point.next;
-            Node probe = new Node(point.point, Integer.MAX_VALUE);
-            Node successor = frontier.higher(probe);
-            Node previous = frontier.lower(successor);
-            if (previous.point[0] <= point.point[0]) {
-                if (equal3d(previous.point, point.point)) {
-                    previous.ignore = true;
+            double y = canonicalZero(point.point[1]);
+            int previousEntry = frontier.floor(y);
+            Node previous = frontierNodes[frontier.payload(previousEntry)];
+            if (frontier.key(previousEntry) == y) {
+                if (previous.point[0] <= point.point[0]) {
+                    if (equal3d(previous.point, point.point)) {
+                        previous.ignore = true;
+                    }
+                    removeFromZ(point);
+                    point = next;
+                    pointIndex++;
+                    continue;
                 }
-                removeFromZ(point);
-            } else if (successor.point[1] == point.point[1]) {
+                frontier.remove(previousEntry);
+                previousEntry = frontier.floor(y);
+                previous = frontierNodes[frontier.payload(previousEntry)];
+            }
+
+            if (previous.point[0] <= point.point[0]) {
                 removeFromZ(point);
             } else {
-                if (previous.point[1] == point.point[1]) {
-                    frontier.remove(previous);
-                }
+                int successorEntry = frontier.ceiling(y);
+                Node successor = frontierNodes[frontier.payload(successorEntry)];
                 while (successor.point[0] >= point.point[0]) {
-                    Node following = frontier.higher(successor);
-                    frontier.remove(successor);
-                    successor = following;
+                    successorEntry = frontier.remove(successorEntry);
+                    successor = frontierNodes[frontier.payload(successorEntry)];
                 }
-                frontier.add(point);
-                point.closest[0] = frontier.lower(point);
-                point.closest[1] = frontier.higher(point);
+                point.closest[0] = previous;
+                point.closest[1] = successor;
+                frontier.add(y, point.point[0], pointIndex);
             }
             point = next;
+            pointIndex++;
         }
     }
 
@@ -213,7 +226,7 @@ final class HypervolumeContributions3d {
         return area;
     }
 
-    private static void linkByZ(List<Node> points, Node secondSentinel, Node lastSentinel) {
+    private static void linkByZ(Node[] points, Node secondSentinel, Node lastSentinel) {
         Node previous = secondSentinel;
         for (Node point : points) {
             previous.next = point;
@@ -258,6 +271,10 @@ final class HypervolumeContributions3d {
 
     private static boolean equal3d(double[] left, double[] right) {
         return left[0] == right[0] && left[1] == right[1] && left[2] == right[2];
+    }
+
+    private static double canonicalZero(double value) {
+        return value == 0.0 ? 0.0 : value;
     }
 
     private static final class Node {

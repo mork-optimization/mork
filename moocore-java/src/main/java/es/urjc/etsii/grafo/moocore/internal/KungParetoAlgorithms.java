@@ -167,6 +167,19 @@ final class KungParetoAlgorithms {
         return rows;
     }
 
+    static void sortByCoordinate(double[][] points, int[] rows, int length, int objective) {
+        RadixWorkspace workspace = new RadixWorkspace(points.length);
+        radixSortByCoordinate(points, rows, 0, length, objective, workspace);
+    }
+
+    static void sortLexicographically(double[][] points, int[] rows, int length,
+                                      int... objectives) {
+        RadixWorkspace workspace = new RadixWorkspace(points.length);
+        for (int i = objectives.length - 1; i >= 0; i--) {
+            radixSortByCoordinate(points, rows, 0, length, objectives[i], workspace);
+        }
+    }
+
     private static int nondominated(double[][] points, int[] rows, int dimensions,
                                     boolean keepWeakly, Workspace workspace) {
         if (rows.length <= SMALL_THRESHOLD) {
@@ -605,7 +618,7 @@ final class KungParetoAlgorithms {
     }
 
     /** Array-backed AVL tree for the two-coordinate skyline used by the 3D base case. */
-    private static final class PrimitiveSkyline {
+    static final class PrimitiveSkyline {
         private final double[] keys;
         private final double[] values;
         private final int[] left;
@@ -614,10 +627,11 @@ final class KungParetoAlgorithms {
         private final int[] height;
         private final int[] previous;
         private final int[] next;
+        private final int[] payloads;
         private int root;
         private int allocated;
 
-        private PrimitiveSkyline(int capacity) {
+        PrimitiveSkyline(int capacity) {
             int arraySize = capacity + 1;
             keys = new double[arraySize];
             values = new double[arraySize];
@@ -627,14 +641,15 @@ final class KungParetoAlgorithms {
             height = new int[arraySize];
             previous = new int[arraySize];
             next = new int[arraySize];
+            payloads = new int[arraySize];
         }
 
-        private void reset() {
+        void reset() {
             root = 0;
             allocated = 0;
         }
 
-        private int floor(double key) {
+        int floor(double key) {
             int node = root;
             int result = 0;
             while (node != 0) {
@@ -649,7 +664,7 @@ final class KungParetoAlgorithms {
             return result;
         }
 
-        private int ceiling(double key) {
+        int ceiling(double key) {
             int node = root;
             int result = 0;
             while (node != 0) {
@@ -664,14 +679,27 @@ final class KungParetoAlgorithms {
             return result;
         }
 
-        private double value(int node) {
+        double key(int node) {
+            return keys[node];
+        }
+
+        double value(int node) {
             return values[node];
         }
 
-        private void add(double key, double value) {
+        int payload(int node) {
+            return payloads[node];
+        }
+
+        void add(double key, double value) {
+            add(key, value, 0);
+        }
+
+        void add(double key, double value, int payload) {
             int node = ++allocated;
             keys[node] = key;
             values[node] = value;
+            payloads[node] = payload;
             left[node] = 0;
             right[node] = 0;
             parent[node] = 0;
@@ -717,13 +745,14 @@ final class KungParetoAlgorithms {
             rebalance(insertionParent);
         }
 
-        private int remove(int requested) {
+        int remove(int requested) {
             int node = requested;
             int following;
             if (left[node] != 0 && right[node] != 0) {
                 int successor = next[node];
                 keys[node] = keys[successor];
                 values[node] = values[successor];
+                payloads[node] = payloads[successor];
                 node = successor;
                 following = requested;
             } else {

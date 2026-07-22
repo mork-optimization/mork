@@ -30,7 +30,9 @@ public final class HypervolumeAlgorithms {
         int objectives = MatrixUtils.validate(input, 1, 31);
         boolean[] directions = MatrixUtils.directions(maximise, objectives);
         double[] ref = MatrixUtils.toMinimisation(MatrixUtils.vector(reference, objectives, "reference"), directions);
-        double[][] points = MatrixUtils.toMinimisation(input, directions);
+        double[][] points = hasMaximisation(directions)
+                ? MatrixUtils.toMinimisation(input, directions)
+                : input;
         return hypervolumeMinimisation(points, ref, objectives);
     }
 
@@ -45,7 +47,9 @@ public final class HypervolumeAlgorithms {
         int objectives = MatrixUtils.validate(input, 2, 31);
         boolean[] directions = MatrixUtils.directions(maximise, objectives);
         double[] ref = MatrixUtils.toMinimisation(MatrixUtils.vector(reference, objectives, "reference"), directions);
-        double[][] points = MatrixUtils.toMinimisation(input, directions);
+        double[][] points = hasMaximisation(directions)
+                ? MatrixUtils.toMinimisation(input, directions)
+                : input;
         if (objectives == 2) {
             return HypervolumeContributions2d.compute(points, ref, ignoreDominated);
         }
@@ -196,14 +200,24 @@ public final class HypervolumeAlgorithms {
     }
 
     private static double hypervolume2d(double[][] input, double[] reference) {
-        double[][] points = relevantNondominated(input, reference);
-        Arrays.sort(points, Comparator.comparingDouble(point -> point[0]));
+        int[] order = KungParetoAlgorithms.sortByFirstObjective2d(input, false);
         double area = 0.0;
         double previousY = reference[1];
-        for (double[] point : points) {
-            if (point[1] < previousY) {
-                area += (reference[0] - point[0]) * (previousY - point[1]);
-                previousY = point[1];
+        int position = 0;
+        while (position < order.length) {
+            double x = input[order[position]][0];
+            if (x >= reference[0]) {
+                break;
+            }
+            double minimumY = input[order[position]][1];
+            position++;
+            while (position < order.length && input[order[position]][0] == x) {
+                minimumY = Math.min(minimumY, input[order[position]][1]);
+                position++;
+            }
+            if (minimumY < previousY) {
+                area += (reference[0] - x) * (previousY - minimumY);
+                previousY = minimumY;
             }
         }
         return area;
@@ -213,23 +227,33 @@ public final class HypervolumeAlgorithms {
         return Hypervolume3d.compute(input, reference);
     }
 
-    private static double[][] relevantNondominated(double[][] input, double[] reference) {
-        double[][] relevant = relevant(input, reference);
-        if (relevant.length == 0 || relevant[0].length == 1) {
-            return relevant;
-        }
-        boolean[] nondominated = ParetoAlgorithms.isNondominated(relevant, new boolean[]{false}, false);
-        return MatrixUtils.select(relevant, nondominated);
-    }
-
     private static double[][] relevant(double[][] input, double[] reference) {
-        List<double[]> relevant = new ArrayList<>();
+        int count = 0;
         for (double[] point : input) {
             if (strictlyBetterThanReference(point, reference)) {
-                relevant.add(point.clone());
+                count++;
             }
         }
-        return relevant.toArray(double[][]::new);
+        if (count == input.length) {
+            return input;
+        }
+        double[][] relevant = new double[count][];
+        int next = 0;
+        for (double[] point : input) {
+            if (strictlyBetterThanReference(point, reference)) {
+                relevant[next++] = point;
+            }
+        }
+        return relevant;
+    }
+
+    private static boolean hasMaximisation(boolean[] directions) {
+        for (boolean maximise : directions) {
+            if (maximise) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean strictlyBetterThanReference(double[] point, double[] reference) {
@@ -392,22 +416,22 @@ public final class HypervolumeAlgorithms {
 
         private static void deleteBase(Node node) {
             for (int link = 0; link < 2; link++) {
-                node.previous[link].next[link] = node.next[link];
-                node.next[link].previous[link] = node.previous[link];
+                node.links[2 + link].links[link] = node.links[link];
+                node.links[link].links[2 + link] = node.links[2 + link];
             }
         }
 
         private static void reinsertBase(Node node) {
             for (int link = 0; link < 2; link++) {
-                node.previous[link].next[link] = node;
-                node.next[link].previous[link] = node;
+                node.links[2 + link].links[link] = node;
+                node.links[link].links[2 + link] = node;
             }
         }
 
         private int countNodes() {
             int count = 0;
-            for (Node node = baseList.second().next[0];
-                 node != baseList.last(); node = node.next[0]) {
+            for (Node node = baseList.second().links[0];
+                 node != baseList.last(); node = node.links[0]) {
                 count++;
             }
             return count;
