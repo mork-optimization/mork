@@ -63,7 +63,7 @@ public class ConcurrencyUtil {
      */
     public static <T> Optional<T> await(Future<T> f, Consumer<Exception> exceptionHandler){
         try {
-            return Optional.of(f.get());
+            return Optional.ofNullable(f.get());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             exceptionHandler.accept(e);
