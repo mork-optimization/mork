@@ -109,4 +109,42 @@ class MetricsStorageTest {
         assertEquals(Math.log(expected2), area2log);
     }
 
+    @Test
+    void areaUnderCurveRejectsNegativeDuration() {
+        var metric = new TestMetric(0);
+        metric.add(0, 1);
+
+        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(metric, 0, -1, false));
+        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(metric, 0, -1, true));
+    }
+
+    @Test
+    void areaUnderCurveValidatesFinalSegment() {
+        var negativeMetric = new TestMetric(0);
+        negativeMetric.add(0, 1);
+        negativeMetric.add(5, -1);
+        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(negativeMetric, 0, 10, false));
+
+        var infiniteMetric = new TestMetric(0);
+        infiniteMetric.add(0, Double.POSITIVE_INFINITY);
+        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(infiniteMetric, 0, 10, false));
+
+        var nanMetric = new TestMetric(0);
+        nanMetric.add(0, Double.NaN);
+        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(nanMetric, 0, 10, false));
+    }
+
+    @Test
+    void areaUnderCurveRejectsNonFiniteLogarithms() {
+        var zeroMetric = new TestMetric(0);
+        zeroMetric.add(0, 0);
+        assertEquals(0, MetricUtil.areaUnderCurve(zeroMetric, 0, 10, false));
+        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(zeroMetric, 0, 10, true));
+
+        var positiveMetric = new TestMetric(0);
+        positiveMetric.add(0, 1);
+        assertEquals(0, MetricUtil.areaUnderCurve(positiveMetric, 0, 0, false));
+        assertThrows(IllegalArgumentException.class, () -> MetricUtil.areaUnderCurve(positiveMetric, 0, 0, true));
+    }
+
 }
