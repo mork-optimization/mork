@@ -53,6 +53,9 @@ Mork supports two irace workflows:
 - Manual configuration, where you implement an `AlgorithmBuilder` and maintain `parameters.txt` yourself.
 
 This doc page documents the second use case. For the automatic configuration generation method, see the [Autoconfig](autoconfig.md) doc page.
+If you need to store or manually instantiate a nested component tree, see
+[JSON algorithm descriptions](../concepts/algorithm-components/json-descriptions.md). The flat command-line
+configuration accepted from IRACE remains separate from that JSON format.
 There are three main things that have to be done in order to use Irace manually.
 1. Configuring dynamic algorithm generation.
 2. Defining algorithm parameters to test.

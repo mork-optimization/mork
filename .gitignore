@@ -50,5 +50,8 @@ docs/apidocs
 log.txt
 .benchmark
 **/docs
+!/docs/
+!/docs/**
+/docs/**/.DS_Store
 /example-graphs/instances/
 site/

@@ -13,8 +13,13 @@ Use this page when you want Mork to propose component combinations and parameter
 5. Constructor parameter annotations define the irace parameter domain.
 6. Unannotated constructor parameters whose type is a known algorithm component are treated as recursive component choices.
 7. Parameters annotated with `@ProvidedParam` are ignored by irace and filled at runtime by a matching `ParameterProvider`.
+8. The selected IRACE configuration is converted directly into a `ComponentSpec` tree and built through the component inventory.
 
-Runtime string construction is separate from automatic proposal generation. A component can still be built from a string if Mork can infer a matching constructor from parameter names and types, even when it does not have `@AutoconfigConstructor`.
+The automatic runtime path does not generate an intermediate text description. For manual storage or
+interchange, the same component model can be represented using
+[JSON algorithm descriptions](../concepts/algorithm-components/json-descriptions.md). A component supplied
+manually as JSON can be built when Mork can infer a matching constructor from its parameter names and values,
+even when that constructor does not have `@AutoconfigConstructor`.
 
 ## Minimal Example
 
@@ -97,6 +102,9 @@ In the generated irace space, a variable-size combination uses one integer `leng
 conditional `item0`, `item1`, and later selectors. Each selector's domain excludes classes already used by its
 prefix. This keeps the values readable and lets Mork validate and reconstruct the selected components directly,
 without maintaining an opaque numeric combination table.
+
+The reconstructed combination is stored as a list of nested `ComponentSpec` values. The debug decode endpoint
+returns this representation as structured JSON under the `algorithm` property.
 
 ## Provided Parameters
 

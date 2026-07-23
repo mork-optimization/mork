@@ -25,11 +25,9 @@
       <version>3.20.0</version>
     </dependency>
 
-    <!-- Language Tools for automatic algorithm generation -->
     <dependency>
-      <groupId>org.antlr</groupId>
-      <artifactId>antlr4-runtime</artifactId>
-      <version>4.13.2</version>
+      <groupId>tools.jackson.core</groupId>
+      <artifactId>jackson-databind</artifactId>
     </dependency>
 
     <dependency>

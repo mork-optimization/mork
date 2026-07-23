@@ -275,6 +275,11 @@ public class AlgorithmBuilderUtil {
             return true;
         }
 
+        if (ClassUtils.isAssignable(origin, String.class)
+                && (target == char.class || target == Character.class)) {
+            return true;
+        }
+
         if (target.isArray() && List.class.isAssignableFrom(origin)) {
             return true;
         }
@@ -365,6 +370,13 @@ public class AlgorithmBuilderUtil {
         // If the origin class is a string and the target is a boolean like value, try to parse as boolean
         if (target == Boolean.class) {
             return Boolean.parseBoolean(s);
+        }
+
+        if (target == Character.class) {
+            if (s.length() != 1) {
+                throw new IllegalArgumentException("Expected exactly one character, got %s".formatted(s));
+            }
+            return s.charAt(0);
         }
 
         // If the target class is an objective, try to find objective in context or fail if not found

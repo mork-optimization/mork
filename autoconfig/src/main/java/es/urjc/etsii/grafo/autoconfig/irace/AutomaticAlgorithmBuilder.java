@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.autoconfig.irace;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
+import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationChoice;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationNode;
@@ -13,6 +14,7 @@ import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import tools.jackson.databind.JsonNode;
 
 import java.util.*;
 
@@ -32,7 +34,7 @@ public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instan
         return Collections.unmodifiableList(algorithmCandidateTree);
     }
 
-    public String asParseableAlgorithm(AlgorithmConfiguration config){
+    public ComponentSpec asComponentSpec(AlgorithmConfiguration config){
         String rootName = requiredValue(config, "ROOT");
         TreeNode root = null;
         for (var candidate : algorithmCandidateTree) {
@@ -49,55 +51,66 @@ public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instan
             throw new IllegalArgumentException("Unknown ROOT component %s, available roots: %s"
                     .formatted(rootName, availableRoots));
         }
-        var sb = new StringBuilder();
-        appendComponent(root, "ROOT" + ComponentParameter.NAMEVALUE_SEP + rootName, config, sb);
-        return sb.toString();
+        return toComponentSpec(root, "ROOT" + ComponentParameter.NAMEVALUE_SEP + rootName, config);
+    }
+
+    public String asJson(AlgorithmConfiguration config) {
+        return algorithmBuilder.toJson(asComponentSpec(config));
+    }
+
+    public JsonNode asJsonTree(AlgorithmConfiguration config) {
+        return algorithmBuilder.toJsonTree(asComponentSpec(config));
     }
 
     @SuppressWarnings("unchecked")
-    public Algorithm<S, I> buildFromStringDescription(String stringDescription){
-        return (Algorithm<S, I>) this.algorithmBuilder.buildAlgorithmFromString(stringDescription);
+    public Algorithm<S, I> buildFromJson(String jsonDescription){
+        return (Algorithm<S, I>) this.algorithmBuilder.buildAlgorithmFromJson(jsonDescription);
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public Algorithm<S, I> buildFromConfig(AlgorithmConfiguration config) {
-        var algorithmAsString = this.asParseableAlgorithm(config);
-        var algorithm = buildFromStringDescription(algorithmAsString);
-        return algorithm;
+        return (Algorithm<S, I>) algorithmBuilder.buildAlgorithm(asComponentSpec(config));
     }
 
-    private void appendComponent(TreeNode node, String componentPath, AlgorithmConfiguration config, StringBuilder sb) {
-        sb.append(node.className()).append('{');
-        boolean hasPrevious = false;
+    private ComponentSpec toComponentSpec(TreeNode node, String componentPath, AlgorithmConfiguration config) {
+        var parameters = new LinkedHashMap<String, Object>();
         for (var parameter : componentParams.get(node.clazz())) {
             if (parameter.getType() == ParameterType.PROVIDED) {
                 continue;
             }
-            if (hasPrevious) {
-                sb.append(',');
-            }
-            hasPrevious = true;
-            sb.append(parameter.getName()).append('=');
             String parameterPath = componentPath + ComponentParameter.PARAM_SEP + parameter.getName();
             if (parameter.combination()) {
-                appendCombination(node.combinations().get(parameter.getName()), parameterPath, config, sb);
+                parameters.put(
+                        parameter.getName(),
+                        toCombinationSpecs(node.combinations().get(parameter.getName()), parameterPath, config)
+                );
             } else if (parameter.recursive()) {
                 String selectedComponent = requiredValue(config, parameterPath);
                 TreeNode child = findChild(node.children().get(parameter.getName()), selectedComponent, parameterPath);
-                appendComponent(
-                        child,
-                        parameterPath + ComponentParameter.NAMEVALUE_SEP + selectedComponent,
-                        config,
-                        sb
+                parameters.put(
+                        parameter.getName(),
+                        toComponentSpec(
+                                child,
+                                parameterPath + ComponentParameter.NAMEVALUE_SEP + selectedComponent,
+                                config
+                        )
                 );
             } else {
-                sb.append(requiredValue(config, parameterPath));
+                parameters.put(
+                        parameter.getName(),
+                        IraceParameterValueUtil.decode(
+                                parameter.getType(),
+                                parameter.getName(),
+                                requiredValue(config, parameterPath)
+                        )
+                );
             }
         }
-        sb.append('}');
+        return new ComponentSpec(node.className(), parameters);
     }
 
-    private void appendCombination(CombinationTree combination, String collectionPath, AlgorithmConfiguration config, StringBuilder sb) {
+    private List<ComponentSpec> toCombinationSpecs(CombinationTree combination, String collectionPath, AlgorithmConfiguration config) {
         if (combination == null) {
             throw new IllegalStateException("Missing combination tree for " + collectionPath);
         }
@@ -109,13 +122,10 @@ public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instan
                     .formatted(length, collectionPath, combination.min(), combination.max()));
         }
 
-        sb.append('[');
+        var components = new ArrayList<ComponentSpec>(length);
         CombinationNode current = combination.root();
         String selectorPath = collectionPath + ComponentParameter.PARAM_SEP + "item0";
         for (int position = 0; position < length; position++) {
-            if (position > 0) {
-                sb.append(',');
-            }
             if (current == null) {
                 throw new IllegalArgumentException("Combination %s ended before configured length %s"
                         .formatted(collectionPath, length));
@@ -133,18 +143,17 @@ public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instan
                         .formatted(selectedComponent, selectorPath));
             }
             String selectedPrefix = selectorPath + ComponentParameter.NAMEVALUE_SEP + selectedComponent;
-            appendComponent(
+            components.add(toComponentSpec(
                     choice.component(),
                     selectedPrefix + ComponentParameter.PARAM_SEP + "component",
-                    config,
-                    sb
-            );
+                    config
+            ));
             current = choice.next();
             if (current != null) {
                 selectorPath = selectedPrefix + ComponentParameter.PARAM_SEP + "item" + current.position();
             }
         }
-        sb.append(']');
+        return components;
     }
 
     private static TreeNode findChild(List<TreeNode> children, String selectedComponent, String parameterPath) {

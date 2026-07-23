@@ -44,17 +44,36 @@ public class FinalExperiment extends AbstractExperiment<VRPODSolution, VRPODInst
 //            }
 //        }
 
-        var algorithm = builder.buildFromStringDescription("""
-                IteratedGreedy{
-                    maxIterations=771701,
-                    stopIfNotImprovedIn=683424,
-                    constructive=VRPODGRASPConstructive{alpha=0.47},
-                    destructionReconstruction=RandomMovement{multiplier=36},
-                    improver=VND{improvers=[
-                        LocalSearchBestImprovement{neighborhood=RouteToODNeigh{}},
-                        LocalSearchBestImprovement{neighborhood=RouteToODNeigh{}},
-                        LocalSearchBestImprovement{neighborhood=VRPODExtendedNeighborhood{}}
-                    ]}
+        var algorithm = builder.buildFromJson("""
+                {
+                  "$component": "IteratedGreedy",
+                  "maxIterations": 771701,
+                  "stopIfNotImprovedIn": 683424,
+                  "constructive": {
+                    "$component": "VRPODGRASPConstructive",
+                    "alpha": 0.47
+                  },
+                  "destructionReconstruction": {
+                    "$component": "RandomMovement",
+                    "multiplier": 36
+                  },
+                  "improver": {
+                    "$component": "VND",
+                    "improvers": [
+                      {
+                        "$component": "LocalSearchBestImprovement",
+                        "neighborhood": {"$component": "RouteToODNeigh"}
+                      },
+                      {
+                        "$component": "LocalSearchBestImprovement",
+                        "neighborhood": {"$component": "RouteToODNeigh"}
+                      },
+                      {
+                        "$component": "LocalSearchBestImprovement",
+                        "neighborhood": {"$component": "VRPODExtendedNeighborhood"}
+                      }
+                    ]
+                  }
                 }
                 """);
         var multistart = new MultiStartAlgorithm<>("AutoConfig", Main.OBJ, algorithm, 1_000_000, 1_000_000, 1_000_000);

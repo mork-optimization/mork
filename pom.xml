@@ -52,7 +52,7 @@
         <maven.compiler.source>25</maven.compiler.source>
         <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jackson.version>3.0.4</jackson.version>
+        <jackson.version>3.2.1</jackson.version>
         <springboot.version>4.1.0</springboot.version>
         <mdependency.version>3.11.0</mdependency.version>
         <msurefire.version>3.5.6</msurefire.version>
@@ -154,12 +154,17 @@
                 <version>${springboot.version}</version>
             </dependency>
 
-<!--            <dependency>-->
-<!--                <groupId>com.fasterxml.jackson.core</groupId>-->
-<!--                <artifactId>jackson-annotations</artifactId>-->
-<!--                <version>${jackson.version}</version>-->
-<!--                <scope>compile</scope>-->
-<!--            </dependency>-->
+            <dependency>
+                <groupId>tools.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>tools.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-csv</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>org.aspectj</groupId>

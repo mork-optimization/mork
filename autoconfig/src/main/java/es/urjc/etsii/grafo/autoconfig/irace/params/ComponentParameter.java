@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.irace.params;
 
 import es.urjc.etsii.grafo.annotations.*;
+import es.urjc.etsii.grafo.autoconfig.irace.IraceParameterValueUtil;
 
 import java.util.Arrays;
 import java.util.Collection;
@@ -137,7 +138,7 @@ public class ComponentParameter {
             if(value instanceof Number){
                 valString.append(value);
             } else if (value instanceof String){
-                valString.append("'\"").append(value).append("\"'");
+                valString.append(IraceParameterValueUtil.encodeCategorical((String) value));
             } else if(value instanceof Class<?> c){
                 valString.append('"').append(c.getSimpleName()).append('"');
             } else {

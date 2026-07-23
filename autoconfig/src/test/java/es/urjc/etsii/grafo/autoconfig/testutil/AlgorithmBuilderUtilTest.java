@@ -168,6 +168,12 @@ class AlgorithmBuilderUtilTest {
         assertEquals("asdad", prepareParameterValue("asdad", String.class));
         assertEquals("", prepareParameterValue("", String.class));
 
+        assertTrue(isAssignable(String.class, char.class));
+        assertTrue(isAssignable(String.class, Character.class));
+        assertEquals('x', prepareParameterValue("x", char.class));
+        assertEquals('€', prepareParameterValue("€", Character.class));
+        assertThrows(IllegalArgumentException.class, () -> prepareParameterValue("", char.class));
+        assertThrows(IllegalArgumentException.class, () -> prepareParameterValue("xy", Character.class));
 
         // From numbers to any transformations: INVALID DUE TO LOSS OF PRECISION
         assertThrows(IllegalArgumentException.class, () -> prepareParameterValue(3.4028235e+40d, Float.class));

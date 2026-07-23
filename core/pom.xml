@@ -43,22 +43,10 @@
             <version>${springboot.version}</version>
         </dependency>
 
-<!--        <dependency>-->
-<!--            <groupId>tools.jackson.core</groupId>-->
-<!--            <artifactId>jackson-databind</artifactId>-->
-<!--            <version>${jackson.version}</version>-->
-<!--        </dependency>-->
         <dependency>
             <groupId>tools.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-csv</artifactId>
-            <version>3.2.1</version>
-<!--            <version>${jackson.version}</version>-->
         </dependency>
-<!--        <dependency>-->
-<!--            <groupId>tools.jackson.core</groupId>-->
-<!--            <artifactId>jackson-annotations</artifactId>-->
-<!--            <version>${jackson.version}</version>-->
-<!--        </dependency>-->
 
         <!-- Excel Files handling -->
         <dependency>
