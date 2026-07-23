@@ -312,15 +312,22 @@ public class IOUtil {
         return Path.of(container).toAbsolutePath() + entry;
     }
 
-    public static String relativizePath(String path){
+    /**
+     * Relativize a path when it is located in the current working directory.
+     * Relative paths and absolute paths outside the working directory are returned unchanged.
+     *
+     * @param path path to relativize
+     * @return path relative to the working directory, or the original path when it is outside it
+     */
+    public static String relativizePath(String path) {
         try {
-            String currentPath =  new File(".").getCanonicalPath();
-            if (path.startsWith(currentPath)) {
-                return path.substring(currentPath.length() + 1);
-            } else {
-                return path;
+            Path currentPath = Path.of(".").toRealPath();
+            Path targetPath = Path.of(path).normalize();
+            if (targetPath.startsWith(currentPath)) {
+                return currentPath.relativize(targetPath).toString();
             }
-        } catch (IOException e){
+            return path;
+        } catch (IOException e) {
             throw new RuntimeException(e);
         }
     }
