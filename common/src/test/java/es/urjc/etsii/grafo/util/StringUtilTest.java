@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.util;
 
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
+
 import static org.junit.jupiter.api.Assertions.*;
 
 class StringUtilTest {
@@ -101,6 +103,10 @@ class StringUtilTest {
         assertEquals("aG9sYQ==", b64);
         var decoded = StringUtil.b64decode(b64);
         assertEquals(test, decoded);
+
+        String unicode = "hola 😀";
+        var utf16b64 = StringUtil.b64encode(unicode, StandardCharsets.UTF_16);
+        assertEquals(unicode, StringUtil.b64decode(utf16b64, StandardCharsets.UTF_16));
     }
 
     @Test

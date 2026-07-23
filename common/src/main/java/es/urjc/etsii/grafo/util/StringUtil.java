@@ -3,7 +3,6 @@ package es.urjc.etsii.grafo.util;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
-import java.util.Arrays;
 import java.util.Base64;
 import java.util.Objects;
 
@@ -31,9 +30,7 @@ public class StringUtil {
      * @return decoded string
      */
     public static String b64decode(String s, Charset charset) {
-        var decoder = Base64.getDecoder();
-        byte[] encodedBytes = s.getBytes(charset);
-        var result = decoder.decode(encodedBytes);
+        var result = Base64.getDecoder().decode(s);
         return new String(result, charset);
     }
 
@@ -66,9 +63,7 @@ public class StringUtil {
      * @return encoded string
      */
     public static String b64encode(byte[] bytes) {
-        var encoder = Base64.getEncoder();
-        var result = encoder.encode(bytes);
-        return new String(result, DEFAULT_CHARSET);
+        return Base64.getEncoder().encodeToString(bytes);
     }
 
     /**
