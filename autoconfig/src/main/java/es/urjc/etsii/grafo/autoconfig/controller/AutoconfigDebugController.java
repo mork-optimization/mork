@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.autoconfig.controller;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.generator.CombinationNode;
+import es.urjc.etsii.grafo.autoconfig.generator.CombinationTree;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
@@ -40,11 +42,17 @@ public class AutoconfigDebugController {
         var tree = this.candidateGenerator.buildTree(solverConfig.getTreeDepth(), solverConfig.getMaxDerivationRepetition());
         var map = new HashMap<String, List<TreeNode>>();
         map.put("ROOT", tree);
-        var rootNode = new TreeNode("", Algorithm.class, map);
+        var rootNode = new TreeNode("", Algorithm.class, map, Map.of());
         return TreeNodeStats.fromNode(rootNode);
     }
 
-    record TreeNodeStats(String paramName, Class<?> clazz, int totalChildrenNodes, Map<String, List<TreeNodeStats>> children){
+    record TreeNodeStats(
+            String paramName,
+            Class<?> clazz,
+            int totalChildrenNodes,
+            Map<String, List<TreeNodeStats>> children,
+            Map<String, CombinationTreeStats> combinations
+    ){
         public static TreeNodeStats fromNode(TreeNode node){
             int count = 1;
             var map = new HashMap<String, List<TreeNodeStats>>();
@@ -57,8 +65,41 @@ public class AutoconfigDebugController {
                 }
                 map.put(e.getKey(), list);
             }
-            return new TreeNodeStats(node.paramName(), node.clazz(), count, map);
+            var combinations = new HashMap<String, CombinationTreeStats>();
+            for (var entry : node.combinations().entrySet()) {
+                var combinationStats = CombinationTreeStats.fromTree(entry.getValue());
+                count += combinationStats.totalChildrenNodes();
+                combinations.put(entry.getKey(), combinationStats);
+            }
+            return new TreeNodeStats(node.paramName(), node.clazz(), count, map, combinations);
         }
+    }
+
+    record CombinationTreeStats(int min, int max, int totalChildrenNodes, CombinationNodeStats root) {
+        static CombinationTreeStats fromTree(CombinationTree tree) {
+            var root = CombinationNodeStats.fromNode(tree.root());
+            return new CombinationTreeStats(tree.min(), tree.max(), root.totalChildrenNodes(), root);
+        }
+    }
+
+    record CombinationNodeStats(int position, int totalChildrenNodes, List<CombinationChoiceStats> choices) {
+        static CombinationNodeStats fromNode(CombinationNode node) {
+            if (node == null) {
+                return new CombinationNodeStats(0, 0, List.of());
+            }
+            int count = 0;
+            var choices = new ArrayList<CombinationChoiceStats>();
+            for (var choice : node.choices()) {
+                var component = TreeNodeStats.fromNode(choice.component());
+                var next = fromNode(choice.next());
+                count += component.totalChildrenNodes() + next.totalChildrenNodes();
+                choices.add(new CombinationChoiceStats(component, next));
+            }
+            return new CombinationNodeStats(node.position(), count, choices);
+        }
+    }
+
+    record CombinationChoiceStats(TreeNodeStats component, CombinationNodeStats next) {
     }
 
     @GetMapping("/auto/debug/params")

@@ -4,8 +4,10 @@ import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmParser;
 import es.urjc.etsii.grafo.autoconfig.antlr.AlgorithmParserBaseListener;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class AlgorithmBuilderListener extends AlgorithmParserBaseListener {
@@ -13,12 +15,14 @@ public class AlgorithmBuilderListener extends AlgorithmParserBaseListener {
     private static final Object EXPLICIT_NULL = new Object();
 
     private final Deque<Map<String, Object>> paramContext;
+    private final Deque<List<Object>> arrayContext;
     private final AlgorithmBuilderService algorithmComponents;
     Object lastPropertyValue;
 
     public AlgorithmBuilderListener(AlgorithmBuilderService algorithmComponents) {
         this.algorithmComponents = algorithmComponents;
         paramContext = new ArrayDeque<>();
+        arrayContext = new ArrayDeque<>();
     }
 
     @Override
@@ -35,12 +39,27 @@ public class AlgorithmBuilderListener extends AlgorithmParserBaseListener {
 
     @Override
     public void exitLiteral(AlgorithmParser.LiteralContext ctx) {
-        if(ctx.arrayLiteral() != null){
-            // TODO delete empty arrays, do not allow in parsing grammar
-            // TODO Implement array support, with proper typing
-            throw new UnsupportedOperationException("Array parsing not implemented yet");
-        } else {
-            lastPropertyValue = getValue(ctx);
+        lastPropertyValue = getValue(ctx);
+    }
+
+    @Override
+    public void enterArrayLiteral(AlgorithmParser.ArrayLiteralContext ctx) {
+        arrayContext.push(new ArrayList<>());
+    }
+
+    @Override
+    public void exitArrayLiteral(AlgorithmParser.ArrayLiteralContext ctx) {
+        lastPropertyValue = arrayContext.pop();
+    }
+
+    @Override
+    public void exitPropertyValue(AlgorithmParser.PropertyValueContext ctx) {
+        if (ctx.getParent() instanceof AlgorithmParser.ArrayLiteralContext) {
+            if (lastPropertyValue == null) {
+                throw new IllegalStateException("Array element did not produce a value");
+            }
+            arrayContext.getFirst().add(lastPropertyValue == EXPLICIT_NULL ? null : lastPropertyValue);
+            lastPropertyValue = null;
         }
     }
 

@@ -11,6 +11,7 @@ import org.apache.commons.lang3.ClassUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Parameter;
@@ -274,11 +275,24 @@ public class AlgorithmBuilderUtil {
             return true;
         }
 
+        if (target.isArray() && List.class.isAssignableFrom(origin)) {
+            return true;
+        }
+
         // For all remaining types, use Apache Lang3 with autoboxing checks enabled
         return ClassUtils.isAssignable(origin, target, true);
     }
 
     public static Object prepareParameterValue(Object value, Class<?> target) {
+        if (value instanceof List<?> list && target.isArray()) {
+            Class<?> componentType = target.getComponentType();
+            Object array = Array.newInstance(componentType, list.size());
+            for (int i = 0; i < list.size(); i++) {
+                Array.set(array, i, prepareParameterValue(list.get(i), componentType));
+            }
+            return array;
+        }
+
         target = ClassUtils.primitiveToWrapper(target);
 
         if (value instanceof Number n) {

@@ -44,7 +44,19 @@ public class FinalExperiment extends AbstractExperiment<VRPODSolution, VRPODInst
 //            }
 //        }
 
-        var algorithm = builder.buildFromStringParams("ROOT=IteratedGreedy ROOT_IteratedGreedy.constructive=VRPODGRASPConstructive ROOT_IteratedGreedy.constructive_VRPODGRASPConstructive.alpha=0.47 ROOT_IteratedGreedy.destructionReconstruction=RandomMovement ROOT_IteratedGreedy.destructionReconstruction_RandomMovement.multiplier=36 ROOT_IteratedGreedy.improver=VND ROOT_IteratedGreedy.improver_VND.improver1=LocalSearchBestImprovement ROOT_IteratedGreedy.improver_VND.improver1_LocalSearchBestImprovement.neighborhood=RouteToODNeigh ROOT_IteratedGreedy.improver_VND.improver2=LocalSearchBestImprovement ROOT_IteratedGreedy.improver_VND.improver2_LocalSearchBestImprovement.neighborhood=RouteToODNeigh ROOT_IteratedGreedy.improver_VND.improver3=LocalSearchBestImprovement ROOT_IteratedGreedy.improver_VND.improver3_LocalSearchBestImprovement.neighborhood=VRPODExtendedNeighborhood ROOT_IteratedGreedy.maxIterations=771701 ROOT_IteratedGreedy.stopIfNotImprovedIn=683424");
+        var algorithm = builder.buildFromStringDescription("""
+                IteratedGreedy{
+                    maxIterations=771701,
+                    stopIfNotImprovedIn=683424,
+                    constructive=VRPODGRASPConstructive{alpha=0.47},
+                    destructionReconstruction=RandomMovement{multiplier=36},
+                    improver=VND{improvers=[
+                        LocalSearchBestImprovement{neighborhood=RouteToODNeigh{}},
+                        LocalSearchBestImprovement{neighborhood=RouteToODNeigh{}},
+                        LocalSearchBestImprovement{neighborhood=VRPODExtendedNeighborhood{}}
+                    ]}
+                }
+                """);
         var multistart = new MultiStartAlgorithm<>("AutoConfig", Main.OBJ, algorithm, 1_000_000, 1_000_000, 1_000_000);
         algorithms.add(multistart);
         algorithms.add(FinalSotaExperiment.sotaAlgorithm());

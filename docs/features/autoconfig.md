@@ -47,7 +47,7 @@ In this example, irace chooses `iterations`, `constructive`, and `improver`. Mor
 | `@RealParam` | Parameter | Creates a real-valued irace parameter. Use on `float`, `double`, their wrappers, or raw `String` values. |
 | `@CategoricalParam` | Parameter | Creates a categorical irace parameter from a non-empty string list. Values are converted to the constructor type when possible. |
 | `@OrdinalParam` | Parameter | Creates an ordinal irace parameter from a non-empty ordered string list. |
-| `@ComponentParam` | Parameter | Adds restrictions to recursive component resolution, such as excluding a component class and its subclasses. |
+| `@ComponentParam` | Parameter | Configures component resolution. On `List<T>` and `T[]`, generates bounded ordered combinations without repetition. |
 | `@ProvidedParam` | Parameter | Marks a value that is supplied at runtime by exactly one matching `ParameterProvider`. |
 
 ## Constructor Rules
@@ -70,18 +70,33 @@ Autoconfig treats both parameters as recursive choices because `Constructive` an
 
 ## Component Restrictions
 
-Use `@ComponentParam` when the default recursive search should exclude some implementations.
+Use `@ComponentParam` when the default recursive search should exclude some implementations. On `List<T>`,
+`T[]`, and varargs parameters it also enables ordered component combinations. Collection bounds default to
+`min = 0` and `max = 3`.
 
 ```java
 @AutoconfigConstructor
 public VND(
-        @ComponentParam(disallowed = VND.class) Improver<S, I> improver1,
-        @ComponentParam(disallowed = VND.class) Improver<S, I> improver2,
-        @ComponentParam(disallowed = VND.class) Improver<S, I> improver3
+        @ComponentParam(
+                min = 0,
+                max = 3,
+                disallowed = {VND.class, Improver.SequentialImprover.class}
+        )
+        List<Improver<S, I>> improvers
 ) { ... }
 ```
 
-Every disallowed class must be assignable to the annotated parameter type. If a class is disallowed, its subclasses are disallowed too.
+Every disallowed class must be assignable to the annotated parameter type, or to its collection element type.
+If a class is disallowed, its subclasses are disallowed too. Autoconfig filters those classes before generating
+the ordered combinations. Order matters, and each implementation class can appear at most once.
+
+Collection component parameters must be explicitly annotated. Exact `List<T>` declarations, reference arrays,
+and varargs are supported; raw lists, wildcards, sets, and other collection types are rejected.
+
+In the generated irace space, a variable-size combination uses one integer `length` parameter followed by
+conditional `item0`, `item1`, and later selectors. Each selector's domain excludes classes already used by its
+prefix. This keeps the values readable and lets Mork validate and reconstruct the selected components directly,
+without maintaining an opaque numeric combination table.
 
 ## Provided Parameters
 

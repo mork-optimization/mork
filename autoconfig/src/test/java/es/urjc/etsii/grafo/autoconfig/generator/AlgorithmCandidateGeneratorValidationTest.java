@@ -7,9 +7,11 @@ import es.urjc.etsii.grafo.annotations.OrdinalParam;
 import es.urjc.etsii.grafo.annotations.RealParam;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
+import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import es.urjc.etsii.grafo.autoconfig.testutil.ComponentWhitelistDuringTesting;
 import es.urjc.etsii.grafo.autoconfig.testutil.TestUtil;
 import es.urjc.etsii.grafo.improve.Improver;
+import es.urjc.etsii.grafo.improve.VND;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
@@ -20,6 +22,7 @@ import java.lang.reflect.Parameter;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -63,6 +66,86 @@ class AlgorithmCandidateGeneratorValidationTest {
         );
 
         assertThrows(IllegalArgumentException.class, () -> generator.toComponentParameter(types, parameter));
+    }
+
+    @Test
+    void componentParamSupportsListsAndPreservesCombinationMetadata() throws NoSuchMethodException {
+        var parameter = firstParameter(ListComponentHolder.class);
+        var types = improverTypes();
+
+        ComponentParameter componentParameter = generator.toComponentParameter(types, parameter);
+
+        assertEquals(ParameterType.COMBINATION, componentParameter.getType());
+        assertEquals(List.class, componentParameter.getJavaType());
+        assertEquals(Improver.class, componentParameter.getComponentType());
+        assertEquals(1, componentParameter.getMin());
+        assertEquals(2, componentParameter.getMax());
+        assertArrayEquals(new Object[]{AllowedImprover.class}, componentParameter.getValues());
+    }
+
+    @Test
+    void componentParamSupportsReferenceArraysAndVarargs() throws NoSuchMethodException {
+        var parameter = firstParameter(ArrayComponentHolder.class);
+
+        ComponentParameter componentParameter = generator.toComponentParameter(improverTypes(), parameter);
+
+        assertEquals(ParameterType.COMBINATION, componentParameter.getType());
+        assertEquals(Improver[].class, componentParameter.getJavaType());
+        assertEquals(Improver.class, componentParameter.getComponentType());
+        assertEquals(0, componentParameter.getMin());
+        assertEquals(3, componentParameter.getMax());
+    }
+
+    @Test
+    void collectionComponentParamRejectsUnsupportedShapes() throws NoSuchMethodException {
+        assertThrows(IllegalArgumentException.class,
+                () -> generator.toComponentParameter(improverTypes(), firstParameter(RawListHolder.class)));
+        assertThrows(IllegalArgumentException.class,
+                () -> generator.toComponentParameter(improverTypes(), firstParameter(WildcardListHolder.class)));
+        assertThrows(IllegalArgumentException.class,
+                () -> generator.toComponentParameter(improverTypes(), firstParameter(SetComponentHolder.class)));
+        assertThrows(IllegalArgumentException.class,
+                () -> generator.toComponentParameter(improverTypes(), firstParameter(MultidimensionalArrayHolder.class)));
+    }
+
+    @Test
+    void collectionComponentParamRejectsInvalidOrUnsatisfiedBounds() throws NoSuchMethodException {
+        assertThrows(IllegalArgumentException.class,
+                () -> generator.toComponentParameter(improverTypes(), firstParameter(NegativeMinHolder.class)));
+        assertThrows(IllegalArgumentException.class,
+                () -> generator.toComponentParameter(improverTypes(), firstParameter(ReversedBoundsHolder.class)));
+        assertThrows(IllegalArgumentException.class,
+                () -> generator.toComponentParameter(improverTypes(), firstParameter(UnsatisfiedMinHolder.class)));
+    }
+
+    @Test
+    void unannotatedListsAreNotImplicitComponentParameters() throws NoSuchMethodException {
+        assertNull(generator.toComponentParameter(improverTypes(), firstParameter(UnannotatedListHolder.class)));
+    }
+
+    @Test
+    void recursiveCombinationComponentsAreBlockedInVndAndSequentialImprover() throws NoSuchMethodException {
+        var types = Map.<Class<?>, Collection<Class<?>>>of(
+                Improver.class,
+                List.of(
+                        AllowedImprover.class,
+                        VND.class,
+                        Improver.SequentialImprover.class
+                )
+        );
+        var vndParameter = VND.class.getConstructor(List.class).getParameters()[0];
+        var sequentialParameter = Improver.SequentialImprover.class
+                .getConstructor(Improver[].class)
+                .getParameters()[0];
+
+        assertArrayEquals(
+                new Object[]{AllowedImprover.class},
+                generator.toComponentParameter(types, vndParameter).getValues()
+        );
+        assertArrayEquals(
+                new Object[]{AllowedImprover.class},
+                generator.toComponentParameter(types, sequentialParameter).getValues()
+        );
     }
 
     @Test
@@ -147,6 +230,13 @@ class AlgorithmCandidateGeneratorValidationTest {
         return clazz.getConstructors()[0].getParameters()[0];
     }
 
+    private static Map<Class<?>, Collection<Class<?>>> improverTypes() {
+        return Map.of(
+                Improver.class,
+                List.of(AllowedImprover.class, DisallowedImprover.class, DisallowedChildImprover.class)
+        );
+    }
+
     public static class ComponentHolder {
         public ComponentHolder(@ComponentParam(disallowed = DisallowedImprover.class) Improver<TestSolution, TestInstance> improver) {
         }
@@ -159,6 +249,63 @@ class AlgorithmCandidateGeneratorValidationTest {
 
     public static class InvalidRestrictionHolder {
         public InvalidRestrictionHolder(@ComponentParam(disallowed = String.class) Improver<TestSolution, TestInstance> improver) {
+        }
+    }
+
+    public static class ListComponentHolder {
+        public ListComponentHolder(
+                @ComponentParam(min = 1, max = 2, disallowed = DisallowedImprover.class)
+                List<Improver<TestSolution, TestInstance>> improvers
+        ) {
+        }
+    }
+
+    public static class ArrayComponentHolder {
+        public ArrayComponentHolder(@ComponentParam Improver<TestSolution, TestInstance>... improvers) {
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    public static class RawListHolder {
+        public RawListHolder(@ComponentParam List improvers) {
+        }
+    }
+
+    public static class WildcardListHolder {
+        public WildcardListHolder(@ComponentParam List<? extends Improver<TestSolution, TestInstance>> improvers) {
+        }
+    }
+
+    public static class SetComponentHolder {
+        public SetComponentHolder(@ComponentParam Set<Improver<TestSolution, TestInstance>> improvers) {
+        }
+    }
+
+    public static class MultidimensionalArrayHolder {
+        public MultidimensionalArrayHolder(@ComponentParam Improver<TestSolution, TestInstance>[][] improvers) {
+        }
+    }
+
+    public static class NegativeMinHolder {
+        public NegativeMinHolder(@ComponentParam(min = -1) List<Improver<TestSolution, TestInstance>> improvers) {
+        }
+    }
+
+    public static class ReversedBoundsHolder {
+        public ReversedBoundsHolder(@ComponentParam(min = 2, max = 1) List<Improver<TestSolution, TestInstance>> improvers) {
+        }
+    }
+
+    public static class UnsatisfiedMinHolder {
+        public UnsatisfiedMinHolder(
+                @ComponentParam(min = 2, disallowed = DisallowedImprover.class)
+                List<Improver<TestSolution, TestInstance>> improvers
+        ) {
+        }
+    }
+
+    public static class UnannotatedListHolder {
+        public UnannotatedListHolder(List<Improver<TestSolution, TestInstance>> improvers) {
         }
     }
 

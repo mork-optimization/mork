@@ -14,16 +14,9 @@ properties: property (COMMA property)*;
 property: IDENT EQ propertyValue;
 
 // Allow optional {} after literal values to simplify algorithm reconstruction
-propertyValue: literal (LBRCE RBRCE)? | component;
+propertyValue: literal (LBRCE RBRCE)? | component | arrayLiteral;
 
-literal: NullLiteral | BooleanLiteral | FloatingPointLiteral | IntegerLiteral | StringLiteral | CharacterLiteral | arrayLiteral;
+literal: NullLiteral | BooleanLiteral | FloatingPointLiteral | IntegerLiteral | StringLiteral | CharacterLiteral;
 
 
-// Only allow arrays as literals of the same type value
-arrayLiteral:
-LBRCK RBRCK |
-LBRCK IntegerLiteral (COMMA IntegerLiteral)* RBRCK |
-LBRCK FloatingPointLiteral (COMMA FloatingPointLiteral)* RBRCK |
-LBRCK BooleanLiteral (COMMA BooleanLiteral)* RBRCK |
-LBRCK CharacterLiteral (COMMA CharacterLiteral)* RBRCK |
-LBRCK StringLiteral (COMMA StringLiteral)* RBRCK;
+arrayLiteral: LBRCK (propertyValue (COMMA propertyValue)*)? RBRCK;

@@ -28,23 +28,11 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
         this.improvers = improvers;
     }
 
-    /**
-     * <p>Constructor for VND.</p>
-     * TODO: properly handle list of types that we are able to resolve
-     * @param improver1 improver1
-     * @param improver2 improver2
-     * @param improver3 improver3
-     */
     @AutoconfigConstructor
     public VND(
-            @ComponentParam(disallowed = {VND.class}) Improver<S,I> improver1,
-            @ComponentParam(disallowed = {VND.class}) Improver<S,I> improver2,
-            @ComponentParam(disallowed = {VND.class}) Improver<S,I> improver3
+            @ComponentParam(disallowed = {VND.class, Improver.SequentialImprover.class})
+            List<Improver<S,I>> improvers
     ) {
-        this(List.of(improver1, improver2, improver3));
-    }
-
-    public VND(List<Improver<S,I>> improvers) {
         this(improvers, Context.getMainObjective());
     }
 

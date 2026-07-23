@@ -13,14 +13,14 @@ import org.springframework.stereotype.Service;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Parameter;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Type;
 import java.util.*;
 
 import static es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter.*;
 
 @Service
 public class AlgorithmCandidateGenerator {
-    private static final Set<Class<?>> collectedClasses = Set.of(List.class, ArrayList.class, Set.class, HashSet.class, Collection.class);
-
     private final AlgorithmInventoryService inventoryService;
     private final IExplorationFilter explorationFilter;
     private final Logger log = LoggerFactory.getLogger(AlgorithmCandidateGenerator.class);
@@ -101,7 +101,11 @@ public class AlgorithmCandidateGenerator {
         var params = factory.getRequiredParameters();
         for (var cp : params) {
             if (cp.recursive()) {
-                var candidates = byType.get(cp.getJavaType());
+                var candidates = byType.get(cp.getComponentType());
+                if (candidates == null) {
+                    throw new IllegalArgumentException("Factory parameter %s references unknown component type %s"
+                            .formatted(cp.getName(), cp.getComponentType().getSimpleName()));
+                }
                 cp.setValues(candidates.toArray());
                 // Parameter has a known algorithm component type, for example Improver<S,I>
                 // Add all implementations to the exploration queue
@@ -151,23 +155,81 @@ public class AlgorithmCandidateGenerator {
             return ComponentParameter.from(name, type, p.getAnnotation(ProvidedParam.class));
         }
         if (p.isAnnotationPresent(ComponentParam.class)) {
+            var annotation = p.getAnnotation(ComponentParam.class);
+            if (isCombinationType(type)) {
+                var componentType = resolveCombinationComponentType(p);
+                validateCombinationParameter(p, annotation);
+                if (!types.containsKey(componentType)) {
+                    throw new IllegalArgumentException(String.format(
+                            "Parameter %s is annotated with @ComponentParam, but collection element type %s is not a known algorithm component type",
+                            describe(p), componentType.getSimpleName()));
+                }
+                var candidates = filterCandidates(p, componentType, types.get(componentType));
+                if (annotation.min() > candidates.size()) {
+                    throw new IllegalArgumentException("Invalid @ComponentParam bounds for %s: min %s cannot be satisfied by %s eligible components"
+                            .formatted(describe(p), annotation.min(), candidates.size()));
+                }
+                return ComponentParameter.combination(name, type, componentType, candidates, annotation.min(), annotation.max());
+            }
+            if (Collection.class.isAssignableFrom(type)) {
+                throw new IllegalArgumentException("@ComponentParam collections must use List<T>. Found %s in %s"
+                        .formatted(type.getTypeName(), describe(p)));
+            }
             if (!types.containsKey(type)) {
                 throw new IllegalArgumentException(String.format(
                         "Parameter %s is annotated with @ComponentParam, but type %s is not a known algorithm component type",
                         describe(p), type.getSimpleName()));
             }
-            return ComponentParameter.from(name, type, filterCandidates(p, types.get(type)));
+            return ComponentParameter.from(name, type, filterCandidates(p, type, types.get(type)));
         }
-
-//        if (collectedClasses.contains(type)) {
-//            return new ComponentParameter(name, ParameterType.LIST, false, new Object[]{});
-//        }
 
         // Last option, not annotated but type is known
         if (types.containsKey(type)) {
             return ComponentParameter.from(name, type, types.get(type));
         }
         return null;
+    }
+
+    private static boolean isCombinationType(Class<?> type) {
+        return type == List.class || type.isArray();
+    }
+
+    private static Class<?> resolveCombinationComponentType(Parameter p) {
+        var type = p.getType();
+        if (type.isArray()) {
+            var componentType = type.getComponentType();
+            if (componentType.isPrimitive() || componentType.isArray()) {
+                throw new IllegalArgumentException("@ComponentParam arrays must be one-dimensional reference arrays. Found %s in %s"
+                        .formatted(type.getTypeName(), describe(p)));
+            }
+            return componentType;
+        }
+
+        Type parameterizedType = p.getParameterizedType();
+        if (!(parameterizedType instanceof ParameterizedType listType)) {
+            throw new IllegalArgumentException("@ComponentParam lists must declare an element type. Found raw List in %s"
+                    .formatted(describe(p)));
+        }
+        Type elementType = listType.getActualTypeArguments()[0];
+        if (elementType instanceof Class<?> elementClass) {
+            return elementClass;
+        }
+        if (elementType instanceof ParameterizedType parameterizedElement && parameterizedElement.getRawType() instanceof Class<?> rawClass) {
+            return rawClass;
+        }
+        throw new IllegalArgumentException("@ComponentParam list element type must resolve to a concrete component class. Found %s in %s"
+                .formatted(elementType.getTypeName(), describe(p)));
+    }
+
+    private static void validateCombinationParameter(Parameter p, ComponentParam annotation) {
+        if (annotation.min() < 0) {
+            throw new IllegalArgumentException("Invalid @ComponentParam range for %s: min must be non-negative"
+                    .formatted(describe(p)));
+        }
+        if (annotation.min() > annotation.max()) {
+            throw new IllegalArgumentException("Invalid @ComponentParam range for %s: min %s > max %s"
+                    .formatted(describe(p), annotation.min(), annotation.max()));
+        }
     }
 
     private static void validateAnnotations(Parameter p) {
@@ -224,7 +286,7 @@ public class AlgorithmCandidateGenerator {
                 || type == String.class;
     }
 
-    private static Collection<Class<?>> filterCandidates(Parameter p, Collection<Class<?>> candidates) {
+    private static Collection<Class<?>> filterCandidates(Parameter p, Class<?> componentType, Collection<Class<?>> candidates) {
         var componentParam = p.getAnnotation(ComponentParam.class);
         Class<?>[] disallowed = componentParam.disallowed();
         if (disallowed.length == 0) {
@@ -232,10 +294,10 @@ public class AlgorithmCandidateGenerator {
         }
 
         for (var disallowedClass : disallowed) {
-            if (!p.getType().isAssignableFrom(disallowedClass)) {
+            if (!componentType.isAssignableFrom(disallowedClass)) {
                 throw new IllegalArgumentException(String.format(
                         "Invalid @ComponentParam restriction in %s: disallowed class %s is not assignable to parameter type %s",
-                        describe(p), disallowedClass.getSimpleName(), p.getType().getSimpleName()));
+                        describe(p), disallowedClass.getSimpleName(), componentType.getSimpleName()));
             }
         }
 
@@ -273,57 +335,129 @@ public class AlgorithmCandidateGenerator {
         }
         Arrays.sort(initialDecisionValues, Comparator.comparing(Class::getSimpleName));
 
-        var firstParam = ComponentParameter.toIraceParameterString("ROOT", ParameterType.CATEGORICAL, initialDecisionValues, "", "", "");
-        firstParam = firstParam.substring(0, firstParam.lastIndexOf("|"));
-        iraceParams.add(firstParam);
-
-        // Preorder DFS tree transversal
-        var context = new ArrayDeque<String>();
+        iraceParams.add(ComponentParameter.toIraceParameterString("ROOT", ParameterType.CATEGORICAL, initialDecisionValues, ""));
         for (var node : nodes) {
-            recursiveToIraceParams(node, iraceParams, context);
+            String componentName = node.className();
+            recursiveToIraceParams(node, iraceParams, "ROOT" + NAMEVALUE_SEP + componentName, "ROOT", componentName);
         }
-        assert context.isEmpty();
         Collections.sort(iraceParams);
         return iraceParams;
     }
 
-    protected void recursiveToIraceParams(TreeNode node, ArrayList<String> params, ArrayDeque<String> context) {
-        String componentDecisionPrefix = toIraceParamName(context);
-        if (componentDecisionPrefix.isBlank()) {
-            componentDecisionPrefix = node.paramName();
-        } else {
-            componentDecisionPrefix += PARAM_SEP + node.paramName();
-        }
-
-        String componentDecisionValue = node.clazz().getSimpleName();
-        context.push(node.paramName() + NAMEVALUE_SEP + componentDecisionValue);
+    private void recursiveToIraceParams(TreeNode node, ArrayList<String> params, String componentPath, String activationParam, String activationValue) {
         var nodeParams = this.paramInfo.get(node.clazz());
+        String activationCondition = selected(activationParam, activationValue);
 
         for (var p : nodeParams) {
-            if (p.getType() != ParameterType.PROVIDED) {
-                context.push(p.getName());
-                var iraceParamName = toIraceParamName(context);
-                String iraceParam = p.recursive() ?
-                        p.toIraceParameterStringNotAnnotated(iraceParamName, componentDecisionPrefix, componentDecisionValue, getValidChildrenValuesForParam(node, p)) :
-                        p.toIraceParameterString(iraceParamName, componentDecisionPrefix, componentDecisionValue);
-
-                params.add(iraceParam);
-                context.pop();
+            if (p.getType() == ParameterType.PROVIDED) {
+                continue;
+            }
+            String paramPath = componentPath + PARAM_SEP + p.getName();
+            if (p.combination()) {
+                recursiveCombinationToIraceParams(node.combinations().get(p.getName()), params, paramPath, activationParam, activationValue);
+            } else if (p.recursive()) {
+                var children = node.children().get(p.getName());
+                var values = getValidChildrenValuesForParam(children, p, node);
+                params.add(ComponentParameter.toIraceParameterString(paramPath, ParameterType.CATEGORICAL, values, activationCondition));
+                for (var child : children) {
+                    String childName = child.className();
+                    recursiveToIraceParams(
+                            child,
+                            params,
+                            paramPath + NAMEVALUE_SEP + childName,
+                            paramPath,
+                            childName
+                    );
+                }
+            } else {
+                params.add(p.toIraceParameterString(paramPath, activationCondition));
             }
         }
-
-        for (var entry : node.children().entrySet()) {
-            var candidates = entry.getValue();
-            for (var child : candidates) {
-                recursiveToIraceParams(child, params, context);
-            }
-        }
-
-        context.pop();
     }
 
-    private Class<?>[] getValidChildrenValuesForParam(TreeNode node, ComponentParameter p) {
-        var childrenForParameter = node.children().get(p.getName());
+    private void recursiveCombinationToIraceParams(
+            CombinationTree combination,
+            ArrayList<String> params,
+            String collectionPath,
+            String activationParam,
+            String activationValue
+    ) {
+        if (combination == null) {
+            throw new IllegalStateException("Missing combination tree for " + collectionPath);
+        }
+
+        String lengthPath = collectionPath + PARAM_SEP + "length";
+        boolean variableLength = combination.min() != combination.max();
+        if (variableLength) {
+            params.add(ComponentParameter.toIraceParameterString(
+                    lengthPath,
+                    ParameterType.INTEGER,
+                    new Object[]{combination.min(), combination.max()},
+                    selected(activationParam, activationValue)
+            ));
+        }
+        if (combination.max() == 0) {
+            return;
+        }
+
+        recursiveCombinationNodeToIraceParams(
+                combination.root(),
+                params,
+                collectionPath + PARAM_SEP + "item0",
+                activationParam,
+                activationValue,
+                variableLength ? lengthPath : null
+        );
+    }
+
+    private void recursiveCombinationNodeToIraceParams(
+            CombinationNode combinationNode,
+            ArrayList<String> params,
+            String selectorPath,
+            String activationParam,
+            String activationValue,
+            String lengthPath
+    ) {
+        Class<?>[] values = new Class<?>[combinationNode.choices().size()];
+        for (int i = 0; i < combinationNode.choices().size(); i++) {
+            values[i] = combinationNode.choices().get(i).component().clazz();
+        }
+        Arrays.sort(values, Comparator.comparing(Class::getSimpleName));
+
+        String condition = selected(activationParam, activationValue);
+        if (lengthPath != null) {
+            condition += " & " + lengthPath + " >= " + (combinationNode.position() + 1);
+        }
+        params.add(ComponentParameter.toIraceParameterString(selectorPath, ParameterType.CATEGORICAL, values, condition));
+
+        for (var choice : combinationNode.choices()) {
+            String componentName = choice.component().className();
+            String selectedPrefix = selectorPath + NAMEVALUE_SEP + componentName;
+            recursiveToIraceParams(
+                    choice.component(),
+                    params,
+                    selectedPrefix + PARAM_SEP + "component",
+                    selectorPath,
+                    componentName
+            );
+            if (choice.next() != null) {
+                recursiveCombinationNodeToIraceParams(
+                        choice.next(),
+                        params,
+                        selectedPrefix + PARAM_SEP + "item" + choice.next().position(),
+                        selectorPath,
+                        componentName,
+                        lengthPath
+                );
+            }
+        }
+    }
+
+    private static String selected(String parameter, String value) {
+        return parameter + " %in% c(\"" + value + "\")";
+    }
+
+    private Class<?>[] getValidChildrenValuesForParam(List<TreeNode> childrenForParameter, ComponentParameter p, TreeNode node) {
         Class<?>[] validClasses = new Class[childrenForParameter.size()];
         if (childrenForParameter.isEmpty()) {
             throw new IllegalStateException(String.format("Empty children for param %s in node %s, should have been pruned before", p, node));
@@ -364,28 +498,42 @@ public class AlgorithmCandidateGenerator {
         }
         context.push(currentComponent);
         var allChildren = new HashMap<String, List<TreeNode>>();
+        var allCombinations = new HashMap<String, CombinationTree>();
         for (var p : params) {
             if (p.recursive()) {
                 var values = p.getValues();
-                assert values.length > 0;
                 var children = exploreImplementations(context, p, values);
-                if (children.isEmpty()) {
+                if (p.combination()) {
+                    int effectiveMax = Math.min(p.getMax(), children.size());
+                    if (p.getMin() > effectiveMax) {
+                        context.pop();
+                        return null;
+                    }
+                    var root = buildCombinationNode(0, effectiveMax, children, new HashSet<>());
+                    allCombinations.put(p.getName(), new CombinationTree(p.getMin(), effectiveMax, root));
+                } else if (children.isEmpty()) {
                     // No valid config found exploring this part of the tree, even if the other params have values we cannot continue
                     context.pop();
                     return null;
+                } else {
+                    allChildren.put(p.getName(), children);
                 }
-                allChildren.put(p.getName(), children);
             }
         }
         context.pop();
-        return new TreeNode(currentParamName, currentComponent, allChildren);
+        return new TreeNode(currentParamName, currentComponent, allChildren, allCombinations);
     }
 
     private ArrayList<TreeNode> exploreImplementations(TreeContext context, ComponentParameter p, Object[] values) {
         var children = new ArrayList<TreeNode>();
-        for (var object : values) {
-            var target = (Class<?>) object;
-            var derivation = new Derivation(p.getJavaType(), target);
+        var sortedValues = new ArrayList<Class<?>>(values.length);
+        for (var value : values) {
+            sortedValues.add((Class<?>) value);
+        }
+        sortedValues.sort(Comparator.comparing(Class::getSimpleName));
+
+        for (var target : sortedValues) {
+            var derivation = new Derivation(p.getComponentType(), target);
             if(context.inLimits(derivation)){
                 context.pushDerivation(derivation);
                 var currentChildNode = recursiveBuildTree(p.getName(), target, context);
@@ -396,5 +544,22 @@ public class AlgorithmCandidateGenerator {
             }
         }
         return children;
+    }
+
+    private CombinationNode buildCombinationNode(int position, int max, List<TreeNode> candidates, Set<Class<?>> used) {
+        if (position >= max) {
+            return null;
+        }
+        var choices = new ArrayList<CombinationChoice>();
+        for (var candidate : candidates) {
+            if (used.contains(candidate.clazz())) {
+                continue;
+            }
+            used.add(candidate.clazz());
+            var next = buildCombinationNode(position + 1, max, candidates, used);
+            choices.add(new CombinationChoice(candidate, next));
+            used.remove(candidate.clazz());
+        }
+        return new CombinationNode(position, choices);
     }
 }

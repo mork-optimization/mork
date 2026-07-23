@@ -15,6 +15,7 @@ class BasicTokenTest {
         var parser = AlgorithmBuilderService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
+        Assertions.assertNull(ctx.arrayLiteral());
         var l = ctx.literal();
 
         Assertions.assertNotNull(l);
@@ -24,8 +25,6 @@ class BasicTokenTest {
         Assertions.assertNotNull(l.FloatingPointLiteral());
         Assertions.assertNull(l.IntegerLiteral());
         Assertions.assertNull(l.StringLiteral());
-        Assertions.assertNull(l.arrayLiteral());
-
         Assertions.assertEquals(value, l.FloatingPointLiteral().getSymbol().getText());
     }
 
@@ -35,6 +34,7 @@ class BasicTokenTest {
         var parser = AlgorithmBuilderService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
+        Assertions.assertNull(ctx.arrayLiteral());
         var l = ctx.literal();
 
         Assertions.assertNotNull(l);
@@ -44,8 +44,6 @@ class BasicTokenTest {
         Assertions.assertNull(l.FloatingPointLiteral());
         Assertions.assertNotNull(l.IntegerLiteral());
         Assertions.assertNull(l.StringLiteral());
-        Assertions.assertNull(l.arrayLiteral());
-
         Assertions.assertEquals(value, l.IntegerLiteral().getSymbol().getText());
     }
 
@@ -56,6 +54,7 @@ class BasicTokenTest {
         var parser = AlgorithmBuilderService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
+        Assertions.assertNull(ctx.arrayLiteral());
         var l = ctx.literal();
 
         Assertions.assertNotNull(l);
@@ -64,7 +63,6 @@ class BasicTokenTest {
         Assertions.assertNull(l.FloatingPointLiteral());
         Assertions.assertNull(l.IntegerLiteral());
         Assertions.assertNull(l.StringLiteral());
-        Assertions.assertNull(l.arrayLiteral());
         Assertions.assertNotNull(l.BooleanLiteral());
 
         Assertions.assertEquals(value, l.BooleanLiteral().getSymbol().getText());
@@ -76,6 +74,7 @@ class BasicTokenTest {
         var parser = AlgorithmBuilderService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
+        Assertions.assertNull(ctx.arrayLiteral());
         var l = ctx.literal();
 
         Assertions.assertNotNull(l);
@@ -85,8 +84,6 @@ class BasicTokenTest {
         Assertions.assertNull(l.FloatingPointLiteral());
         Assertions.assertNull(l.IntegerLiteral());
         Assertions.assertNotNull(l.StringLiteral());
-        Assertions.assertNull(l.arrayLiteral());
-
         Assertions.assertEquals(value, l.StringLiteral().getSymbol().getText());
     }
 
@@ -96,6 +93,7 @@ class BasicTokenTest {
         var parser = AlgorithmBuilderService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
+        Assertions.assertNull(ctx.arrayLiteral());
         var l = ctx.literal();
 
         Assertions.assertNotNull(l);
@@ -105,8 +103,6 @@ class BasicTokenTest {
         Assertions.assertNull(l.FloatingPointLiteral());
         Assertions.assertNull(l.IntegerLiteral());
         Assertions.assertNull(l.StringLiteral());
-        Assertions.assertNull(l.arrayLiteral());
-
         Assertions.assertEquals(value, l.CharacterLiteral().getSymbol().getText());
     }
 
@@ -116,6 +112,7 @@ class BasicTokenTest {
         var parser = AlgorithmBuilderService.getParser(value);
         var ctx = parser.propertyValue();
         Assertions.assertNull(ctx.component());
+        Assertions.assertNull(ctx.arrayLiteral());
         var l = ctx.literal();
 
         Assertions.assertNotNull(l);
@@ -125,8 +122,6 @@ class BasicTokenTest {
         Assertions.assertNull(l.FloatingPointLiteral());
         Assertions.assertNull(l.IntegerLiteral());
         Assertions.assertNull(l.StringLiteral());
-        Assertions.assertNull(l.arrayLiteral());
-
         Assertions.assertEquals(value, l.NullLiteral().getSymbol().getText());
     }
 
