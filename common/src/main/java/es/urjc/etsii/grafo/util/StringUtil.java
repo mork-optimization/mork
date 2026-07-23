@@ -111,45 +111,45 @@ public class StringUtil {
         Objects.requireNonNull(lhs, "First string is null");
         Objects.requireNonNull(rhs, "Second string is null");
 
-        int len0 = lhs.length() + 1;
-        int len1 = rhs.length() + 1;
-
-        // the array of distances
-        int[] cost = new int[len0];
-        int[] newcost = new int[len0];
-
-        // initial cost of skipping prefix in String s0
-        for (int i = 0; i < len0; i++) cost[i] = i;
-
-        // dynamically computing the array of distances
-
-        // transformation cost for each letter in s1
-        for (int j = 1; j < len1; j++) {
-            // initial cost of skipping prefix in String s1
-            newcost[0] = j;
-
-            // transformation cost for each letter in s0
-            for (int i = 1; i < len0; i++) {
-                // matching current letters in both strings
-                int match = (lhs.charAt(i - 1) == rhs.charAt(j - 1)) ? 0 : 1;
-
-                // computing cost for each transformation
-                int costReplace = cost[i - 1] + match;
-                int costInsert = cost[i] + 1;
-                int costDelete = newcost[i - 1] + 1;
-
-                // keep minimum cost
-                newcost[i] = Math.min(Math.min(costInsert, costDelete), costReplace);
-            }
-
-            // swap cost/newcost arrays
-            int[] swap = cost;
-            cost = newcost;
-            newcost = swap;
+        if (lhs == rhs) {
+            return 0;
         }
 
-        // the distance is the cost for transforming all letters in both strings
-        return cost[len0 - 1];
+        int lhsLength = lhs.length();
+        int rhsLength = rhs.length();
+        if (lhsLength == 0) {
+            return rhsLength;
+        }
+        if (rhsLength == 0) {
+            return lhsLength;
+        }
+        if (lhsLength > rhsLength) {
+            CharSequence swap = lhs;
+            lhs = rhs;
+            rhs = swap;
+            lhsLength = lhs.length();
+            rhsLength = rhs.length();
+        }
+
+        int[] costs = new int[lhsLength + 1];
+        for (int i = 0; i <= lhsLength; i++) {
+            costs[i] = i;
+        }
+
+        for (int j = 1; j <= rhsLength; j++) {
+            int upperLeft = costs[0];
+            costs[0] = j;
+            char rhsValue = rhs.charAt(j - 1);
+
+            for (int i = 1; i <= lhsLength; i++) {
+                int upper = costs[i];
+                int replace = upperLeft + (lhs.charAt(i - 1) == rhsValue ? 0 : 1);
+                costs[i] = Math.min(Math.min(costs[i - 1] + 1, upper + 1), replace);
+                upperLeft = upper;
+            }
+        }
+
+        return costs[lhsLength];
     }
 
     /**
@@ -157,9 +157,9 @@ public class StringUtil {
      * In Levenshtein distance, valid operations are insert, remove and swap/replace.
      * Adapted from: <a href="https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Java">Wikibooks</a>
      *
-     * @param lhs first string
-     * @param rhs second string
-     * @return minimum number of operations required to transform the first string into the second.
+     * @param lhs first array
+     * @param rhs second array
+     * @return minimum number of operations required to transform the first array into the second.
      */
     public static int levenshtein(int[] lhs, int[] rhs) {
         return levenshtein(lhs, lhs.length, rhs, rhs.length);
@@ -170,60 +170,60 @@ public class StringUtil {
      * In Levenshtein distance, valid operations are insert, remove and swap/replace.
      * Adapted from: <a href="https://en.wikibooks.org/wiki/Algorithm_Implementation/Strings/Levenshtein_distance#Java">Wikibooks</a>
      *
-     * @param lhs first string
-     * @param rhs second string
-     * @return minimum number of operations required to transform the first string into the second.
+     * @param lhs      first array
+     * @param limitlhs number of elements from the first array to compare
+     * @param rhs      second array
+     * @param limitrhs number of elements from the second array to compare
+     * @return minimum number of operations required to transform the first array prefix into the second.
      */
     public static int levenshtein(int[] lhs, int limitlhs, int[] rhs, int limitrhs) {
         Objects.requireNonNull(lhs, "First string is null");
         Objects.requireNonNull(rhs, "Second string is null");
         if (limitlhs < 0 || limitlhs > lhs.length) {
-            throw new IllegalArgumentException("limitlhs index %s out of range [0, %s]".formatted(limitlhs, lhs.length));
+            throw new IllegalArgumentException("limitlhs %s out of range [0, %s]".formatted(limitlhs, lhs.length));
         }
 
         if (limitrhs < 0 || limitrhs > rhs.length) {
-            throw new IllegalArgumentException("limitrhs index %s out of range [0, %s]".formatted(limitrhs, rhs.length));
+            throw new IllegalArgumentException("limitrhs %s out of range [0, %s]".formatted(limitrhs, rhs.length));
         }
 
-        int len0 = lhs.length + 1;
-        int len1 = rhs.length + 1;
+        if (lhs == rhs && limitlhs == limitrhs) {
+            return 0;
+        }
+        if (limitlhs == 0) {
+            return limitrhs;
+        }
+        if (limitrhs == 0) {
+            return limitlhs;
+        }
+        if (limitlhs > limitrhs) {
+            int[] swap = lhs;
+            lhs = rhs;
+            rhs = swap;
+            int swapLimit = limitlhs;
+            limitlhs = limitrhs;
+            limitrhs = swapLimit;
+        }
 
-        // the array of distances
-        int[] cost = new int[len0];
-        int[] newcost = new int[len0];
+        int[] costs = new int[limitlhs + 1];
+        for (int i = 0; i <= limitlhs; i++) {
+            costs[i] = i;
+        }
 
-        // initial cost of skipping prefix in String s0
-        for (int i = 0; i < len0; i++) cost[i] = i;
+        for (int j = 1; j <= limitrhs; j++) {
+            int upperLeft = costs[0];
+            costs[0] = j;
+            int rhsValue = rhs[j - 1];
 
-        // dynamically computing the array of distances
-
-        // transformation cost for each letter in s1
-        for (int j = 1; j < len1; j++) {
-            // initial cost of skipping prefix in String s1
-            newcost[0] = j;
-
-            // transformation cost for each letter in s0
-            for (int i = 1; i < len0; i++) {
-                // matching current letters in both strings
-                int match = (lhs[i - 1] == rhs[j - 1]) ? 0 : 1;
-
-                // computing cost for each transformation
-                int costReplace = cost[i - 1] + match;
-                int costInsert = cost[i] + 1;
-                int costDelete = newcost[i - 1] + 1;
-
-                // keep minimum cost
-                newcost[i] = Math.min(Math.min(costInsert, costDelete), costReplace);
+            for (int i = 1; i <= limitlhs; i++) {
+                int upper = costs[i];
+                int replace = upperLeft + (lhs[i - 1] == rhsValue ? 0 : 1);
+                costs[i] = Math.min(Math.min(costs[i - 1] + 1, upper + 1), replace);
+                upperLeft = upper;
             }
-
-            // swap cost/newcost arrays
-            int[] swap = cost;
-            cost = newcost;
-            newcost = swap;
         }
 
-        // the distance is the cost for transforming all letters in both strings
-        return cost[len0 - 1];
+        return costs[limitlhs];
     }
 
     /**

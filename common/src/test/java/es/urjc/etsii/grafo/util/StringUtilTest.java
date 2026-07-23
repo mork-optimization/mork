@@ -54,6 +54,25 @@ class StringUtilTest {
 
         assertThrows(IllegalArgumentException.class, () -> StringUtil.levenshtein(new int[]{0,1,2,3,4,5}, -1, new int[]{0,1,2,3,4,5},  0));
         assertThrows(IllegalArgumentException.class, () -> StringUtil.levenshtein(new int[]{0,1,2,3,4,5}, 0, new int[]{0,1,2,3,4,5}, -1));
+        assertThrows(IllegalArgumentException.class, () -> StringUtil.levenshtein(new int[]{0}, 2, new int[]{0}, 1));
+        assertThrows(IllegalArgumentException.class, () -> StringUtil.levenshtein(new int[]{0}, 1, new int[]{0}, 2));
+    }
+
+    @Test
+    void testLevenshteinIntPrefixes() {
+        int[] lhs = {1, 9};
+        int[] rhs = {1, 8};
+
+        assertEquals(0, StringUtil.levenshtein(lhs, 1, rhs, 1));
+        assertEquals(1, StringUtil.levenshtein(lhs, 2, rhs, 1));
+        assertEquals(1, StringUtil.levenshtein(lhs, 1, rhs, 2));
+        assertEquals(2, StringUtil.levenshtein(lhs, 0, rhs, 2));
+        assertEquals(2, StringUtil.levenshtein(lhs, 2, rhs, 0));
+
+        int[] sameArray = {1, 2, 3};
+        assertEquals(0, StringUtil.levenshtein(sameArray, 3, sameArray, 3));
+        assertEquals(1, StringUtil.levenshtein(sameArray, 2, sameArray, 3));
+        assertEquals(1, StringUtil.levenshtein(sameArray, 3, sameArray, 2));
     }
 
     @Test
