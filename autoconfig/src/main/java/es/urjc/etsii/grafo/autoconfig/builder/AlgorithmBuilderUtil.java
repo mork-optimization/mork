@@ -279,26 +279,67 @@ public class AlgorithmBuilderUtil {
     }
 
     public static Object prepareParameterValue(Object value, Class<?> target) {
-        // If the origin class is number like, transform to correct type only if no conversion loss occurs
+        target = ClassUtils.primitiveToWrapper(target);
+
         if (value instanceof Number n) {
-            return prepareNumericParameterValue(n, target);
+            if (target == Double.class) {
+                return n.doubleValue();
+            }
+            if (target == String.class) {
+                return n.toString();
+            }
+
+            Number convertedValue;
+            if (target == Float.class) {
+                convertedValue = n.floatValue();
+            } else if (target == Long.class) {
+                convertedValue = n.longValue();
+            } else if (target == Integer.class) {
+                convertedValue = n.intValue();
+            } else if (target == Short.class) {
+                convertedValue = n.shortValue();
+            } else if (target == Byte.class) {
+                convertedValue = n.byteValue();
+            } else {
+                throw new IllegalArgumentException("Cannot transform numeric value %s to type %s".formatted(value, target));
+            }
+
+            checkLoss(convertedValue.doubleValue(), n.doubleValue());
+            return convertedValue;
         }
 
-        if(value instanceof String s){
+        if (value instanceof String s) {
             return prepareStringParameterValue(s, target);
         }
-
 
         // Return as is if no special handling is implemented
         return value;
     }
 
     private static Object prepareStringParameterValue(String s, Class<?> target) {
-        // If the origin class is a string and the target is number like,
-        // try to parse to double and perform appropriate numeric conversion
-        if (ClassUtils.isAssignable(target, Number.class)) {
-            Double doubleValue = Double.parseDouble(s);
-            return prepareNumericParameterValue(doubleValue, target);
+        if (target == Double.class) {
+            return Double.parseDouble(s);
+        }
+        if (target == Float.class) {
+            double doubleValue = Double.parseDouble(s);
+            float floatValue = Float.parseFloat(s);
+            checkLoss(floatValue, doubleValue);
+            return floatValue;
+        }
+        if (target == Long.class) {
+            return Long.parseLong(s);
+        }
+        if (target == Integer.class) {
+            return Integer.parseInt(s);
+        }
+        if (target == Short.class) {
+            return Short.parseShort(s);
+        }
+        if (target == Byte.class) {
+            return Byte.parseByte(s);
+        }
+        if (Number.class.isAssignableFrom(target)) {
+            throw new IllegalArgumentException("Cannot parse numeric value %s as type %s".formatted(s, target));
         }
 
         // If the origin class is a string and the target is an enum type, assume the enum contains the string
@@ -308,14 +349,14 @@ public class AlgorithmBuilderUtil {
         }
 
         // If the origin class is a string and the target is a boolean like value, try to parse as boolean
-        if (target == Boolean.class || target == boolean.class) {
+        if (target == Boolean.class) {
             return Boolean.parseBoolean(s);
         }
 
         // If the target class is an objective, try to find objective in context or fail if not found
-        if(ClassUtils.isAssignable(target, Objective.class)){
+        if (ClassUtils.isAssignable(target, Objective.class)) {
             var objective = Context.getObjectives().get(s);
-            if(objective == null){
+            if (objective == null) {
                 throw new IllegalArgumentException("Objective %s not found in context, available objectives are: %s".formatted(s, Context.getObjectives().keySet()));
             }
             return objective;
@@ -325,43 +366,7 @@ public class AlgorithmBuilderUtil {
         return s;
     }
 
-    public static Object prepareNumericParameterValue(Number value, Class<?> target) {
-        double doubleValue = value.doubleValue();
-        if (target == Double.class || target == double.class) {
-            return doubleValue;
-        }
-        if (target == Float.class || target == float.class) {
-            float floatValue = value.floatValue();
-            checkLoss(floatValue, doubleValue);
-            return floatValue;
-        }
-        if (target == Long.class || target == long.class) {
-            long longValue = value.longValue();
-            checkLoss(longValue, doubleValue);
-            return longValue;
-        }
-        if (target == Integer.class || target == int.class) {
-            int intValue = value.intValue();
-            checkLoss(intValue, doubleValue);
-            return intValue;
-        }
-        if (target == Short.class || target == short.class) {
-            short shortValue = value.shortValue();
-            checkLoss(shortValue, doubleValue);
-            return shortValue;
-        }
-        if (target == Byte.class || target == byte.class) {
-            byte byteValue = value.byteValue();
-            checkLoss(byteValue, doubleValue);
-            return byteValue;
-        }
-        if (target == String.class) {
-            return value.toString();
-        }
-        throw new IllegalArgumentException("Cannot transform numeric value %s to type %s".formatted(value, target));
-    }
-
-    public static void checkLoss(double value, double reference) {
+    private static void checkLoss(double value, double reference) {
         if (!DoubleComparator.equals(value, reference)) {
             throw new IllegalArgumentException("Loss of precision detected with numbers %s and %s".formatted(value, reference));
         }
