@@ -30,7 +30,7 @@ public class VND<S extends Solution<S,I>,I extends Instance> extends Improver<S,
 
     @AutoconfigConstructor
     public VND(
-            @ComponentParam(disallowed = {VND.class, Improver.SequentialImprover.class})
+            @ComponentParam(min = 2, max = 5, disallowed = {VND.class, Improver.SequentialImprover.class, NullImprover.class})
             List<Improver<S,I>> improvers
     ) {
         this(improvers, Context.getMainObjective());

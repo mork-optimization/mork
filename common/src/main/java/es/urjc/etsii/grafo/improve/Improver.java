@@ -94,7 +94,7 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
         @SafeVarargs
         @SuppressWarnings("varargs")
         public SequentialImprover(
-                @ComponentParam(disallowed = {VND.class, SequentialImprover.class})
+                @ComponentParam(min = 2, max = 5, disallowed = {VND.class, SequentialImprover.class, NullImprover.class})
                 Improver<S, I>... improvers
         ) {
             this(Context.getMainObjective(), improvers);

@@ -77,15 +77,15 @@ Autoconfig treats both parameters as recursive choices because `Constructive` an
 
 Use `@ComponentParam` when the default recursive search should exclude some implementations. On `List<T>`,
 `T[]`, and varargs parameters it also enables ordered component combinations. Collection bounds default to
-`min = 0` and `max = 3`.
+`min = 0` and `max = 3`. Example for VND:
 
 ```java
 @AutoconfigConstructor
 public VND(
         @ComponentParam(
-                min = 0,
-                max = 3,
-                disallowed = {VND.class, Improver.SequentialImprover.class}
+                min = 2,
+                max = 4,
+                disallowed = {VND.class, Improver.SequentialImprover.class, Improver.NullImprover.class}
         )
         List<Improver<S, I>> improvers
 ) { ... }
