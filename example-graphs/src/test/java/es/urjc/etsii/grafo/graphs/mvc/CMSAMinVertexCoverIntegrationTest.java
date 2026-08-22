@@ -51,10 +51,11 @@ class CMSAMinVertexCoverIntegrationTest {
         var solution = cmsa.algorithm(instance);
 
         assertIsValidCover(instance, solution);
-        // A single unbiased random construction is a weak baseline: CMSA must do at least as well.
+        // A single randomized construction with greedyBias=0.0 (always prefers the lower-degree endpoint)
+        // is a weak baseline: CMSA must do at least as well.
         var baseline = new MVCConstructive(0.0).construct(new MSTSolution(instance));
         Assertions.assertTrue(solution.getCoverSize() <= baseline.getCoverSize(),
-                "CMSA cover (%d) should not be worse than a single unbiased random construction (%d)"
+                "CMSA cover (%d) should not be worse than a single randomized construction (%d)"
                         .formatted(solution.getCoverSize(), baseline.getCoverSize()));
     }
 
