@@ -11,12 +11,13 @@ import es.urjc.etsii.grafo.util.StringUtil;
  *
  * @param <S> type of the solution of the problem
  * @param <I> type of the instance of the problem
+ * @param <C> type of the solution components
  */
-public class CMSABuilder<S extends Solution<S, I>, I extends Instance> {
+public class CMSABuilder<S extends Solution<S, I>, I extends Instance, C> {
 
     private Objective<?, S, I> objective;
-    private CMSAConstructive<S, I> constructive;
-    private CMSASolver<S, I> solver;
+    private CMSAConstructive<S, I, C> constructive;
+    private CMSASolver<S, I, C> solver;
     private int solutionsPerIteration = 30;
     private int ageMax = 5;
     private long solverTimeLimitInMillis = 1_000;
@@ -27,7 +28,7 @@ public class CMSABuilder<S extends Solution<S, I>, I extends Instance> {
      * @param constructive probabilistic constructive procedure
      * @return this builder instance for method chaining
      */
-    public CMSABuilder<S, I> withConstructive(CMSAConstructive<S, I> constructive) {
+    public CMSABuilder<S, I, C> withConstructive(CMSAConstructive<S, I, C> constructive) {
         this.constructive = constructive;
         return this;
     }
@@ -37,7 +38,7 @@ public class CMSABuilder<S extends Solution<S, I>, I extends Instance> {
      * @param solver exact method implementation
      * @return this builder instance for method chaining
      */
-    public CMSABuilder<S, I> withSolver(CMSASolver<S, I> solver) {
+    public CMSABuilder<S, I, C> withSolver(CMSASolver<S, I, C> solver) {
         this.solver = solver;
         return this;
     }
@@ -48,7 +49,7 @@ public class CMSABuilder<S extends Solution<S, I>, I extends Instance> {
      * @param solutionsPerIteration number of solutions constructed at each iteration, usually denoted {@code na}
      * @return this builder instance for method chaining
      */
-    public CMSABuilder<S, I> withSolutionsPerIteration(int solutionsPerIteration) {
+    public CMSABuilder<S, I, C> withSolutionsPerIteration(int solutionsPerIteration) {
         this.solutionsPerIteration = solutionsPerIteration;
         return this;
     }
@@ -59,7 +60,7 @@ public class CMSABuilder<S extends Solution<S, I>, I extends Instance> {
      * @param ageMax maximum component age
      * @return this builder instance for method chaining
      */
-    public CMSABuilder<S, I> withAgeMax(int ageMax) {
+    public CMSABuilder<S, I, C> withAgeMax(int ageMax) {
         this.ageMax = ageMax;
         return this;
     }
@@ -70,7 +71,7 @@ public class CMSABuilder<S extends Solution<S, I>, I extends Instance> {
      * @param solverTimeLimitInMillis time budget in milliseconds
      * @return this builder instance for method chaining
      */
-    public CMSABuilder<S, I> withSolverTimeLimitInMillis(long solverTimeLimitInMillis) {
+    public CMSABuilder<S, I, C> withSolverTimeLimitInMillis(long solverTimeLimitInMillis) {
         this.solverTimeLimitInMillis = solverTimeLimitInMillis;
         return this;
     }
@@ -81,7 +82,7 @@ public class CMSABuilder<S extends Solution<S, I>, I extends Instance> {
      * @param maxIterations maximum number of iterations, use a value smaller or equal to zero to disable
      * @return this builder instance for method chaining
      */
-    public CMSABuilder<S, I> withMaxIterations(int maxIterations) {
+    public CMSABuilder<S, I, C> withMaxIterations(int maxIterations) {
         this.maxIterations = maxIterations;
         return this;
     }
@@ -91,7 +92,7 @@ public class CMSABuilder<S extends Solution<S, I>, I extends Instance> {
      * Note that calling this method is optional, if the objective is not set it will default to the main objective.
      * @return this builder instance for method chaining
      */
-    public CMSABuilder<S, I> withDefaultObjective() {
+    public CMSABuilder<S, I, C> withDefaultObjective() {
         this.objective = Context.getMainObjective();
         return this;
     }
@@ -101,7 +102,7 @@ public class CMSABuilder<S extends Solution<S, I>, I extends Instance> {
      * @param objective objective function to optimize
      * @return this builder instance for method chaining
      */
-    public CMSABuilder<S, I> withObjective(Objective<?, S, I> objective) {
+    public CMSABuilder<S, I, C> withObjective(Objective<?, S, I> objective) {
         this.objective = objective;
         return this;
     }
@@ -111,7 +112,7 @@ public class CMSABuilder<S extends Solution<S, I>, I extends Instance> {
      * Uses a random name for the algorithm.
      * @return a new instance of CMSA
      */
-    public CMSA<S, I> build() {
+    public CMSA<S, I, C> build() {
         return this.build(StringUtil.randomAlgorithmName());
     }
 
@@ -120,7 +121,7 @@ public class CMSABuilder<S extends Solution<S, I>, I extends Instance> {
      * @param name algorithm name
      * @return a new instance of CMSA
      */
-    public CMSA<S, I> build(String name) {
+    public CMSA<S, I, C> build(String name) {
         Objective<?, S, I> resolvedObjective = this.objective == null ? Context.getMainObjective() : this.objective;
 
         if (this.constructive == null) {

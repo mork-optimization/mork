@@ -44,7 +44,7 @@ class CMSAMinVertexCoverIntegrationTest {
     void findsAValidAndReasonablySmallCoverOnARandomGraph() {
         var instance = MSTInstanceImporter.generateErdosRenyi(30, 0.15, 7);
 
-        var cmsa = new CMSABuilder<MSTSolution, MSTInstance>()
+        var cmsa = new CMSABuilder<MSTSolution, MSTInstance, Integer>()
                 .withDefaultObjective()
                 .withConstructive(new MVCConstructive())
                 .withSolver(new MVCExactCoverSolver())
@@ -75,7 +75,7 @@ class CMSAMinVertexCoverIntegrationTest {
         var instance = MSTInstanceImporter.generateErdosRenyi(20, 0.2, 11);
 
         // Run with a single iteration first
-        var single = new CMSABuilder<MSTSolution, MSTInstance>()
+        var single = new CMSABuilder<MSTSolution, MSTInstance, Integer>()
                 .withDefaultObjective()
                 .withConstructive(new MVCConstructive())
                 .withSolver(new MVCExactCoverSolver())
@@ -96,7 +96,7 @@ class CMSAMinVertexCoverIntegrationTest {
 
         // Run again with the same seed, but allow many more iterations
         Context.Configurator.resetRandom(RandomType.DEFAULT, 42);
-        var many = new CMSABuilder<MSTSolution, MSTInstance>()
+        var many = new CMSABuilder<MSTSolution, MSTInstance, Integer>()
                 .withDefaultObjective()
                 .withConstructive(new MVCConstructive())
                 .withSolver(new MVCExactCoverSolver())

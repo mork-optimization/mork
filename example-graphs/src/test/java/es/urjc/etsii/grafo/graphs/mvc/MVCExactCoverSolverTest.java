@@ -40,8 +40,8 @@ class MVCExactCoverSolverTest {
         }
     }
 
-    private Set<Object> allVertices(MSTInstance instance) {
-        Set<Object> candidates = new java.util.HashSet<>();
+    private Set<Integer> allVertices(MSTInstance instance) {
+        Set<Integer> candidates = new java.util.HashSet<>();
         for (int v = 0; v < instance.v(); v++) {
             candidates.add(v);
         }
@@ -66,7 +66,7 @@ class MVCExactCoverSolverTest {
 
         // The optimal cover {0,1,3} is already among the candidates: an exact solver
         // restricted to this set must not add any unnecessary vertex.
-        Set<Object> candidates = Set.of(0, 1, 3);
+        Set<Integer> candidates = Set.of(0, 1, 3);
 
         var solution = solver.solve(instance, candidates, 5_000);
 
@@ -82,7 +82,7 @@ class MVCExactCoverSolverTest {
 
         // Excluding vertex 0 forces vertex 5 to be picked to cover edge (0,5),
         // and forces both endpoints of every cycle edge incident to 0 to be picked instead of 0.
-        Set<Object> candidates = Set.of(1, 2, 3, 4, 5);
+        Set<Integer> candidates = Set.of(1, 2, 3, 4, 5);
 
         var solution = solver.solve(instance, candidates, 5_000);
 
@@ -103,5 +103,15 @@ class MVCExactCoverSolverTest {
 
         assertIsValidCover(instance, solution);
         Assertions.assertEquals(instance.v(), solution.getCoverSize());
+    }
+
+    @Test
+    void rejectsCandidatesThatCannotCoverEveryEdge() {
+        var instance = cycleWithPendant();
+        var solver = new MVCExactCoverSolver();
+
+        // Neither endpoint of edge (0, 5) is available.
+        Assertions.assertThrows(IllegalArgumentException.class,
+                () -> solver.solve(instance, Set.of(1, 2, 3, 4), 5_000));
     }
 }

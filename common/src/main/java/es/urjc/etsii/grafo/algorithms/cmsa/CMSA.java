@@ -66,8 +66,9 @@ import java.util.Set;
  *
  * @param <S> Solution class
  * @param <I> Instance class
+ * @param <C> Solution component class
  */
-public class CMSA<S extends Solution<S, I>, I extends Instance> extends Algorithm<S, I> {
+public class CMSA<S extends Solution<S, I>, I extends Instance, C> extends Algorithm<S, I> {
 
     private static final Logger log = LoggerFactory.getLogger(CMSA.class);
 
@@ -76,12 +77,12 @@ public class CMSA<S extends Solution<S, I>, I extends Instance> extends Algorith
     /**
      * Probabilistic constructive procedure used to sample solution components at every iteration.
      */
-    private final CMSAConstructive<S, I> constructive;
+    private final CMSAConstructive<S, I, C> constructive;
 
     /**
      * Exact (or near-exact) method used to solve the restricted sub-instance at every iteration.
      */
-    private final CMSASolver<S, I> solver;
+    private final CMSASolver<S, I, C> solver;
 
     /**
      * Number of solutions probabilistically constructed at each iteration, before merging their
@@ -124,8 +125,8 @@ public class CMSA<S extends Solution<S, I>, I extends Instance> extends Algorith
     public CMSA(
             String name,
             Objective<?, S, I> objective,
-            CMSAConstructive<S, I> constructive,
-            CMSASolver<S, I> solver,
+            CMSAConstructive<S, I, C> constructive,
+            CMSASolver<S, I, C> solver,
             int solutionsPerIteration,
             int ageMax,
             long solverTimeLimitInMillis,
@@ -153,8 +154,8 @@ public class CMSA<S extends Solution<S, I>, I extends Instance> extends Algorith
     @AutoconfigConstructor
     public CMSA(
             @ProvidedParam String name,
-            CMSAConstructive<S, I> constructive,
-            CMSASolver<S, I> solver,
+            CMSAConstructive<S, I, C> constructive,
+            CMSASolver<S, I, C> solver,
             @IntegerParam(min = 1, max = 1_000) int solutionsPerIteration,
             @IntegerParam(min = 0, max = 100) int ageMax,
             @IntegerParam(min = 1, max = 60_000) long solverTimeLimitInMillis,
@@ -166,8 +167,8 @@ public class CMSA<S extends Solution<S, I>, I extends Instance> extends Algorith
     /** {@inheritDoc} */
     @Override
     public S algorithm(I instance) {
-        Map<Object, Integer> age = new HashMap<>();
-        Set<Object> subInstance = new HashSet<>();
+        Map<C, Integer> age = new HashMap<>();
+        Set<C> subInstance = new HashSet<>();
         S best = null;
 
         int iteration = 0;
@@ -206,10 +207,10 @@ public class CMSA<S extends Solution<S, I>, I extends Instance> extends Algorith
                 }
 
                 // Adapt: components used by the solver stay young, the rest age and eventually drop out
-                Set<Object> usedBySolver = this.constructive.usedComponents(solved);
-                Iterator<Object> it = subInstance.iterator();
+                Set<C> usedBySolver = this.constructive.usedComponents(solved);
+                Iterator<C> it = subInstance.iterator();
                 while (it.hasNext()) {
-                    Object component = it.next();
+                    C component = it.next();
                     if (usedBySolver.contains(component)) {
                         age.put(component, 0);
                     } else {

@@ -63,7 +63,7 @@ CMSA is implemented in [`CMSA`](https://github.com/rmartinsanta/mork/blob/master
     Mork does not bundle any exact solver. `CMSASolver` implementations are expected to encode the restricted sub-instance and delegate to whatever exact method is available and fits the problem: a MIP/ILP solver such as CPLEX, Gurobi, SCIP or OR-Tools, a specialized dynamic programming procedure, or, since the restricted sub-instance is expected to stay small thanks to the aging mechanism, an exhaustive branch and bound search.
 
 ```java
-public class MyCMSAConstructive extends CMSAConstructive<MySolution, MyInstance> {
+public class MyCMSAConstructive extends CMSAConstructive<MySolution, MyInstance, Edge> {
     @Override
     public MySolution construct(MySolution solution) {
         // Biased-randomized / probabilistic construction, similar to a GRASP constructive
@@ -74,15 +74,15 @@ public class MyCMSAConstructive extends CMSAConstructive<MySolution, MyInstance>
     }
 
     @Override
-    public Set<Object> usedComponents(MySolution solution) {
+    public Set<Edge> usedComponents(MySolution solution) {
         // Return the components (edges, assignments, etc.) used in the given solution
         return solution.usedEdges();
     }
 }
 
-public class MyCMSASolver extends CMSASolver<MySolution, MyInstance> {
+public class MyCMSASolver extends CMSASolver<MySolution, MyInstance, Edge> {
     @Override
-    public MySolution solve(MyInstance instance, Set<Object> restrictedComponents, long maxDurationInMillis) {
+    public MySolution solve(MyInstance instance, Set<Edge> restrictedComponents, long maxDurationInMillis) {
         // Build and solve the sub-instance induced by restrictedComponents, e.g. calling an ILP solver
         ...
     }
@@ -92,7 +92,7 @@ public class MyCMSASolver extends CMSASolver<MySolution, MyInstance> {
 A `CMSA` instance can be built directly, or using `CMSABuilder`:
 
 ```java
-var cmsa = new CMSABuilder<MySolution, MyInstance>()
+var cmsa = new CMSABuilder<MySolution, MyInstance, Edge>()
         .withConstructive(new MyCMSAConstructive())
         .withSolver(new MyCMSASolver())
         .withSolutionsPerIteration(30) // na

@@ -1,12 +1,12 @@
 package es.urjc.etsii.grafo.graphs.mvc;
 
 import es.urjc.etsii.grafo.algorithms.cmsa.CMSASolver;
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.graphs.model.Edge;
 import es.urjc.etsii.grafo.graphs.model.MSTInstance;
 import es.urjc.etsii.grafo.graphs.model.MSTSolution;
 
 import java.util.BitSet;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -22,30 +22,34 @@ import java.util.Set;
  * dropping the ones that are not selected by this solver. In problems where the sub-instance can
  * grow large, a real MIP/ILP solver would be plugged in instead, implementing the same {@link CMSASolver} contract.
  * <p>
- * Selecting every candidate vertex is always a feasible (if not optimal) solution to the restricted
- * problem, since candidates only ever come from the vertex set of a previously constructed, and
- * therefore already feasible, vertex cover.
+ * When invoked by CMSA, selecting every candidate vertex is a feasible (if not optimal) solution to
+ * the restricted problem because candidates come from previously constructed feasible vertex covers.
+ * The solver validates this invariant and throws an exception if it is violated.
  */
-public class MVCExactCoverSolver extends CMSASolver<MSTSolution, MSTInstance> {
+public class MVCExactCoverSolver extends CMSASolver<MSTSolution, MSTInstance, Integer> {
+
+    @AutoconfigConstructor
+    public MVCExactCoverSolver() {
+    }
 
     @Override
-    public MSTSolution solve(MSTInstance instance, Set<Object> restrictedComponents, long maxDurationInMillis) {
-        var candidates = new HashSet<Integer>();
-        for (var component : restrictedComponents) {
-            candidates.add((Integer) component);
-        }
-
+    public MSTSolution solve(MSTInstance instance, Set<Integer> restrictedComponents, long maxDurationInMillis) {
         List<Edge> edges = instance.getEdges();
         long deadline = System.nanoTime() + maxDurationInMillis * 1_000_000L;
 
-        // Trivial upper bound: selecting every candidate vertex is always feasible
+        // Use every candidate as the initial upper bound, if they form a feasible cover
         BitSet best = new BitSet(instance.v());
-        for (int candidate : candidates) {
+        for (int candidate : restrictedComponents) {
             best.set(candidate);
+        }
+        for (Edge edge : edges) {
+            if (!best.get(edge.from()) && !best.get(edge.to())) {
+                throw new IllegalArgumentException("Restricted components do not form a feasible vertex cover");
+            }
         }
         int[] bestSize = {best.cardinality()};
 
-        search(edges, 0, candidates, new BitSet(instance.v()), best, bestSize, deadline);
+        search(edges, 0, restrictedComponents, new BitSet(instance.v()), best, bestSize, deadline);
 
         MSTSolution solution = new MSTSolution(instance);
         for (int v = best.nextSetBit(0); v >= 0; v = best.nextSetBit(v + 1)) {

@@ -21,7 +21,7 @@ public class MinVertexCoverExp extends AbstractExperiment<MSTSolution, MSTInstan
 
     @Override
     public List<Algorithm<MSTSolution, MSTInstance>> getAlgorithms() {
-        var cmsa = new CMSABuilder<MSTSolution, MSTInstance>()
+        var cmsa = new CMSABuilder<MSTSolution, MSTInstance, Integer>()
                 .withDefaultObjective()
                 .withConstructive(new MVCConstructive())
                 .withSolver(new MVCExactCoverSolver())

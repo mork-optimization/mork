@@ -25,9 +25,10 @@ import java.util.Set;
  *
  * @param <S> Solution class
  * @param <I> Instance class
+ * @param <C> Solution component class
  */
 @AlgorithmComponent
-public abstract class CMSASolver<S extends Solution<S, I>, I extends Instance> {
+public abstract class CMSASolver<S extends Solution<S, I>, I extends Instance, C> {
 
     /**
      * Solves the sub-instance induced by restricting the problem to the given set of solution components.
@@ -41,7 +42,7 @@ public abstract class CMSASolver<S extends Solution<S, I>, I extends Instance> {
      * @return a feasible solution built only using components in {@code restrictedComponents},
      *         or {@code null} if no feasible solution could be found in the given time budget
      */
-    public abstract S solve(I instance, Set<Object> restrictedComponents, long maxDurationInMillis);
+    public abstract S solve(I instance, Set<C> restrictedComponents, long maxDurationInMillis);
 
     /** {@inheritDoc} */
     @Override

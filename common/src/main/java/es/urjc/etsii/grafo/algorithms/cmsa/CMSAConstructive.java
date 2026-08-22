@@ -21,8 +21,9 @@ import java.util.Set;
  *
  * @param <S> Solution class
  * @param <I> Instance class
+ * @param <C> Solution component class
  */
-public abstract class CMSAConstructive<S extends Solution<S, I>, I extends Instance> extends Constructive<S, I> {
+public abstract class CMSAConstructive<S extends Solution<S, I>, I extends Instance, C> extends Constructive<S, I> {
 
     /**
      * Returns the solution components used to build the given solution.
@@ -34,5 +35,5 @@ public abstract class CMSAConstructive<S extends Solution<S, I>, I extends Insta
      * @param solution a feasible solution to the problem
      * @return the set of solution components used in the given solution
      */
-    public abstract Set<Object> usedComponents(S solution);
+    public abstract Set<C> usedComponents(S solution);
 }

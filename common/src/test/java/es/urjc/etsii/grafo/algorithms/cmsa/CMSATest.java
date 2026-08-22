@@ -39,15 +39,15 @@ class CMSATest {
         TimeControl.remove();
     }
 
-    private CMSABuilder<TestSolution, TestInstance> builder() {
-        return new CMSABuilder<TestSolution, TestInstance>()
+    private CMSABuilder<TestSolution, TestInstance, String> builder() {
+        return new CMSABuilder<TestSolution, TestInstance, String>()
                 .withDefaultObjective()
                 .withSolutionsPerIteration(1)
                 .withAgeMax(5)
                 .withSolverTimeLimitInMillis(1000);
     }
 
-    private void withBuilder(CMSA<TestSolution, TestInstance> cmsa) {
+    private void withBuilder(CMSA<TestSolution, TestInstance, String> cmsa) {
         cmsa.setBuilder(new SolutionBuilder<>() {
             @Override
             public TestSolution initializeSolution(TestInstance instance) {
@@ -59,9 +59,9 @@ class CMSATest {
     @Test
     void testIllegalParameters() {
         @SuppressWarnings("unchecked")
-        CMSAConstructive<TestSolution, TestInstance> constructive = mock(CMSAConstructive.class);
+        CMSAConstructive<TestSolution, TestInstance, String> constructive = mock(CMSAConstructive.class);
         @SuppressWarnings("unchecked")
-        CMSASolver<TestSolution, TestInstance> solver = mock(CMSASolver.class);
+        CMSASolver<TestSolution, TestInstance, String> solver = mock(CMSASolver.class);
         Objective<?, TestSolution, TestInstance> objective = Context.getMainObjective();
 
         Assertions.assertDoesNotThrow(() ->
@@ -79,18 +79,18 @@ class CMSATest {
 
     @Test
     void testBuilderRequiresConstructiveAndSolver() {
-        Assertions.assertThrows(IllegalArgumentException.class, () -> new CMSABuilder<TestSolution, TestInstance>().build());
+        Assertions.assertThrows(IllegalArgumentException.class, () -> new CMSABuilder<TestSolution, TestInstance, String>().build());
     }
 
     @Test
     @SuppressWarnings("unchecked")
     void testStopsAtMaxIterations() {
         var solution = new TestSolution(testInstance, 10);
-        CMSAConstructive<TestSolution, TestInstance> constructive = mock(CMSAConstructive.class);
+        CMSAConstructive<TestSolution, TestInstance, String> constructive = mock(CMSAConstructive.class);
         when(constructive.construct(any(TestSolution.class))).thenReturn(solution);
         when(constructive.usedComponents(any(TestSolution.class))).thenReturn(Set.of("c1"));
 
-        CMSASolver<TestSolution, TestInstance> solver = mock(CMSASolver.class);
+        CMSASolver<TestSolution, TestInstance, String> solver = mock(CMSASolver.class);
         when(solver.solve(eq(testInstance), anySet(), anyLong())).thenReturn(solution);
 
         int maxIterations = 5;
@@ -110,11 +110,11 @@ class CMSATest {
         var best = new TestSolution(testInstance, 5);
         var worseAgain = new TestSolution(testInstance, 15);
 
-        CMSAConstructive<TestSolution, TestInstance> constructive = mock(CMSAConstructive.class);
+        CMSAConstructive<TestSolution, TestInstance, String> constructive = mock(CMSAConstructive.class);
         when(constructive.construct(any(TestSolution.class))).thenReturn(worse);
         when(constructive.usedComponents(any(TestSolution.class))).thenReturn(Set.of("c1"));
 
-        CMSASolver<TestSolution, TestInstance> solver = mock(CMSASolver.class);
+        CMSASolver<TestSolution, TestInstance, String> solver = mock(CMSASolver.class);
         when(solver.solve(eq(testInstance), anySet(), anyLong())).thenReturn(worse, best, worseAgain);
 
         var cmsa = builder().withConstructive(constructive).withSolver(solver).withMaxIterations(3).build("Test");
@@ -129,11 +129,11 @@ class CMSATest {
     @SuppressWarnings("unchecked")
     void testThrowsWhenSolverNeverFindsAFeasibleSolution() {
         var solution = new TestSolution(testInstance, 10);
-        CMSAConstructive<TestSolution, TestInstance> constructive = mock(CMSAConstructive.class);
+        CMSAConstructive<TestSolution, TestInstance, String> constructive = mock(CMSAConstructive.class);
         when(constructive.construct(any(TestSolution.class))).thenReturn(solution);
         when(constructive.usedComponents(any(TestSolution.class))).thenReturn(Set.of("c1"));
 
-        CMSASolver<TestSolution, TestInstance> solver = mock(CMSASolver.class);
+        CMSASolver<TestSolution, TestInstance, String> solver = mock(CMSASolver.class);
         when(solver.solve(eq(testInstance), anySet(), anyLong())).thenReturn(null);
 
         var cmsa = builder().withConstructive(constructive).withSolver(solver).withMaxIterations(3).build("Test");
@@ -146,12 +146,12 @@ class CMSATest {
     void testStopByMaxTime() {
         var solution = new TestSolution(testInstance, 10);
         @SuppressWarnings("unchecked")
-        CMSAConstructive<TestSolution, TestInstance> constructive = mock(CMSAConstructive.class);
+        CMSAConstructive<TestSolution, TestInstance, String> constructive = mock(CMSAConstructive.class);
         when(constructive.construct(any(TestSolution.class))).thenReturn(solution);
         when(constructive.usedComponents(any(TestSolution.class))).thenReturn(Set.of("c1"));
 
         @SuppressWarnings("unchecked")
-        CMSASolver<TestSolution, TestInstance> solver = mock(CMSASolver.class);
+        CMSASolver<TestSolution, TestInstance, String> solver = mock(CMSASolver.class);
         when(solver.solve(eq(testInstance), anySet(), anyLong())).thenReturn(solution);
 
         TimeControl.setMaxExecutionTime(10, TimeUnit.MILLISECONDS);
@@ -178,23 +178,23 @@ class CMSATest {
         int iterations = 8;
         AtomicInteger counter = new AtomicInteger();
 
-        var constructive = new CMSAConstructive<TestSolution, TestInstance>() {
+        var constructive = new CMSAConstructive<TestSolution, TestInstance, String>() {
             @Override
             public TestSolution construct(TestSolution solution) {
                 return solution;
             }
 
             @Override
-            public Set<Object> usedComponents(TestSolution solution) {
+            public Set<String> usedComponents(TestSolution solution) {
                 // Every constructed solution introduces exactly one new, never-repeated component
                 return Set.of("component-" + counter.getAndIncrement());
             }
         };
 
-        Deque<Set<Object>> capturedRestrictions = new ArrayDeque<>();
-        var solver = new CMSASolver<TestSolution, TestInstance>() {
+        Deque<Set<String>> capturedRestrictions = new ArrayDeque<>();
+        var solver = new CMSASolver<TestSolution, TestInstance, String>() {
             @Override
-            public TestSolution solve(TestInstance instance, Set<Object> restrictedComponents, long maxDurationInMillis) {
+            public TestSolution solve(TestInstance instance, Set<String> restrictedComponents, long maxDurationInMillis) {
                 capturedRestrictions.add(new HashSet<>(restrictedComponents));
                 // Never selects any component: everything currently in the sub-instance ages this round
                 return new TestSolution(instance, 1);

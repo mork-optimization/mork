@@ -1,6 +1,8 @@
 package es.urjc.etsii.grafo.graphs.mvc;
 
 import es.urjc.etsii.grafo.algorithms.cmsa.CMSAConstructive;
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.RealParam;
 import es.urjc.etsii.grafo.graphs.model.Edge;
 import es.urjc.etsii.grafo.graphs.model.MSTInstance;
 import es.urjc.etsii.grafo.graphs.model.MSTSolution;
@@ -8,7 +10,6 @@ import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.ArrayList;
 import java.util.BitSet;
-import java.util.HashSet;
 import java.util.Set;
 import java.util.random.RandomGenerator;
 
@@ -21,7 +22,7 @@ import java.util.random.RandomGenerator;
  * cover heuristic), but not always: this randomization is what allows CMSA to sample different,
  * varied vertex subsets across iterations to build the sub-instance.
  */
-public class MVCConstructive extends CMSAConstructive<MSTSolution, MSTInstance> {
+public class MVCConstructive extends CMSAConstructive<MSTSolution, MSTInstance, Integer> {
 
     /**
      * Probability of picking the endpoint with the highest remaining degree, instead of the other one.
@@ -32,7 +33,8 @@ public class MVCConstructive extends CMSAConstructive<MSTSolution, MSTInstance> 
         this(0.8);
     }
 
-    public MVCConstructive(double greedyBias) {
+    @AutoconfigConstructor
+    public MVCConstructive(@RealParam(min = 0, max = 1) double greedyBias) {
         if (greedyBias < 0 || greedyBias > 1) {
             throw new IllegalArgumentException("greedyBias must be in [0, 1]");
         }
@@ -78,8 +80,8 @@ public class MVCConstructive extends CMSAConstructive<MSTSolution, MSTInstance> 
     }
 
     @Override
-    public Set<Object> usedComponents(MSTSolution solution) {
-        return new HashSet<>(solution.getCoverVertices());
+    public Set<Integer> usedComponents(MSTSolution solution) {
+        return solution.getCoverVertices();
     }
 
     @Override
