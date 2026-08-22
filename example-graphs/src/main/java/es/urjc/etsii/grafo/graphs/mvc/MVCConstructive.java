@@ -6,10 +6,10 @@ import es.urjc.etsii.grafo.annotations.RealParam;
 import es.urjc.etsii.grafo.graphs.model.Edge;
 import es.urjc.etsii.grafo.graphs.model.MSTInstance;
 import es.urjc.etsii.grafo.graphs.model.MSTSolution;
+import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.ArrayList;
-import java.util.BitSet;
 import java.util.Set;
 import java.util.random.RandomGenerator;
 
@@ -45,26 +45,14 @@ public class MVCConstructive extends CMSAConstructive<MSTSolution, MSTInstance, 
     public MSTSolution construct(MSTSolution solution) {
         var instance = solution.getInstance();
         var rnd = RandomManager.getRandom();
-        var uncovered = new ArrayList<>(instance.getEdges());
-        var selected = new BitSet(instance.v());
+        var edges = new ArrayList<>(instance.getEdges());
+        CollectionUtil.shuffle(edges);
 
-        while (!uncovered.isEmpty()) {
-            int idx = rnd.nextInt(uncovered.size());
-            int last = uncovered.size() - 1;
-            Edge edge = uncovered.get(idx);
-            uncovered.set(idx, uncovered.get(last));
-            uncovered.remove(last);
-
-            if (selected.get(edge.from()) || selected.get(edge.to())) {
+        for (Edge edge : edges) {
+            if (solution.isInCover(edge.from()) || solution.isInCover(edge.to())) {
                 continue; // Already covered by a vertex chosen earlier
             }
-
-            int chosen = chooseEndpoint(instance, edge, rnd);
-            selected.set(chosen);
-        }
-
-        for (int v = selected.nextSetBit(0); v >= 0; v = selected.nextSetBit(v + 1)) {
-            solution.addToCover(v);
+            solution.addToCover(chooseEndpoint(instance, edge, rnd));
         }
         solution.setScoreCover();
         solution.notifyUpdate();

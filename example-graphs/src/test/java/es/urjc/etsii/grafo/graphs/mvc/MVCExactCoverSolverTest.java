@@ -1,52 +1,15 @@
 package es.urjc.etsii.grafo.graphs.mvc;
 
-import es.urjc.etsii.grafo.graphs.model.Edge;
-import es.urjc.etsii.grafo.graphs.model.MSTInstance;
-import es.urjc.etsii.grafo.graphs.model.MSTSolution;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Set;
 
+import static es.urjc.etsii.grafo.graphs.mvc.MVCTestFixtures.allVertices;
+import static es.urjc.etsii.grafo.graphs.mvc.MVCTestFixtures.assertIsValidCover;
+import static es.urjc.etsii.grafo.graphs.mvc.MVCTestFixtures.cycleWithPendant;
+
 class MVCExactCoverSolverTest {
-
-    /**
-     * A 5-cycle (0-1-2-3-4-0) plus a pendant edge (0-5).
-     * Minimum vertex cover size is known to be 3, e.g. {0,1,3}: an odd cycle of length n
-     * needs ceil(n/2) vertices, and vertex 0 also covers the pendant edge for free.
-     */
-    private MSTInstance cycleWithPendant() {
-        List<Edge>[] graph = new List[6];
-        for (int i = 0; i < 6; i++) {
-            graph[i] = new ArrayList<>();
-        }
-        List<Edge> edges = new ArrayList<>();
-        int[][] pairs = {{0, 1}, {1, 2}, {2, 3}, {3, 4}, {4, 0}, {0, 5}};
-        for (var pair : pairs) {
-            var edge = new Edge(pair[0], pair[1], 1);
-            graph[pair[0]].add(edge);
-            graph[pair[1]].add(edge);
-            edges.add(edge);
-        }
-        return new MSTInstance("cycle+pendant", graph, edges, 1);
-    }
-
-    private void assertIsValidCover(MSTInstance instance, MSTSolution solution) {
-        for (var edge : instance.getEdges()) {
-            Assertions.assertTrue(solution.isInCover(edge.from()) || solution.isInCover(edge.to()),
-                    "Edge " + edge + " is not covered by the solution");
-        }
-    }
-
-    private Set<Integer> allVertices(MSTInstance instance) {
-        Set<Integer> candidates = new java.util.HashSet<>();
-        for (int v = 0; v < instance.v(); v++) {
-            candidates.add(v);
-        }
-        return candidates;
-    }
 
     @Test
     void solvesToOptimalityWithFullCandidateSet() {

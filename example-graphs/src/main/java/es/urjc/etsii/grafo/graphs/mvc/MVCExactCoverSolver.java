@@ -37,19 +37,18 @@ public class MVCExactCoverSolver extends CMSASolver<MSTSolution, MSTInstance, In
         List<Edge> edges = instance.getEdges();
         long deadline = System.nanoTime() + maxDurationInMillis * 1_000_000L;
 
-        // Use every candidate as the initial upper bound, if they form a feasible cover
-        BitSet best = new BitSet(instance.v());
+        BitSet candidates = new BitSet(instance.v());
         for (int candidate : restrictedComponents) {
-            best.set(candidate);
+            candidates.set(candidate);
         }
         for (Edge edge : edges) {
-            if (!best.get(edge.from()) && !best.get(edge.to())) {
+            if (!candidates.get(edge.from()) && !candidates.get(edge.to())) {
                 throw new IllegalArgumentException("Restricted components do not form a feasible vertex cover");
             }
         }
-        int[] bestSize = {best.cardinality()};
 
-        search(edges, 0, restrictedComponents, new BitSet(instance.v()), best, bestSize, deadline);
+        BitSet best = (BitSet) candidates.clone();
+        search(edges, 0, candidates, new BitSet(instance.v()), best, deadline);
 
         MSTSolution solution = new MSTSolution(instance);
         for (int v = best.nextSetBit(0); v >= 0; v = best.nextSetBit(v + 1)) {
@@ -67,11 +66,11 @@ public class MVCExactCoverSolver extends CMSASolver<MSTSolution, MSTInstance, In
      *
      * @return true if the search was aborted because the time budget ran out
      */
-    private boolean search(List<Edge> edges, int scanFrom, Set<Integer> candidates, BitSet current, BitSet best, int[] bestSize, long deadline) {
+    private boolean search(List<Edge> edges, int scanFrom, BitSet candidates, BitSet current, BitSet best, long deadline) {
         if (System.nanoTime() > deadline) {
             return true;
         }
-        if (current.cardinality() >= bestSize[0]) {
+        if (current.cardinality() >= best.cardinality()) {
             return false; // Cannot possibly improve on the current best from this branch
         }
 
@@ -88,17 +87,16 @@ public class MVCExactCoverSolver extends CMSASolver<MSTSolution, MSTInstance, In
             // Every edge is covered: current is feasible and strictly better than best (checked above)
             best.clear();
             best.or(current);
-            bestSize[0] = current.cardinality();
             return false;
         }
 
         Edge edge = edges.get(firstUncovered);
         for (int endpoint : new int[]{edge.from(), edge.to()}) {
-            if (!candidates.contains(endpoint) || current.get(endpoint)) {
+            if (!candidates.get(endpoint) || current.get(endpoint)) {
                 continue; // Can only select candidate vertices
             }
             current.set(endpoint);
-            boolean timeUp = search(edges, firstUncovered + 1, candidates, current, best, bestSize, deadline);
+            boolean timeUp = search(edges, firstUncovered + 1, candidates, current, best, deadline);
             current.clear(endpoint);
             if (timeUp) {
                 return true;

@@ -8,14 +8,12 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.StringUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Objects;
@@ -122,15 +120,16 @@ public class CMSA<S extends Solution<S, I>, I extends Instance, C> extends Algor
      * @param solverTimeLimitInMillis maximum time budget, in milliseconds, given to the solver at each iteration
      * @param maxIterations           maximum number of iterations, use a value smaller or equal to zero to only rely on the global time limit
      */
+    @AutoconfigConstructor
     public CMSA(
-            String name,
-            Objective<?, S, I> objective,
+            @ProvidedParam String name,
+            @ProvidedParam Objective<?, S, I> objective,
             CMSAConstructive<S, I, C> constructive,
             CMSASolver<S, I, C> solver,
-            int solutionsPerIteration,
-            int ageMax,
-            long solverTimeLimitInMillis,
-            int maxIterations
+            @IntegerParam(min = 1, max = 1_000) int solutionsPerIteration,
+            @IntegerParam(min = 0, max = 100) int ageMax,
+            @IntegerParam(min = 1, max = 60_000) long solverTimeLimitInMillis,
+            @IntegerParam(min = 0, max = 1_000_000) int maxIterations
     ) {
         super(name);
         if (solutionsPerIteration < 1) {
@@ -151,24 +150,10 @@ public class CMSA<S extends Solution<S, I>, I extends Instance, C> extends Algor
         this.maxIterations = maxIterations;
     }
 
-    @AutoconfigConstructor
-    public CMSA(
-            @ProvidedParam String name,
-            CMSAConstructive<S, I, C> constructive,
-            CMSASolver<S, I, C> solver,
-            @IntegerParam(min = 1, max = 1_000) int solutionsPerIteration,
-            @IntegerParam(min = 0, max = 100) int ageMax,
-            @IntegerParam(min = 1, max = 60_000) long solverTimeLimitInMillis,
-            @IntegerParam(min = 0, max = 1_000_000) int maxIterations
-    ) {
-        this(name, Context.getMainObjective(), constructive, solver, solutionsPerIteration, ageMax, solverTimeLimitInMillis, maxIterations);
-    }
-
     /** {@inheritDoc} */
     @Override
     public S algorithm(I instance) {
-        Map<C, Integer> age = new HashMap<>();
-        Set<C> subInstance = new HashSet<>();
+        Map<C, Integer> componentAges = new HashMap<>();
         S best = null;
 
         int iteration = 0;
@@ -178,9 +163,7 @@ public class CMSA<S extends Solution<S, I>, I extends Instance, C> extends Algor
             for (int i = 0; i < solutionsPerIteration && !TimeControl.isTimeUp(); i++) {
                 S candidate = this.constructive.construct(this.newSolution(instance));
                 for (var component : this.constructive.usedComponents(candidate)) {
-                    if (subInstance.add(component)) {
-                        age.put(component, 0);
-                    }
+                    componentAges.putIfAbsent(component, 0);
                 }
             }
 
@@ -196,28 +179,31 @@ public class CMSA<S extends Solution<S, I>, I extends Instance, C> extends Algor
             if (timeBudget <= 0) {
                 break;
             }
-            S solved = this.solver.solve(instance, Set.copyOf(subInstance), timeBudget);
+            S solved = this.solver.solve(instance, Set.copyOf(componentAges.keySet()), timeBudget);
 
             if (solved != null) {
                 if (best == null || objective.isBetter(solved, best)) {
-                    log.debug("Iteration {}: improved best solution: {} --> {}", iteration,
-                            best == null ? "none" : objective.evalSol(best), objective.evalSol(solved));
+                    if (log.isDebugEnabled()) {
+                        log.debug("Iteration {}: improved best solution: {} --> {}", iteration,
+                                best == null ? "none" : objective.evalSol(best), objective.evalSol(solved));
+                    }
                     best = solved;
                     Metrics.addCurrentObjectives(best);
                 }
 
                 // Adapt: components used by the solver stay young, the rest age and eventually drop out
                 Set<C> usedBySolver = this.constructive.usedComponents(solved);
-                Iterator<C> it = subInstance.iterator();
+                Iterator<Map.Entry<C, Integer>> it = componentAges.entrySet().iterator();
                 while (it.hasNext()) {
-                    C component = it.next();
-                    if (usedBySolver.contains(component)) {
-                        age.put(component, 0);
+                    Map.Entry<C, Integer> entry = it.next();
+                    if (usedBySolver.contains(entry.getKey())) {
+                        entry.setValue(0);
                     } else {
-                        int componentAge = age.merge(component, 1, Integer::sum);
+                        int componentAge = entry.getValue() + 1;
                         if (componentAge > ageMax) {
                             it.remove();
-                            age.remove(component);
+                        } else {
+                            entry.setValue(componentAge);
                         }
                     }
                 }

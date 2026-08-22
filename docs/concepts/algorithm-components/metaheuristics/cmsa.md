@@ -54,10 +54,10 @@ Components that keep being selected by the exact method stay in `Csub` indefinit
 
 ## Mork implementation
 
-CMSA is implemented in [`CMSA`](https://github.com/rmartinsanta/mork/blob/master/common/src/main/java/es/urjc/etsii/grafo/algorithms/cmsa/CMSA.java), and depends on two problem-specific components:
+CMSA is implemented in [`CMSA`](../../../apidocs/es/urjc/etsii/grafo/algorithms/cmsa/CMSA.html), and depends on two problem-specific components:
 
-- [`CMSAConstructive`](https://github.com/rmartinsanta/mork/blob/master/common/src/main/java/es/urjc/etsii/grafo/algorithms/cmsa/CMSAConstructive.java): a regular [`Constructive`](../constructors) that additionally knows how to extract the set of solution components used by any given solution. Solution components can be represented using any type that properly implements `equals`/`hashCode`, for example a record such as `record Edge(int from, int to)`.
-- [`CMSASolver`](https://github.com/rmartinsanta/mork/blob/master/common/src/main/java/es/urjc/etsii/grafo/algorithms/cmsa/CMSASolver.java): solves, exactly or as close to exactly as possible, the sub-instance induced by a given set of solution components, within a time budget.
+- [`CMSAConstructive`](../../../apidocs/es/urjc/etsii/grafo/algorithms/cmsa/CMSAConstructive.html): a regular [`Constructive`](../constructors) that additionally knows how to extract the set of solution components used by any given solution. Solution components can be represented using any type that properly implements `equals`/`hashCode`, for example a record such as `record Edge(int from, int to)`.
+- [`CMSASolver`](../../../apidocs/es/urjc/etsii/grafo/algorithms/cmsa/CMSASolver.html): solves, exactly or as close to exactly as possible, the sub-instance induced by a given set of solution components, within a time budget.
 
 !!! info
     Mork does not bundle any exact solver. `CMSASolver` implementations are expected to encode the restricted sub-instance and delegate to whatever exact method is available and fits the problem: a MIP/ILP solver such as CPLEX, Gurobi, SCIP or OR-Tools, a specialized dynamic programming procedure, or, since the restricted sub-instance is expected to stay small thanks to the aging mechanism, an exhaustive branch and bound search.

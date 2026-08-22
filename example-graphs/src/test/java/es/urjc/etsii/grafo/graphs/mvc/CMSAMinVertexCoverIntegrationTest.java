@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.graphs.mvc;
 
+import es.urjc.etsii.grafo.algorithms.cmsa.CMSA;
 import es.urjc.etsii.grafo.algorithms.cmsa.CMSABuilder;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.graphs.model.MSTInstance;
@@ -14,12 +15,21 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import static es.urjc.etsii.grafo.graphs.mvc.MVCTestFixtures.assertIsValidCover;
+
 /**
  * End-to-end test: builds a {@code CMSA} algorithm using {@link MVCConstructive} and
  * {@link MVCExactCoverSolver}, and checks it finds a valid, small vertex cover, without
  * requiring a full Spring Boot / Mork application context.
  */
 class CMSAMinVertexCoverIntegrationTest {
+
+    private static final SolutionBuilder<MSTSolution, MSTInstance> SOLUTION_BUILDER = new SolutionBuilder<>() {
+        @Override
+        public MSTSolution initializeSolution(MSTInstance instance) {
+            return new MSTSolution(instance);
+        }
+    };
 
     @BeforeAll
     static void initMetrics() {
@@ -33,32 +43,10 @@ class CMSAMinVertexCoverIntegrationTest {
         Context.Configurator.resetRandom(RandomType.DEFAULT, 42);
     }
 
-    private void assertIsValidCover(MSTInstance instance, MSTSolution solution) {
-        for (var edge : instance.getEdges()) {
-            Assertions.assertTrue(solution.isInCover(edge.from()) || solution.isInCover(edge.to()),
-                    "Edge " + edge + " is not covered by the solution");
-        }
-    }
-
     @Test
     void findsAValidAndReasonablySmallCoverOnARandomGraph() {
         var instance = MSTInstanceImporter.generateErdosRenyi(30, 0.15, 7);
-
-        var cmsa = new CMSABuilder<MSTSolution, MSTInstance, Integer>()
-                .withDefaultObjective()
-                .withConstructive(new MVCConstructive())
-                .withSolver(new MVCExactCoverSolver())
-                .withSolutionsPerIteration(10)
-                .withAgeMax(5)
-                .withSolverTimeLimitInMillis(200)
-                .withMaxIterations(30)
-                .build("CMSA-MVC-Test");
-        cmsa.setBuilder(new SolutionBuilder<>() {
-            @Override
-            public MSTSolution initializeSolution(MSTInstance instance) {
-                return new MSTSolution(instance);
-            }
-        });
+        var cmsa = buildCmsa(10, 200, 30);
 
         var solution = cmsa.algorithm(instance);
 
@@ -74,48 +62,35 @@ class CMSAMinVertexCoverIntegrationTest {
     void adaptsSubInstanceOverIterationsAndKeepsImprovingOrStaying() {
         var instance = MSTInstanceImporter.generateErdosRenyi(20, 0.2, 11);
 
-        // Run with a single iteration first
-        var single = new CMSABuilder<MSTSolution, MSTInstance, Integer>()
-                .withDefaultObjective()
-                .withConstructive(new MVCConstructive())
-                .withSolver(new MVCExactCoverSolver())
-                .withSolutionsPerIteration(5)
-                .withAgeMax(5)
-                .withSolverTimeLimitInMillis(100)
-                .withMaxIterations(1)
-                .build("CMSA-MVC-1iter");
-        single.setBuilder(new SolutionBuilder<>() {
-            @Override
-            public MSTSolution initializeSolution(MSTInstance instance) {
-                return new MSTSolution(instance);
-            }
-        });
-
-        Context.Configurator.resetRandom(RandomType.DEFAULT, 42);
+        var single = buildCmsa(5, 100, 1);
         var solutionAfter1Iter = single.algorithm(instance);
 
         // Run again with the same seed, but allow many more iterations
         Context.Configurator.resetRandom(RandomType.DEFAULT, 42);
-        var many = new CMSABuilder<MSTSolution, MSTInstance, Integer>()
-                .withDefaultObjective()
-                .withConstructive(new MVCConstructive())
-                .withSolver(new MVCExactCoverSolver())
-                .withSolutionsPerIteration(5)
-                .withAgeMax(5)
-                .withSolverTimeLimitInMillis(100)
-                .withMaxIterations(30)
-                .build("CMSA-MVC-30iter");
-        many.setBuilder(new SolutionBuilder<>() {
-            @Override
-            public MSTSolution initializeSolution(MSTInstance instance) {
-                return new MSTSolution(instance);
-            }
-        });
+        var many = buildCmsa(5, 100, 30);
         var solutionAfterManyIters = many.algorithm(instance);
 
         assertIsValidCover(instance, solutionAfter1Iter);
         assertIsValidCover(instance, solutionAfterManyIters);
         Assertions.assertTrue(solutionAfterManyIters.getCoverSize() <= solutionAfter1Iter.getCoverSize(),
                 "Running more CMSA iterations should never yield a worse best solution");
+    }
+
+    private CMSA<MSTSolution, MSTInstance, Integer> buildCmsa(
+            int solutionsPerIteration,
+            long solverTimeLimitInMillis,
+            int maxIterations
+    ) {
+        var cmsa = new CMSABuilder<MSTSolution, MSTInstance, Integer>()
+                .withDefaultObjective()
+                .withConstructive(new MVCConstructive())
+                .withSolver(new MVCExactCoverSolver())
+                .withSolutionsPerIteration(solutionsPerIteration)
+                .withAgeMax(5)
+                .withSolverTimeLimitInMillis(solverTimeLimitInMillis)
+                .withMaxIterations(maxIterations)
+                .build("CMSA-MVC-%diter".formatted(maxIterations));
+        cmsa.setBuilder(SOLUTION_BUILDER);
+        return cmsa;
     }
 }
