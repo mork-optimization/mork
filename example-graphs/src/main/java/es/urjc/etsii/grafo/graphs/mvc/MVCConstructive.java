@@ -18,14 +18,14 @@ import java.util.random.RandomGenerator;
  * "Construct" step of the CMSA demo in this project.
  * <p>
  * Repeatedly picks a random still-uncovered edge, and adds one of its endpoints to the cover,
- * biased towards the endpoint with the highest remaining degree (as in the classic greedy vertex
+ * biased towards the endpoint with the highest degree (as in the classic greedy vertex
  * cover heuristic), but not always: this randomization is what allows CMSA to sample different,
  * varied vertex subsets across iterations to build the sub-instance.
  */
 public class MVCConstructive extends CMSAConstructive<MSTSolution, MSTInstance, Integer> {
 
     /**
-     * Probability of picking the endpoint with the highest remaining degree, instead of the other one.
+     * Probability of picking the endpoint with the highest degree, instead of the other one.
      */
     private final double greedyBias;
 
