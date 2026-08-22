@@ -50,5 +50,6 @@ docs/apidocs
 log.txt
 .benchmark
 **/docs
+!/docs/
 /example-graphs/instances/
 site/
