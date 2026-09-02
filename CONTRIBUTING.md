@@ -23,6 +23,25 @@ Third party contributions are essential to improve the project. Not every contri
 * Commits should include only a brief description in the first line, and may contain more information on the next lines. If the commits fixes a Github issue, please specify so (Example: `Fix #46: Wrong calculation in ...`).
 * For details on how to run tests, please see [the quickstart guide](https://mork-optimization.readthedocs.io/en/latest/quickstart/starting/)
 
+### Building documentation locally
+
+Install the documentation dependencies:
+
+```shell
+python -m pip install --require-hashes -r mkdocs-requirements.txt
+```
+
+Generate the aggregated Javadocs before starting MkDocs:
+
+```shell
+# If using Windows, replace ./mvnw with .\mvnw.cmd
+./mvnw javadoc:aggregate
+mkdocs serve
+```
+
+The generated Javadocs are written to `docs/apidocs` and are intentionally ignored by Git. Run
+`./mvnw javadoc:aggregate` again after changing the Java API or its Javadocs.
+
 ## Submitting Changes
 * Push your changes to a topic branch in your fork of the repository.
 * Submit a pull request to the main repository. Wait for the CI pipeline to execute. Both the docs and the source code will be tested.
