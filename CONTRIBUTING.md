@@ -34,12 +34,13 @@ python -m pip install --require-hashes -r mkdocs-requirements.txt
 Generate the aggregated Javadocs before starting MkDocs:
 
 ```shell
-mvn javadoc:aggregate
+# If using Windows, replace ./mvnw with .\mvnw.cmd
+./mvnw javadoc:aggregate
 mkdocs serve
 ```
 
 The generated Javadocs are written to `docs/apidocs` and are intentionally ignored by Git. Run
-`mvn javadoc:aggregate` again after changing the Java API or its Javadocs.
+`./mvnw javadoc:aggregate` again after changing the Java API or its Javadocs.
 
 ## Submitting Changes
 * Push your changes to a topic branch in your fork of the repository.
