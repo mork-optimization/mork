@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.util;
 
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -8,8 +9,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 /**
  * Helper methods to deal with concurrent tasks
@@ -82,18 +81,11 @@ public class ConcurrencyUtil {
      * @return Objects inside futures
      */
     public static <T> List<T> awaitAll(Collection<Future<T>> futures){
-        return awaitAll(futures.stream());
-    }
-
-    /**
-     * Await a stream of futures
-     *
-     * @param futures stream of futures
-     * @param <T> Futures type
-     * @return Objects inside futures
-     */
-    public static <T> List<T> awaitAll(Stream<Future<T>> futures){
-        return futures.map(ConcurrencyUtil::await).collect(Collectors.toList());
+        var results = new ArrayList<T>(futures.size());
+        for (var future : futures) {
+            results.add(await(future));
+        }
+        return results;
     }
 
     /**
