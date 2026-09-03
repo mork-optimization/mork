@@ -4,7 +4,6 @@ package es.urjc.etsii.grafo.util;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -93,20 +92,35 @@ public class IOUtil {
     }
 
     /**
-     * Get input stream for the given path
+     * Get an IRACE resource, preferring an application-provided override over
+     * the default bundled with the autoconfig module.
      *
-     * @param s     path to resource
+     * @param filename resource filename
      * @param isJar true if the resource is inside a JAR file, false otherwise
      * @return InputStream to the resource given as a parameter
      * @throws java.io.IOException if anything goes wrong
      */
-    public static InputStream getInputStreamForIrace(String s, boolean isJar) throws IOException {
-        if (isJar) {
-            return IOUtil.class.getResourceAsStream("/BOOT-INF/classes/irace/" + s);
-            //return ResourceUtils.getFile("classpath:irace/" + s).toPath();
-        } else {
-            return new FileInputStream(new File("src/main/resources/irace/", s));
+    public static InputStream getInputStreamForIrace(String filename, boolean isJar) throws IOException {
+        String resourcePath = "irace/" + filename;
+        if (!isJar) {
+            Path override = Path.of("src/main/resources").resolve(resourcePath);
+            if (Files.isRegularFile(override)) {
+                return Files.newInputStream(override);
+            }
         }
+
+        if (isJar) {
+            InputStream override = IOUtil.class.getResourceAsStream("/BOOT-INF/classes/" + resourcePath);
+            if (override != null) {
+                return override;
+            }
+        }
+
+        InputStream bundled = IOUtil.class.getClassLoader().getResourceAsStream(resourcePath);
+        if (bundled != null) {
+            return bundled;
+        }
+        throw new IOException("IRACE resource not found: " + filename);
     }
 
     /**

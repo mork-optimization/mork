@@ -77,7 +77,8 @@ Note that this method returns an Optional<String> if a default value is not prov
 
 
 ## Defining algorithm parameters to test
- The parameters of the target algorithm are defined by a parameter file `parameters.txt` located in `src/main/resources/irace/parameters.txt`.
+Mork provides a default `parameters.txt` in the `autoconfig` dependency. To customize the target algorithm parameters,
+place a at `src/main/resources/irace/parameters.txt` in your project. A local `parameters.txt`, `runner.R` or `scenario.txt` always takes precedence.
 
 Each target parameter has an associated type that defines its domain and the way Irace handles them internally.  The four basic types supported by irace are: *Real*, *Integer*, *Categorical* and *Ordinal*. The parameter file format follows a table like scheme, where each row is defined as:
 
@@ -90,7 +91,8 @@ Each target parameter has an associated type that defines its domain and the way
  - An optional `condition` that determines whether the parameter is enabled or disabled, thus making the parameter conditional. If the condition evaluates to false, then no value is assigned to this parameter, and neither the parameter value nor the corresponding label are passed to algorithm. **The condition must be a valid R logical expression**.
 
 ## Adjusting scenario options
-The scenario allows specifying a text file that contains an initial set of configurations to start the execution of Irace. Particularly, this configuration is defined in `scenario.txt` file located in `src/main/resources/irace/scenario.txt` .
+Mork also provides the default `scenario.txt` and `runner.R` from the `autoconfig` dependency. To customize either
+file, place a copy at `src/main/resources/irace/scenario.txt` or `src/main/resources/irace/runner.R`. A local `parameters.txt`, `runner.R` or `scenario.txt` always takes precedence over the bundled version in the autoconfig module.
 
 
 ## More info

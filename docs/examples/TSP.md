@@ -885,8 +885,10 @@ Be sure that you leave some empty lines at the end of the file (we don't why it 
 
 ### Adjusting scenario options
 
-Next, go to `/resources/irace/scenario.txt` and read carefully all configuration parameters. Some parameters you could
-modify are: `trainInstancesDir`, `maxExperiments`, `targetRunnerParallel`, among others.
+Mork uses the default `scenario.txt` bundled with the `autoconfig` dependency. To customize it, copy the file from
+`autoconfig/src/main/resources/irace/scenario.txt` to `src/main/resources/irace/scenario.txt` in your project. 
+Some parameters you could modify are `trainInstancesDir`,
+`maxExperiments`, and `targetRunnerParallel`.
 
 ### Execute irace
 

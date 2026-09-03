@@ -1,12 +1,7 @@
 package es.urjc.etsii.morktests;
 
-import org.apache.commons.io.FileUtils;
-import org.junit.jupiter.api.AfterAll;
-import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -18,20 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class IraceIntegrationTest {
-
-
-    @BeforeAll
-    static void setup() throws IOException {
-        FileUtils.copyDirectory(new File("../template/src/main/resources/irace"), new File("../integration-tests/src/main/resources/irace"));
-        //FileUtils.copyDirectory(new File("../example-tsp/instances"), new File("../integration-tests/instances"));
-    }
-
-    @AfterAll
-    static void deleteIraceFiles(){
-        FileUtils.deleteQuietly(new File("../integration-tests/src/main/resources/irace"));
-        //FileUtils.deleteQuietly(new File("../integration-tests/instances"));
-        //FileUtils.deleteQuietly(new File("integration-tests/src/main/resources/irace"));
-    }
 
     @Test
     void launchAutoconfig() throws Exception {
