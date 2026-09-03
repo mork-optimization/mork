@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigRunState;
 import es.urjc.etsii.grafo.config.BlockConfig;
@@ -209,7 +210,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         long start = System.nanoTime();
         long startTimestamp = System.currentTimeMillis();
         var finalElites = iraceIntegration.runIrace(isJAR, substitutions);
-        this.runState.publishElites(this.runState.getRunId(), null, finalElites, true);
+        this.runState.publishFinalElites(this.runState.getRunId(), finalElites);
         long end = System.nanoTime();
         log.info("Finished running experiment: IRACE autoconfig");
         try {
@@ -491,9 +492,10 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public void iraceProgressCallback(
             String runId,
             int iteration,
-            List<EliteConfiguration> elites
+            List<EliteConfiguration> elites,
+            IraceProgressDetails progress
     ) {
-        this.runState.publishElites(runId, iteration, elites, false);
+        this.runState.publishProgress(runId, iteration, elites, progress);
     }
 
     public String getIntegrationKey() {

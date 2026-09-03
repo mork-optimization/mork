@@ -28,7 +28,6 @@ The base path is:
     "remaining": 9579
   },
   "evaluations": {
-    "total": 421,
     "running": 8,
     "succeeded": 400,
     "rejected": 10,
@@ -40,7 +39,20 @@ The base path is:
     "iteration": 3,
     "eliteCount": 5,
     "updatedAt": "2026-07-24T10:00:10Z",
-    "finalSnapshot": false
+    "finalSnapshot": false,
+    "progress": {
+      "nbIterations": 6,
+      "maxExperiments": 10000,
+      "experimentsUsed": 421,
+      "remainingBudget": 9579,
+      "remainingBudgetEstimated": false,
+      "currentBudget": 120,
+      "currentBudgetUsed": 100,
+      "maxTime": 0.0,
+      "timeUsed": 0.0,
+      "remainingTime": null,
+      "boundEstimate": null
+    }
   },
   "failure": null
 }
@@ -51,6 +63,11 @@ Roles are `COORDINATOR`, `WORKER`, and `DISABLED`. Lifecycle states are `NOT_STA
 
 An experiment consumes budget when Mork accepts it, even if it is still running or is later rejected. Therefore,
 `used` equals the sum of running, successful, rejected, and failed evaluations.
+
+The top-level `budget` is Mork's count. `irace.progress` is the latest snapshot reported by
+IRACE at an iteration boundary. Mork logs a warning when their overlapping experiment counters differ, but keeps
+and exposes both values. With a time budget, `remainingBudget` is IRACE's estimate and is not compared with
+Mork's independently configured maximum. `progress` is `null` until the first iteration finishes.
 
 ## Search Space
 
@@ -86,14 +103,12 @@ names used by `$component` in [JSON algorithm descriptions](../concepts/algorith
   },
   "decodeError": null,
   "evaluations": {
-    "total": 30,
     "running": 2,
     "succeeded": 26,
     "rejected": 1,
     "failed": 1,
     "slow": 3
-  },
-  "elitePosition": 2
+  }
 }
 ```
 
@@ -113,24 +128,20 @@ after the final IRACE result has been validated.
 |-----------|---------|
 | `after` | Return IDs greater than this cursor. Defaults to `0`. |
 | `limit` | Page size from 1 to 500. Defaults to 100. |
-| `state` | `RUNNING`, `SUCCEEDED`, `REJECTED`, or `FAILED`. |
-| `configurationId` | Only evaluations of one candidate. |
-| `slow` | Filter by the slow-stop flag. |
 
-Use the returned `nextCursor` as the next `after` value. `historyTruncated`, `oldestRetainedId`, and `latestId`
-make bounded retention explicit. Aggregate status and candidate counters remain exact after old evaluation
-details have been evicted.
-
-`GET /api/autoconfig/evaluations/{id}` returns the full instance, seed, timing, cost, rejection/error, and
-slow-overrun details. An unknown or evicted ID returns a Problem Details response with status 404. Invalid
-pagination values return status 400.
+Each item contains the full instance, seed, timing, cost, rejection/error, and slow-overrun details. The page is
+a point-in-time snapshot: if it contains a running evaluation, refetch that page to observe its final state.
+`nextCursor` navigates later records in the same snapshot and is not an update-event cursor.
+`historyTruncated`, `oldestRetainedId`, and `latestId` make bounded retention explicit. Aggregate status and
+candidate counters remain exact after old evaluation details have been evicted. Invalid pagination values return
+status 400.
 
 ## Polling
 
 A REST client can monitor a run without downloading repeated candidate descriptions:
 
 1. Poll `/status`.
-2. Fetch `/evaluations?after={nextCursor}` for new execution results.
+2. Fetch or refetch `/evaluations` pages for execution details.
 3. Refresh `/elites` when the status iteration or elite update timestamp changes.
 4. Fetch `/candidates/{configurationId}` when the user opens an evaluation or elite.
 
@@ -141,7 +152,7 @@ The existing generic Mork event API remains separate from these autoconfig snaps
 The R runner uses authenticated, implementation-only endpoints:
 
 - `POST /internal/autoconfig/irace/evaluations` executes an IRACE batch.
-- `POST /internal/autoconfig/irace/progress` publishes the elites at an iteration boundary.
+- `POST /internal/autoconfig/irace/progress` publishes elites and progress counters at an iteration boundary.
 
 These endpoints are not user-facing and require the generated integration key.
 
@@ -151,4 +162,5 @@ to the internal evaluations endpoint when only one configuration must be evaluat
 Live elite updates require a recent IRACE version that supports the scenario option
 `iterationCallback(iteration, elites, progress, ...)`. The bundled runner stops with an upgrade message when the
 installed IRACE version does not support this option. Mork receives live updates directly from this callback and
-therefore does not poll `irace.Rdata`. 
+therefore does not poll `irace.Rdata`. Only the latest callback snapshot is retained; the validated final elites
+replace the elite list without discarding that progress snapshot.

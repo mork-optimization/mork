@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.autoconfig.controller;
 
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -130,7 +131,19 @@ class ExecutionControllerTest {
                       "configurationId": "12",
                       "parameters": {"ROOT": "TestAlgorithm"}
                     }
-                  ]
+                  ],
+                  "progress": {
+                    "nbIterations": 8,
+                    "maxExperiments": 100,
+                    "experimentsUsed": 30,
+                    "remainingBudget": 70,
+                    "remainingBudgetEstimated": false,
+                    "currentBudget": 12,
+                    "currentBudgetUsed": 10,
+                    "maxTime": 0,
+                    "timeUsed": 0,
+                    "futureCounter": 123
+                  }
                 }
                 """;
 
@@ -145,7 +158,28 @@ class ExecutionControllerTest {
                 List.of(new EliteConfiguration(
                         "12",
                         Map.of("ROOT", "TestAlgorithm")
-                ))
+                )),
+                new IraceProgressDetails(
+                        8, 100, 30, 70, false, 12, 10,
+                        0, 0, null, null
+                )
         );
+    }
+
+    @Test
+    void rejectsProgressWithoutIraceDetails() throws Exception {
+        String request = """
+                {
+                  "key": "secret",
+                  "runId": "run-1",
+                  "iteration": 2,
+                  "elites": []
+                }
+                """;
+
+        mockMvc.perform(post("/internal/autoconfig/irace/progress")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isBadRequest());
     }
 }

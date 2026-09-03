@@ -67,7 +67,7 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
     }
 
     /**
-     * Receive the elite set produced at the end of an IRACE iteration.
+     * Receive the elite set and progress counters produced after an IRACE iteration.
      *
      * @param request authenticated progress snapshot
      * @return empty successful response
@@ -79,7 +79,8 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
             this.orchestrator.iraceProgressCallback(
                     request.getRunId(),
                     request.getIteration(),
-                    request.getElites()
+                    request.getElites(),
+                    request.getProgress()
             );
             return ResponseEntity.noContent().build();
         } catch (IllegalStateException e) {

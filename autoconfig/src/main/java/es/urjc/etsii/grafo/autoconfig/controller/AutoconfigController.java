@@ -46,24 +46,9 @@ public class AutoconfigController {
     @GetMapping("/evaluations")
     public AutoconfigRunState.EvaluationPage evaluations(
             @RequestParam(required = false) Long after,
-            @RequestParam(required = false) Integer limit,
-            @RequestParam(required = false) AutoconfigRunState.EvaluationState state,
-            @RequestParam(required = false) String configurationId,
-            @RequestParam(required = false) Boolean slow
+            @RequestParam(required = false) Integer limit
     ) {
-        return runState.evaluations(after, limit, state, configurationId, slow);
-    }
-
-    @GetMapping("/evaluations/{evaluationId}")
-    public AutoconfigRunState.EvaluationDetail evaluation(@PathVariable long evaluationId) {
-        var evaluation = runState.evaluation(evaluationId);
-        if (evaluation == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Unknown or no longer retained evaluation " + evaluationId
-            );
-        }
-        return evaluation;
+        return runState.evaluations(after, limit);
     }
 
     @GetMapping("/candidates/{configurationId}")

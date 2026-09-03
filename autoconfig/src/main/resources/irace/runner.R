@@ -63,8 +63,9 @@ configuration_list <- function(configurations) {
   })
 }
 
-report_progress <- function(iteration, elites, ...) {
+report_progress <- function(iteration, elites, progress, ...) {
   tryCatch({
+    progress <- progress[!vapply(progress, anyNA, logical(1))]
     response <- POST(
       "http://127.0.0.1:__PORT__/internal/autoconfig/irace/progress",
       timeout(30),
@@ -72,7 +73,8 @@ report_progress <- function(iteration, elites, ...) {
         key = integration_key,
         runId = run_id,
         iteration = iteration,
-        elites = configuration_list(elites)
+        elites = configuration_list(elites),
+        progress = progress
       ),
       encode = "json"
     )

@@ -1,10 +1,13 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
 import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceConfig;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 
@@ -27,6 +30,7 @@ import java.util.UUID;
 @Service
 public class AutoconfigRunState {
 
+    private static final Logger log = LoggerFactory.getLogger(AutoconfigRunState.class);
     private static final int DEFAULT_PAGE_SIZE = 100;
     private static final int MAX_PAGE_SIZE = 500;
 
@@ -53,10 +57,7 @@ public class AutoconfigRunState {
     private long failed;
     private long slow;
     private boolean historyTruncated;
-    private Integer iteration;
-    private Instant elitesUpdatedAt;
-    private boolean finalElites;
-    private List<EliteView> elites = List.of();
+    private StoredIraceSnapshot irace = StoredIraceSnapshot.empty();
 
     public AutoconfigRunState(
             AutomaticAlgorithmBuilder<?, ?> algorithmBuilder,
@@ -145,7 +146,6 @@ public class AutoconfigRunState {
         evaluations.put(evaluationId, evaluation);
         used++;
         running++;
-        candidate.total++;
         candidate.running++;
         evictCompletedEvaluations();
         return evaluationId;
@@ -214,29 +214,61 @@ public class AutoconfigRunState {
         evictCompletedEvaluations();
     }
 
-    public synchronized void publishElites(
+    public synchronized void publishProgress(
             String reportedRunId,
-            Integer reportedIteration,
+            int reportedIteration,
             List<EliteConfiguration> reportedElites,
-            boolean finalSnapshot
+            IraceProgressDetails progress
     ) {
+        requireProgressRun(reportedRunId);
+        Objects.requireNonNull(progress, "IRACE progress cannot be null");
+        if (reportedIteration < 1) {
+            throw new IllegalArgumentException("IRACE iteration must be positive");
+        }
+        if (irace.iteration() != null && reportedIteration < irace.iteration()) {
+            throw new IllegalStateException("IRACE progress snapshot is older than the current snapshot");
+        }
+
+        var views = eliteViews(reportedElites);
+        warnIfInconsistent(reportedIteration, progress);
+        this.irace = new StoredIraceSnapshot(
+                reportedIteration,
+                Instant.now(),
+                false,
+                progress,
+                views
+        );
+    }
+
+    public synchronized void publishFinalElites(
+            String reportedRunId,
+            List<EliteConfiguration> reportedElites
+    ) {
+        requireProgressRun(reportedRunId);
+        var views = eliteViews(reportedElites);
+        this.irace = new StoredIraceSnapshot(
+                irace.iteration(),
+                Instant.now(),
+                true,
+                irace.progress(),
+                views
+        );
+    }
+
+    private void requireProgressRun(String reportedRunId) {
         if (runId == null || !runId.equals(reportedRunId)) {
             throw new IllegalStateException("Elite snapshot belongs to a different autoconfig run");
         }
         if (role != Role.COORDINATOR || state != RunStatus.RUNNING) {
             throw new IllegalStateException("Autoconfig run is not accepting elite snapshots");
         }
-        if (finalElites) {
+        if (irace.finalSnapshot()) {
             throw new IllegalStateException("The final elite snapshot has already been published");
         }
-        Objects.requireNonNull(reportedElites, "Elites cannot be null");
-        if (reportedIteration != null && reportedIteration < 1) {
-            throw new IllegalArgumentException("IRACE iteration must be positive");
-        }
-        if (!finalSnapshot && iteration != null && reportedIteration != null && reportedIteration < iteration) {
-            throw new IllegalStateException("IRACE progress snapshot is older than the current snapshot");
-        }
+    }
 
+    private List<EliteView> eliteViews(List<EliteConfiguration> reportedElites) {
+        Objects.requireNonNull(reportedElites, "Elites cannot be null");
         var reportedCandidates = new ArrayList<MutableCandidate>(reportedElites.size());
         var reportedConfigurationIds = new HashSet<String>();
         for (var reported : reportedElites) {
@@ -256,14 +288,9 @@ public class AutoconfigRunState {
             reportedCandidates.add(candidate);
         }
 
-        for (var candidate : candidates.values()) {
-            candidate.elitePosition = null;
-        }
-
         var views = new ArrayList<EliteView>(reportedCandidates.size());
         int position = 1;
         for (var candidate : reportedCandidates) {
-            candidate.elitePosition = position;
             views.add(new EliteView(
                     candidate.configurationId,
                     position,
@@ -272,13 +299,52 @@ public class AutoconfigRunState {
             ));
             position++;
         }
+        return List.copyOf(views);
+    }
 
-        if (reportedIteration != null) {
-            this.iteration = reportedIteration;
+    private void warnIfInconsistent(int reportedIteration, IraceProgressDetails progress) {
+        if (irace.iteration() != null) {
+            if (reportedIteration == irace.iteration()) {
+                log.warn("IRACE repeated progress snapshot for iteration {}", reportedIteration);
+            } else if (reportedIteration > irace.iteration() + 1) {
+                log.warn(
+                        "IRACE progress skipped from iteration {} to {}",
+                        irace.iteration(),
+                        reportedIteration
+                );
+            }
         }
-        this.elitesUpdatedAt = Instant.now();
-        this.finalElites = finalSnapshot;
-        this.elites = List.copyOf(views);
+        if (reportedIteration > progress.nbIterations()) {
+            log.warn(
+                    "IRACE reported iteration {} but only {} planned iterations",
+                    reportedIteration,
+                    progress.nbIterations()
+            );
+        }
+        if (used != progress.experimentsUsed()) {
+            log.warn(
+                    "Mork and IRACE disagree on used budget: Mork={}, IRACE={}",
+                    used,
+                    progress.experimentsUsed()
+            );
+        }
+        if (progress.maxExperiments() > 0 && !progress.remainingBudgetEstimated()) {
+            if (maximumBudget != progress.maxExperiments()) {
+                log.warn(
+                        "Mork and IRACE disagree on maximum budget: Mork={}, IRACE={}",
+                        maximumBudget,
+                        progress.maxExperiments()
+                );
+            }
+            long remaining = Math.max(0, maximumBudget - used);
+            if (remaining != progress.remainingBudget()) {
+                log.warn(
+                        "Mork and IRACE disagree on remaining budget: Mork={}, IRACE={}",
+                        remaining,
+                        progress.remainingBudget()
+                );
+            }
+        }
     }
 
     public synchronized StatusSnapshot status() {
@@ -294,9 +360,15 @@ public class AutoconfigRunState {
                 finishedAt,
                 elapsedMillis,
                 new BudgetSnapshot(maximumBudget, used, remaining),
-                new EvaluationCounts(used, running, succeeded, rejected, failed, slow),
+                new EvaluationCounts(running, succeeded, rejected, failed, slow),
                 generatedParameterCount,
-                new IraceProgress(iteration, elites.size(), elitesUpdatedAt, finalElites),
+                new IraceProgress(
+                        irace.iteration(),
+                        irace.elites().size(),
+                        irace.updatedAt(),
+                        irace.finalSnapshot(),
+                        irace.progress()
+                ),
                 failure
         );
     }
@@ -304,19 +376,16 @@ public class AutoconfigRunState {
     public synchronized EliteSnapshot eliteSnapshot() {
         return new EliteSnapshot(
                 runId,
-                iteration,
-                elitesUpdatedAt,
-                finalElites,
-                elites
+                irace.iteration(),
+                irace.updatedAt(),
+                irace.finalSnapshot(),
+                irace.elites()
         );
     }
 
     public synchronized EvaluationPage evaluations(
             Long after,
-            Integer requestedLimit,
-            EvaluationState stateFilter,
-            String configurationId,
-            Boolean slowFilter
+            Integer requestedLimit
     ) {
         long cursor = after == null ? 0 : after;
         if (cursor < 0) {
@@ -327,26 +396,17 @@ public class AutoconfigRunState {
             throw new IllegalArgumentException("Evaluation limit must be between 1 and " + MAX_PAGE_SIZE);
         }
 
-        var items = new ArrayList<EvaluationSummary>(limit);
+        var items = new ArrayList<EvaluationView>(limit);
         long nextCursor = cursor;
-        boolean pageFull = false;
         for (var evaluation : evaluations.values()) {
             if (evaluation.id <= cursor) {
                 continue;
             }
-            if (!matches(evaluation, stateFilter, configurationId, slowFilter)) {
-                nextCursor = evaluation.id;
-                continue;
-            }
-            items.add(evaluation.summary());
+            items.add(evaluation.view());
             nextCursor = evaluation.id;
             if (items.size() == limit) {
-                pageFull = true;
                 break;
             }
-        }
-        if (!pageFull) {
-            nextCursor = nextEvaluationId;
         }
 
         long oldest = evaluations.isEmpty() ? 0 : evaluations.keySet().iterator().next();
@@ -357,11 +417,6 @@ public class AutoconfigRunState {
                 nextCursor,
                 List.copyOf(items)
         );
-    }
-
-    public synchronized EvaluationDetail evaluation(long evaluationId) {
-        var evaluation = evaluations.get(evaluationId);
-        return evaluation == null ? null : evaluation.detail();
     }
 
     public synchronized CandidateView candidate(String configurationId) {
@@ -388,10 +443,7 @@ public class AutoconfigRunState {
         this.failed = 0;
         this.slow = 0;
         this.historyTruncated = false;
-        this.iteration = null;
-        this.elitesUpdatedAt = null;
-        this.finalElites = false;
-        this.elites = List.of();
+        this.irace = StoredIraceSnapshot.empty();
         this.evaluations.clear();
         this.candidates.clear();
     }
@@ -478,21 +530,6 @@ public class AutoconfigRunState {
         }
     }
 
-    private static boolean matches(
-            MutableEvaluation evaluation,
-            EvaluationState state,
-            String configurationId,
-            Boolean slow
-    ) {
-        if (state != null && evaluation.state != state) {
-            return false;
-        }
-        if (configurationId != null && !configurationId.equals(evaluation.configurationId)) {
-            return false;
-        }
-        return slow == null || evaluation.slow == slow;
-    }
-
     private static String safeMessage(Throwable throwable) {
         if (throwable == null) {
             return null;
@@ -544,7 +581,6 @@ public class AutoconfigRunState {
     }
 
     public record EvaluationCounts(
-            long total,
             long running,
             long succeeded,
             long rejected,
@@ -557,7 +593,8 @@ public class AutoconfigRunState {
             Integer iteration,
             int eliteCount,
             Instant updatedAt,
-            boolean finalSnapshot
+            boolean finalSnapshot,
+            IraceProgressDetails progress
     ) {
     }
 
@@ -586,25 +623,11 @@ public class AutoconfigRunState {
             long oldestRetainedId,
             long latestId,
             long nextCursor,
-            List<EvaluationSummary> evaluations
+            List<EvaluationView> evaluations
     ) {
     }
 
-    public record EvaluationSummary(
-            long id,
-            String configurationId,
-            String instanceId,
-            String instanceName,
-            EvaluationState state,
-            Double cost,
-            Double timeSeconds,
-            Instant startedAt,
-            Instant finishedAt,
-            boolean slow
-    ) {
-    }
-
-    public record EvaluationDetail(
+    public record EvaluationView(
             long id,
             String configurationId,
             String instanceId,
@@ -627,13 +650,11 @@ public class AutoconfigRunState {
             Map<String, String> parameters,
             JsonNode algorithm,
             String decodeError,
-            CandidateEvaluationCounts evaluations,
-            Integer elitePosition
+            CandidateEvaluationCounts evaluations
     ) {
     }
 
     public record CandidateEvaluationCounts(
-            long total,
             long running,
             long succeeded,
             long rejected,
@@ -647,13 +668,11 @@ public class AutoconfigRunState {
         private final Map<String, String> parameters;
         private final JsonNode algorithm;
         private final String decodeError;
-        private long total;
         private long running;
         private long succeeded;
         private long rejected;
         private long failed;
         private long slow;
-        private Integer elitePosition;
 
         private MutableCandidate(
                 String configurationId,
@@ -673,8 +692,7 @@ public class AutoconfigRunState {
                     parameters,
                     algorithm,
                     decodeError,
-                    new CandidateEvaluationCounts(total, running, succeeded, rejected, failed, slow),
-                    elitePosition
+                    new CandidateEvaluationCounts(running, succeeded, rejected, failed, slow)
             );
         }
     }
@@ -711,23 +729,8 @@ public class AutoconfigRunState {
             this.startedAt = startedAt;
         }
 
-        private EvaluationSummary summary() {
-            return new EvaluationSummary(
-                    id,
-                    configurationId,
-                    instanceId,
-                    instanceName,
-                    state,
-                    cost,
-                    timeSeconds,
-                    startedAt,
-                    finishedAt,
-                    slow
-            );
-        }
-
-        private EvaluationDetail detail() {
-            return new EvaluationDetail(
+        private EvaluationView view() {
+            return new EvaluationView(
                     id,
                     configurationId,
                     instanceId,
@@ -743,6 +746,18 @@ public class AutoconfigRunState {
                     slow,
                     slowOverrunMillis
             );
+        }
+    }
+
+    private record StoredIraceSnapshot(
+            Integer iteration,
+            Instant updatedAt,
+            boolean finalSnapshot,
+            IraceProgressDetails progress,
+            List<EliteView> elites
+    ) {
+        private static StoredIraceSnapshot empty() {
+            return new StoredIraceSnapshot(null, null, false, null, List.of());
         }
     }
 }

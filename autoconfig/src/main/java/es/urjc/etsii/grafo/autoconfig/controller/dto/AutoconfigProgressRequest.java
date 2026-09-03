@@ -10,17 +10,20 @@ public class AutoconfigProgressRequest extends AuthenticatedExecuteRequest {
     private final String runId;
     private final int iteration;
     private final List<EliteConfiguration> elites;
+    private final IraceProgressDetails progress;
 
     public AutoconfigProgressRequest(
             String key,
             String runId,
             int iteration,
-            List<EliteConfiguration> elites
+            List<EliteConfiguration> elites,
+            IraceProgressDetails progress
     ) {
         super(key);
         this.runId = runId;
         this.iteration = iteration;
         this.elites = elites;
+        this.progress = progress;
     }
 
     public String getRunId() {
@@ -33,6 +36,10 @@ public class AutoconfigProgressRequest extends AuthenticatedExecuteRequest {
 
     public List<EliteConfiguration> getElites() {
         return elites;
+    }
+
+    public IraceProgressDetails getProgress() {
+        return progress;
     }
 
     @Override
@@ -49,6 +56,9 @@ public class AutoconfigProgressRequest extends AuthenticatedExecuteRequest {
         }
         if (elites == null) {
             throw new IllegalArgumentException("Elites cannot be null");
+        }
+        if (progress == null) {
+            throw new IllegalArgumentException("IRACE progress cannot be null");
         }
         for (var elite : elites) {
             if (elite == null) {

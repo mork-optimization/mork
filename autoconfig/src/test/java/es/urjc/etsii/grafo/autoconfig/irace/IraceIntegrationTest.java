@@ -19,7 +19,12 @@ class IraceIntegrationTest {
 
     @Test
     void loadsBundledIraceResourcesFromClasspath() throws IOException {
-        assertBundledResourceContains("runner.R", "report_progress");
+        assertBundledResourceContains(
+                "runner.R",
+                "report_progress <- function(iteration, elites, progress, ...)"
+        );
+        assertBundledResourceContains("runner.R", "progress = progress");
+        assertBundledResourceContains("runner.R", "vapply(progress, anyNA");
         assertBundledResourceContains("scenario.txt", "targetRunnerParallel");
         assertBundledResourceContains("parameters.txt", "START PARAMETER DECLARATION");
         assertThrows(IOException.class, () -> getInputStreamForIrace("missing", true));
