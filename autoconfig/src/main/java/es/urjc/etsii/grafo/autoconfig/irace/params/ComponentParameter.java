@@ -15,7 +15,7 @@ public class ComponentParameter {
     private final Class<?> componentType;
     private final int min;
     private final int max;
-    private Object[] values;
+    private final Object[] values;
 
     public static final String NAMEVALUE_SEP = "_";
     public static final String PARAM_SEP = ".";
@@ -29,7 +29,7 @@ public class ComponentParameter {
         this.javaType = javaType;
         this.componentType = componentType;
         this.type = type;
-        this.values = values;
+        this.values = values.clone();
         this.min = min;
         this.max = max;
     }
@@ -185,10 +185,10 @@ public class ComponentParameter {
     }
 
     public Object[] getValues() {
-        return values;
+        return values.clone();
     }
 
-    public void setValues(Object[] values){
-        this.values = values;
+    public ComponentParameter withValues(Object[] values) {
+        return new ComponentParameter(name, javaType, componentType, type, values, min, max);
     }
 }

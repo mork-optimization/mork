@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import es.urjc.etsii.grafo.config.SolverConfig;
@@ -9,25 +10,51 @@ import org.springframework.stereotype.Service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+
+import static es.urjc.etsii.grafo.util.CollectionUtil.immutableListMap;
 
 /**
- * Builds the compact, user-facing description of the autoconfig search space.
+ * Immutable canonical representation of the automatic configuration search space.
  */
 @Service
-public class AutoconfigSearchSpaceService {
+public final class AutoconfigSearchSpace {
 
+    private final List<TreeNode> roots;
+    private final Map<Class<?>, List<ComponentParameter>> componentParameters;
+    private final List<String> iraceParameters;
     private final SearchSpaceSnapshot snapshot;
 
-    public AutoconfigSearchSpaceService(
+    public AutoconfigSearchSpace(
             SolverConfig solverConfig,
             AlgorithmCandidateGenerator candidateGenerator
     ) {
-        var roots = candidateGenerator.buildTree(
+        this.roots = List.copyOf(candidateGenerator.buildTree(
                 solverConfig.getTreeDepth(),
                 solverConfig.getMaxDerivationRepetition()
-        );
-        var iraceParameters = candidateGenerator.toIraceParams(roots);
+        ));
+        this.componentParameters = immutableListMap(candidateGenerator.componentParams());
+        this.iraceParameters = List.copyOf(candidateGenerator.toIraceParams(roots));
+        this.snapshot = createSnapshot(solverConfig);
+    }
 
+    public List<TreeNode> roots() {
+        return roots;
+    }
+
+    public Map<Class<?>, List<ComponentParameter>> componentParameters() {
+        return componentParameters;
+    }
+
+    public List<String> iraceParameters() {
+        return iraceParameters;
+    }
+
+    public SearchSpaceSnapshot snapshot() {
+        return snapshot;
+    }
+
+    private SearchSpaceSnapshot createSnapshot(SolverConfig solverConfig) {
         var rootNames = new ArrayList<String>(roots.size());
         for (var root : roots) {
             rootNames.add(root.className());
@@ -37,7 +64,7 @@ public class AutoconfigSearchSpaceService {
         int parameterCount = 0;
         int combinationParameterCount = 0;
         var components = new ArrayList<ComponentDescription>();
-        for (var entry : candidateGenerator.componentParams().entrySet()) {
+        for (var entry : componentParameters.entrySet()) {
             var parameters = new ArrayList<ParameterDescription>();
             for (var parameter : entry.getValue()) {
                 parameters.add(describe(parameter));
@@ -47,11 +74,11 @@ public class AutoconfigSearchSpaceService {
                 }
             }
             parameters.sort(Comparator.comparing(ParameterDescription::name));
-            components.add(new ComponentDescription(entry.getKey().getSimpleName(), List.copyOf(parameters)));
+            components.add(new ComponentDescription(entry.getKey().getSimpleName(), parameters));
         }
         components.sort(Comparator.comparing(ComponentDescription::name));
 
-        this.snapshot = new SearchSpaceSnapshot(
+        return new SearchSpaceSnapshot(
                 new GenerationLimits(
                         solverConfig.getTreeDepth(),
                         solverConfig.getMaxDerivationRepetition()
@@ -63,17 +90,14 @@ public class AutoconfigSearchSpaceService {
                         combinationParameterCount,
                         iraceParameters.size()
                 ),
-                List.copyOf(rootNames),
-                List.copyOf(components)
+                rootNames,
+                components
         );
-    }
-
-    public SearchSpaceSnapshot getSnapshot() {
-        return snapshot;
     }
 
     private static ParameterDescription describe(ComponentParameter parameter) {
         var type = parameter.getType();
+        var domain = parameter.getValues();
         var values = new ArrayList<Object>();
         var choices = new ArrayList<String>();
         Object minimum = null;
@@ -82,15 +106,15 @@ public class AutoconfigSearchSpaceService {
         Integer maxItems = null;
 
         if (type == ParameterType.NOT_ANNOTATED || type == ParameterType.COMBINATION) {
-            for (var value : parameter.getValues()) {
+            for (var value : domain) {
                 choices.add(((Class<?>) value).getSimpleName());
             }
             choices.sort(String::compareTo);
         } else if (type == ParameterType.INTEGER || type == ParameterType.REAL) {
-            minimum = parameter.getValues()[0];
-            maximum = parameter.getValues()[1];
+            minimum = domain[0];
+            maximum = domain[1];
         } else if (type == ParameterType.CATEGORICAL || type == ParameterType.ORDINAL) {
-            for (var value : parameter.getValues()) {
+            for (var value : domain) {
                 values.add(value);
             }
         }
@@ -103,12 +127,12 @@ public class AutoconfigSearchSpaceService {
         return new ParameterDescription(
                 parameter.getName(),
                 publicKind(type),
-                List.copyOf(values),
+                values,
                 minimum,
                 maximum,
                 minItems,
                 maxItems,
-                List.copyOf(choices)
+                choices
         );
     }
 
@@ -140,6 +164,10 @@ public class AutoconfigSearchSpaceService {
             List<String> roots,
             List<ComponentDescription> components
     ) {
+        public SearchSpaceSnapshot {
+            roots = List.copyOf(roots);
+            components = List.copyOf(components);
+        }
     }
 
     public record GenerationLimits(int treeDepth, int maxDerivationRepetition) {
@@ -155,6 +183,9 @@ public class AutoconfigSearchSpaceService {
     }
 
     public record ComponentDescription(String name, List<ParameterDescription> parameters) {
+        public ComponentDescription {
+            parameters = List.copyOf(parameters);
+        }
     }
 
     public record ParameterDescription(
@@ -167,5 +198,9 @@ public class AutoconfigSearchSpaceService {
             Integer maxItems,
             List<String> choices
     ) {
+        public ParameterDescription {
+            values = List.copyOf(values);
+            choices = List.copyOf(choices);
+        }
     }
 }

@@ -80,6 +80,10 @@ Mork's independently configured maximum. `progress` is `null` until the first it
 - `minItems` and `maxItems` for ordered component combinations;
 - the final number of generated IRACE parameters.
 
+The resource becomes available after the coordinator generates the parameters for an automatic `--autoconfig`
+run. It returns a `404 Not Found` problem response before generation, in follower processes, and when `--irace`
+uses a custom `AlgorithmBuilder`, because the automatic search space does not apply to those execution modes.
+
 The endpoint intentionally does not return the expanded derivation tree. Component identifiers are the same
 names used by `$component` in [JSON algorithm descriptions](../concepts/algorithm-components/json-descriptions.md).
 

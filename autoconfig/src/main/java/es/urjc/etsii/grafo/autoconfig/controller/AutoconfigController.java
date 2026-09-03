@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.controller;
 
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigRunState;
-import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpaceService;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -18,11 +18,11 @@ import org.springframework.web.server.ResponseStatusException;
 public class AutoconfigController {
 
     private final AutoconfigRunState runState;
-    private final AutoconfigSearchSpaceService searchSpace;
+    private final AutoconfigSearchSpace searchSpace;
 
     public AutoconfigController(
             AutoconfigRunState runState,
-            AutoconfigSearchSpaceService searchSpace
+            AutoconfigSearchSpace searchSpace
     ) {
         this.runState = runState;
         this.searchSpace = searchSpace;
@@ -34,8 +34,14 @@ public class AutoconfigController {
     }
 
     @GetMapping("/search-space")
-    public AutoconfigSearchSpaceService.SearchSpaceSnapshot searchSpace() {
-        return searchSpace.getSnapshot();
+    public AutoconfigSearchSpace.SearchSpaceSnapshot searchSpace() {
+        if (!runState.hasGeneratedSearchSpace()) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Automatic search space is not available for the current run"
+            );
+        }
+        return searchSpace.snapshot();
     }
 
     @GetMapping("/elites")

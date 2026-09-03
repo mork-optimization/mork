@@ -5,12 +5,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * Converts invalid autoconfig API query parameters into RFC 9457 problem details.
  */
 @RestControllerAdvice(assignableTypes = {AutoconfigController.class, ExecutionController.class})
 public class AutoconfigApiExceptionHandler {
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ProblemDetail responseStatus(ResponseStatusException exception) {
+        return exception.getBody();
+    }
 
     @ExceptionHandler(InvalidIntegrationKeyException.class)
     public ProblemDetail invalidIntegrationKey(InvalidIntegrationKeyException exception) {

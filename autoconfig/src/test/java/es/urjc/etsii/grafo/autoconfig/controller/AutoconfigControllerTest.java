@@ -2,7 +2,7 @@ package es.urjc.etsii.grafo.autoconfig.controller;
 
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigRunState;
-import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpaceService;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.web.servlet.MockMvc;
@@ -24,7 +24,7 @@ class AutoconfigControllerTest {
     @BeforeEach
     void setup() {
         runState = mock(AutoconfigRunState.class);
-        var searchSpace = mock(AutoconfigSearchSpaceService.class);
+        var searchSpace = mock(AutoconfigSearchSpace.class);
         when(runState.status()).thenReturn(new AutoconfigRunState.StatusSnapshot(
                 null,
                 AutoconfigRunState.Role.DISABLED,
@@ -39,10 +39,10 @@ class AutoconfigControllerTest {
                 new AutoconfigRunState.IraceProgress(null, 0, null, false, null),
                 null
         ));
-        when(searchSpace.getSnapshot()).thenReturn(
-                new AutoconfigSearchSpaceService.SearchSpaceSnapshot(
-                        new AutoconfigSearchSpaceService.GenerationLimits(4, 2),
-                        new AutoconfigSearchSpaceService.SearchSpaceSummary(0, 0, 0, 0, 0),
+        when(searchSpace.snapshot()).thenReturn(
+                new AutoconfigSearchSpace.SearchSpaceSnapshot(
+                        new AutoconfigSearchSpace.GenerationLimits(4, 2),
+                        new AutoconfigSearchSpace.SearchSpaceSummary(0, 0, 0, 0, 0),
                         List.of(),
                         List.of()
                 )
@@ -54,7 +54,7 @@ class AutoconfigControllerTest {
     }
 
     @Test
-    void exposesStableStatusAndSearchSpaceResources() throws Exception {
+    void exposesStableStatusAndHidesUnpublishedSearchSpace() throws Exception {
         mockMvc.perform(get("/api/autoconfig/status"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.role").value("DISABLED"))
@@ -62,6 +62,17 @@ class AutoconfigControllerTest {
                 .andExpect(jsonPath("$.budget.used").value(0))
                 .andExpect(jsonPath("$.evaluations.total").doesNotExist())
                 .andExpect(jsonPath("$.irace.progress").doesNotExist());
+
+        mockMvc.perform(get("/api/autoconfig/search-space"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.detail").value(
+                        "Automatic search space is not available for the current run"
+                ));
+    }
+
+    @Test
+    void exposesPublishedSearchSpace() throws Exception {
+        when(runState.hasGeneratedSearchSpace()).thenReturn(true);
 
         mockMvc.perform(get("/api/autoconfig/search-space"))
                 .andExpect(status().isOk())

@@ -4,14 +4,13 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
-import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationChoice;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationNode;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationTree;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
-import es.urjc.etsii.grafo.config.SolverConfig;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import tools.jackson.databind.JsonNode;
@@ -24,14 +23,10 @@ public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instan
     private final AlgorithmBuilderService algorithmBuilder;
     private final Map<Class<?>, List<ComponentParameter>> componentParams;
 
-    public AutomaticAlgorithmBuilder(SolverConfig solverConfig, AlgorithmCandidateGenerator candidateGenerator, AlgorithmBuilderService algorithmBuilder) {
+    public AutomaticAlgorithmBuilder(AutoconfigSearchSpace searchSpace, AlgorithmBuilderService algorithmBuilder) {
         this.algorithmBuilder = algorithmBuilder;
-        this.algorithmCandidateTree = candidateGenerator.buildTree(solverConfig.getTreeDepth(), solverConfig.getMaxDerivationRepetition());
-        this.componentParams = candidateGenerator.componentParams();
-    }
-
-    public List<TreeNode> getAlgorithmCandidateTree() {
-        return Collections.unmodifiableList(algorithmCandidateTree);
+        this.algorithmCandidateTree = searchSpace.roots();
+        this.componentParams = searchSpace.componentParameters();
     }
 
     public ComponentSpec asComponentSpec(AlgorithmConfiguration config){

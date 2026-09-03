@@ -26,9 +26,30 @@ import static org.mockito.Mockito.when;
 class AutoconfigRunStateTest {
 
     @Test
+    void publishesSearchSpaceOnlyForAutomaticCoordinatorRuns() {
+        var state = newState(10);
+        state.prepareCoordinator(true);
+        assertFalse(state.hasGeneratedSearchSpace());
+
+        state.publishGeneratedSearchSpace(3);
+        assertTrue(state.hasGeneratedSearchSpace());
+        assertEquals(3, state.status().generatedParameterCount());
+
+        state.prepareCoordinator(false);
+        assertFalse(state.hasGeneratedSearchSpace());
+        assertThrows(IllegalStateException.class, () -> state.publishGeneratedSearchSpace(3));
+        assertThrows(IllegalArgumentException.class, () -> state.publishGeneratedSearchSpace(0));
+
+        state.prepareWorker(true);
+        assertFalse(state.hasGeneratedSearchSpace());
+        assertThrows(IllegalStateException.class, () -> state.publishGeneratedSearchSpace(3));
+    }
+
+    @Test
     void correlatesMorkStateWithLatestIraceSnapshot() {
         var state = newState(10);
-        String runId = state.prepareCoordinator(7, true);
+        String runId = state.prepareCoordinator(true);
+        state.publishGeneratedSearchSpace(7);
         state.markRunning(20);
 
         long succeeded = state.evaluationStarted(configuration("12", 1));
@@ -75,7 +96,8 @@ class AutoconfigRunStateTest {
     @Test
     void retainsBoundedCompletedHistoryWithoutLosingAggregateCounts() {
         var state = newState(2);
-        state.prepareCoordinator(1, true);
+        state.prepareCoordinator(true);
+        state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
 
         for (int i = 1; i <= 3; i++) {
@@ -95,7 +117,8 @@ class AutoconfigRunStateTest {
     @Test
     void evaluationPagesAreRefetchableSnapshots() {
         var state = newState(10);
-        state.prepareCoordinator(1, true);
+        state.prepareCoordinator(true);
+        state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
 
         long evaluationId = state.evaluationStarted(configuration("12", 123));
@@ -113,7 +136,8 @@ class AutoconfigRunStateTest {
     @Test
     void rejectsStaleSnapshotsAndInvalidPagination() {
         var state = newState(10);
-        String runId = state.prepareCoordinator(1, true);
+        String runId = state.prepareCoordinator(true);
+        state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
         state.publishProgress(runId, 4, List.of(), experimentProgress(4, 10, 0, 10));
 
@@ -132,7 +156,8 @@ class AutoconfigRunStateTest {
     @Test
     void acceptsRepeatedAndSkippedIterationSnapshots() {
         var state = newState(10);
-        String runId = state.prepareCoordinator(1, true);
+        String runId = state.prepareCoordinator(true);
+        state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
 
         state.publishProgress(runId, 1, List.of(), experimentProgress(3, 10, 0, 10));
@@ -145,7 +170,8 @@ class AutoconfigRunStateTest {
     @Test
     void preservesCurrentSnapshotWhenAReplacementIsInvalid() {
         var state = newState(10);
-        String runId = state.prepareCoordinator(1, true);
+        String runId = state.prepareCoordinator(true);
+        state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
 
         for (String configurationId : List.of("12", "13")) {
@@ -183,7 +209,8 @@ class AutoconfigRunStateTest {
     @Test
     void acceptsMismatchedAndTimeBudgetProgressWithoutChangingMorkBudget() {
         var state = newState(10);
-        String runId = state.prepareCoordinator(1, true);
+        String runId = state.prepareCoordinator(true);
+        state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
         long evaluation = state.evaluationStarted(configuration("12", 1));
         state.evaluationSucceeded(evaluation, 1, 0.1, 0);
@@ -206,7 +233,7 @@ class AutoconfigRunStateTest {
     @Test
     void acceptsParameterOnlyCandidatesForCustomIraceBuilders() {
         var state = newState(10);
-        String runId = state.prepareCoordinator(0, false);
+        String runId = state.prepareCoordinator(false);
         state.markRunning(10);
         var parameters = Map.of("alpha", "0.1", "strategy", "custom");
 

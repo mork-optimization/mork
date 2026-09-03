@@ -18,6 +18,7 @@ import java.lang.reflect.Type;
 import java.util.*;
 
 import static es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter.*;
+import static es.urjc.etsii.grafo.util.CollectionUtil.immutableListMap;
 
 @Service
 public class AlgorithmCandidateGenerator {
@@ -25,12 +26,11 @@ public class AlgorithmCandidateGenerator {
     private final IExplorationFilter explorationFilter;
     private final Logger log = LoggerFactory.getLogger(AlgorithmCandidateGenerator.class);
     private final Map<Class<?>, List<ComponentParameter>> paramInfo;
-    private final Map<TreeSettings, List<TreeNode>> treeCache = new HashMap<>();
 
     public AlgorithmCandidateGenerator(AlgorithmInventoryService inventoryService, IExplorationFilter explorationFilter) {
         this.inventoryService = inventoryService;
         this.explorationFilter = explorationFilter;
-        this.paramInfo = analyzeParameters();
+        this.paramInfo = immutableListMap(analyzeParameters());
         log.debug("Components available for autoconfig: {}", paramInfo.keySet().stream().map(Class::getSimpleName).sorted().toList());
     }
 
@@ -99,21 +99,22 @@ public class AlgorithmCandidateGenerator {
     }
 
     private static List<ComponentParameter> analyzeParametersFactory(Map<Class<?>, Collection<Class<?>>> byType, Queue<Class<?>> queue, Set<Class<?>> notVisited, AlgorithmComponentFactory factory) {
-        var params = factory.getRequiredParameters();
-        for (var cp : params) {
-            if (cp.recursive()) {
-                var candidates = byType.get(cp.getComponentType());
+        var params = new ArrayList<ComponentParameter>();
+        for (var parameter : factory.getRequiredParameters()) {
+            if (parameter.recursive()) {
+                var candidates = byType.get(parameter.getComponentType());
                 if (candidates == null) {
                     throw new IllegalArgumentException("Factory parameter %s references unknown component type %s"
-                            .formatted(cp.getName(), cp.getComponentType().getSimpleName()));
+                            .formatted(parameter.getName(), parameter.getComponentType().getSimpleName()));
                 }
-                cp.setValues(candidates.toArray());
+                parameter = parameter.withValues(candidates.toArray());
                 // Parameter has a known algorithm component type, for example Improver<S,I>
                 // Add all implementations to the exploration queue
-                addRecursiveCandidates(queue, notVisited, cp.getValues());
+                addRecursiveCandidates(queue, notVisited, parameter.getValues());
             }
+            params.add(parameter);
         }
-        return params;
+        return List.copyOf(params);
     }
 
     private static void addRecursiveCandidates(Queue<Class<?>> queue, Set<Class<?>> notVisited, Object[] candidates) {
@@ -325,7 +326,7 @@ public class AlgorithmCandidateGenerator {
     }
 
     public Map<Class<?>, List<ComponentParameter>> componentParams() {
-        return Collections.unmodifiableMap(paramInfo);
+        return paramInfo;
     }
 
     public List<String> toIraceParams(List<TreeNode> nodes) {
@@ -342,7 +343,7 @@ public class AlgorithmCandidateGenerator {
             recursiveToIraceParams(node, iraceParams, "ROOT" + NAMEVALUE_SEP + componentName, "ROOT", componentName);
         }
         Collections.sort(iraceParams);
-        return iraceParams;
+        return List.copyOf(iraceParams);
     }
 
     private void recursiveToIraceParams(TreeNode node, ArrayList<String> params, String componentPath, String activationParam, String activationValue) {
@@ -471,13 +472,7 @@ public class AlgorithmCandidateGenerator {
     }
 
     // Generate combinations using a recursive DFS approach, bounded by the maxDepth
-    public synchronized List<TreeNode> buildTree(int maxDepth, int maxRepeat) {
-        var settings = new TreeSettings(maxDepth, maxRepeat);
-        var cached = treeCache.get(settings);
-        if (cached != null) {
-            return cached;
-        }
-
+    public List<TreeNode> buildTree(int maxDepth, int maxRepeat) {
         var list = new ArrayList<TreeNode>();
         for (Class<?> startPoint : inventoryService.getInventory().componentsByType().get(Algorithm.class)) {
             var treeContext = new TreeContext(maxDepth, maxRepeat);
@@ -490,12 +485,7 @@ public class AlgorithmCandidateGenerator {
                 list.add(node);
             }
         }
-        var tree = List.copyOf(list);
-        treeCache.put(settings, tree);
-        return tree;
-    }
-
-    private record TreeSettings(int maxDepth, int maxRepeat) {
+        return List.copyOf(list);
     }
 
     protected TreeNode recursiveBuildTree(String currentParamName, Class<?> currentComponent, TreeContext context) {

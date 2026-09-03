@@ -9,4 +9,7 @@ import java.util.List;
  * @param choices valid component choices for the current prefix
  */
 public record CombinationNode(int position, List<CombinationChoice> choices) {
+    public CombinationNode {
+        choices = List.copyOf(choices);
+    }
 }

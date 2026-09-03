@@ -67,14 +67,13 @@ public class AutoconfigRunState {
         this.evaluationHistoryLimit = iraceConfig.getApiEvaluationHistoryLimit();
     }
 
-    public synchronized String prepareCoordinator(int parameterCount, boolean decodeAlgorithms) {
+    public synchronized String prepareCoordinator(boolean decodeAlgorithms) {
         reset();
         this.decodeAlgorithms = decodeAlgorithms;
         this.role = Role.COORDINATOR;
         this.state = RunStatus.PREPARING;
         this.runId = UUID.randomUUID().toString();
         this.preparedAt = Instant.now();
-        this.generatedParameterCount = parameterCount;
         return runId;
     }
 
@@ -96,14 +95,21 @@ public class AutoconfigRunState {
         this.state = RunStatus.RUNNING;
     }
 
-    public synchronized void setGeneratedParameterCount(int generatedParameterCount) {
-        if (generatedParameterCount < 0) {
-            throw new IllegalArgumentException("Generated parameter count cannot be negative");
+    public synchronized void publishGeneratedSearchSpace(int generatedParameterCount) {
+        if (generatedParameterCount < 1) {
+            throw new IllegalArgumentException("Generated parameter count must be positive");
         }
         if (role != Role.COORDINATOR || state != RunStatus.PREPARING) {
             throw new IllegalStateException("Autoconfig run is not preparing");
         }
+        if (!decodeAlgorithms) {
+            throw new IllegalStateException("The current run does not use the automatic search space");
+        }
         this.generatedParameterCount = generatedParameterCount;
+    }
+
+    public synchronized boolean hasGeneratedSearchSpace() {
+        return generatedParameterCount > 0;
     }
 
     public synchronized void markCompleted() {

@@ -12,13 +12,13 @@ import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 
@@ -56,8 +56,7 @@ class ComponentCombinationTest {
 
         candidateGenerator = new AlgorithmCandidateGenerator(inventoryService, new DefaultExplorationFilter());
         algorithmBuilder = new AutomaticAlgorithmBuilder<>(
-                new SolverConfig(),
-                candidateGenerator,
+                new AutoconfigSearchSpace(new SolverConfig(), candidateGenerator),
                 new AlgorithmBuilderService(inventoryService)
         );
     }

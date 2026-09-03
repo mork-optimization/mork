@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.autoconfig.controller.dto.MultiExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.exception.InvalidIntegrationKeyException;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigRunState;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
@@ -51,7 +52,7 @@ class IraceOrchestratorTest {
                 List.of((AlgorithmBuilder<TestSolution, TestInstance>) mock(AlgorithmBuilder.class)),
                 Optional.empty(),
                 Optional.empty(),
-                mock(es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator.class),
+                mock(AutoconfigSearchSpace.class),
                 eventPublisher,
                 lifecycle,
                 resultsSerializer,

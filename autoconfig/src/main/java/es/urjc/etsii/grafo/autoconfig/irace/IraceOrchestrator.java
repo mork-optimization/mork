@@ -8,8 +8,8 @@ import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
-import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigRunState;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
@@ -95,11 +95,10 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
 
 
-    private final AlgorithmCandidateGenerator algorithmCandidateGenerator;
+    private final AutoconfigSearchSpace searchSpace;
 
     private boolean isAutoconfigEnabled;
     private boolean isFollower;
-    private int nIraceParameters = -1;
 
     /**
      * <p>Constructor for IraceOrchestrator.</p>
@@ -111,7 +110,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      * @param solutionBuilders            a {@link List} object.
      * @param algorithmBuilders           a {@link List} object.
      * @param validator
-     * @param algorithmCandidateGenerator
+     * @param searchSpace
      */
     public IraceOrchestrator(
             SolverConfig solverConfig,
@@ -123,7 +122,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             List<SolutionBuilder<S, I>> solutionBuilders,
             List<AlgorithmBuilder<S, I>> algorithmBuilders,
             Optional<SolutionValidator<S, I>> validator, Optional<TimeLimitCalculator<S, I>> timeLimitCalculator,
-            AlgorithmCandidateGenerator algorithmCandidateGenerator,
+            AutoconfigSearchSpace searchSpace,
             MorkEventPublisher eventPublisher,
             ExecutionLifecycleCoordinator lifecycleCoordinator,
             ResultsSerializerListener<S, I> resultsSerializer,
@@ -140,7 +139,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         this.solutionBuilder = decideImplementation(solutionBuilders, ReflectiveSolutionBuilder.class);
         this.instanceManager = instanceManager;
         this.algorithmBuilder = decideImplementation(algorithmBuilders, AutomaticAlgorithmBuilder.class);
-        this.algorithmCandidateGenerator = algorithmCandidateGenerator;
+        this.searchSpace = searchSpace;
         this.validator = validator;
         this.eventPublisher = eventPublisher;
         this.lifecycleCoordinator = lifecycleCoordinator;
@@ -178,7 +177,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             return;
         }
 
-        this.runState.prepareCoordinator(0, isAutoconfigEnabled);
+        this.runState.prepareCoordinator(isAutoconfigEnabled);
         log.info("Ready to start!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
@@ -224,24 +223,30 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
     private Map<String, String> extractIraceFiles(boolean isJar) {
         Path paramsPath = Path.of(F_PARAMETERS);
+        int parameterCount = 0;
         try {
             if (isAutoconfigEnabled) {
-                var nodes = this.algorithmCandidateGenerator.buildTree(solverConfig.getTreeDepth(), solverConfig.getMaxDerivationRepetition());
-                if(nodes.isEmpty()){
+                if (searchSpace.roots().isEmpty()) {
                     throw new IllegalStateException("No valid algorithm found, cannot generate irace parameters");
                 }
-                var iraceParams = this.algorithmCandidateGenerator.toIraceParams(nodes);
-                this.nIraceParameters = iraceParams.size();
+                var iraceParams = searchSpace.iraceParameters();
+                parameterCount = iraceParams.size();
                 var sb = new StringBuilder();
                 for (var p : iraceParams) {
                     sb.append(p).append("\n");
                 }
                 sb.append(IRACE_PARAM_EPILOGUE);
                 Files.writeString(paramsPath, sb.toString());
-                this.runState.setGeneratedParameterCount(this.nIraceParameters);
+                this.runState.publishGeneratedSearchSpace(parameterCount);
             }
 
-            var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration, serverProperties);
+            var substitutions = getSubstitutions(
+                    integrationKey,
+                    solverConfig,
+                    instanceConfiguration,
+                    serverProperties,
+                    parameterCount
+            );
             if (!isAutoconfigEnabled) {
                 copyWithSubstitutions(getInputStreamForIrace(F_PARAMETERS, isJar), paramsPath, substitutions);
             }
@@ -254,26 +259,32 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
     private String integrationKey = StringUtil.generateSecret();
 
-    private Map<String, String> getSubstitutions(String integrationKey, SolverConfig solverConfig, InstanceConfiguration instanceConfiguration, ServerProperties server) {
+    private Map<String, String> getSubstitutions(
+            String integrationKey,
+            SolverConfig solverConfig,
+            InstanceConfiguration instanceConfiguration,
+            ServerProperties server,
+            int parameterCount
+    ) {
         return Map.of(
                 K_INTEGRATION_KEY, integrationKey,
                 K_INSTANCES_PATH, instanceConfiguration.getPath(IRACE_INSTANCE_PATH_KEY),
                 K_TARGET_RUNNER, "./middleware.sh",
                 K_PARALLEL, nParallel(solverConfig),
-                K_MAX_EXP, calculateMaxExperiments(isAutoconfigEnabled, solverConfig, nIraceParameters),
+                K_MAX_EXP, calculateMaxExperiments(isAutoconfigEnabled, solverConfig, parameterCount),
                 K_SEED, String.valueOf(solverConfig.getSeed()),
                 K_PORT, String.valueOf(server.getPort()),
                 K_RUN_ID, this.runState.getRunId()
         );
     }
 
-    protected static String calculateMaxExperiments(boolean autoconfigEnabled, SolverConfig solverConfig, int nIraceParameters) {
+    protected static String calculateMaxExperiments(boolean autoconfigEnabled, SolverConfig solverConfig, int parameterCount) {
         int maxExperiments;
         if (autoconfigEnabled) {
-            if (nIraceParameters < 1) {
-                throw new IllegalArgumentException("nIraceParameters must be positive");
+            if (parameterCount < 1) {
+                throw new IllegalArgumentException("Parameter count must be positive");
             }
-            maxExperiments = Math.max(solverConfig.getMinimumNumberOfExperiments(), solverConfig.getExperimentsPerParameter() * nIraceParameters);
+            maxExperiments = Math.max(solverConfig.getMinimumNumberOfExperiments(), solverConfig.getExperimentsPerParameter() * parameterCount);
         } else {
             maxExperiments = DEFAULT_IRACE_EXPERIMENTS; // 10k experiments by default if not specified otherwise
         }
