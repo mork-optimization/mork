@@ -68,10 +68,10 @@ public final class ComponentSpecJsonCodec {
         if (componentNode == null) {
             throw invalid(path, "missing required property '" + ComponentSpec.COMPONENT_KEY + "'");
         }
-        if (!componentNode.isTextual()) {
+        if (!componentNode.isString()) {
             throw invalid(path + "/" + ComponentSpec.COMPONENT_KEY, "expected a string");
         }
-        String component = componentNode.textValue();
+        String component = componentNode.stringValue();
         if (component.isBlank()) {
             throw invalid(path + "/" + ComponentSpec.COMPONENT_KEY, "component name cannot be blank");
         }
@@ -117,8 +117,8 @@ public final class ComponentSpecJsonCodec {
         if (node.isNull()) {
             return null;
         }
-        if (node.isTextual()) {
-            return node.textValue();
+        if (node.isString()) {
+            return node.stringValue();
         }
         if (node.isBoolean()) {
             return node.booleanValue();
@@ -157,53 +157,55 @@ public final class ComponentSpecJsonCodec {
 
     private JsonNode valueToJson(Object value, String path) {
         JsonNodeFactory nodes = mapper.getNodeFactory();
-        if (value == null) {
-            return nodes.nullNode();
-        }
-        if (value instanceof ComponentSpec spec) {
-            return componentToJson(spec, path);
-        }
-        if (value instanceof List<?> list) {
-            var array = mapper.createArrayNode();
-            for (int i = 0; i < list.size(); i++) {
-                array.add(valueToJson(list.get(i), path + "/" + i));
+        switch (value) {
+            case null -> {
+                return nodes.nullNode();
             }
-            return array;
-        }
-        if (value instanceof String string) {
-            return nodes.stringNode(string);
-        }
-        if (value instanceof Character character) {
-            return nodes.stringNode(character.toString());
-        }
-        if (value instanceof Boolean bool) {
-            return nodes.booleanNode(bool);
-        }
-        if (value instanceof Byte number) {
-            return nodes.numberNode(number);
-        }
-        if (value instanceof Short number) {
-            return nodes.numberNode(number);
-        }
-        if (value instanceof Integer number) {
-            return nodes.numberNode(number);
-        }
-        if (value instanceof Long number) {
-            return nodes.numberNode(number);
-        }
-        if (value instanceof Float number) {
-            if (!Float.isFinite(number)) {
-                throw invalid(path, "floating-point value must be finite");
+            case ComponentSpec spec -> {
+                return componentToJson(spec, path);
             }
-            return nodes.numberNode(number);
-        }
-        if (value instanceof Double number) {
-            if (!Double.isFinite(number)) {
-                throw invalid(path, "floating-point value must be finite");
+            case List<?> list -> {
+                var array = mapper.createArrayNode();
+                for (int i = 0; i < list.size(); i++) {
+                    array.add(valueToJson(list.get(i), path + "/" + i));
+                }
+                return array;
             }
-            return nodes.numberNode(number);
+            case String string -> {
+                return nodes.stringNode(string);
+            }
+            case Character character -> {
+                return nodes.stringNode(character.toString());
+            }
+            case Boolean bool -> {
+                return nodes.booleanNode(bool);
+            }
+            case Byte number -> {
+                return nodes.numberNode(number);
+            }
+            case Short number -> {
+                return nodes.numberNode(number);
+            }
+            case Integer number -> {
+                return nodes.numberNode(number);
+            }
+            case Long number -> {
+                return nodes.numberNode(number);
+            }
+            case Float number -> {
+                if (!Float.isFinite(number)) {
+                    throw invalid(path, "floating-point value must be finite");
+                }
+                return nodes.numberNode(number);
+            }
+            case Double number -> {
+                if (!Double.isFinite(number)) {
+                    throw invalid(path, "floating-point value must be finite");
+                }
+                return nodes.numberNode(number);
+            }
+            default -> throw invalid(path, "unsupported component value type " + value.getClass().getName());
         }
-        throw invalid(path, "unsupported component value type " + value.getClass().getName());
     }
 
     private static AlgorithmParsingException invalid(String path, String message) {
