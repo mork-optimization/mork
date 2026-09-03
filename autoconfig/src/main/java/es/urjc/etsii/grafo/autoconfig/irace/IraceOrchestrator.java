@@ -4,9 +4,11 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigRunState;
 import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.config.SolverConfig;
@@ -39,7 +41,6 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
@@ -64,6 +65,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public static final String K_MAX_EXP = "__MAX_EXPERIMENTS__";
     public static final String K_SEED = "__SEED__";
     public static final String K_PORT = "__PORT__";
+    public static final String K_RUN_ID = "__RUN_ID__";
     public static final String F_PARAMETERS = "parameters.txt";
     public static final String F_SCENARIO = "scenario.txt";
     private final String IRACE_PARAM_EPILOGUE = """
@@ -74,9 +76,6 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
 
     public static final int DEFAULT_IRACE_EXPERIMENTS = 10_000;
-    public static final int MAX_HISTORIC_CONFIG_SIZE = 1_000;
-
-
     private final IraceConfig iraceConfig;
     private final SolverConfig solverConfig;
     private final InstanceConfiguration instanceConfiguration;
@@ -89,16 +88,13 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final MorkEventPublisher eventPublisher;
     private final ExecutionLifecycleCoordinator lifecycleCoordinator;
     private final ResultsSerializerListener<S, I> resultsSerializer;
+    private final AutoconfigRunState runState;
 
     private final Optional<TimeLimitCalculator<S, I>> timeLimitCalculator;
 
 
 
     private final AlgorithmCandidateGenerator algorithmCandidateGenerator;
-    private final ConcurrentLinkedQueue<IraceRuntimeConfiguration> configHistoric = new ConcurrentLinkedQueue<>();
-    private final List<SlowExecution> slowExecutions = Collections.synchronizedList(new ArrayList<>());
-    private final List<String> rejectedThings = Collections.synchronizedList(new ArrayList<>());
-
 
     private boolean isAutoconfigEnabled;
     private boolean isFollower;
@@ -129,7 +125,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             AlgorithmCandidateGenerator algorithmCandidateGenerator,
             MorkEventPublisher eventPublisher,
             ExecutionLifecycleCoordinator lifecycleCoordinator,
-            ResultsSerializerListener<S, I> resultsSerializer
+            ResultsSerializerListener<S, I> resultsSerializer,
+            AutoconfigRunState runState
     ) {
         this.solverConfig = solverConfig;
         this.iraceConfig = iraceConfig;
@@ -147,6 +144,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         this.eventPublisher = eventPublisher;
         this.lifecycleCoordinator = lifecycleCoordinator;
         this.resultsSerializer = resultsSerializer;
+        this.runState = runState;
     }
 
 
@@ -173,17 +171,23 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             log.debug("SolutionValidator implementation found: {}", validator.get().getClass().getSimpleName());
         }
         if(isFollower){
+            this.runState.prepareWorker(isAutoconfigEnabled);
             this.integrationKey = solverConfig.getIntegrationKey();
             log.info("Mork is running in follower mode, waiting for commands...");
             return;
         }
 
+        this.runState.prepareCoordinator(0, isAutoconfigEnabled);
         log.info("Ready to start!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
         eventPublisher.publish(new ExecutionStartedEvent(Context.getObjectivesW(), experimentName));
         try {
             launchIrace();
+            this.runState.markCompleted();
+        } catch (RuntimeException e) {
+            this.runState.markFailed(e);
+            throw e;
         } finally {
             long totalExecutionTime = System.nanoTime() - startTime;
             lifecycleCoordinator.complete(totalExecutionTime);
@@ -199,11 +203,13 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         // TODO: Review and improve
         var referenceClass = instanceManager.getUserImporterImplementation().getClass();
         var isJAR = IOUtil.isJAR(referenceClass);
-        extractIraceFiles(isJAR);
+        var substitutions = extractIraceFiles(isJAR);
+        this.runState.markRunning(Integer.parseInt(substitutions.get(K_MAX_EXP)));
 
         long start = System.nanoTime();
         long startTimestamp = System.currentTimeMillis();
-        iraceIntegration.runIrace(isJAR);
+        var finalElites = iraceIntegration.runIrace(isJAR, substitutions);
+        this.runState.publishElites(this.runState.getRunId(), null, finalElites, true);
         long end = System.nanoTime();
         log.info("Finished running experiment: IRACE autoconfig");
         try {
@@ -215,7 +221,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         eventPublisher.publish(new ExperimentEndedEvent(IRACE_EXPNAME, end - start, startTimestamp));
     }
 
-    private void extractIraceFiles(boolean isJar) {
+    private Map<String, String> extractIraceFiles(boolean isJar) {
         Path paramsPath = Path.of(F_PARAMETERS);
         try {
             if (isAutoconfigEnabled) {
@@ -231,6 +237,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 }
                 sb.append(IRACE_PARAM_EPILOGUE);
                 Files.writeString(paramsPath, sb.toString());
+                this.runState.setGeneratedParameterCount(this.nIraceParameters);
             }
 
             var substitutions = getSubstitutions(integrationKey, solverConfig, instanceConfiguration, serverProperties);
@@ -238,6 +245,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 copyWithSubstitutions(getInputStreamForIrace(F_PARAMETERS, isJar), paramsPath, substitutions);
             }
             copyWithSubstitutions(getInputStreamForIrace(F_SCENARIO, isJar), Path.of(F_SCENARIO), substitutions);
+            return substitutions;
         } catch (IOException e) {
             throw new RuntimeException("Failed extracting irace config files", e);
         }
@@ -253,7 +261,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 K_PARALLEL, nParallel(solverConfig),
                 K_MAX_EXP, calculateMaxExperiments(isAutoconfigEnabled, solverConfig, nIraceParameters),
                 K_SEED, String.valueOf(solverConfig.getSeed()),
-                K_PORT, String.valueOf(server.getPort())
+                K_PORT, String.valueOf(server.getPort()),
+                K_RUN_ID, this.runState.getRunId()
         );
     }
 
@@ -279,41 +288,67 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         }
     }
 
-    public Iterable<IraceRuntimeConfiguration> getConfigHistoric() {
-        return configHistoric;
-    }
-
     /**
      * <p>iraceCallback.</p>
      *
      * @return a double.
      */
-    public ExecuteResponse iraceSingleCallback(IraceRuntimeConfiguration config) {
-        storeConfig(config);
-        var instancePath = instanceManager.requireConfiguredInstancePath(IRACE_INSTANCE_PATH_KEY, config.getInstanceName());
-        var instance = instanceManager.getInstance(instancePath);
-        Algorithm<S, I> algorithm;
+    private ExecuteResponse iraceSingleCallback(
+            IraceRuntimeConfiguration config,
+            boolean recordEvaluation
+    ) {
+        long evaluationId = recordEvaluation ? this.runState.evaluationStarted(config) : 0;
         try {
-            algorithm = buildAlgorithm(config);
-        } catch (IllegalAlgorithmConfigException e) {
-            log.debug("Invalid config, reason {}, config: {}", e.getMessage(), config);
-            this.rejectedThings.add(config.toString());
-            return new ExecuteResponse();
+            var instancePath = instanceManager.requireConfiguredInstancePath(
+                    IRACE_INSTANCE_PATH_KEY,
+                    config.getInstanceName()
+            );
+            var instance = instanceManager.getInstance(instancePath);
+            Algorithm<S, I> algorithm;
+            try {
+                algorithm = buildAlgorithm(config);
+            } catch (IllegalAlgorithmConfigException e) {
+                log.debug("Invalid config, reason {}, config: {}", e.getMessage(), config);
+                if (recordEvaluation) {
+                    this.runState.evaluationRejected(
+                            evaluationId,
+                            "INVALID_CONFIGURATION",
+                            e.getMessage(),
+                            0
+                    );
+                }
+                return new ExecuteResponse();
+            }
+
+            log.debug("Config {}. Built algorithm: {}", config, algorithm);
+            Context.Configurator.resetRandom(solverConfig.getRandomType(), config.getSeed());
+
+            var execution = singleExecution(algorithm, instance);
+            if (!recordEvaluation) {
+                return execution.response();
+            }
+            if (execution.rejectionCode() != null) {
+                this.runState.evaluationRejected(
+                        evaluationId,
+                        execution.rejectionCode(),
+                        execution.rejectionMessage(),
+                        execution.slowOverrunMillis()
+                );
+            } else {
+                this.runState.evaluationSucceeded(
+                        evaluationId,
+                        execution.response().getCost(),
+                        execution.response().getTime(),
+                        execution.slowOverrunMillis()
+                );
+            }
+            return execution.response();
+        } catch (RuntimeException e) {
+            if (recordEvaluation) {
+                this.runState.evaluationFailed(evaluationId, e);
+            }
+            throw e;
         }
-
-        log.debug("Config {}. Built algorithm: {}", config, algorithm);
-        // Configure randoms for reproducible experimentation
-        Context.Configurator.resetRandom(solverConfig.getRandomType(), config.getSeed());
-
-        // Execute
-        return singleExecution(algorithm, instance);
-    }
-
-    private synchronized void storeConfig(IraceRuntimeConfiguration config) {
-        if (configHistoric.size() == MAX_HISTORIC_CONFIG_SIZE) {
-            configHistoric.remove();
-        }
-        this.configHistoric.add(config);
     }
 
     private Algorithm<S, I> buildAlgorithm(IraceRuntimeConfiguration config) {
@@ -330,14 +365,17 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         return algorithm;
     }
 
-    public List<ExecuteResponse> iraceMultiCallback(List<IraceExecuteConfig> configs) {
+    public List<ExecuteResponse> iraceMultiCallback(
+            List<IraceExecuteConfig> configs,
+            boolean recordEvaluations
+    ) {
         if (this.solverConfig.isParallelExecutor()) {
             try(var executor = Executors.newFixedThreadPool(this.solverConfig.getnWorkers())){
                 var futures = new ArrayList<Future<ExecuteResponse>>();
                 for (IraceExecuteConfig config : configs) {
                     futures.add(executor.submit(() -> {
                         var iraceConfig = new IraceRuntimeConfiguration(config);
-                        return iraceSingleCallback(iraceConfig);
+                        return iraceSingleCallback(iraceConfig, recordEvaluations);
                     }));
                 }
                 executor.shutdown();
@@ -347,13 +385,13 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             var results = new ArrayList<ExecuteResponse>();
             for (IraceExecuteConfig config : configs) {
                 var iraceConfig = new IraceRuntimeConfiguration(config);
-                results.add(iraceSingleCallback(iraceConfig));
+                results.add(iraceSingleCallback(iraceConfig, recordEvaluations));
             }
             return results;
         }
     }
 
-    private ExecuteResponse singleExecution(Algorithm<S, I> algorithm, I instance) {
+    private ExecutionResult singleExecution(Algorithm<S, I> algorithm, I instance) {
         long maxExecTime = solverConfig.getIgnoreInitialMillis() + solverConfig.getIntervalDurationMillis();
         if(!isAutoconfigEnabled && this.iraceConfig.isTimecontrol()){
             if(this.timeLimitCalculator.isEmpty()){
@@ -386,9 +424,10 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         validator.ifPresent(v -> v.validate(solution).throwIfFail());
 
         double score;
+        long slowOverrunMillis = 0;
         Objective<?,S,I> mainObj = Context.getMainObjective();
         if(this.isAutoconfigEnabled || iraceConfig.isTimecontrol()){
-            checkExecutionTime(algorithm, instance);
+            slowOverrunMillis = checkExecutionTime(algorithm, instance);
             TimeControl.remove();
         }
         if (isAutoconfigEnabled) {
@@ -406,8 +445,12 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             } catch (IllegalArgumentException e) {
                 // Failure to calculate AUC --> Invalid algorithm, one cause may be algorithm too complex for instance and cannot generate results in time.
                 log.debug("Error while calculating AUC: ", e);
-                this.rejectedThings.add(algorithm.toString());
-                return new ExecuteResponse();
+                return new ExecutionResult(
+                        new ExecuteResponse(),
+                        slowOverrunMillis,
+                        "INVALID_AUC",
+                        e.getMessage()
+                );
             }
 
         } else {
@@ -428,26 +471,33 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
 
         double elapsedSeconds = TimeUtil.nanosToSecs(endTime - startTime);
         log.debug("IRACE Iteration: {} {}", score, elapsedSeconds);
-        return new ExecuteResponse(score, elapsedSeconds);
+        return new ExecutionResult(
+                new ExecuteResponse(score, elapsedSeconds),
+                slowOverrunMillis,
+                null,
+                null
+        );
     }
 
-    private void checkExecutionTime(Algorithm<S, I> algorithm, I instance) {
-        if (TimeControl.remaining() < -TimeUtil.secsToNanos(Executor.EXTRA_SECS_BEFORE_WARNING)) {
+    private long checkExecutionTime(Algorithm<S, I> algorithm, I instance) {
+        long remaining = TimeControl.remaining();
+        if (remaining < -TimeUtil.secsToNanos(Executor.EXTRA_SECS_BEFORE_WARNING)) {
             log.warn("Algorithm takes too long to stop after time is up in instance {}. Algorithm::toString {}", instance.getId(), algorithm);
-            slowExecutions.add(new SlowExecution(TimeControl.remaining(), instance.getId(), algorithm));
+            return TimeUnit.NANOSECONDS.toMillis(-remaining);
         }
+        return 0;
     }
 
-    public List<SlowExecution> getSlowRuns() {
-        return Collections.unmodifiableList(this.slowExecutions);
+    public void iraceProgressCallback(
+            String runId,
+            int iteration,
+            List<EliteConfiguration> elites
+    ) {
+        this.runState.publishElites(runId, iteration, elites, false);
     }
 
     public String getIntegrationKey() {
         return this.integrationKey;
-    }
-
-    public List<Object> getRejected() {
-        return Collections.unmodifiableList(this.rejectedThings);
     }
 
     @Override
@@ -455,5 +505,11 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         return List.of("irace", "autoconfig");
     }
 
-    public record SlowExecution(long relativeTime, String instanceName, Algorithm<?, ?> algorithm) {}
+    private record ExecutionResult(
+            ExecuteResponse response,
+            long slowOverrunMillis,
+            String rejectionCode,
+            String rejectionMessage
+    ) {
+    }
 }

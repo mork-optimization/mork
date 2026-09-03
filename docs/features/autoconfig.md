@@ -103,8 +103,9 @@ conditional `item0`, `item1`, and later selectors. Each selector's domain exclud
 prefix. This keeps the values readable and lets Mork validate and reconstruct the selected components directly,
 without maintaining an opaque numeric combination table.
 
-The reconstructed combination is stored as a list of nested `ComponentSpec` values. The debug decode endpoint
-returns this representation as structured JSON under the `algorithm` property.
+The reconstructed combination is stored as a list of nested `ComponentSpec` values. During tuning, the
+[autoconfig REST API](autoconfig-rest-api.md) exposes candidate descriptions using the same structured JSON
+representation.
 
 ## Provided Parameters
 
@@ -141,6 +142,16 @@ solver:
 ```
 
 Use `--irace` or `--autoconfig` to launch tuning. Use `--follower` to start only the execution controller.
+
+The REST API retains the latest 10,000 individual evaluation records by default. Change the limit when a
+different memory/history tradeoff is required:
+
+```yaml
+irace:
+  api-evaluation-history-limit: 10000
+```
+
+See [Autoconfig REST API](autoconfig-rest-api.md) for monitoring the active run.
 
 ## Troubleshooting
 

@@ -129,6 +129,7 @@ class AlgorithmCandidateGeneratorValidationTest {
                 Improver.class,
                 List.of(
                         AllowedImprover.class,
+                        SecondAllowedImprover.class,
                         VND.class,
                         Improver.SequentialImprover.class
                 )
@@ -139,11 +140,11 @@ class AlgorithmCandidateGeneratorValidationTest {
                 .getParameters()[0];
 
         assertArrayEquals(
-                new Object[]{AllowedImprover.class},
+                new Object[]{AllowedImprover.class, SecondAllowedImprover.class},
                 generator.toComponentParameter(types, vndParameter).getValues()
         );
         assertArrayEquals(
-                new Object[]{AllowedImprover.class},
+                new Object[]{AllowedImprover.class, SecondAllowedImprover.class},
                 generator.toComponentParameter(types, sequentialParameter).getValues()
         );
     }
@@ -380,5 +381,8 @@ class AlgorithmCandidateGeneratorValidationTest {
     }
 
     public static class DisallowedChildImprover extends DisallowedImprover {
+    }
+
+    public static class SecondAllowedImprover extends AllowedImprover {
     }
 }

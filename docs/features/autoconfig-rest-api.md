@@ -145,9 +145,8 @@ The R runner uses authenticated, implementation-only endpoints:
 
 These endpoints are not user-facing and require the generated integration key.
 
-`POST /execute` remains temporarily available for older single-execution integrations. It is deprecated,
-returns a `Deprecation: true` header, and links to the internal batch endpoint. Submit a one-element batch when
-migrating. The former `/batchExecute` and `/auto/debug/**` endpoints no longer exist.
+The former `/execute`, `/batchExecute`, and `/auto/debug/**` endpoints no longer exist. Submit a one-element batch
+to the internal evaluations endpoint when only one configuration must be evaluated.
 
 Live elite updates require an IRACE version that supports the scenario option
 `iterationCallback(iteration, elites, progress, ...)`. The bundled runner detects this capability. With an older

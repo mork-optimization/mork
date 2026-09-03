@@ -57,16 +57,32 @@ targetRunner <- function(experiment, scenario) {
 targetRunnerParallel <- function(experiments, exec_target_runner, scenario, target_runner) {
   library("httr")
   key <- "__INTEGRATION_KEY__"
-  url <- "http://127.0.0.1:__PORT__/batchExecute"
+  url <- "http://127.0.0.1:__PORT__/internal/autoconfig/irace/evaluations"
+
+  # Keep parameter strings identical to the iteration/final elite payloads.
+  # httr otherwise serializes R numeric values with 22 digits, while the elite
+  # callbacks use as.character(), making the same IRACE configuration appear
+  # to have different parameters.
+  experiments <- lapply(experiments, function(experiment) {
+    experiment$configuration <- lapply(experiment$configuration, function(value) {
+      if (is.na(value)) "NA" else as.character(value)
+    })
+    experiment
+  })
 
   data <- list(
     experiments = experiments,
-    key = key
+    key = key,
+    preflight = isTRUE(getOption("mork.irace.preflight", FALSE))
   )
 
   response <- POST(url, timeout(24*3600), body = data, encode = "json")
   if (http_error(response)) {
-    stop(paste("Middleware error:", http_status(response)$message))
+    stop(paste(
+      "Middleware error:",
+      http_status(response)$message,
+      content(response, as = "text", encoding = "UTF-8")
+    ))
   }
 
   parsed_response <- content(response, as = "parsed", type = "application/json")

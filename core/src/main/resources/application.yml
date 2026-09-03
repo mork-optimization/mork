@@ -81,6 +81,9 @@ irace:
   # Use --irace or --autoconfig to activate IRACE tuning mode, or --follower for controller-only mode.
   # enabled: false
 
+  # Maximum number of individual evaluation records retained by the autoconfig REST API.
+  api-evaluation-history-limit: 10000
+
   # Maximum number of algorithm executions
   maxExperiments: 10000
 

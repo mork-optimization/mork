@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.inventory.WhitelistInventoryFilter;
 import es.urjc.etsii.grafo.autoconfigtests.components.FasterInvertedConstructive;
 import es.urjc.etsii.grafo.autoconfigtests.components.FlippyFlopImprover;
+import es.urjc.etsii.grafo.autoconfigtests.components.IncrementImprover;
 import es.urjc.etsii.grafo.autoconfigtests.components.SlowConstructive;
 import es.urjc.etsii.grafo.improve.Improver;
 
@@ -17,6 +18,7 @@ public class ACITestWhitelist extends WhitelistInventoryFilter {
                 SlowConstructive.class,
                 FasterInvertedConstructive.class,
                 FlippyFlopImprover.class,
+                IncrementImprover.class,
                 Improver.SequentialImprover.class
         );
     }

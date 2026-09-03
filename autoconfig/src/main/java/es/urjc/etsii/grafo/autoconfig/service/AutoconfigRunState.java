@@ -12,6 +12,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,6 +35,7 @@ public class AutoconfigRunState {
     private final LinkedHashMap<Long, MutableEvaluation> evaluations = new LinkedHashMap<>();
     private final Map<String, MutableCandidate> candidates = new LinkedHashMap<>();
 
+    private boolean decodeAlgorithms;
     private Role role = Role.DISABLED;
     private RunStatus state = RunStatus.NOT_STARTED;
     private String runId;
@@ -64,8 +66,9 @@ public class AutoconfigRunState {
         this.evaluationHistoryLimit = iraceConfig.getApiEvaluationHistoryLimit();
     }
 
-    public synchronized String prepareCoordinator(int parameterCount) {
+    public synchronized String prepareCoordinator(int parameterCount, boolean decodeAlgorithms) {
         reset();
+        this.decodeAlgorithms = decodeAlgorithms;
         this.role = Role.COORDINATOR;
         this.state = RunStatus.PREPARING;
         this.runId = UUID.randomUUID().toString();
@@ -74,8 +77,9 @@ public class AutoconfigRunState {
         return runId;
     }
 
-    public synchronized void prepareWorker() {
+    public synchronized void prepareWorker(boolean decodeAlgorithms) {
         reset();
+        this.decodeAlgorithms = decodeAlgorithms;
         this.role = Role.WORKER;
     }
 
@@ -233,20 +237,32 @@ public class AutoconfigRunState {
             throw new IllegalStateException("IRACE progress snapshot is older than the current snapshot");
         }
 
-        for (var candidate : candidates.values()) {
-            candidate.elitePosition = null;
-        }
-
-        var views = new ArrayList<EliteView>(reportedElites.size());
-        int position = 1;
+        var reportedCandidates = new ArrayList<MutableCandidate>(reportedElites.size());
+        var reportedConfigurationIds = new HashSet<String>();
         for (var reported : reportedElites) {
+            Objects.requireNonNull(reported, "Elite configuration cannot be null");
+            if (!reportedConfigurationIds.add(reported.configurationId())) {
+                throw new IllegalArgumentException(
+                        "Duplicated elite configuration " + reported.configurationId()
+                );
+            }
             var candidate = candidate(reported.configurationId(), reported.parameters());
-            if (candidate.algorithm == null) {
+            if (decodeAlgorithms && candidate.algorithm == null) {
                 throw new IllegalArgumentException(
                         "Cannot decode elite configuration %s: %s"
                                 .formatted(candidate.configurationId, candidate.decodeError)
                 );
             }
+            reportedCandidates.add(candidate);
+        }
+
+        for (var candidate : candidates.values()) {
+            candidate.elitePosition = null;
+        }
+
+        var views = new ArrayList<EliteView>(reportedCandidates.size());
+        int position = 1;
+        for (var candidate : reportedCandidates) {
             candidate.elitePosition = position;
             views.add(new EliteView(
                     candidate.configurationId,
@@ -354,6 +370,7 @@ public class AutoconfigRunState {
     }
 
     private void reset() {
+        this.decodeAlgorithms = false;
         this.role = Role.DISABLED;
         this.state = RunStatus.NOT_STARTED;
         this.runId = null;
@@ -385,7 +402,8 @@ public class AutoconfigRunState {
         if (existing != null) {
             if (!existing.parameters.equals(normalizedParameters)) {
                 throw new IllegalArgumentException(
-                        "IRACE reused configuration ID %s with different parameters".formatted(configurationId)
+                        "IRACE reused configuration ID %s with different parameters: %s != %s"
+                                .formatted(configurationId, existing.parameters, normalizedParameters)
                 );
             }
             return existing;
@@ -393,10 +411,12 @@ public class AutoconfigRunState {
 
         JsonNode algorithm = null;
         String decodeError = null;
-        try {
-            algorithm = algorithmBuilder.asJsonTree(new AlgorithmConfiguration(normalizedParameters));
-        } catch (RuntimeException e) {
-            decodeError = safeMessage(e);
+        if (decodeAlgorithms) {
+            try {
+                algorithm = algorithmBuilder.asJsonTree(new AlgorithmConfiguration(normalizedParameters));
+            } catch (RuntimeException e) {
+                decodeError = safeMessage(e);
+            }
         }
         var candidate = new MutableCandidate(
                 configurationId,

@@ -55,3 +55,5 @@ log.txt
 /docs/**/.DS_Store
 /example-graphs/instances/
 site/
+**/autoconfig-final-elites.json
+**/autoconfig-final-elites.json.tmp

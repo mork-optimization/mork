@@ -25,6 +25,7 @@ public class AlgorithmCandidateGenerator {
     private final IExplorationFilter explorationFilter;
     private final Logger log = LoggerFactory.getLogger(AlgorithmCandidateGenerator.class);
     private final Map<Class<?>, List<ComponentParameter>> paramInfo;
+    private final Map<TreeSettings, List<TreeNode>> treeCache = new HashMap<>();
 
     public AlgorithmCandidateGenerator(AlgorithmInventoryService inventoryService, IExplorationFilter explorationFilter) {
         this.inventoryService = inventoryService;
@@ -470,7 +471,13 @@ public class AlgorithmCandidateGenerator {
     }
 
     // Generate combinations using a recursive DFS approach, bounded by the maxDepth
-    public List<TreeNode> buildTree(int maxDepth, int maxRepeat) {
+    public synchronized List<TreeNode> buildTree(int maxDepth, int maxRepeat) {
+        var settings = new TreeSettings(maxDepth, maxRepeat);
+        var cached = treeCache.get(settings);
+        if (cached != null) {
+            return cached;
+        }
+
         var list = new ArrayList<TreeNode>();
         for (Class<?> startPoint : inventoryService.getInventory().componentsByType().get(Algorithm.class)) {
             var treeContext = new TreeContext(maxDepth, maxRepeat);
@@ -483,7 +490,12 @@ public class AlgorithmCandidateGenerator {
                 list.add(node);
             }
         }
-        return list;
+        var tree = List.copyOf(list);
+        treeCache.put(settings, tree);
+        return tree;
+    }
+
+    private record TreeSettings(int maxDepth, int maxRepeat) {
     }
 
     protected TreeNode recursiveBuildTree(String currentParamName, Class<?> currentComponent, TreeContext context) {

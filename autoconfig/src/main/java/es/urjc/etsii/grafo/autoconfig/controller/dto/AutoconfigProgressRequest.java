@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.controller.dto;
 
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Authenticated iteration progress reported through IRACE's iteration callback.
@@ -39,13 +38,22 @@ public class AutoconfigProgressRequest extends AuthenticatedExecuteRequest {
     @Override
     public void checkValid(String key) {
         super.checkValid(key);
-        Objects.requireNonNull(runId, "Run ID cannot be null");
+        if (runId == null) {
+            throw new IllegalArgumentException("Run ID cannot be null");
+        }
         if (runId.isBlank()) {
             throw new IllegalArgumentException("Run ID cannot be blank");
         }
         if (iteration < 1) {
             throw new IllegalArgumentException("IRACE iteration must be positive");
         }
-        Objects.requireNonNull(elites, "Elites cannot be null");
+        if (elites == null) {
+            throw new IllegalArgumentException("Elites cannot be null");
+        }
+        for (var elite : elites) {
+            if (elite == null) {
+                throw new IllegalArgumentException("Elite configuration cannot be null");
+            }
+        }
     }
 }
