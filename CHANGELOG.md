@@ -1,4 +1,5 @@
 # Developing
+- (New) CMSA (Construct, Merge, Solve & Adapt) algorithm. See CMSA, CMSAConstructive, CMSASolver and CMSABuilder in the algorithms.cmsa package, and the new metaheuristics/cmsa.md doc page.
 - (Breaking) Remove the obsolete `irace.shell` property; R execution is selected through `RLangRunner` implementations.
 - (Breaking) Replace Spring-annotated Mork event listener methods with direct `MorkEventListener` implementations.
 - (Fix) Progress bar in console was drawn incorrectly while printing logs to console.

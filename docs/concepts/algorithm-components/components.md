@@ -13,6 +13,7 @@ High-level algorithmic strategies that guide the search process. These are the m
 | **Iterated Greedy (IG)** | Destruction-reconstruction metaheuristic that iteratively destroys and rebuilds solutions | [IG Documentation](metaheuristics/iterated-greedy.md) |
 | **Scatter Search** | Population-based metaheuristic using reference sets and solution combination | [Scatter Search Documentation](metaheuristics/scatter-search.md) |
 | **Multi-Start Algorithm** | Simple but effective strategy that runs constructive+improvement methods multiple times | [Multi-Start Documentation](metaheuristics/multi-start.md) |
+| **CMSA (Construct, Merge, Solve & Adapt)** | Matheuristic that repeatedly solves a small, adaptively-selected sub-instance with an exact method | [CMSA Documentation](metaheuristics/cmsa.md) |
 
 ## Constructive Methods
 
