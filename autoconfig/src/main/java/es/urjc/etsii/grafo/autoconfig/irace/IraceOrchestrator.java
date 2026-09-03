@@ -404,91 +404,94 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     }
 
     private ExecutionResult singleExecution(Algorithm<S, I> algorithm, I instance) {
-        long maxExecTime = solverConfig.getIgnoreInitialMillis() + solverConfig.getIntervalDurationMillis();
-        if(!isAutoconfigEnabled && this.iraceConfig.isTimecontrol()){
-            if(this.timeLimitCalculator.isEmpty()){
-                throw new IllegalStateException("irace.timecontrol is true, but no time limit calculator has been found, time control will not be enabled");
+        try {
+            long maxExecTime = solverConfig.getIgnoreInitialMillis() + solverConfig.getIntervalDurationMillis();
+            if (!isAutoconfigEnabled && this.iraceConfig.isTimecontrol()) {
+                if (this.timeLimitCalculator.isEmpty()) {
+                    throw new IllegalStateException("irace.timecontrol is true, but no time limit calculator has been found, time control will not be enabled");
+                }
+                var timelimit = timeLimitCalculator.get().timeLimitInMillis(instance, algorithm);
+                TimeControl.setMaxExecutionTime(timelimit, TimeUnit.MILLISECONDS);
+                TimeControl.start();
             }
-            var timelimit = timeLimitCalculator.get().timeLimitInMillis(instance, algorithm);
-            TimeControl.setMaxExecutionTime(timelimit, TimeUnit.MILLISECONDS);
-            TimeControl.start();
-        }
 
-        if (isAutoconfigEnabled) {
-            // Autoconfig requires metrics to be enabled to track algorithm performance
-            TimeControl.setMaxExecutionTime(maxExecTime, TimeUnit.MILLISECONDS);
-            TimeControl.start();
-            Metrics.enableMetrics();
-        }
+            if (isAutoconfigEnabled) {
+                // Autoconfig requires metrics to be enabled to track algorithm performance
+                TimeControl.setMaxExecutionTime(maxExecTime, TimeUnit.MILLISECONDS);
+                TimeControl.start();
+                Metrics.enableMetrics();
+            }
 
-        if(Metrics.areMetricsEnabled()){
-            // If metrics are enabled, reset them before each execution
-            // This is independent of the autoconfig configuration because users
-            // may request metrics to be enabled when manually running Irace
-            Metrics.resetMetrics();
-        }
+            if (Metrics.areMetricsEnabled()) {
+                // If metrics are enabled, reset them before each execution
+                // This is independent of the autoconfig configuration because users
+                // may request metrics to be enabled when manually running Irace
+                Metrics.resetMetrics();
+            }
 
-        long startTime = System.nanoTime();
-        var solution = algorithm.algorithm(instance);
-        long endTime = System.nanoTime();
+            long startTime = System.nanoTime();
+            var solution = algorithm.algorithm(instance);
+            long endTime = System.nanoTime();
 
-        // If the user has implemented a solution validator, check solution correctness
-        validator.ifPresent(v -> v.validate(solution).throwIfFail());
+            // If the user has implemented a solution validator, check solution correctness
+            validator.ifPresent(v -> v.validate(solution).throwIfFail());
 
-        double score;
-        long slowOverrunMillis = 0;
-        Objective<?,S,I> mainObj = Context.getMainObjective();
-        if(this.isAutoconfigEnabled || iraceConfig.isTimecontrol()){
-            slowOverrunMillis = checkExecutionTime(algorithm, instance);
-            TimeControl.remove();
-        }
-        if (isAutoconfigEnabled) {
-            try {
-                score = MetricUtil.areaUnderCurve(mainObj,
-                        TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
-                        TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
-                        solverConfig.isLogScaleArea()
-                );
-                if(!solverConfig.isLogScaleArea()){
-                    // If not using log scaling, divide by NANOS_IN_MILLISECOND to get an acceptable range
-                    score /= TimeUtil.NANOS_IN_MILLISECOND;
+            double score;
+            long slowOverrunMillis = 0;
+            Objective<?, S, I> mainObj = Context.getMainObjective();
+            if (this.isAutoconfigEnabled || iraceConfig.isTimecontrol()) {
+                slowOverrunMillis = checkExecutionTime(algorithm, instance);
+            }
+            if (isAutoconfigEnabled) {
+                try {
+                    score = MetricUtil.areaUnderCurve(mainObj,
+                            TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
+                            TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
+                            solverConfig.isLogScaleArea()
+                    );
+                    if (!solverConfig.isLogScaleArea()) {
+                        // If not using log scaling, divide by NANOS_IN_MILLISECOND to get an acceptable range
+                        score /= TimeUtil.NANOS_IN_MILLISECOND;
+                    }
+
+                } catch (IllegalArgumentException e) {
+                    // Failure to calculate AUC --> Invalid algorithm, one cause may be algorithm too complex for instance and cannot generate results in time.
+                    log.debug("Error while calculating AUC: ", e);
+                    return new ExecutionResult(
+                            new ExecuteResponse(),
+                            slowOverrunMillis,
+                            "INVALID_AUC",
+                            e.getMessage()
+                    );
                 }
 
-            } catch (IllegalArgumentException e) {
-                // Failure to calculate AUC --> Invalid algorithm, one cause may be algorithm too complex for instance and cannot generate results in time.
-                log.debug("Error while calculating AUC: ", e);
-                return new ExecutionResult(
-                        new ExecuteResponse(),
-                        slowOverrunMillis,
-                        "INVALID_AUC",
-                        e.getMessage()
-                );
-            }
-
-        } else {
-            if(iraceConfig.isAuc()){
-                score = MetricUtil.areaUnderCurve(mainObj,
-                        TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
-                        TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
-                        solverConfig.isLogScaleArea()
-                );
             } else {
-                score = mainObj.evalSol(solution);
+                if (iraceConfig.isAuc()) {
+                    score = MetricUtil.areaUnderCurve(mainObj,
+                            TimeUtil.convert(solverConfig.getIgnoreInitialMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
+                            TimeUtil.convert(solverConfig.getIntervalDurationMillis(), TimeUnit.MILLISECONDS, TimeUnit.NANOSECONDS),
+                            solverConfig.isLogScaleArea()
+                    );
+                } else {
+                    score = mainObj.evalSol(solution);
+                }
             }
-        }
 
-        if (Context.getMainObjective().getFMode() == FMode.MAXIMIZE) {
-            score *= -1; // Irace only minimizes. Applies to area under the metric curve too.
-        }
+            if (Context.getMainObjective().getFMode() == FMode.MAXIMIZE) {
+                score *= -1; // Irace only minimizes. Applies to area under the metric curve too.
+            }
 
-        double elapsedSeconds = TimeUtil.nanosToSecs(endTime - startTime);
-        log.debug("IRACE Iteration: {} {}", score, elapsedSeconds);
-        return new ExecutionResult(
-                new ExecuteResponse(score, elapsedSeconds),
-                slowOverrunMillis,
-                null,
-                null
-        );
+            double elapsedSeconds = TimeUtil.nanosToSecs(endTime - startTime);
+            log.debug("IRACE Iteration: {} {}", score, elapsedSeconds);
+            return new ExecutionResult(
+                    new ExecuteResponse(score, elapsedSeconds),
+                    slowOverrunMillis,
+                    null,
+                    null
+            );
+        } finally {
+            TimeControl.remove();
+        }
     }
 
     private long checkExecutionTime(Algorithm<S, I> algorithm, I instance) {
