@@ -207,6 +207,31 @@ class AutoconfigRunStateTest {
     }
 
     @Test
+    void rejectedSnapshotDoesNotRegisterCandidates() {
+        var state = newState(10);
+        String runId = state.prepareCoordinator(true);
+        state.publishGeneratedSearchSpace(1);
+        state.markRunning(10);
+
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> state.publishProgress(
+                        runId,
+                        1,
+                        List.of(
+                                new EliteConfiguration("new-valid", Map.of("ROOT", "TestAlgorithm")),
+                                new EliteConfiguration("duplicate", Map.of("ROOT", "TestAlgorithm")),
+                                new EliteConfiguration("duplicate", Map.of("ROOT", "TestAlgorithm"))
+                        ),
+                        experimentProgress(2, 10, 0, 10)
+                )
+        );
+
+        assertNull(state.candidate("new-valid"));
+        assertNull(state.candidate("duplicate"));
+    }
+
+    @Test
     void acceptsMismatchedAndTimeBudgetProgressWithoutChangingMorkBudget() {
         var state = newState(10);
         String runId = state.prepareCoordinator(true);

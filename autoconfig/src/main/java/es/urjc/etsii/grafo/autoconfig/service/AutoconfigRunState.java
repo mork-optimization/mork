@@ -275,7 +275,7 @@ public class AutoconfigRunState {
 
     private List<EliteView> eliteViews(List<EliteConfiguration> reportedElites) {
         Objects.requireNonNull(reportedElites, "Elites cannot be null");
-        var reportedCandidates = new ArrayList<MutableCandidate>(reportedElites.size());
+        var definitions = new ArrayList<CandidateDefinition>(reportedElites.size());
         var reportedConfigurationIds = new HashSet<String>();
         for (var reported : reportedElites) {
             Objects.requireNonNull(reported, "Elite configuration cannot be null");
@@ -284,7 +284,17 @@ public class AutoconfigRunState {
                         "Duplicated elite configuration " + reported.configurationId()
                 );
             }
-            var candidate = candidate(reported.configurationId(), reported.parameters());
+            var parameters = immutableParameters(reported.parameters());
+            validateCandidate(candidates.get(reported.configurationId()), reported.configurationId(), parameters);
+            definitions.add(new CandidateDefinition(reported.configurationId(), parameters));
+        }
+
+        var reportedCandidates = new ArrayList<MutableCandidate>(definitions.size());
+        for (var definition : definitions) {
+            var candidate = candidates.get(definition.configurationId());
+            if (candidate == null) {
+                candidate = createCandidate(definition.configurationId(), definition.parameters());
+            }
             if (decodeAlgorithms && candidate.algorithm == null) {
                 throw new IllegalArgumentException(
                         "Cannot decode elite configuration %s: %s"
@@ -304,6 +314,10 @@ public class AutoconfigRunState {
                     candidate.algorithm
             ));
             position++;
+        }
+
+        for (var candidate : reportedCandidates) {
+            candidates.putIfAbsent(candidate.configurationId, candidate);
         }
         return List.copyOf(views);
     }
@@ -457,16 +471,33 @@ public class AutoconfigRunState {
     private MutableCandidate candidate(String configurationId, Map<String, String> parameters) {
         var normalizedParameters = immutableParameters(parameters);
         var existing = candidates.get(configurationId);
+        validateCandidate(existing, configurationId, normalizedParameters);
         if (existing != null) {
-            if (!existing.parameters.equals(normalizedParameters)) {
-                throw new IllegalArgumentException(
-                        "IRACE reused configuration ID %s with different parameters: %s != %s"
-                                .formatted(configurationId, existing.parameters, normalizedParameters)
-                );
-            }
             return existing;
         }
 
+        var candidate = createCandidate(configurationId, normalizedParameters);
+        candidates.put(configurationId, candidate);
+        return candidate;
+    }
+
+    private static void validateCandidate(
+            MutableCandidate candidate,
+            String configurationId,
+            Map<String, String> parameters
+    ) {
+        if (candidate != null && !candidate.parameters.equals(parameters)) {
+            throw new IllegalArgumentException(
+                    "IRACE reused configuration ID %s with different parameters: %s != %s"
+                            .formatted(configurationId, candidate.parameters, parameters)
+            );
+        }
+    }
+
+    private MutableCandidate createCandidate(
+            String configurationId,
+            Map<String, String> normalizedParameters
+    ) {
         JsonNode algorithm = null;
         String decodeError = null;
         if (decodeAlgorithms) {
@@ -482,7 +513,6 @@ public class AutoconfigRunState {
                 algorithm,
                 decodeError
         );
-        candidates.put(configurationId, candidate);
         return candidate;
     }
 
@@ -765,5 +795,11 @@ public class AutoconfigRunState {
         private static StoredIraceSnapshot empty() {
             return new StoredIraceSnapshot(null, null, false, null, List.of());
         }
+    }
+
+    private record CandidateDefinition(
+            String configurationId,
+            Map<String, String> parameters
+    ) {
     }
 }
