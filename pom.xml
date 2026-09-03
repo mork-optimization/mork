@@ -406,7 +406,6 @@
                                         <include>runner.R</include>
                                         <include>scenario.txt</include>
                                         <include>autoconfig-final-elites.json</include>
-                                        <include>autoconfig-final-elites.json.tmp</include>
                                         <include>instance_properties.csv</include>
                                         <include>report.html</include>
                                         <include>report_files/</include>

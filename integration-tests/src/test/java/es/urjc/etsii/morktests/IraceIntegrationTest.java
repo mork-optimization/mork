@@ -47,11 +47,9 @@ public class IraceIntegrationTest {
         assertTrue(Files.exists(Path.of("log-ablation.Rdata")));
         assertTrue(Files.exists(Path.of("report.html")));
         assertFalse(Files.exists(Path.of("autoconfig-final-elites.json")));
-        assertFalse(Files.exists(Path.of("autoconfig-final-elites.json.tmp")));
 
         deleteGeneratedFiles(
                 Path.of("autoconfig-final-elites.json"),
-                Path.of("autoconfig-final-elites.json.tmp"),
                 Path.of("irace.Rdata"),
                 Path.of("log-ablation.Rdata"),
                 Path.of("parameters.txt"),

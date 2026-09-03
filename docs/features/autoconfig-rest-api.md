@@ -148,9 +148,7 @@ These endpoints are not user-facing and require the generated integration key.
 The former `/execute`, `/batchExecute`, and `/auto/debug/**` endpoints no longer exist. Submit a one-element batch
 to the internal evaluations endpoint when only one configuration must be evaluated.
 
-Live elite updates require an IRACE version that supports the scenario option
-`iterationCallback(iteration, elites, progress, ...)`. The bundled runner detects this capability. With an older
-version, tuning continues and the exact final elites are still published, but iteration-level elite snapshots
-remain empty. Mork receives live updates directly from this callback and does not poll `irace.Rdata`. IRACE also
-provides iteration and budget details through `progress`; Mork currently keeps its own authoritative REST budget
-counters and does not forward that additional snapshot.
+Live elite updates require a recent IRACE version that supports the scenario option
+`iterationCallback(iteration, elites, progress, ...)`. The bundled runner stops with an upgrade message when the
+installed IRACE version does not support this option. Mork receives live updates directly from this callback and
+therefore does not poll `irace.Rdata`. 

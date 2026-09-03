@@ -26,7 +26,6 @@ public class IraceIntegration {
     private static final Logger log = LoggerFactory.getLogger(IraceIntegration.class.getName());
     private static final String RUNNER_SCRIPT = "runner.R";
     public static final String FINAL_ELITES_FILE = "autoconfig-final-elites.json";
-    public static final String FINAL_ELITES_TEMP_FILE = FINAL_ELITES_FILE + ".tmp";
 
     private final RLangRunner runner;
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -50,10 +49,8 @@ public class IraceIntegration {
         Path workingDirectory = Path.of("").toAbsolutePath().normalize();
         Path script = workingDirectory.resolve(RUNNER_SCRIPT);
         Path finalElites = workingDirectory.resolve(FINAL_ELITES_FILE);
-        Path temporaryFinalElites = workingDirectory.resolve(FINAL_ELITES_TEMP_FILE);
         try {
             Files.deleteIfExists(finalElites);
-            Files.deleteIfExists(temporaryFinalElites);
             try (var inputStream = getInputStreamForIrace(RUNNER_SCRIPT, isJAR)) {
                 copyWithSubstitutions(inputStream, script, substitutions);
             }
@@ -69,7 +66,6 @@ public class IraceIntegration {
             throw new IllegalStateException("Cannot prepare R execution", e);
         } finally {
             deleteGeneratedFile(finalElites);
-            deleteGeneratedFile(temporaryFinalElites);
         }
     }
 

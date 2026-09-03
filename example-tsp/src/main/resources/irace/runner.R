@@ -50,26 +50,15 @@ configuration_value <- function(value) {
 }
 
 configuration_list <- function(configurations) {
-  if (is.null(configurations) || nrow(configurations) == 0) {
-    return(list())
-  }
-
-  configuration_ids <- if (".ID." %in% names(configurations)) {
-    configurations[[".ID."]]
-  } else {
-    rownames(configurations)
-  }
   parameter_names <- names(configurations)[!startsWith(names(configurations), ".")]
 
   lapply(seq_len(nrow(configurations)), function(row) {
-    parameters <- list()
-    for (parameter_name in parameter_names) {
-      value <- configurations[[parameter_name]][[row]]
-      parameters[[parameter_name]] <- configuration_value(value)
-    }
     list(
-      configurationId = as.character(configuration_ids[[row]]),
-      parameters = parameters
+      configurationId = as.character(configurations[[".ID."]][[row]]),
+      parameters = lapply(
+        configurations[row, parameter_names, drop = FALSE],
+        configuration_value
+      )
     )
   })
 }
@@ -87,37 +76,25 @@ report_progress <- function(iteration, elites, ...) {
       ),
       encode = "json"
     )
-    if (http_error(response)) {
-      warning(paste("Could not publish IRACE progress:", http_status(response)$message))
-    }
+    stop_for_status(response)
   }, error = function(error) {
-    warning(paste("Could not publish IRACE progress:", conditionMessage(error)))
+    warning("Could not publish IRACE progress: ", conditionMessage(error))
   })
 }
 
 write_final_elites <- function(configurations) {
-  target <- "autoconfig-final-elites.json"
-  temporary <- paste0(target, ".tmp")
   jsonlite::write_json(
     list(elites = configuration_list(configurations)),
-    temporary,
-    auto_unbox = TRUE,
-    pretty = TRUE
+    "autoconfig-final-elites.json",
+    auto_unbox = TRUE
   )
-  if (file.exists(target)) {
-    unlink(target)
-  }
-  if (!file.rename(temporary, target)) {
-    stop(paste("Could not publish final IRACE elites to", target))
-  }
 }
 
 scenario <- readScenario(filename = "scenario.txt", scenario = defaultScenario())
-if ("iterationCallback" %in% names(scenario)) {
-  scenario$iterationCallback <- report_progress
-} else {
-  warning("Installed IRACE does not support iterationCallback; live elite updates are disabled")
+if (!"iterationCallback" %in% names(scenario)) {
+  stop("Installed IRACE does not support iterationCallback; please upgrade IRACE")
 }
+scenario$iterationCallback <- report_progress
 options(mork.irace.preflight = TRUE)
 checkIraceScenario(scenario = scenario)
 options(mork.irace.preflight = FALSE)
