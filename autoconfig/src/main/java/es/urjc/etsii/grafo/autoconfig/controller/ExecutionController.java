@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.AutoconfigProgressRequest;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.MultiExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
+import es.urjc.etsii.grafo.autoconfig.irace.IraceTargetEvaluator;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import org.springframework.http.HttpStatus;
@@ -32,14 +33,20 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
     private static final String BATCH_ENDPOINT = "/internal/autoconfig/irace/evaluations";
 
     private final IraceOrchestrator<S, I> orchestrator;
+    private final IraceTargetEvaluator<S, I> targetEvaluator;
 
     /**
      * Create a new execution controller
      *
      * @param orchestrator Irace orchestrator
+     * @param targetEvaluator IRACE target evaluator
      */
-    public ExecutionController(IraceOrchestrator<S, I> orchestrator) {
+    public ExecutionController(
+            IraceOrchestrator<S, I> orchestrator,
+            IraceTargetEvaluator<S, I> targetEvaluator
+    ) {
         this.orchestrator = orchestrator;
+        this.targetEvaluator = targetEvaluator;
     }
 
     /**
@@ -54,12 +61,11 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
         log.trace("IRACE batch request with {} experiments", request.getExperiments().size());
 
         try {
-            var results = this.orchestrator.iraceMultiCallback(
-                    request.getExperiments(),
-                    !request.isPreflight()
-            );
+            var results = request.isPreflight()
+                    ? targetEvaluator.preflightBatch(request.getExperiments())
+                    : targetEvaluator.evaluateBatch(request.getExperiments());
             return ResponseEntity.ok(results);
-        } catch (Exception e){
+        } catch (Exception e) {
             String formattedMsg = String.format("Error executing batch request. Exps:  %s", request.getExperiments());
             log.error(formattedMsg, e);
             throw new ServerErrorException(formattedMsg, e);

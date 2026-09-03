@@ -26,6 +26,17 @@ import static org.mockito.Mockito.when;
 class AutoconfigRunStateTest {
 
     @Test
+    void exposesThePreparedExecutionMode() {
+        var state = newState(10);
+
+        assertFalse(state.isAutomaticMode());
+        state.prepareCoordinator(true);
+        assertTrue(state.isAutomaticMode());
+        state.prepareWorker(false);
+        assertFalse(state.isAutomaticMode());
+    }
+
+    @Test
     void publishesSearchSpaceOnlyForAutomaticCoordinatorRuns() {
         var state = newState(10);
         state.prepareCoordinator(true);

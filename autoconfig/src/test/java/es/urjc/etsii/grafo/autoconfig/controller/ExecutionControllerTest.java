@@ -4,6 +4,9 @@ import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
+import es.urjc.etsii.grafo.autoconfig.irace.IraceTargetEvaluator;
+import es.urjc.etsii.grafo.testutil.TestInstance;
+import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.MediaType;
@@ -13,7 +16,6 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.List;
 import java.util.Map;
 
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -37,17 +39,21 @@ class ExecutionControllerTest {
             """;
 
     private MockMvc mockMvc;
-    private IraceOrchestrator<?, ?> orchestrator;
+    private IraceOrchestrator<TestSolution, TestInstance> orchestrator;
+    private IraceTargetEvaluator<TestSolution, TestInstance> targetEvaluator;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
     void setup() {
-        orchestrator = (IraceOrchestrator<?, ?>) mock(IraceOrchestrator.class);
+        orchestrator = (IraceOrchestrator<TestSolution, TestInstance>) mock(IraceOrchestrator.class);
+        targetEvaluator = (IraceTargetEvaluator<TestSolution, TestInstance>) mock(IraceTargetEvaluator.class);
         when(orchestrator.getIntegrationKey()).thenReturn("secret");
-        when(orchestrator.iraceMultiCallback(anyList(), anyBoolean()))
+        when(targetEvaluator.evaluateBatch(anyList()))
+                .thenReturn(List.of(new ExecuteResponse(4.5, 0.2)));
+        when(targetEvaluator.preflightBatch(anyList()))
                 .thenReturn(List.of(new ExecuteResponse(4.5, 0.2)));
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new ExecutionController<>(orchestrator))
+                .standaloneSetup(new ExecutionController<>(orchestrator, targetEvaluator))
                 .setControllerAdvice(new AutoconfigApiExceptionHandler())
                 .build();
     }
@@ -66,7 +72,7 @@ class ExecutionControllerTest {
                         .content(request))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].cost").value(4.5));
-        verify(orchestrator).iraceMultiCallback(anyList(), eq(true));
+        verify(targetEvaluator).evaluateBatch(anyList());
 
         mockMvc.perform(post("/batchExecute")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -98,7 +104,8 @@ class ExecutionControllerTest {
                         .content("{\"key\":\"secret\"}"))
                 .andExpect(status().isBadRequest());
 
-        verify(orchestrator, never()).iraceMultiCallback(anyList(), anyBoolean());
+        verify(targetEvaluator, never()).evaluateBatch(anyList());
+        verify(targetEvaluator, never()).preflightBatch(anyList());
     }
 
     @Test
@@ -116,7 +123,7 @@ class ExecutionControllerTest {
                         .content(request))
                 .andExpect(status().isOk());
 
-        verify(orchestrator).iraceMultiCallback(anyList(), eq(false));
+        verify(targetEvaluator).preflightBatch(anyList());
     }
 
     @Test

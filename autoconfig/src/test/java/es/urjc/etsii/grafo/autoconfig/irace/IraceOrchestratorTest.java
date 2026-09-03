@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.autoconfig.controller.IraceUtil;
-import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.MultiExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
@@ -11,7 +10,6 @@ import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
-import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializerListener;
@@ -24,7 +22,6 @@ import org.springframework.boot.web.server.autoconfigure.ServerProperties;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator.DEFAULT_IRACE_EXPERIMENTS;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -43,15 +40,10 @@ class IraceOrchestratorTest {
         var orchestrator = new IraceOrchestrator<>(
                 new SolverConfig(),
                 new BlockConfig(),
-                mock(IraceConfig.class),
                 new ServerProperties(),
                 new InstanceConfiguration(),
                 mock(IraceIntegration.class),
                 (InstanceManager<TestInstance>) mock(InstanceManager.class),
-                List.of((SolutionBuilder<TestSolution, TestInstance>) mock(SolutionBuilder.class)),
-                List.of((AlgorithmBuilder<TestSolution, TestInstance>) mock(AlgorithmBuilder.class)),
-                Optional.empty(),
-                Optional.empty(),
                 mock(AutoconfigSearchSpace.class),
                 eventPublisher,
                 lifecycle,

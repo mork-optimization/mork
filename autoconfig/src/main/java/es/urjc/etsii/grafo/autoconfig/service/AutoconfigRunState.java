@@ -39,7 +39,7 @@ public class AutoconfigRunState {
     private final LinkedHashMap<Long, MutableEvaluation> evaluations = new LinkedHashMap<>();
     private final Map<String, MutableCandidate> candidates = new LinkedHashMap<>();
 
-    private boolean decodeAlgorithms;
+    private boolean automaticMode;
     private Role role = Role.DISABLED;
     private RunStatus state = RunStatus.NOT_STARTED;
     private String runId;
@@ -67,9 +67,9 @@ public class AutoconfigRunState {
         this.evaluationHistoryLimit = iraceConfig.getApiEvaluationHistoryLimit();
     }
 
-    public synchronized String prepareCoordinator(boolean decodeAlgorithms) {
+    public synchronized String prepareCoordinator(boolean automaticMode) {
         reset();
-        this.decodeAlgorithms = decodeAlgorithms;
+        this.automaticMode = automaticMode;
         this.role = Role.COORDINATOR;
         this.state = RunStatus.PREPARING;
         this.runId = UUID.randomUUID().toString();
@@ -77,10 +77,19 @@ public class AutoconfigRunState {
         return runId;
     }
 
-    public synchronized void prepareWorker(boolean decodeAlgorithms) {
+    public synchronized void prepareWorker(boolean automaticMode) {
         reset();
-        this.decodeAlgorithms = decodeAlgorithms;
+        this.automaticMode = automaticMode;
         this.role = Role.WORKER;
+    }
+
+    /**
+     * Whether the current IRACE process is evaluating the generated automatic search space.
+     *
+     * @return true in automatic configuration mode
+     */
+    public synchronized boolean isAutomaticMode() {
+        return automaticMode;
     }
 
     public synchronized void markRunning(int maximumBudget) {
@@ -102,7 +111,7 @@ public class AutoconfigRunState {
         if (role != Role.COORDINATOR || state != RunStatus.PREPARING) {
             throw new IllegalStateException("Autoconfig run is not preparing");
         }
-        if (!decodeAlgorithms) {
+        if (!automaticMode) {
             throw new IllegalStateException("The current run does not use the automatic search space");
         }
         this.generatedParameterCount = generatedParameterCount;
@@ -295,7 +304,7 @@ public class AutoconfigRunState {
             if (candidate == null) {
                 candidate = createCandidate(definition.configurationId(), definition.parameters());
             }
-            if (decodeAlgorithms && candidate.algorithm == null) {
+            if (automaticMode && candidate.algorithm == null) {
                 throw new IllegalArgumentException(
                         "Cannot decode elite configuration %s: %s"
                                 .formatted(candidate.configurationId, candidate.decodeError)
@@ -445,7 +454,7 @@ public class AutoconfigRunState {
     }
 
     private void reset() {
-        this.decodeAlgorithms = false;
+        this.automaticMode = false;
         this.role = Role.DISABLED;
         this.state = RunStatus.NOT_STARTED;
         this.runId = null;
@@ -500,7 +509,7 @@ public class AutoconfigRunState {
     ) {
         JsonNode algorithm = null;
         String decodeError = null;
-        if (decodeAlgorithms) {
+        if (automaticMode) {
             try {
                 algorithm = algorithmBuilder.asJsonTree(new AlgorithmConfiguration(normalizedParameters));
             } catch (RuntimeException e) {
