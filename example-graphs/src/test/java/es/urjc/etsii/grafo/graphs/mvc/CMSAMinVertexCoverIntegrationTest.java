@@ -39,7 +39,7 @@ class CMSAMinVertexCoverIntegrationTest {
     @BeforeEach
     void setUp() {
         Context.reset();
-        Context.Configurator.setObjectives(Objective.ofMinimizing("Score", MSTSolution::getScore, null));
+        Context.Configurator.setObjectives(Objective.ofMinimizing("Score", MSTSolution::getScore));
         Context.Configurator.resetRandom(RandomType.DEFAULT, 42);
     }
 

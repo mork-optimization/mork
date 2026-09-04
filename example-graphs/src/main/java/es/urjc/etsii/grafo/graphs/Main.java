@@ -13,7 +13,7 @@ public class Main {
     // - MVC: Minimum Vertex Cover (NP-hard, solved with the CMSA metaheuristic)
     // All reuse the same objective (minimize a double value) and solution class
     public static final Objective<?, MSTSolution, MSTInstance> OBJECTIVE =
-            Objective.ofMinimizing("Score", MSTSolution::getScore, null);
+            Objective.ofMinimizing("Score", MSTSolution::getScore);
 
     public static void main(String[] args) {
         Mork.start(args, OBJECTIVE);

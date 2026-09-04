@@ -66,11 +66,11 @@ class WorkUnitResultTest {
         Objective<?, TestSolution, TestInstance> first = Objective.ofMinimizing("first", (TestSolution solution) -> {
             firstEvaluations.incrementAndGet();
             return solution.getScore();
-        }, null);
+        });
         Objective<?, TestSolution, TestInstance> second = Objective.ofMinimizing("second", (TestSolution solution) -> {
             secondEvaluations.incrementAndGet();
             return solution.getScore() * 2;
-        }, null);
+        });
         setObjectives(first, second);
 
         var solution = new TestSolution(instance, 7);
@@ -92,7 +92,7 @@ class WorkUnitResultTest {
 
     @Test
     void solutionlessCopyRetainsCachedMetadata() {
-        Context.Configurator.setObjectives(Objective.ofMinimizing("score", (TestSolution s) -> s.getScore(), null));
+        Context.Configurator.setObjectives(Objective.ofMinimizing("score", (TestSolution s) -> s.getScore()));
         var solution = new TestSolution(instance, 5, Map.of("property", ignored -> "value"));
         var result = successfulResult(solution);
 
@@ -163,7 +163,7 @@ class WorkUnitResultTest {
     }
 
     @SafeVarargs
-    private final void setObjectives(Objective<?, TestSolution, TestInstance>... objectives) {
+    private void setObjectives(Objective<?, TestSolution, TestInstance>... objectives) {
         Context.Configurator.setObjectives(false, objectives);
     }
 }
