@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.generator.CombinationNode;
 import es.urjc.etsii.grafo.autoconfig.generator.DefaultExplorationFilter;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
@@ -10,7 +11,6 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
@@ -78,10 +78,22 @@ class AlgorithmCandidateGeneratorTest {
                 checkMaxDepth(childNode, maxDepth, currentDepth + 1);
             }
         }
+        for (var combination : node.combinations().values()) {
+            checkCombinationMaxDepth(combination.root(), maxDepth, currentDepth + 1);
+        }
+    }
+
+    private void checkCombinationMaxDepth(CombinationNode node, int maxDepth, int currentDepth) {
+        if (node == null) {
+            return;
+        }
+        for (var choice : node.choices()) {
+            checkMaxDepth(choice.component(), maxDepth, currentDepth);
+            checkCombinationMaxDepth(choice.next(), maxDepth, currentDepth);
+        }
     }
 
     private void printParams(List<String> params){
-        Collections.sort(params);
         for(var p: params){
             System.out.println(p);
         }
@@ -123,6 +135,19 @@ class AlgorithmCandidateGeneratorTest {
             for(var childNode: param){
                 checkForForbiddenComponents(childNode);
             }
+        }
+        for (var combination : node.combinations().values()) {
+            checkCombinationForForbiddenComponents(combination.root());
+        }
+    }
+
+    private void checkCombinationForForbiddenComponents(CombinationNode node) {
+        if (node == null) {
+            return;
+        }
+        for (var choice : node.choices()) {
+            checkForForbiddenComponents(choice.component());
+            checkCombinationForForbiddenComponents(choice.next());
         }
     }
 }

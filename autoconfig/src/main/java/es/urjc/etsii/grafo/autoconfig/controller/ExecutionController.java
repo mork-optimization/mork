@@ -1,12 +1,13 @@
 package es.urjc.etsii.grafo.autoconfig.controller;
 
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.AutoconfigProgressRequest;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.MultiExecuteRequest;
-import es.urjc.etsii.grafo.autoconfig.controller.dto.SingleExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
-import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
+import es.urjc.etsii.grafo.autoconfig.irace.IraceTargetEvaluator;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
+import org.springframework.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ServerErrorException;
-import tools.jackson.databind.ObjectMapper;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -29,19 +30,23 @@ import java.util.List;
 public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
 
     private static final Logger log = LoggerFactory.getLogger(ExecutionController.class);
+    private static final String BATCH_ENDPOINT = "/internal/autoconfig/irace/evaluations";
 
-    private final IraceOrchestrator<S, I> orquestrator;
-
-    private final ObjectMapper json;
+    private final IraceOrchestrator<S, I> orchestrator;
+    private final IraceTargetEvaluator<S, I> targetEvaluator;
 
     /**
      * Create a new execution controller
      *
-     * @param orquestrator Irace orquestrator
+     * @param orchestrator Irace orchestrator
+     * @param targetEvaluator IRACE target evaluator
      */
-    public ExecutionController(IraceOrchestrator<S, I> orquestrator) {
-        this.orquestrator = orquestrator;
-        this.json = new ObjectMapper();
+    public ExecutionController(
+            IraceOrchestrator<S, I> orchestrator,
+            IraceTargetEvaluator<S, I> targetEvaluator
+    ) {
+        this.orchestrator = orchestrator;
+        this.targetEvaluator = targetEvaluator;
     }
 
     /**
@@ -50,41 +55,42 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
      * @param request integration key and run configuration
      * @return run result
      */
-    @PostMapping("/execute")
-    public ResponseEntity<String> execute(@RequestBody SingleExecuteRequest request) {
-        log.trace("Execute request: {}", request);
-        request.checkValid(this.orquestrator.getIntegrationKey());
+    @PostMapping(BATCH_ENDPOINT)
+    public ResponseEntity<List<ExecuteResponse>> batchExecute(@RequestBody MultiExecuteRequest request) {
+        request.checkValid(this.orchestrator.getIntegrationKey());
+        log.trace("IRACE batch request with {} experiments", request.getExperiments().size());
 
-        var exp = request.getExperiment();
         try {
-            var config = new IraceRuntimeConfiguration(exp);
-            var result = this.orquestrator.iraceSingleCallback(config);
-            return ResponseEntity.ok(result.toIraceResultString());
+            var results = request.isPreflight()
+                    ? targetEvaluator.preflightBatch(request.getExperiments())
+                    : targetEvaluator.evaluateBatch(request.getExperiments());
+            return ResponseEntity.ok(results);
         } catch (Exception e) {
-            String errorMessage = String.format("Error executing single request: %s", exp);
-            log.error(errorMessage, e);
-            throw new ServerErrorException(errorMessage, e);
+            String formattedMsg = String.format("Error executing batch request. Exps:  %s", request.getExperiments());
+            log.error(formattedMsg, e);
+            throw new ServerErrorException(formattedMsg, e);
         }
     }
 
     /**
-     * Execute and return the results for the given IRACE configuration
+     * Receive the elite set and progress counters produced after an IRACE iteration.
      *
-     * @param request integration key and run configuration
-     * @return run result
+     * @param request authenticated progress snapshot
+     * @return empty successful response
      */
-    @PostMapping("/batchExecute")
-    public ResponseEntity<List<ExecuteResponse>> batchExecute(@RequestBody MultiExecuteRequest request) {
-        log.trace("Batch execute request: {}", request);
-        request.checkValid(this.orquestrator.getIntegrationKey());
-
+    @PostMapping("/internal/autoconfig/irace/progress")
+    public ResponseEntity<Void> progress(@RequestBody AutoconfigProgressRequest request) {
+        request.checkValid(this.orchestrator.getIntegrationKey());
         try {
-            var results = this.orquestrator.iraceMultiCallback(request.getExperiments());
-            return ResponseEntity.ok(results);
-        } catch (Exception e){
-            String formattedMsg = String.format("Error executing batch request. Exps:  %s", request.getExperiments());
-            log.error(formattedMsg, e);
-            throw new ServerErrorException(formattedMsg, e);
+            this.orchestrator.iraceProgressCallback(
+                    request.getRunId(),
+                    request.getIteration(),
+                    request.getElites(),
+                    request.getProgress()
+            );
+            return ResponseEntity.noContent().build();
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
         }
     }
 }

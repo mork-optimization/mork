@@ -10,9 +10,12 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ConfigurationProperties(prefix = "irace")
 public class IraceConfig {
+    public static final int DEFAULT_API_EVALUATION_HISTORY_LIMIT = 10_000;
+
     private boolean enabled;
     private boolean auc = false;
     private boolean timecontrol = false;
+    private int apiEvaluationHistoryLimit = DEFAULT_API_EVALUATION_HISTORY_LIMIT;
 
     /**
      * Is irace enabled?
@@ -62,5 +65,26 @@ public class IraceConfig {
      */
     public void setTimecontrol(boolean timecontrol) {
         this.timecontrol = timecontrol;
+    }
+
+    /**
+     * Maximum number of individual evaluations retained for the autoconfig REST API.
+     *
+     * @return evaluation history limit
+     */
+    public int getApiEvaluationHistoryLimit() {
+        return apiEvaluationHistoryLimit;
+    }
+
+    /**
+     * Configure the maximum number of evaluations retained by the autoconfig REST API.
+     *
+     * @param apiEvaluationHistoryLimit positive history limit
+     */
+    public void setApiEvaluationHistoryLimit(int apiEvaluationHistoryLimit) {
+        if (apiEvaluationHistoryLimit < 1) {
+            throw new IllegalArgumentException("irace.api-evaluation-history-limit must be positive");
+        }
+        this.apiEvaluationHistoryLimit = apiEvaluationHistoryLimit;
     }
 }

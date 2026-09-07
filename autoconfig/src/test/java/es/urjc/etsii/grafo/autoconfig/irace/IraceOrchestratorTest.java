@@ -1,21 +1,19 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.autoconfig.controller.IraceUtil;
-import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceExecuteConfig;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.MultiExecuteRequest;
-import es.urjc.etsii.grafo.autoconfig.controller.dto.SingleExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
+import es.urjc.etsii.grafo.autoconfig.exception.InvalidIntegrationKeyException;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigRunState;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
-import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializerListener;
 import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
-import es.urjc.etsii.grafo.services.TimeLimitCalculator;
-import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;
@@ -24,7 +22,6 @@ import org.springframework.boot.web.server.autoconfigure.ServerProperties;
 
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 import static es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator.DEFAULT_IRACE_EXPERIMENTS;
 import static org.mockito.ArgumentMatchers.anyLong;
@@ -43,19 +40,15 @@ class IraceOrchestratorTest {
         var orchestrator = new IraceOrchestrator<>(
                 new SolverConfig(),
                 new BlockConfig(),
-                mock(IraceConfig.class),
                 new ServerProperties(),
                 new InstanceConfiguration(),
                 mock(IraceIntegration.class),
                 (InstanceManager<TestInstance>) mock(InstanceManager.class),
-                List.of((SolutionBuilder<TestSolution, TestInstance>) mock(SolutionBuilder.class)),
-                List.of((AlgorithmBuilder<TestSolution, TestInstance>) mock(AlgorithmBuilder.class)),
-                Optional.empty(),
-                Optional.empty(),
-                mock(es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator.class),
+                mock(AutoconfigSearchSpace.class),
                 eventPublisher,
                 lifecycle,
-                resultsSerializer
+                resultsSerializer,
+                mock(AutoconfigRunState.class)
         );
 
         orchestrator.run("--follower");
@@ -112,28 +105,6 @@ class IraceOrchestratorTest {
     }
 
     @Test
-    void singleRequest() {
-        var correctKey = "SuperSikretPassword";
-        var incorrectKey = "Password123";
-        var singleReq = new SingleExecuteRequest(correctKey, IraceExecuteConfig.of(
-                "testConfig1",
-                2,
-                "/Users/rmartin/IdeaProjects/DRFP/instances/benchmark/40-02.txt",
-                1234567,
-                Map.of("ROOT", "VNS",
-                        "ROOT_VNS.constructive", "DRFPRandomConstructive",
-                        "ROOT_VNS.improver", "NullImprover",
-                        "ROOT_VNS.maxK", "429922341",
-                        "ROOT_VNS.shake", "DestroyRebuild",
-                        "ROOT_VNS.shake_DestroyRebuild.constructive", "DRFPRandomConstructive",
-                        "ROOT_VNS.shake_DestroyRebuild.destructive", "NullDestructive"
-                )
-        ));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> singleReq.checkValid(incorrectKey));
-        Assertions.assertDoesNotThrow(() -> singleReq.checkValid(correctKey));
-    }
-
-    @Test
     void multiRequest() {
         var correctKey = "SuperSikretPassword";
         var incorrectKey = "Password123";
@@ -151,8 +122,8 @@ class IraceOrchestratorTest {
                         "ROOT_VNS.shake_DestroyRebuild.constructive", "DRFPRandomConstructive",
                         "ROOT_VNS.shake_DestroyRebuild.destructive", "NullDestructive"
                 )
-        )));
-        Assertions.assertThrows(IllegalArgumentException.class, () -> multiReq.checkValid(incorrectKey));
+        )), false);
+        Assertions.assertThrows(InvalidIntegrationKeyException.class, () -> multiReq.checkValid(incorrectKey));
         Assertions.assertDoesNotThrow(() -> multiReq.checkValid(correctKey));
     }
 

@@ -168,6 +168,12 @@ class AlgorithmBuilderUtilTest {
         assertEquals("asdad", prepareParameterValue("asdad", String.class));
         assertEquals("", prepareParameterValue("", String.class));
 
+        assertTrue(isAssignable(String.class, char.class));
+        assertTrue(isAssignable(String.class, Character.class));
+        assertEquals('x', prepareParameterValue("x", char.class));
+        assertEquals('€', prepareParameterValue("€", Character.class));
+        assertThrows(IllegalArgumentException.class, () -> prepareParameterValue("", char.class));
+        assertThrows(IllegalArgumentException.class, () -> prepareParameterValue("xy", Character.class));
 
         // From numbers to any transformations: INVALID DUE TO LOSS OF PRECISION
         assertThrows(IllegalArgumentException.class, () -> prepareParameterValue(3.4028235e+40d, Float.class));
@@ -190,6 +196,9 @@ class AlgorithmBuilderUtilTest {
         r1 = prepareParameterValue("3d", double.class);
         assertEquals(Double.class, r1.getClass());
         assertEquals(3d, r1);
+        r1 = prepareParameterValue("3d", Double.class);
+        assertEquals(Double.class, r1.getClass());
+        assertEquals(3d, r1);
 
         var r2 = prepareParameterValue(3f, Float.class);
         assertEquals(Float.class, r2.getClass());
@@ -200,6 +209,10 @@ class AlgorithmBuilderUtilTest {
         r2 = prepareParameterValue("3f", float.class);
         assertEquals(Float.class, r2.getClass());
         assertEquals(3f, r2);
+        r2 = prepareParameterValue("3f", Float.class);
+        assertEquals(Float.class, r2.getClass());
+        assertEquals(3f, r2);
+        assertThrows(IllegalArgumentException.class, () -> prepareParameterValue("3.4028235e+40", Float.class));
 
         var r3 = prepareParameterValue(-3, Integer.class);
         assertEquals(Integer.class, r3.getClass());
@@ -220,6 +233,13 @@ class AlgorithmBuilderUtilTest {
         r4 = prepareParameterValue("9223372036854775807", long.class);
         assertEquals(Long.class, r4.getClass());
         assertEquals(Long.MAX_VALUE, r4);
+        r4 = prepareParameterValue("9007199254740993", long.class);
+        assertEquals(Long.class, r4.getClass());
+        assertEquals(9007199254740993L, r4);
+        r4 = prepareParameterValue("-9007199254740993", long.class);
+        assertEquals(Long.class, r4.getClass());
+        assertEquals(-9007199254740993L, r4);
+        assertThrows(NumberFormatException.class, () -> prepareParameterValue("9223372036854775808", long.class));
 
         var r5 = prepareParameterValue(Short.MIN_VALUE, Short.class);
         assertEquals(Short.class, r5.getClass());

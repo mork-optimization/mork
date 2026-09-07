@@ -13,8 +13,13 @@ Use this page when you want Mork to propose component combinations and parameter
 5. Constructor parameter annotations define the irace parameter domain.
 6. Unannotated constructor parameters whose type is a known algorithm component are treated as recursive component choices.
 7. Parameters annotated with `@ProvidedParam` are ignored by irace and filled at runtime by a matching `ParameterProvider`.
+8. The selected IRACE configuration is converted directly into a `ComponentSpec` tree and built through the component inventory.
 
-Runtime string construction is separate from automatic proposal generation. A component can still be built from a string if Mork can infer a matching constructor from parameter names and types, even when it does not have `@AutoconfigConstructor`.
+The automatic runtime path does not generate an intermediate text description. For manual storage or
+interchange, the same component model can be represented using
+[JSON algorithm descriptions](../concepts/algorithm-components/json-descriptions.md). A component supplied
+manually as JSON can be built when Mork can infer a matching constructor from its parameter names and values,
+even when that constructor does not have `@AutoconfigConstructor`.
 
 ## Minimal Example
 
@@ -47,7 +52,7 @@ In this example, irace chooses `iterations`, `constructive`, and `improver`. Mor
 | `@RealParam` | Parameter | Creates a real-valued irace parameter. Use on `float`, `double`, their wrappers, or raw `String` values. |
 | `@CategoricalParam` | Parameter | Creates a categorical irace parameter from a non-empty string list. Values are converted to the constructor type when possible. |
 | `@OrdinalParam` | Parameter | Creates an ordinal irace parameter from a non-empty ordered string list. |
-| `@ComponentParam` | Parameter | Adds restrictions to recursive component resolution, such as excluding a component class and its subclasses. |
+| `@ComponentParam` | Parameter | Configures component resolution. On `List<T>` and `T[]`, generates bounded ordered combinations without repetition. |
 | `@ProvidedParam` | Parameter | Marks a value that is supplied at runtime by exactly one matching `ParameterProvider`. |
 
 ## Constructor Rules
@@ -70,18 +75,37 @@ Autoconfig treats both parameters as recursive choices because `Constructive` an
 
 ## Component Restrictions
 
-Use `@ComponentParam` when the default recursive search should exclude some implementations.
+Use `@ComponentParam` when the default recursive search should exclude some implementations. On `List<T>`,
+`T[]`, and varargs parameters it also enables ordered component combinations. Collection bounds default to
+`min = 0` and `max = 3`. Example for VND:
 
 ```java
 @AutoconfigConstructor
 public VND(
-        @ComponentParam(disallowed = VND.class) Improver<S, I> improver1,
-        @ComponentParam(disallowed = VND.class) Improver<S, I> improver2,
-        @ComponentParam(disallowed = VND.class) Improver<S, I> improver3
+        @ComponentParam(
+                min = 2,
+                max = 4,
+                disallowed = {VND.class, Improver.SequentialImprover.class, Improver.NullImprover.class}
+        )
+        List<Improver<S, I>> improvers
 ) { ... }
 ```
 
-Every disallowed class must be assignable to the annotated parameter type. If a class is disallowed, its subclasses are disallowed too.
+Every disallowed class must be assignable to the annotated parameter type, or to its collection element type.
+If a class is disallowed, its subclasses are disallowed too. Autoconfig filters those classes before generating
+the ordered combinations. Order matters, and each implementation class can appear at most once.
+
+Collection component parameters must be explicitly annotated. Exact `List<T>` declarations, reference arrays,
+and varargs are supported; raw lists, wildcards, sets, and other collection types are rejected.
+
+In the generated irace space, a variable-size combination uses one integer `length` parameter followed by
+conditional `item0`, `item1`, and later selectors. Each selector's domain excludes classes already used by its
+prefix. This keeps the values readable and lets Mork validate and reconstruct the selected components directly,
+without maintaining an opaque numeric combination table.
+
+The reconstructed combination is stored as a list of nested `ComponentSpec` values. During tuning, the
+[autoconfig REST API](autoconfig-rest-api.md) exposes candidate descriptions using the same structured JSON
+representation.
 
 ## Provided Parameters
 
@@ -118,6 +142,16 @@ solver:
 ```
 
 Use `--irace` or `--autoconfig` to launch tuning. Use `--follower` to start only the execution controller.
+
+The REST API retains the latest 10,000 individual evaluation records by default. Change the limit when a
+different memory/history tradeoff is required:
+
+```yaml
+irace:
+  api-evaluation-history-limit: 10000
+```
+
+See [Autoconfig REST API](autoconfig-rest-api.md) for monitoring the active run.
 
 ## Troubleshooting
 

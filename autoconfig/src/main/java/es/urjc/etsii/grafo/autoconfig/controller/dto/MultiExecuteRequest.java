@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.controller.dto;
 
 import java.util.List;
-import java.util.Objects;
 
 /**
  * DTO for requesting an execution for a given instance and algorithm.
@@ -9,16 +8,19 @@ import java.util.Objects;
  */
 public class MultiExecuteRequest extends AuthenticatedExecuteRequest{
     private final List<IraceExecuteConfig> experiments;
+    private final boolean preflight;
 
     /**
      * Create a new
      *
      * @param key    integration key, used to validate requests and reject unauthorized ones.
      * @param experiments execution configuration
+     * @param preflight whether this batch only validates the IRACE target runner
      */
-    public MultiExecuteRequest(String key, List<IraceExecuteConfig> experiments) {
+    public MultiExecuteRequest(String key, List<IraceExecuteConfig> experiments, boolean preflight) {
         super(key);
         this.experiments = experiments;
+        this.preflight = preflight;
     }
 
     /**
@@ -30,14 +32,27 @@ public class MultiExecuteRequest extends AuthenticatedExecuteRequest{
         return experiments;
     }
 
+    public boolean isPreflight() {
+        return preflight;
+    }
+
     /**
      * Check that the DTO is valid
      */
     @Override
     public void checkValid(String key) {
         super.checkValid(key);
-        if(Objects.requireNonNull(experiments).isEmpty()) {
+        if (experiments == null) {
+            throw new IllegalArgumentException("Experiments list cannot be null");
+        }
+        if(experiments.isEmpty()) {
             throw new IllegalArgumentException("Experiments list cannot be empty");
+        }
+        for (var experiment : experiments) {
+            if (experiment == null) {
+                throw new IllegalArgumentException("Experiment cannot be null");
+            }
+            experiment.checkValid();
         }
     }
 
@@ -47,8 +62,8 @@ public class MultiExecuteRequest extends AuthenticatedExecuteRequest{
     @Override
     public String toString() {
         return "MultiExecuteRequest{" +
-                "key='" + key + '\'' +
-                ", experiments='" + experiments + '\'' +
+                "experiments='" + experiments + '\'' +
+                ", preflight=" + preflight +
                 '}';
     }
 }
