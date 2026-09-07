@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.autoconfig.service;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmComponentFactory;
+import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.inventory.DefaultInventoryFilter;
@@ -40,25 +41,27 @@ class AlgorithmBuilderServiceTest {
     @Test
     void componentDoesNotExist(){
         String component = """
-        DoesNotExist{}
+        {"$component": "DoesNotExist"}
         """;
-        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmComponentFromString(component));
+        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmComponentFromJson(component));
     }
 
     @Test
     public void trickyNulls() {
         String alg = """
-        SimpleAlgorithm{
-            constructive=FakeGRASPConstructive{
-                alpha=0.5,
-                objective="%s",
-                candidateListManager=NullGraspListManager{}
+        {
+            "$component": "SimpleAlgorithm",
+            "constructive": {
+                "$component": "FakeGRASPConstructive",
+                "alpha": 0.5,
+                "objective": "%s",
+                "candidateListManager": {"$component": "NullGraspListManager"}
             },
-            improver=null,
-            algorithmName="trickyNullAlg"
+            "improver": null,
+            "algorithmName": "trickyNullAlg"
         }
         """.formatted(defaultMin.getName());
-        var algorithm = builderService.buildAlgorithmFromString(alg);
+        var algorithm = builderService.buildAlgorithmFromJson(alg);
         Assertions.assertNotNull(algorithm);
         Assertions.assertEquals("trickyNullAlg", algorithm.getName());
     }
@@ -66,32 +69,36 @@ class AlgorithmBuilderServiceTest {
     @Test
     public void sameButMissingObjective() {
         String alg = """
-        SimpleAlgorithm{
-            constructive=FakeGRASPConstructive{
-                alpha=0.5,
-                objective="ThisObjectiveDoesNotExist",
-                candidateListManager=NullGraspListManager{}
+        {
+            "$component": "SimpleAlgorithm",
+            "constructive": {
+                "$component": "FakeGRASPConstructive",
+                "alpha": 0.5,
+                "objective": "ThisObjectiveDoesNotExist",
+                "candidateListManager": {"$component": "NullGraspListManager"}
             },
-            improver=null,
-            algorithmName="trickyNullAlg"
+            "improver": null,
+            "algorithmName": "trickyNullAlg"
         }
         """;
-        Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmFromString(alg));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmFromJson(alg));
     }
 
     @Test
     void failNullInPrimitive() {
         String alg = """
-        SimpleAlgorithm{
-            constructive=FakeGRASPConstructive{
-                alpha=null,
-                objective="%s",
-                candidateListManager=NullGraspListManager{}
+        {
+            "$component": "SimpleAlgorithm",
+            "constructive": {
+                "$component": "FakeGRASPConstructive",
+                "alpha": null,
+                "objective": "%s",
+                "candidateListManager": {"$component": "NullGraspListManager"}
             },
-            improver=null
+            "improver": null
         }
         """.formatted(defaultMin.getName());
-        Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmFromString(alg));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmFromJson(alg));
     }
 
     @Test
@@ -131,87 +138,108 @@ class AlgorithmBuilderServiceTest {
     @Test
     void usingOnlyFactory(){
         String alg = """
-        GraspConstructive{
-            alpha=0.2,
-            objective="%s",
-            candidateListManager=NullGraspListManager{}
+        {
+            "$component": "GraspConstructive",
+            "alpha": 0.2,
+            "objective": "%s",
+            "candidateListManager": {"$component": "NullGraspListManager"}
         }
         """.formatted(defaultMin.getName());
-        var component = builderService.buildAlgorithmComponentFromString(alg);
+        var component = builderService.buildAlgorithmComponentFromJson(alg);
         Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
 
     @Test
     void failBecauseNotAlgorithm(){
         String alg = """
-        GraspConstructive{
-            alpha=0.2,
-            objective="%s",
-            candidateListManager=NullGraspListManager{}
+        {
+            "$component": "GraspConstructive",
+            "alpha": 0.2,
+            "objective": "%s",
+            "candidateListManager": {"$component": "NullGraspListManager"}
         }
         """.formatted(defaultMin.getName());
-        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmFromString(alg));
+        Assertions.assertThrows(AlgorithmParsingException.class, () -> builderService.buildAlgorithmFromJson(alg));
     }
 
     @Test
     void failInvalidObjBuilder(){
         String alg = """
-        GraspConstructive{
-            alpha=0.2,
-            objective="Asereje",
-            candidateListManager=NullGraspListManager{}
+        {
+            "$component": "GraspConstructive",
+            "alpha": 0.2,
+            "objective": "Asereje",
+            "candidateListManager": {"$component": "NullGraspListManager"}
         }
         """;
-        Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmFromString(alg));
+        Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmFromJson(alg));
     }
 
     @Test
     void usingFactoryAndAliasAlphaValue(){
         String alg = """
-        GRASP{
-            alpha=0.2,
-            objective="%s",
-            candidateListManager=NullGraspListManager{}
+        {
+            "$component": "GRASP",
+            "alpha": 0.2,
+            "objective": "%s",
+            "candidateListManager": {"$component": "NullGraspListManager"}
         }
         """.formatted(defaultMin.getName());
-        var component = builderService.buildAlgorithmComponentFromString(alg);
+        var component = builderService.buildAlgorithmComponentFromJson(alg);
         Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
 
     @Test
     void usingFactoryAndAliasAlphaRange(){
         String alg = """
-        GRASP{
-            minAlpha=0.2,
-            maxAlpha=0.4,
-            objective="%s",
-            candidateListManager=NullGraspListManager{}
+        {
+            "$component": "GRASP",
+            "minAlpha": 0.2,
+            "maxAlpha": 0.4,
+            "objective": "%s",
+            "candidateListManager": {"$component": "NullGraspListManager"}
         }
-        """.formatted(defaultMin.getName());;
-        var component = builderService.buildAlgorithmComponentFromString(alg);
+        """.formatted(defaultMin.getName());
+        var component = builderService.buildAlgorithmComponentFromJson(alg);
         Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
 
     @Test
     void failUsingAliasInvalidAlpha(){
         String alg = """
-        GRASP{
-            alpha=-0.9,
-            objective="%s",
-            candidateListManager=NullGraspListManager{}
+        {
+            "$component": "GRASP",
+            "alpha": -0.9,
+            "objective": "%s",
+            "candidateListManager": {"$component": "NullGraspListManager"}
         }
-        """.formatted(defaultMin.getName());;
-        Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
+        """.formatted(defaultMin.getName());
+        Assertions.assertThrows(IllegalArgumentException.class, () -> builderService.buildAlgorithmComponentFromJson(alg));
     }
 
     @Test
     void failUsingAliasMissingCL(){
         String alg = """
-        GRASP{
-            objective="%s"
+        {
+            "$component": "GRASP",
+            "objective": "%s"
         }
-        """.formatted(defaultMin.getName());;
-        Assertions.assertThrows(NullPointerException.class, () -> builderService.buildAlgorithmComponentFromString(alg));
+        """.formatted(defaultMin.getName());
+        Assertions.assertThrows(NullPointerException.class, () -> builderService.buildAlgorithmComponentFromJson(alg));
+    }
+
+    @Test
+    void buildsProgrammaticComponentSpec() {
+        var component = builderService.buildAlgorithmComponent(new ComponentSpec(
+                "GRASP",
+                Map.of(
+                        "alpha", 0.2,
+                        "objective", defaultMin.getName(),
+                        "candidateListManager", new ComponentSpec("NullGraspListManager")
+                )
+        ));
+
+        Assertions.assertTrue(GRASPConstructive.class.isAssignableFrom(component.getClass()));
     }
 
 

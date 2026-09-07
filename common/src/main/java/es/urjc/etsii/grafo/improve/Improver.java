@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.improve;
 
 import es.urjc.etsii.grafo.annotations.AlgorithmComponent;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.ComponentParam;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -89,19 +90,14 @@ public abstract class Improver<S extends Solution<S,I>,I extends Instance> {
             this.improvers = improvers;
         }
 
+        @AutoconfigConstructor
         @SafeVarargs
         @SuppressWarnings("varargs")
-        public SequentialImprover(Improver<S, I>... improvers) {
-            this(Context.getMainObjective(), improvers);
-        }
-
-        @AutoconfigConstructor
-        @SuppressWarnings({"unchecked", "rawtype"})
         public SequentialImprover(
-                Improver<S, I> improverA,
-                Improver<S, I> improverB
+                @ComponentParam(min = 2, max = 5, disallowed = {VND.class, SequentialImprover.class, NullImprover.class})
+                Improver<S, I>... improvers
         ) {
-            this(new Improver[]{improverA, improverB});
+            this(Context.getMainObjective(), improvers);
         }
 
         @Override

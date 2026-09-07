@@ -10,6 +10,8 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -19,6 +21,21 @@ class CollectionUtilTest {
     public void initDefaultRandom(){
         var config = TestCommonUtils.solverConfig(RandomType.DEFAULT, 0, 1);
         TestCommonUtils.initRandom(config);
+    }
+
+    @Test
+    void immutableListMapCopiesTheMapAndItsLists() {
+        var values = new ArrayList<>(List.of("one"));
+        var source = new java.util.LinkedHashMap<String, List<String>>();
+        source.put("key", values);
+
+        var copy = CollectionUtil.immutableListMap(source);
+        values.add("two");
+        source.clear();
+
+        assertEquals(Map.of("key", List.of("one")), copy);
+        Assertions.assertThrows(UnsupportedOperationException.class, () -> copy.put("other", List.of()));
+        Assertions.assertThrows(UnsupportedOperationException.class, () -> copy.get("key").add("two"));
     }
 
     @Test

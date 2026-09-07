@@ -144,6 +144,18 @@ public class IOUtilTest {
     }
 
     @Test
+    void relativizePathOnlyForWorkingDirectoryDescendants() throws IOException {
+        Path workingDirectory = Path.of(".").toRealPath();
+        Path descendant = workingDirectory.resolve("instances").resolve("a.txt");
+        Path sibling = workingDirectory.resolveSibling(workingDirectory.getFileName() + "-instances").resolve("a.txt");
+
+        Assertions.assertEquals(Path.of("instances", "a.txt").toString(), IOUtil.relativizePath(descendant.toString()));
+        Assertions.assertEquals(sibling.toString(), IOUtil.relativizePath(sibling.toString()));
+        Assertions.assertEquals("", IOUtil.relativizePath(workingDirectory.toString()));
+        Assertions.assertEquals(Path.of("instances", "a.txt").toString(), IOUtil.relativizePath(Path.of("instances", "a.txt").toString()));
+    }
+
+    @Test
     void testZip() throws IOException {
         var entries = IOUtil.iterate("src/test/resources/instances.zip");
         assertEntries(entries);

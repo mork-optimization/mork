@@ -92,13 +92,20 @@ public class BenchmarkUtil {
         if(!f.exists()) return null;
 
         try (var br = new BufferedReader(new FileReader(f))) {
-            int nProcessors = Integer.parseInt(br.readLine());
+            String nProcessorsLine = br.readLine();
             String vmVersion = br.readLine();
             String javaVersion = br.readLine();
-            double score = Double.parseDouble(br.readLine());
+            String scoreLine = br.readLine();
+            if (nProcessorsLine == null || vmVersion == null || javaVersion == null || scoreLine == null) {
+                log.error("Failed to load benchmark data from truncated cached file");
+                return null;
+            }
+
+            int nProcessors = Integer.parseInt(nProcessorsLine);
+            double score = Double.parseDouble(scoreLine);
             var info = new SystemInfo(nProcessors, vmVersion, javaVersion);
             return new BenchmarkCache(info, score);
-        } catch (IOException e) {
+        } catch (IOException | NumberFormatException e) {
             log.error("Failed to load benchmark data from cached file", e);
             return null;
         }

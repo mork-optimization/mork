@@ -5,10 +5,10 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.Map;
 
 public class IraceExecuteConfig {
-    @JsonProperty("id.configuration")
+    @JsonProperty("id_configuration")
     private String name;
 
-    @JsonProperty("id.instance")
+    @JsonProperty("id_instance")
     private int instanceId;
 
     @JsonProperty("instance")
@@ -70,6 +70,18 @@ public class IraceExecuteConfig {
 
     public void setConfiguration(Map<String, String> configuration) {
         this.configuration = configuration;
+    }
+
+    public void checkValid() {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Configuration ID cannot be blank");
+        }
+        if (instance == null || instance.isBlank()) {
+            throw new IllegalArgumentException("Instance cannot be blank");
+        }
+        if (configuration == null) {
+            throw new IllegalArgumentException("Algorithm configuration cannot be null");
+        }
     }
 
     @Override

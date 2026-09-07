@@ -4,3 +4,4 @@
 - When refactoring existing methods, avoid creating compatibility layers, refactor callers too. 
 - Simplify implementations whenever possible. KISS.
 - Breaking changes are encouraged when they substantially simplify and improve the existing code.
+- Utility methods that may be reusable must go into a *Util class. Review existing util classes to check if the util method already exists.

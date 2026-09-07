@@ -18,6 +18,22 @@ public class CollectionUtil {
     private static final int SHUFFLE_THRESHOLD = 5;
 
     /**
+     * Copy a map whose values are lists, making both the map and its value lists unmodifiable.
+     *
+     * @param source source map
+     * @return immutable map with immutable value lists
+     * @param <K> map key type
+     * @param <V> list element type
+     */
+    public static <K, V> Map<K, List<V>> immutableListMap(Map<K, List<V>> source) {
+        var result = new LinkedHashMap<K, List<V>>();
+        for (var entry : source.entrySet()) {
+            result.put(entry.getKey(), List.copyOf(entry.getValue()));
+        }
+        return Collections.unmodifiableMap(result);
+    }
+
+    /**
      * Reverse a fragment in a list, from start to end (inclusive)
      *
      * @param list  list to reverse

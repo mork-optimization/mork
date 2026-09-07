@@ -5,6 +5,7 @@ An algorithm component is any piece of code that can modify a solution in any wa
 Algorithm components are usually implemented in classes, using a Java class per component. 
 Algorithm components can be classified according to their functionality and responsibility, or in other words, what is their expected behaviour.
 
+
 ## Algorithm component types
 
 !!! tip
