@@ -38,11 +38,11 @@ easily obtained from *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp
 !!! abstract "What is TSPLIB?"
     *[TSPLIB](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsplib.html)* is a library of sample instances for the TSP  (and
     related problems) from various sources and of various types. Particularly, we will use
-    the *[TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html)*. For the moment, you will only need to download the following
-    files: [berlin52](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp),
-    [eil101](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/eil101.tsp),
-    [ch130](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ch130.tsp)
-    and [st70](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp).
+    the *[TSPLIB Symmetric Traveling Salesman Problem Instances](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/index.html)*. For the moment, you will only need to download the following
+    files: [berlin52](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/berlin52.tsp),
+    [eil101](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/eil101.tsp),
+    [ch130](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/ch130.tsp)
+    and [st70](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/st70.tsp).
 
 
 
@@ -80,7 +80,7 @@ Docker template and helper scripts to easily build, run and deploy your applicat
 - 📁 **instances**
 
 This folder should contain everything related with the instances of the problem. In this case, since we are tackling
-the TSP, this folder will contain the TSP instances. Therefore, you should put the downloaded instances (`*.tsp` files) from [TSPLIB Symmetric Traveling Salesman Problem Instances](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/index.html) in this folder.
+the TSP, this folder will contain the TSP instances. Therefore, you should put the downloaded instances (`*.tsp` files) from [TSPLIB Symmetric Traveling Salesman Problem Instances](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/index.html) in this folder.
 
 - 📁 **src/main/java/es.urjc.etsii.grafo.tsp**
     - 📁 **algorithms**: algorithmic components, i.e, constructive, local search, metaheuristics, etc.
@@ -107,10 +107,10 @@ from a file.
 A problem instance contains all the input data needed to create solutions for a problem. Focusing on the problem at hand, an instance represents a map of cities or locations, all of them connected to each other. In this particular problem, all locations are defined by x/y coordinates.
 
 At this point, you should have downloaded the instance
-files ([berlin52.tsp](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp)
-, [eil101](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/eil101.tsp)
-, [ch130](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/ch130.tsp)
-and [st70](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/st70.tsp)), and placed them at the instance folder of the project.
+files ([berlin52.tsp](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/berlin52.tsp)
+, [eil101](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/eil101.tsp)
+, [ch130](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/ch130.tsp)
+and [st70](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/st70.tsp)), and placed them at the instance folder of the project.
 
 Have a look to any of those four files. The structure is the same for each of them. Particularly, these files have the 
 following` <keyword>:<value>` structure, where `<keyword>` denotes an alphanumerical keyword and `<value>` denotes 
@@ -755,7 +755,7 @@ moment, [Graphviz](https://graphviz.org/) is enough.
 
 All methods needed to draw a solution are located in `/drawing/DotGenerator.java`. We are not going to focus on how the
 graph is generated. We recommend the interested reader to have a look to [Graphviz documentation](https://graphviz.org/). An example Graphviz diagram of a solution for the
-instance [berlin52](http://elib.zib.de/pub/mp-testdata/tsp/tsplib/tsp/berlin52.tsp) is illustrated in the following
+instance [berlin52](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/berlin52.tsp) is illustrated in the following
 figure. Additionally, the source code that generates that figure can be found [here](berlin52.dot.txt).
 
 ![Possible route for Berlin52 instance](img/route.png)
