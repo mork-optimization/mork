@@ -11,6 +11,7 @@
 - (New) Autoconfig improvement: Categorical and ordinal params now pick all values if none are explicitly provided and target type is an enum.
 - (New) AlgorithmBuilder::buildFromStringParams(name, config) that sets a custom algorithm name (by default a rando one is generated).
 - (New) Experimental Moocore Java module
+- (New) Function to score move deltas was optional but not obvious, added two new Objective overloads: Objective::ofMinimizing(name, function), Objective::ofMaximizing(name, function)
 
 # v0.22
 - (Breaking) Simplify VNS implementation. New doc page for VNS.
