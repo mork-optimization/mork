@@ -176,7 +176,7 @@ public class MyAlgorithm<S extends Solution<S, I>, I extends Instance> extends A
 !!! info
     Algorithms should avoid containing problem specific behaviour, delegating it to the appropriate components.
 
-The process is similar for any component type. See the [TSP example](../../examples/TSP.md) for a guided tutorial on solving your first optimization problem using Mork.
+The process is similar for any component type. See the [TSP example](../../examples/TSP/index.md) for a guided tutorial on solving your first optimization problem using Mork.
 
 
 ## Advanced

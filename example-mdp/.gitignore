@@ -1,0 +1,6 @@
+target/
+results/
+errors/
+solutions/
+.benchmark
+docs/

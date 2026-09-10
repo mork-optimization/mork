@@ -1,0 +1,41 @@
+instances:
+  preload: true
+  path:
+    # CPH experiment mirrors jmh: it runs the phub_50_5 instance set.
+    # phub_100_10 instances are also provided under instances/ if you want to switch.
+    default: 'instances/phub_50_5'
+
+solver:
+  # Global random seed to ensure reproducibility
+  seed: 1234
+
+  # Random generator provider, see RandomType enum for a full list of available implementations
+  random-type: default
+
+  # Which experiments should be executed? .* --> All.
+  experiments: '.*'
+
+  # The MultiStartSearch algorithm already performs 5000 internal restarts (as in jmh),
+  # so a single Mork repetition reproduces one jmh run.
+  repetitions: 1
+
+  parallelExecutor: false
+  nWorkers: -1
+
+  # Skip the CPU benchmark to start faster (enable it to normalize time limits across machines).
+  benchmark: false
+
+  metrics: false
+
+event:
+  webserver:
+    stopOnExecutionEnd: true
+  telegram:
+    enabled: false
+
+errors:
+  errorsToFile: true
+  folder: 'errors'
+
+server:
+  port: 8080

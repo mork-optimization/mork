@@ -19,6 +19,10 @@
         <module>example-flayouts</module>
         <module>example-graphs</module>
         <module>example-vrpod</module>
+        <module>example-cph</module>
+        <module>example-cwp</module>
+        <module>example-mdp</module>
+        <module>example-mmdp</module>
         <module>common</module>
         <module>moocore-java</module>
         <module>autoconfig</module>

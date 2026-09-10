@@ -1,0 +1,30 @@
+serializers:
+  solution-json:
+    enabled: false
+    frequency: best_per_instance
+    folder: 'solutions'
+    pretty: true
+    format: "'.json'"
+
+  csv:
+    enabled: false
+    separator: ','
+    folder: 'results'
+    format: "'Results'_yyyy-MM-dd_HH-mm-ss.'csv'"
+    frequency: experiment_end
+
+  xlsx:
+    enabled: true
+    algorithmsInColumns: true
+    folder: 'results'
+    format: "'Results'_yyyy-MM-dd_HH-mm-ss.'xlsx'"
+    frequency: experiment_end
+    instance-sheet-enabled: true
+    bestScoreEnabled: true
+    avgScoreEnabled: false
+    stdScoreEnabled: false
+    totalTimeEnabled: true
+    hasBestKnownEnabled: true
+    minDevToBestKnownEnabled: true
+    rowGrandTotal: false
+    columnGrandTotal: false

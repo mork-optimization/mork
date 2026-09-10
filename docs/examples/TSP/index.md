@@ -70,12 +70,12 @@ The project is organized in the following folders
 If you are using  [IntelliJ](https://www.jetbrains.com/idea/), you might have noticed that there are two default
 configuration files: `Performance.run.xml` and `Validation.run.xml`. The main difference between both run configurations
 is whether the assertions are enabled. In validation mode, assertions try to check the correctness of the problem implementation, by detecting common mistakes.
-For more information see the specific doc page about [MorK validations](../features/validations.md) and [the official Java documentation](https://docs.oracle.com/javase/8/docs/technotes/guides/language/assert.html).
+For more information see the specific doc page about [MorK validations](../../features/validations.md) and [the official Java documentation](https://docs.oracle.com/javase/8/docs/technotes/guides/language/assert.html).
 You may run your own run configurations, the main class is located at `es.urjc.etsii.grafo.<problemname>.Main` by default.
 
 - 📁 **docker** :
 
-Docker template and helper scripts to easily build, run and deploy your application using containers. For a detailed description, see [MorK containers](../features/docker.md).
+Docker template and helper scripts to easily build, run and deploy your application using containers. For a detailed description, see [MorK containers](../../features/docker.md).
 
 - 📁 **instances**
 
@@ -92,7 +92,7 @@ the TSP, this folder will contain the TSP instances. Therefore, you should put t
     - 📁 **static**: contains files to generate a localhost web page which allow the researcher to see the
       solution-quality convergence and the best solution found.
     - 📝 application.yml: this file contains the global configuration of the project, such as which experiment should be
-      executed, which instances should be used, among others. For a detailed configuration description, see [MorK configuration](../features/config.md).
+      executed, which instances should be used, among others. For a detailed configuration description, see [MorK configuration](../../features/config.md).
 - 📁 **src/test**: similar to src/main but contains tests for the project, and related resources.
 - 📝 .gitignore: this file tells Git which files to ignore when pushing your project to [GitHub](https://github.com/) or any other remote server.
 - 📝 pom.xml: Maven configuration file, contains the project description and its dependencies. 
@@ -498,7 +498,7 @@ some of them:
 - `solver.parallelExecutor`, `solver.nWorkers`: these properties determine the maximum of workers that will be used to execute the experiments.
 
 Have a look to the rest of configuration parameters and feel free to change whatever you want. 
-A more detailed explanation of how configuration works can be found at [this link](../features/config.md).
+A more detailed explanation of how configuration works can be found at [this link](../../features/config.md).
 
 Now we are ready to execute. Use your IDE to run the provided main method, IntelliJ should autodetect and create two configurations (Validation and Performance). You will see a lot of text and numbers in the console, don't worry, you can analyze them
 carefully when the program finishes, it is not difficult to understand. While the algorithm is running, go
@@ -799,7 +799,7 @@ evolves over the time. The result should be similar than the following image:
 ## 6. _Irace_
 !!! danger
     This section is outdated, and will be rewritten soon using the new Autoconfig module.
-    We recommend to skip this section for now and use the [Autoconfig](../features/autoconfig.md) guide instead.
+    We recommend to skip this section for now and use the [Autoconfig](../../features/autoconfig.md) guide instead.
 
 
 In short, Irace is a software package that implements a number of automatic configuration procedures, that allows us to
@@ -810,7 +810,7 @@ article: ["The irace package: Iterated racing for automatic algorithm configurat
 documentation: ["The irace Package: User Guide"](https://cran.r-project.org/web/packages/irace/vignettes/irace-package.pdf)
 .
 
-To implement irace, please, have a look to [the documentation](../features/irace.md) for further details. Anyway, in
+To implement irace, please, have a look to [the documentation](../../features/irace.md) for further details. Anyway, in
 this section, we will explain how to implement irace for the TSP. Particularly, we will generate an experiment to
 determine which is the best local search for the TSP:
 First or Best improvement local search, and Insert or Swap Neighborhood. `LocalSearchCachedBestImprovement` can also be

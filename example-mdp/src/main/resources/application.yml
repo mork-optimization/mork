@@ -1,0 +1,41 @@
+instances:
+  preload: true
+  path:
+    # MDP experiment mirrors jmh: it runs the Type1 instance set.
+    # Type2 instances are also provided under instances/ if you want to switch.
+    default: 'instances/Type1'
+
+solver:
+  # Global random seed to ensure reproducibility
+  seed: 1234
+
+  # Random generator provider, see RandomType enum for a full list of available implementations
+  random-type: default
+
+  # Which experiments should be executed? .* --> All.
+  experiments: '.*'
+
+  # The Scatter Search runs to its time budget (see MDPTimeLimit), so a single Mork repetition
+  # reproduces one jmh run.
+  repetitions: 1
+
+  parallelExecutor: false
+  nWorkers: -1
+
+  # Skip the CPU benchmark to start faster (enable it to normalize time limits across machines).
+  benchmark: false
+
+  metrics: false
+
+event:
+  webserver:
+    stopOnExecutionEnd: false
+  telegram:
+    enabled: false
+
+errors:
+  errorsToFile: true
+  folder: 'errors'
+
+server:
+  port: 8080

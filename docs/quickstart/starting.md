@@ -43,4 +43,4 @@ remember to delete the no longer relevant comments.
 
 Don't know how to continue? Need inspiration? Take a look at the Examples section,
 where you will find detailed explanations and step-by-step guides for different optimization problems. 
-For example [The Travelling Salesman Problem](../examples/TSP.md).
+For example [The Travelling Salesman Problem](../examples/TSP/index.md).
