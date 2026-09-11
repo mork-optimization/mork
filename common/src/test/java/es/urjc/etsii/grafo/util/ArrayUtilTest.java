@@ -8,6 +8,7 @@ import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 class ArrayUtilTest {
@@ -593,5 +594,25 @@ class ArrayUtilTest {
         for(int i = 0; i < data.length; i++){
             Assertions.assertEquals(i, data[i]);
         }
+    }
+
+    @Test
+    void matchesPopulationStatisticsWithoutCountingDiagonalOrLowerTriangle() {
+        double[][] matrix = {{999, 1, 4}, {-999, 999, 9}, {-999, -999, 999}};
+        var expected = ArrayUtil.stats(new double[]{1, 4, 9});
+        var actual = ArrayUtil.statsUpperTriangle(matrix);
+        assertEquals(expected.min(), actual.min());
+        assertEquals(expected.max(), actual.max());
+        assertEquals(expected.sum(), actual.sum());
+        assertEquals(expected.avg(), actual.avg(), 1e-12);
+        assertEquals(expected.std(), actual.std(), 1e-12);
+    }
+
+    @Test
+    void emptyTriangleHasZeroStatisticsAndNonSquareInputIsRejected() {
+        var zero = new ArrayUtil.DoubleStats(0, 0, 0, 0, 0);
+        assertEquals(zero, ArrayUtil.statsUpperTriangle(new double[0][0]));
+        assertEquals(zero, ArrayUtil.statsUpperTriangle(new double[][]{{10}}));
+        assertThrows(IllegalArgumentException.class, () -> ArrayUtil.statsUpperTriangle(new double[][]{{0, 1}}));
     }
 }

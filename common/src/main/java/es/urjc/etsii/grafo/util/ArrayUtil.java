@@ -744,6 +744,32 @@ public class ArrayUtil {
     public record LongStats(long min, long max, long sum, double avg, double std) {}
     public record DoubleStats(double min, double max, double sum, double avg, double std) {}
 
+    /** Statistics of the strict upper triangle of a square matrix, without copying its values. */
+    public static DoubleStats statsUpperTriangle(double[][] data) {
+        long count = 0;
+        double min = Double.POSITIVE_INFINITY;
+        double max = Double.NEGATIVE_INFINITY;
+        double sum = 0;
+        double mean = 0;
+        double m2 = 0;
+        for (int i = 0; i < data.length; i++) {
+            if (data[i].length != data.length) {
+                throw new IllegalArgumentException("Expected a square matrix");
+            }
+            for (int j = i + 1; j < data.length; j++) {
+                double value = data[i][j];
+                min = Math.min(min, value);
+                max = Math.max(max, value);
+                sum += value;
+                double delta = value - mean;
+                mean += delta / ++count;
+                m2 += delta * (value - mean);
+            }
+        }
+        return count == 0 ? new DoubleStats(0, 0, 0, 0, 0)
+                : new DoubleStats(min, max, sum, mean, Math.sqrt(m2 / count));
+    }
+
     public static IntStats stats(int[] data){
         int min = Integer.MAX_VALUE;
         int max = Integer.MIN_VALUE;
@@ -758,7 +784,8 @@ public class ArrayUtil {
         double avg = (double) sum / data.length;
         double std = 0;
         for(int n: data){
-            std += Math.pow(n - avg, 2);
+            double delta = n - avg;
+            std += delta * delta;
         }
         std = Math.sqrt(std / data.length);
         return new IntStats(min, max, sum, avg, std);
@@ -778,7 +805,8 @@ public class ArrayUtil {
         double avg = (double) sum / data.length;
         double std = 0;
         for(long n: data){
-            std += Math.pow(n - avg, 2);
+            double delta = n - avg;
+            std += delta * delta;
         }
         std = Math.sqrt(std / data.length);
         return new LongStats(min, max, sum, avg, std);
@@ -798,7 +826,8 @@ public class ArrayUtil {
         double avg = sum / data.length;
         double std = 0;
         for(double n: data){
-            std += Math.pow(n - avg, 2);
+            double delta = n - avg;
+            std += delta * delta;
         }
         std = Math.sqrt(std / data.length);
         return new DoubleStats(min, max, sum, avg, std);
