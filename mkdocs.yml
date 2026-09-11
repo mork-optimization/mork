@@ -52,6 +52,9 @@ plugins:
 
 markdown_extensions:
   - admonition
+  - pymdownx.snippets:
+      base_path: [!relative $config_dir]
+      check_paths: true
   - pymdownx.details
   - attr_list
   - pymdownx.emoji:
