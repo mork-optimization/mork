@@ -80,7 +80,8 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
 
     /**
      * Recalculate solution score, sometimes is faster than incrementally calculating it.
-     * This method is also used in the solution validator to verify that the solution is correct.
+     * Returns the recalculated distance without updating the cache. Tests or a custom
+     * solution validator can compare it with getDistance(); Mork does not call it automatically.
      * @return current solution score as double
      */
     public double recalculateScore() {
@@ -127,7 +128,7 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
      * Swap the position in the route of two locations, given its actual positions.
      * Example: actual route : [a,b,c,d,e,f], pi = 0,  pj= 1, resultant route= [b,a,c,d,e,f]
      * Example: actual route : [a,b,c,d,e,f], pi = 1,  pj= 4, resultant route= [a,e,c,d,b,f]
-     * When the operation is performed, the objective function (this.distance) is updated
+     * When the operation is performed, the cached routeLength is updated.
      *
      * @param pi actual position of the location
      * @param pj desired position
@@ -148,7 +149,7 @@ public class TSPSolution extends Solution<TSPSolution, TSPInstance> {
      * Example: actual route : [a,b,c,d,e,f], pi = 0,  pj= 1, resultant route= [b,a,c,d,e,f]
      * Example: actual route : [a,b,c,d,e,f], pi = 1,  pj= 4, resultant route=[a,c,d,e,b,f]
      * Example: actual route : [a,b,c,d,e,f], pi = 5   pj= 3, resultant route= [a,b,c,f,d,e]
-     * When the operation is performed, the objective function (this.distance) is updated
+     * When the operation is performed, the cached routeLength is updated.
      *
      * @param pi actual position of the location
      * @param pj desired position

@@ -7,24 +7,25 @@ icon: fontawesome/solid/suitcase
 
 ## What is the Travelling Salesman Problem?
 
-The traveling salesman problem (commonly denoted as TSP) asks the following question: "Given a list of cities and the
-distances between each pair of cities, what is the shortest possible route that visits each city exactly once and
-returns to the origin city?" It is an NP-hard problem in combinatorial optimization, important in theoretical computer
-science and operations research.
+Given a set of cities and the distances between them, the travelling salesman problem asks for the shortest route that
+visits every city exactly once and returns to its starting city. It is an NP-hard combinatorial optimization problem.
 
 ![Example of the TSP problem](img/introduction.jpeg)
 
-Obtained
-from *[The Trials And Tribulations Of The Traveling Salesman](https://medium.com/basecs/the-trials-and-tribulations-of-the-traveling-salesman-56048d6709d)*
-.
+Image from [The Trials And Tribulations Of The Traveling Salesman](https://medium.com/basecs/the-trials-and-tribulations-of-the-traveling-salesman-56048d6709d).
+
+!!! note
+
+    After finishing this tutorial, you will have a ready to use TSP solver. A working copy is available in the repository [`example-tsp` module](https://github.com/mork-optimization/mork/tree/master/example-tsp).
+
 
 ## 1. Environment set up
 
 ### 1.1 Prerequisites
 
-- Java 25 is required to run. Please download and install a recent JDK.
-- [Maven](https://maven.apache.org/)
-- This is not really a prerequisite, but we recommend using an IDE, such as [IntelliJ IDEA](https://www.jetbrains.com/idea/).
+- Java 25 LTS or a more recent version. 
+- An IDE, such as [IntelliJ IDEA](https://www.jetbrains.com/idea/), or Visual Studio Code
+- Maven is used but you do not need to manually install it, as the projects includes a Maven wrapper than can be used as `.\mvnw.cmd` in Windows or `./mvnw` in Linux or Mac.
   
 
 > 💡 *Tip:* Use SDKMAN to easily manage your JDKs and SDKs. Have a look to the official *[web page](https://sdkman.io/)*.
@@ -57,7 +58,7 @@ file and import it in your favorite IDE.
     Some IDEs, allow you to select the `pom.xml` file when you select the option to import an existing project. If such a possibility exists, we highly recommend **importing the project as a maven project**. Some examples of how to import a [Maven](https://maven.apache.org/) project in the most important editors can be found in: [Eclipse](https://www.eclipse.org/m2e/), [IntelliJ](https://www.jetbrains.com/help/idea/maven-importing.html), or [NetBeans](https://netbeans.apache.org/wiki/MavenBestPractices.asciidoc).
 
 
-Remember to choose a valid name for your project, i.e., check that it starts with an Uppercase letter followed by
+Valid project names start with an Uppercase letter followed by
 any alphanumeric characters or underscores, without spaces.
 
 
@@ -112,7 +113,21 @@ files ([berlin52.tsp](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/r
 , [ch130](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/ch130.tsp)
 and [st70](https://raw.githubusercontent.com/pdrozdowski/TSPLib.Net/refs/heads/master/TSPLIB95/tsp/st70.tsp)), and placed them at the instance folder of the project.
 
-Have a look to any of those four files. The structure is the same for each of them. Particularly, these files have the 
+Have a look to any of those four files. The structure is the same for each of them. Example:
+```text
+NAME : <name>
+TYPE : TSP
+COMMENT : <description>
+DIMENSION : <number of cities>
+EDGE_WEIGHT_TYPE : EUC_2D
+NODE_COORD_SECTION
+1 <x> <y>
+2 <x> <y>
+...
+EOF
+```
+
+Particularly, these files have the 
 following` <keyword>:<value>` structure, where `<keyword>` denotes an alphanumerical keyword and `<value>` denotes 
 alphanumerical or numerical data:
 
@@ -738,14 +753,14 @@ Remember to look to the interactive dashboard run in [localhost](http://localhos
 !!! danger
     This section is outdated, and will be rewritten soon using the new frontend and API. We recommend to skip this section for now.
 
-
-In some cases you may be interested in seeing the solutions you are generating with your algorithms. This may allow you
+In many cases seeing the solutions you are generating with your algorithms allows us
 to detect possible problems, such as errors in the calculation of the objective function, or to detect weaknesses of the
 proposed methods.
 
-This can be easily done with Mork. First, you have to look for a program/software to represent the solution you are
-generating. Particularly, in the case of the TSP, a solution of the problem represents a circular route that cover a
-set of locations.
+Different kind of visualizations can be integrated with Mork. First, you have to decide how to "paint" the solution you are
+generating. In the case of the TSP, a solution of the problem represents a circular route that cover a
+set of locations, and two possible visualizations are overlaying the selected edges over a graph, or painting the route over a real world map.
+
 
 A simple, easy and open source software to visualize graph is [Graphviz](https://graphviz.org/). Graph visualization is
 a way of representing structural information as diagrams of abstract graphs and networks. There are many other cool
