@@ -1,0 +1,6 @@
+# Parameters consumed by experiments/IraceExperiment.java
+# Note that this is an example of how to manually use irace
+# If using autoconfig, this is not necessary, parameter file is automatically generated
+localsearch "localsearch=" c (swap, insert)
+localSearchStrategy "localSearchStrategy=" c (first, best)
+
