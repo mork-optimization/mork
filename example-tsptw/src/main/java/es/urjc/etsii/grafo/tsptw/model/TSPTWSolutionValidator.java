@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.tsptw.model;
 
 import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.solution.ValidationResult;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 
 /**
  * Validate that a solution is valid for the TSPTW problem.
@@ -18,24 +19,60 @@ public class TSPTWSolutionValidator extends SolutionValidator<TSPTWSolution, TSP
      */
     @Override
     public ValidationResult validate(TSPTWSolution solution) {
-        // You should implement this method to check that the solution is valid, without using any kind of existing caches or scores.
-        // For example, you can recalculate solution score and check if it matches the score stored in the solution.
-        var validationResult = ValidationResult.ok();
-        // Example checks:
+        var instance = solution.getInstance();
+        var tour = solution.permutation;
+        int n = instance.n();
+        if (tour.size() != n + 1 || tour.getFirst() != 0 || tour.getLast() != 0) {
+            return ValidationResult.fail("Tour must visit every customer and start and finish at the depot");
+        }
 
-//        if(solution.getAssignedElements() > 10){
-//            validationResult.addFailure("Cannot have more than 10 assigned elements");
-//        }
+        var result = ValidationResult.ok();
+        boolean[] visited = new boolean[n];
+        visited[0] = true;
+        double cost = 0;
+        double arrival = 0;
+        double infeasibility = 0;
+        int violations = 0;
+        int previous = 0;
+        for (int i = 1; i <= n; i++) {
+            int node = tour.get(i);
+            if (node < 0 || node >= n || (i < n && visited[node])) {
+                return ValidationResult.fail("Invalid or repeated customer at tour position " + i);
+            }
+            visited[node] = true;
+            double distance = instance.dist(previous, node);
+            cost += distance;
+            arrival = Math.max(arrival + distance, instance.getWindowStart(node));
+            if (!Double.isFinite(arrival) || !DoubleComparator.equals(arrival, solution._makespan[i])) {
+                result.addFailure("Incorrect arrival-time cache at tour position " + i);
+            }
+            if (arrival > instance.getWindowEnd(node)) {
+                violations++;
+                infeasibility += arrival - instance.getWindowEnd(node);
+            }
+            previous = node;
+        }
 
-//        double recalculateScore = {......};
-//        if(solution.getScore() != recalculateScore){
-//            validationResult.addFailure("Score mismatch, expected: " + recalculateScore + ", got: " + solution.getScore());
-//        }
-
-//        if(!solution.unassignedClients.isEmpty()){
-//            validationResult.addFailure("Invalid solution, all clients should be assigned. Remaining clients: " + solution.unassignedClients);
-//        }
-
-        return validationResult;
+        if (violations > 0) {
+            result.addFailure("Tour violates " + violations + " time windows");
+        }
+        if (violations != solution.constraint_violations()) {
+            result.addFailure("Incorrect constraint-violation count");
+        }
+        if (!Double.isFinite(infeasibility) || !DoubleComparator.equals(infeasibility, solution.infeasibility())) {
+            result.addFailure("Incorrect infeasibility cache");
+        }
+        if (!Double.isFinite(cost) || !DoubleComparator.equals(cost, solution.cost())) {
+            result.addFailure("Incorrect tour-cost cache");
+        }
+        if (solution.nodes_available != 0) {
+            result.addFailure("Complete tour has unassigned customers in its cache");
+        }
+        for (int node = 0; node < n; node++) {
+            if (!visited[node] || !solution.node_assigned[node]) {
+                result.addFailure("Missing customer or incorrect assignment cache: " + node);
+            }
+        }
+        return result;
     }
 }

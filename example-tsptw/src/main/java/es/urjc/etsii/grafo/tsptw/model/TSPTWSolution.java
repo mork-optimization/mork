@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.aop.TimeStats;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
+import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,7 +27,6 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
     // END instance properties
 
     boolean[] node_assigned;
-    boolean[][] tw_infeasible;
     int nodes_available;
     static int evaluations = 0;
     int _constraint_violations;
@@ -55,9 +55,6 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         this._makespan = new double[instance.n() + 1];
         this._tourcost = 0;
 
-        // todo no veo donde se usa quien lo inicializa etc, quiza borrar
-        this.tw_infeasible = new boolean[instance.n()][instance.n()];
-
         this.permutation.add(0);
         node_assigned[0] = true;
         nodes_available--;
@@ -84,11 +81,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         this._makespan = solution._makespan.clone();
         this._tourcost = solution._tourcost;
 
-        // TODO review and possible delete
-        this.tw_infeasible = new boolean[solution.tw_infeasible.length][];
-        for (int i = 0; i < solution.tw_infeasible.length; i++) {
-            this.tw_infeasible[i] = solution.tw_infeasible[i].clone();
-        }
+        this.notifyUpdate(solution.getLastModifiedTime());
     }
 
 
@@ -391,7 +384,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
     }
 
     public boolean infeasible_move(int initial, int end) {
-        return tw_infeasible[permutation.get(end)][permutation.get(initial)];
+        return getInstance().isTimeWindowInfeasible(permutation.get(end), permutation.get(initial));
     }
 
     public TSPTWSolution localsearch_insertion(boolean first_improvement) {
@@ -408,7 +401,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                 if (first_improvement) {
                     return sol.clone_solution();
                 }
-                best = sol;
+                best = sol.clone_solution();
             }
 
             TSPTWSolution orb1 = sol.clone_solution();
@@ -421,7 +414,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                     if (first_improvement) {
                         return sol.clone_solution();
                     }
-                    best = sol;
+                    best = sol.clone_solution();
                 }
             }
 
@@ -435,7 +428,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                     if (first_improvement) {
                         return sol.clone_solution();
                     }
-                    best = sol;
+                    best = sol.clone_solution();
                 }
             }
         }
@@ -531,7 +524,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         for (int i = 1; i < n - 1; i++) {
             int ci = permutation.get(i);
             int cj = permutation.get(i + 1);
-            if (tw_infeasible[cj][ci]) continue;
+            if (getInstance().isTimeWindowInfeasible(cj, ci)) continue;
             v.add(i);
         }
         CollectionUtil.shuffle(v);
@@ -544,7 +537,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         List<Integer> rand_nodes = new ArrayList<>();
         shuffle_1shift_feasible_nodes(rand_nodes);
 
-        for (int k = 0; k < rand_nodes.size(); k++) {
+        for (int k = 0; k < rand_nodes.size() && !TimeControl.isTimeUp(); k++) {
             int i = rand_nodes.get(k);
             int ci = permutation.get(i);
             double delta1 = distance[permutation.get(i - 1)][ci]
@@ -554,7 +547,8 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             // This is in fact swapping backwards i + 1
             for (int d = i - 1; d > 0; d--) {
                 int cj = permutation.get(d);
-                if (tw_infeasible[ci][cj]) break;
+                if (TimeControl.isTimeUp()) return false;
+                if (getInstance().isTimeWindowInfeasible(ci, cj)) break;
                 double delta2 = distance[permutation.get(d - 1)][ci]
                         + distance[ci][cj]
                         - distance[permutation.get(d - 1)][cj];
@@ -571,7 +565,8 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             // Swapping forward i
             for (int d = i + 2; d < n; d++) {
                 int cj = permutation.get(d);
-                if (tw_infeasible[cj][ci]) break;
+                if (TimeControl.isTimeUp()) return false;
+                if (getInstance().isTimeWindowInfeasible(cj, ci)) break;
                 double delta2 = distance[ci][permutation.get(d + 1)]
                         + distance[cj][ci]
                         - distance[cj][permutation.get(d + 1)];
@@ -591,7 +586,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
     @TimeStats
     public boolean ls_feasibility_1shift_first() {
         boolean improved = false;
-        while (feasibility_1shift_first_code()) {
+        while (!TimeControl.isTimeUp() && feasibility_1shift_first_code()) {
             improved = true;
         }
         return improved;
@@ -636,7 +631,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         TSPTWSolution sol;
 
         // Backward movements of violated customers.
-        do {
+        while (!infeas.isEmpty() && !TimeControl.isTimeUp()) {
             this.assert_solution();
             int i = infeas.removeLast();
             assert (_makespan[i] > window_end[i]);
@@ -656,7 +651,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             if (moved) {
                 compute_infeas_set(infeas);
             }
-        } while (infeas.size() > 0);
+        }
         return false;
     }
 
@@ -667,7 +662,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         TSPTWSolution sol;
 
         // Forward movements of non-violated customers.
-        while (!feas.isEmpty()) {
+        while (!feas.isEmpty() && !TimeControl.isTimeUp()) {
             int i = feas.remove(feas.size() - 1);
             assert (_makespan[i] <= window_end[i]);
             sol = this.clone_solution();
@@ -697,7 +692,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         TSPTWSolution sol;
 
         // Forward movements of violated customers.
-        while (!infeas.isEmpty()) {
+        while (!infeas.isEmpty() && !TimeControl.isTimeUp()) {
             int i = infeas.remove(infeas.size() - 1);
             assert (_makespan[i] > window_end[i]);
             sol = this.clone_solution();
@@ -727,7 +722,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         TSPTWSolution sol;
 
         // Backward movements of non-violated customers.
-        while (!feas.isEmpty()) {
+        while (!feas.isEmpty() && !TimeControl.isTimeUp()) {
             int i = feas.remove(feas.size() - 1);
             assert (_makespan[i] <= window_end[i]);
             sol = this.clone_solution();
@@ -909,22 +904,25 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
     @TimeStats
     public boolean two_opt_first() {
-        assert this.getInstance().isSymmetric();
+        if (!getInstance().isSymmetric()) {
+            throw new IllegalArgumentException("2-opt requires a symmetric distance matrix");
+        }
         assert _constraint_violations == 0;
 
         boolean improved = false;
         List<Integer> rand_nodes = generate_vector(n);
 
-        while (!rand_nodes.isEmpty()) {
+        while (!rand_nodes.isEmpty() && !TimeControl.isTimeUp()) {
             int pos_c1 = rand_nodes.remove(rand_nodes.size() - 1);
             int c1 = permutation.get(pos_c1);
             int s1 = permutation.get(pos_c1 + 1);
             double radius = distance[c1][s1];
 
             for (int h = pos_c1 + 2; h < n; h++) {
+                if (TimeControl.isTimeUp()) return improved;
                 int pos_c2 = h;
                 int c2 = permutation.get(pos_c2);
-                if (tw_infeasible[c2][s1]) break;
+                if (getInstance().isTimeWindowInfeasible(c2, s1)) break;
                 int s2 = permutation.get(h + 1);
                 double gain = distance[c1][c2] + distance[s1][s2] - radius - distance[c2][s2];
                 if (gain >= 0) continue;
@@ -991,7 +989,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                 for (int d = k; d < pos; d++) {
                     int ci = ngh.permutation.get(d);
                     int cj = ngh.permutation.get(d + 1);
-                    if (tw_infeasible[cj][ci]) break;
+                    if (getInstance().isTimeWindowInfeasible(cj, ci)) break;
                     delta_cost += ngh.do_swap(d);
                     var first_m_t = new int[]{first_m};
                     boolean is_feasible = ngh.is_feasible_swap(d, first_m_t);
@@ -1009,7 +1007,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                 for (int d = k - 1; d >= pos; d--) {
                     int ci = ngh.permutation.get(d);
                     int cj = ngh.permutation.get(d + 1);
-                    if (tw_infeasible[cj][ci]) break;
+                    if (getInstance().isTimeWindowInfeasible(cj, ci)) break;
                     delta_cost += ngh.do_swap(d);
                     var first_m_t = new int[]{first_m};
                     boolean is_feasible = ngh.is_feasible_swap(d, first_m_t);

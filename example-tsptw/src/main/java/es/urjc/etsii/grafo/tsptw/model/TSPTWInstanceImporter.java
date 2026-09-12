@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.tsptw.model;
 
 import es.urjc.etsii.grafo.io.InstanceImporter;
-import es.urjc.etsii.grafo.util.DoubleComparator;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -45,8 +44,6 @@ public class TSPTWInstanceImporter extends InstanceImporter<TSPTWInstance> {
                 }
             }
 
-            boolean isSymmetric = isSymmetric(distance);
-
             // Time windows: for each i in [0, n) read rtime and ddate
             int[] windowStart = new int[n];
             int[] windowEnd = new int[n];
@@ -69,21 +66,9 @@ public class TSPTWInstanceImporter extends InstanceImporter<TSPTWInstance> {
                     n,
                     distance,
                     windowStart,
-                    windowEnd,
-                    isSymmetric
+                    windowEnd
             );
         }
     }
 
-    private static boolean isSymmetric(double[][] m) {
-        int n = m.length;
-        for (int i = 0; i < n; i++) {
-            for (int j = i + 1; j < n; j++) {
-                if (!DoubleComparator.equals(m[i][j], m[j][i])) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
 }

@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.tsptw.constructives.TSPTWRandomConstructive;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.slf4j.Logger;
 
@@ -34,11 +35,26 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
 
     @Override
     public TSPTWSolution algorithm(TSPTWInstance instance) {
-        TSPTWSolution x = vns_feasible(instance);
-        if (x.constraint_violations() == 0) {
-            gvns(x);
+        if (!instance.isSymmetric()) {
+            throw new IllegalArgumentException("GVNS requires a symmetric distance matrix");
         }
-        return x;
+        if (!TimeControl.isEnabled()) {
+            throw new IllegalStateException("GVNS requires a time budget from a Mork TimeLimitCalculator");
+        }
+        TSPTWSolution best = null;
+        do {
+            TSPTWSolution x = vns_feasible(instance);
+            if (x.constraint_violations() == 0 && !TimeControl.isTimeUp()) {
+                gvns(x);
+            }
+            if (best == null || x.better_than(best)) {
+                best = x.clone_solution();
+                if (best.constraint_violations() == 0) {
+                    Metrics.addCurrentObjectives(best);
+                }
+            }
+        } while (!TimeControl.isTimeUp());
+        return best;
     }
 
     @TimeStats
@@ -52,12 +68,14 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
             x = constructive.construct(new TSPTWSolution(instance));
             x.assert_solution();
             x.ls_feasibility_1shift_first();
+            x.notifyUpdate();
             x.assert_solution();
             x2 = x.clone_solution();
 
             while (x.constraint_violations() > 0 && level < level_max_vns_feasible && !TimeControl.isTimeUp()) {
                 x2.perturb_1shift(level);
                 x2.ls_feasibility_1shift_first();
+                x2.notifyUpdate();
 
                 if (x2.infeasibility() < x.infeasibility()) {
                     logger.debug("vnd_f {} {} {}",
@@ -92,6 +110,7 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
                 logger.debug("gvns {} {} {}",
                         level, x2.cost(), x2.constraint_violations());
                 x.copy_from(x2);
+                x.notifyUpdate();
                 level = 1;
                 iterlevel = 0;
             } else {
@@ -112,7 +131,7 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
         x.assert_solution();
 
         do {
-            while (x.feasible_1shift_first()) {
+            while (!TimeControl.isTimeUp() && x.feasible_1shift_first()) {
                 x.assert_solution();
                 improved = true;
             }
@@ -122,7 +141,7 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
             }
 
             improved = false;
-            while (x.two_opt_first()) {
+            while (!TimeControl.isTimeUp() && x.two_opt_first()) {
                 x.assert_solution();
                 improved = true;
             }
@@ -130,7 +149,7 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
                 logger.debug("2opt {} {} {}",
                         1, x.cost(), x.constraint_violations());
             }
-        } while (improved);
+        } while (improved && !TimeControl.isTimeUp());
     }
 
 }

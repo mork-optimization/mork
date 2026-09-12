@@ -1701,7 +1701,7 @@ Solution::two_opt_is_infeasible(int h1, int h3)
 {
     /* FIXME: Only copy the relevant makespan */
     vector<number_t> makespan = this->_makespan;
-    int mkspan = this->_makespan[h1];
+    number_t mkspan = this->_makespan[h1];
     // Check feasibility of the new edge
     int pred_ci = permutation[h1];
     int ci = permutation[h3];
@@ -1891,7 +1891,7 @@ Solution::two_opt_first (void)
             int pred_cj = c1;
             makespan = _makespan;
             bool infeasible = false;
-            int mkspan = _makespan[pos_c1];
+            number_t mkspan = _makespan[pos_c1];
             // Check feasibility of the reversed part.
             while (j >= pos_h2) {
                 cj = permutation[j];

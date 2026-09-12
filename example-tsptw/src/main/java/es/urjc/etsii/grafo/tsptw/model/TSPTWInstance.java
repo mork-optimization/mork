@@ -5,20 +5,29 @@ import es.urjc.etsii.grafo.util.ArrayUtil;
 
 public class TSPTWInstance extends Instance {
 
-    private int n;
-    private double[][] distance;
-    private int[] windowStart;
-    private int[] windowEnd;
-    private boolean isSymmetric;
+    private final int n;
+    private final double[][] distance;
+    private final int[] windowStart;
+    private final int[] windowEnd;
+    private final boolean isSymmetric;
+    private final boolean[][] timeWindowInfeasible;
 
-    public TSPTWInstance(String suggestedName, int n, double[][] distance, int[] windowStart, int[] windowEnd, boolean isSymmetric) {
+    public TSPTWInstance(String suggestedName, int n, double[][] distance, int[] windowStart, int[] windowEnd) {
         super(suggestedName);
 
         this.n = n;
         this.distance = distance;
         this.windowStart = windowStart;
         this.windowEnd = windowEnd;
-        this.isSymmetric = isSymmetric;
+        this.timeWindowInfeasible = new boolean[n][n];
+        boolean symmetric = true;
+        for (int i = 0; i < n; i++) {
+            for (int j = 0; j < n; j++) {
+                timeWindowInfeasible[i][j] = windowStart[i] + distance[i][j] > windowEnd[j];
+                if (distance[i][j] != distance[j][i]) symmetric = false;
+            }
+        }
+        this.isSymmetric = symmetric;
 
         setProperties();
     }
@@ -88,6 +97,10 @@ public class TSPTWInstance extends Instance {
 
     public boolean isSymmetric() {
         return isSymmetric;
+    }
+
+    public boolean isTimeWindowInfeasible(int from, int to) {
+        return timeWindowInfeasible[from][to];
     }
 
     public double[][] getDistance() {
