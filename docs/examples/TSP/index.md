@@ -241,7 +241,7 @@ Considering the TSP instance file structure, we will need to read the file line 
 storing the list of coordinates and the distance between each pair of coordinates, and finally, calling the instance constructor. The
 resultant class will be the following:
 
-```
+```java
 public class TSPInstanceImporter extends InstanceImporter<TSPInstance> {
 
     @Override
