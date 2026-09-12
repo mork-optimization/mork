@@ -27,7 +27,7 @@ public class ShakeImprover extends Improver<BMSSCSolution, BMSSCInstance> {
         var copy = solution.cloneSolution();
         copy = shake.shake(copy, 1);
         copy = improver.improve(copy);
-        if(isLess(copy.getScore(), solution.getScore())) {
+        if(isLess(copy.getCost(), solution.getCost())) {
             return copy;
         } else {
             return solution;

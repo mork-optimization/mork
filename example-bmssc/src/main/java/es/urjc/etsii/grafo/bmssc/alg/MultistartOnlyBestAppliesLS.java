@@ -44,7 +44,7 @@ public class MultistartOnlyBestAppliesLS extends Algorithm<BMSSCSolution, BMSSCI
         Metrics.addCurrentObjectives(solution);
         for (int i = 0; i < iterations && !TimeControl.isTimeUp(); i++) {
             BMSSCSolution temp = construct(ins);
-            if (isLess(temp.getScore(), solution.getScore())){
+            if (isLess(temp.getCost(), solution.getCost())){
                 solution = temp;
                 Metrics.addCurrentObjectives(solution);
             }

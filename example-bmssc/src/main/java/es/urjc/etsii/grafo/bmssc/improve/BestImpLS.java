@@ -29,13 +29,13 @@ public class BestImpLS extends Improver<BMSSCSolution, BMSSCInstance> {
                 if (solution.clusterOf(i) == solution.clusterOf(j))
                     continue;
                 var swap = new SwapMove(solution, i, j);
-                if(bestMove == null || isLess(swap.getValue(), bestMove.getValue())){
+                if(bestMove == null || isLess(swap.getCostDelta(), bestMove.getCostDelta())){
                     bestMove = swap;
                 }
             }
         }
 
-        if (bestMove != null && isNegative(bestMove.getValue())){
+        if (bestMove != null && isNegative(bestMove.getCostDelta())){
             bestMove.execute(solution);
             Metrics.addCurrentObjectives(solution);
         }

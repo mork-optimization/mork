@@ -6,6 +6,8 @@ import es.urjc.etsii.grafo.algorithms.vns.VNS;
 import es.urjc.etsii.grafo.bmssc.Main;
 import es.urjc.etsii.grafo.bmssc.alg.MultistartOnlyBestAppliesLS;
 import es.urjc.etsii.grafo.bmssc.create.BMSSCGRASPConstructor;
+import es.urjc.etsii.grafo.bmssc.improve.FirstImpLS;
+import es.urjc.etsii.grafo.bmssc.improve.ShakeImprover;
 import es.urjc.etsii.grafo.bmssc.improve.StrategicOscillation;
 import es.urjc.etsii.grafo.bmssc.model.BMSSCInstance;
 import es.urjc.etsii.grafo.bmssc.model.sol.BMSSCSolution;
