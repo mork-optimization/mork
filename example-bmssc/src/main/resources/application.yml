@@ -1,9 +1,3 @@
-# Defines any custom property or configuration for the current problem.
-# The config values can be retrieved at runtime, for example inside the experiment
-# See https://mork-optimization.readthedocs.io/en/latest/features/config/ for more details
-custom:
-  my-property: 'myvalue'
-
 instances:
 
   # Loads all instances in RAM before starting each experiment.
@@ -14,7 +8,7 @@ instances:
   path:
     # Default instance path for all experiments, can be overridden.
     default: 'instances/'
-    irace: 'instances/tuning/instances'
+    irace: 'instances/instances.zip'
 
     # Override default instance path only for the experiment declared in file PreliminarExperiment.java
     # If an experiment does not have a specific path the default will be used. Example:
@@ -73,16 +67,6 @@ solver:
   # Enable or disable metrics tracking. Force enabled if using autoconfig.
   metrics: true
   time-stats: true
-
-# IRACE integration configuration. To enable IRACE mode, run with --irace or --autoconfig command line argument.
-# See https://mork-optimization.readthedocs.io/en/latest/features/irace/ for more details.
-irace:
-  # Note: The 'enabled' property is deprecated and no longer used. 
-  # Use --irace or --autoconfig command line argument to activate IRACE mode.
-  # enabled: false
-
-  # Maximum number of algorithm executions
-  maxExperiments: 10000
 
 # Event system integrations/configuration
 event:

@@ -2,299 +2,181 @@ package es.urjc.etsii.grafo.bmssc.model.sol;
 
 import es.urjc.etsii.grafo.bmssc.model.BMSSCInstance;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.util.CollectionUtil;
-import es.urjc.etsii.grafo.util.DoubleComparator;
+import es.urjc.etsii.grafo.util.collections.BitSet;
 
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.Set;
 
-// OLD StrategicSolution
+import static es.urjc.etsii.grafo.bmssc.util.BMSSCUtil.contribution;
+
 public class BMSSCSolution extends Solution<BMSSCSolution, BMSSCInstance> {
+    private final BitSet[] clusters;
+    private final BitSet unassigned;
+    private final int[] clusterOfPoint;
+    // BitSet.size() scans its words: keep cardinalities to score moves in O(1).
+    private final int[] sizes;
+    private final int[] capacities;
+    private final double[] pairSums;
+    // Includes the point's own cluster; its distance to itself is zero.
+    private final double[][] pointClusterDistance;
+    private double cost;
 
-    /**
-     * For use in arrays / fixed size data structures, mark a given position as an invalid / not assigned value
-     */
-    static final int NOT_ASSIGNED = -1;
-
-    /**
-     * Array of Sets, each set contains the points assigned to that set
-     */
-    final Set<Integer>[] clusters;
-
-    /**
-     * Unassigned points
-     */
-    final Set<Integer> notAssignedPoints;
-
-    /**
-     * Stores which point is assigned to which cluster
-     */
-    final int[] setOfPoint;
-
-    /**
-     * Cluster sizes. Can be different to real cluster sizes because this constraint
-     * will be relaxed by the strategic oscillation method
-     */
-    private final int[] actualClusterSizes;
-
-    /**
-     * Value of the objective function for each cluster
-     */
-    double[] clusterScore;
-
-    /**
-     * Remove cost cache
-     */
-    double[] removeCost;
-
-    /**
-     * Assign cost cache
-     */
-    final double[][] assignCost;
-
-    /**
-     * Calculate the score of a set of points without using a solution, and without side effects, used for validation purposes
-     * @param instance current instance
-     * @param solution Solution data
-     * @return Score calculated from scratch.
-     */
-    public static double score(BMSSCInstance instance, Set<Integer>[] solution){
-        double[] costPerCluster = costPerCluster(instance, solution);
-
-        double total = 0;
-        for (int i = 0; i < costPerCluster.length; i++) {
-            int cSize = solution[i].size();
-            if(cSize > 0){
-                total += costPerCluster[i] / cSize;
-            }
-        }
-        return total;
-    }
-
-    public static double[] costPerCluster(BMSSCInstance instance, Set<Integer>[] solution){
-        double[] costPerCluster = new double[solution.length];
-        for (int i = 0; i < solution.length; i++) {
-            int[] pointsInSet = CollectionUtil.toIntArray(solution[i]);
-
-            // For each pair of points
-            for (int j = 0; j < pointsInSet.length - 1; j++) {
-                for (int k = j + 1; k < pointsInSet.length; k++) {
-                    costPerCluster[i] += instance.distance(pointsInSet[j], pointsInSet[k]);
-                }
-            }
-        }
-        return costPerCluster;
-    }
-
-
-    public BMSSCSolution(BMSSCInstance instance){
+    public BMSSCSolution(BMSSCInstance instance) {
         super(instance);
-
-        //noinspection unchecked due to generic array creation
-        this.clusters = new Set[instance.k];
-
-        this.actualClusterSizes = new int[instance.getNClusters()];
-        for (int i = 0; i < instance.k; i++) {
-            int cSize = instance.getClusterSize(i);
-            this.clusters[i] = new HashSet<>((int) (cSize/.75f)); // take into account default load factor
-            this.actualClusterSizes[i] = cSize;
-        }
-
-        this.setOfPoint = new int[instance.n];
-        Arrays.fill(setOfPoint, NOT_ASSIGNED);
-
-        this.clusterScore = new double[instance.k];
-
-        // Cache costs are all 0s because no points are assigned by default
-        this.assignCost = new double[instance.n][instance.k];
-        this.removeCost = new double[instance.n];
-
-        this.notAssignedPoints = new HashSet<>(instance.getPoints());
+        clusters = new BitSet[instance.k];
+        for (int c = 0; c < instance.k; c++) clusters[c] = new BitSet(instance.n);
+        unassigned = new BitSet(instance.n);
+        unassigned.add(0, instance.n);
+        clusterOfPoint = new int[instance.n];
+        Arrays.fill(clusterOfPoint, -1);
+        sizes = new int[instance.k];
+        capacities = instance.getClusterSizes();
+        pairSums = new double[instance.k];
+        pointClusterDistance = new double[instance.n][instance.k];
     }
 
-    public BMSSCSolution(BMSSCSolution solution){
-        super(solution.getInstance());
-        var instance = solution.getInstance();
-
-        //noinspection unchecked due to generic array creation
-        this.clusters = new Set[solution.clusters.length];
-
-        for (int i = 0; i < this.clusters.length; i++) {
-            this.clusters[i] = new HashSet<>(solution.clusters[i]);
+    public BMSSCSolution(BMSSCSolution original) {
+        super(original);
+        clusters = new BitSet[original.clusters.length];
+        for (int c = 0; c < clusters.length; c++) clusters[c] = new BitSet(original.clusters[c]);
+        unassigned = new BitSet(original.unassigned);
+        clusterOfPoint = original.clusterOfPoint.clone();
+        sizes = original.sizes.clone();
+        capacities = original.capacities.clone();
+        pairSums = original.pairSums.clone();
+        pointClusterDistance = new double[original.pointClusterDistance.length][];
+        for (int p = 0; p < pointClusterDistance.length; p++) {
+            pointClusterDistance[p] = original.pointClusterDistance[p].clone();
         }
-
-        this.clusterScore = solution.clusterScore.clone();
-        this.setOfPoint = solution.setOfPoint.clone();
-
-        this.removeCost = solution.removeCost.clone();
-        this.assignCost = new double[instance.n][instance.k];
-
-        for (int i = 0; i < instance.n; i++) {
-            System.arraycopy(solution.assignCost[i], 0, this.assignCost[i], 0, instance.k);
-        }
-        this.actualClusterSizes = solution.actualClusterSizes.clone();
-        this.notAssignedPoints = new HashSet<>(solution.notAssignedPoints);
-    }
-
-    /**
-     * Relax cluster size constraint, by the given margin. New cluster sizes will be
-     * clusterSize * (1 + margin)
-     * Subsequent calls to this method do NOT further relax the constraint.
-     * @param margin margin, must be greater or equal to zero.
-     */
-    public void relaxClusterSizeConstraint(float margin){
-        var instance = getInstance();
-        for (int i = 0; i < instance.k; i++) {
-            actualClusterSizes[i] = Math.round(instance.getClusterSize(i)*(1+margin));
-        }
-    }
-
-    /**
-     * Restore cluster size constraint to the feasible value provided by the instance
-     */
-    public void restoreClusterSizeConstraint(){
-        relaxClusterSizeConstraint(0);
+        cost = original.cost;
     }
 
     @Override
-    public BMSSCSolution cloneSolution() {
-        return new BMSSCSolution(this);
+    public BMSSCSolution cloneSolution() { return new BMSSCSolution(this); }
+
+    public double getCost() { return cost; }
+    public int clusterOf(int point) { return clusterOfPoint[point]; }
+    public int[] getPointAssignments() { return clusterOfPoint.clone(); }
+    public boolean isAssigned(int point) { return clusterOfPoint[point] != -1; }
+    public int getClusterSize(int cluster) { return sizes[cluster]; }
+    public int getClusterCapacity(int cluster) { return capacities[cluster]; }
+    public double getPairSum(int cluster) { return pairSums[cluster]; }
+    public double getPointClusterDistance(int point, int cluster) { return pointClusterDistance[point][cluster]; }
+    public Set<Integer> getCluster(int cluster) { return Collections.unmodifiableSet(clusters[cluster]); }
+    public Set<Integer> getNotAssignedPoints() { return Collections.unmodifiableSet(unassigned); }
+    public boolean isFullCluster(int cluster) { return sizes[cluster] >= capacities[cluster]; }
+
+    public boolean canAssign(int point, int cluster) {
+        return !isAssigned(point) && !isFullCluster(cluster);
     }
 
-    public double getScore() {
-        assert clusterScore.length == clusters.length;
+    public boolean canReassign(int point, int cluster) {
+        return isAssigned(point) && clusterOf(point) != cluster && !isFullCluster(cluster);
+    }
 
-        double temp = 0;
-        for (int i = 0; i < clusterScore.length; i++) {
-            int cSize = clusters[i].size();
-            if(cSize != 0){
-                temp += clusterScore[i] / cSize;
-            }
+    public boolean canSwap(int p, int q) {
+        return isAssigned(p) && isAssigned(q) && clusterOf(p) != clusterOf(q);
+    }
+
+    public boolean feasibleClusterSizes() {
+        for (int c = 0; c < sizes.length; c++) {
+            if (sizes[c] != getInstance().getClusterSize(c)) return false;
         }
-        return temp;
+        return unassigned.isEmpty();
     }
 
-    public double recalculateScore() {
-        // Calculate f.o score from scratch, without side effects
-        return BMSSCSolution.score(getInstance(), clusters);
+    public void relaxClusterSizeConstraint(double margin) {
+        if (!Double.isFinite(margin) || margin < 0) throw new IllegalArgumentException("Invalid capacity margin: " + margin);
+        for (int c = 0; c < capacities.length; c++) {
+            capacities[c] = (int) Math.min(getInstance().n, Math.round(getInstance().getClusterSize(c) * (1 + margin)));
+        }
+    }
+
+    public void restoreClusterSizeConstraint() {
+        for (int c = 0; c < capacities.length; c++) capacities[c] = getInstance().getClusterSize(c);
+    }
+
+    double assignDelta(int point, int cluster) {
+        return contribution(pairSums[cluster] + pointClusterDistance[point][cluster], sizes[cluster] + 1)
+                - contribution(pairSums[cluster], sizes[cluster]);
+    }
+
+    double reassignDelta(int point, int target) {
+        int source = clusterOf(point);
+        return contribution(pairSums[source] - pointClusterDistance[point][source], sizes[source] - 1)
+                - contribution(pairSums[source], sizes[source]) + assignDelta(point, target);
+    }
+
+    double swapDelta(int p, int q) {
+        int a = clusterOf(p), b = clusterOf(q);
+        double distance = getInstance().distance(p, q);
+        return (pointClusterDistance[q][a] - distance - pointClusterDistance[p][a]) / sizes[a]
+                + (pointClusterDistance[p][b] - distance - pointClusterDistance[q][b]) / sizes[b];
+    }
+
+    void assign(int point, int cluster) {
+        if (!canAssign(point, cluster)) throw new IllegalArgumentException("Invalid assignment");
+        cost += assignDelta(point, cluster);
+        pairSums[cluster] += pointClusterDistance[point][cluster];
+        clusters[cluster].add(point);
+        sizes[cluster]++;
+        unassigned.remove(point);
+        clusterOfPoint[point] = cluster;
+        for (int p = 0; p < getInstance().n; p++) {
+            pointClusterDistance[p][cluster] += getInstance().distance(p, point);
+        }
+        assert cachesValid();
+    }
+
+    void reassign(int point, int target) {
+        if (!canReassign(point, target)) throw new IllegalArgumentException("Invalid reassignment");
+        int source = clusterOf(point);
+        cost += reassignDelta(point, target);
+        pairSums[source] -= pointClusterDistance[point][source];
+        pairSums[target] += pointClusterDistance[point][target];
+        clusters[source].remove(point);
+        clusters[target].add(point);
+        sizes[source]--;
+        sizes[target]++;
+        if (sizes[source] < 2) pairSums[source] = 0;
+        clusterOfPoint[point] = target;
+        for (int p = 0; p < getInstance().n; p++) {
+            double distance = getInstance().distance(p, point);
+            pointClusterDistance[p][source] -= distance;
+            pointClusterDistance[p][target] += distance;
+            if (sizes[source] == 0) pointClusterDistance[p][source] = 0;
+        }
+        assert cachesValid();
+    }
+
+    void swap(int p, int q) {
+        if (!canSwap(p, q)) throw new IllegalArgumentException("Invalid swap");
+        int a = clusterOf(p), b = clusterOf(q);
+        double distance = getInstance().distance(p, q);
+        cost += swapDelta(p, q);
+        pairSums[a] += pointClusterDistance[q][a] - distance - pointClusterDistance[p][a];
+        pairSums[b] += pointClusterDistance[p][b] - distance - pointClusterDistance[q][b];
+        if (sizes[a] < 2) pairSums[a] = 0;
+        if (sizes[b] < 2) pairSums[b] = 0;
+        clusters[a].remove(p);
+        clusters[a].add(q);
+        clusters[b].remove(q);
+        clusters[b].add(p);
+        clusterOfPoint[p] = b;
+        clusterOfPoint[q] = a;
+        for (int r = 0; r < getInstance().n; r++) {
+            double change = getInstance().distance(r, q) - getInstance().distance(r, p);
+            pointClusterDistance[r][a] += change;
+            pointClusterDistance[r][b] -= change;
+        }
+        assert cachesValid();
+    }
+
+    public boolean cachesValid() {
+        return BMSSCSolutionValidator.validateState(this, false).isValid();
     }
 
     @Override
-    public String toString() {
-        return "%s".formatted(this.getScore());
-    }
-
-    public int getClusterSize(int i){
-        return actualClusterSizes[i];
-    }
-
-    public int[] getClusterSizes(){
-        return actualClusterSizes;
-    }
-
-    public boolean feasibleClusterSizes(){
-        var ins = getInstance();
-        for (int i = 0; i < ins.k; i++) {
-            if(this.getCluster(i).size() > ins.getClusterSize(i)) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    // Start copy paste
-    public Set<Integer> getCluster(int i) {
-        return this.clusters[i];
-    }
-
-    public Set<Integer> getNotAssignedPoints() {
-        return Collections.unmodifiableSet(this.notAssignedPoints);
-    }
-
-    public void generateCachedScore() {
-        this.clusterScore = costPerCluster(getInstance(), clusters);
-    }
-
-    /**
-     * Checks if a cluster is full. Checks if the cluster size restriction is relaxed, and takes it into account
-     * @param cluster cluster to check
-     * @return true if the current cluster size is equals to its assigned size, false otherwise
-     */
-    public boolean isFullCluster(int cluster) {
-        return this.clusters[cluster].size() == this.getClusterSize(cluster);
-    }
-
-    /**
-     * Get the set a point is inside of
-     * @param a Point to get which cluster is assigned to
-     * @return the cluster ID, or -1 if the point is not assigned yet
-     */
-    public int clusterOf(int a) {
-        return this.setOfPoint[a];
-    }
-
-    public double cachedAssignCost(int a, int k){
-        return this.assignCost[a][k];
-    }
-
-    public double calculateAssignCost(int a, int k) {
-        if(clusterOf(a)==k)
-            return 0;
-        double sum = 0.0;
-        for (int i : this.clusters[k]) {
-            double distanceBetween = getInstance().distance(a, i);
-            sum += distanceBetween;
-        }
-        return sum;
-    }
-
-    /**
-     * Calculate how much the optimal value would increase or decrease if we assign point a to cluster k
-     *
-     * @param a Point to assign
-     */
-    double calculateRemoveCost(int a) {
-        if(!isAssigned(a)){
-            return 0;
-        }
-//        assert isAssigned(a);
-        int k = clusterOf(a);
-        assert clusters[k].contains(a);
-
-        double sum = 0.0;
-        for (int i : this.clusters[k]) {
-            double distanceBetween = getInstance().distance(a, i);
-            sum += distanceBetween;
-        }
-        return -sum;
-    }
-
-    /**
-     * Checks if a point is asigned to a cluster
-     *
-     * @param a Point to check
-     * @return true if assigned to a cluster, false otherwise
-     */
-    public boolean isAssigned(int a) {
-        return this.setOfPoint[a] != NOT_ASSIGNED;
-    }
-
-    boolean cachesValid(){
-        var ins = getInstance();
-
-        // Validate remove costs
-        for (int i = 0; i < getInstance().n; i++) {
-            if(!DoubleComparator.equals(this.removeCost[i], calculateRemoveCost(i))) {
-                return false;
-            }
-        }
-        // Validate insert costs
-        for (int i = 0; i < ins.n; i++) {
-            for (int j = 0; j < ins.k; j++) {
-                if(!DoubleComparator.equals(this.assignCost[i][j], calculateAssignCost(i,j))) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
+    public String toString() { return Double.toString(cost); }
 }

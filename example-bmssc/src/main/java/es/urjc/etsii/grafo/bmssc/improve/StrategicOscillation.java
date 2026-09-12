@@ -1,109 +1,75 @@
 package es.urjc.etsii.grafo.bmssc.improve;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.RealParam;
 import es.urjc.etsii.grafo.bmssc.model.BMSSCInstance;
 import es.urjc.etsii.grafo.bmssc.model.sol.BMSSCSolution;
 import es.urjc.etsii.grafo.bmssc.model.sol.ReassignMove;
-import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
-import es.urjc.etsii.grafo.annotations.RealParam;
+import es.urjc.etsii.grafo.bmssc.model.sol.ReassignNeighborhood;
+import es.urjc.etsii.grafo.bmssc.util.BMSSCUtil;
+import es.urjc.etsii.grafo.improve.ls.LocalSearchBestImprovement;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.shake.Shake;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-
-import java.util.Arrays;
+import es.urjc.etsii.grafo.util.Context;
+import es.urjc.etsii.grafo.util.TimeControl;
 
 import static es.urjc.etsii.grafo.util.DoubleComparator.isLess;
-import static es.urjc.etsii.grafo.util.DoubleComparator.isNegative;
 
 public class StrategicOscillation extends Shake<BMSSCSolution, BMSSCInstance> {
-
-    private static final Logger log = LoggerFactory.getLogger(StrategicOscillation.class);
-    private final float increment;
+    private final double increment;
+    private final ReassignNeighborhood neighborhood = new ReassignNeighborhood();
+    private final LocalSearchBestImprovement<ReassignMove, BMSSCSolution, BMSSCInstance> descent =
+            new LocalSearchBestImprovement<>(neighborhood);
 
     @AutoconfigConstructor
-    public StrategicOscillation(
-            @RealParam(min = 0, max = 1) double increment
-    ) {
-        // Increment size per K shake strength
-        this.increment = (float) increment;
+    public StrategicOscillation(@RealParam(min = 0, max = 1) double increment) {
+        if (!Double.isFinite(increment) || increment < 0 || increment > 1) {
+            throw new IllegalArgumentException("Invalid capacity increment: " + increment);
+        }
+        this.increment = increment;
     }
 
     @Override
     public BMSSCSolution shake(BMSSCSolution solution, int k) {
-        var ins = solution.getInstance();
-        solution.relaxClusterSizeConstraint(this.increment * k);
-        if(log.isDebugEnabled()){
-            log.debug("Cluster sizes before: " + Arrays.toString(ins.getClusterSizes()));
-            log.debug("Relaxed sizes before: " + Arrays.toString(solution.getClusterSizes()));
-        }
-
-        int c = 0;
-        while(tryReassign(solution)){
-            c++;
-        }
-
-        if(log.isDebugEnabled()){
-            log.debug("Reassigned {} elements, Cluster sizes after: ", c);
-            for (int i = 0; i < ins.k; i++) {
-                log.debug(solution.getCluster(i).size() + " ");
+        if (k < 0) throw new IllegalArgumentException("Negative shake strength");
+        if (!solution.feasibleClusterSizes()) throw new IllegalArgumentException("Shake requires a feasible solution");
+        if (TimeControl.isTimeUp() || k == 0 || increment == 0) return solution;
+        var working = solution.cloneSolution();
+        boolean repaired = BMSSCUtil.withPartialSolution(() -> {
+            try {
+                working.relaxClusterSizeConstraint(increment * k);
+                descent.improve(working);
+                return repair(working);
+            } finally {
+                working.restoreClusterSizeConstraint();
             }
-        }
-
-        fixClusters(solution);
-        solution.restoreClusterSizeConstraint();
-        solution.notifyUpdate();
-        return solution;
+        });
+        if (!repaired || TimeControl.isTimeUp()) return solution;
+        assert Context.validate(working);
+        Metrics.addCurrentObjectives(working);
+        return working;
     }
 
-    public void fixClusters(BMSSCSolution s) {
-        var ins = s.getInstance();
-        for (int i = 0; i < ins.k; i++) {
-            while(s.getCluster(i).size() > ins.getClusterSize(i)){
-                movePointAnywhere(i, s);
+    private boolean repair(BMSSCSolution solution) {
+        var instance = solution.getInstance();
+        for (int source = 0; source < instance.k; source++) {
+            while (solution.getClusterSize(source) > instance.getClusterSize(source)) {
+                if (TimeControl.isTimeUp()) return false;
+                ReassignMove best = null;
+                var moves = neighborhood.exploreRepair(solution, source).moves().iterator();
+                while (moves.hasNext()) {
+                    var move = moves.next();
+                    if (best == null || isLess(move.getCostDelta(), best.getCostDelta())) best = move;
+                }
+                if (TimeControl.isTimeUp()) return false;
+                if (best == null) throw new IllegalStateException("Cannot repair overloaded cluster " + source);
+                // Repair must accept a worsening move when it is the least costly feasible option.
+                best.execute(solution);
             }
         }
-
-        assert s.feasibleClusterSizes(): "Invalid cluster sizes, failed to make solution feasible after repair. This should never happen.";
+        return solution.feasibleClusterSizes();
     }
 
-    public void movePointAnywhere(int overloadedCluster, BMSSCSolution solution) {
-        var ins = solution.getInstance();
-
-        ReassignMove bestMove = null;
-        for (int point: solution.getCluster(overloadedCluster)){
-            for (int j = 0; j < ins.k; j++) {
-                if(j == overloadedCluster || solution.getCluster(j).size() >= ins.getClusterSize(j)) {
-                    continue;
-                }
-                var move = new ReassignMove(solution, point, j);
-                if(bestMove == null || isLess(move.getValue(), bestMove.getValue())) {
-                    bestMove = move;
-                }
-            }
-        }
-        assert bestMove != null: "Could not find a valid reassign move to reduce overloaded cluster %s, this should never happen".formatted(overloadedCluster);
-        bestMove.execute(solution);
-    }
-
-    private boolean tryReassign(BMSSCSolution solution){
-        var ins = solution.getInstance();
-        ReassignMove bestMove = null;
-        for (int point = 0; point < ins.n; point++) {
-            for (int cluster = 0; cluster < ins.k; cluster++) {
-                if(solution.clusterOf(point) == cluster || solution.getCluster(cluster).size() >= solution.getClusterSize(cluster)) { // TODO, swap cluster and point fors for performance
-                    continue;
-                }
-                var move = new ReassignMove(solution, point, cluster);
-                if(bestMove == null || isLess(move.getValue(), bestMove.getValue())){
-                    bestMove = move;
-                }
-            }
-        }
-        if (bestMove != null && isNegative(bestMove.getValue())) {
-            //System.out.println(bestMove);
-            bestMove.execute(solution);
-            return true;
-        } else {
-            return false;
-        }
-    }
+    @Override
+    public String toString() { return "StrategicOscillation{increment=" + increment + "}"; }
 }

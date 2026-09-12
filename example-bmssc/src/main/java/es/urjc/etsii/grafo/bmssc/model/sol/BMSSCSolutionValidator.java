@@ -3,34 +3,64 @@ package es.urjc.etsii.grafo.bmssc.model.sol;
 import es.urjc.etsii.grafo.bmssc.model.BMSSCInstance;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.solution.ValidationResult;
+import es.urjc.etsii.grafo.util.DoubleComparator;
 
-import java.util.Set;
+import static es.urjc.etsii.grafo.bmssc.util.BMSSCUtil.contribution;
 
-/**
- * Validate that a solution is valid for the BMSSC problem.
- * Validation is always run after the algorithms executes, and can be run in certain algorithm stages to verify
- * that the current solution is valid.
- */
 public class BMSSCSolutionValidator extends SolutionValidator<BMSSCSolution, BMSSCInstance> {
-
-    /**
-     * Validate the current solution, check that no constraint is broken and everything is fine
-     *
-     * @param solution BaseSolution to validate
-     * @return ValidationResult.ok() if the solution is valid, ValidationResult.fail("reason why it failed") if a solution is not valid.
-     */
     @Override
     public ValidationResult validate(BMSSCSolution solution) {
-        var instance = solution.getInstance();
+        return validateState(solution, true);
+    }
 
-        Set<Integer>[] sets = solution.clusters;
-        for (int i = 0; i < sets.length; i++) {
-            Set<Integer> set = sets[i];
-            if (set.size() != instance.getClusterSize(i)) {
-                return ValidationResult.fail("Wrong cluster size for index %s, expected %s, got %s".formatted(i, set.size(), instance.getClusterSize(i)));
+    static ValidationResult validateState(BMSSCSolution solution, boolean complete) {
+        var result = ValidationResult.ok();
+        var instance = solution.getInstance();
+        int[] membership = new int[instance.n];
+        double cost = 0;
+        for (int c = 0; c < instance.k; c++) {
+            var cluster = solution.getCluster(c);
+            int size = cluster.size();
+            if (size != solution.getClusterSize(c)) result.addFailure("Incorrect cardinality cache for cluster " + c);
+            if (size > solution.getClusterCapacity(c)) result.addFailure("Capacity exceeded for cluster " + c);
+            if (complete && size != instance.getClusterSize(c)) {
+                result.addFailure("Cluster " + c + ": expected " + instance.getClusterSize(c) + " points, got " + size);
+            }
+            if (complete && solution.getClusterCapacity(c) != instance.getClusterSize(c)) {
+                result.addFailure("Capacity constraint still relaxed for cluster " + c);
+            }
+            double pairSum = 0;
+            for (int p : cluster) {
+                membership[p]++;
+                if (solution.clusterOf(p) != c) result.addFailure("Incorrect cluster lookup for point " + p);
+                for (int q : cluster) {
+                    if (p < q) pairSum += instance.distance(p, q);
+                }
+            }
+            checkValue(result, "Pair sum for cluster " + c, pairSum, solution.getPairSum(c));
+            cost += contribution(pairSum, size);
+            for (int p = 0; p < instance.n; p++) {
+                double sum = 0;
+                for (int q : cluster) sum += instance.distance(p, q);
+                checkValue(result, "Distance cache for point " + p + ", cluster " + c,
+                        sum, solution.getPointClusterDistance(p, c));
             }
         }
+        for (int p = 0; p < instance.n; p++) {
+            boolean unassigned = solution.getNotAssignedPoints().contains(p);
+            if (membership[p] > 1 || (membership[p] == 0) != unassigned
+                    || unassigned != (solution.clusterOf(p) == -1)) {
+                result.addFailure("Inconsistent membership for point " + p);
+            }
+            if (complete && membership[p] != 1) result.addFailure("Point " + p + " must be assigned exactly once");
+        }
+        checkValue(result, "Cost", cost, solution.getCost());
+        return result;
+    }
 
-        return ValidationResult.ok();
+    private static void checkValue(ValidationResult result, String name, double expected, double actual) {
+        if (!Double.isFinite(expected) || !Double.isFinite(actual) || !DoubleComparator.equals(expected, actual)) {
+            result.addFailure(name + ": expected " + expected + ", got " + actual);
+        }
     }
 }

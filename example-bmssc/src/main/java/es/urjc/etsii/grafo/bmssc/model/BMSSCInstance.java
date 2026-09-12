@@ -1,146 +1,83 @@
 package es.urjc.etsii.grafo.bmssc.model;
 
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.util.ArrayUtil;
 
-import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
-import java.util.List;
 
-public class BMSSCInstance extends Instance {
+public final class BMSSCInstance extends Instance {
+    // Keep the historical solve order, largest instances first.
+    public static final Comparator<BMSSCInstance> INSTANCE_COMPARATOR =
+            Comparator.comparingInt(BMSSCInstance::getNPoints).reversed();
 
-    /**
-     * Order instances by increasing number of points
-     */
-    public static final Comparator<BMSSCInstance> INSTANCE_COMPARATOR = Comparator.comparing(BMSSCInstance::getNPoints).reversed();
-
-    /**
-     * Number of points
-     */
     public final int n;
-
-    /**
-     * Number of dimensions
-     */
     public final int d;
-
-    /**
-     * Number of clusters
-     */
     public final int k;
+    private final double[][] points;
+    private final double[][] distances;
+    private final int[] clusterSizes;
 
-    /**
-     * Points matrix, each row represents a point, each column a dimension
-     */
-    private double[][] points;
-
-    /**
-     * Symmetric matrix, stores the cost between any two points
-     */
-    protected double[][] distances;
-
-    /**
-     * Minimum points per cluster (minPointsPerCluster = n / k)
-     */
-    public final int minPointsPerCluster;
-
-    /**
-     * Assigned Size for each cluster
-     */
-    private int[] clusterSizes;
-
-    public BMSSCInstance(String name, int n, int d, int k, double[][] pointData){
+    public BMSSCInstance(String name, int n, int d, int k, double[][] pointData) {
         super(name);
+        if (n <= 0 || d <= 0 || k < 1 || k > n) {
+            throw new IllegalArgumentException(name + ": expected n > 0, d > 0 and 1 <= k <= n");
+        }
+        if (pointData == null || pointData.length != n) {
+            throw new IllegalArgumentException(name + ": expected " + n + " points");
+        }
         this.n = n;
         this.d = d;
         this.k = k;
-
-        this.minPointsPerCluster = n / k;
-        this.clusterSizes = new int[k];
-        Arrays.fill(clusterSizes, minPointsPerCluster);
-
-        // If the integer division is not exact, assign remaining points to clusters in order
-        for (int i = 0; i < n % k; i++) {
-            clusterSizes[i]++;
-        }
-
-        this.points = pointData;
-        // Precalculate distances between each pair of points
-        calculateDistances();
-        checkDataIsValid();
-    }
-
-    private void checkDataIsValid() {
-        if (points.length != n){
-            throw new RuntimeException("Declared number of points does not correspond with the datafile: " + this.getId());
-        }
-
-        for (double[] f : points) {
-            if (f.length != d)
-                throw new RuntimeException(String.format("Point length %s: %s does not match declared dimension %d, instance %s", f.length, Arrays.toString(f), this.d, this.getId()));
-        }
-    }
-
-    private void calculateDistances() {
-        assert (this.distances == null) : "Distances already calculated";
-        this.distances = new double[this.n][this.n];
-        for (int i = 0; i < this.n - 1; i++) {
-            for (int j = i + 1; j < this.n; j++) {
-                double distance = distanceBetween(this.points[i], this.points[j]);
-                this.distances[i][j] = distance;
-                this.distances[j][i] = distance;
+        this.points = new double[n][];
+        for (int p = 0; p < n; p++) {
+            if (pointData[p] == null || pointData[p].length != d) {
+                throw new IllegalArgumentException(name + ": line " + (p + 2) + ": expected " + d + " dimensions");
+            }
+            this.points[p] = pointData[p].clone();
+            for (double coordinate : this.points[p]) {
+                if (!Double.isFinite(coordinate)) {
+                    throw new IllegalArgumentException(name + ": line " + (p + 2) + ": non-finite coordinate");
+                }
             }
         }
-    }
-
-    public double distanceBetween(double[] a, double[] b) {
-        assert (a != null && b != null && a.length == b.length) : "Points are null, or have different number of dimensions";
-        double distance = 0;
-        for (int i = 0; i < a.length; i++) {
-            double t = (a[i] - b[i]);
-            distance += t * t;
+        this.clusterSizes = new int[k];
+        for (int c = 0; c < k; c++) clusterSizes[c] = n / k + (c < n % k ? 1 : 0);
+        this.distances = new double[n][n];
+        for (int p = 0; p < n; p++) {
+            for (int q = p + 1; q < n; q++) {
+                double distance = 0;
+                for (int dimension = 0; dimension < d; dimension++) {
+                    double difference = points[p][dimension] - points[q][dimension];
+                    distance += difference * difference;
+                }
+                if (!Double.isFinite(distance)) {
+                    throw new IllegalArgumentException(name + ": lines " + (p + 2) + " and " + (q + 2)
+                            + ": non-finite squared distance");
+                }
+                distances[p][q] = distances[q][p] = distance;
+            }
         }
-        return distance;
+        setProperty("n", n);
+        setProperty("d", d);
+        setProperty("k", k);
+        setProperty("unbalancedK", n % k);
+        var stats = ArrayUtil.statsUpperTriangle(distances);
+        setProperty("distance_min", stats.min());
+        setProperty("distance_max", stats.max());
+        setProperty("distance_avg", stats.avg());
+        setProperty("distance_std", stats.std());
     }
 
-    public double[] getPoint(int a) {
-        return this.points[a];
-    }
-
-    public int getClusterSize(int i) {
-        return clusterSizes[i];
-    }
-
-    public int[] getClusterSizes() {
-        return clusterSizes;
-    }
-
-    public double distance(int a, int b) {
-        return this.distances[a][b];
-    }
-
-    public int getNPoints() {
-        return n;
-    }
-
-    public int getNDimensions() {
-        return d;
-    }
-
-    public int getNClusters() {
-        return k;
-    }
+    public double[] getPoint(int point) { return points[point].clone(); }
+    public int getClusterSize(int cluster) { return clusterSizes[cluster]; }
+    public int[] getClusterSizes() { return clusterSizes.clone(); }
+    public double distance(int p, int q) { return distances[p][q]; }
+    public int getNPoints() { return n; }
+    public int getNDimensions() { return d; }
+    public int getNClusters() { return k; }
 
     @Override
     public int compareTo(Instance other) {
         return INSTANCE_COMPARATOR.compare(this, (BMSSCInstance) other);
-    }
-
-    public List<Integer> getPoints() {
-        var list = new ArrayList<Integer>(this.n);
-        for (int i = 0; i < this.n; i++) {
-            list.add(i);
-        }
-        return list;
     }
 }
