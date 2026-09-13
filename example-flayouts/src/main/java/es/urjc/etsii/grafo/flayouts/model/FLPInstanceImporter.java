@@ -13,6 +13,10 @@ public class FLPInstanceImporter extends InstanceImporter<FLPInstance> {
     @Override
     public FLPInstance importInstance(BufferedReader reader, String filename) {
         Scanner sc = new Scanner(reader);
+        int nRows = sc.nextInt();
+        if(nRows != 2){
+            throw new IllegalArgumentException("Solver currently expects 2 rows");
+        }
         int n = sc.nextInt();
 
         int[] lengths = new int[n];
