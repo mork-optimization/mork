@@ -157,6 +157,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
         var solution = this.newSolution(instance);
 
         solution = step("Initial Construct", constructive::construct, solution);
+        Metrics.addCurrentObjectives(solution);
         solution = step("Initial Improve", improver::improve, solution);
 
         int k = 0;
@@ -164,7 +165,7 @@ public class VNS<S extends Solution<S, I>, I extends Instance> extends Algorithm
 
             S copy = solution.cloneSolution();
             copy = shake.shake(copy, k);
-            step("Improve k=" + k, improver::improve, copy);
+            copy = step("Improve k=" + k, improver::improve, copy);
 
             if (objective.isBetter(copy, solution)) {
                 solution = copy;
