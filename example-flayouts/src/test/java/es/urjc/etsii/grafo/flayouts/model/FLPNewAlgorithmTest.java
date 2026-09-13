@@ -1,10 +1,10 @@
 package es.urjc.etsii.grafo.flayouts.model;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.algorithms.vns.VNS;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.flayouts.Main;
-import es.urjc.etsii.grafo.flayouts.algorithms.VNSNew;
 import es.urjc.etsii.grafo.flayouts.constructives.DRFPRandomConstructiveNew;
 import es.urjc.etsii.grafo.flayouts.improve.*;
 import es.urjc.etsii.grafo.improve.Improver;
@@ -79,18 +79,22 @@ class FLPNewAlgorithmTest {
         var constructor = new Constructive<FLPSolution, FLPInstance>() {
             @Override public FLPSolution construct(FLPSolution ignored) { return bad.cloneSolution(); }
         };
-        var improver = new Improver<FLPSolution, FLPInstance>(Main.FLOW) {
+        var improver = new Improver<>(Main.FLOW) {
             int calls;
-            @Override public FLPSolution improve(FLPSolution solution) { return ++calls == 1 ? solution : good.cloneSolution(); }
+
+            @Override
+            public FLPSolution improve(FLPSolution solution) {
+                return ++calls == 1 ? solution : good.cloneSolution();
+            }
         };
-        var algorithm = new VNSNew<>("replacement", 1, constructor, Shake.nul(), improver);
+        var algorithm = new VNS<>("replacement", 1, constructor, Shake.nul(), improver);
         setBuilder(algorithm);
         assertEquals(good.getScore(), algorithm.algorithm(instance).getScore());
 
         Metrics.enableMetrics();
         Metrics.register("Flow", reference -> new AbstractMetric(reference) {});
         Metrics.resetMetrics();
-        var noImprovement = new VNSNew<>("baseline", 1, constructor, Shake.nul(), Improver.nul());
+        var noImprovement = new VNS<>("baseline", 1, constructor, Shake.nul(), Improver.nul());
         setBuilder(noImprovement);
         var result = noImprovement.algorithm(instance);
         assertState(result, true);
