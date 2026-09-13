@@ -75,7 +75,7 @@ class BMSSCInstanceTest {
     @ParameterizedTest
     @ValueSource(strings = {"iris.csv", "user_knowledge.csv"})
     void loadsBundledInstancesWithStrictDimensionChecks(String name) {
-        var instance = new BMSSCInstanceImporter().importInstance("instances/instances.zip!" + name);
+        var instance = new BMSSCInstanceImporter().importInstance("instances/" + name);
         assertTrue(instance.n > 0);
         assertTrue(Double.isFinite((double) instance.getProperty("distance_avg")));
     }

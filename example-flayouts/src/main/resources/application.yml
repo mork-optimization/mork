@@ -1,9 +1,3 @@
-# Defines any custom property or configuration for the current problem.
-# The config values can be retrieved at runtime, for example inside the experiment
-# See https://mork-optimization.readthedocs.io/en/latest/features/config/ for more details
-custom:
-  my-property: 'myvalue'
-
 instances:
 
   # Loads all instances in RAM before starting each experiment.
@@ -14,7 +8,7 @@ instances:
   path:
     # Default instance path for all experiments, can be overridden.
     default: 'instances/complexity/'
-    irace: 'instances/tuning/instances'
+    irace: 'instances/'
 
     # Override default instance path only for the experiment declared in file PreliminarExperiment.java
     # If an experiment does not have a specific path the default will be used. Example:
