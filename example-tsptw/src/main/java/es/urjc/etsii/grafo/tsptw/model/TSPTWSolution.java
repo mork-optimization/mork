@@ -555,7 +555,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
                 if (delta2 >= delta1) continue;
                 if (!insertion_is_feasible(i, d)) continue;
-                reinsert(permutation, i, d);
+                TSPTWUtil.reinsert(permutation, i, d);
                 log.debug("improved ({}, {}): {} -> {}", i, i+1, _tourcost, _tourcost - delta1 + delta2);
                 this._tourcost += delta2 - delta1;
                 assert_solution();
@@ -573,7 +573,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
                 if (delta2 >= delta1) continue;
                 if (!insertion_is_feasible(i, d)) continue;
-                reinsert(permutation, i, d);
+                TSPTWUtil.reinsert(permutation, i, d);
                 log.debug("improved ({}, {}): {} -> {}", i, i+1, _tourcost, _tourcost - delta1 + delta2);
                 this._tourcost += delta2 - delta1;
                 assert_solution();
@@ -583,267 +583,13 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         return false;
     }
 
-    @TimeStats
-    public boolean ls_feasibility_1shift_first() {
-        boolean improved = false;
-        while (!TimeControl.isTimeUp() && feasibility_1shift_first_code()) {
-            improved = true;
-        }
-        return improved;
-    }
-
-    public boolean feasibility_1shift_first_code() {
-        if (_constraint_violations == 0) return false;
-
-        boolean[] improved = {false};
-
-        assert_solution();
-        if (backward_violated(improved)) return true;
-        assert_solution();
-        if (forward_nonviolated(improved)) return true;
-        assert_solution();
-        if (forward_violated(improved)) return true;
-        assert_solution();
-        if (backward_nonviolated(improved)) return true;
-        assert_solution();
-
-        return improved[0];
-    }
-
-
-    public boolean feasibility_1shift_first_paper() {
-        if (_constraint_violations == 0) return false;
-
-        boolean[] improved = {false};
-
-        if (backward_violated(improved)) return true;
-        if (forward_nonviolated(improved)) return true;
-        if (backward_nonviolated(improved)) return true;
-        if (forward_violated(improved)) return true;
-
-        return improved[0];
-    }
-
-    public boolean backward_violated(boolean[] improved) {
-        List<Integer> infeas = new ArrayList<>();
-        compute_infeas_set(infeas);
-
-        TSPTWSolution sol;
-
-        // Backward movements of violated customers.
-        while (!infeas.isEmpty() && !TimeControl.isTimeUp()) {
-            this.assert_solution();
-            int i = infeas.removeLast();
-            assert (_makespan[i] > window_end[i]);
-            sol = this.clone_solution();
-            boolean moved = false;
-
-            for (int d = i - 1; d > 0; d--) {
-                if (sol.infeasible_move(d, d + 1)) break;
-                sol.swap(d);
-                if (sol.infeasibility() < this.infeasibility()) {
-                    this.copy_from(sol);
-                    improved[0] = true;
-                    moved = true;
-                    if (sol.infeasibility() == 0) return true;
-                }
-            }
-            if (moved) {
-                compute_infeas_set(infeas);
-            }
-        }
-        return false;
-    }
-
-    public boolean forward_nonviolated(boolean[] improved) {
-        List<Integer> feas = new ArrayList<>();
-        compute_feas_set(feas);
-
-        TSPTWSolution sol;
-
-        // Forward movements of non-violated customers.
-        while (!feas.isEmpty() && !TimeControl.isTimeUp()) {
-            int i = feas.remove(feas.size() - 1);
-            assert (_makespan[i] <= window_end[i]);
-            sol = this.clone_solution();
-            boolean moved = false;
-
-            for (int d = i; d < n - 1; d++) {
-                if (sol.infeasible_move(d, d + 1)) break;
-                sol.swap(d);
-                if (sol.infeasibility() < this.infeasibility()) {
-                    this.copy_from(sol);
-                    improved[0] = true;
-                    moved = true;
-                    if (this.infeasibility() == 0) return true;
-                }
-            }
-            if (moved) {
-                compute_feas_set(feas);
-            }
-        }
-        return false;
-    }
-
-    public boolean forward_violated(boolean[] improved) {
-        List<Integer> infeas = new ArrayList<>();
-        compute_infeas_set(infeas);
-
-        TSPTWSolution sol;
-
-        // Forward movements of violated customers.
-        while (!infeas.isEmpty() && !TimeControl.isTimeUp()) {
-            int i = infeas.remove(infeas.size() - 1);
-            assert (_makespan[i] > window_end[i]);
-            sol = this.clone_solution();
-            boolean moved = false;
-
-            for (int d = i; d < n - 1; d++) {
-                if (sol.infeasible_move(d, d + 1)) break;
-                sol.swap(d);
-                if (sol.infeasibility() < this.infeasibility()) {
-                    this.copy_from(sol);
-                    improved[0] = true;
-                    moved = true;
-                    if (this.infeasibility() == 0) return true;
-                }
-            }
-            if (moved) {
-                compute_infeas_set(infeas);
-            }
-        }
-        return false;
-    }
-
-    public boolean backward_nonviolated(boolean[] improved) {
-        List<Integer> feas = new ArrayList<>();
-        compute_feas_set(feas);
-
-        TSPTWSolution sol;
-
-        // Backward movements of non-violated customers.
-        while (!feas.isEmpty() && !TimeControl.isTimeUp()) {
-            int i = feas.remove(feas.size() - 1);
-            assert (_makespan[i] <= window_end[i]);
-            sol = this.clone_solution();
-            boolean moved = false;
-
-            for (int d = i - 1; d > 0; d--) {
-                if (sol.infeasible_move(d, d + 1)) break;
-                sol.swap(d);
-                if (sol.infeasibility() < this.infeasibility()) {
-                    this.copy_from(sol);
-                    improved[0] = true;
-                    moved = true;
-                    if (sol.infeasibility() == 0) return true;
-                }
-            }
-            if (moved) {
-                compute_feas_set(feas);
-            }
-        }
-        return false;
-    }
-
-    public void compute_feas_set(List<Integer> feas) {
-        feas.clear();
-
-        for (int i = 1; i < n; i++) {
-            if (_makespan[i] <= window_end[i]) {
-                feas.add(i);
-            }
-        }
-        CollectionUtil.shuffle(feas);
-    }
-
-    public void compute_infeas_set(List<Integer> infeas) {
-        infeas.clear();
-
-        for (int i = 1; i < n; i++) {
-            if (_makespan[i] > window_end[i]) {
-                infeas.add(i);
-            }
-        }
-        CollectionUtil.shuffle(infeas);
+    /** Arrival caches are indexed by position; deadlines are indexed by customer. */
+    public boolean isLateAt(int position) {
+        return _makespan[position] > window_end[permutation.get(position)];
     }
 
     public double infeasibility() {
-        return this._infeasibility;
-    }
-
-    public boolean feasibility_1shift_first() {
-        if (_constraint_violations == 0) return false;
-
-        boolean improved = false;
-        TSPTWSolution sol = this.clone_solution();
-
-        // Backward movements of violated customers.
-        for (int i = 2; i < n; i++) {
-            if (_makespan[i] <= window_end[i]) continue;
-            sol = this.clone_solution();
-            for (int d = i - 1; d > 0; d--) {
-                if (sol.infeasible_move(d, d + 1)) break;
-                sol.swap(d);
-                if (sol.infeasibility() < this.infeasibility()) {
-                    this.copy_from(sol);
-                    improved = true;
-                    if (sol.infeasibility() == 0) return true;
-                }
-            }
-        }
-
-        for (int i = 1; i < n - 1; i++) {
-            if (_makespan[i] > window_end[i]) continue;
-            if (infeasible_move(i, i + 1)) continue;
-            sol = this.clone_solution();
-
-            // Forward movements of non-violated customers.
-            sol.swap(i);
-            if (sol.infeasibility() < this.infeasibility()) {
-                this.copy_from(sol);
-                improved = true;
-                if (sol.infeasibility() == 0) return true;
-            }
-            TSPTWSolution back_sol = sol.clone_solution();
-
-            for (int d = i + 1; d < n - 1; d++) {
-                if (sol.infeasible_move(d, d + 1)) break;
-                sol.swap(d);
-                if (sol.infeasibility() < this.infeasibility()) {
-                    this.copy_from(sol);
-                    improved = true;
-                    if (sol.infeasibility() == 0) return true;
-                }
-            }
-
-            // Backward movements of non-violated customers.
-            for (int d = i - 1; d > 0; d--) {
-                if (back_sol.infeasible_move(d, d + 1)) break;
-                back_sol.swap(d);
-                if (back_sol.infeasibility() < this.infeasibility()) {
-                    this.copy_from(back_sol);
-                    improved = true;
-                    if (this.infeasibility() == 0) return true;
-                }
-            }
-        }
-
-        // Forward movements of violated customers.
-        for (int i = 1; i < n - 1; i++) {
-            if (_makespan[i] <= window_end[i]) continue;
-            sol = this.clone_solution();
-            for (int d = i; d < n - 1; d++) {
-                if (sol.infeasible_move(d, d + 1)) break;
-                sol.swap(d);
-                if (sol.infeasibility() < this.infeasibility()) {
-                    this.copy_from(sol);
-                    improved = true;
-                    if (this.infeasibility() == 0) return true;
-                }
-            }
-        }
-
-        return improved;
+        return _infeasibility;
     }
 
     public int two_opt_is_infeasible(int h1, int h3) {
@@ -909,8 +655,8 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         }
         assert _constraint_violations == 0;
 
-        boolean improved = false;
-        List<Integer> rand_nodes = generate_vector(n);
+        List<Integer> rand_nodes = CollectionUtil.generateIntegerList(0, n);
+        CollectionUtil.shuffle(rand_nodes);
 
         while (!rand_nodes.isEmpty() && !TimeControl.isTimeUp()) {
             int pos_c1 = rand_nodes.remove(rand_nodes.size() - 1);
@@ -919,7 +665,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             double radius = distance[c1][s1];
 
             for (int h = pos_c1 + 2; h < n; h++) {
-                if (TimeControl.isTimeUp()) return improved;
+                if (TimeControl.isTimeUp()) return false;
                 int pos_c2 = h;
                 int c2 = permutation.get(pos_c2);
                 if (getInstance().isTimeWindowInfeasible(c2, s1)) break;
@@ -937,149 +683,84 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                     two_opt_move(pos_c1, pos_c2);
                     _tourcost += gain;
                     assert_solution();
-                    improved = true;
-                    rand_nodes = generate_vector(n);
-                    break;
+                    return true;
                 }
             }
         }
-        return improved;
+        return false;
     }
 
     public TSPTWSolution localsearch_2opt_first() {
         TSPTWSolution s = this.clone_solution();
-        s.two_opt_first();
+        while (!TimeControl.isTimeUp() && s.two_opt_first()) {
+            s.notifyUpdate();
+        }
         return s;
     }
 
     public void full_eval() {
         TSPTWSolution tmp = new TSPTWSolution(this.getInstance());
-        List<Integer> sub = new ArrayList<>(this.permutation.subList(1, this.permutation.size() - 1));
-        tmp.add(sub.stream().mapToInt(Integer::intValue).toArray());
+        int[] customers = new int[n - 1];
+        for (int i = 1; i < n; i++) customers[i - 1] = permutation.get(i);
+        tmp.add(customers);
         this.copy_from(tmp);
     }
 
     @TimeStats
     public void perturb_1shift_feasible(int level) {
+        TSPTWUtil.requireMinimumSize(getInstance());
+        if (_constraint_violations != 0) throw new IllegalArgumentException("Feasible perturbation requires a feasible tour");
+        if (level < 1) throw new IllegalArgumentException("Perturbation level must be positive");
         var rng = RandomManager.getRandom();
-        assert _constraint_violations == 0;
-        assert level > 0;
-        int num = min(n, level);
-
-        List<Integer> index = new ArrayList<>();
-        for (int k = 0; k < n - 2; k++) {
-            index.add(k + 1);
-        }
-
-        TSPTWSolution ngh;
-
-        for (int j = n - 3; j >= 0; j--) {
+        int remaining = min(n, level);
+        List<Integer> index = CollectionUtil.generateIntegerList(1, n - 1);
+        for (int j = n - 3; j >= 0 && !TimeControl.isTimeUp(); j--) {
             int k = rng.nextInt(j + 1);
             Collections.swap(index, k, j);
-            k = index.get(j);
-            assert k > 0 && k < n;
-            int pos = 1 + rng.nextInt(n - 3);
-            if (pos == k) continue;
-
-            ngh = this.clone_solution();
-            double delta_cost = 0;
-            int first_m = n + 1;
-
-            if (k < pos) { // Forward
-                for (int d = k; d < pos; d++) {
-                    int ci = ngh.permutation.get(d);
-                    int cj = ngh.permutation.get(d + 1);
-                    if (getInstance().isTimeWindowInfeasible(cj, ci)) break;
-                    delta_cost += ngh.do_swap(d);
-                    var first_m_t = new int[]{first_m};
-                    boolean is_feasible = ngh.is_feasible_swap(d, first_m_t);
-                    first_m = first_m_t[0];
-                    if (is_feasible) {
-                        assert ngh.constraint_violations() == 0;
-                        assert this._tourcost + delta_cost == ngh._tourcost;
-                        assert first_m == n + 1;
-                        this.copy_from(ngh);
-                        assert_solution();
-                        delta_cost = 0;
-                    }
-                }
-            } else { // Backward
-                for (int d = k - 1; d >= pos; d--) {
-                    int ci = ngh.permutation.get(d);
-                    int cj = ngh.permutation.get(d + 1);
-                    if (getInstance().isTimeWindowInfeasible(cj, ci)) break;
-                    delta_cost += ngh.do_swap(d);
-                    var first_m_t = new int[]{first_m};
-                    boolean is_feasible = ngh.is_feasible_swap(d, first_m_t);
-                    first_m = first_m_t[0];
-                    if (is_feasible) {
-                        assert ngh.constraint_violations() == 0;
-                        assert this._tourcost + delta_cost == ngh._tourcost;
-                        assert first_m == n + 1;
-                        this.copy_from(ngh);
-                        assert_solution();
-                        delta_cost = 0;
-                    }
+            int from = index.get(j);
+            int to = 1 + rng.nextInt(n - 3);
+            if (from == to) continue;
+            var candidate = cloneSolution();
+            int[] firstInvalid = {n + 1};
+            int step = from < to ? 1 : -1;
+            int firstSwap = from < to ? from : from - 1;
+            int endSwap = from < to ? to : to - 1;
+            for (int d = firstSwap; d != endSwap && !TimeControl.isTimeUp(); d += step) {
+                if (candidate.infeasible_move(d, d + 1)) break;
+                candidate.do_swap(d);
+                if (candidate.is_feasible_swap(d, firstInvalid)) {
+                    // Only publish complete feasible prefixes; discard an unfinished candidate on interruption.
+                    copy_from(candidate);
+                    notifyUpdate();
+                    assert_solution();
                 }
             }
-
-            num--;
-            if (num == 0) break;
+            if (--remaining == 0) break;
         }
         assert_solution();
     }
 
     @TimeStats
     public void perturb_1shift(int level) {
+        TSPTWUtil.requireMinimumSize(getInstance());
+        if (level < 1) throw new IllegalArgumentException("Perturbation level must be positive");
         var rng = RandomManager.getRandom();
-        assert level > 0;
-        int num = min(n, level);
-        int earliest = n;
-
-        do {
-            int k = 1 + rng.nextInt(n - 1);
-            int pos;
+        boolean moved = false;
+        for (int num = min(n, level); num > 0 && !TimeControl.isTimeUp(); num--) {
+            int from = 1 + rng.nextInt(n - 1);
+            int to;
             do {
-                pos = 1 + rng.nextInt(n - 1);
-            } while (pos == k);
-
-            earliest = min(earliest, min(pos, k));
-            int tmp = permutation.get(k);
-            reinsert(permutation, tmp, k, pos);
-            num--;
-        } while (num > 0);
-
-        if (earliest < n) {
+                to = 1 + rng.nextInt(n - 1);
+            } while (to == from && !TimeControl.isTimeUp());
+            if (TimeControl.isTimeUp()) break;
+            TSPTWUtil.reinsert(permutation, from, to);
+            moved = true;
+        }
+        // Even when interrupted, reevaluate all completed moves before returning.
+        if (moved) {
             full_eval();
+            notifyUpdate();
             assert_solution();
         }
-    }
-
-    public static <T> void reinsert(List<T> v, T element, int from, int to) {
-        v.remove(from);
-        v.add(to, element);
-    }
-
-    public static <T> void reinsert(List<T> v, int from, int to) {
-        T element = v.get(from);
-        v.remove(from);
-        v.add(to, element);
-    }
-
-    public static List<Integer> generate_vector(int size) {
-        var random = RandomManager.getRandom();
-        List<Integer> v = new ArrayList<>(size);
-        for (int i = 0; i < size; i++) {
-            v.add(i);
-        }
-
-        for (int i = 0; i < size - 1; i++) {
-            int j = (int) (random.nextDouble() * (size - i));
-            int temp = v.get(i);
-            v.set(i, v.get(i + j));
-            v.set(i + j, temp);
-        }
-
-        return v;
     }
 }

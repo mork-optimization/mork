@@ -20,7 +20,7 @@ Instances have been downloaded from https://lopez-ibanez.eu/tsptw-instances.
 
 ## Compiling
 
-You can easily compile and build an executable artifact of this project using Maven and a recent version of Java (17+):
+You can compile and build an executable artifact of this project using Maven and Java 25:
 ```text
 mvn clean package
 ```

@@ -1,40 +1,52 @@
 package es.urjc.etsii.grafo.tsptw.alg;
 
+import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.IntegerParam;
+import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.aop.TimeStats;
-import es.urjc.etsii.grafo.tsptw.constructives.TSPTWRandomConstructive;
+import es.urjc.etsii.grafo.metrics.Metrics;
+import es.urjc.etsii.grafo.tsptw.constructives.TSPTWFeasibleConstructive;
+import es.urjc.etsii.grafo.tsptw.improve.TSPTWVND;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
-import es.urjc.etsii.grafo.algorithms.Algorithm;
-import es.urjc.etsii.grafo.metrics.Metrics;
+import es.urjc.etsii.grafo.tsptw.model.TSPTWUtil;
+import es.urjc.etsii.grafo.tsptw.shake.TSPTWFeasibleInsertShake;
 import es.urjc.etsii.grafo.util.TimeControl;
-import org.slf4j.Logger;
 
-
-import static org.slf4j.LoggerFactory.*;
+import java.util.Objects;
 
 public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
+    private final int levelMax;
+    private final int attemptsPerLevel;
+    private final TSPTWFeasibleConstructive constructive;
+    private final TSPTWFeasibleInsertShake shake;
+    private final TSPTWVND localSearch;
 
-    private static final Logger logger = getLogger(GVNS.class);
-    private final TSPTWRandomConstructive constructive = new TSPTWRandomConstructive();
-
-    private final int level_max;
-
-    /**
-     * Initialize common algorithm fields
-     *
-     * @param algorithmName algorithm name. See {@link #setName(String)}
-     */
-    public GVNS(String algorithmName, int level_max) {
+    @AutoconfigConstructor
+    public GVNS(@ProvidedParam String algorithmName,
+                @IntegerParam(min = 2, max = 16) int levelMax,
+                @IntegerParam(min = 1, max = 100) int attemptsPerLevel,
+                TSPTWFeasibleConstructive constructive, TSPTWFeasibleInsertShake shake, TSPTWVND localSearch) {
         super(algorithmName);
-        this.level_max = level_max;
+        if (levelMax < 2 || attemptsPerLevel < 1) {
+            throw new IllegalArgumentException("GVNS requires levelMax >= 2 and attemptsPerLevel >= 1");
+        }
+        this.levelMax = levelMax;
+        this.attemptsPerLevel = attemptsPerLevel;
+        this.constructive = Objects.requireNonNull(constructive);
+        this.shake = Objects.requireNonNull(shake);
+        this.localSearch = Objects.requireNonNull(localSearch);
     }
 
+    /** Original GVNS: levels 1 through 7, advancing after 31 unsuccessful attempts. */
     public GVNS() {
-        this("GVNS", 8); // original impl uses a default value of 8 for level_max
+        this("GVNS", 8, 31, new TSPTWFeasibleConstructive(), new TSPTWFeasibleInsertShake(), new TSPTWVND());
     }
 
     @Override
     public TSPTWSolution algorithm(TSPTWInstance instance) {
+        TSPTWUtil.requireMinimumSize(instance);
         if (!instance.isSymmetric()) {
             throw new IllegalArgumentException("GVNS requires a symmetric distance matrix");
         }
@@ -43,113 +55,47 @@ public class GVNS extends Algorithm<TSPTWSolution, TSPTWInstance> {
         }
         TSPTWSolution best = null;
         do {
-            TSPTWSolution x = vns_feasible(instance);
-            if (x.constraint_violations() == 0 && !TimeControl.isTimeUp()) {
-                gvns(x);
+            var solution = constructive.construct(new TSPTWSolution(instance));
+            if (solution.constraint_violations() == 0) {
+                Metrics.addCurrentObjectives(solution);
+                refine(solution);
             }
-            if (best == null || x.better_than(best)) {
-                best = x.clone_solution();
-                if (best.constraint_violations() == 0) {
-                    Metrics.addCurrentObjectives(best);
-                }
+            if (best == null || solution.better_than(best)) {
+                best = solution.cloneSolution();
             }
         } while (!TimeControl.isTimeUp());
         return best;
     }
 
     @TimeStats
-    public TSPTWSolution vns_feasible(TSPTWInstance instance) {
-        TSPTWSolution x;
-        TSPTWSolution x2;
-        int level_max_vns_feasible = instance.n() / 2;
-
-        do {
-            int level = 1;
-            x = constructive.construct(new TSPTWSolution(instance));
-            x.assert_solution();
-            x.ls_feasibility_1shift_first();
-            x.notifyUpdate();
-            x.assert_solution();
-            x2 = x.clone_solution();
-
-            while (x.constraint_violations() > 0 && level < level_max_vns_feasible && !TimeControl.isTimeUp()) {
-                x2.perturb_1shift(level);
-                x2.ls_feasibility_1shift_first();
-                x2.notifyUpdate();
-
-                if (x2.infeasibility() < x.infeasibility()) {
-                    logger.debug("vnd_f {} {} {}",
-                            level, x2.cost(), x2.constraint_violations());
-                    x = x2.clone_solution();
-                    level = 1; // Improved
-                } else {
-                    x2 = x.clone_solution();
-                    level++; // Not improved
-                }
-            }
-        } while (x.constraint_violations() > 0 && !TimeControl.isTimeUp());
-
-        logger.debug("# (vnd feasible)\t {}", x.cost());
-        return x;
-    }
-
-    @TimeStats
-    public void gvns(TSPTWSolution x) {
-        x.assert_solution();
+    private void refine(TSPTWSolution solution) {
+        solution.assert_solution();
         int level = 1;
-        int iterlevel_max = 30;
-        int iterlevel = 0;
-        TSPTWSolution x2 = x.clone_solution();
-
-        while (level < level_max && !TimeControl.isTimeUp()) {
-            x2.perturb_1shift_feasible(level);
-            vnd(x2);
-
-            if (x2.cost() < x.cost()) {
-                logger.debug("# (pert. {})\t{}", level, x2.cost());
-                logger.debug("gvns {} {} {}",
-                        level, x2.cost(), x2.constraint_violations());
-                x.copy_from(x2);
-                x.notifyUpdate();
+        int attempts = 0;
+        var candidate = solution.cloneSolution();
+        while (level < levelMax && !TimeControl.isTimeUp()) {
+            candidate = shake.shake(candidate, level);
+            candidate = localSearch.improve(candidate);
+            if (candidate.cost() < solution.cost()) {
+                solution.copy_from(candidate);
+                solution.notifyUpdate();
+                Metrics.addCurrentObjectives(solution);
                 level = 1;
-                iterlevel = 0;
+                attempts = 0;
             } else {
-                x2.copy_from(x);
-                iterlevel++;
-                if (iterlevel > iterlevel_max) {
+                candidate.copy_from(solution);
+                attempts++;
+                if (attempts >= attemptsPerLevel) {
                     level++;
-                    iterlevel = 0;
+                    attempts = 0;
                 }
             }
         }
     }
 
-    @TimeStats
-    public void vnd(TSPTWSolution x) {
-        boolean improved = false;
-        assert x.constraint_violations() == 0;
-        x.assert_solution();
-
-        do {
-            while (!TimeControl.isTimeUp() && x.feasible_1shift_first()) {
-                x.assert_solution();
-                improved = true;
-            }
-            if (improved) {
-                logger.debug("insert {} {} {}",
-                        1, x.cost(), x.constraint_violations());
-            }
-
-            improved = false;
-            while (!TimeControl.isTimeUp() && x.two_opt_first()) {
-                x.assert_solution();
-                improved = true;
-            }
-            if (improved) {
-                logger.debug("2opt {} {} {}",
-                        1, x.cost(), x.constraint_violations());
-            }
-        } while (improved && !TimeControl.isTimeUp());
+    @Override
+    public String toString() {
+        return "GVNS{levelMax=" + levelMax + ", attemptsPerLevel=" + attemptsPerLevel
+                + ", constructive=" + constructive + ", shake=" + shake + ", localSearch=" + localSearch + "}";
     }
-
 }
