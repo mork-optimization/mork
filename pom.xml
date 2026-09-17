@@ -64,7 +64,7 @@
         <mrelease.version>3.3.1</mrelease.version>
         <mjacoco.version>0.8.15</mjacoco.version>
         <mclean.version>3.5.0</mclean.version>
-        <maspectj.version>1.16.0</maspectj.version>
+        <maspectj.version>1.16.1</maspectj.version>
         <aspectj.version>1.9.25.1</aspectj.version>
         <apachepoi.version>5.5.1</apachepoi.version>
         <sonar.projectKey>rmartinsanta_mork</sonar.projectKey>
