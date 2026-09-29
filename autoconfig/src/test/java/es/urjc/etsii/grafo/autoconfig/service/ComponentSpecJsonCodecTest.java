@@ -80,6 +80,22 @@ class ComponentSpecJsonCodecTest {
     }
 
     @Test
+    void parsesInitialConfigurationArray() {
+        var seeds = codec.parseList("""
+                [{"$component":"First"}, {"$component":"Second","iterations":4}]
+                """);
+
+        assertEquals(2, seeds.size());
+        assertEquals("First", seeds.get(0).component());
+        assertEquals(4, seeds.get(1).parameters().get("iterations"));
+        assertTrue(assertThrows(AlgorithmParsingException.class, () -> codec.parseList("[]"))
+                .getMessage().contains("nonempty array"));
+        assertTrue(assertThrows(AlgorithmParsingException.class,
+                () -> codec.parseList("[{\"$component\":\"First\"}, {}]"))
+                .getMessage().contains("$/1"));
+    }
+
+    @Test
     void componentSpecsDefensivelyCopyCollections() {
         var items = new ArrayList<Object>();
         items.add(new ComponentSpec("First"));

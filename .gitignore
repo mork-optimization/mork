@@ -39,6 +39,7 @@ hs_err_pid*
 *.iml
 
 target
+time-stats/
 .DS_Store
 
 venv

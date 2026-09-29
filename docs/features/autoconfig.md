@@ -143,6 +143,37 @@ solver:
 
 Use `--irace` or `--autoconfig` to launch tuning. Use `--follower` to start only the execution controller.
 
+## Initial configurations
+
+To start an automatic tuning run with known algorithms, create
+`src/main/resources/irace/initial-configurations.json` in the application. Its root must be a nonempty JSON array;
+each entry is a complete [JSON algorithm description](../concepts/algorithm-components/json-descriptions.md):
+
+```json
+[
+  {
+    "$component": "MyAlgorithm",
+    "iterations": 100,
+    "constructive": {"$component": "MyConstructive"}
+  }
+]
+```
+
+When launched with `--autoconfig`, Mork converts these descriptions to irace's initial-configuration table and
+adds its path to the generated scenario before starting irace. Other starting configurations are still sampled by
+irace as needed. The resource is optional; without it, irace starts normally. It has no effect in manual `--irace`
+mode or on `--follower` processes.
+
+Each description must be representable in the search space generated for the current run. Mork rejects missing
+tunable parameters, disallowed components or combinations, values outside their domains, and duplicate
+configurations before launching irace. Omit `@ProvidedParam` values, since Mork supplies them. Real values must fit
+the generated irace precision of two decimal places. A JSON description that can be built manually may still be
+invalid as an initial configuration if its components are excluded from autoconfig.
+
+The generated `autoconfig-initial-configurations.txt` is written in the application's working directory alongside
+`parameters.txt` and `scenario.txt`. If an application supplies its own scenario, Mork appends the generated
+`configurationsFile` setting so the JSON initial configurations take precedence.
+
 The REST API retains the latest 10,000 individual evaluation records by default. Change the limit when a
 different memory/history tradeoff is required:
 

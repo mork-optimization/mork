@@ -87,11 +87,11 @@ class IraceOrchestratorTest {
                 "1234567",
                 "instances/benchmark/40-02.txt",
                 "ROOT=VNS",
-                "ROOT_VNS.constructive=DRFPRandomConstructive",
+                "ROOT_VNS.constructive=FLPRandomConstructive",
                 "ROOT_VNS.improver=NullImprover",
                 "ROOT_VNS.maxK=429922341",
                 "ROOT_VNS.shake=DestroyRebuild",
-                "ROOT_VNS.shake_DestroyRebuild.constructive=DRFPRandomConstructive",
+                "ROOT_VNS.shake_DestroyRebuild.constructive=FLPRandomConstructive",
                 "ROOT_VNS.shake_DestroyRebuild.destructive=NullDestructive"
         };
         var parsedConfig = IraceUtil.toIraceRuntimeConfig(exampleCmdLine);
@@ -101,7 +101,7 @@ class IraceOrchestratorTest {
         Assertions.assertEquals("instances/benchmark/40-02.txt", parsedConfig.getInstanceName());
         var algConfig = parsedConfig.getAlgorithmConfig();
         Assertions.assertEquals(7, algConfig.getConfig().size());
-        Assertions.assertEquals("DRFPRandomConstructive", algConfig.getValue("ROOT_VNS.shake_DestroyRebuild.constructive", "fail"));
+        Assertions.assertEquals("FLPRandomConstructive", algConfig.getValue("ROOT_VNS.shake_DestroyRebuild.constructive", "fail"));
     }
 
     @Test
@@ -112,14 +112,14 @@ class IraceOrchestratorTest {
         var multiReq = new MultiExecuteRequest(correctKey, List.of(IraceExecuteConfig.of(
                 "testConfig1",
                 2,
-                "/Users/rmartin/IdeaProjects/DRFP/instances/benchmark/40-02.txt",
+                "instances/benchmark/40-02.txt",
                 1234567,
                 Map.of("ROOT", "VNS",
-                        "ROOT_VNS.constructive", "DRFPRandomConstructive",
+                        "ROOT_VNS.constructive", "FLPRandomConstructive",
                         "ROOT_VNS.improver", "NullImprover",
                         "ROOT_VNS.maxK", "429922341",
                         "ROOT_VNS.shake", "DestroyRebuild",
-                        "ROOT_VNS.shake_DestroyRebuild.constructive", "DRFPRandomConstructive",
+                        "ROOT_VNS.shake_DestroyRebuild.constructive", "FLPRandomConstructive",
                         "ROOT_VNS.shake_DestroyRebuild.destructive", "NullDestructive"
                 )
         )), false);

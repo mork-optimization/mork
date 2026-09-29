@@ -1,7 +1,9 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
+import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpecJsonCodec;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
+import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigRunState;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.BlockConfig;
@@ -26,8 +28,10 @@ import org.slf4j.LoggerFactory;
 import org.springframework.boot.web.server.autoconfigure.ServerProperties;
 
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -54,11 +58,10 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public static final String K_RUN_ID = "__RUN_ID__";
     public static final String F_PARAMETERS = "parameters.txt";
     public static final String F_SCENARIO = "scenario.txt";
-    private static final String IRACE_PARAM_EPILOGUE = """
-            
-            [global]
-            digits = 2
-            """;
+    private static final String INITIAL_CONFIGURATIONS_RESOURCE = "initial-configurations.json";
+    private static final String INITIAL_CONFIGURATIONS_FILE = "autoconfig-initial-configurations.txt";
+    private static final String IRACE_PARAM_EPILOGUE = "\n[global]\ndigits = "
+            + InitialConfigurationUtil.GENERATED_REAL_DIGITS + "\n";
 
     public static final int DEFAULT_IRACE_EXPERIMENTS = 10_000;
     private final SolverConfig solverConfig;
@@ -214,10 +217,33 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             if (!automaticMode) {
                 copyWithSubstitutions(getInputStreamForIrace(F_PARAMETERS, isJar), paramsPath, substitutions);
             }
-            copyWithSubstitutions(getInputStreamForIrace(F_SCENARIO, isJar), Path.of(F_SCENARIO), substitutions);
+            Path scenarioPath = Path.of(F_SCENARIO);
+            copyWithSubstitutions(getInputStreamForIrace(F_SCENARIO, isJar), scenarioPath, substitutions);
+            if (automaticMode) {
+                extractInitialConfigurations(isJar, scenarioPath);
+            }
             return substitutions;
         } catch (IOException e) {
             throw new RuntimeException("Failed extracting irace config files", e);
+        }
+    }
+
+    private void extractInitialConfigurations(boolean isJar, Path scenarioPath) throws IOException {
+        var input = IOUtil.findInputStreamForIrace(INITIAL_CONFIGURATIONS_RESOURCE, isJar);
+        if (input == null) {
+            return;
+        }
+        try (input) {
+            var json = new String(input.readAllBytes(), StandardCharsets.UTF_8);
+            var seeds = new ComponentSpecJsonCodec().parseList(json);
+            var table = InitialConfigurationUtil.toIraceTable(searchSpace, seeds);
+            Files.writeString(Path.of(INITIAL_CONFIGURATIONS_FILE), table);
+            Files.writeString(scenarioPath,
+                    "\nconfigurationsFile = \"./" + INITIAL_CONFIGURATIONS_FILE + "\"\n",
+                    StandardOpenOption.APPEND);
+            log.info("Loaded {} initial autoconfig configurations from irace/{}", seeds.size(), INITIAL_CONFIGURATIONS_RESOURCE);
+        } catch (AlgorithmParsingException | IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid irace/" + INITIAL_CONFIGURATIONS_RESOURCE + ": " + e.getMessage(), e);
         }
     }
 

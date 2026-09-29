@@ -28,6 +28,23 @@ public final class ComponentSpecJsonCodec {
     }
 
     public ComponentSpec parse(String json) {
+        return parseComponent(readRoot(json), "$");
+    }
+
+    /** Parse an array of algorithm descriptions used to initialize autoconfig. */
+    public List<ComponentSpec> parseList(String json) {
+        JsonNode root = readRoot(json);
+        if (!root.isArray() || root.isEmpty()) {
+            throw invalid("$", "expected a nonempty array of component objects");
+        }
+        var components = new ArrayList<ComponentSpec>(root.size());
+        for (int i = 0; i < root.size(); i++) {
+            components.add(parseComponent(root.get(i), "$/" + i));
+        }
+        return List.copyOf(components);
+    }
+
+    private JsonNode readRoot(String json) {
         if (json == null) {
             throw new AlgorithmParsingException("Algorithm JSON description cannot be null");
         }
@@ -36,7 +53,7 @@ public final class ComponentSpecJsonCodec {
             if (root == null) {
                 throw new AlgorithmParsingException("Algorithm JSON description cannot be empty");
             }
-            return parseComponent(root, "$");
+            return root;
         } catch (JacksonException e) {
             var location = e.getLocation();
             String locationText = location == null

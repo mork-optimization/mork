@@ -101,6 +101,18 @@ public class IOUtil {
      * @throws java.io.IOException if anything goes wrong
      */
     public static InputStream getInputStreamForIrace(String filename, boolean isJar) throws IOException {
+        InputStream input = findInputStreamForIrace(filename, isJar);
+        if (input != null) {
+            return input;
+        }
+        throw new IOException("IRACE resource not found: " + filename);
+    }
+
+    /**
+     * Find an optional IRACE resource, with the same application override rules
+     * used for the required scenario and runner resources.
+     */
+    public static InputStream findInputStreamForIrace(String filename, boolean isJar) throws IOException {
         String resourcePath = "irace/" + filename;
         if (!isJar) {
             Path override = Path.of("src/main/resources").resolve(resourcePath);
@@ -120,7 +132,7 @@ public class IOUtil {
         if (bundled != null) {
             return bundled;
         }
-        throw new IOException("IRACE resource not found: " + filename);
+        return null;
     }
 
     /**
