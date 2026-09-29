@@ -198,13 +198,26 @@ public class IraceTargetEvaluator<S extends Solution<S, I>, I extends Instance> 
             var solution = algorithm.algorithm(instance);
             long endTime = System.nanoTime();
 
-            validator.ifPresent(v -> v.validate(solution).throwIfFail());
-
             double score;
             long slowOverrunMillis = 0;
             Objective<?, S, I> mainObj = Context.getMainObjective();
             if (automaticMode || iraceConfig.isTimecontrol()) {
                 slowOverrunMillis = checkExecutionTime(algorithm, instance);
+            }
+            if (validator.isPresent()) {
+                var validation = validator.get().validate(solution);
+                if (!validation.isValid()) {
+                    String reason = validation.getReasonFailed();
+                    log.warn("Rejecting invalid solution for configuration {}, instance {}, seed {}: {}. Parameters: {}",
+                            config.getCandidateConfiguration(), config.getInstanceName(), config.getSeed(),
+                            reason, config.getAlgorithmConfig().getConfig());
+                    return new ExecutionResult(
+                            new ExecuteResponse(),
+                            slowOverrunMillis,
+                            "INVALID_SOLUTION",
+                            reason
+                    );
+                }
             }
             if (automaticMode) {
                 try {
