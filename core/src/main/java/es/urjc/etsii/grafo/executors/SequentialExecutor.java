@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.executors;
 
+import es.urjc.etsii.grafo.metrics.timing.TimeStatsService;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.AlgorithmProcessingEndedEvent;
@@ -51,9 +52,9 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
             ReferenceResultManager referenceResultManager,
             MorkEventPublisher eventPublisher,
             ResultStore<S, I> resultStore,
-            ResultsSerializerListener<S, I> resultsSerializer
+            ResultsSerializerListener<S, I> resultsSerializer, TimeStatsService timeStats
     ) {
-        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore, resultsSerializer);
+        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore, resultsSerializer, timeStats);
     }
 
     /**

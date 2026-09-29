@@ -102,8 +102,7 @@ class ResultStoreTest {
                 result.solutionProperties(),
                 result.executionTime(),
                 result.timeToTarget(),
-                result.metrics(),
-                result.timeData()
+                result.metrics()
         );
     }
 }

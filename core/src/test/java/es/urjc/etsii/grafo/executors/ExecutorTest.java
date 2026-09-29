@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.executors;
 
+import es.urjc.etsii.grafo.metrics.timing.TimeStatsService;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.config.SolverConfig;
@@ -179,6 +180,34 @@ class ExecutorTest {
 
         assertEquals(2, algorithm.calls.get());
         verify(ioManager, never()).exportSolution(any(), any());
+        verifyNoInteractions(warmupExecutor.timeStats);
+    }
+
+    @Test
+    void timingScopeClosesOnSuccessValidationFailureAndAlgorithmFailure() {
+        executor.solverConfig.setRandomType(RandomType.DEFAULT);
+        var recorder = mock(es.urjc.etsii.grafo.metrics.timing.TimeStatsRecorder.class);
+        when(executor.timeStats.open(any())).thenReturn(recorder);
+        var work = new WorkUnit<>("exp", "inst1", new CountingAlgorithm("count"), 4);
+        var result = executor.doWork(work);
+        assertTrue(result.success());
+        var metadata = org.mockito.ArgumentCaptor.forClass(es.urjc.etsii.grafo.metrics.timing.TimeStatsExecution.class);
+        verify(executor.timeStats).open(metadata.capture());
+        assertEquals(result.resultId(), metadata.getValue().executionId());
+        assertEquals(executor.solverConfig.getSeed() + 4, metadata.getValue().seed());
+        verify(recorder).close();
+        assertNull(es.urjc.etsii.grafo.util.TimeStatsUtil.current());
+
+        doThrow(new IllegalStateException("invalid solution")).when(validator).validate(any());
+        assertFalse(executor.doWork(work).success());
+        verify(recorder, times(2)).close();
+        assertNull(es.urjc.etsii.grafo.util.TimeStatsUtil.current());
+
+        var algorithm = mock(Algorithm.class);
+        when(algorithm.algorithm(any())).thenThrow(new IllegalStateException("algorithm failed"));
+        assertFalse(executor.doWork(new WorkUnit<>("exp", "inst1", algorithm, 5)).success());
+        verify(recorder, times(3)).close();
+        assertNull(es.urjc.etsii.grafo.util.TimeStatsUtil.current());
     }
 
     @Test
@@ -254,8 +283,8 @@ class ExecutorTest {
         var workUnit = new WorkUnit<>("exp", "inst1", algorithm, 0);
         var candidateSolution = new TestSolution(new TestInstance("inst1"), 1.0);
         var bestSolution = new TestSolution(new TestInstance("inst1"), 2.0);
-        var candidate = WorkUnitResult.ok(workUnit, "inst1", candidateSolution, 1L, 1L, null, List.of());
-        var best = WorkUnitResult.ok(workUnit, "inst1", bestSolution, 1L, 1L, null, List.of());
+        var candidate = WorkUnitResult.ok(java.util.UUID.randomUUID(), workUnit, "inst1", candidateSolution, 1L, 1L, null);
+        var best = WorkUnitResult.ok(java.util.UUID.randomUUID(), workUnit, "inst1", bestSolution, 1L, 1L, null);
         assertEquals(2, evaluations.get());
 
         candidateSolution.setScore(100.0);
@@ -291,7 +320,7 @@ class ExecutorTest {
 
         ) {
             super(solutionValidator, timeLimitCalculator,
-                    io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore, resultsSerializer);
+                    io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore, resultsSerializer, mock(TimeStatsService.class));
         }
 
         @Override

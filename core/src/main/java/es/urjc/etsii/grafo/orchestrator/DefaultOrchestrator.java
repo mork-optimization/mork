@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.orchestrator;
 
+import es.urjc.etsii.grafo.metrics.timing.TimeStatsService;
 import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
@@ -44,6 +45,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
     private final SolverConfig solverConfig;
     private final MorkEventPublisher eventPublisher;
     private final ExecutionLifecycleCoordinator lifecycleCoordinator;
+    private final TimeStatsService timeStats;
     private final ResultsSerializerListener<S, I> resultsSerializer;
 
     /**
@@ -63,7 +65,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
             Executor<S, I> executor,
             MorkEventPublisher eventPublisher,
             ExecutionLifecycleCoordinator lifecycleCoordinator,
-            ResultsSerializerListener<S, I> resultsSerializer
+            ResultsSerializerListener<S, I> resultsSerializer, TimeStatsService timeStats
     ) {
         this.solverConfig = solverConfig;
         this.blockConfig = blockConfig;
@@ -74,6 +76,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
         this.eventPublisher = eventPublisher;
         this.lifecycleCoordinator = lifecycleCoordinator;
         this.resultsSerializer = resultsSerializer;
+        this.timeStats = timeStats;
     }
 
     protected void runBenchmark() {
@@ -107,6 +110,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
         eventPublisher.publish(new ExecutionStartedEvent(Context.getObjectivesW(), new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
         try {
+            timeStats.start();
             executor.startup();
             for(var experiment : experiments.values()){
                 experimentWrapper(experiment);

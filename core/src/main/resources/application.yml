@@ -71,7 +71,16 @@ solver:
   # Enable or disable metrics tracking. Force enabled if using autoconfig.
   metrics: false
 
+  # Stream per-call component timings to bounded, asynchronous CSV output.
   time-stats: false
+
+time-stats:
+  output-directory: time-stats
+  batch-size: 4096
+  queue-capacity: 64
+  pool-capacity: 64
+  flush-interval: 1s
+  shutdown-timeout: 5s
 
 # IRACE integration configuration. To enable IRACE tuning mode, run with --irace or --autoconfig.
 # Use --follower to start only the execution controller without launching tuning.

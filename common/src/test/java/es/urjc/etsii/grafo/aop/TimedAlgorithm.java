@@ -28,6 +28,7 @@ public class TimedAlgorithm extends Algorithm<TestSolution, TestInstance> {
     }
 
     // this method should be timed by the framework
+    @TimeStats // Also matching the annotation must not record the same invocation twice.
     @Override
     public TestSolution algorithm(TestInstance instance) {
         var sol = new TestSolution(instance);
@@ -66,10 +67,16 @@ public class TimedAlgorithm extends Algorithm<TestSolution, TestInstance> {
         }
 
         // this method is timed by the framework
+        @TimeStats
         @Override
         public TestSolution improve(TestSolution solution) {
             work1();
             work2();
+            return solution;
+        }
+
+        @TimeStats
+        public TestSolution improve(TestSolution solution, int ignored) {
             return solution;
         }
 

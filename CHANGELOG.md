@@ -2,6 +2,7 @@
 - (New) CMSA (Construct, Merge, Solve & Adapt) algorithm. See CMSA, CMSAConstructive, CMSASolver and CMSABuilder in the algorithms.cmsa package, and the new metaheuristics/cmsa.md doc page.
 - (Breaking) Remove the obsolete `irace.shell` property; R execution is selected through `RLangRunner` implementations.
 - (Breaking) Replace Spring-annotated Mork event listener methods with direct `MorkEventListener` implementations.
+- (Breaking) Reimplement TimeStats, do not keep in memory, flush them to CSV files. New docs page.
 - (Fix) Progress bar in console was drawn incorrectly while printing logs to console.
 - (Fix) Make the custom `BitSet` follow the `Set` equality and hash-code contract, with specialized fast paths for `BitSet` instances.
 - (Fix) Improve Excel serializer in some edge cases, print time with default with 2 decimals in pivot table.

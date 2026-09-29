@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.services;
 
+import es.urjc.etsii.grafo.metrics.timing.TimeStatsService;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
@@ -87,7 +88,7 @@ class DefaultOrchestratorTest {
                 executor,
                 eventPublisher,
                 lifecycle,
-                resultsSerializer
+                resultsSerializer, mock(TimeStatsService.class)
         );
 
         Assertions.assertDoesNotThrow(() -> orchestrator.run());

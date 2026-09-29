@@ -6,16 +6,16 @@ import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.Context;
-import es.urjc.etsii.grafo.util.TimeUtil;
+import es.urjc.etsii.grafo.util.TimeStatsUtil;
+import es.urjc.etsii.grafo.metrics.timing.TimeStatsMethod;
+import org.aspectj.lang.Signature;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.aspectj.lang.reflect.MethodSignature;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.lang.reflect.Method;
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Aspect
 @SuppressWarnings({"rawtypes", "unchecked"}) // todo investigate if we can avoid using raw types, probably not
@@ -23,7 +23,19 @@ public final class TimedAspect {
 
     private static final Logger log = LoggerFactory.getLogger(TimedAspect.class);
 
-    @Around("execution(* *(..)) && @annotation(es.urjc.etsii.grafo.aop.TimeStats)")
+    private static final ClassValue<ConcurrentHashMap<Signature, TimeStatsMethod>> METHODS = new ClassValue<>() {
+        @Override
+        protected ConcurrentHashMap<Signature, TimeStatsMethod> computeValue(Class<?> type) {
+            return new ConcurrentHashMap<>();
+        }
+    };
+
+    // The automatic component advices already time these methods.
+    @Around("execution(* *(..)) && @annotation(es.urjc.etsii.grafo.aop.TimeStats)"
+            + " && !execution(* es.urjc.etsii.grafo.algorithms.Algorithm+.algorithm(..))"
+            + " && !execution(* es.urjc.etsii.grafo.create.Constructive+.construct(..))"
+            + " && !execution(* es.urjc.etsii.grafo.improve.Improver+.improve(es.urjc.etsii.grafo.solution.Solution+))"
+            + " && !execution(* es.urjc.etsii.grafo.shake.Shake+.shake(es.urjc.etsii.grafo.solution.Solution+))")
     public Object log(ProceedingJoinPoint point) throws Throwable {
         return commonLog(point);
     }
@@ -67,21 +79,24 @@ public final class TimedAspect {
     }
 
     public Object commonLog(ProceedingJoinPoint point) throws Throwable {
-        var methodSignature = (MethodSignature) point.getSignature();
-        Method method = methodSignature.getMethod();
-        //var clazz = method.getDeclaringClass();
-        var clazz = point.getThis().getClass();
-        Logger log = LoggerFactory.getLogger(clazz);
+        var recorder = TimeStatsUtil.current();
+        if (recorder == null || !recorder.isActive()) return point.proceed();
 
-        var annotation = method.getAnnotation(TimeStats.class);
-        long start = System.nanoTime();
-        var retVal = point.proceed();
-        if(Metrics.areTimeStatsEnabled()){
-            long end = System.nanoTime();
-            Context.addTimeEvent(clazz.getSimpleName(), method.getName(), start, end);
-            log.trace("{}() took {} ms", method.getName(), TimeUtil.convert(end-start, TimeUnit.NANOSECONDS, TimeUnit.MILLISECONDS));
+        var signature = point.getSignature();
+        var target = point.getThis();
+        var clazz = target == null ? signature.getDeclaringType() : target.getClass();
+        var methods = METHODS.get(clazz);
+        var method = methods.get(signature);
+        if (method == null) {
+            method = new TimeStatsMethod(clazz.getName(), signature.toLongString());
+            var previous = methods.putIfAbsent(signature, method);
+            if (previous != null) method = previous;
         }
-
-        return retVal;
+        long start = System.nanoTime();
+        try {
+            return point.proceed();
+        } finally {
+            recorder.record(method, start, System.nanoTime());
+        }
     }
 }

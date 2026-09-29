@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.services;
 
+import es.urjc.etsii.grafo.metrics.timing.TimeStatsService;
 import es.urjc.etsii.grafo.events.EventWebserverConfig;
 import es.urjc.etsii.grafo.events.InMemoryEventLog;
 import es.urjc.etsii.grafo.events.MorkEventListener;
@@ -41,7 +42,7 @@ class ExecutionLifecycleCoordinatorTest {
             return null;
         }).when(context).close();
 
-        var coordinator = new ExecutionLifecycleCoordinator(context, publisher, config);
+        var coordinator = new ExecutionLifecycleCoordinator(context, publisher, config, mock(TimeStatsService.class));
         coordinator.complete(123L);
 
         assertTrue(closeLatch.await(1, TimeUnit.SECONDS));
@@ -58,10 +59,14 @@ class ExecutionLifecycleCoordinatorTest {
         var publisher = mock(MorkEventPublisher.class);
         var config = new EventWebserverConfig();
         config.setStopOnExecutionEnd(false);
-        var coordinator = new ExecutionLifecycleCoordinator(context, publisher, config);
+        var timing = mock(TimeStatsService.class);
+        var coordinator = new ExecutionLifecycleCoordinator(context, publisher, config, timing);
 
         coordinator.complete(456L);
 
+        var ordered = inOrder(timing, publisher);
+        ordered.verify(timing).close();
+        ordered.verify(publisher).publish(isA(ExecutionEndedEvent.class));
         verify(publisher).publish(isA(ExecutionEndedEvent.class));
         verify(publisher, never()).beginDraining();
         verify(publisher, never()).drainAndStop();
@@ -96,7 +101,7 @@ class ExecutionLifecycleCoordinatorTest {
         var config = new EventWebserverConfig();
         config.setStopOnExecutionEnd(true);
 
-        new ExecutionLifecycleCoordinator(context, publisher, config).complete(123L);
+        new ExecutionLifecycleCoordinator(context, publisher, config, mock(TimeStatsService.class)).complete(123L);
 
         assertTrue(closeLatch.await(1, TimeUnit.SECONDS));
         assertEquals(2, eventCountAtClose.get());

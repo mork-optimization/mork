@@ -35,8 +35,7 @@ public class TestHelperFactory {
                 solutionProperties,
                 time,
                 ttb,
-                new MetricsStorage(),
-                new ArrayList<>()
+                new MetricsStorage()
         );
     }
 

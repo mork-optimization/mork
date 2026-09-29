@@ -1,5 +1,8 @@
 package es.urjc.etsii.grafo.executors;
 
+import es.urjc.etsii.grafo.metrics.timing.TimeStatsService;
+import es.urjc.etsii.grafo.metrics.timing.TimeStatsExecution;
+import es.urjc.etsii.grafo.util.TimeStatsUtil;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.config.SolverConfig;
@@ -61,6 +64,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     protected final ResultStore<S, I> resultStore;
     protected final ResultsSerializerListener<S, I> resultsSerializer;
 
+    protected final TimeStatsService timeStats;
+
     private final ExceptionHandler<S, I> exceptionHandler;
 
 
@@ -101,7 +106,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             ReferenceResultManager referenceResultManager,
             MorkEventPublisher eventPublisher,
             ResultStore<S, I> resultStore,
-            ResultsSerializerListener<S, I> resultsSerializer) {
+            ResultsSerializerListener<S, I> resultsSerializer, TimeStatsService timeStats) {
         this.timeLimitCalculator = timeLimitCalculator;
         this.solverConfig = solverConfig;
         this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
@@ -113,6 +118,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         this.eventPublisher = eventPublisher;
         this.resultStore = resultStore;
         this.resultsSerializer = resultsSerializer;
+        this.timeStats = timeStats;
     }
 
     public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instancePaths, long startTimestamp);
@@ -143,7 +149,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             for (var algorithm : experiment.algorithms()) {
                 for (int i = 0; i < repetitions; i++) {
                     var workUnit = new WorkUnit<>(experiment.name(), instancePath, algorithm, i);
-                    var result = doWork(workUnit, warmupConfig.getMaxMillis());
+                    var result = doWork(workUnit, warmupConfig.getMaxMillis(), false);
                     if (!result.success()) {
                         throw new IllegalStateException("JVM warm-up failed for experiment %s, instance %s, algorithm %s"
                                 .formatted(experiment.name(), instancePath, algorithm.getName()));
@@ -171,7 +177,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
      * @param workUnit Minimum unit of work, cannot be divided further.
      */
     protected WorkUnitResult<S, I> doWork(WorkUnit<S, I> workUnit) {
-        return doWork(workUnit, 0);
+        return doWork(workUnit, 0, true);
     }
 
     /**
@@ -179,8 +185,9 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
      *
      * @param workUnit             Minimum unit of work, cannot be divided further.
      * @param overrideMaxMillis    if positive, override the regular time limit with this duration in milliseconds
+     * @param recordTiming         false for warm-up executions
      */
-    protected WorkUnitResult<S, I> doWork(WorkUnit<S, I> workUnit, long overrideMaxMillis) {
+    protected WorkUnitResult<S, I> doWork(WorkUnit<S, I> workUnit, long overrideMaxMillis, boolean recordTiming) {
         S solution = null;
         I instance = this.instanceManager.getInstance(workUnit.instancePath());
         Algorithm<S, I> algorithm = workUnit.algorithm();
@@ -188,7 +195,11 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
         long startTime = UNDEF_TIME, endTime = UNDEF_TIME;
 
-        try {
+        var resultId = UUID.randomUUID();
+        var recorder = recordTiming ? timeStats.open(new TimeStatsExecution(
+                resultId, workUnit.experimentName(), workUnit.instancePath(), instance.getId(),
+                algorithm.getName(), workUnit.i(), solverConfig.getSeed() + workUnit.i())) : null;
+        try (var timing = TimeStatsUtil.bind(recorder)) {
             // Preparate current work unit
             Context.Configurator.resetRandom(solverConfig, workUnit.i());
             if (overrideMaxMillis > 0) {
@@ -207,12 +218,6 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
                 Metrics.resetMetrics();
             }
 
-            if(solverConfig.isTimeStats()){
-                Metrics.enableTimeStats();
-            } else {
-                Metrics.disableTimeStats();
-            }
-
             // Do real work
             startTime = System.nanoTime();
             solution = algorithm.algorithm(instance);
@@ -225,9 +230,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
 
             long timeToTarget = solution.getLastModifiedTime() - startTime;
             long executionTime = endTime - startTime;
-            var timeData = Context.Configurator.getAndResetTimeEvents();
             var metrics = Metrics.areMetricsEnabled()? Metrics.getCurrentThreadMetrics() : null;
-            return WorkUnitResult.ok(workUnit, instance.getId(), solution, executionTime, timeToTarget, metrics, timeData);
+            return WorkUnitResult.ok(resultId, workUnit, instance.getId(), solution, executionTime, timeToTarget, metrics);
         } catch (Exception e) {
             long totalTime = UNDEF_TIME;
             if(startTime != UNDEF_TIME){
@@ -241,8 +245,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             }
             exceptionHandler.handleException(workUnit.experimentName(), workUnit.i(), e, Optional.ofNullable(solution), instance, workUnit.algorithm());
             eventPublisher.publish(new ErrorEvent(e));
-            var timeData = Context.Configurator.getAndResetTimeEvents();
-            return WorkUnitResult.failure(workUnit, instance.getId(), totalTime, UNDEF_TIME, timeData);
+            return WorkUnitResult.failure(resultId, workUnit, instance.getId(), totalTime, UNDEF_TIME);
         }
     }
 

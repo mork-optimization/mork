@@ -47,7 +47,6 @@ public class Context {
             context.validationEnabled = parentValue.validationEnabled;
             context.multiObjective = parentValue.multiObjective;
             context.referenceResultManager = parentValue.referenceResultManager;
-            // context.timeEvents; // do not copy! thread responsible for managing its own events
 
             context.paretoSet = parentValue.paretoSet;
             return context;
@@ -197,10 +196,6 @@ public class Context {
         return data;
     }
 
-    public static void addTimeEvent(String clazz, String methodName, long enter, long exit){
-        get().timeEvents.add(new TimeStatsEvent(clazz, methodName, enter, exit));
-    }
-
     /**
      * Dumb class to hold the context data
      */
@@ -215,7 +210,6 @@ public class Context {
         public Objective<?, S, I> mainObjective;
         public SolverConfig solverConfig;
         public BlockConfig blockConfig;
-        public List<TimeStatsEvent> timeEvents = new ArrayList<>();
         public SolutionValidator<S,I> validator;
         public boolean validationEnabled = true;
         public boolean multiObjective;
@@ -333,14 +327,6 @@ public class Context {
                 // TODO make configurable, and change by default to NDTree when behaviour is verified
                 ctx.paretoSet = new ParetoSimpleList<>(objectives.length);
             }
-        }
-
-        public static List<TimeStatsEvent> getAndResetTimeEvents(){
-            var data = get();
-            var timeEvents = data.timeEvents;
-            data.timeEvents = new ArrayList<>();
-            return timeEvents;
-
         }
 
         public static void setRefResultManager(ReferenceResultManager referenceResultManager) {

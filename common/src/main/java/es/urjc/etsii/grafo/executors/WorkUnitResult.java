@@ -6,11 +6,9 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.metrics.MetricsStorage;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.Context;
-import es.urjc.etsii.grafo.util.TimeStatsEvent;
 
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
@@ -35,8 +33,7 @@ public record WorkUnitResult<S extends Solution<S, I>, I extends Instance>(
         Map<String, Object> solutionProperties,
         long executionTime,
         long timeToTarget,
-        MetricsStorage metrics,
-        List<TimeStatsEvent> timeData
+        MetricsStorage metrics
 ) {
 
     public static final String BEST_ALGORITHM = "bestalg";
@@ -46,20 +43,19 @@ public record WorkUnitResult<S extends Solution<S, I>, I extends Instance>(
         Objects.requireNonNull(resultId, "resultId cannot be null");
         objectives = immutableOrderedMap(objectives, "objective");
         solutionProperties = immutableOrderedMap(solutionProperties, "custom property");
-        timeData = timeData == null ? List.of() : List.copyOf(timeData);
     }
 
     public static <S extends Solution<S, I>, I extends Instance> WorkUnitResult<S, I> ok(
+            UUID resultId,
             WorkUnit<S, I> workUnit,
             String instanceId,
             S solution,
             long executionTime,
             long timeToTarget,
-            MetricsStorage metrics,
-            List<TimeStatsEvent> timeData
+            MetricsStorage metrics
     ) {
         return new WorkUnitResult<>(
-                UUID.randomUUID(),
+                resultId,
                 true,
                 workUnit.experimentName(),
                 workUnit.instancePath(),
@@ -71,20 +67,19 @@ public record WorkUnitResult<S extends Solution<S, I>, I extends Instance>(
                 computeSolutionProperties(solution),
                 executionTime,
                 timeToTarget,
-                metrics,
-                timeData
+                metrics
         );
     }
 
     public static <S extends Solution<S, I>, I extends Instance> WorkUnitResult<S, I> failure(
+            UUID resultId,
             WorkUnit<S, I> workUnit,
             String instanceId,
             long executionTime,
-            long timeToTarget,
-            List<TimeStatsEvent> timeData
+            long timeToTarget
     ) {
         return new WorkUnitResult<>(
-                UUID.randomUUID(),
+                resultId,
                 false,
                 workUnit.experimentName(),
                 workUnit.instancePath(),
@@ -96,8 +91,7 @@ public record WorkUnitResult<S extends Solution<S, I>, I extends Instance>(
                 Map.of(),
                 executionTime,
                 timeToTarget,
-                null,
-                timeData
+                null
         );
     }
 
@@ -117,8 +111,7 @@ public record WorkUnitResult<S extends Solution<S, I>, I extends Instance>(
                 workUnit.solutionProperties(),
                 workUnit.executionTime(),
                 workUnit.timeToTarget(),
-                workUnit.metrics(),
-                workUnit.timeData()
+                workUnit.metrics()
         );
     }
 
@@ -138,8 +131,7 @@ public record WorkUnitResult<S extends Solution<S, I>, I extends Instance>(
                 workUnit.solutionProperties(),
                 workUnit.executionTime(),
                 workUnit.timeToTarget(),
-                workUnit.metrics(),
-                workUnit.timeData()
+                workUnit.metrics()
         );
     }
 
@@ -220,8 +212,7 @@ public record WorkUnitResult<S extends Solution<S, I>, I extends Instance>(
                 solutionProperties,
                 executionTime,
                 timeToTarget,
-                metrics,
-                timeData
+                metrics
         );
     }
 
