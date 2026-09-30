@@ -174,15 +174,8 @@ The generated `autoconfig-initial-configurations.txt` is written in the applicat
 `parameters.txt` and `scenario.txt`. If an application supplies its own scenario, Mork appends the generated
 `configurationsFile` setting so the JSON initial configurations take precedence.
 
-The REST API retains the latest 10,000 individual evaluation records by default. Change the limit when a
-different memory/history tradeoff is required:
-
-```yaml
-irace:
-  api-evaluation-history-limit: 10000
-```
-
-See [Autoconfig REST API](autoconfig-rest-api.md) for monitoring the active run.
+The REST API retains every evaluation record in memory for the current run. See
+[Autoconfig REST API](autoconfig-rest-api.md) for monitoring and filtering evaluations.
 
 ## Troubleshooting
 

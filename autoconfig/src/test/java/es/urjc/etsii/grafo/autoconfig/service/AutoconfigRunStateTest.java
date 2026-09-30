@@ -4,7 +4,6 @@ import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
-import es.urjc.etsii.grafo.autoconfig.irace.IraceConfig;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
 import org.junit.jupiter.api.Test;
 import tools.jackson.databind.ObjectMapper;
@@ -27,7 +26,7 @@ class AutoconfigRunStateTest {
 
     @Test
     void exposesThePreparedExecutionMode() {
-        var state = newState(10);
+        var state = newState();
 
         assertFalse(state.isAutomaticMode());
         state.prepareCoordinator(true);
@@ -38,7 +37,7 @@ class AutoconfigRunStateTest {
 
     @Test
     void publishesSearchSpaceOnlyForAutomaticCoordinatorRuns() {
-        var state = newState(10);
+        var state = newState();
         state.prepareCoordinator(true);
         assertFalse(state.hasGeneratedSearchSpace());
 
@@ -58,7 +57,7 @@ class AutoconfigRunStateTest {
 
     @Test
     void correlatesMorkStateWithLatestIraceSnapshot() {
-        var state = newState(10);
+        var state = newState();
         String runId = state.prepareCoordinator(true);
         state.publishGeneratedSearchSpace(7);
         state.markRunning(20);
@@ -105,40 +104,75 @@ class AutoconfigRunStateTest {
     }
 
     @Test
-    void retainsBoundedCompletedHistoryWithoutLosingAggregateCounts() {
-        var state = newState(2);
+    void retainsEvaluationsBeyondTheFormerHistoryLimit() {
+        var state = newState();
         state.prepareCoordinator(true);
         state.publishGeneratedSearchSpace(1);
-        state.markRunning(10);
+        state.markRunning(10_001);
 
-        for (int i = 1; i <= 3; i++) {
-            long evaluation = state.evaluationStarted(configuration(String.valueOf(i), i));
+        for (int i = 1; i <= 10_001; i++) {
+            long evaluation = state.evaluationStarted(configuration("12", i));
             state.evaluationSucceeded(evaluation, i, 0.1, 0);
         }
 
-        var page = state.evaluations(null, null);
-        assertTrue(page.historyTruncated());
-        assertEquals(2, page.oldestRetainedId());
-        assertEquals(3, page.latestId());
+        var page = state.evaluations(null, 2, null);
+        assertEquals(10_001, page.latestId());
         assertEquals(2, page.evaluations().size());
-        assertEquals(3, state.status().evaluations().succeeded());
-        assertNotNull(state.candidate("1"));
+        assertEquals(1, page.evaluations().getFirst().id());
+        var nextPage = state.evaluations(page.nextCursor(), 2, null);
+        assertEquals(2, nextPage.evaluations().size());
+        assertEquals(3, nextPage.evaluations().getFirst().id());
+        var finalPage = state.evaluations(10_000L, 2, null);
+        assertEquals(1, finalPage.evaluations().size());
+        assertEquals(10_001, finalPage.evaluations().getFirst().id());
+        assertEquals(10_001, state.status().evaluations().succeeded());
+        assertEquals(10_001, state.candidate("12").evaluations().succeeded());
+    }
+
+    @Test
+    void filtersEvaluationsByStateAndKeepsPageCursorOnMatchingRecords() {
+        var state = newState();
+        state.prepareCoordinator(true);
+        state.markRunning(10);
+
+        long running = state.evaluationStarted(configuration("running", 1));
+        long succeeded = state.evaluationStarted(configuration("succeeded", 2));
+        long rejected = state.evaluationStarted(configuration("rejected", 3));
+        long failed = state.evaluationStarted(configuration("failed", 4));
+        long rejectedAgain = state.evaluationStarted(configuration("rejected-again", 5));
+        state.evaluationSucceeded(succeeded, 1.0, 0.1, 0);
+        state.evaluationRejected(rejected, "INVALID_SOLUTION", "Invalid tour", 0);
+        state.evaluationFailed(failed, new IllegalStateException("Execution failed"));
+        state.evaluationRejected(rejectedAgain, "INVALID_AUC", "No samples", 0);
+
+        var rejectedPage = state.evaluations(null, 1, AutoconfigRunState.EvaluationState.REJECTED);
+        assertEquals(rejected, rejectedPage.evaluations().getFirst().id());
+        assertEquals(rejected, rejectedPage.nextCursor());
+        var nextRejectedPage = state.evaluations(rejectedPage.nextCursor(), 1, AutoconfigRunState.EvaluationState.REJECTED);
+        assertEquals(rejectedAgain, nextRejectedPage.evaluations().getFirst().id());
+        assertEquals(1, state.evaluations(null, null, AutoconfigRunState.EvaluationState.RUNNING).evaluations().size());
+        assertEquals(succeeded, state.evaluations(null, null, AutoconfigRunState.EvaluationState.SUCCEEDED).evaluations().getFirst().id());
+        assertEquals(failed, state.evaluations(null, null, AutoconfigRunState.EvaluationState.FAILED).evaluations().getFirst().id());
+        assertEquals(5, state.evaluations(null, null, null).evaluations().size());
+
+        state.evaluationRejected(running, "INVALID_CONFIGURATION", "Invalid combination", 0);
+        assertEquals(running, state.evaluations(null, 1, AutoconfigRunState.EvaluationState.REJECTED).evaluations().getFirst().id());
     }
 
     @Test
     void evaluationPagesAreRefetchableSnapshots() {
-        var state = newState(10);
+        var state = newState();
         state.prepareCoordinator(true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
 
         long evaluationId = state.evaluationStarted(configuration("12", 123));
-        var running = state.evaluations(null, null).evaluations().getFirst();
+        var running = state.evaluations(null, null, null).evaluations().getFirst();
         assertEquals(AutoconfigRunState.EvaluationState.RUNNING, running.state());
         assertEquals(123, running.seed());
 
         state.evaluationSucceeded(evaluationId, 4.5, 0.2, 0);
-        var completed = state.evaluations(null, null).evaluations().getFirst();
+        var completed = state.evaluations(null, null, null).evaluations().getFirst();
         assertEquals(AutoconfigRunState.EvaluationState.SUCCEEDED, completed.state());
         assertEquals(4.5, completed.cost());
         assertNotNull(completed.finishedAt());
@@ -146,7 +180,7 @@ class AutoconfigRunStateTest {
 
     @Test
     void rejectsStaleSnapshotsAndInvalidPagination() {
-        var state = newState(10);
+        var state = newState();
         String runId = state.prepareCoordinator(true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
@@ -160,13 +194,13 @@ class AutoconfigRunStateTest {
                 IllegalStateException.class,
                 () -> state.publishProgress("other-run", 5, List.of(), experimentProgress(5, 10, 0, 10))
         );
-        assertThrows(IllegalArgumentException.class, () -> state.evaluations(-1L, 10));
-        assertThrows(IllegalArgumentException.class, () -> state.evaluations(0L, 501));
+        assertThrows(IllegalArgumentException.class, () -> state.evaluations(-1L, 10, null));
+        assertThrows(IllegalArgumentException.class, () -> state.evaluations(0L, 501, null));
     }
 
     @Test
     void acceptsRepeatedAndSkippedIterationSnapshots() {
-        var state = newState(10);
+        var state = newState();
         String runId = state.prepareCoordinator(true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
@@ -180,7 +214,7 @@ class AutoconfigRunStateTest {
 
     @Test
     void preservesCurrentSnapshotWhenAReplacementIsInvalid() {
-        var state = newState(10);
+        var state = newState();
         String runId = state.prepareCoordinator(true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
@@ -219,7 +253,7 @@ class AutoconfigRunStateTest {
 
     @Test
     void rejectedSnapshotDoesNotRegisterCandidates() {
-        var state = newState(10);
+        var state = newState();
         String runId = state.prepareCoordinator(true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
@@ -244,7 +278,7 @@ class AutoconfigRunStateTest {
 
     @Test
     void acceptsMismatchedAndTimeBudgetProgressWithoutChangingMorkBudget() {
-        var state = newState(10);
+        var state = newState();
         String runId = state.prepareCoordinator(true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
@@ -268,7 +302,7 @@ class AutoconfigRunStateTest {
 
     @Test
     void acceptsParameterOnlyCandidatesForCustomIraceBuilders() {
-        var state = newState(10);
+        var state = newState();
         String runId = state.prepareCoordinator(false);
         state.markRunning(10);
         var parameters = Map.of("alpha", "0.1", "strategy", "custom");
@@ -286,7 +320,7 @@ class AutoconfigRunStateTest {
 
     @Test
     void workerHasNoCoordinatorLifecycleOrBudget() {
-        var state = newState(10);
+        var state = newState();
         state.prepareWorker(false);
 
         var status = state.status();
@@ -318,7 +352,7 @@ class AutoconfigRunStateTest {
         );
     }
 
-    private static AutoconfigRunState newState(int historyLimit) {
+    private static AutoconfigRunState newState() {
         var builder = mock(AutomaticAlgorithmBuilder.class);
         var objectMapper = new ObjectMapper();
         when(builder.asJsonTree(any())).thenAnswer(invocation -> {
@@ -327,9 +361,7 @@ class AutoconfigRunStateTest {
             node.put("$component", config.getValue("ROOT", "Unknown"));
             return node;
         });
-        var iraceConfig = new IraceConfig();
-        iraceConfig.setApiEvaluationHistoryLimit(historyLimit);
-        return new AutoconfigRunState(builder, iraceConfig);
+        return new AutoconfigRunState(builder);
     }
 
     private static IraceRuntimeConfiguration configuration(String configurationId, long seed) {

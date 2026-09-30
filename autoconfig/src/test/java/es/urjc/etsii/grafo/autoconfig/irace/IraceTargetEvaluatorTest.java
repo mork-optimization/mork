@@ -64,7 +64,7 @@ class IraceTargetEvaluatorTest {
         solverConfig.setParallelExecutor(false);
         solverConfig.setRandomType(RandomType.DEFAULT);
         var iraceConfig = new IraceConfig();
-        runState = new AutoconfigRunState(mock(AutomaticAlgorithmBuilder.class), iraceConfig);
+        runState = new AutoconfigRunState(mock(AutomaticAlgorithmBuilder.class));
         runState.prepareWorker(false);
 
         instance = new TestInstance("instance");
@@ -133,7 +133,7 @@ class IraceTargetEvaluatorTest {
         assertEquals(1, runState.status().evaluations().rejected());
         assertEquals(
                 "INVALID_CONFIGURATION",
-                runState.evaluations(null, null).evaluations().getFirst().reasonCode()
+                runState.evaluations(null, null, null).evaluations().getFirst().reasonCode()
         );
     }
 
@@ -152,7 +152,7 @@ class IraceTargetEvaluatorTest {
         assertEquals(1, runState.status().evaluations().rejected());
         assertEquals(1, runState.status().evaluations().succeeded());
         assertEquals(0, runState.status().evaluations().failed());
-        var rejected = runState.evaluations(null, null).evaluations();
+        var rejected = runState.evaluations(null, null, null).evaluations();
         int invalidCount = 0;
         for (var evaluation : rejected) {
             if ("INVALID_SOLUTION".equals(evaluation.reasonCode())) {
@@ -187,7 +187,7 @@ class IraceTargetEvaluatorTest {
         var response = evaluator.evaluateBatch(List.of(configuration("invalid", 1))).getFirst();
 
         assertEquals("Inf 0", response.toIraceResultString());
-        assertEquals("INVALID_SOLUTION", runState.evaluations(null, null).evaluations().getFirst().reasonCode());
+        assertEquals("INVALID_SOLUTION", runState.evaluations(null, null, null).evaluations().getFirst().reasonCode());
         assertFalse(TimeControl.isEnabled());
     }
 
@@ -222,7 +222,7 @@ class IraceTargetEvaluatorTest {
         assertEquals(1, runState.status().evaluations().failed());
         assertEquals(
                 "EXECUTION_ERROR",
-                runState.evaluations(null, null).evaluations().getFirst().reasonCode()
+                runState.evaluations(null, null, null).evaluations().getFirst().reasonCode()
         );
     }
 

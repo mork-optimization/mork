@@ -132,13 +132,19 @@ after the final IRACE result has been validated.
 |-----------|---------|
 | `after` | Return IDs greater than this cursor. Defaults to `0`. |
 | `limit` | Page size from 1 to 500. Defaults to 100. |
+| `state` | Optional evaluation state: `RUNNING`, `SUCCEEDED`, `REJECTED`, or `FAILED`. |
+
+For example, `GET /api/autoconfig/evaluations?state=REJECTED&after=0&limit=500` lists rejected evaluations.
 
 Each item contains the full instance, seed, timing, cost, rejection/error, and slow-overrun details. The page is
 a point-in-time snapshot: if it contains a running evaluation, refetch that page to observe its final state.
-`nextCursor` navigates later records in the same snapshot and is not an update-event cursor.
-`historyTruncated`, `oldestRetainedId`, and `latestId` make bounded retention explicit. Aggregate status and
-candidate counters remain exact after old evaluation details have been evicted. Invalid pagination values return
-status 400.
+`nextCursor` navigates later matching IDs; `latestId` is the latest ID assigned, including evaluations outside the
+requested state. A state filter reflects the current state at request time. An evaluation with an older ID may later
+move from `RUNNING` to `REJECTED` or `FAILED`, so refetch earlier pages when monitoring a filtered state in real time.
+Invalid pagination values return status 400.
+
+All evaluation records remain available until the application starts a new run or exits. The API keeps them in
+memory, so large runs require proportionally more JVM heap; it does not persist records across restarts.
 
 ## Polling
 

@@ -4,7 +4,6 @@ import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
-import es.urjc.etsii.grafo.autoconfig.irace.IraceConfig;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,10 +15,10 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NavigableMap;
 import java.util.Objects;
 import java.util.TreeMap;
 import java.util.UUID;
@@ -35,8 +34,7 @@ public class AutoconfigRunState {
     private static final int MAX_PAGE_SIZE = 500;
 
     private final AutomaticAlgorithmBuilder<?, ?> algorithmBuilder;
-    private final int evaluationHistoryLimit;
-    private final LinkedHashMap<Long, MutableEvaluation> evaluations = new LinkedHashMap<>();
+    private final NavigableMap<Long, MutableEvaluation> evaluations = new TreeMap<>();
     private final Map<String, MutableCandidate> candidates = new LinkedHashMap<>();
 
     private boolean automaticMode;
@@ -56,15 +54,10 @@ public class AutoconfigRunState {
     private long rejected;
     private long failed;
     private long slow;
-    private boolean historyTruncated;
     private StoredIraceSnapshot irace = StoredIraceSnapshot.empty();
 
-    public AutoconfigRunState(
-            AutomaticAlgorithmBuilder<?, ?> algorithmBuilder,
-            IraceConfig iraceConfig
-    ) {
+    public AutoconfigRunState(AutomaticAlgorithmBuilder<?, ?> algorithmBuilder) {
         this.algorithmBuilder = algorithmBuilder;
-        this.evaluationHistoryLimit = iraceConfig.getApiEvaluationHistoryLimit();
     }
 
     public synchronized String prepareCoordinator(boolean automaticMode) {
@@ -162,7 +155,6 @@ public class AutoconfigRunState {
         used++;
         running++;
         candidate.running++;
-        evictCompletedEvaluations();
         return evaluationId;
     }
 
@@ -187,7 +179,6 @@ public class AutoconfigRunState {
         if (evaluation.slow) {
             candidate.slow++;
         }
-        evictCompletedEvaluations();
     }
 
     public synchronized void evaluationRejected(
@@ -211,7 +202,6 @@ public class AutoconfigRunState {
         if (evaluation.slow) {
             candidate.slow++;
         }
-        evictCompletedEvaluations();
     }
 
     public synchronized void evaluationFailed(long evaluationId, Throwable throwable) {
@@ -226,7 +216,6 @@ public class AutoconfigRunState {
         var candidate = candidates.get(evaluation.configurationId);
         candidate.running--;
         candidate.failed++;
-        evictCompletedEvaluations();
     }
 
     public synchronized void publishProgress(
@@ -414,7 +403,8 @@ public class AutoconfigRunState {
 
     public synchronized EvaluationPage evaluations(
             Long after,
-            Integer requestedLimit
+            Integer requestedLimit,
+            EvaluationState state
     ) {
         long cursor = after == null ? 0 : after;
         if (cursor < 0) {
@@ -427,8 +417,8 @@ public class AutoconfigRunState {
 
         var items = new ArrayList<EvaluationView>(limit);
         long nextCursor = cursor;
-        for (var evaluation : evaluations.values()) {
-            if (evaluation.id <= cursor) {
+        for (var evaluation : evaluations.tailMap(cursor, false).values()) {
+            if (state != null && evaluation.state != state) {
                 continue;
             }
             items.add(evaluation.view());
@@ -438,10 +428,7 @@ public class AutoconfigRunState {
             }
         }
 
-        long oldest = evaluations.isEmpty() ? 0 : evaluations.keySet().iterator().next();
         return new EvaluationPage(
-                historyTruncated,
-                oldest,
                 nextEvaluationId,
                 nextCursor,
                 List.copyOf(items)
@@ -471,7 +458,6 @@ public class AutoconfigRunState {
         this.rejected = 0;
         this.failed = 0;
         this.slow = 0;
-        this.historyTruncated = false;
         this.irace = StoredIraceSnapshot.empty();
         this.evaluations.clear();
         this.candidates.clear();
@@ -554,25 +540,6 @@ public class AutoconfigRunState {
         evaluation.slow = true;
         evaluation.slowOverrunMillis = slowOverrunMillis;
         slow++;
-    }
-
-    private void evictCompletedEvaluations() {
-        while (evaluations.size() > evaluationHistoryLimit) {
-            boolean removed = false;
-            Iterator<Map.Entry<Long, MutableEvaluation>> iterator = evaluations.entrySet().iterator();
-            while (iterator.hasNext()) {
-                var entry = iterator.next();
-                if (entry.getValue().state != EvaluationState.RUNNING) {
-                    iterator.remove();
-                    historyTruncated = true;
-                    removed = true;
-                    break;
-                }
-            }
-            if (!removed) {
-                return;
-            }
-        }
     }
 
     private static String safeMessage(Throwable throwable) {
@@ -664,8 +631,6 @@ public class AutoconfigRunState {
     }
 
     public record EvaluationPage(
-            boolean historyTruncated,
-            long oldestRetainedId,
             long latestId,
             long nextCursor,
             List<EvaluationView> evaluations

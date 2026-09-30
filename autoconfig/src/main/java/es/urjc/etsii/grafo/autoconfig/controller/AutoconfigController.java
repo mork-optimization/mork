@@ -52,9 +52,10 @@ public class AutoconfigController {
     @GetMapping("/evaluations")
     public AutoconfigRunState.EvaluationPage evaluations(
             @RequestParam(required = false) Long after,
-            @RequestParam(required = false) Integer limit
+            @RequestParam(required = false) Integer limit,
+            @RequestParam(required = false) AutoconfigRunState.EvaluationState state
     ) {
-        return runState.evaluations(after, limit);
+        return runState.evaluations(after, limit, state);
     }
 
     @GetMapping("/candidates/{configurationId}")

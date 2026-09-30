@@ -11,6 +11,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import java.util.List;
 
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -120,5 +121,27 @@ class AutoconfigControllerTest {
     void doesNotExposeEvaluationDetailEndpoint() throws Exception {
         mockMvc.perform(get("/api/autoconfig/evaluations/99"))
                 .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void filtersEvaluationPagesByState() throws Exception {
+        var rejected = new AutoconfigRunState.EvaluationView(
+                7, "42", "instance-1", "instance.dat", 123,
+                AutoconfigRunState.EvaluationState.REJECTED,
+                null, null, null, null,
+                "INVALID_SOLUTION", "Invalid tour", false, null
+        );
+        when(runState.evaluations(5L, 10, AutoconfigRunState.EvaluationState.REJECTED))
+                .thenReturn(new AutoconfigRunState.EvaluationPage(7, 7, List.of(rejected)));
+
+        mockMvc.perform(get("/api/autoconfig/evaluations")
+                        .param("after", "5")
+                        .param("limit", "10")
+                        .param("state", "REJECTED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evaluations[0].state").value("REJECTED"))
+                .andExpect(jsonPath("$.evaluations[0].reasonCode").value("INVALID_SOLUTION"))
+                .andExpect(jsonPath("$.nextCursor").value(7));
+        verify(runState).evaluations(5L, 10, AutoconfigRunState.EvaluationState.REJECTED);
     }
 }

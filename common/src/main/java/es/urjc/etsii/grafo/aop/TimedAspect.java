@@ -2,16 +2,15 @@ package es.urjc.etsii.grafo.aop;
 
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.metrics.Metrics;
-import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
-import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeStatsUtil;
 import es.urjc.etsii.grafo.metrics.timing.TimeStatsMethod;
 import org.aspectj.lang.Signature;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Pointcut;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -30,17 +29,28 @@ public final class TimedAspect {
         }
     };
 
+    @Pointcut("execution(* es.urjc.etsii.grafo.algorithms.Algorithm+.algorithm(..))")
+    private void algorithmExecution() {}
+
+    @Pointcut("execution(* es.urjc.etsii.grafo.create.Constructive+.construct(..))")
+    private void constructiveExecution() {}
+
+    @Pointcut("execution(* es.urjc.etsii.grafo.improve.Improver+.improve(..))"
+            + " && target(es.urjc.etsii.grafo.improve.Improver) && args(es.urjc.etsii.grafo.solution.Solution)")
+    private void improverExecution() {}
+
+    @Pointcut("execution(* es.urjc.etsii.grafo.shake.Shake+.shake(es.urjc.etsii.grafo.solution.Solution+, int))"
+            + " && target(es.urjc.etsii.grafo.shake.Shake)")
+    private void shakeExecution() {}
+
     // The automatic component advices already time these methods.
     @Around("execution(* *(..)) && @annotation(es.urjc.etsii.grafo.aop.TimeStats)"
-            + " && !execution(* es.urjc.etsii.grafo.algorithms.Algorithm+.algorithm(..))"
-            + " && !execution(* es.urjc.etsii.grafo.create.Constructive+.construct(..))"
-            + " && !execution(* es.urjc.etsii.grafo.improve.Improver+.improve(es.urjc.etsii.grafo.solution.Solution+))"
-            + " && !execution(* es.urjc.etsii.grafo.shake.Shake+.shake(es.urjc.etsii.grafo.solution.Solution+))")
+            + " && !(algorithmExecution() || constructiveExecution() || improverExecution() || shakeExecution())")
     public Object log(ProceedingJoinPoint point) throws Throwable {
         return commonLog(point);
     }
 
-    @Around(value = "execution(* es.urjc.etsii.grafo.improve.Improver+.improve(..)) && target(improver) && args(solution)", argNames = "point,improver,solution")
+    @Around(value = "improverExecution() && target(improver) && args(solution)", argNames = "point,improver,solution")
     public Object logImprover(ProceedingJoinPoint point, Improver improver, Solution solution) throws Throwable {
         Objective objective = improver.getObjective();
         double initialScore = objective.evalSol(solution);
@@ -57,23 +67,17 @@ public final class TimedAspect {
         return improvedSolution;
     }
 
-    @Around("execution(* es.urjc.etsii.grafo.algorithms.Algorithm+.algorithm(..))")
+    @Around("algorithmExecution()")
     public Object logAlgorithm(ProceedingJoinPoint point) throws Throwable {
         return commonLog(point);
     }
 
-    @Around(value = "execution(* es.urjc.etsii.grafo.shake.Shake+.shake(..))  && target(shake) && args(solution)", argNames = "point,shake,solution")
-    public Object logShake(ProceedingJoinPoint point, Shake shake, Solution solution) throws Throwable {
-        Objective objective = Context.getMainObjective();
-        double initialScore = objective.evalSol(solution);
-        Solution shakedSolution = (Solution) commonLog(point);
-        double endScore = objective.evalSol(shakedSolution);
-        log.debug("{}: {} --> {}", shake.getClass().getSimpleName(), initialScore, endScore);
-
-        return shakedSolution;
+    @Around("shakeExecution()")
+    public Object logShake(ProceedingJoinPoint point) throws Throwable {
+        return commonLog(point);
     }
 
-    @Around("execution(* es.urjc.etsii.grafo.create.Constructive+.construct(..))")
+    @Around("constructiveExecution()")
     public Object logConstruct(ProceedingJoinPoint point) throws Throwable {
         return commonLog(point);
     }

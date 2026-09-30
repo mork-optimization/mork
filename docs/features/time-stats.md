@@ -64,7 +64,9 @@ complete recording.
 counts known discarded events. `flushedEvents` acknowledges only successful
 writer flushes; after an I/O failure, additional rows may exist beyond that
 acknowledged prefix. A failed or interrupted recording does not claim exact
-persisted counts. `COMPLETE` means normal finalization with no dropped events;
+persisted counts. Live snapshots report `RECORDING` while accepting events and
+`DRAINING` during shutdown until writing, final publication, and stream closing finish.
+`COMPLETE` means normal finalization with no dropped events;
 `INCOMPLETE` denotes known omissions; `FAILED` denotes a writer/shutdown error.
 
 Raw CSV volume grows with captured calls. Recording and writing also consume CPU

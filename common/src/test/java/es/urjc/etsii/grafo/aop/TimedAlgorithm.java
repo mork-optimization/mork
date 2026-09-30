@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.aop;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
+import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
@@ -51,6 +52,7 @@ public class TimedAlgorithm extends Algorithm<TestSolution, TestInstance> {
         }
 
 
+        @TimeStats
         @Override
         public TestSolution construct(TestSolution solution) {
             sleep(sleep);
@@ -80,6 +82,11 @@ public class TimedAlgorithm extends Algorithm<TestSolution, TestInstance> {
             return solution;
         }
 
+        @TimeStats
+        public TestSolution improve(Object solution) {
+            return (TestSolution) solution;
+        }
+
         @TimeStats // this method is timed
         protected void work1(){
             sleep(sleep);
@@ -88,6 +95,34 @@ public class TimedAlgorithm extends Algorithm<TestSolution, TestInstance> {
         // this method is not
         protected void work2(){
             sleep(sleep);
+        }
+    }
+
+    public static class TestShake extends Shake<TestSolution, TestInstance> {
+        @TimeStats
+        public TestSolution shake(TestSolution solution) {
+            return solution;
+        }
+
+        @TimeStats
+        @Override
+        public TestSolution shake(TestSolution solution, int k) {
+            return solution;
+        }
+    }
+
+    public static class UnannotatedTestShake extends Shake<TestSolution, TestInstance> {
+        @Override
+        public TestSolution shake(TestSolution solution, int k) {
+            return solution;
+        }
+
+        public TestSolution shake(TestSolution solution) {
+            return solution;
+        }
+
+        public TestSolution shake(TestSolution solution, long k) {
+            return solution;
         }
     }
 }

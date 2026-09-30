@@ -44,6 +44,49 @@ public class TimeStatsTest {
     }
 
     @Test
+    void annotatedRuntimeSolutionOverloadIsRecordedOnce() {
+        Metrics.disableMetrics();
+        var recorder = new CapturingRecorder();
+        var solution = new TestSolution(new TestInstance("test"));
+        try (var ignored = TimeStatsUtil.bind(recorder)) {
+            Assertions.assertSame(solution, new TimedAlgorithm.TestLocalSearch(0).improve((Object) solution));
+        }
+        Assertions.assertEquals(1, recorder.calls.size());
+        Assertions.assertTrue(recorder.calls.getFirst().method.signature().contains(".improve(java.lang.Object)"));
+    }
+
+    @Test
+    void onlyRequiredShakeSignatureIsRecordedAutomatically() {
+        Context.Configurator.setObjectives(Objective.ofMinimizing("DefaultMinimize", TestSolution::getScore, TestMove::getScoreChange));
+        var recorder = new CapturingRecorder();
+        var solution = new TestSolution(new TestInstance("test"));
+        var shake = new TimedAlgorithm.UnannotatedTestShake();
+        try (var ignored = TimeStatsUtil.bind(recorder)) {
+            Assertions.assertSame(solution, shake.shake(solution, 1));
+            Assertions.assertEquals(1, recorder.calls.size());
+            Assertions.assertSame(solution, shake.shake(solution));
+            Assertions.assertSame(solution, shake.shake(solution, 1L));
+            Assertions.assertEquals(1, recorder.calls.size());
+        }
+        Assertions.assertTrue(recorder.calls.getFirst().method.signature().contains(".shake("));
+    }
+
+    @Test
+    void annotatedShakeMethodsAreRecordedOnce() {
+        Context.Configurator.setObjectives(Objective.ofMinimizing("DefaultMinimize", TestSolution::getScore, TestMove::getScoreChange));
+        var recorder = new CapturingRecorder();
+        var solution = new TestSolution(new TestInstance("test"));
+        var shake = new TimedAlgorithm.TestShake();
+        try (var ignored = TimeStatsUtil.bind(recorder)) {
+            Assertions.assertSame(solution, shake.shake(solution));
+            Assertions.assertSame(solution, shake.shake(solution, 1));
+        }
+        Assertions.assertEquals(2, recorder.calls.size());
+        Assertions.assertNotEquals(recorder.calls.get(0).method, recorder.calls.get(1).method);
+        for (var call : recorder.calls) Assertions.assertTrue(call.method.signature().contains(".shake("));
+    }
+
+    @Test
     void testTimedAlgorithm() {
         Context.Configurator.setObjectives(Objective.ofMinimizing("DefaultMinimize", TestSolution::getScore, TestMove::getScoreChange));
         Metrics.register("DefaultMinimize", ref -> new DeclaredObjective("DefaultMinimize", FMode.MINIMIZE, ref));
