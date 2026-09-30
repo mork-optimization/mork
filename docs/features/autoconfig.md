@@ -139,9 +139,14 @@ solver:
   ignore-initial-millis: 10000
   interval-duration-millis: 50000
   log-scale-area: true
+  autorestart: true
 ```
 
 Use `--irace` or `--autoconfig` to launch tuning. Use `--follower` to start only the execution controller.
+
+Each automatic evaluation receives a cooperative time budget of `ignore-initial-millis + interval-duration-millis`.
+See [Time limits during tuning](time-limits.md#time-limits-during-tuning) for scoring intervals, restarts,
+and the distinction from the total tuning budget.
 
 ## Reusing final elites
 

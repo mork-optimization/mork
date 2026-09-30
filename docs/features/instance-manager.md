@@ -151,3 +151,6 @@ solver:
 ```
 
 If `solver.warmup.instance-path` is empty, Mork selects the warm-up instance automatically. With `instances.preload=true`, it uses the instance with the smallest load time measured during validation. If those validation load times are no longer available from cache, or if preload is disabled, it falls back to the smallest instance file size. You can set `solver.warmup.instance-path` to force a specific fast instance instead.
+
+See [Warm-up limits](time-limits.md#warm-up-limits) for overriding each warm-up execution's budget with
+`solver.warmup.max-millis`.

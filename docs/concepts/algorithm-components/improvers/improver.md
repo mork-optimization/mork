@@ -81,6 +81,8 @@ public class MyImprover<S extends Solution<S, I>, I extends Instance>
 ```
 
 Check `TimeControl.isTimeUp()` in any time-consuming loop so the algorithm can finish cleanly under time constraints.
+See [Time limits](../../../features/time-limits.md) for configuring execution budgets and returning a valid
+solution when the deadline expires.
 
 ## Common Patterns
 

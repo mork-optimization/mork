@@ -94,6 +94,10 @@ Each target parameter has an associated type that defines its domain and the way
 Mork also provides the default `scenario.txt` and `runner.R` from the `autoconfig` dependency. To customize either
 file, place a copy in `src/main/resources/irace/scenario.txt` or `src/main/resources/irace/runner.R`. A local `parameters.txt`, `runner.R` or `scenario.txt` always takes precedence over the bundled version in the autoconfig module.
 
+To apply your `TimeLimitCalculator` budget to each manual tuning evaluation, set `irace.timecontrol: true`.
+It defaults to `false`. See [Time limits during tuning](time-limits.md#time-limits-during-tuning) for the
+calculator requirement and how per-evaluation limits differ from the scenario's total tuning budget.
+
 
 ## More info
 Check full parameter.txt and scenario.txt documentation in [the official Irace manual](https://cran.r-project.org/web/packages/irace/vignettes/irace-package.pdf).

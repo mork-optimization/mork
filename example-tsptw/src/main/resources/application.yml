@@ -57,7 +57,8 @@ solver:
   # WARNING: Any algorithm that does not report an o.f value before this limit is reached is considered invalid
   ignore-initial-millis: 1000
   # Area will be measured in interval [ignoreInitialMillis, ignoreInitialMillis+intervalDurationMillis]
-  # Algorithms are asked to stop (politely first, killed after) after the ignoreInitialMillis+intervalDurationMillis mark is reached.
+  # During automatic tuning, each evaluation has a cooperative budget of ignoreInitialMillis+intervalDurationMillis.
+  # Components must check TimeControl.isTimeUp(); overruns are logged after execution returns.
   # Even if they execute for a longer time, their improvements to the objective function will not be considered.
   interval-duration-millis: 9000
   # Scale o.f AUC using natural logarithm
@@ -67,7 +68,7 @@ solver:
 
   # Enable or disable metrics tracking. Force enabled if using autoconfig.
   metrics: true
-  time-stats: true
+  time-stats: false
 
 # IRACE integration configuration. To enable IRACE mode, run with --irace or --autoconfig command line argument.
 # See https://mork-optimization.readthedocs.io/en/latest/features/irace/ for more details.

@@ -118,9 +118,12 @@ solver:
   ## WARNING: Any algorithm that does not report an o.f value before this limit is reached is considered invalid
   ignore-initial-millis: 10000
   ## Area will be measured in interval [ignoreInitialMillis, ignoreInitialMillis+intervalDurationMillis]
+  ## Automatic tuning uses the sum of the two durations as a cooperative execution budget.
   interval-duration-millis: 50000
   ## Scale o.f AUC using natural logarithm
   log-scale-area: true
+  ## Restart algorithms that finish early during automatic tuning, sharing the same deadline.
+  autorestart: true
   # End autoconfig properties
 
   # Enable or disable metrics tracking. Force enabled if using autoconfig.
@@ -134,6 +137,10 @@ irace:
 
   # Maximum number of algorithm executions
   maxExperiments: 10000
+
+  # Enable the TimeLimitCalculator budget during manual tuning. A calculator is required if true.
+  # Automatic tuning always uses its own cooperative execution budget.
+  timecontrol: false
 
 # Event system integrations/configuration
 event:

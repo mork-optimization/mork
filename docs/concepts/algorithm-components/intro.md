@@ -103,7 +103,7 @@ methods are black boxes whose implementation is unknown. This principle is criti
 as we could then execute it and compare the performance of our algorithm for example when using different constructive methods.
 
 !!! info
-    The algorithm code contains more advanced features such as logging, time control, and metrics reporting. Although each feature is detailed in their respective page, a small summary is provided in this example.
+    The algorithm code contains more advanced features such as logging, [time limits](../../features/time-limits.md), and metrics reporting. A small summary is provided in this example.
 
 ```java
 public class MyAlgorithm<S extends Solution<S, I>, I extends Instance> extends Algorithm<S, I> {
