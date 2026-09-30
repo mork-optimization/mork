@@ -17,6 +17,7 @@ import es.urjc.etsii.grafo.bmssc.shake.RandomRemoval;
 import es.urjc.etsii.grafo.bmssc.shake.RelatedRemoval;
 import es.urjc.etsii.grafo.bmssc.shake.WorstRemoval;
 import es.urjc.etsii.grafo.config.SolverConfig;
+import es.urjc.etsii.grafo.experiment.AbstractExperiment;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.improve.VND;
 import es.urjc.etsii.grafo.improve.ls.LocalSearchBestImprovement;
@@ -169,6 +170,7 @@ class BMSSCExplorationFilterNewTest {
 
     @Configuration(proxyBeanMethods = false)
     @ComponentScan(basePackageClasses = BMSSCExplorationFilterNew.class, useDefaultFilters = false,
-            includeFilters = @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = es.urjc.etsii.grafo.annotations.InheritedComponent.class))
+            includeFilters = @ComponentScan.Filter(type = FilterType.ANNOTATION, classes = es.urjc.etsii.grafo.annotations.InheritedComponent.class),
+            excludeFilters = @ComponentScan.Filter(type = FilterType.ASSIGNABLE_TYPE, classes = AbstractExperiment.class))
     static class FilterDiscovery {}
 }
