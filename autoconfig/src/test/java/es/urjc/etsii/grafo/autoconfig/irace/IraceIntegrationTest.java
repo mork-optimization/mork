@@ -1,6 +1,5 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
-import es.urjc.etsii.grafo.autoconfig.r.RLangRunner;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -13,7 +12,6 @@ import static es.urjc.etsii.grafo.util.IOUtil.getInputStreamForIrace;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.mock;
 
 class IraceIntegrationTest {
 
@@ -47,8 +45,7 @@ class IraceIntegrationTest {
                 }
                 """);
 
-        var integration = new IraceIntegration(mock(RLangRunner.class));
-        var elites = integration.readFinalElites(sidecar);
+        var elites = IraceFinalElitesUtil.read(sidecar);
 
         assertEquals(1, elites.size());
         assertEquals("17", elites.getFirst().configurationId());
@@ -57,13 +54,12 @@ class IraceIntegrationTest {
 
     @Test
     void rejectsMissingOrEmptyFinalEliteSidecars(@TempDir Path temp) throws IOException {
-        var integration = new IraceIntegration(mock(RLangRunner.class));
         Path sidecar = temp.resolve(IraceIntegration.FINAL_ELITES_FILE);
 
-        assertThrows(IllegalStateException.class, () -> integration.readFinalElites(sidecar));
+        assertThrows(IllegalStateException.class, () -> IraceFinalElitesUtil.read(sidecar));
 
         Files.writeString(sidecar, "{\"elites\":[]}");
-        assertThrows(IllegalStateException.class, () -> integration.readFinalElites(sidecar));
+        assertThrows(IllegalStateException.class, () -> IraceFinalElitesUtil.read(sidecar));
     }
 
     private static void assertBundledResourceContains(String filename, String expected) throws IOException {

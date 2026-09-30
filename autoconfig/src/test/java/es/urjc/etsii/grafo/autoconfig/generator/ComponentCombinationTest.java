@@ -18,12 +18,17 @@ import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -186,6 +191,48 @@ class ComponentCombinationTest {
         assertEquals(0.25, algorithm.ratio);
         assertEquals("escaped \\ value", algorithm.label);
         assertEquals('x', algorithm.symbol);
+    }
+
+    @Test
+    void buildsTopElitesInOrderWithStableNames(@TempDir Path temp) throws IOException {
+        Path file = temp.resolve("autoconfig-final-elites.json");
+        Files.writeString(file, """
+                {
+                  "elites": [
+                    {
+                      "configurationId": "17",
+                      "parameters": {
+                        "ROOT": "ListAlgorithm",
+                        "ROOT_ListAlgorithm.elements.length": "0",
+                        "ROOT_ListAlgorithm.elements.item0": "NA"
+                      }
+                    },
+                    {
+                      "configurationId": "4",
+                      "parameters": {
+                        "ROOT": "ListAlgorithm",
+                        "ROOT_ListAlgorithm.elements.length": "1",
+                        "ROOT_ListAlgorithm.elements.item0": "ElementA"
+                      }
+                    }
+                  ]
+                }
+                """);
+
+        var best = algorithmBuilder.buildTopElites(file.toString(), 1);
+        assertEquals(1, best.size());
+        assertEquals("irace-17", best.getFirst().getName());
+        assertTrue(assertInstanceOf(ListAlgorithm.class, best.getFirst()).elements.isEmpty());
+
+        var all = algorithmBuilder.buildTopElites(file.toString(), 10);
+        assertEquals(2, all.size());
+        assertEquals("irace-17", all.get(0).getName());
+        assertEquals("irace-4", all.get(1).getName());
+        assertEquals(List.of(ElementA.class),
+                elementClasses(assertInstanceOf(ListAlgorithm.class, all.get(1)).elements));
+
+        assertThrows(IllegalArgumentException.class, () -> algorithmBuilder.buildTopElites(file.toString(), 0));
+        assertThrows(IllegalArgumentException.class, () -> algorithmBuilder.buildTopElites(file.toString(), -1));
     }
 
     private static AlgorithmConfiguration combinationConfig(String root, int length) {

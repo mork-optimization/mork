@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationChoice;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationNode;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationTree;
@@ -15,6 +16,9 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
 import tools.jackson.databind.JsonNode;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Path;
 import java.util.*;
 
 public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instance> extends AlgorithmBuilder<S,I> {
@@ -60,6 +64,37 @@ public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instan
     @SuppressWarnings("unchecked")
     public Algorithm<S, I> buildFromJson(String jsonDescription){
         return (Algorithm<S, I>) this.algorithmBuilder.buildAlgorithmFromJson(jsonDescription);
+    }
+
+    /**
+     * Build the highest ranked algorithms from a saved IRACE final-elites file.
+     * The file contains flat IRACE parameters, so the current automatic search
+     * space must still include the selected components.
+     *
+     * @param filename path to {@code autoconfig-final-elites.json}
+     * @param topN maximum number of elites to build, starting with the best
+     * @return built algorithms, named after their IRACE configuration IDs
+     */
+    public List<Algorithm<S, I>> buildTopElites(String filename, int topN) {
+        if (topN <= 0) {
+            throw new IllegalArgumentException("topN must be positive");
+        }
+        List<EliteConfiguration> elites;
+        try {
+            elites = IraceFinalElitesUtil.read(Path.of(filename));
+        } catch (IOException e) {
+            throw new UncheckedIOException("Cannot read IRACE final elites from " + filename, e);
+        }
+
+        int count = Math.min(topN, elites.size());
+        var algorithms = new ArrayList<Algorithm<S, I>>(count);
+        for (int i = 0; i < count; i++) {
+            var elite = elites.get(i);
+            var algorithm = buildFromConfig(new AlgorithmConfiguration(elite.parameters()));
+            algorithm.setName("irace-" + elite.configurationId());
+            algorithms.add(algorithm);
+        }
+        return List.copyOf(algorithms);
     }
 
     @Override

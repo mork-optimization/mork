@@ -143,6 +143,25 @@ solver:
 
 Use `--irace` or `--autoconfig` to launch tuning. Use `--follower` to start only the execution controller.
 
+## Reusing final elites
+
+After tuning, Mork keeps `autoconfig-final-elites.json` in the application's working directory. The file lists the
+final configurations in irace rank order, with their configuration IDs and flat parameter values. A new tuning run
+removes the previous file at startup, so copy it elsewhere if you need to keep results from several runs.
+
+In a later regular experiment, inject `AutomaticAlgorithmBuilder` and add the top elites alongside other algorithms:
+
+```java
+var algorithms = new ArrayList<>(algorithmBuilder.buildTopElites("autoconfig-final-elites.json", 3));
+algorithms.add(new BaselineAlgorithm());
+return algorithms;
+```
+
+`buildTopElites` gives each built algorithm a stable name such as `irace-17`. It requires a positive requested count;
+if fewer elites are available, it returns all of them. The same components and compatible autoconfig search-space
+settings must be available when the experiment runs. This file contains irace parameters, so use `buildTopElites`
+rather than `buildFromJson` to load it.
+
 ## Initial configurations
 
 To start an automatic tuning run with known algorithms, create

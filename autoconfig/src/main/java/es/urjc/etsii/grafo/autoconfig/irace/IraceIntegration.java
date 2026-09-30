@@ -6,7 +6,6 @@ import es.urjc.etsii.grafo.autoconfig.r.RExecutionRequest;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
-import tools.jackson.databind.ObjectMapper;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -28,7 +27,6 @@ public class IraceIntegration {
     public static final String FINAL_ELITES_FILE = "autoconfig-final-elites.json";
 
     private final RLangRunner runner;
-    private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
      * <p>Constructor for IraceIntegration.</p>
@@ -61,33 +59,9 @@ public class IraceIntegration {
                                 .formatted(result.exitCode(), result.stdoutLog(), result.stderrLog())
                 );
             }
-            return readFinalElites(finalElites);
+            return IraceFinalElitesUtil.read(finalElites);
         } catch (IOException e) {
             throw new IllegalStateException("Cannot prepare R execution", e);
-        } finally {
-            deleteGeneratedFile(finalElites);
         }
-    }
-
-    private static void deleteGeneratedFile(Path path) {
-        try {
-            Files.deleteIfExists(path);
-        } catch (IOException e) {
-            log.warn("Cannot delete generated IRACE file {}", path, e);
-        }
-    }
-
-    List<EliteConfiguration> readFinalElites(Path finalElites) throws IOException {
-        if (!Files.isRegularFile(finalElites)) {
-            throw new IllegalStateException("IRACE completed without producing " + FINAL_ELITES_FILE);
-        }
-        var parsed = objectMapper.readValue(Files.readString(finalElites), FinalElitesFile.class);
-        if (parsed.elites() == null || parsed.elites().isEmpty()) {
-            throw new IllegalStateException("IRACE completed without final elite configurations");
-        }
-        return List.copyOf(parsed.elites());
-    }
-
-    private record FinalElitesFile(List<EliteConfiguration> elites) {
     }
 }

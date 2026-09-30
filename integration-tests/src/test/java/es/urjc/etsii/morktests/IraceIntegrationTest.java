@@ -9,7 +9,6 @@ import java.time.Duration;
 import static es.urjc.etsii.morktests.TestUtils.deleteGeneratedFiles;
 import static es.urjc.etsii.morktests.TestUtils.runJavaProcess;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class IraceIntegrationTest {
@@ -27,7 +26,7 @@ public class IraceIntegrationTest {
         assertTrue(Files.exists(Path.of("irace.Rdata")));
         assertTrue(Files.exists(Path.of("log-ablation.Rdata")));
         assertTrue(Files.exists(Path.of("report.html")));
-        assertFalse(Files.exists(Path.of("autoconfig-final-elites.json")));
+        assertTrue(Files.exists(Path.of("autoconfig-final-elites.json")));
 
         deleteGeneratedFiles(
                 Path.of("autoconfig-final-elites.json"),
