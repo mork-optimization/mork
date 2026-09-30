@@ -186,7 +186,7 @@ def write_selected_manifest(original_df: DataFrame, chosen_rows: list[int], outp
 def main():
     parser = argparse.ArgumentParser(
         description='Creates a set of instances to use during the experimentation',
-        epilog='Created by for the DRFLP project, if useful for your research consider citing the original work: https://doi.org/10.1162/evco_a_00317')
+        epilog='If useful for your research, consider citing the original Mork methodology: https://doi.org/10.1162/evco_a_00317')
     parser.add_argument('-p', '--properties', required=False, default="instance_properties.csv", help="CSV Input file containing instance properties.")
     parser.add_argument('-o', '--output', required=False, default="output", help="Path to output folder.")
     parser.add_argument('-s', '--size', required=False, default=0.15,

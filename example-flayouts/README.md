@@ -1,93 +1,79 @@
-# [Autoconfig: SFMRFLP](https://doi.org/XXXXXX)
+# Space-free facility layout
 
-## Abstract
-Metaheuristic algorithms have become one of the preferred approaches for
-solving optimization problems. Finding the best metaheuristic for a given
-problem is often difficult due to the large number of available approaches
-and possible algorithmic designs. Moreover, high-performing metaheuristics
-often combine general-purpose and problem-specific algorithmic components.
-We propose here an approach for automatically designing metaheuristics using
-a flexible framework of algorithmic components, from which algorithms
-are instantiated and evaluated by an automatic configuration method. The
-rules for composing algorithmic components are defined implicitly by the
-properties of each algorithm component, in contrast to previous proposals,
-which require a handwritten algorithmic template or grammar. As a result,
-extending our framework with additional components, even problem-specific
-or user-defined ones, automatically updates the design space. We provide
-an implementation of our proposal and demonstrate its benefits by outperforming
-earlier research in three distinct problems from completely different
-families: a facility layout problem, a vehicle routing problem and a clustering
-problem.
+This Java example solves the space-free facility layout problem. Facilities are
+assigned to ordered rows, and each row is packed consecutively from coordinate
+zero. The objective minimizes the sum of pairwise flow multiplied by the absolute
+distance between facility centers.
 
-## Links to Github repositories
-- https://github.com/rmartinsanta/ac-VRPOD
-- https://github.com/rmartinsanta/ac-BMSSC
-- https://github.com/rmartinsanta/ac-SFMRFLP
+The model supports multiple rows, while the current instance importer and default
+experiment dataset are restricted to **two rows**. The selected instances are in
+`instances/2rows/`. The other instance files describe layouts with more rows and
+are not loaded by the default configuration.
 
-## Compiling the C project
-Install llvm and the OpenMP libraries. For example, in Mac using brew:
+## Build and run
+
+From the Mork repository root:
+
 ```bash
-brew install llvm
-brew install libomp
+mvn -pl example-flayouts -am -DskipTests package
 ```
 
-Export your compiler path
+Run from this module's directory so that relative instance paths resolve correctly:
+
 ```bash
-export PATH="/usr/local/opt/llvm/bin:$PATH"
-export CC="/usr/local/opt/llvm/bin/clang"
-export CXX="/usr/local/opt/llvm/bin/clang++"
+cd example-flayouts
+java -jar target/flayouts-0.23-SNAPSHOT.jar --solver.experiments=SpaceFreeLayoutExperiment
 ```
 
-Generate executable
-```bash
-cmake .
-make
-```
+`SpaceFreeLayoutExperiment` runs random construction followed by best-improvement
+relocation search. It is a runnable example, not a reproduction of the published
+reference algorithm. Add algorithms to its `getAlgorithms()` method or declare
+another class extending `AbstractExperiment<FLPSolution, FLPInstance>`.
 
-#
-## Authors of the Autoconfig proposal
-- Raúl Martín Santamaría
-- Manuel López-Ibáñez
-- Thomas Stützle
-- José Manuel Colmenar
-
-## Authors of the original work
-- Alberto Herrán
-- José Manuel Colmenar
-- Abraham Duarte
+For automatic configuration, use the same JAR with `--autoconfig`. Components are
+discovered from their annotations and the factories in `FLPOriginalFactoriesNew`.
+`FLPExplorationFilterNew` restricts their composition to keep the parameter space
+bounded. The random constructives are named `FLPRandomConstructive` and
+`FLPRandomConstructiveNew`; saved configurations must use these current names.
+Regenerate `parameters.txt` when changing the available components.
 
 ## Instance format
-First line contains a number (N) representing the number of facilities.
-Next non-blank line contains N numbers representing the width of each facility.
-Then, a matrix of size NxN is provided, where each cell contains the flow between facilities (i,j), where
-0 <= i < N and 0 <= j < N. Matrix is symmetric, so `flow[i][j] == flow[j][i]`.
 
-## Properties used for instance classification and selection
-We have considered instance data as a graph (facility flow being weighted edges if not zero), and used the following properties:
-- num_facilities
-- num_edges
-- facility_max_degree
-- facility_min_degree
-- facility_avg_degree
-- facility_std_degree
-- is_regular
-- facility_max_size
-- facility_min_size
-- facility_avg_size
-- facility_std_size
-- edge_max_weight
-- edge_min_weight
-- edge_avg_weight
-- edge_std_weight
-- density
+Whitespace-separated integers specify:
 
-## Cite
-Consider citing the original SFMRFLP paper if used in your own work, or the Autoconfig proposal.
+1. The number of rows, currently required to be `2` by the importer.
+2. The number of facilities, `N`.
+3. `N` facility widths.
+4. An `N × N` matrix of pairwise flows.
 
-### DOI SFMRFLP
-https://doi.org/10.1016/j.ejor.2021.03.027
+For example:
 
-### Bibtex SFMRFLP
+```text
+2
+3
+2 4 6
+0 7 3
+7 0 5
+3 5 0
+```
+
+Facility IDs are zero-based. Instance IDs retain the filename without its `.txt`
+extension, including prefixes such as `Am`. Flows should be symmetric; the
+importer warns and uses the upper triangle when they are not.
+
+The text solution exporter writes one line per row, containing facility IDs in
+layout order. Coordinates follow directly from the widths and this order.
+
+## Published reference
+
+The reference for the space-free multi-row model is the BVNS described by Alberto
+Herrán, J. Manuel Colmenar and Abraham Duarte in
+[An efficient variable neighborhood search for the Space-Free Multi-Row Facility Layout problem](https://doi.org/10.1016/j.ejor.2021.03.027).
+That published implementation is not included in this Java module. The related
+[autoconfig study repository](https://github.com/rmartinsanta/ac-SFMRFLP) contains
+the separate SF-MRFLP research artifacts; its C build instructions do not apply to
+this Maven module.
+
 ```bibtex
 @article{herran2021efficient,
   title={An efficient variable neighborhood search for the space-free multi-row facility layout problem},
@@ -97,13 +83,6 @@ https://doi.org/10.1016/j.ejor.2021.03.027
   number={3},
   pages={893--907},
   year={2021},
-  publisher={Elsevier}
+  doi={10.1016/j.ejor.2021.03.027}
 }
-
 ```
-
-### DOI Autoconfig
-Pending review
-
-### Bibtex Autoconfig
-Pending review

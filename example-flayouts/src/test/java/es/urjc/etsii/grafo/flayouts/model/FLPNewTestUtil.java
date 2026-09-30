@@ -120,7 +120,7 @@ public final class FLPNewTestUtil {
         assertEquals(before.getLastModifiedTime(), after.getLastModifiedTime());
     }
 
-    public static void checkMove(FLPSolution original, FLPNewMove move) {
+    public static void checkMove(FLPSolution original, FLPMove move) {
         var before = original.cloneSolution();
         var result = original.cloneSolution();
         move.execute(result);

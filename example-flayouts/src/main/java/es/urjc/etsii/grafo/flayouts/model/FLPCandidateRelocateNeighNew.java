@@ -20,7 +20,7 @@ public class FLPCandidateRelocateNeighNew extends FLPPreservingNeighNew {
             @CategoricalParam(strings = {"4", "8", "16", "32"}) int candidates,
             @CategoricalParam(strings = {"0", "1", "5", "10"}) int fullScanFrequency,
             @CategoricalParam(strings = {"FLOW", "NEAR", "MIXED"}) Relation relation) {
-        super(true, true);
+        super(true);
         if (candidates < 1 || fullScanFrequency < 0) throw new IllegalArgumentException("Invalid candidate or full-scan count");
         this.candidates = candidates;
         this.fullScanFrequency = fullScanFrequency;
@@ -28,7 +28,7 @@ public class FLPCandidateRelocateNeighNew extends FLPPreservingNeighNew {
     }
 
     @Override
-    protected FLPNewUtil.MoveSpace space(FLPSolution s) {
+    protected FLPNewUtil.MoveSpace<FLPNewMove> space(FLPSolution s) {
         // A full scan every frequency calls in expectation; no mutable state survives between runs.
         if (fullScanFrequency > 0 && RandomManager.getRandom().nextInt(fullScanFrequency) == 0) {
             return FLPNewUtil.relocationSpace(s, 1, false, FLPBlockRelocateNeighNew.Scope.ALL, true);
@@ -49,7 +49,7 @@ public class FLPCandidateRelocateNeighNew extends FLPPreservingNeighNew {
             for (int i = 0; i < Math.min(candidates, partners.size()); i++) allowed[facility][partners.get(i)] = true;
             if (!partners.isEmpty()) allowed[facility][partners.get(RandomManager.getRandom().nextInt(partners.size()))] = true;
         }
-        return new FLPNewUtil.MoveSpace((long) positions.length * gaps.length, index -> {
+        return new FLPNewUtil.MoveSpace<>((long) positions.length * gaps.length, index -> {
             var origin = positions[(int) (index / gaps.length)];
             var target = gaps[(int) (index % gaps.length)];
             if (origin.row() == target.row() && (target.pos() == origin.pos() || target.pos() == origin.pos() + 1)) return null;
@@ -58,7 +58,7 @@ public class FLPCandidateRelocateNeighNew extends FLPPreservingNeighNew {
             boolean nearBefore = target.pos() < s.rowSize(target.row()) && allowed[facility][s.rows[target.row()][target.pos()]];
             boolean nearAfter = target.pos() > 0 && allowed[facility][s.rows[target.row()][target.pos() - 1]];
             if (!edge && !nearBefore && !nearAfter) return null;
-            return FLPNewUtil.relocate(s, origin.row(), origin.pos(), 1, target.row(), target.pos(), false, true);
+            return FLPNewUtil.relocate(s, origin.row(), origin.pos(), 1, target.row(), target.pos(), false);
         });
     }
 

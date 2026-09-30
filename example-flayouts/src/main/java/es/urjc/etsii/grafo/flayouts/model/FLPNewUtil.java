@@ -12,11 +12,11 @@ import java.util.stream.StreamSupport;
 
 import static es.urjc.etsii.grafo.flayouts.model.FLPNewMove.Kind.*;
 
-/** Shared state and exact delta operations for new components; original helpers are untouched. */
+/** Shared state, move enumeration and exact delta operations for FLP components. */
 public final class FLPNewUtil {
     private FLPNewUtil() {}
 
-    public record MoveSpace(long count, LongFunction<FLPNewMove> at) {}
+    public record MoveSpace<M extends FLPMove>(long count, LongFunction<M> at) {}
 
     public static int[][] rows(FLPSolution s) {
         int[][] rows = new int[s.nRows()][];
@@ -55,8 +55,16 @@ public final class FLPNewUtil {
         throw new IllegalArgumentException("Facility is not assigned: " + facility);
     }
 
-    public static FLPNewMove add(FLPSolution s, int facility, int row, int pos, boolean fast) {
+    public static FLPNewMove add(FLPSolution s, int facility, int row, int pos) {
+        return add(s, facility, row, pos, true);
+    }
+
+    static FLPNewMove add(FLPSolution s, int facility, int row, int pos, boolean fast) {
         return new FLPNewMove(s, ADD, new int[]{facility}, row, anchor(s, row, pos), false, fast);
+    }
+
+    static double insertionDelta(FLPSolution s, int facility, int row, int pos, boolean fast) {
+        return delta(s, ADD, new int[]{facility}, row, anchor(s, row, pos), false, fast);
     }
 
     public static FLPNewMove remove(FLPSolution s, int... facilities) {
@@ -65,16 +73,28 @@ public final class FLPNewUtil {
         return new FLPNewMove(s, REMOVE, sorted, -1, -1, false, true);
     }
 
-    public static FLPNewMove swap(FLPSolution s, int first, int second, boolean fast) {
+    public static FLPNewMove swap(FLPSolution s, int first, int second) {
+        return swap(s, first, second, true);
+    }
+
+    static FLPNewMove swap(FLPSolution s, int first, int second, boolean fast) {
         return new FLPNewMove(s, SWAP, new int[]{Math.min(first, second), Math.max(first, second)}, -1, -1, false, fast);
     }
 
-    public static FLPNewMove reverse(FLPSolution s, int first, int second, boolean fast) {
+    public static FLPNewMove reverse(FLPSolution s, int first, int second) {
+        return reverse(s, first, second, true);
+    }
+
+    static FLPNewMove reverse(FLPSolution s, int first, int second, boolean fast) {
         return new FLPNewMove(s, REVERSE, new int[]{Math.min(first, second), Math.max(first, second)}, -1, -1, false, fast);
     }
 
     /** Destination position is a gap in the original row, before removing the source block. */
-    public static FLPNewMove relocate(FLPSolution s, int row, int pos, int length, int targetRow, int gap, boolean reverse, boolean fast) {
+    public static FLPNewMove relocate(FLPSolution s, int row, int pos, int length, int targetRow, int gap, boolean reverse) {
+        return relocate(s, row, pos, length, targetRow, gap, reverse, true);
+    }
+
+    static FLPNewMove relocate(FLPSolution s, int row, int pos, int length, int targetRow, int gap, boolean reverse, boolean fast) {
         if (length < 1 || pos < 0 || pos + length > s.rowSize(row)) throw new IllegalArgumentException("Invalid block");
         if (row == targetRow && gap >= pos && gap <= pos + length) throw new IllegalArgumentException("Destination is inside the block");
         return new FLPNewMove(s, RELOCATE, Arrays.copyOfRange(s.rows[row], pos, pos + length), targetRow,
@@ -212,11 +232,11 @@ public final class FLPNewUtil {
         s.cachedScore = score;
     }
 
-    public static ExploreResult<FLPNewMove, FLPSolution, FLPInstance> explore(MoveSpace space, boolean lazy) {
-        var cursor = new Spliterators.AbstractSpliterator<FLPNewMove>(space.count(), Spliterator.ORDERED | Spliterator.NONNULL) {
+    public static <M extends FLPMove> ExploreResult<M, FLPSolution, FLPInstance> explore(MoveSpace<M> space, boolean lazy) {
+        var cursor = new Spliterators.AbstractSpliterator<M>(space.count(), Spliterator.ORDERED | Spliterator.NONNULL) {
             long index;
             @Override
-            public boolean tryAdvance(Consumer<? super FLPNewMove> action) {
+            public boolean tryAdvance(Consumer<? super M> action) {
                 while (index < space.count() && !TimeControl.isTimeUp()) {
                     var move = space.at().apply(index++);
                     if (move != null) { action.accept(move); return true; }
@@ -225,15 +245,15 @@ public final class FLPNewUtil {
             }
         };
         if (lazy) return ExploreResult.fromStream(StreamSupport.stream(cursor, false));
-        var list = new ArrayList<FLPNewMove>();
+        var list = new ArrayList<M>();
         while (cursor.tryAdvance(list::add)) { /* evaluate the complete list for the baseline */ }
         return ExploreResult.fromList(list);
     }
 
-    public static MoveSpace relocationSpace(FLPSolution s, int length, boolean reverse, FLPBlockRelocateNeighNew.Scope scope, boolean fast) {
+    public static MoveSpace<FLPNewMove> relocationSpace(FLPSolution s, int length, boolean reverse, FLPBlockRelocateNeighNew.Scope scope, boolean fast) {
         var positions = positions(s);
         var gaps = gaps(s);
-        return new MoveSpace((long) positions.length * gaps.length, index -> {
+        return new MoveSpace<>((long) positions.length * gaps.length, index -> {
             var origin = positions[(int) (index / gaps.length)];
             var target = gaps[(int) (index % gaps.length)];
             if (origin.pos() + length > s.rowSize(origin.row())) return null;
@@ -245,7 +265,7 @@ public final class FLPNewUtil {
         });
     }
 
-    public static Optional<FLPNewMove> randomMove(MoveSpace space) {
+    public static <M extends FLPMove> Optional<M> randomMove(MoveSpace<M> space) {
         if (space.count() == 0 || TimeControl.isTimeUp()) return Optional.empty();
         var random = RandomManager.getRandom();
         for (int attempt = 0; attempt < 64 && !TimeControl.isTimeUp(); attempt++) {
@@ -256,11 +276,11 @@ public final class FLPNewUtil {
         try (var moves = explore(space, true).moves()) { return moves.findFirst(); }
     }
 
-    public static FLPNewMove appendMissing(FLPSolution s) {
+    public static FLPAddNeigh.AddMove appendMissing(FLPSolution s) {
         int facility = missing(s).getFirst();
         int row = 0;
         for (int r = 1; r < s.nRows(); r++) if (s.rowSize(r) < s.rowSize(row)) row = r;
-        return add(s, facility, row, s.rowSize(row), true);
+        return new FLPAddNeigh.AddMove(s, row, s.rowSize(row), facility);
     }
 
     /** Finish repair cheaply even after a deadline; never return an incomplete incumbent. */

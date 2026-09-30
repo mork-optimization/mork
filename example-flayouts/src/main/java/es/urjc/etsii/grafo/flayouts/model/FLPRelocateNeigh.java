@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.solution.neighborhood.ExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.util.ArrayUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
+import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
 import java.util.ArrayList;
@@ -26,13 +27,13 @@ public class FLPRelocateNeigh extends RandomizableNeighborhood<FLPRelocateNeigh.
 
     @Override
     public ExploreResult<FLPRelocateNeigh.RelocateMove, FLPSolution, FLPInstance> explore(FLPSolution solution) {
-        if (solution.nAssigned() <= 2) {
+        if (TimeControl.isTimeUp() || solution.nAssigned() <= 2) {
             return ExploreResult.empty();
         }
         List<RelocateMove> moves = new ArrayList<>();
 
         if(insertBySwap){
-            relocationsBySwap(moves, solution);
+            relocationsByInsertion(moves, solution);
         } else {
             relocationsSlow(moves, solution);
         }
@@ -40,29 +41,26 @@ public class FLPRelocateNeigh extends RandomizableNeighborhood<FLPRelocateNeigh.
         return ExploreResult.fromList(moves);
     }
 
-    private void relocationsBySwap(List<RelocateMove> moves, FLPSolution solution) {
-        var copy = solution.cloneSolution();
-        for (int row = 0; row < copy.nRows(); row++) {
-            for (int pos = 0; pos < copy.rowSize(row); pos++) {
-                int facility = copy.rows[row][pos];
-                double currentScore = copy.getScore();
-                var removeMove = new FLPRemoveNeigh.RemoveMove(copy, row, pos, facility);
+    private void relocationsByInsertion(List<RelocateMove> moves, FLPSolution solution) {
+        for (int row = 0; row < solution.nRows(); row++) {
+            for (int pos = 0; pos < solution.rowSize(row); pos++) {
+                if (TimeControl.isTimeUp()) return;
+                int facility = solution.rows[row][pos];
+                var copy = solution.cloneSolution();
+                // Simulate a complete removal on private scratch state. This updates the
+                // score, centers and assignment bookkeeping without publishing a move.
+                var removeMove = FLPNewUtil.remove(copy, facility);
                 removeMove._execute(copy);
                 // get all add moves for this facility, and create combined movement
                 var addMoves = new ArrayList<FLPAddNeigh.AddMove>();
                 addNeigh.exploreForFacility(addMoves, copy, facility);
                 for(var addMove : addMoves){
+                    if (addMove.rowIdx() == row && addMove.pos() == pos) continue;
                     var relocateMove = new RelocateMove(solution, row, pos, addMove.rowIdx(), addMove.pos(), removeMove.delta() + addMove.delta());
                     moves.add(relocateMove);
                 }
-                // undo remove
-                var addMove = new FLPAddNeigh.AddMove(copy, row, pos, facility);
-                addMove._execute(copy);
-
-                assert DoubleComparator.equals(currentScore, copy.getScore()): "Score invariant broken";
             }
         }
-        assert copy.equals(solution): "Solution is not equal after finding moves, all changes should have been reversed";
     }
 
     private void relocationsSlow(List<RelocateMove> moves, FLPSolution solution) {
@@ -183,7 +181,7 @@ public class FLPRelocateNeigh extends RandomizableNeighborhood<FLPRelocateNeigh.
             if (row1 == row2) {
                 solution.cachedScore += delta;
                 ArrayUtil.deleteAndInsert(solution.rows[row1], pos1, pos2);
-                solution.updateCentersFromTo(row1, pos1, pos2 + 1);
+                solution.updateCentersFromTo(row1, Math.min(pos1, pos2), Math.max(pos1, pos2) + 1);
             } else {
                 var value = ArrayUtil.remove(solution.rows[row1], pos1);
                 ArrayUtil.insert(solution.rows[row2], pos2, value);
@@ -218,4 +216,3 @@ public class FLPRelocateNeigh extends RandomizableNeighborhood<FLPRelocateNeigh.
         }
     }
 }
-

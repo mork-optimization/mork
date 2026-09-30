@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.flayouts.constructives.grasp;
 
 import es.urjc.etsii.grafo.create.grasp.GRASPListManager;
+import es.urjc.etsii.grafo.flayouts.constructives.FLPConstructionUtil;
 import es.urjc.etsii.grafo.flayouts.model.FLPAddNeigh;
 import es.urjc.etsii.grafo.flayouts.model.FLPInstance;
 import es.urjc.etsii.grafo.flayouts.model.FLPSolution;
@@ -17,7 +18,7 @@ public class FLPAddListManager extends GRASPListManager<FLPAddNeigh.AddMove, FLP
      * @return a candidate list     */
     @Override
     public List<FLPAddNeigh.AddMove> buildInitialCandidateList(FLPSolution solution) {
-        return neigh.exploreList(solution);
+        return FLPConstructionUtil.insertionCandidates(solution, neigh);
     }
 
     /**

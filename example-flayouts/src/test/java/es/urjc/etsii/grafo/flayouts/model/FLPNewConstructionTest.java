@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.create.Reconstructive;
 import es.urjc.etsii.grafo.create.grasp.GraspBuilder;
 import es.urjc.etsii.grafo.flayouts.Main;
 import es.urjc.etsii.grafo.flayouts.constructives.*;
+import es.urjc.etsii.grafo.flayouts.constructives.grasp.FLPAddListManager;
 import es.urjc.etsii.grafo.flayouts.constructives.grasp.FLPAddListManagerNew;
 import es.urjc.etsii.grafo.flayouts.shake.*;
 import es.urjc.etsii.grafo.metrics.AbstractMetric;
@@ -75,7 +76,7 @@ class FLPNewConstructionTest {
             initialize(45);
             assertTrue(Arrays.deepEquals(first, layout(constructor.construct(new FLPSolution(instance)))));
         }
-        var original = new DRFPRandomConstructiveNew().construct(new FLPSolution(instance));
+        var original = new FLPRandomConstructiveNew().construct(new FLPSolution(instance));
         for (var destructor : destructors()) {
             initialize(78);
             int[][] first = layout(destructor.destroy(original, 3));
@@ -112,15 +113,19 @@ class FLPNewConstructionTest {
 
     private List<Reconstructive<FLPSolution, FLPInstance>> constructors() {
         var constructors = new ArrayList<Reconstructive<FLPSolution, FLPInstance>>();
-        constructors.add(new DRFPRandomConstructiveNew());
+        constructors.add(new FLPRandomConstructive());
+        constructors.add(new FLPRandomConstructiveNew());
         for (var order : FLPFlowConstructiveNew.Order.values()) for (var placement : FLPFlowConstructiveNew.Placement.values()) {
             constructors.add(new FLPFlowConstructiveNew(order, placement, 0.2));
         }
         constructors.add(new FLPRegretConstructiveNew(2, 0));
         constructors.add(new FLPRegretConstructiveNew(3, 0.3));
+        for (boolean originalManager : new boolean[]{false, true})
         for (boolean randomGreedy : new boolean[]{false, true}) for (double alpha : new double[]{0, 1}) {
             var builder = new GraspBuilder<FLPMove, FLPSolution, FLPInstance>().withObjective(Main.FLOW)
-                    .withAlphaValue(alpha).withListManager(new FLPAddListManagerNew(new FLPAddNeighFastNew()));
+                    .withAlphaValue(alpha);
+            if (originalManager) builder.withListManager(new FLPAddListManager());
+            else builder.withListManager(new FLPAddListManagerNew(new FLPAddNeigh()));
             if (randomGreedy) builder.withStrategyRandomGreedy(); else builder.withStrategyGreedyRandom();
             constructors.add(builder.build());
         }

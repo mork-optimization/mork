@@ -68,7 +68,7 @@ serializers:
     # When should results be exported to disk?
     # experiment_end: Export results when experiment ends (only once)
     # per_instance: Each time an instance completes all algorithms
-    frequency: experiment_end
+    frequency: per_instance
 
     # Create a sheet detailing instance properties
     instance-sheet-enabled: true

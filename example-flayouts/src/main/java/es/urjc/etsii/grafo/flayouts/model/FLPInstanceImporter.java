@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.flayouts.model;
 import es.urjc.etsii.grafo.io.InstanceImporter;
 
 import java.io.BufferedReader;
+import java.util.Map;
 import java.util.Scanner;
 import java.util.logging.Logger;
 
@@ -15,7 +16,7 @@ public class FLPInstanceImporter extends InstanceImporter<FLPInstance> {
         Scanner sc = new Scanner(reader);
         int nRows = sc.nextInt();
         if(nRows != 2){
-            throw new IllegalArgumentException("Solver currently expects 2 rows");
+            throw new IllegalArgumentException("This example currently expects space-free layouts with 2 rows");
         }
         int n = sc.nextInt();
 
@@ -45,9 +46,8 @@ public class FLPInstanceImporter extends InstanceImporter<FLPInstance> {
             }
         }
 
-        // Match instance filenames with names in previous paper and excel file
-        String instanceName = filename.replace(".txt", "").replace("Am", "");
-        return FLPInstance.DRFLP(instanceName, lengths, flow);
+        String instanceName = filename.replace(".txt", "");
+        return new FLPInstance(instanceName, lengths, flow, nRows, Map.of());
     }
 
     private boolean isSimmetric(int[][] matrix){

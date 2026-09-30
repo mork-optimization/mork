@@ -27,15 +27,15 @@ The more properties declared, the better. Any redundant information in instance 
 automatically removed, see section [How it works](#how-it-works) for more information.
 
 Instance properties can be easily declared during instance load or during instance construction using the method
-`MyProblemInstance::setProperty(name,value)`. For example, in the DRFLP problem I declared the properties as follows:
+`MyProblemInstance::setProperty(name,value)`. For example, for a space-free facility layout instance:
 ```java
     @Override
-    public DRFLPInstance importInstance(BufferedReader reader, String filename) {
+    public FLPInstance importInstance(BufferedReader reader, String filename) {
         Scanner sc = new Scanner(reader);
         // Instance parsing code removed for simplicity
         ...
         
-        var instance = new DRFLPInstance(filename, facilities, weights);
+        var instance = new FLPInstance(filename, lengths, weights, nRows, Map.of());
         double[] avgs = new double[n];
         for (int i = 0; i < weights.length; i++) {
             var row = weights[i];

@@ -10,8 +10,8 @@ import es.urjc.etsii.grafo.autoconfig.generator.CombinationTree;
 import es.urjc.etsii.grafo.autoconfig.generator.FilterConfig;
 import es.urjc.etsii.grafo.autoconfig.generator.IExplorationFilter;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
+import es.urjc.etsii.grafo.autoconfig.generator.TreeContext;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
-import es.urjc.etsii.grafo.autoconfig.inventory.DefaultInventoryFilter;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
@@ -24,10 +24,14 @@ import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.tsptw.repair.TSPTWBackwardViolated;
 import es.urjc.etsii.grafo.tsptw.repair.TSPTWFeasibilityRepair;
+import es.urjc.etsii.grafo.tsptw.repair.TSPTWFeasibilityRepairFullNew;
 import es.urjc.etsii.grafo.tsptw.shake.TSPTWFeasibleInsertShake;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.core.env.MapPropertySource;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
@@ -53,10 +57,10 @@ class TSPTWAutoconfigTest {
     @BeforeEach
     void setUp() {
         initialize();
-        var inventory = new AlgorithmInventoryService(new DefaultInventoryFilter(), List.of(), List.of(new AlgorithmNameParam()));
-        // Include framework roots too, to verify that the TSPTW exploration filter excludes them.
+        var inventory = new AlgorithmInventoryService(new TSPTWBaselineInventoryNew(), List.of(), List.of(new AlgorithmNameParam()));
+        // Freeze the original space while the separate New tests exercise the expanded catalog.
         inventory.runComponentDiscovery("es.urjc.etsii.grafo.tsptw,es.urjc.etsii.grafo.algorithms");
-        generator = new AlgorithmCandidateGenerator(inventory, new TSPTWExplorationFilter());
+        generator = new AlgorithmCandidateGenerator(inventory, new TSPTWExplorationFilter(true));
         var roots = generator.buildTree(1000, 1);
         assertEquals(1, roots.size());
         root = roots.getFirst();
@@ -67,9 +71,14 @@ class TSPTWAutoconfigTest {
 
     @AfterEach void tearDown() { cleanup(); }
 
-    @Test
-    void springDiscoversTheGvnsFilterAndDisablesTheDefaultFilter() {
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void springDiscoversTheGvnsFilterAndBindsLegacyMode(boolean legacy) {
         try (var context = new AnnotationConfigApplicationContext()) {
+            if (legacy) {
+                context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("test",
+                        Map.of("tsptw.legacy-repair-space", "true")));
+            }
             var scanner = new ClassPathBeanDefinitionScanner(context, false);
             // Use the same inherited-component filter as Mork's application scan.
             scanner.addIncludeFilter(new AnnotationTypeFilter(InheritedComponent.class));
@@ -79,6 +88,13 @@ class TSPTWAutoconfigTest {
             var filters = context.getBeansOfType(IExplorationFilter.class);
             assertEquals(1, filters.size());
             assertInstanceOf(TSPTWExplorationFilter.class, filters.values().iterator().next());
+            var filter = filters.values().iterator().next();
+            var treeContext = new TreeContext(1000, 1);
+            assertFalse(filter.reject(treeContext, GVNS.class));
+            assertTrue(filter.reject(treeContext, TSPTWFeasibilityRepair.class));
+            treeContext.push(GVNS.class);
+            assertEquals(!legacy, filter.reject(treeContext, TSPTWFeasibilityRepair.class));
+            assertFalse(filter.reject(treeContext, TSPTWFeasibilityRepairFullNew.class));
         }
     }
 

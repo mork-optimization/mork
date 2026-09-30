@@ -7,9 +7,9 @@ import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
 /** Corrected copy of the random append policy; also repairs partially assigned layouts. */
-public class DRFPRandomConstructiveNew extends Reconstructive<FLPSolution, FLPInstance> {
+public class FLPRandomConstructiveNew extends Reconstructive<FLPSolution, FLPInstance> {
     @AutoconfigConstructor
-    public DRFPRandomConstructiveNew() {}
+    public FLPRandomConstructiveNew() {}
 
     @Override
     public FLPSolution construct(FLPSolution solution) {
@@ -17,7 +17,7 @@ public class DRFPRandomConstructiveNew extends Reconstructive<FLPSolution, FLPIn
         CollectionUtil.shuffle(missing);
         for (int facility : missing) {
             int row = RandomManager.getRandom().nextInt(solution.nRows());
-            FLPNewUtil.add(solution, facility, row, solution.rowSize(row), true).execute(solution);
+            FLPNewUtil.add(solution, facility, row, solution.rowSize(row)).execute(solution);
         }
         return solution;
     }

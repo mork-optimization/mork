@@ -9,9 +9,9 @@ import java.io.BufferedWriter;
 import java.io.IOException;
 
 /**
- * Serialize solutions using a custom format
- * Each row represents a facility row, with positive numbers being the facility id, and negative numbers a fake facility and its width.
- * Example: 1 3 5 -2 --> Facility 1, 3 and 5, and a fake facility with width 2.
+ * Serialize a space-free layout as one line per row of zero-based facility IDs.
+ * Facilities appear in their layout order, packed consecutively from coordinate zero.
+ * Example: 0 3 5 represents facilities 0, 3 and 5 in one row.
  */
 public class FLPSolutionExporter extends SolutionSerializer<FLPSolution, FLPInstance> {
 

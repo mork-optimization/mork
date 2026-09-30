@@ -12,7 +12,7 @@ import java.util.ArrayList;
 /**
  * Generate random solutions for validation purposes
  */
-public class DRFPRandomConstructive extends Reconstructive<FLPSolution, FLPInstance> {
+public class FLPRandomConstructive extends Reconstructive<FLPSolution, FLPInstance> {
 
     @Override
     public FLPSolution construct(FLPSolution solution) {

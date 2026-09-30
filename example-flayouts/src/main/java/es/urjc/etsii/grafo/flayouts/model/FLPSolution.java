@@ -7,8 +7,10 @@ import org.glassfish.jersey.internal.guava.Sets;
 
 import java.util.*;
 
+/** Facilities packed consecutively in each row, starting at coordinate zero. */
 public class FLPSolution extends Solution<FLPSolution, FLPInstance> {
 
+    /** Marks unused array capacity; it is never part of an assigned layout. */
     public static final int FREE_SPACE = Integer.MIN_VALUE;
     public static final double UNKNOWN_CENTER = -1.0;
 
@@ -98,7 +100,8 @@ public class FLPSolution extends Solution<FLPSolution, FLPInstance> {
             return 0;
         }
         int f = rows[rowIdx][pos-1];
-        return center[f] - getInstance().length(f) / 2.0;
+        // The next position starts at the preceding facility's right edge.
+        return center[f] + getInstance().length(f) / 2.0;
     }
 
     public int nRows(){
@@ -109,12 +112,12 @@ public class FLPSolution extends Solution<FLPSolution, FLPInstance> {
         int totalSize = 0;
         for (int i = 0; i < this.nRows(); i++) {
             int rowSize = 0;
-            while (this.rows[i][rowSize] != FREE_SPACE) {
+            while (rowSize < this.rows[i].length && this.rows[i][rowSize] != FREE_SPACE) {
                 rowSize++;
             }
 
             if(rowSize != this.rowSize[i]){
-                throw new AssertionError(String.format("Row %s size mismatch, expected %s, got %s", i, totalSize, this.rowSize[i]));
+                throw new AssertionError(String.format("Row %s size mismatch, expected %s, got %s", i, rowSize, this.rowSize[i]));
             }
             totalSize += rowSize;
         }

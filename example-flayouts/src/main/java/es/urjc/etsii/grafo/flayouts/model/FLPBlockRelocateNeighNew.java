@@ -14,14 +14,14 @@ public class FLPBlockRelocateNeighNew extends FLPPreservingNeighNew {
             @CategoricalParam(strings = {"2", "3"}) int length,
             @CategoricalParam(strings = {"false", "true"}) boolean reverse,
             @CategoricalParam(strings = {"ALL", "WITHIN", "BETWEEN"}) Scope scope) {
-        super(true, true);
+        super(true);
         if (length != 2 && length != 3) throw new IllegalArgumentException("Block length must be 2 or 3");
         this.length = length;
         this.reverse = reverse;
         this.scope = java.util.Objects.requireNonNull(scope);
     }
     @Override
-    protected FLPNewUtil.MoveSpace space(FLPSolution s) { return FLPNewUtil.relocationSpace(s, length, reverse, scope, true); }
+    protected FLPNewUtil.MoveSpace<FLPNewMove> space(FLPSolution s) { return FLPNewUtil.relocationSpace(s, length, reverse, scope, true); }
     @Override
     public String toString() { return "FLPBlockRelocateNeighNew{length=" + length + ", reverse=" + reverse + ", scope=" + scope + "}"; }
 }

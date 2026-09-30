@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.flayouts.autoconfig;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmComponentFactory;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
-import es.urjc.etsii.grafo.flayouts.constructives.DRFPRandomConstructive;
+import es.urjc.etsii.grafo.flayouts.constructives.FLPRandomConstructive;
 import es.urjc.etsii.grafo.flayouts.constructives.grasp.FLPAddListManager;
 import es.urjc.etsii.grafo.flayouts.model.*;
 import es.urjc.etsii.grafo.flayouts.shake.RandomRemoveDestructive;
@@ -16,11 +16,11 @@ public final class FLPOriginalFactoriesNew {
 
     public static class RandomConstructiveFactory extends AlgorithmComponentFactory {
         @Override
-        public Object buildComponent(Map<String, Object> params) { return new DRFPRandomConstructive(); }
+        public Object buildComponent(Map<String, Object> params) { return new FLPRandomConstructive(); }
         @Override
         public List<ComponentParameter> getRequiredParameters() { return List.of(); }
         @Override
-        public Class<?> produces() { return DRFPRandomConstructive.class; }
+        public Class<?> produces() { return FLPRandomConstructive.class; }
     }
 
     public static class AddListManagerFactory extends AlgorithmComponentFactory {
@@ -61,10 +61,10 @@ public final class FLPOriginalFactoriesNew {
 
     public static class RelocateFactory extends AlgorithmComponentFactory {
         @Override
-        public Object buildComponent(Map<String, Object> params) { return new FLPRelocateNeigh(Boolean.parseBoolean(params.get("insertBySwap").toString())); }
+        public Object buildComponent(Map<String, Object> params) { return new FLPRelocateNeigh(true); }
         @Override
         public List<ComponentParameter> getRequiredParameters() {
-            return List.of(new ComponentParameter("insertBySwap", boolean.class, ParameterType.CATEGORICAL, new Object[]{"false", "true"}));
+            return List.of();
         }
         @Override
         public Class<?> produces() { return FLPRelocateNeigh.class; }

@@ -5,7 +5,7 @@ import es.urjc.etsii.grafo.algorithms.vns.VNS;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.flayouts.Main;
-import es.urjc.etsii.grafo.flayouts.constructives.DRFPRandomConstructiveNew;
+import es.urjc.etsii.grafo.flayouts.constructives.FLPRandomConstructiveNew;
 import es.urjc.etsii.grafo.flayouts.improve.*;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.improve.ls.*;
@@ -26,15 +26,15 @@ class FLPNewAlgorithmTest {
 
     @Test
     void everyNewPreservingNeighborhoodWorksWithFirstBestAndCachedSearch() {
-        for (var neighborhood : List.of(new FLPSwapNeighNew(), new FLPSwapNeighFastNew(), new FLPRelocateNeighNew(),
-                new FLPRelocateNeighFastNew(), new FLPOptNeighNew(), new FLPOptNeighFastNew(),
+        for (var neighborhood : List.of(new FLPSwapNeighNew(false), new FLPSwapNeighNew(), new FLPRelocateNeighNew(false),
+                new FLPRelocateNeighNew(), new FLPOptNeighNew(false), new FLPOptNeighNew(),
                 new FLPCandidateRelocateNeighNew(4, 1, FLPCandidateRelocateNeighNew.Relation.FLOW),
                 new FLPBlockRelocateNeighNew(2, false, FLPBlockRelocateNeighNew.Scope.ALL))) {
             List<LocalSearch<FLPNewMove, FLPSolution, FLPInstance>> searches = List.of(
                     new LocalSearchFirstImprovement<>(neighborhood), new LocalSearchBestImprovement<>(neighborhood),
                     new LocalSearchCachedBestImprovement<>(neighborhood, 4));
             for (var search : searches) {
-                var initial = new DRFPRandomConstructiveNew().construct(new FLPSolution(instance(10, 3)));
+                var initial = new FLPRandomConstructiveNew().construct(new FLPSolution(instance(10, 3)));
                 double before = initial.getScore();
                 var result = assertTimeout(Duration.ofSeconds(5), () -> search.improve(initial));
                 assertState(result, true);
@@ -46,14 +46,9 @@ class FLPNewAlgorithmTest {
 
     @Test
     void vndAndAnnealingKeepBestSolutionsAndTerminateOnDegenerateInputs() {
-        var neighborhoods = List.<FLPPreservingNeighNew>of(new FLPRelocateNeighFastNew(), new FLPSwapNeighFastNew(), new FLPOptNeighFastNew());
+        var neighborhoods = List.of(new FLPRelocateNeighNew(), new FLPSwapNeighNew(), new FLPOptNeighNew());
         for (int n : new int[]{0, 1, 2, 10}) {
-            var s = new DRFPRandomConstructiveNew().construct(new FLPSolution(instance(n, 2)));
-            for (var policy : FLPVNDNew.Policy.values()) {
-                var result = new FLPVNDNew(neighborhoods, policy).improve(s.cloneSolution());
-                assertState(result, true);
-                assertTrue(result.getScore() <= s.getScore());
-            }
+            var s = new FLPRandomConstructiveNew().construct(new FLPSolution(instance(n, 2)));
             for (var neighborhood : neighborhoods) {
                 var before = s.cloneSolution();
                 var sa = new FLPSimulatedAnnealingNew(neighborhood, 0.8, 0.99, 5, 20);
@@ -63,8 +58,8 @@ class FLPNewAlgorithmTest {
                 assertUnchanged(before, s);
             }
         }
-        var sa = new FLPSimulatedAnnealingNew(new FLPSwapNeighNew(), 0.5, 0.99, 1, 20);
-        var s = new DRFPRandomConstructiveNew().construct(new FLPSolution(instance(8, 2)));
+        var sa = new FLPSimulatedAnnealingNew(new FLPSwapNeighNew(false), 0.5, 0.99, 1, 20);
+        var s = new FLPRandomConstructiveNew().construct(new FLPSolution(instance(8, 2)));
         TimeControl.setMaxExecutionTime(0, TimeUnit.NANOSECONDS);
         TimeControl.start();
         assertEquals(s.getScore(), sa.improve(s).getScore());

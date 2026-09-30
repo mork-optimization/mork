@@ -1,0 +1,41 @@
+{
+  "$component": "GVNS",
+  "levelMax": 4,
+  "attemptsPerLevel": 65,
+  "constructive": {
+    "$component": "TSPTWFeasibleConstructive",
+    "initial": {
+      "$component": "TSPTWRandomConstructive"
+    },
+    "repair": {
+      "$component": "TSPTWFeasibilityRepairFallbackNew",
+      "maxPasses": 2,
+      "phases": [
+        {
+          "$component": "TSPTWForwardViolated"
+        }
+      ]
+    },
+    "perturbation": {
+      "$component": "TSPTWUnrestrictedInsertShake"
+    }
+  },
+  "shake": {
+    "$component": "TSPTWFeasibleInsertShake"
+  },
+  "localSearch": {
+    "$component": "TSPTWVNDNew",
+    "searches": [
+      {
+        "$component": "TSPTWTwoOptSearchNew"
+      },
+      {
+        "$component": "TSPTWTwoOptSearch"
+      },
+      {
+        "$component": "TSPTWOrOptSearchNew",
+        "blockLength": 2
+      }
+    ]
+  }
+}

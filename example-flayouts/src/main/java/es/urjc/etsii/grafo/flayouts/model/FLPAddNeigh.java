@@ -1,143 +1,66 @@
 package es.urjc.etsii.grafo.flayouts.model;
 
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
-import es.urjc.etsii.grafo.annotations.CategoricalParam;
 import es.urjc.etsii.grafo.solution.neighborhood.ExploreResult;
-import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
+import es.urjc.etsii.grafo.solution.neighborhood.RandomizableNeighborhood;
 import es.urjc.etsii.grafo.util.DoubleComparator;
+import es.urjc.etsii.grafo.util.TimeControl;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
-import static es.urjc.etsii.grafo.flayouts.model.FLPSolution.FREE_SPACE;
-import static es.urjc.etsii.grafo.flayouts.model.FLPSwapNeigh.SwapMove.consecutiveSwapCost;
-
-public class FLPAddNeigh extends Neighborhood<FLPAddNeigh.AddMove, FLPSolution, FLPInstance> {
-
-    private final boolean insertBySwap;
-
-    public FLPAddNeigh() {
-        this(true);
-    }
+/** Insert any missing facility at any row gap without changing the source during evaluation. */
+public class FLPAddNeigh extends RandomizableNeighborhood<FLPAddNeigh.AddMove, FLPSolution, FLPInstance> {
+    private final boolean fast;
 
     @AutoconfigConstructor
-    public FLPAddNeigh(@CategoricalParam(strings = {"true", "false"}) boolean insertBySwap) {
-        this.insertBySwap = insertBySwap;
+    public FLPAddNeigh() { this(true); }
+
+    /** Full-cost, eager evaluation is available only for tests and validation. */
+    FLPAddNeigh(boolean fast) { this.fast = fast; }
+
+    private FLPNewUtil.MoveSpace<AddMove> space(FLPSolution solution, List<Integer> facilities) {
+        var gaps = FLPNewUtil.gaps(solution);
+        return new FLPNewUtil.MoveSpace<>((long) facilities.size() * gaps.length, index -> {
+            int facility = facilities.get((int) (index / gaps.length));
+            var gap = gaps[(int) (index % gaps.length)];
+            double delta = FLPNewUtil.insertionDelta(solution, facility, gap.row(), gap.pos(), fast);
+            return new AddMove(solution, gap.row(), gap.pos(), facility, delta);
+        });
     }
 
     @Override
     public ExploreResult<AddMove, FLPSolution, FLPInstance> explore(FLPSolution solution) {
-        return ExploreResult.fromList(exploreList(solution));
+        if (TimeControl.isTimeUp()) return ExploreResult.empty();
+        return FLPNewUtil.explore(space(solution, FLPNewUtil.missing(solution)), fast);
     }
 
-    public List<AddMove> exploreList(FLPSolution solution){
-        var list = new ArrayList<AddMove>();
-        for (var facility : solution.notAssignedFacilities) {
-            exploreForFacility(list, solution, facility);
-        }
-        return list;
+    public List<AddMove> exploreList(FLPSolution solution) {
+        try (var moves = explore(solution).moves()) { return moves.toList(); }
     }
 
-    public void exploreForFacility(ArrayList<AddMove> list, FLPSolution solution, int facility){
-        for (int row = 0; row < solution.nRows(); row++) {
-            if (insertBySwap) {
-                movesBySwap(list, solution, facility, row);
-            } else {
-                movesNaive(list, solution, facility, row);
-            }
+    public void exploreForFacility(List<AddMove> list, FLPSolution solution, int facility) {
+        if (TimeControl.isTimeUp()) return;
+        try (var moves = FLPNewUtil.explore(space(solution, List.of(facility)), fast).moves()) {
+            list.addAll(moves.toList());
         }
     }
 
-    private void movesNaive(ArrayList<AddMove> list, FLPSolution solution, int facility, int row) {
-        int rowSize = solution.rowSize(row);
-        // iterate backwards so it matches the generation order of movesBySwap
-        for (int pos = rowSize; pos >= 0; pos--) {
-            var addMove = new AddMove(solution, row, pos, facility);
-            list.add(addMove);
-        }
+    @Override
+    public Optional<AddMove> getRandomMove(FLPSolution solution) {
+        if (TimeControl.isTimeUp()) return Optional.empty();
+        return FLPNewUtil.randomMove(space(solution, FLPNewUtil.missing(solution)));
     }
 
-    private void movesBySwap(ArrayList<AddMove> moves, FLPSolution solution, int facility, int row) {
-        int rowSize = solution.rowSize(row);
-        if (rowSize == 0) {
-            moves.add(new AddMove(solution, row, 0, facility));
-            return;
-        }
-
-        var prevScore = solution.getScore();
-        int index = solution.rowSize(row);
-        double accCost = insertAtLastCost(solution, rowSize, facility);
-        moves.add(new AddMove(solution, index, index, facility, accCost));
-
-        // Do insert by swap, facility ends at 0 index
-        var _moves = new ArrayList<AddMove>();
-        right2Left(accCost, _moves, solution, row, index, facility);
-
-        // Delete facility from solution
-        deleteFirst(solution, row, facility);
-
-        assert DoubleComparator.equals(solution.getScore(), prevScore);
+    @Override
+    public int neighborhoodSize(FLPSolution solution) {
+        long size = (long) solution.getNotAssignedFacilities().size() * (solution.nAssigned() + solution.nRows());
+        return (int) Math.min(Integer.MAX_VALUE - 1L, size);
     }
 
-    public static void right2Left(double baseCost, List<AddMove> moves, FLPSolution solution, int row, int initialPos, int facility) {
-        // El score debe ser el mismo antes y despues
-        double accCost = baseCost;
-        for (int pos = initialPos; pos > 0; pos--) {
-            double _cost = consecutiveSwapCost(solution, row, pos - 1, pos);
-            accCost += _cost;
-            var move = new AddMove(solution, row, pos, facility, accCost);
-            moves.add(move);
-        }
-    }
-
-
-    public static double insertCost(FLPSolution solution, int rowIdx, int pos, int f) {
-        int rowSize = solution.rowSize[rowIdx];
-        var row = solution.rows[rowIdx];
-
-        // Antes de hacer el movimiento
-        double before = solution.partialCost(rowIdx, pos, rowSize - 1);
-
-        // Do movement
-        System.arraycopy(row, pos, row, pos + 1, solution.rowSize[rowIdx] - pos);
-        row[pos] = f;
-        solution.rowSize[rowIdx]++;
-        solution.updateCentersFrom(rowIdx, pos);
-
-        // Despues de hacer el movimiento
-        double after = solution.partialCost(rowIdx, pos, rowSize);
-
-        // Deshacemos el movimiento
-        solution.rowSize[rowIdx]--;
-        System.arraycopy(row, pos + 1, row, pos, solution.rowSize[rowIdx] - pos); // Todo, no faltaria un -1 al length?
-        row[solution.rowSize[rowIdx]] = FREE_SPACE;
-        solution.updateCentersFrom(rowIdx, pos);
-
-        // Al deshacer el coste deberia quedar igual
-        assert DoubleComparator.equals(before, solution.partialCost(rowIdx, pos, rowSize - 1));
-
-        return after - before;
-    }
-
-
-    private void deleteFirst(FLPSolution solution, int rowId, int facility) {
-        var rowData = solution.getRows()[rowId];
-        // Verify 0 facility is our target
-        assert rowData[0] == facility;
-        solution.remove(rowId, 0);
-    }
-
-    private double insertAtLastCost(FLPSolution solution, int row, int facility) {
-        int pos = solution.rowSize(row);
-        AddMove addMove = new AddMove(solution, row, pos, facility);
-        double oldScore = solution.getScore();
-        double delta = addMove.delta();
-        addMove._execute(solution);
-
-        assert DoubleComparator.equals(oldScore + delta, solution.getScore());
-
-        return delta;
+    public static double insertCost(FLPSolution solution, int row, int pos, int facility) {
+        return FLPNewUtil.insertionDelta(solution, facility, row, pos, true);
     }
 
     public static class AddMove extends FLPMove {

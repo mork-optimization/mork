@@ -15,7 +15,7 @@ import static java.lang.Math.max;
 import static java.lang.Math.round;
 
 /**
- * Partially destroys a DRFP solution by removing part of its facilities.
+ * Partially destroys a space-free layout by removing part of its facilities.
  */
 public class RandomRemoveDestructive extends Destructive<FLPSolution, FLPInstance> {
 
@@ -65,7 +65,7 @@ public class RandomRemoveDestructive extends Destructive<FLPSolution, FLPInstanc
             for (int pos = 0; pos < solution.rowSize(row); pos++) {
                 var facility = facilities[row][pos];
                 if(!facilitiesToRemove.contains(facility)){
-                    var add = new FLPAddNeigh.AddMove(newSolution, row, pos, facility);
+                    var add = new FLPAddNeigh.AddMove(newSolution, row, newSolution.rowSize(row), facility);
                     add.execute(newSolution);
                 }
             }

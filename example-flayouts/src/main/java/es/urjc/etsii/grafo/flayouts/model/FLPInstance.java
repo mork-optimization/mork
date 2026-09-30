@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.io.Instance;
 
 import java.util.*;
 
+/** Instance of the space-free facility layout problem. */
 public class FLPInstance extends Instance {
     private static Comparator<FLPInstance> comparator = Comparator.comparing(FLPInstance::nFacilities).thenComparing(FLPInstance::getId);
 
@@ -29,10 +30,6 @@ public class FLPInstance extends Instance {
         this.weigths = weigths;
         this.nrows = nrows;
         this.preassignments = preassignments;
-    }
-
-    public static FLPInstance DRFLP(String name, int[] lengths, int[][] weigths){
-        return new FLPInstance(name, lengths, weigths, 2, Collections.emptyMap());
     }
 
     /**

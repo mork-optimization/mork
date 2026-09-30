@@ -14,6 +14,15 @@ public final class TSPTWUtil {
         }
     }
 
+    /** Negative when a is better: total lateness, then violated windows, then tour cost. */
+    public static int compareForRepair(TSPTWSolution a, TSPTWSolution b) {
+        int comparison = Double.compare(a.infeasibility(), b.infeasibility());
+        if (comparison != 0) return comparison;
+        comparison = Integer.compare(a.constraint_violations(), b.constraint_violations());
+        if (comparison != 0) return comparison;
+        return Double.compare(a.cost(), b.cost());
+    }
+
     public static <T> List<T> distinctComponents(List<T> components, int min, int max) {
         var copy = List.copyOf(components);
         if (copy.size() < min || copy.size() > max) {

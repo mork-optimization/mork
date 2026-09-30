@@ -7,13 +7,12 @@ import java.util.Optional;
 /** Type boundary for neighborhoods that preserve the assigned facility set. */
 public abstract class FLPPreservingNeighNew extends RandomizableNeighborhood<FLPNewMove, FLPSolution, FLPInstance> {
     protected final boolean fast;
-    protected final boolean lazy;
-    protected FLPPreservingNeighNew(boolean fast, boolean lazy) { this.fast = fast; this.lazy = lazy; }
-    protected abstract FLPNewUtil.MoveSpace space(FLPSolution solution);
+    protected FLPPreservingNeighNew(boolean fast) { this.fast = fast; }
+    protected abstract FLPNewUtil.MoveSpace<FLPNewMove> space(FLPSolution solution);
     @Override
     public ExploreResult<FLPNewMove, FLPSolution, FLPInstance> explore(FLPSolution solution) {
         if (es.urjc.etsii.grafo.util.TimeControl.isTimeUp()) return ExploreResult.empty();
-        return FLPNewUtil.explore(space(solution), lazy);
+        return FLPNewUtil.explore(space(solution), fast);
     }
     @Override
     public Optional<FLPNewMove> getRandomMove(FLPSolution solution) {
