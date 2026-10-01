@@ -66,6 +66,12 @@ public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instan
         return (Algorithm<S, I>) this.algorithmBuilder.buildAlgorithmFromJson(jsonDescription);
     }
 
+    public Algorithm<S, I> buildFromJson(String algName, String jsonDescription){
+        var alg = buildFromJson(jsonDescription);
+        alg.setName(algName);
+        return alg;
+    }
+
     /**
      * Build the highest ranked algorithms from a saved IRACE final-elites file.
      * The file contains flat IRACE parameters, so the current automatic search
