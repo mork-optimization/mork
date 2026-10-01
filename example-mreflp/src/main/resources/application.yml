@@ -1,0 +1,43 @@
+instances:
+  preload: true
+  path:
+    default: benchmark/pilot.index
+solver:
+  seed: 1234
+  random-type: default
+  experiments: PaperExperiment
+  repetitions: 1
+  parallelExecutor: false
+  nWorkers: 1
+  benchmark: false
+  metrics: false
+  warmup:
+    enabled: true
+    repetitions: 5
+    max-millis: 1000
+mreflp:
+  variant: LMLS
+  time-limit-seconds: 600
+  max-restarts: 0
+  protocol: pilot
+serializers:
+  mreflp:
+    enabled: true
+    frequency: ALL
+    folder: runs/manual
+  csv:
+    enabled: false
+  excel:
+    enabled: false
+  solution-json:
+    enabled: false
+event:
+  webserver:
+    stopOnExecutionEnd: true
+  telegram:
+    enabled: false
+errors:
+  errorsToFile: true
+  folder: errors
+server:
+  port: 0
