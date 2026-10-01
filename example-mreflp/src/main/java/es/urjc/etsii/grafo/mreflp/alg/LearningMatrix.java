@@ -6,10 +6,16 @@ import java.util.Arrays;
 /** Equations 14–16. Literal smoothing does not preserve row sums; no renormalization is added. */
 public final class LearningMatrix {
     private final double[][] eta;
-    private final LMLSParameters p;
-    public LearningMatrix(int n, int k, LMLSParameters parameters) {
+    private final double alpha, beta, gamma, rho;
+    public LearningMatrix(int n, int k, double alpha, double beta, double gamma, double rho) {
+        for (double factor : new double[]{alpha, beta, gamma, rho}) {
+            if (!(factor > 0 && factor < 1)) throw new IllegalArgumentException("Learning factors must be in (0,1)");
+        }
         eta = new double[n][k];
-        p = parameters;
+        this.alpha = alpha;
+        this.beta = beta;
+        this.gamma = gamma;
+        this.rho = rho;
         for (double[] row : eta) Arrays.fill(row, 1.0 / k);
     }
     public double value(int v, int g) { return eta[v][g]; }
@@ -20,13 +26,13 @@ public final class LearningMatrix {
             for (int g = 0; g < eta[v].length; g++) {
                 double value = eta[v][g];
                 if (origin == destination) {
-                    value = (1 - p.alpha()) * value + (g == origin ? p.alpha() : 0);
+                    value = (1 - alpha) * value + (g == origin ? alpha : 0);
                 } else {
-                    value *= (1 - p.beta()) * (1 - p.gamma());
-                    if (g != origin) value += (1 - p.gamma()) * p.beta() / (eta[v].length - 1);
-                    if (g == destination) value += p.gamma();
+                    value *= (1 - beta) * (1 - gamma);
+                    if (g != origin) value += (1 - gamma) * beta / (eta[v].length - 1);
+                    if (g == destination) value += gamma;
                 }
-                eta[v][g] = smooth(value, p.rho());
+                eta[v][g] = smooth(value, rho);
             }
         }
     }

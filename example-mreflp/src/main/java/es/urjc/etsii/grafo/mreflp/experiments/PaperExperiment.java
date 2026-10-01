@@ -11,6 +11,11 @@ public class PaperExperiment extends AbstractExperiment<MREFLPSolution, MREFLPIn
     private final MREFLPConfig config;
     public PaperExperiment(MREFLPConfig config) { this.config = config; }
     @Override public List<Algorithm<MREFLPSolution, MREFLPInstance>> getAlgorithms() {
-        return List.of(new LMLS(config.getVariant(), LMLSParameters.PAPER, config.getMaxRestarts()));
+        return List.of(paperAlgorithm(config.getVariant(), config.getMaxRestarts()));
+    }
+
+    /** Table 1: epsilon, stagnation iterations, tenure, reward, penalty, compensation, smoothing. */
+    public static LMLS paperAlgorithm(LMLSVariant variant, int maxRestarts) {
+        return new LMLS(variant, 0.6, 20, 3, 0.1, 0.2, 0.3, 0.3, maxRestarts);
     }
 }

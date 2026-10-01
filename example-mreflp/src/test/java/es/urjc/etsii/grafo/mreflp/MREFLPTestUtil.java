@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.mreflp;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.mreflp.alg.*;
+import es.urjc.etsii.grafo.mreflp.experiments.PaperExperiment;
 import es.urjc.etsii.grafo.mreflp.model.*;
 import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeControl;
@@ -32,7 +33,7 @@ final class MREFLPTestUtil {
         return solution;
     }
     static LMLS algorithm(LMLSVariant variant, int restarts) {
-        var algorithm = new LMLS(variant, LMLSParameters.PAPER, restarts);
+        var algorithm = PaperExperiment.paperAlgorithm(variant, restarts);
         algorithm.setBuilder(new SolutionBuilder<>() {
             @Override public MREFLPSolution initializeSolution(MREFLPInstance i) { return new MREFLPSolution(i); }
         });

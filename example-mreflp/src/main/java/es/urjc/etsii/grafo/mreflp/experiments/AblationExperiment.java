@@ -13,7 +13,7 @@ public class AblationExperiment extends AbstractExperiment<MREFLPSolution, MREFL
     public AblationExperiment(MREFLPConfig config) { this.config = config; }
     @Override public List<Algorithm<MREFLPSolution, MREFLPInstance>> getAlgorithms() {
         var algorithms = new ArrayList<Algorithm<MREFLPSolution, MREFLPInstance>>();
-        for (var variant : LMLSVariant.values()) algorithms.add(new LMLS(variant, LMLSParameters.PAPER, config.getMaxRestarts()));
+        for (var variant : LMLSVariant.values()) algorithms.add(PaperExperiment.paperAlgorithm(variant, config.getMaxRestarts()));
         return algorithms;
     }
 }

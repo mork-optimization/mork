@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.mreflp.io;
 
-import es.urjc.etsii.grafo.mreflp.alg.LMLSParameters;
+import es.urjc.etsii.grafo.mreflp.alg.LMLSVariant;
+import es.urjc.etsii.grafo.mreflp.experiments.PaperExperiment;
 import es.urjc.etsii.grafo.mreflp.model.*;
 import tools.jackson.databind.json.JsonMapper;
 import java.io.IOException;
@@ -9,6 +10,7 @@ import java.util.*;
 
 /** Reads raw instances and validates exported assignments independently of move caches. */
 public final class ReproductionReportUtil {
+    private static final Map<String, Number> PAPER_PARAMETERS = PaperExperiment.paperAlgorithm(LMLSVariant.LMLS, 0).parameters();
     public record ReportResult(int validRuns, int invalidRuns, int missingPaperRuns, boolean complete) {}
     private record Cohort(String caseId, String algorithm, String protocol) {}
     private static final class Summary {
@@ -30,13 +32,35 @@ public final class ReproductionReportUtil {
                 || run.budgetSeconds() <= 0 || run.maxRestarts() < 0 || run.parameters() == null
                 || run.algorithm() == null || run.protocol() == null || run.randomType() == null
                 || run.artifactHash() == null) throw new IllegalArgumentException("Invalid run metadata");
+        validateParameters(run.parameters());
+    }
+
+    private static void validateParameters(Map<String, Number> parameters) {
+        if (!parameters.keySet().equals(PAPER_PARAMETERS.keySet())) {
+            throw new IllegalArgumentException("Invalid parameter metadata");
+        }
+        for (Number value : parameters.values()) {
+            if (value == null) throw new IllegalArgumentException("Missing parameter value");
+        }
+        double epsilon = parameters.get("epsilon").doubleValue();
+        if (!(epsilon >= 0 && epsilon <= 1)) throw new IllegalArgumentException("Invalid epsilon");
+        for (String name : List.of("maxIter", "tenure")) {
+            double value = parameters.get(name).doubleValue();
+            if (!(value >= 1 && value <= Integer.MAX_VALUE && value == Math.rint(value))) {
+                throw new IllegalArgumentException("Invalid " + name);
+            }
+        }
+        for (String name : List.of("alpha", "beta", "gamma", "rho")) {
+            double value = parameters.get(name).doubleValue();
+            if (!(value > 0 && value < 1)) throw new IllegalArgumentException("Invalid " + name);
+        }
     }
 
     public static boolean isPaperRun(RunRecord r) {
         boolean seed = r.protocol().equals("normal") && r.seed() == 1234
                 || r.protocol().equals("relaxed") && r.seed() >= 1235 && r.seed() <= 1244;
         return seed && r.algorithm().equals("LMLS") && r.budgetSeconds() == 600
-                && r.maxRestarts() == 0 && LMLSParameters.PAPER.equals(r.parameters())
+                && r.maxRestarts() == 0 && PAPER_PARAMETERS.equals(r.parameters())
                 && r.randomType().equals("Xoroshiro128PlusPlus") && r.warmedUp()
                 && r.warmupRepetitions() == 5 && r.warmupMillis() == 1000
                 && r.artifactHash().matches("[0-9a-f]{64}") && r.runtimeNanos() >= 590_000_000_000L;

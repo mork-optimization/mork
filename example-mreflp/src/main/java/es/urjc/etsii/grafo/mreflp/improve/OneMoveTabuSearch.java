@@ -2,18 +2,19 @@ package es.urjc.etsii.grafo.mreflp.improve;
 
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.mreflp.Main;
-import es.urjc.etsii.grafo.mreflp.alg.LMLSParameters;
 import es.urjc.etsii.grafo.mreflp.model.*;
 import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 
 /** Algorithm 4. Tabu status follows a facility, not a source/destination pair. */
 public final class OneMoveTabuSearch extends Improver<MREFLPSolution, MREFLPInstance> {
-    private final LMLSParameters parameters;
+    private final int maxIter, tenure;
     private final boolean cached;
-    public OneMoveTabuSearch(LMLSParameters parameters, boolean cached) {
+    public OneMoveTabuSearch(int maxIter, int tenure, boolean cached) {
         super(Main.COST);
-        this.parameters = parameters;
+        if (maxIter < 1 || tenure < 1) throw new IllegalArgumentException("Invalid tabu parameters");
+        this.maxIter = maxIter;
+        this.tenure = tenure;
         this.cached = cached;
     }
 
@@ -30,7 +31,7 @@ public final class OneMoveTabuSearch extends Improver<MREFLPSolution, MREFLPInst
         long iteration = 0;
         int stagnant = 0;
         var random = RandomManager.getRandom();
-        while (stagnant < parameters.maxIter() && !TimeControl.isTimeUp()) {
+        while (stagnant < maxIter && !TimeControl.isTimeUp()) {
             long bestDelta = Long.MAX_VALUE;
             int facility = -1, group = -1, ties = 0;
             boolean feasible = false;
@@ -51,7 +52,7 @@ public final class OneMoveTabuSearch extends Improver<MREFLPSolution, MREFLPInst
             int old = s.group(facility);
             new MREFLPMove(s, facility, group, false, bestDelta).execute(s);
             if (cached) cache.afterRelocation(s, facility, old);
-            tabu[facility] = iteration + random.nextInt(1, parameters.tenure() + 1);
+            tabu[facility] = iteration + random.nextInt(1, tenure + 1);
             if (s.cost() < best.cost()) { best = s.cloneSolution(); stagnant = 0; }
             else stagnant++;
         }

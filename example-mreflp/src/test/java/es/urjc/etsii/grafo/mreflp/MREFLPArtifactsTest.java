@@ -1,8 +1,11 @@
 package es.urjc.etsii.grafo.mreflp;
 
+import es.urjc.etsii.grafo.config.SolverConfig;
+import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.mreflp.alg.*;
 import es.urjc.etsii.grafo.mreflp.io.*;
 import es.urjc.etsii.grafo.mreflp.model.*;
+import es.urjc.etsii.grafo.util.random.RandomType;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
 import tools.jackson.databind.json.JsonMapper;
@@ -148,6 +151,42 @@ class MREFLPArtifactsTest {
                 new MREFLPInstance("fixture", "test", 2, 3, new long[4][4], 0, "different-hash")));
     }
 
+    @Test void checkpointsRecordActualParametersAndRecognizePaperConfiguration() throws Exception {
+        var i = instance(4, 2, 3, 17);
+        var s = solution(i, 0, 0, 1, 1);
+        var problem = new MREFLPConfig();
+        problem.setProtocol("normal");
+        var solver = new SolverConfig();
+        solver.setSeed(1234);
+        solver.setRandomType(RandomType.DEFAULT);
+        solver.getWarmup().setEnabled(true);
+        solver.getWarmup().setMaxMillis(1000);
+        var exporter = new MREFLPResultExporter(new MREFLPResultConfig(), problem, solver);
+        var paper = algorithm(LMLSVariant.LMLS, 0);
+        var custom = new LMLS(LMLSVariant.LMLS, .8, 7, 2, .2, .3, .4, .5, 0);
+        var mapper = JsonMapper.builder().build();
+        String oldHash = System.getProperty("mreflp.artifact-hash");
+        System.setProperty("mreflp.artifact-hash", "a".repeat(64));
+        try {
+            for (var configured : List.of(paper, custom)) {
+                var result = new WorkUnitResult<>(UUID.randomUUID(), true, "PaperExperiment", "fixture", i.getId(),
+                        configured, "0", s, Map.<String, Double>of(), Map.<String, Object>of(),
+                        600_000_000_000L, 20_000_000L, null);
+                Path path = temporary.resolve(configured == paper ? "paper.run.json" : "custom.run.json");
+                exporter.export(temporary.toString(), path.getFileName().toString(), result);
+                var run = mapper.readValue(path.toFile(), RunRecord.class);
+                assertEquals(configured.parameters(), run.parameters());
+                assertDoesNotThrow(() -> ReproductionReportUtil.validate(run, i));
+                assertEquals(configured == paper, ReproductionReportUtil.isPaperRun(run));
+                run.parameters().put("maxIter", 7.5);
+                assertThrows(IllegalArgumentException.class, () -> ReproductionReportUtil.validate(run, i));
+            }
+        } finally {
+            if (oldHash == null) System.clearProperty("mreflp.artifact-hash");
+            else System.setProperty("mreflp.artifact-hash", oldHash);
+        }
+    }
+
     @Test void reportDoesNotPresentPilotOrIncompleteRelaxedAsFullCampaign() throws Exception {
         var i = MREFLPInstanceUtil.read(Path.of("instances/small/A-10-90.txt"), 2);
         Path input = temporary.resolve("runs");
@@ -202,7 +241,7 @@ class MREFLPArtifactsTest {
         int[] groups = new int[i.n()];
         for (int v = 0; v < groups.length; v++) groups[v] = v / i.capacity();
         var s = solution(i, groups);
-        return new RunRecord(1, i.getId(), "LMLS", protocol, seed, .2, 0, LMLSParameters.PAPER,
+        return new RunRecord(1, i.getId(), "LMLS", protocol, seed, .2, 0, algorithm(LMLSVariant.LMLS, 0).parameters(),
                 "Xoroshiro128PlusPlus", i.sourceHash(), "a".repeat(64), s.cost(), 200_000_000L, 20_000_000L,
                 groups, "25", "test", "test", "test", 1, true, 5, 50);
     }

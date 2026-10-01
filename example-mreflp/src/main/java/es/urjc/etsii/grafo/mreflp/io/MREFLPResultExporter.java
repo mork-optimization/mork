@@ -4,7 +4,7 @@ import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.mreflp.MREFLPConfig;
-import es.urjc.etsii.grafo.mreflp.alg.LMLSParameters;
+import es.urjc.etsii.grafo.mreflp.alg.LMLS;
 import es.urjc.etsii.grafo.mreflp.model.*;
 import tools.jackson.databind.json.JsonMapper;
 import java.io.BufferedWriter;
@@ -28,7 +28,7 @@ public class MREFLPResultExporter extends SolutionSerializer<MREFLPSolution, MRE
         new MREFLPSolutionValidator().validate(r.solution()).throwIfFail();
         return new RunRecord(1, r.instanceId(), r.algorithm().getName(), problem.getProtocol(),
                 solver.getSeed() + Integer.parseInt(r.iteration()), problem.getTimeLimitSeconds(), problem.getMaxRestarts(),
-                LMLSParameters.PAPER, solver.getRandomType().getJavaName(), r.solution().getInstance().sourceHash(),
+                ((LMLS) r.algorithm()).parameters(), solver.getRandomType().getJavaName(), r.solution().getInstance().sourceHash(),
                 System.getProperty("mreflp.artifact-hash", "unrecorded"), r.solution().cost(), r.executionTime(), r.timeToTarget(),
                 r.solution().assignments(), System.getProperty("java.runtime.version"), System.getProperty("java.vm.name"),
                 System.getProperty("os.name"), System.getProperty("os.arch"), Runtime.getRuntime().availableProcessors(),

@@ -109,7 +109,7 @@ class MREFLPAlgorithmTest {
 
     @Test void learningEquationsAndStrictSmoothingThresholds() {
         var s = solution(instance(2, 2, 4, 7), 0, 1);
-        var eta = new LearningMatrix(2, 4, LMLSParameters.PAPER);
+        var eta = new LearningMatrix(2, 4, .1, .2, .3, .3);
         eta.update(new int[]{0, 0}, s);
         assertEquals(.325, eta.value(0, 0), 1e-12);
         assertEquals(.225, eta.value(0, 1), 1e-12);
@@ -120,7 +120,7 @@ class MREFLPAlgorithmTest {
         assertEquals(.95, LearningMatrix.smooth(.95, .3));
         assertEquals(.328, LearningMatrix.smooth(.04, .3), 1e-12);
         assertEquals(.672, LearningMatrix.smooth(.96, .3), 1e-12);
-        var wide = new LearningMatrix(1, 170, LMLSParameters.PAPER);
+        var wide = new LearningMatrix(1, 170, .1, .2, .3, .3);
         wide.update(new int[]{0}, solution(instance(1, 2, 170, 0), 0));
         double sum = 0;
         for (int g = 0; g < 170; g++) sum += wide.value(0, g);
@@ -136,7 +136,7 @@ class MREFLPAlgorithmTest {
     @Test void searchReturnsBestAndSwapTerminatesAtLocalOptimum() {
         var s = solution(instance(8, 3, 5, 18), 0, 0, 1, 1, 2, 2, 3, 3);
         long original = s.cost();
-        var tabu = new OneMoveTabuSearch(LMLSParameters.PAPER, true).improve(s);
+        var tabu = new OneMoveTabuSearch(20, 3, true).improve(s);
         assertTrue(tabu.cost() <= original);
         assertEquals(original, s.cost());
         var descent = new SwapDescent(true).improve(tabu);
@@ -145,10 +145,10 @@ class MREFLPAlgorithmTest {
             if (descent.group(u) != descent.group(v)) assertTrue(MREFLPEvaluationUtil.swap(descent, u, v) >= 0);
         }
         var full = solution(instance(4, 2, 2, 9), 0, 0, 1, 1);
-        assertEquals(full.cost(), new OneMoveTabuSearch(LMLSParameters.PAPER, true).improve(full).cost());
+        assertEquals(full.cost(), new OneMoveTabuSearch(20, 3, true).improve(full).cost());
         var zero = solution(new MREFLPInstance("zero", "test", 2, 3, new long[4][4], 0, "fixture"), 0, 0, 1, 1);
         assertEquals(0, new SwapDescent(true).improve(zero).cost());
-        assertEquals(0, new OneMoveTabuSearch(LMLSParameters.PAPER, true).improve(zero).cost());
+        assertEquals(0, new OneMoveTabuSearch(20, 3, true).improve(zero).cost());
     }
 
     @Test void allVariantsRepeatAndLearningResetsBetweenCalls() {
