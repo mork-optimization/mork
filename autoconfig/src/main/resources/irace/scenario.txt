@@ -4,7 +4,6 @@
 
 ## !!!! IMPORTANT !!!!
 ## VALUES BETWEEN __ ARE AUTOCONFIGURED BY MORK AT RUNTIME
-## Example: trainInstancesDir will be automatically set to the instance folder set in application.yml
 
 ## To use the default value of a parameter of iRace, simply do not set
 ## the parameter (comment it out in this file, and do not give any
@@ -20,13 +19,12 @@ execDir = "./"
 ## or relative to execDir.
 # logFile = "./irace.Rdata"
 
-## Directory where tuning instances are located, either absolute path or
-## relative to current directory.
-trainInstancesDir = "__INSTANCES_PATH__"
+## The generated manifest contains absolute load paths, so no directory prefix is needed.
+trainInstancesDir = ""
 
 ## File with a list of instances and (optionally) parameters.
 ## If empty or NULL, do not use a file.
-#trainInstancesFile = "./training.txt"
+trainInstancesFile = "__TRAIN_INSTANCES_FILE__"
 #testInstancesFile = "./test.txt"
 
 

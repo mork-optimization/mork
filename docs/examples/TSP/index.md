@@ -902,8 +902,9 @@ Be sure that you leave some empty lines at the end of the file (we don't why it 
 
 Mork uses the default `scenario.txt` bundled with the `autoconfig` dependency. To customize it, copy the file from
 `autoconfig/src/main/resources/irace/scenario.txt` to `src/main/resources/irace/scenario.txt` in your project. 
-Some parameters you could modify are `trainInstancesDir`,
-`maxExperiments`, and `targetRunnerParallel`.
+Some parameters you could modify are `maxExperiments` and `targetRunnerParallel`.
+Keep `trainInstancesDir = ""` and `trainInstancesFile = "__TRAIN_INSTANCES_FILE__"` to use the training
+instances configured in `application.yml`.
 
 ### Execute irace
 

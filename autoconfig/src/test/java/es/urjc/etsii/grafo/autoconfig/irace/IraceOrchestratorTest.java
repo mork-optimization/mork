@@ -37,13 +37,15 @@ class IraceOrchestratorTest {
         var eventPublisher = mock(MorkEventPublisher.class);
         var lifecycle = mock(ExecutionLifecycleCoordinator.class);
         var resultsSerializer = (ResultsSerializerListener<TestSolution, TestInstance>) mock(ResultsSerializerListener.class);
+        var instanceManager = (InstanceManager<TestInstance>) mock(InstanceManager.class);
+        var integration = mock(IraceIntegration.class);
         var orchestrator = new IraceOrchestrator<>(
                 new SolverConfig(),
                 new BlockConfig(),
                 new ServerProperties(),
                 new InstanceConfiguration(),
-                mock(IraceIntegration.class),
-                (InstanceManager<TestInstance>) mock(InstanceManager.class),
+                integration,
+                instanceManager,
                 mock(AutoconfigSearchSpace.class),
                 eventPublisher,
                 lifecycle,
@@ -53,7 +55,7 @@ class IraceOrchestratorTest {
 
         orchestrator.run("--follower");
 
-        verifyNoInteractions(eventPublisher, resultsSerializer);
+        verifyNoInteractions(eventPublisher, resultsSerializer, instanceManager, integration);
         verify(lifecycle, never()).complete(anyLong());
     }
 

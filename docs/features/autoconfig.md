@@ -144,6 +144,11 @@ solver:
 
 Use `--irace` or `--autoconfig` to launch tuning. Use `--follower` to start only the execution controller.
 
+Training instances come from `instances.path.irace`, falling back to `instances.path.default`.
+Both modes accept directories, individual files, archives, and [`.index` selections](instance-manager.md).
+Mork writes their resolved paths to `autoconfig-instances.txt` without copying instance data.
+See [scenario options](irace.md#adjusting-scenario-options) if you use a custom scenario template.
+
 Each automatic evaluation receives a cooperative time budget of `ignore-initial-millis + interval-duration-millis`.
 See [Time limits during tuning](time-limits.md#time-limits-during-tuning) for scoring intervals, restarts,
 and the distinction from the total tuning budget.

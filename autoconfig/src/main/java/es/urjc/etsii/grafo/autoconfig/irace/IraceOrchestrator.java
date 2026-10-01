@@ -50,6 +50,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private static final String IRACE_INSTANCE_PATH_KEY = "irace";
     public static final String K_INTEGRATION_KEY = "__INTEGRATION_KEY__";
     public static final String K_INSTANCES_PATH = "__INSTANCES_PATH__";
+    public static final String K_TRAIN_INSTANCES_FILE = "__TRAIN_INSTANCES_FILE__";
     public static final String K_TARGET_RUNNER = "__TARGET_RUNNER__";
     public static final String K_PARALLEL = "__PARALLEL__";
     public static final String K_MAX_EXP = "__MAX_EXPERIMENTS__";
@@ -58,6 +59,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public static final String K_RUN_ID = "__RUN_ID__";
     public static final String F_PARAMETERS = "parameters.txt";
     public static final String F_SCENARIO = "scenario.txt";
+    public static final String F_TRAIN_INSTANCES = "autoconfig-instances.txt";
     private static final String INITIAL_CONFIGURATIONS_RESOURCE = "initial-configurations.json";
     private static final String INITIAL_CONFIGURATIONS_FILE = "autoconfig-initial-configurations.txt";
     private static final String IRACE_PARAM_EPILOGUE = "\n[global]\ndigits = "
@@ -192,6 +194,9 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         int parameterCount = 0;
         boolean automaticMode = runState.isAutomaticMode();
         try {
+            var trainingInstances = instanceManager.getInstanceSolveOrder(IRACE_INSTANCE_PATH_KEY, false);
+            IraceInstanceUtil.write(Path.of(F_TRAIN_INSTANCES), trainingInstances);
+            log.info("Prepared {} irace training instances in {}", trainingInstances.size(), F_TRAIN_INSTANCES);
             if (automaticMode) {
                 if (searchSpace.roots().isEmpty()) {
                     throw new IllegalStateException("No valid algorithm found, cannot generate irace parameters");
@@ -259,6 +264,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         return Map.of(
                 K_INTEGRATION_KEY, integrationKey,
                 K_INSTANCES_PATH, instanceConfiguration.getPath(IRACE_INSTANCE_PATH_KEY),
+                K_TRAIN_INSTANCES_FILE, "./" + F_TRAIN_INSTANCES,
                 K_TARGET_RUNNER, "./middleware.sh",
                 K_PARALLEL, nParallel(solverConfig),
                 K_MAX_EXP, calculateMaxExperiments(runState.isAutomaticMode(), solverConfig, parameterCount),
