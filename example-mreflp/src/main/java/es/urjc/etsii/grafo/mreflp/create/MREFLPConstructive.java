@@ -1,5 +1,8 @@
 package es.urjc.etsii.grafo.mreflp.create;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.CategoricalParam;
+import es.urjc.etsii.grafo.annotations.RealParam;
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.mreflp.alg.LearningMatrix;
 import es.urjc.etsii.grafo.mreflp.alg.LMLSVariant;
@@ -10,16 +13,22 @@ import es.urjc.etsii.grafo.util.random.RandomManager;
 
 /** Algorithm 2, plus the two construction ablations. */
 public final class MREFLPConstructive extends Constructive<MREFLPSolution, MREFLPInstance> {
-    private final LearningMatrix learning;
     private final LMLSVariant variant;
     private final double epsilon;
-    public MREFLPConstructive(LearningMatrix learning, LMLSVariant variant, double epsilon) {
-        this.learning = learning;
+    @AutoconfigConstructor
+    public MREFLPConstructive(@CategoricalParam(strings = {"LMLS", "RANDOM", "GREEDY"}) LMLSVariant variant,
+                             @RealParam(min = 0, max = 1) double epsilon) {
+        if (!(epsilon >= 0 && epsilon <= 1)) throw new IllegalArgumentException("Invalid epsilon");
         this.variant = variant;
         this.epsilon = epsilon;
     }
 
     @Override public MREFLPSolution construct(MREFLPSolution s) {
+        return construct(s, null);
+    }
+
+    /** LMLS supplies its run-local learning matrix; standalone construction starts with uniform weights. */
+    public MREFLPSolution construct(MREFLPSolution s, LearningMatrix learning) {
         var random = RandomManager.getRandom();
         int n = s.getInstance().n(), k = s.getInstance().groups();
         int[] order = new int[n];
@@ -37,7 +46,7 @@ public final class MREFLPConstructive extends Constructive<MREFLPSolution, MREFL
                     long marginal = 0;
                     for (int u = 0; u < n; u++) if (s.group(u) >= 0) marginal += s.getInstance().flow(u, v) * Math.abs(g - s.group(u));
                     value = -marginal;
-                } else if (informed) value = learning.value(v, g);
+                } else if (informed && learning != null) value = learning.value(v, g);
                 if (value > bestValue) { bestValue = value; chosen = g; ties = 1; }
                 else if (value == bestValue && random.nextInt(++ties) == 0) chosen = g;
             }

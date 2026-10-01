@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.mreflp.improve;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.CategoricalParam;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.mreflp.Main;
 import es.urjc.etsii.grafo.mreflp.model.*;
@@ -9,7 +11,11 @@ import es.urjc.etsii.grafo.util.random.RandomManager;
 /** Algorithm 5. Scans unordered pairs and executes only strictly improving swaps. */
 public final class SwapDescent extends Improver<MREFLPSolution, MREFLPInstance> {
     private final boolean cached;
-    public SwapDescent(boolean cached) { super(Main.COST); this.cached = cached; }
+    @AutoconfigConstructor
+    public SwapDescent(@CategoricalParam(strings = {"true", "false"}) boolean cached) {
+        super(Main.COST);
+        this.cached = cached;
+    }
 
     @Override public MREFLPSolution improve(MREFLPSolution input) {
         var s = input.cloneSolution();

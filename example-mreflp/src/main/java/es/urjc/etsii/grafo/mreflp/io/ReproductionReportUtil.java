@@ -32,7 +32,12 @@ public final class ReproductionReportUtil {
                 || run.budgetSeconds() <= 0 || run.maxRestarts() < 0 || run.parameters() == null
                 || run.algorithm() == null || run.protocol() == null || run.randomType() == null
                 || run.artifactHash() == null) throw new IllegalArgumentException("Invalid run metadata");
-        validateParameters(run.parameters());
+        // Generic algorithm combinations have no LMLS parameter snapshot and cannot qualify as paper runs.
+        boolean lmlsName = false;
+        for (var variant : LMLSVariant.values()) {
+            if (variant.paperName().equals(run.algorithm())) lmlsName = true;
+        }
+        if (lmlsName || !run.parameters().isEmpty()) validateParameters(run.parameters());
     }
 
     private static void validateParameters(Map<String, Number> parameters) {

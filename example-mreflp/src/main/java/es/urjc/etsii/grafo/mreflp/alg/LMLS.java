@@ -1,6 +1,10 @@
 package es.urjc.etsii.grafo.mreflp.alg;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.CategoricalParam;
+import es.urjc.etsii.grafo.annotations.IntegerParam;
+import es.urjc.etsii.grafo.annotations.RealParam;
 import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.mreflp.create.MREFLPConstructive;
 import es.urjc.etsii.grafo.mreflp.improve.OneMoveTabuSearch;
@@ -15,8 +19,16 @@ public final class LMLS extends Algorithm<MREFLPSolution, MREFLPInstance> {
     private final double epsilon, alpha, beta, gamma, rho;
     private final int maxIter, tenure;
     private final int maxRestarts;
-    public LMLS(LMLSVariant variant, double epsilon, int maxIter, int tenure,
-                double alpha, double beta, double gamma, double rho, int maxRestarts) {
+    @AutoconfigConstructor
+    public LMLS(@CategoricalParam LMLSVariant variant,
+                @RealParam(min = 0, max = 1) double epsilon,
+                @IntegerParam(min = 1, max = 1_000) int maxIter,
+                @IntegerParam(min = 1, max = 100) int tenure,
+                @RealParam(min = 0.01, max = 0.99) double alpha,
+                @RealParam(min = 0.01, max = 0.99) double beta,
+                @RealParam(min = 0.01, max = 0.99) double gamma,
+                @RealParam(min = 0.01, max = 0.99) double rho,
+                @IntegerParam(min = 0, max = 1_000) int maxRestarts) {
         super(variant.paperName());
         if (!(epsilon >= 0 && epsilon <= 1) || maxIter < 1 || tenure < 1) throw new IllegalArgumentException("Invalid search parameters");
         for (double factor : new double[]{alpha, beta, gamma, rho}) {
@@ -42,13 +54,13 @@ public final class LMLS extends Algorithm<MREFLPSolution, MREFLPInstance> {
     @Override public MREFLPSolution algorithm(MREFLPInstance instance) {
         if (!TimeControl.isEnabled() && maxRestarts == 0) throw new IllegalStateException("LMLS needs a time budget or a positive restart limit");
         var learning = variant.learns() ? new LearningMatrix(instance.n(), instance.groups(), alpha, beta, gamma, rho) : null;
-        var constructive = new MREFLPConstructive(learning, variant, epsilon);
+        var constructive = new MREFLPConstructive(variant, epsilon);
         var tabu = new OneMoveTabuSearch(maxIter, tenure, variant != LMLSVariant.DIRECT_ONE_MOVE);
         var swap = new SwapDescent(variant != LMLSVariant.DIRECT_SWAP);
         MREFLPSolution best = null;
         int restarts = 0;
         do {
-            var solution = constructive.construct(newSolution(instance));
+            var solution = constructive.construct(newSolution(instance), learning);
             int[] initial = learning == null ? null : solution.assignments();
             if (variant != LMLSVariant.WITHOUT_TABU) solution = tabu.improve(solution);
             if (variant != LMLSVariant.WITHOUT_SWAP) solution = swap.improve(solution);

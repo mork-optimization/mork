@@ -127,6 +127,32 @@ class MREFLPAlgorithmTest {
         assertTrue(sum > 50, "Equation 16 is a literal smoothing pass, without normalization");
     }
 
+    @Test void expandedLearningBoundariesStayFiniteAndBoundedAfterRepeatedUpdates() {
+        var i = instance(2, 2, 4, 7);
+        var improved = new MREFLPSolution[4];
+        for (int g = 0; g < 4; g++) improved[g] = solution(i, g, (g + 1) % 4);
+        var singleGroup = solution(instance(1, 1, 1, 0), 0);
+        for (int corner = 0; corner < 16; corner++) {
+            double alpha = (corner & 1) == 0 ? .01 : .99;
+            double beta = (corner & 2) == 0 ? .01 : .99;
+            double gamma = (corner & 4) == 0 ? .01 : .99;
+            double rho = (corner & 8) == 0 ? .01 : .99;
+            var eta = new LearningMatrix(2, 4, alpha, beta, gamma, rho);
+            var single = new LearningMatrix(1, 1, alpha, beta, gamma, rho);
+            for (int update = 0; update < 1000; update++) {
+                int origin = update % 4;
+                eta.update(new int[]{origin, origin}, improved[origin]);
+                single.update(new int[]{0}, singleGroup);
+                for (int v = 0; v < 2; v++) for (int g = 0; g < 4; g++) {
+                    double value = eta.value(v, g);
+                    assertTrue(Double.isFinite(value) && value >= -1e-12 && value <= 1 + 1e-12);
+                }
+                double value = single.value(0, 0);
+                assertTrue(Double.isFinite(value) && value >= -1e-12 && value <= 1 + 1e-12);
+            }
+        }
+    }
+
     @Test void tabuExpiryAndAspiration() {
         assertFalse(OneMoveTabuSearch.admissible(100, 100, 2, 3));
         assertTrue(OneMoveTabuSearch.admissible(99, 100, 2, 3));

@@ -10,6 +10,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.Map;
 
 /** Atomic, per-run checkpoints. Export and independent validation are outside measured algorithm time. */
 public class MREFLPResultExporter extends SolutionSerializer<MREFLPSolution, MREFLPInstance> {
@@ -28,7 +29,8 @@ public class MREFLPResultExporter extends SolutionSerializer<MREFLPSolution, MRE
         new MREFLPSolutionValidator().validate(r.solution()).throwIfFail();
         return new RunRecord(1, r.instanceId(), r.algorithm().getName(), problem.getProtocol(),
                 solver.getSeed() + Integer.parseInt(r.iteration()), problem.getTimeLimitSeconds(), problem.getMaxRestarts(),
-                ((LMLS) r.algorithm()).parameters(), solver.getRandomType().getJavaName(), r.solution().getInstance().sourceHash(),
+                r.algorithm() instanceof LMLS lmls ? lmls.parameters() : Map.of(),
+                solver.getRandomType().getJavaName(), r.solution().getInstance().sourceHash(),
                 System.getProperty("mreflp.artifact-hash", "unrecorded"), r.solution().cost(), r.executionTime(), r.timeToTarget(),
                 r.solution().assignments(), System.getProperty("java.runtime.version"), System.getProperty("java.vm.name"),
                 System.getProperty("os.name"), System.getProperty("os.arch"), Runtime.getRuntime().availableProcessors(),

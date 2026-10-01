@@ -1,5 +1,8 @@
 package es.urjc.etsii.grafo.mreflp.improve;
 
+import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.annotations.CategoricalParam;
+import es.urjc.etsii.grafo.annotations.IntegerParam;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.mreflp.Main;
 import es.urjc.etsii.grafo.mreflp.model.*;
@@ -10,7 +13,10 @@ import es.urjc.etsii.grafo.util.random.RandomManager;
 public final class OneMoveTabuSearch extends Improver<MREFLPSolution, MREFLPInstance> {
     private final int maxIter, tenure;
     private final boolean cached;
-    public OneMoveTabuSearch(int maxIter, int tenure, boolean cached) {
+    @AutoconfigConstructor
+    public OneMoveTabuSearch(@IntegerParam(min = 1, max = 1_000) int maxIter,
+                            @IntegerParam(min = 1, max = 100) int tenure,
+                            @CategoricalParam(strings = {"true", "false"}) boolean cached) {
         super(Main.COST);
         if (maxIter < 1 || tenure < 1) throw new IllegalArgumentException("Invalid tabu parameters");
         this.maxIter = maxIter;

@@ -1,8 +1,11 @@
 package es.urjc.etsii.grafo.mreflp;
 
 import es.urjc.etsii.grafo.config.SolverConfig;
+import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.mreflp.alg.*;
+import es.urjc.etsii.grafo.mreflp.create.MREFLPConstructive;
+import es.urjc.etsii.grafo.mreflp.improve.SwapDescent;
 import es.urjc.etsii.grafo.mreflp.io.*;
 import es.urjc.etsii.grafo.mreflp.model.*;
 import es.urjc.etsii.grafo.util.random.RandomType;
@@ -164,18 +167,21 @@ class MREFLPArtifactsTest {
         var exporter = new MREFLPResultExporter(new MREFLPResultConfig(), problem, solver);
         var paper = algorithm(LMLSVariant.LMLS, 0);
         var custom = new LMLS(LMLSVariant.LMLS, .8, 7, 2, .2, .3, .4, .5, 0);
+        var generic = new SimpleAlgorithm<MREFLPSolution, MREFLPInstance>("generic",
+                new MREFLPConstructive(LMLSVariant.RANDOM, .6), new SwapDescent(true));
         var mapper = JsonMapper.builder().build();
         String oldHash = System.getProperty("mreflp.artifact-hash");
         System.setProperty("mreflp.artifact-hash", "a".repeat(64));
         try {
-            for (var configured : List.of(paper, custom)) {
+            for (var configured : List.of(paper, custom, generic)) {
                 var result = new WorkUnitResult<>(UUID.randomUUID(), true, "PaperExperiment", "fixture", i.getId(),
                         configured, "0", s, Map.<String, Double>of(), Map.<String, Object>of(),
                         600_000_000_000L, 20_000_000L, null);
-                Path path = temporary.resolve(configured == paper ? "paper.run.json" : "custom.run.json");
+                Path path = temporary.resolve(configured == paper ? "paper.run.json"
+                        : configured == custom ? "custom.run.json" : "generic.run.json");
                 exporter.export(temporary.toString(), path.getFileName().toString(), result);
                 var run = mapper.readValue(path.toFile(), RunRecord.class);
-                assertEquals(configured.parameters(), run.parameters());
+                assertEquals(configured instanceof LMLS lmls ? lmls.parameters() : Map.of(), run.parameters());
                 assertDoesNotThrow(() -> ReproductionReportUtil.validate(run, i));
                 assertEquals(configured == paper, ReproductionReportUtil.isPaperRun(run));
                 run.parameters().put("maxIter", 7.5);
