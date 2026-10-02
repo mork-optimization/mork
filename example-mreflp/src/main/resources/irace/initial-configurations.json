@@ -1,0 +1,14 @@
+[
+  {
+    "$component": "LMLS",
+    "variant": "LMLS",
+    "epsilon": 0.6,
+    "maxIter": 20,
+    "tenure": 3,
+    "alpha": 0.1,
+    "beta": 0.2,
+    "gamma": 0.3,
+    "rho": 0.3,
+    "maxRestarts": 4
+  }
+]

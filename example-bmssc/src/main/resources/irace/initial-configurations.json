@@ -1,0 +1,38 @@
+[
+  {
+    "$component": "MultistartOnlyBestAppliesLS",
+    "iterations": 100,
+    "constructor": {
+      "$component": "BMSSCGRASPConstructor",
+      "alpha": 0.75
+    },
+    "improver": {
+      "$component": "ShakeImprover",
+      "improver": {
+        "$component": "FirstImpLS"
+      },
+      "shake": {
+        "$component": "StrategicOscillation",
+        "increment": 0.75
+      }
+    }
+  },
+  {
+    "$component": "VNS",
+    "maxK": 2,
+    "constructive": {
+      "$component": "BMSSCGRASPConstructor",
+      "alpha": 0.68
+    },
+    "shake": {
+      "$component": "StrategicOscillation",
+      "increment": 0.75
+    },
+    "improver": {
+      "$component": "LocalSearchFirstImprovement",
+      "neighborhood": {
+        "$component": "SwapNeighborhood"
+      }
+    }
+  }
+]
