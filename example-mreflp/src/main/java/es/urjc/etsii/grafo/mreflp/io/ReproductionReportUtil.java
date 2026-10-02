@@ -75,7 +75,7 @@ public final class ReproductionReportUtil {
         var mapper = JsonMapper.builder().build();
         var instances = new TreeMap<String, MREFLPInstance>();
         for (String category : BenchmarkPreparationUtil.CATEGORIES) {
-            try (var files = Files.newDirectoryStream(root.resolve("instances").resolve(category), "*.txt")) {
+            try (var files = Files.newDirectoryStream(root.resolve("instances/raw").resolve(category), "*.txt")) {
                 for (Path file : files) for (int r = 2; r <= 5; r++) {
                     var instance = MREFLPInstanceUtil.read(file, r);
                     if (instances.put(instance.getId(), instance) != null) throw new IllegalArgumentException("Duplicate case");

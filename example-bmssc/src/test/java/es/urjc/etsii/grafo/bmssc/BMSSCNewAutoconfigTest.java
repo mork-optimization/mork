@@ -6,7 +6,7 @@ import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
 import es.urjc.etsii.grafo.autoconfig.fill.AlgorithmNameParam;
 import es.urjc.etsii.grafo.autoconfig.fill.ObjectiveParamProvider;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
-import es.urjc.etsii.grafo.autoconfig.generator.CombinationNode;
+import es.urjc.etsii.grafo.autoconfig.generator.CombinationTree;
 import es.urjc.etsii.grafo.autoconfig.generator.DefaultExplorationFilter;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
@@ -75,7 +75,7 @@ class BMSSCNewAutoconfigTest {
         var cached = find(ig.children().get("improver"), "LocalSearchCachedBestImprovement");
         var branch = new TreeNode(ig.paramName(), ig.clazz(), Map.of("constructive", List.of(grasp),
                 "destructionReconstruction", List.of(restrictedShake), "improver", List.of(cached)), Map.of());
-        String parameters = String.join("\n", extendedGenerator.toIraceParams(List.of(branch)));
+        String parameters = String.join("\n", extendedGenerator.toIraceParameterSpace(List.of(branch)).parameters());
         for (String expected : List.of("RANDOM_GREEDY", "FARTHEST_FIRST", "RegretConstructor", "WorstRemoval",
                 "ThreeCycleNeighborhood", "SampledTwoForTwoNeighborhood", "samples")) assertTrue(parameters.contains(expected), expected);
     }
@@ -156,15 +156,11 @@ class BMSSCNewAutoconfigTest {
         for (var children : node.children().values()) {
             for (var child : children) collect(child, visited, names);
         }
-        for (var combination : node.combinations().values()) collectCombination(combination.root(), visited, names);
+        for (var combination : node.combinations().values()) collectCombination(combination, visited, names);
     }
 
-    private void collectCombination(CombinationNode node, Set<TreeNode> visited, Set<String> names) {
-        if (node == null) return;
-        for (var choice : node.choices()) {
-            collect(choice.component(), visited, names);
-            collectCombination(choice.next(), visited, names);
-        }
+    private void collectCombination(CombinationTree combination, Set<TreeNode> visited, Set<String> names) {
+        for (var candidate : combination.candidates()) collect(candidate, visited, names);
     }
 
     private TreeNode find(List<TreeNode> nodes, String name) {

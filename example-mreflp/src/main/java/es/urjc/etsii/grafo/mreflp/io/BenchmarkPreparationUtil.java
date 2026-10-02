@@ -15,7 +15,9 @@ public final class BenchmarkPreparationUtil {
 
     public static void prepare(Path root) throws IOException {
         Path directory = root.resolve("benchmark");
-        Files.createDirectories(directory.resolve("cases"));
+        Path instances = root.resolve("instances");
+        Files.createDirectories(directory);
+        Files.createDirectories(instances.resolve("cases"));
         var cases = new ArrayList<BenchmarkCase>();
         var ids = new HashSet<String>();
         var index = new ArrayList<String>();
@@ -24,7 +26,7 @@ public final class BenchmarkPreparationUtil {
         var audit = new StringBuilder("# Source artifact audit\n\n");
         for (String category : CATEGORIES) {
             var sources = new ArrayList<Path>();
-            try (var entries = Files.newDirectoryStream(root.resolve("instances").resolve(category), "*.txt")) {
+            try (var entries = Files.newDirectoryStream(instances.resolve("raw").resolve(category), "*.txt")) {
                 for (Path source : entries) sources.add(source);
             }
             Collections.sort(sources);
@@ -36,7 +38,7 @@ public final class BenchmarkPreparationUtil {
                     var benchmarkCase = new BenchmarkCase(instance.getId(), relative, category, r, instance.groups(), instance.n(), instance.missingWidths(), instance.sourceHash());
                     cases.add(benchmarkCase);
                     String filename = instance.getId() + ".case";
-                    AtomicFileUtil.write(directory.resolve("cases").resolve(filename), relative + "\n" + r + "\n");
+                    AtomicFileUtil.write(instances.resolve("cases").resolve(filename), relative + "\n" + r + "\n");
                     index.add("cases/" + filename);
                     if (pilotIds.contains(instance.getId())) pilot.add("cases/" + filename);
                     if (r == 2 && instance.missingWidths() != 0) audit.append("- ").append(relative).append(": ").append(instance.missingWidths()).append(" missing unit-width entries; full matrix verified.\n");
@@ -66,8 +68,8 @@ public final class BenchmarkPreparationUtil {
         var hashes = new LinkedHashMap<String, String>();
         for (String file : List.of("paper.pdf", "results/results.xlsx", "results/readme.md")) hashes.put(file, MREFLPInstanceUtil.sha256(root.resolve(file)));
         AtomicFileUtil.write(directory.resolve("source-hashes.json"), mapper.writerWithDefaultPrettyPrinter().writeValueAsString(hashes));
-        AtomicFileUtil.write(directory.resolve("all.index"), String.join("\n", index) + "\n");
-        AtomicFileUtil.write(directory.resolve("pilot.index"), String.join("\n", pilot) + "\n");
+        AtomicFileUtil.write(instances.resolve("all.index"), String.join("\n", index) + "\n");
+        AtomicFileUtil.write(instances.resolve("pilot.index"), String.join("\n", pilot) + "\n");
         AtomicFileUtil.write(directory.resolve("audit.md"), audit.toString());
         System.out.printf("Prepared %d cases; %d reference cases; %d known optima; %d flagged values.%n", cases.size(), covered.size(), optimal, flagged);
     }

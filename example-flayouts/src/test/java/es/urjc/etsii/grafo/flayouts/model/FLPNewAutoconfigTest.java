@@ -75,15 +75,11 @@ class FLPNewAutoconfigTest {
             }
             visit(child, visited, reached);
         }
-        for (var combination : node.combinations().values()) visitCombination(combination.root(), visited, reached);
+        for (var combination : node.combinations().values()) visitCombination(combination, visited, reached);
     }
 
-    private static void visitCombination(CombinationNode node, Set<TreeNode> visited, Set<String> reached) {
-        if (node == null) return;
-        for (var choice : node.choices()) {
-            visit(choice.component(), visited, reached);
-            visitCombination(choice.next(), visited, reached);
-        }
+    private static void visitCombination(CombinationTree combination, Set<TreeNode> visited, Set<String> reached) {
+        for (var candidate : combination.candidates()) visit(candidate, visited, reached);
     }
 
     @Test
@@ -98,7 +94,7 @@ class FLPNewAutoconfigTest {
     void enablingRecursionDoesNotExpandTheImproverSpace() throws Exception {
         assertTrue(space.iraceParameters().size() < 2677, "Consolidation must reduce the previous 2677 parameter definitions");
         for (int repetitions : List.of(0, 1, 2)) {
-            var parameters = generator.toIraceParams(generator.buildTree(1000, repetitions));
+            var parameters = generator.toIraceParameterSpace(generator.buildTree(1000, repetitions)).parameters();
             assertEquals(space.iraceParameters(), parameters, "Recursion limit " + repetitions);
             for (var parameter : parameters) {
                 assertFalse(parameter.contains("SequentialImprover"), "SequentialImprover must be excluded at every depth");
@@ -107,7 +103,7 @@ class FLPNewAutoconfigTest {
         }
         var output = Path.of("target", "autoconfig-space", "parameters.txt");
         Files.createDirectories(output.getParent());
-        Files.writeString(output, String.join("\n", space.iraceParameters()) + "\n\n[global]\ndigits = 2\n");
+        Files.writeString(output, es.urjc.etsii.grafo.autoconfig.irace.IraceParameterFileUtil.toFileContents(space.iraceParameterSpace()));
     }
 
     @Test
@@ -128,8 +124,8 @@ class FLPNewAutoconfigTest {
                     continue;
                 }
                 assertEquals(2, combination.min());
-                assertEquals(expected.size(), combination.root().choices().size());
-                for (var choice : combination.root().choices()) assertTrue(expected.contains(choice.component().clazz()));
+                assertEquals(expected.size(), combination.candidates().size());
+                for (var candidate : combination.candidates()) assertTrue(expected.contains(candidate.clazz()));
             }
             assertEquals(Set.of("NullImprover", "LocalSearchFirstImprovement", "LocalSearchBestImprovement",
                     "LocalSearchCachedBestImprovement", "VND", "FLPSimulatedAnnealingNew"), names);
@@ -145,18 +141,13 @@ class FLPNewAutoconfigTest {
 
         String path = "ROOT_SimpleAlgorithm.improver_VND.improvers";
         config.put(path + ".length", "3");
-        path += ".item0";
-        config.put(path, "LocalSearchFirstImprovement");
-        path += "_LocalSearchFirstImprovement";
-        config.put(path + ".component.neighborhood", "FLPSwapNeighNew");
-        path += ".item1";
-        config.put(path, "LocalSearchCachedBestImprovement");
-        path += "_LocalSearchCachedBestImprovement";
-        config.put(path + ".component.neighborhood", "FLPRelocateNeighNew");
-        config.put(path + ".component.cacheSize", "4");
-        path += ".item2";
-        config.put(path, "LocalSearchBestImprovement");
-        config.put(path + "_LocalSearchBestImprovement.component.neighborhood", "FLPOptNeighNew");
+        config.put(path + ".item0", "LocalSearchFirstImprovement");
+        config.put(path + ".item0_LocalSearchFirstImprovement.component.neighborhood", "FLPSwapNeighNew");
+        config.put(path + ".item1", "LocalSearchCachedBestImprovement");
+        config.put(path + ".item1_LocalSearchCachedBestImprovement.component.neighborhood", "FLPRelocateNeighNew");
+        config.put(path + ".item1_LocalSearchCachedBestImprovement.component.cacheSize", "4");
+        config.put(path + ".item2", "LocalSearchBestImprovement");
+        config.put(path + ".item2_LocalSearchBestImprovement.component.neighborhood", "FLPOptNeighNew");
 
         var automatic = new AutomaticAlgorithmBuilder<FLPSolution, FLPInstance>(space, builder);
         var algorithm = automatic.buildFromConfig(new AlgorithmConfiguration(config));

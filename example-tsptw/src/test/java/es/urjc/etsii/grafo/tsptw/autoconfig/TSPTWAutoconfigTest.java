@@ -5,7 +5,6 @@ import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
 import es.urjc.etsii.grafo.autoconfig.fill.AlgorithmNameParam;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
-import es.urjc.etsii.grafo.autoconfig.generator.CombinationNode;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationTree;
 import es.urjc.etsii.grafo.autoconfig.generator.FilterConfig;
 import es.urjc.etsii.grafo.autoconfig.generator.IExplorationFilter;
@@ -127,7 +126,7 @@ class TSPTWAutoconfigTest {
 
     @Test
     void hasBoundedNumericParametersAndOriginalDefaultGraph() throws Exception {
-        var parameters = String.join("\n", generator.toIraceParams(List.of(root)));
+        var parameters = String.join("\n", generator.toIraceParameterSpace(List.of(root)).parameters());
         assertTrue(parameters.contains("ROOT_GVNS.levelMax"));
         assertTrue(parameters.contains("(2, 16)"));
         assertTrue(parameters.contains("ROOT_GVNS.attemptsPerLevel"));
@@ -182,16 +181,17 @@ class TSPTWAutoconfigTest {
 
     private static List<List<String>> combinations(CombinationTree tree) {
         var result = new ArrayList<List<String>>();
-        collect(tree.root(), tree.min(), new ArrayList<>(), result);
+        collect(tree, new ArrayList<>(), result);
         return result;
     }
 
-    private static void collect(CombinationNode node, int min, List<String> prefix, List<List<String>> result) {
-        if (prefix.size() >= min) result.add(List.copyOf(prefix));
-        if (node == null) return;
-        for (var choice : node.choices()) {
-            prefix.add(choice.component().className());
-            collect(choice.next(), min, prefix, result);
+    private static void collect(CombinationTree tree, List<String> prefix, List<List<String>> result) {
+        if (prefix.size() >= tree.min()) result.add(List.copyOf(prefix));
+        if (prefix.size() == tree.max()) return;
+        for (var candidate : tree.candidates()) {
+            if (prefix.contains(candidate.className())) continue;
+            prefix.add(candidate.className());
+            collect(tree, prefix, result);
             prefix.removeLast();
         }
     }
@@ -219,7 +219,6 @@ class TSPTWAutoconfigTest {
         for (int i = 0; i < components.size(); i++) {
             String selector = path + ".item" + i;
             params.put(selector, components.get(i));
-            path = selector + "_" + components.get(i);
         }
     }
 }

@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.mreflp.model;
 
 import es.urjc.etsii.grafo.io.Instance;
-import java.util.Map;
 
 /** Immutable capacity-constrained assignment instance. Group indices are zero-based. */
 public final class MREFLPInstance extends Instance {
@@ -33,6 +32,15 @@ public final class MREFLPInstance extends Instance {
                 }
             }
         }
+        long totalSlots = (long) capacity * groups;
+        setProperty("facilities", n());
+        setProperty("rows", capacity);
+        setProperty("capacity", capacity);
+        setProperty("groups", groups);
+        setProperty("totalSlots", totalSlots);
+        setProperty("unusedSlots", totalSlots - n());
+        setProperty("category", category);
+        setProperty("missingWidths", missingWidths);
     }
 
     public int n() { return flows.length; }
@@ -44,8 +52,4 @@ public final class MREFLPInstance extends Instance {
     public String sourceHash() { return sourceHash; }
     public int missingWidths() { return missingWidths; }
 
-    @Override public Map<String, Object> customProperties() {
-        return Map.of("facilities", n(), "capacity", capacity, "groups", groups,
-                "category", category, "missingWidths", missingWidths);
-    }
 }

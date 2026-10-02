@@ -8,10 +8,7 @@ instances:
   path:
     # Default instance path for all experiments, can be overridden.
     default: 'instances/'
-
-    # Override default instance path only for the experiment declared in file PreliminarExperiment.java
-    # If an experiment does not have a specific path the default will be used. Example:
-    # PreliminarExperiment: './instances/preliminar'
+    irace: 'instances/train.index'
 
 
 solver:
@@ -35,7 +32,7 @@ solver:
 
   # Number of workers to use if parallelExecutor is enabled
   # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
-  nWorkers: 10
+  nWorkers: 30
 
   # Execute benchmark before starting solver? False to skip benchmark.
   benchmark: true
@@ -49,7 +46,7 @@ solver:
   # which may be replaced again by SequentialImprover, for a total improver sequence length of 4.
   max-derivation-repetition: 1
   # Number of experiments to execute for each parameter available for tuning after transformed into irace space.
-  experiments-per-parameter: 40
+  experiments-per-parameter: 1
   # Minimum number of experiments to run, if the number of parameters is lower than this value,
   # the number of experiments will be equal to this value
   minimum-number-of-experiments: 1000

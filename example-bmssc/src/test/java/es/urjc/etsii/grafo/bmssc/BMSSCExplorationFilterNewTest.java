@@ -99,7 +99,9 @@ class BMSSCExplorationFilterNewTest {
         var unrestricted = new AlgorithmCandidateGenerator(inventory, new DefaultExplorationFilter());
         var oldRoots = unrestricted.buildTree(config.getTreeDepth(), config.getMaxDerivationRepetition());
         long oldCount = countParameters(unrestricted, oldRoots);
-        assertTrue(oldCount > 1_000_000, "Fixture should reproduce the startup parameter explosion");
+        assertTrue(es.urjc.etsii.grafo.autoconfig.generator.AutoconfigEncodingUtil.count(oldRoots, unrestricted.componentParams())
+                .prefixDeclarationEstimate().compareTo(java.math.BigInteger.valueOf(1_000_000)) > 0,
+                "Fixture must reproduce the former prefix expansion");
 
         var generator = new AlgorithmCandidateGenerator(inventory, filter);
         var roots = generator.buildTree(config.getTreeDepth(), config.getMaxDerivationRepetition());
@@ -123,7 +125,7 @@ class BMSSCExplorationFilterNewTest {
                     var combination = improver.combinations().get("improvers");
                     assertEquals(2, combination.min());
                     assertEquals(3, combination.max());
-                    assertSearchPermutations(combination.root(), new HashSet<>());
+                    assertSearchCandidates(combination);
                 }
             }
         }
@@ -150,16 +152,10 @@ class BMSSCExplorationFilterNewTest {
         }
     }
 
-    private void assertSearchPermutations(CombinationNode node, Set<Class<?>> prefix) {
-        if (node == null) return;
-        assertEquals(SEARCHES.size() - prefix.size(), node.choices().size());
-        for (var choice : node.choices()) {
-            var clazz = choice.component().clazz();
-            assertTrue(SEARCHES.contains(clazz));
-            assertTrue(prefix.add(clazz), "Repeated search implementation");
-            assertSearchPermutations(choice.next(), prefix);
-            prefix.remove(clazz);
-        }
+    private void assertSearchCandidates(CombinationTree combination) {
+        var actual = new HashSet<Class<?>>();
+        for (var candidate : combination.candidates()) actual.add(candidate.clazz());
+        assertEquals(Set.copyOf(SEARCHES), actual);
     }
 
     private Set<String> rootNames(List<TreeNode> roots) {

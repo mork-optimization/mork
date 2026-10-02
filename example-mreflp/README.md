@@ -56,6 +56,8 @@ Merge reporting rejects duplicate run identities rather than choosing among repe
 
 Facilities occupy ordered groups; each group holds at most r facilities. The cost is the sum over unordered facility pairs of symmetric flow × absolute group-index distance. Groups and facilities use zero-based indices internally. Flows, objective values, and deltas use 64-bit integers. There is no ordering of facilities within a group.
 
+Instance properties include `facilities`, `rows` (r, also the group `capacity`), `groups`, `totalSlots` (r × k), `unusedSlots` (r × k − n), `category`, and `missingWidths`. They are available immediately after construction for Mork's instance analysis and result exporters.
+
 The implementation includes Algorithms 1–5 and Equations 8–16:
 
 - Multi-start LMLS with a fresh learning matrix for every independent run.
@@ -78,7 +80,7 @@ The implementation includes Algorithms 1–5 and Equations 8–16:
 The six ablations are RANDOM (LMLS1), GREEDY (LMLS2), WITHOUT_TABU, WITHOUT_SWAP, DIRECT_ONE_MOVE (LMLS3), and DIRECT_SWAP (LMLS4). PaperExperiment runs one configured variant; AblationExperiment runs all seven. For a local ablation smoke test:
 
 ~~~sh
-java -jar target/mreflp-0.23-SNAPSHOT.jar --solver.experiments=AblationExperiment --instances.path.default=benchmark/pilot.index --mreflp.time-limit-seconds=1 --solver.warmup.max-millis=100 --mreflp.protocol=ablation-pilot --serializers.mreflp.folder=runs/ablations
+java -jar target/mreflp-0.23-SNAPSHOT.jar --solver.experiments=AblationExperiment --instances.path.default=instances/pilot.index --mreflp.time-limit-seconds=1 --solver.warmup.max-millis=100 --mreflp.protocol=ablation-pilot --serializers.mreflp.folder=runs/ablations
 java -jar target/mreflp-0.23-SNAPSHOT.jar report runs/ablation-report runs/ablations
 ~~~
 

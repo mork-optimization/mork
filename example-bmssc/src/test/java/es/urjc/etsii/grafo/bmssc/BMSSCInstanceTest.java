@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.bmssc;
 import es.urjc.etsii.grafo.bmssc.model.BMSSCInstance;
 import es.urjc.etsii.grafo.bmssc.model.BMSSCInstanceImporter;
 import es.urjc.etsii.grafo.exception.InstanceImportException;
+import es.urjc.etsii.grafo.util.IOUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -75,9 +76,18 @@ class BMSSCInstanceTest {
     @ParameterizedTest
     @ValueSource(strings = {"iris.csv", "user_knowledge.csv"})
     void loadsBundledInstancesWithStrictDimensionChecks(String name) {
-        var instance = new BMSSCInstanceImporter().importInstance("instances/" + name);
-        assertTrue(instance.n > 0);
-        assertTrue(Double.isFinite((double) instance.getProperty("distance_avg")));
+        boolean loaded = false;
+        var importer = new BMSSCInstanceImporter();
+        for (String path : new String[]{"instances/" + name, "instances/instances.zip!" + name}) {
+            if (!Files.isRegularFile(Path.of(IOUtil.containerPath(path)))) {
+                continue;
+            }
+            var instance = importer.importInstance(path);
+            assertTrue(instance.n > 0);
+            assertTrue(Double.isFinite((double) instance.getProperty("distance_avg")));
+            loaded = true;
+        }
+        assertTrue(loaded, "Missing bundled instance " + name + ": expected an extracted CSV or instances/instances.zip");
     }
 
     private BMSSCInstance read(String input) throws Exception {

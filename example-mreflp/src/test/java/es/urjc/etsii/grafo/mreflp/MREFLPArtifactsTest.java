@@ -26,7 +26,7 @@ class MREFLPArtifactsTest {
         int files = 0, cases = 0, shortHeaders = 0;
         var ids = new HashSet<String>();
         for (String category : BenchmarkPreparationUtil.CATEGORIES) {
-            try (var entries = Files.newDirectoryStream(Path.of("instances", category), "*.txt")) {
+            try (var entries = Files.newDirectoryStream(Path.of("instances", "raw", category), "*.txt")) {
                 for (Path source : entries) {
                     files++;
                     for (int r = 2; r <= 5; r++) {
@@ -130,13 +130,19 @@ class MREFLPArtifactsTest {
     }
 
     @Test void preparationGeneratesCompleteManifestWithoutChangingSources() throws Exception {
-        Files.createSymbolicLink(temporary.resolve("instances"), Path.of("instances").toAbsolutePath());
+        Files.createDirectories(temporary.resolve("instances"));
+        Files.createSymbolicLink(temporary.resolve("instances/raw"), Path.of("instances/raw").toAbsolutePath());
         Files.createSymbolicLink(temporary.resolve("results"), Path.of("results").toAbsolutePath());
         Files.createSymbolicLink(temporary.resolve("paper.pdf"), Path.of("paper.pdf").toAbsolutePath());
         String hash = MREFLPInstanceUtil.sha256(Path.of("results/results.xlsx"));
         BenchmarkPreparationUtil.prepare(temporary);
-        assertEquals(572, Files.readAllLines(temporary.resolve("benchmark/all.index")).size());
-        assertEquals(4, Files.readAllLines(temporary.resolve("benchmark/pilot.index")).size());
+        var index = Files.readAllLines(temporary.resolve("instances/all.index"));
+        assertEquals(572, index.size());
+        assertEquals(4, Files.readAllLines(temporary.resolve("instances/pilot.index")).size());
+        for (String entry : index) {
+            var descriptor = Files.readAllLines(temporary.resolve("instances").resolve(entry));
+            assertTrue(Files.isRegularFile(temporary.resolve(descriptor.getFirst())));
+        }
         assertEquals(hash, MREFLPInstanceUtil.sha256(Path.of("results/results.xlsx")));
         String audit = Files.readString(temporary.resolve("benchmark/audit.md"));
         assertTrue(audit.contains("N-15-r2"));
@@ -194,7 +200,7 @@ class MREFLPArtifactsTest {
     }
 
     @Test void reportDoesNotPresentPilotOrIncompleteRelaxedAsFullCampaign() throws Exception {
-        var i = MREFLPInstanceUtil.read(Path.of("instances/small/A-10-90.txt"), 2);
+        var i = MREFLPInstanceUtil.read(Path.of("instances/raw/small/A-10-90.txt"), 2);
         Path input = temporary.resolve("runs");
         Files.createDirectories(input);
         var mapper = JsonMapper.builder().build();

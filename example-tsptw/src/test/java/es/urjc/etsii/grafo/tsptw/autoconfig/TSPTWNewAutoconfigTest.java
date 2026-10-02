@@ -2,12 +2,14 @@ package es.urjc.etsii.grafo.tsptw.autoconfig;
 
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
+import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpecJsonCodec;
 import es.urjc.etsii.grafo.autoconfig.fill.AlgorithmNameParam;
 import es.urjc.etsii.grafo.autoconfig.generator.*;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.inventory.DefaultInventoryFilter;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
+import es.urjc.etsii.grafo.autoconfig.irace.InitialConfigurationUtil;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.metrics.Metrics;
@@ -15,6 +17,7 @@ import es.urjc.etsii.grafo.tsptw.alg.GVNS;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWSolutionValidator;
+import es.urjc.etsii.grafo.tsptw.repair.TSPTWFeasibilityRepair;
 import es.urjc.etsii.grafo.util.TimeControl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +38,7 @@ class TSPTWNewAutoconfigTest {
     private AlgorithmCandidateGenerator generator;
     private AlgorithmBuilderService builder;
     private AutomaticAlgorithmBuilder<TSPTWSolution, TSPTWInstance> automatic;
+    private AutoconfigSearchSpace space;
     private TreeNode root;
 
     @BeforeEach void setUp() {
@@ -51,10 +55,47 @@ class TSPTWNewAutoconfigTest {
         root = roots.getFirst();
         assertEquals(GVNS.class, root.clazz());
         builder = new AlgorithmBuilderService(inventory);
-        automatic = new AutomaticAlgorithmBuilder<>(new AutoconfigSearchSpace(new SolverConfig(), generator), builder);
+        space = new AutoconfigSearchSpace(new SolverConfig(), generator);
+        automatic = new AutomaticAlgorithmBuilder<>(space, builder);
     }
 
     @AfterEach void tearDown() { cleanup(); }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void initialConfigurationMatchesDefaultGvnsAndBuildsInDefaultAndLegacySpaces(boolean legacy) throws Exception {
+        configureSpace(legacy);
+        List<ComponentSpec> seeds;
+        try (var input = Objects.requireNonNull(getClass().getResourceAsStream("/irace/initial-configurations.json"))) {
+            seeds = new ComponentSpecJsonCodec().parseList(new String(input.readAllBytes(), StandardCharsets.UTF_8));
+        }
+        assertEquals(1, seeds.size());
+        var seed = seeds.getFirst();
+        var algorithm = assertInstanceOf(GVNS.class, builder.buildAlgorithm(seed));
+        // FullNew exposes the same four original repair phases without expanding their permutations.
+        assertEquals(new GVNS().toString(), algorithm.toString().replace(
+                "TSPTWFeasibilityRepairFullNew", new TSPTWFeasibilityRepair().toString()));
+
+        var table = InitialConfigurationUtil.toIraceTable(space, seeds).split("\n");
+        assertEquals(2, table.length);
+        var columns = table[0].split("\t");
+        var cells = table[1].split("\t");
+        assertEquals(space.iraceParameters().size(), columns.length);
+        assertEquals(columns.length, cells.length);
+        var parameters = new HashMap<String, String>();
+        for (int i = 0; i < columns.length; i++) {
+            if (!cells[i].equals("NA")) parameters.put(columns[i], cells[i].substring(1, cells[i].length() - 1));
+        }
+        var configuration = new AlgorithmConfiguration(parameters);
+        assertEquals(seed, automatic.asComponentSpec(configuration));
+        var rebuilt = automatic.buildFromConfig(configuration);
+        assertEquals(algorithm.toString(), rebuilt.toString());
+        TimeControl.setMaxExecutionTime(10, TimeUnit.MILLISECONDS);
+        TimeControl.start();
+        var result = rebuilt.algorithm(instance("best"));
+        assertConsistent(result);
+        assertTrue(new TSPTWSolutionValidator().validate(result).isValid());
+    }
 
     @Test
     void exposesAllEightVariantsThroughTheOriginalRootAndBuildsEveryOrderedSubcomposition() {
@@ -96,7 +137,7 @@ class TSPTWNewAutoconfigTest {
         }
         assertEquals(Set.of("TSPTWRandomConstructiveNew", "TSPTWFeasibleInsertShakeNew", "TSPTWFeasibilityRepairNew",
                 "TSPTWVNDNew", "TSPTWInsertionSearchNew", "TSPTWTwoOptSearchNew", "TSPTWSwapSearchNew", "TSPTWOrOptSearchNew"), seenVariants);
-        String parameters = String.join("\n", generator.toIraceParams(List.of(root)));
+        String parameters = String.join("\n", generator.toIraceParameterSpace(List.of(root)).parameters());
         for (String name : List.of("selection", "urgencyWeight", "candidateListSize", "attemptFactor", "maxPasses", "blockLength")) {
             assertTrue(parameters.contains(name));
         }
@@ -142,7 +183,7 @@ class TSPTWNewAutoconfigTest {
             }
         }
         assertEquals(1248, configurations.size());
-        String parameters = String.join("\n", generator.toIraceParams(List.of(root)));
+        String parameters = String.join("\n", generator.toIraceParameterSpace(List.of(root)).parameters());
         assertTrue(parameters.contains("TSPTWFeasibilityRepairFullNew"));
         assertTrue(parameters.contains("TSPTWFeasibleConstructiveBestNew"));
         for (String hidden : List.of(".phases", "maxPasses", "TSPTWFeasibilityRepairNew",
@@ -239,16 +280,17 @@ class TSPTWNewAutoconfigTest {
 
     private static List<List<String>> combinations(CombinationTree tree) {
         var result = new ArrayList<List<String>>();
-        collect(tree.root(), tree.min(), new ArrayList<>(), result);
+        collect(tree, new ArrayList<>(), result);
         return result;
     }
 
-    private static void collect(CombinationNode node, int min, List<String> prefix, List<List<String>> result) {
-        if (prefix.size() >= min) result.add(List.copyOf(prefix));
-        if (node == null) return;
-        for (var choice : node.choices()) {
-            prefix.add(choice.component().className());
-            collect(choice.next(), min, prefix, result);
+    private static void collect(CombinationTree tree, List<String> prefix, List<List<String>> result) {
+        if (prefix.size() >= tree.min()) result.add(List.copyOf(prefix));
+        if (prefix.size() == tree.max()) return;
+        for (var candidate : tree.candidates()) {
+            if (prefix.contains(candidate.className())) continue;
+            prefix.add(candidate.className());
+            collect(tree, prefix, result);
             prefix.removeLast();
         }
     }
@@ -304,8 +346,7 @@ class TSPTWNewAutoconfigTest {
                     var child = (ComponentSpec) list.get(i);
                     String selector = field + ".item" + i;
                     params.put(selector, child.component());
-                    field = selector + "_" + child.component();
-                    flattenParameters(field + ".component", child, params, seen);
+                    flattenParameters(selector + "_" + child.component() + ".component", child, params, seen);
                 }
             } else {
                 params.put(field, entry.getValue().toString());

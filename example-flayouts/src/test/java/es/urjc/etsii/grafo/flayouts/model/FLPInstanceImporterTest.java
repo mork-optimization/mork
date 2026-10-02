@@ -1,13 +1,15 @@
 package es.urjc.etsii.grafo.flayouts.model;
 
 import es.urjc.etsii.grafo.flayouts.experiments.SpaceFreeLayoutExperiment;
+import es.urjc.etsii.grafo.util.IOUtil;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.io.StringReader;
-import java.nio.file.Files;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 
 import static es.urjc.etsii.grafo.flayouts.model.FLPNewTestUtil.*;
@@ -18,19 +20,21 @@ class FLPInstanceImporterTest {
     @AfterEach void teardown() { cleanup(); }
 
     @Test
-    void configuredDatasetLoadsFromTheRenamedDirectory() throws Exception {
+    void twoRowDatasetLoadsFromArchive() throws Exception {
         int count = 0;
-        try (var paths = Files.newDirectoryStream(Path.of("instances", "2rows"), "*.txt")) {
-            for (var path : paths) {
-                try (var reader = Files.newBufferedReader(path)) {
-                    var instance = new FLPInstanceImporter().importInstance(reader, path.getFileName().toString());
-                    assertEquals(2, instance.nRows());
-                    assertEquals(path.getFileName().toString().replace(".txt", ""), instance.getId());
-                    count++;
-                }
+        for (String path : IOUtil.iterate("instances/instances.zip")) {
+            String filename = Path.of(IOUtil.entryPath(path)).getFileName().toString();
+            if (!filename.endsWith("_2.txt")) {
+                continue;
+            }
+            try (var reader = new BufferedReader(new InputStreamReader(IOUtil.getInputStream(path), StandardCharsets.UTF_8))) {
+                var instance = new FLPInstanceImporter().importInstance(reader, filename);
+                assertEquals(2, instance.nRows());
+                assertEquals(filename.replace(".txt", ""), instance.getId());
+                count++;
             }
         }
-        assertTrue(count > 0, "The default two-row dataset must be available");
+        assertTrue(count > 0, "The two-row dataset must be available in instances/instances.zip");
     }
 
     @Test
