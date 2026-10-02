@@ -5,9 +5,8 @@ import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
-import es.urjc.etsii.grafo.autoconfig.generator.CombinationChoice;
-import es.urjc.etsii.grafo.autoconfig.generator.CombinationNode;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationTree;
+import es.urjc.etsii.grafo.autoconfig.generator.ComponentCombinationUtil;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
@@ -153,41 +152,16 @@ public class AutomaticAlgorithmBuilder<S extends Solution<S,I>, I extends Instan
         int length = combination.min() == combination.max()
                 ? combination.min()
                 : Integer.parseInt(requiredValue(config, collectionPath + ComponentParameter.PARAM_SEP + "length"));
-        if (length < combination.min() || length > combination.max()) {
-            throw new IllegalArgumentException("Invalid length %s for %s, expected range [%s, %s]"
-                    .formatted(length, collectionPath, combination.min(), combination.max()));
-        }
-
+        ComponentCombinationUtil.validateLength(combination, length, collectionPath);
         var components = new ArrayList<ComponentSpec>(length);
-        CombinationNode current = combination.root();
-        String selectorPath = collectionPath + ComponentParameter.PARAM_SEP + "item0";
+        var used = new HashSet<Class<?>>();
         for (int position = 0; position < length; position++) {
-            if (current == null) {
-                throw new IllegalArgumentException("Combination %s ended before configured length %s"
-                        .formatted(collectionPath, length));
-            }
+            String selectorPath = collectionPath + ComponentParameter.PARAM_SEP + "item" + position;
             String selectedComponent = requiredValue(config, selectorPath);
-            CombinationChoice choice = null;
-            for (var candidate : current.choices()) {
-                if (candidate.component().className().equals(selectedComponent)) {
-                    choice = candidate;
-                    break;
-                }
-            }
-            if (choice == null) {
-                throw new IllegalArgumentException("Invalid component %s for %s"
-                        .formatted(selectedComponent, selectorPath));
-            }
-            String selectedPrefix = selectorPath + ComponentParameter.NAMEVALUE_SEP + selectedComponent;
-            components.add(toComponentSpec(
-                    choice.component(),
-                    selectedPrefix + ComponentParameter.PARAM_SEP + "component",
-                    config
-            ));
-            current = choice.next();
-            if (current != null) {
-                selectorPath = selectedPrefix + ComponentParameter.PARAM_SEP + "item" + current.position();
-            }
+            TreeNode candidate = ComponentCombinationUtil.select(combination, selectedComponent, selectorPath, used);
+            components.add(toComponentSpec(candidate,
+                    selectorPath + ComponentParameter.NAMEVALUE_SEP + selectedComponent + ComponentParameter.PARAM_SEP + "component",
+                    config));
         }
         return components;
     }

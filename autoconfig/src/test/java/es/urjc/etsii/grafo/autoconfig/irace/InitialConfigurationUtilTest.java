@@ -2,8 +2,6 @@ package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
-import es.urjc.etsii.grafo.autoconfig.generator.CombinationChoice;
-import es.urjc.etsii.grafo.autoconfig.generator.CombinationNode;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationTree;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
@@ -48,10 +46,9 @@ class InitialConfigurationUtilTest {
         assertEquals("\"1\"", firstRow[index(names, "ROOT_ExampleAlgorithm.steps.length")]);
         assertEquals("\"StepA\"", firstRow[index(names, "ROOT_ExampleAlgorithm.steps.item0")]);
         assertEquals("\"3\"", firstRow[index(names, "ROOT_ExampleAlgorithm.steps.item0_StepA.component.weight")]);
-        assertEquals("NA", firstRow[index(names, "ROOT_ExampleAlgorithm.steps.item0_StepA.item1")]);
-        assertEquals("NA", firstRow[index(names, "ROOT_ExampleAlgorithm.steps.item0_StepB.item1")]);
-        assertEquals("\"StepA\"", secondRow[index(names, "ROOT_ExampleAlgorithm.steps.item0_StepB.item1")]);
-        assertEquals("\"5\"", secondRow[index(names, "ROOT_ExampleAlgorithm.steps.item0_StepB.item1_StepA.component.weight")]);
+        assertEquals("NA", firstRow[index(names, "ROOT_ExampleAlgorithm.steps.item1")]);
+        assertEquals("\"StepA\"", secondRow[index(names, "ROOT_ExampleAlgorithm.steps.item1")]);
+        assertEquals("\"5\"", secondRow[index(names, "ROOT_ExampleAlgorithm.steps.item1_StepA.component.weight")]);
         assertEquals("NA", secondRow[index(names, "ROOT_ExampleAlgorithm.steps.item0_StepA.component.weight")]);
     }
 
@@ -61,7 +58,7 @@ class InitialConfigurationUtilTest {
         var invalidChoice = root(4, "FIRST", constructiveA(0.5), List.of(stepA(3), stepA(5)));
         var error = assertThrows(IllegalArgumentException.class,
                 () -> InitialConfigurationUtil.toIraceTable(space, List.of(invalidChoice)));
-        assertTrue(error.getMessage().contains("not allowed"));
+        assertTrue(error.getMessage().contains("Repeated component"));
 
         var missingParameter = new ComponentSpec(ExampleAlgorithm.class.getSimpleName(), Map.of("iterations", 4));
         error = assertThrows(IllegalArgumentException.class,
@@ -82,10 +79,7 @@ class InitialConfigurationUtilTest {
     private static AutoconfigSearchSpace searchSpace() {
         var stepA = new TreeNode("steps", StepA.class);
         var stepB = new TreeNode("steps", StepB.class);
-        var afterA = new CombinationNode(1, List.of(new CombinationChoice(stepB, null)));
-        var afterB = new CombinationNode(1, List.of(new CombinationChoice(stepA, null)));
-        var combination = new CombinationTree(1, 2, new CombinationNode(0, List.of(
-                new CombinationChoice(stepA, afterA), new CombinationChoice(stepB, afterB))));
+        var combination = new CombinationTree(1, 2, List.of(stepA, stepB));
         var constructiveA = new TreeNode("constructive", ConstructiveA.class);
         var constructiveB = new TreeNode("constructive", ConstructiveB.class);
         var root = new TreeNode("ROOT", ExampleAlgorithm.class,
@@ -113,13 +107,12 @@ class InitialConfigurationUtilTest {
                 "ROOT_ExampleAlgorithm.steps.length",
                 "ROOT_ExampleAlgorithm.steps.item0",
                 "ROOT_ExampleAlgorithm.steps.item0_StepA.component.weight",
-                "ROOT_ExampleAlgorithm.steps.item0_StepA.item1",
-                "ROOT_ExampleAlgorithm.steps.item0_StepB.item1",
-                "ROOT_ExampleAlgorithm.steps.item0_StepB.item1_StepA.component.weight");
+                "ROOT_ExampleAlgorithm.steps.item1",
+                "ROOT_ExampleAlgorithm.steps.item1_StepA.component.weight");
         var generator = mock(AlgorithmCandidateGenerator.class);
         when(generator.buildTree(4, 2)).thenReturn(List.of(root));
         when(generator.componentParams()).thenReturn(params);
-        when(generator.toIraceParams(anyList())).thenReturn(names);
+        when(generator.toIraceParameterSpace(anyList())).thenReturn(new IraceParameterSpace(names, List.of()));
         return new AutoconfigSearchSpace(new SolverConfig(), generator);
     }
 

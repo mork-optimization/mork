@@ -78,7 +78,9 @@ Mork's independently configured maximum. `progress` is `null` until the first it
 - discovered components and their constructor parameters;
 - scalar domains and component choices;
 - `minItems` and `maxItems` for ordered component combinations;
-- the final number of generated IRACE parameters.
+- the final number of generated IRACE parameters and separate forbidden-constraint count;
+- `encodingDiagnostics`: actual counts, the estimated former prefix-encoding counts, avoided declarations,
+  and breakdowns by root and collection. Root counts exclude the single shared `ROOT` selector.
 
 The resource becomes available after the coordinator generates the parameters for an automatic `--autoconfig`
 run. It returns a `404 Not Found` problem response before generation, in follower processes, and when `--irace`

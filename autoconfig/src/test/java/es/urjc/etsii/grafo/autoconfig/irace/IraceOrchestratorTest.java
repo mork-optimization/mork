@@ -18,7 +18,7 @@ import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.springframework.boot.web.server.autoconfigure.ServerProperties;
+import org.springframework.boot.web.server.context.WebServerApplicationContext;
 
 import java.util.List;
 import java.util.Map;
@@ -42,7 +42,7 @@ class IraceOrchestratorTest {
         var orchestrator = new IraceOrchestrator<>(
                 new SolverConfig(),
                 new BlockConfig(),
-                new ServerProperties(),
+                mock(WebServerApplicationContext.class),
                 new InstanceConfiguration(),
                 integration,
                 instanceManager,

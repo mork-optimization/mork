@@ -2,7 +2,7 @@ package es.urjc.etsii.morktests;
 
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 
 import java.net.ServerSocket;
 import java.nio.charset.StandardCharsets;
@@ -13,19 +13,21 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static es.urjc.etsii.morktests.TestUtils.deleteGeneratedFiles;
 import static es.urjc.etsii.morktests.TestUtils.runJavaProcess;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class IraceIntegrationTest {
 
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void launchAutoconfig(boolean useIndex, @TempDir Path temp) throws Exception {
+    @ParameterizedTest(name = "index={0}, dynamic port={1}")
+    @CsvSource({"false, false", "false, true", "true, false", "true, true"})
+    void launchAutoconfig(boolean useIndex, boolean dynamicPort, @TempDir Path temp) throws Exception {
         Path directory = Path.of("instancesautoconfig/autoconfig").toAbsolutePath();
         Path source = directory;
         var expected = new ArrayList<>(List.of(directory.resolve("fileA.txt").toString(), directory.resolve("fileB.txt").toString()));
@@ -45,9 +47,11 @@ public class IraceIntegrationTest {
             expected.set(1, archive + "!" + entry);
         }
         Collections.sort(expected);
-        int port;
-        try (var socket = new ServerSocket(0)) {
-            port = socket.getLocalPort();
+        int port = 0;
+        if (!dynamicPort) {
+            try (var socket = new ServerSocket(0)) {
+                port = socket.getLocalPort();
+            }
         }
         try {
             int exit = runJavaProcess(Duration.ofMinutes(10),
@@ -65,6 +69,21 @@ public class IraceIntegrationTest {
             assertTrue(Files.exists(Path.of("report.html")));
             assertTrue(Files.exists(Path.of("autoconfig-final-elites.json")));
 
+            String scenario = Files.readString(Path.of("scenario.txt"));
+            String runner = Files.readString(Path.of("runner.R"));
+            var endpoint = Pattern.compile("http://127\\.0\\.0\\.1:(\\d+)/internal/autoconfig/irace/evaluations")
+                    .matcher(scenario);
+            assertTrue(endpoint.find(), "Scenario must contain the resolved evaluation endpoint");
+            int resolvedPort = Integer.parseInt(endpoint.group(1));
+            assertTrue(resolvedPort > 0 && resolvedPort <= 65535);
+            if (!dynamicPort) assertEquals(port, resolvedPort);
+            assertTrue(runner.contains("http://127.0.0.1:" + resolvedPort + "/internal/autoconfig/irace/progress"),
+                    "Scenario and runner must use the same bound port");
+            for (String generated : List.of(scenario, runner)) {
+                assertFalse(generated.contains("__PORT__"), "Port placeholders must be resolved");
+                assertFalse(generated.contains("http://127.0.0.1:0/"), "Callbacks cannot use port zero");
+            }
+
             var verification = new ProcessBuilder("Rscript", "-e", """
                     library(irace)
                     expected <- readLines("autoconfig-instances.txt", encoding = "UTF-8")
@@ -73,6 +92,22 @@ public class IraceIntegrationTest {
                     stopifnot(identical(actual, expected))
                     load("irace.Rdata")
                     stopifnot(identical(unname(iraceResults$scenario$instances), unname(expected)))
+                    parameters <- readParameters("parameters.txt")
+                    lines <- readLines("parameters.txt")
+                    declarations <- lines[seq_len(match("[forbidden]", lines) - 1L)]
+                    declarations <- declarations[nzchar(trimws(declarations)) & !startsWith(trimws(declarations), "#")]
+                    stopifnot(parameters$nbParameters == length(declarations))
+                    stopifnot(length(parameters$forbidden) == 1L)
+                    selectors <- paste0("ROOT_SimpleAlgorithm.improver_SequentialImprover.improvers.item", 0:1)
+                    stopifnot(all(selectors %in% parameters$names))
+                    sampled <- getFromNamespace("sampleUniform", "irace")(parameters, 200L)
+                    active <- !is.na(sampled[[selectors[[1L]]]])
+                    stopifnot(any(active), any(!active))
+                    stopifnot(all(sampled[[selectors[[1L]]]][active] != sampled[[selectors[[2L]]]][active]))
+                    invalid <- data.table::copy(sampled[which(active)[[1L]], ])
+                    invalid[[selectors[[2L]]]] <- invalid[[selectors[[1L]]]]
+                    filtered <- getFromNamespace("filter_forbidden", "irace")(invalid, parameters$forbidden)
+                    stopifnot(nrow(filtered) == 0L)
                     """).inheritIO().start();
             try {
                 assertTrue(verification.waitFor(30, TimeUnit.SECONDS));

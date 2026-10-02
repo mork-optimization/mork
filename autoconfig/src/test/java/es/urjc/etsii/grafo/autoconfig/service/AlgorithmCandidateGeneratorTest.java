@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
-import es.urjc.etsii.grafo.autoconfig.generator.CombinationNode;
 import es.urjc.etsii.grafo.autoconfig.generator.DefaultExplorationFilter;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
@@ -57,7 +56,7 @@ class AlgorithmCandidateGeneratorTest {
 
     private void doChecks(int maxDepth, int maxRepeat){
         var roots = candidateGenerator.buildTree(maxDepth, maxRepeat);
-        var params = candidateGenerator.toIraceParams(roots);
+        var params = candidateGenerator.toIraceParameterSpace(roots).parameters();
         printParams(params);
         printTree(roots);
         checkForForbiddenComponents(roots);
@@ -79,17 +78,7 @@ class AlgorithmCandidateGeneratorTest {
             }
         }
         for (var combination : node.combinations().values()) {
-            checkCombinationMaxDepth(combination.root(), maxDepth, currentDepth + 1);
-        }
-    }
-
-    private void checkCombinationMaxDepth(CombinationNode node, int maxDepth, int currentDepth) {
-        if (node == null) {
-            return;
-        }
-        for (var choice : node.choices()) {
-            checkMaxDepth(choice.component(), maxDepth, currentDepth);
-            checkCombinationMaxDepth(choice.next(), maxDepth, currentDepth);
+            for (var candidate : combination.candidates()) checkMaxDepth(candidate, maxDepth, currentDepth + 1);
         }
     }
 
@@ -137,17 +126,8 @@ class AlgorithmCandidateGeneratorTest {
             }
         }
         for (var combination : node.combinations().values()) {
-            checkCombinationForForbiddenComponents(combination.root());
+            for (var candidate : combination.candidates()) checkForForbiddenComponents(candidate);
         }
     }
 
-    private void checkCombinationForForbiddenComponents(CombinationNode node) {
-        if (node == null) {
-            return;
-        }
-        for (var choice : node.choices()) {
-            checkForForbiddenComponents(choice.component());
-            checkCombinationForForbiddenComponents(choice.next());
-        }
-    }
 }

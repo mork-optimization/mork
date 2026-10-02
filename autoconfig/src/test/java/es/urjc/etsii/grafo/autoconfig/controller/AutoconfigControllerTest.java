@@ -43,9 +43,10 @@ class AutoconfigControllerTest {
         when(searchSpace.snapshot()).thenReturn(
                 new AutoconfigSearchSpace.SearchSpaceSnapshot(
                         new AutoconfigSearchSpace.GenerationLimits(4, 2),
-                        new AutoconfigSearchSpace.SearchSpaceSummary(0, 0, 0, 0, 0),
+                        new AutoconfigSearchSpace.SearchSpaceSummary(0, 0, 0, 0, 0, 0),
                         List.of(),
-                        List.of()
+                        List.of(),
+                        null
                 )
         );
         mockMvc = MockMvcBuilders

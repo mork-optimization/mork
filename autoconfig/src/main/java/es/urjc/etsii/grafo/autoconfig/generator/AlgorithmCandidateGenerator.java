@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.annotations.*;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmComponentFactory;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
+import es.urjc.etsii.grafo.autoconfig.irace.IraceParameterSpace;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import org.slf4j.Logger;
@@ -329,8 +330,9 @@ public class AlgorithmCandidateGenerator {
         return paramInfo;
     }
 
-    public List<String> toIraceParams(List<TreeNode> nodes) {
+    public IraceParameterSpace toIraceParameterSpace(List<TreeNode> nodes) {
         var iraceParams = new ArrayList<String>();
+        var forbidden = new ArrayList<String>();
         Class<?>[] initialDecisionValues = new Class[nodes.size()];
         for (int i = 0; i < nodes.size(); i++) {
             initialDecisionValues[i] = nodes.get(i).clazz();
@@ -340,13 +342,14 @@ public class AlgorithmCandidateGenerator {
         iraceParams.add(ComponentParameter.toIraceParameterString("ROOT", ParameterType.CATEGORICAL, initialDecisionValues, ""));
         for (var node : nodes) {
             String componentName = node.className();
-            recursiveToIraceParams(node, iraceParams, "ROOT" + NAMEVALUE_SEP + componentName, "ROOT", componentName);
+            recursiveToIraceParams(node, iraceParams, forbidden, "ROOT" + NAMEVALUE_SEP + componentName, "ROOT", componentName);
         }
         Collections.sort(iraceParams);
-        return List.copyOf(iraceParams);
+        Collections.sort(forbidden);
+        return new IraceParameterSpace(iraceParams, forbidden);
     }
 
-    private void recursiveToIraceParams(TreeNode node, ArrayList<String> params, String componentPath, String activationParam, String activationValue) {
+    private void recursiveToIraceParams(TreeNode node, ArrayList<String> params, ArrayList<String> forbidden, String componentPath, String activationParam, String activationValue) {
         var nodeParams = this.paramInfo.get(node.clazz());
         String activationCondition = selected(activationParam, activationValue);
 
@@ -356,7 +359,7 @@ public class AlgorithmCandidateGenerator {
             }
             String paramPath = componentPath + PARAM_SEP + p.getName();
             if (p.combination()) {
-                recursiveCombinationToIraceParams(node.combinations().get(p.getName()), params, paramPath, activationParam, activationValue);
+                recursiveCombinationToIraceParams(node.combinations().get(p.getName()), params, forbidden, paramPath, activationParam, activationValue);
             } else if (p.recursive()) {
                 var children = node.children().get(p.getName());
                 var values = getValidChildrenValuesForParam(children, p, node);
@@ -366,6 +369,7 @@ public class AlgorithmCandidateGenerator {
                     recursiveToIraceParams(
                             child,
                             params,
+                            forbidden,
                             paramPath + NAMEVALUE_SEP + childName,
                             paramPath,
                             childName
@@ -380,77 +384,35 @@ public class AlgorithmCandidateGenerator {
     private void recursiveCombinationToIraceParams(
             CombinationTree combination,
             ArrayList<String> params,
+            ArrayList<String> forbidden,
             String collectionPath,
             String activationParam,
             String activationValue
     ) {
-        if (combination == null) {
-            throw new IllegalStateException("Missing combination tree for " + collectionPath);
-        }
-
+        if (combination == null) throw new IllegalStateException("Missing combination tree for " + collectionPath);
         String lengthPath = collectionPath + PARAM_SEP + "length";
         boolean variableLength = combination.min() != combination.max();
         if (variableLength) {
-            params.add(ComponentParameter.toIraceParameterString(
-                    lengthPath,
-                    ParameterType.INTEGER,
-                    new Object[]{combination.min(), combination.max()},
-                    selected(activationParam, activationValue)
-            ));
+            params.add(ComponentParameter.toIraceParameterString(lengthPath, ParameterType.INTEGER,
+                    new Object[]{combination.min(), combination.max()}, selected(activationParam, activationValue)));
         }
-        if (combination.max() == 0) {
-            return;
-        }
-
-        recursiveCombinationNodeToIraceParams(
-                combination.root(),
-                params,
-                collectionPath + PARAM_SEP + "item0",
-                activationParam,
-                activationValue,
-                variableLength ? lengthPath : null
-        );
-    }
-
-    private void recursiveCombinationNodeToIraceParams(
-            CombinationNode combinationNode,
-            ArrayList<String> params,
-            String selectorPath,
-            String activationParam,
-            String activationValue,
-            String lengthPath
-    ) {
-        Class<?>[] values = new Class<?>[combinationNode.choices().size()];
-        for (int i = 0; i < combinationNode.choices().size(); i++) {
-            values[i] = combinationNode.choices().get(i).component().clazz();
-        }
+        var values = new Class<?>[combination.candidates().size()];
+        for (int i = 0; i < values.length; i++) values[i] = combination.candidates().get(i).clazz();
         Arrays.sort(values, Comparator.comparing(Class::getSimpleName));
-
-        String condition = selected(activationParam, activationValue);
-        if (lengthPath != null) {
-            condition += " & " + lengthPath + " >= " + (combinationNode.position() + 1);
-        }
-        params.add(ComponentParameter.toIraceParameterString(selectorPath, ParameterType.CATEGORICAL, values, condition));
-
-        for (var choice : combinationNode.choices()) {
-            String componentName = choice.component().className();
-            String selectedPrefix = selectorPath + NAMEVALUE_SEP + componentName;
-            recursiveToIraceParams(
-                    choice.component(),
-                    params,
-                    selectedPrefix + PARAM_SEP + "component",
-                    selectorPath,
-                    componentName
-            );
-            if (choice.next() != null) {
-                recursiveCombinationNodeToIraceParams(
-                        choice.next(),
-                        params,
-                        selectedPrefix + PARAM_SEP + "item" + choice.next().position(),
-                        selectorPath,
-                        componentName,
-                        lengthPath
-                );
+        for (int position = 0; position < combination.max(); position++) {
+            String selectorPath = collectionPath + PARAM_SEP + "item" + position;
+            String condition = selected(activationParam, activationValue);
+            if (variableLength) condition += " & " + lengthPath + " >= " + (position + 1);
+            params.add(ComponentParameter.toIraceParameterString(selectorPath, ParameterType.CATEGORICAL, values, condition));
+            for (var candidate : combination.candidates()) {
+                recursiveToIraceParams(candidate, params, forbidden,
+                        selectorPath + NAMEVALUE_SEP + candidate.className() + PARAM_SEP + "component",
+                        selectorPath, candidate.className());
+            }
+            for (int previous = 0; previous < position; previous++) {
+                String previousPath = collectionPath + PARAM_SEP + "item" + previous;
+                forbidden.add("!is.na(" + previousPath + ") & !is.na(" + selectorPath + ") & "
+                        + previousPath + " == " + selectorPath);
             }
         }
     }
@@ -511,8 +473,7 @@ public class AlgorithmCandidateGenerator {
                         context.pop();
                         return null;
                     }
-                    var root = buildCombinationNode(0, effectiveMax, children, new HashSet<>());
-                    allCombinations.put(p.getName(), new CombinationTree(p.getMin(), effectiveMax, root));
+                    allCombinations.put(p.getName(), new CombinationTree(p.getMin(), effectiveMax, children));
                 } else if (children.isEmpty()) {
                     // No valid config found exploring this part of the tree, even if the other params have values we cannot continue
                     context.pop();
@@ -548,20 +509,4 @@ public class AlgorithmCandidateGenerator {
         return children;
     }
 
-    private CombinationNode buildCombinationNode(int position, int max, List<TreeNode> candidates, Set<Class<?>> used) {
-        if (position >= max) {
-            return null;
-        }
-        var choices = new ArrayList<CombinationChoice>();
-        for (var candidate : candidates) {
-            if (used.contains(candidate.clazz())) {
-                continue;
-            }
-            used.add(candidate.clazz());
-            var next = buildCombinationNode(position + 1, max, candidates, used);
-            choices.add(new CombinationChoice(candidate, next));
-            used.remove(candidate.clazz());
-        }
-        return new CombinationNode(position, choices);
-    }
 }

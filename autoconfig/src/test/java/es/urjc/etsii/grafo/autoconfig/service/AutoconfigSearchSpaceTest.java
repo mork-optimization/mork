@@ -1,8 +1,8 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
-import es.urjc.etsii.grafo.autoconfig.generator.CombinationChoice;
-import es.urjc.etsii.grafo.autoconfig.generator.CombinationNode;
+import es.urjc.etsii.grafo.autoconfig.generator.CombinationTree;
+import es.urjc.etsii.grafo.autoconfig.irace.IraceParameterSpace;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
@@ -47,7 +47,7 @@ class AutoconfigSearchSpaceTest {
         var generator = mock(AlgorithmCandidateGenerator.class);
         when(generator.buildTree(4, 2)).thenReturn(roots);
         when(generator.componentParams()).thenReturn(parameters);
-        when(generator.toIraceParams(anyList())).thenReturn(iraceParameters);
+        when(generator.toIraceParameterSpace(anyList())).thenReturn(new IraceParameterSpace(iraceParameters, List.of()));
 
         var searchSpace = new AutoconfigSearchSpace(solverConfig, generator);
 
@@ -79,7 +79,7 @@ class AutoconfigSearchSpaceTest {
 
         verify(generator, times(1)).buildTree(4, 2);
         verify(generator, times(1)).componentParams();
-        verify(generator, times(1)).toIraceParams(searchSpace.roots());
+        verify(generator, times(1)).toIraceParameterSpace(searchSpace.roots());
     }
 
     @Test
@@ -103,13 +103,13 @@ class AutoconfigSearchSpaceTest {
                 () -> root.children().get("dependency").add(child)
         );
 
-        var choices = new ArrayList<>(List.of(new CombinationChoice(child, null)));
-        var combinationNode = new CombinationNode(0, choices);
+        var choices = new ArrayList<>(List.of(child));
+        var combinationNode = new CombinationTree(0, 1, choices);
         choices.clear();
-        assertEquals(1, combinationNode.choices().size());
+        assertEquals(1, combinationNode.candidates().size());
         assertThrows(
                 UnsupportedOperationException.class,
-                () -> combinationNode.choices().add(new CombinationChoice(child, null))
+                () -> combinationNode.candidates().add(child)
         );
     }
 

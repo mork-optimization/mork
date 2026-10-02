@@ -23,6 +23,8 @@ import org.junit.jupiter.api.io.TempDir;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -67,44 +69,54 @@ class ComponentCombinationTest {
     }
 
     @Test
-    void buildsAllOrderedCombinationsWithoutRepetition() {
+    void storesEligibleCandidatesWithoutExpandingPermutations() {
         var root = findRoot(candidateGenerator.buildTree(4, 2), ListAlgorithm.class);
         var combination = root.combinations().get("elements");
-
         assertEquals(0, combination.min());
         assertEquals(2, combination.max());
-        assertEquals(List.of("ElementA", "ElementB"), choiceNames(combination.root()));
-
-        var afterA = combination.root().choices().get(0).next();
-        var afterB = combination.root().choices().get(1).next();
-        assertEquals(List.of("ElementB"), choiceNames(afterA));
-        assertEquals(List.of("ElementA"), choiceNames(afterB));
+        assertEquals(List.of("ElementA", "ElementB"), choiceNames(combination));
     }
 
     @Test
-    void generatesConditionalPrefixParametersForIrace() {
-        var params = candidateGenerator.toIraceParams(candidateGenerator.buildTree(4, 2));
+    void generatesIndependentConditionalPositionsAndUniquenessConstraints() {
+        var space = candidateGenerator.toIraceParameterSpace(candidateGenerator.buildTree(4, 2));
+        var params = space.parameters();
+        assertTrue(contains(params, "ROOT_ListAlgorithm.elements.length", "(0, 2)", "ROOT %in% c(\"ListAlgorithm\")"));
+        for (int position = 0; position < 2; position++) {
+            assertTrue(contains(params, "ROOT_ListAlgorithm.elements.item" + position,
+                    "(\"ElementA\", \"ElementB\")", "ROOT %in% c(\"ListAlgorithm\")",
+                    "ROOT_ListAlgorithm.elements.length >= " + (position + 1)));
+        }
+        assertTrue(space.forbiddenExpressions().contains("!is.na(ROOT_ListAlgorithm.elements.item0) & "
+                + "!is.na(ROOT_ListAlgorithm.elements.item1) & ROOT_ListAlgorithm.elements.item0 == ROOT_ListAlgorithm.elements.item1"));
+        for (var parameter : params) assertTrue(!parameter.contains("item0_ElementA.item1"));
+    }
 
-        assertTrue(contains(params,
-                "ROOT_ListAlgorithm.elements.length",
-                "(0, 2)",
-                "ROOT %in% c(\"ListAlgorithm\")"));
-        assertTrue(contains(params,
-                "ROOT_ListAlgorithm.elements.item0",
-                "(\"ElementA\", \"ElementB\")",
-                " & ",
-                "ROOT_ListAlgorithm.elements.length >= 1"));
-        assertTrue(contains(params,
-                "ROOT_ListAlgorithm.elements.item0_ElementA.item1",
-                "(\"ElementB\")",
-                "ROOT_ListAlgorithm.elements.item0 %in% c(\"ElementA\")",
-                " & ",
-                "ROOT_ListAlgorithm.elements.length >= 2"));
-        assertTrue(contains(params,
-                "ROOT_ListAlgorithm.elements.item0_ElementB.item1",
-                "(\"ElementA\")",
-                "ROOT_ListAlgorithm.elements.item0 %in% c(\"ElementB\")",
-                "ROOT_ListAlgorithm.elements.length >= 2"));
+    @Test
+    void preservesEveryOrderedSelectionAndRejectsDuplicatesAndInvalidActiveValues() {
+        var orders = List.of(List.<String>of(), List.of("ElementA"), List.of("ElementB"),
+                List.of("ElementA", "ElementB"), List.of("ElementB", "ElementA"));
+        for (var order : orders) {
+            var parameters = new HashMap<String, String>();
+            parameters.put("ROOT", "ListAlgorithm");
+            parameters.put("ROOT_ListAlgorithm.elements.length", Integer.toString(order.size()));
+            for (int position = 0; position < order.size(); position++) {
+                parameters.put("ROOT_ListAlgorithm.elements.item" + position, order.get(position));
+            }
+            var spec = algorithmBuilder.asComponentSpec(new AlgorithmConfiguration(parameters));
+            var expected = new ArrayList<ComponentSpec>();
+            for (var component : order) expected.add(new ComponentSpec(component));
+            assertEquals(expected, spec.parameters().get("elements"));
+        }
+        for (var invalid : List.of(
+                Map.of("ROOT", "ListAlgorithm", "ROOT_ListAlgorithm.elements.length", "3"),
+                Map.of("ROOT", "ListAlgorithm", "ROOT_ListAlgorithm.elements.length", "-1"),
+                Map.of("ROOT", "ListAlgorithm", "ROOT_ListAlgorithm.elements.length", "1"),
+                Map.of("ROOT", "ListAlgorithm", "ROOT_ListAlgorithm.elements.length", "1", "ROOT_ListAlgorithm.elements.item0", "NA"),
+                Map.of("ROOT", "ListAlgorithm", "ROOT_ListAlgorithm.elements.length", "1", "ROOT_ListAlgorithm.elements.item0", "Unknown"),
+                Map.of("ROOT", "ListAlgorithm", "ROOT_ListAlgorithm.elements.length", "2", "ROOT_ListAlgorithm.elements.item0", "ElementA", "ROOT_ListAlgorithm.elements.item1", "ElementA"))) {
+            assertThrows(IllegalArgumentException.class, () -> algorithmBuilder.asComponentSpec(new AlgorithmConfiguration(invalid)));
+        }
     }
 
     @Test
@@ -241,7 +253,7 @@ class ComponentCombinationTest {
                 "ROOT", root,
                 collectionPath + ".length", Integer.toString(length),
                 collectionPath + ".item0", "ElementA",
-                collectionPath + ".item0_ElementA.item1", "ElementB"
+                collectionPath + ".item1", "ElementB"
         ));
     }
 
@@ -254,11 +266,9 @@ class ComponentCombinationTest {
         throw new AssertionError("Missing root " + clazz.getSimpleName());
     }
 
-    private static List<String> choiceNames(CombinationNode node) {
-        var names = new java.util.ArrayList<String>();
-        for (var choice : node.choices()) {
-            names.add(choice.component().className());
-        }
+    private static List<String> choiceNames(CombinationTree combination) {
+        var names = new ArrayList<String>();
+        for (var candidate : combination.candidates()) names.add(candidate.className());
         return names;
     }
 

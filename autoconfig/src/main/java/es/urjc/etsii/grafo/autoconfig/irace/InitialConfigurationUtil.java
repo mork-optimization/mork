@@ -1,9 +1,8 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
-import es.urjc.etsii.grafo.autoconfig.generator.CombinationChoice;
-import es.urjc.etsii.grafo.autoconfig.generator.CombinationNode;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationTree;
+import es.urjc.etsii.grafo.autoconfig.generator.ComponentCombinationUtil;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
@@ -130,37 +129,15 @@ public final class InitialConfigurationUtil {
         if (combination == null || !(value instanceof List<?> items)) {
             throw new IllegalArgumentException("Expected a component array at " + path);
         }
-        if (items.size() < combination.min() || items.size() > combination.max()) {
-            throw new IllegalArgumentException("Invalid number of components at " + path + ": " + items.size()
-                    + ", expected " + combination.min() + " to " + combination.max());
-        }
-        if (combination.min() != combination.max()) {
-            values.put(path + ".length", Integer.toString(items.size()));
-        }
-        CombinationNode current = combination.root();
-        String selectorPath = path + ".item0";
-        for (Object item : items) {
-            ComponentSpec childSpec = requireComponent(item, selectorPath);
-            CombinationChoice selected = null;
-            if (current != null) {
-                for (CombinationChoice choice : current.choices()) {
-                    if (choice.component().className().equals(childSpec.component())) {
-                        selected = choice;
-                        break;
-                    }
-                }
-            }
-            if (selected == null) {
-                throw new IllegalArgumentException("Component " + childSpec.component()
-                        + " is not allowed at " + selectorPath);
-            }
-            String childPath = selectorPath + "_" + childSpec.component();
+        ComponentCombinationUtil.validateLength(combination, items.size(), path);
+        if (combination.min() != combination.max()) values.put(path + ".length", Integer.toString(items.size()));
+        var used = new HashSet<Class<?>>();
+        for (int position = 0; position < items.size(); position++) {
+            String selectorPath = path + ".item" + position;
+            ComponentSpec childSpec = requireComponent(items.get(position), selectorPath);
+            TreeNode candidate = ComponentCombinationUtil.select(combination, childSpec.component(), selectorPath, used);
             values.put(selectorPath, childSpec.component());
-            flatten(selected.component(), childSpec, childPath + ".component", componentParameters, values);
-            current = selected.next();
-            if (current != null) {
-                selectorPath = childPath + ".item" + current.position();
-            }
+            flatten(candidate, childSpec, selectorPath + "_" + childSpec.component() + ".component", componentParameters, values);
         }
     }
 

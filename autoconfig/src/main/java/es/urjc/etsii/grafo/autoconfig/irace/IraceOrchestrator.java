@@ -25,7 +25,7 @@ import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.web.server.autoconfigure.ServerProperties;
+import org.springframework.boot.web.server.context.WebServerApplicationContext;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -62,15 +62,13 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public static final String F_TRAIN_INSTANCES = "autoconfig-instances.txt";
     private static final String INITIAL_CONFIGURATIONS_RESOURCE = "initial-configurations.json";
     private static final String INITIAL_CONFIGURATIONS_FILE = "autoconfig-initial-configurations.txt";
-    private static final String IRACE_PARAM_EPILOGUE = "\n[global]\ndigits = "
-            + InitialConfigurationUtil.GENERATED_REAL_DIGITS + "\n";
 
     public static final int DEFAULT_IRACE_EXPERIMENTS = 10_000;
     private final SolverConfig solverConfig;
     private final BlockConfig blockConfig;
     private final InstanceConfiguration instanceConfiguration;
     private final IraceIntegration iraceIntegration;
-    private final ServerProperties serverProperties;
+    private final WebServerApplicationContext webServerApplicationContext;
     private final InstanceManager<I> instanceManager;
     private final AutoconfigSearchSpace searchSpace;
     private final MorkEventPublisher eventPublisher;
@@ -83,7 +81,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      *
      * @param solverConfig                a {@link SolverConfig} object.
      * @param blockConfig                 block execution configuration
-     * @param serverProperties            embedded server configuration
+     * @param webServerApplicationContext main application context containing the running web server
      * @param instanceConfiguration
      * @param iraceIntegration            a {@link IraceIntegration} object.
      * @param instanceManager             a {@link InstanceManager} object.
@@ -96,7 +94,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public IraceOrchestrator(
             SolverConfig solverConfig,
             BlockConfig blockConfig,
-            ServerProperties serverProperties,
+            WebServerApplicationContext webServerApplicationContext,
             InstanceConfiguration instanceConfiguration,
             IraceIntegration iraceIntegration,
             InstanceManager<I> instanceManager,
@@ -109,7 +107,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         this.solverConfig = solverConfig;
         this.blockConfig = blockConfig;
         this.instanceConfiguration = instanceConfiguration;
-        this.serverProperties = serverProperties;
+        this.webServerApplicationContext = webServerApplicationContext;
         this.iraceIntegration = iraceIntegration;
         this.instanceManager = instanceManager;
         this.searchSpace = searchSpace;
@@ -194,6 +192,15 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         int parameterCount = 0;
         boolean automaticMode = runState.isAutomaticMode();
         try {
+            var webServer = webServerApplicationContext.getWebServer();
+            if (webServer == null) {
+                throw new IllegalStateException("Cannot launch irace before the web server has started");
+            }
+            int port = webServer.getPort();
+            if (port < 1 || port > 65535) {
+                throw new IllegalStateException("Cannot launch irace with invalid web server port: " + port);
+            }
+            log.info("irace callback endpoint: http://127.0.0.1:{}", port);
             var trainingInstances = instanceManager.getInstanceSolveOrder(IRACE_INSTANCE_PATH_KEY, false);
             IraceInstanceUtil.write(Path.of(F_TRAIN_INSTANCES), trainingInstances);
             log.info("Prepared {} irace training instances in {}", trainingInstances.size(), F_TRAIN_INSTANCES);
@@ -203,12 +210,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 }
                 var iraceParams = searchSpace.iraceParameters();
                 parameterCount = iraceParams.size();
-                var sb = new StringBuilder();
-                for (var p : iraceParams) {
-                    sb.append(p).append("\n");
-                }
-                sb.append(IRACE_PARAM_EPILOGUE);
-                Files.writeString(paramsPath, sb.toString());
+                Files.writeString(paramsPath, IraceParameterFileUtil.toFileContents(searchSpace.iraceParameterSpace()));
                 this.runState.publishGeneratedSearchSpace(parameterCount);
             }
 
@@ -216,7 +218,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                     integrationKey,
                     solverConfig,
                     instanceConfiguration,
-                    serverProperties,
+                    port,
                     parameterCount
             );
             if (!automaticMode) {
@@ -258,7 +260,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             String integrationKey,
             SolverConfig solverConfig,
             InstanceConfiguration instanceConfiguration,
-            ServerProperties server,
+            int port,
             int parameterCount
     ) {
         return Map.of(
@@ -269,7 +271,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 K_PARALLEL, nParallel(solverConfig),
                 K_MAX_EXP, calculateMaxExperiments(runState.isAutomaticMode(), solverConfig, parameterCount),
                 K_SEED, String.valueOf(solverConfig.getSeed()),
-                K_PORT, String.valueOf(server.getPort()),
+                K_PORT, String.valueOf(port),
                 K_RUN_ID, this.runState.getRunId()
         );
     }

@@ -1,7 +1,9 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
+import es.urjc.etsii.grafo.autoconfig.generator.AutoconfigEncodingUtil;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
+import es.urjc.etsii.grafo.autoconfig.irace.IraceParameterSpace;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import es.urjc.etsii.grafo.config.SolverConfig;
@@ -22,7 +24,7 @@ public final class AutoconfigSearchSpace {
 
     private final List<TreeNode> roots;
     private final Map<Class<?>, List<ComponentParameter>> componentParameters;
-    private final List<String> iraceParameters;
+    private final IraceParameterSpace iraceParameterSpace;
     private final SearchSpaceSnapshot snapshot;
 
     public AutoconfigSearchSpace(
@@ -34,7 +36,7 @@ public final class AutoconfigSearchSpace {
                 solverConfig.getMaxDerivationRepetition()
         ));
         this.componentParameters = immutableListMap(candidateGenerator.componentParams());
-        this.iraceParameters = List.copyOf(candidateGenerator.toIraceParams(roots));
+        this.iraceParameterSpace = candidateGenerator.toIraceParameterSpace(roots);
         this.snapshot = createSnapshot(solverConfig);
     }
 
@@ -47,7 +49,11 @@ public final class AutoconfigSearchSpace {
     }
 
     public List<String> iraceParameters() {
-        return iraceParameters;
+        return iraceParameterSpace.parameters();
+    }
+
+    public IraceParameterSpace iraceParameterSpace() {
+        return iraceParameterSpace;
     }
 
     public SearchSpaceSnapshot snapshot() {
@@ -88,10 +94,12 @@ public final class AutoconfigSearchSpace {
                         components.size(),
                         parameterCount,
                         combinationParameterCount,
-                        iraceParameters.size()
+                        iraceParameters().size(),
+                        iraceParameterSpace.forbiddenExpressions().size()
                 ),
                 rootNames,
-                components
+                components,
+                AutoconfigEncodingUtil.describe(roots, componentParameters)
         );
     }
 
@@ -162,7 +170,8 @@ public final class AutoconfigSearchSpace {
             GenerationLimits limits,
             SearchSpaceSummary summary,
             List<String> roots,
-            List<ComponentDescription> components
+            List<ComponentDescription> components,
+            AutoconfigEncodingUtil.EncodingDiagnostics encodingDiagnostics
     ) {
         public SearchSpaceSnapshot {
             roots = List.copyOf(roots);
@@ -178,7 +187,8 @@ public final class AutoconfigSearchSpace {
             int componentCount,
             int parameterCount,
             int combinationParameterCount,
-            int generatedIraceParameterCount
+            int generatedIraceParameterCount,
+            int generatedForbiddenConstraintCount
     ) {
     }
 

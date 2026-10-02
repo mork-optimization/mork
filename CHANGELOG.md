@@ -10,8 +10,12 @@
 - (Fix) Improve Excel serializer in some edge cases, print time with default with 2 decimals in pivot table.
 - (Fix) Build Excel pivot table from the generated raw-data table instead of reserving rows beforehand.
 - (Fix) Move artifact signing to a specific profile
+- (Fix) If running autoconfig/irace with port 0 (random port), find the correct port and correctly replace it in the scenario file.
 - (New) Use Context.suspendObjectiveTracking inside a try block to temporarily disable tracking of objective function. Used for example by Strategic Oscillation implementations.
-- (New) Autoconfig improvement: Categorical and ordinal params now pick all values if none are explicitly provided and target type is an enum.
+- (New) Autoconfig improvement: Categorical and ordinal params now pick all values by default if none are explicitly provided and target type is an enum.
+- (New) Autoconfig improvement: Optimize number of generated parameters when algorithm components receive arrays or list of components.
+- (New) Autoconfig improvement: Integrate irace forbidden parameters / combinations with mork
+- (New) Autoconfig improvement: Allow users to provide initial configurations (for example, the current state of the art) for both irace and autoconfig modes.
 - (New) AlgorithmBuilder::buildFromStringParams(name, config) that sets a custom algorithm name (by default a rando one is generated).
 - (New) Experimental Moocore Java module
 - (New) Function to score move deltas was optional but not obvious, added two new Objective overloads: Objective::ofMinimizing(name, function), Objective::ofMaximizing(name, function)

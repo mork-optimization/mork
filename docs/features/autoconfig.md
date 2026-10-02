@@ -99,9 +99,22 @@ Collection component parameters must be explicitly annotated. Exact `List<T>` de
 and varargs are supported; raw lists, wildcards, sets, and other collection types are rejected.
 
 In the generated irace space, a variable-size combination uses one integer `length` parameter followed by
-conditional `item0`, `item1`, and later selectors. Each selector's domain excludes classes already used by its
-prefix. This keeps the values readable and lets Mork validate and reconstruct the selected components directly,
-without maintaining an opaque numeric combination table.
+independent conditional `item0`, `item1`, and later selectors. Fixed-size combinations omit `length`. Every
+position exposes the eligible implementations; `[forbidden]` expressions reject repeated classes in active
+positions. Mork also checks uniqueness when decoding configurations and converting initial configurations.
+Manual JSON construction continues to permit repeated classes.
+
+### Measuring collection encoding
+
+The search-space snapshot includes `encodingDiagnostics`, with declaration and forbidden-expression totals,
+counts by root, and a breakdown for each collection. `prefixDeclarationEstimate` calculates the former
+encoding's size analytically without constructing its permutation tree; `avoidedDeclarations` explains the
+reduction. Forbidden expressions are counted separately and do
+not become seed-table columns or increase Mork's experiments-per-parameter budget.
+
+For eight eligible phases and up to three positions, the former encoding needed `1 + 8 + 8*7 = 65` selectors;
+the independent encoding needs three. Candidate parameters are also no longer duplicated for every prefix.
+
 
 The reconstructed combination is stored as a list of nested `ComponentSpec` values. During tuning, the
 [autoconfig REST API](autoconfig-rest-api.md) exposes candidate descriptions using the same structured JSON
