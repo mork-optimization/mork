@@ -1,0 +1,334 @@
+[
+  {
+    "$component": "LMLS",
+    "variant": "LMLS",
+    "epsilon": 0.6,
+    "maxIter": 20,
+    "tenure": 3,
+    "alpha": 0.1,
+    "beta": 0.2,
+    "gamma": 0.3,
+    "rho": 0.3,
+    "maxRestarts": 4
+  },
+  {
+    "$component": "LMLS",
+    "variant": "RANDOM",
+    "epsilon": 0.6,
+    "maxIter": 20,
+    "tenure": 3,
+    "alpha": 0.1,
+    "beta": 0.2,
+    "gamma": 0.3,
+    "rho": 0.3,
+    "maxRestarts": 4
+  },
+  {
+    "$component": "LMLS",
+    "variant": "GREEDY",
+    "epsilon": 0.6,
+    "maxIter": 20,
+    "tenure": 3,
+    "alpha": 0.1,
+    "beta": 0.2,
+    "gamma": 0.3,
+    "rho": 0.3,
+    "maxRestarts": 4
+  },
+  {
+    "$component": "LMLS",
+    "variant": "WITHOUT_TABU",
+    "epsilon": 0.6,
+    "maxIter": 20,
+    "tenure": 3,
+    "alpha": 0.1,
+    "beta": 0.2,
+    "gamma": 0.3,
+    "rho": 0.3,
+    "maxRestarts": 4
+  },
+  {
+    "$component": "LMLS",
+    "variant": "WITHOUT_SWAP",
+    "epsilon": 0.6,
+    "maxIter": 20,
+    "tenure": 3,
+    "alpha": 0.1,
+    "beta": 0.2,
+    "gamma": 0.3,
+    "rho": 0.3,
+    "maxRestarts": 4
+  },
+  {
+    "$component": "LMLS",
+    "variant": "DIRECT_ONE_MOVE",
+    "epsilon": 0.6,
+    "maxIter": 20,
+    "tenure": 3,
+    "alpha": 0.1,
+    "beta": 0.2,
+    "gamma": 0.3,
+    "rho": 0.3,
+    "maxRestarts": 4
+  },
+  {
+    "$component": "LMLS",
+    "variant": "DIRECT_SWAP",
+    "epsilon": 0.6,
+    "maxIter": 20,
+    "tenure": 3,
+    "alpha": 0.1,
+    "beta": 0.2,
+    "gamma": 0.3,
+    "rho": 0.3,
+    "maxRestarts": 4
+  },
+  {
+    "$component": "SimpleAlgorithm",
+    "constructive": {
+      "$component": "MREFLPConstructiveNew",
+      "policy": "RCL",
+      "order": "FLOW_DESCENDING",
+      "rcl": 0.25
+    },
+    "improver": {
+      "$component": "VND",
+      "improvers": [
+        {
+          "$component": "OneMoveDescentNew",
+          "policy": "FIRST",
+          "cached": true
+        },
+        {
+          "$component": "SwapDescentNew",
+          "policy": "BEST",
+          "cached": true,
+          "sampleFraction": 1.0
+        }
+      ]
+    }
+  },
+  {
+    "$component": "SimpleAlgorithm",
+    "constructive": {
+      "$component": "MREFLPConstructiveNew",
+      "policy": "RCL",
+      "order": "FLOW_DESCENDING",
+      "rcl": 0.25
+    },
+    "improver": {
+      "$component": "MREFLPSimulatedAnnealingNew",
+      "neighborhood": {
+        "$component": "MREFLPMixedNeighborhoodNew",
+        "relocationProbability": 0.5
+      },
+      "temperatureScale": 1.0,
+      "cooling": 0.95,
+      "cycleLength": 32,
+      "maxIterations": 30
+    }
+  },
+  {
+    "$component": "VNS",
+    "maxK": 3,
+    "constructive": {
+      "$component": "MREFLPConstructiveNew",
+      "policy": "RCL",
+      "order": "FLOW_DESCENDING",
+      "rcl": 0.25
+    },
+    "shake": {
+      "$component": "MREFLPShakeNew",
+      "strength": 0.05,
+      "relocationProbability": 0.5
+    },
+    "improver": {
+      "$component": "VND",
+      "improvers": [
+        {
+          "$component": "OneMoveDescentNew",
+          "policy": "FIRST",
+          "cached": true
+        },
+        {
+          "$component": "SwapDescentNew",
+          "policy": "BEST",
+          "cached": true,
+          "sampleFraction": 1.0
+        }
+      ]
+    }
+  },
+  {
+    "$component": "IteratedGreedy",
+    "maxIterations": 20,
+    "stopIfNotImprovedIn": 5,
+    "constructive": {
+      "$component": "MREFLPConstructiveNew",
+      "policy": "RCL",
+      "order": "FLOW_DESCENDING",
+      "rcl": 0.25
+    },
+    "destructionReconstruction": {
+      "$component": "DestroyRebuild",
+      "constructive": {
+        "$component": "MREFLPReconstructiveNew",
+        "policy": "RCL",
+        "order": "FLOW_DESCENDING",
+        "rcl": 0.25
+      },
+      "destructive": {
+        "$component": "MREFLPDestructiveNew",
+        "fraction": 0.2,
+        "policy": "RELATED"
+      }
+    },
+    "improver": {
+      "$component": "VND",
+      "improvers": [
+        {
+          "$component": "OneMoveDescentNew",
+          "policy": "FIRST",
+          "cached": true
+        },
+        {
+          "$component": "SwapDescentNew",
+          "policy": "BEST",
+          "cached": true,
+          "sampleFraction": 1.0
+        }
+      ]
+    }
+  },
+  {
+    "$component": "LMLSNew",
+    "constructive": {
+      "$component": "MREFLPConstructiveNew",
+      "policy": "RCL",
+      "order": "FLOW_DESCENDING",
+      "rcl": 0.25
+    },
+    "improver": {
+      "$component": "SequentialImproverNew",
+      "improvers": [
+        {
+          "$component": "OneMoveTabuSearchNew",
+          "maxIter": 20,
+          "tenure": 3,
+          "cached": true
+        },
+        {
+          "$component": "SwapDescentNew",
+          "policy": "BEST",
+          "cached": true,
+          "sampleFraction": 1.0
+        }
+      ]
+    },
+    "learningEnabled": true,
+    "normalize": false,
+    "epsilon": 0.6,
+    "alpha": 0.1,
+    "beta": 0.2,
+    "gamma": 0.3,
+    "rho": 0.3,
+    "maxRestarts": 4
+  },
+  {
+    "$component": "LMLSNew",
+    "constructive": {
+      "$component": "MREFLPConstructiveNew",
+      "policy": "RCL",
+      "order": "FLOW_DESCENDING",
+      "rcl": 0.25
+    },
+    "improver": {
+      "$component": "VND",
+      "improvers": [
+        {
+          "$component": "OneMoveDescentNew",
+          "policy": "FIRST",
+          "cached": true
+        },
+        {
+          "$component": "SwapDescentNew",
+          "policy": "BEST",
+          "cached": true,
+          "sampleFraction": 1.0
+        }
+      ]
+    },
+    "learningEnabled": true,
+    "normalize": true,
+    "epsilon": 0.6,
+    "alpha": 0.1,
+    "beta": 0.2,
+    "gamma": 0.3,
+    "rho": 0.3,
+    "maxRestarts": 4
+  },
+  {
+    "$component": "ScatterSearchNew",
+    "initialRatio": 2.0,
+    "refsetSize": 10,
+    "constructiveGoodValues": {
+      "$component": "MREFLPConstructiveNew",
+      "policy": "RCL",
+      "order": "FLOW_DESCENDING",
+      "rcl": 0.25
+    },
+    "constructiveGoodDiversity": {
+      "$component": "MREFLPConstructiveNew",
+      "policy": "RANDOM",
+      "order": "RANDOM",
+      "rcl": 1.0
+    },
+    "improver": {
+      "$component": "VND",
+      "improvers": [
+        {
+          "$component": "OneMoveDescentNew",
+          "policy": "FIRST",
+          "cached": true
+        },
+        {
+          "$component": "SwapDescentNew",
+          "policy": "BEST",
+          "cached": true,
+          "sampleFraction": 1.0
+        }
+      ]
+    },
+    "combinator": {
+      "$component": "MREFLPSolutionCombinatorNew",
+      "parentBias": 0.5,
+      "rcl": 0.25
+    },
+    "maxIterations": 3,
+    "diversityRatio": 0.5,
+    "solutionDistance": {
+      "$component": "MREFLPSolutionDistanceNew"
+    },
+    "softRestartEnabled": false
+  },
+  {
+    "$component": "CMSANew",
+    "constructive": {
+      "$component": "MREFLPCMSAConstructiveNew",
+      "constructive": {
+        "$component": "MREFLPConstructiveNew",
+        "policy": "RCL",
+        "order": "FLOW_DESCENDING",
+        "rcl": 0.25
+      }
+    },
+    "solver": {
+      "$component": "MREFLPCMSASolverNew",
+      "maxNodes": 10000
+    },
+    "solutionsPerIteration": 3,
+    "ageMax": 2,
+    "solverTimeLimitInMillis": 100,
+    "maxIterations": 3
+  }
+]

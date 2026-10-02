@@ -1,0 +1,1210 @@
+{
+  "limits" : {
+    "treeDepth" : 1000,
+    "maxDerivationRepetition" : 0
+  },
+  "summary" : {
+    "rootCount" : 9,
+    "componentCount" : 35,
+    "parameterCount" : 121,
+    "combinationParameterCount" : 1,
+    "generatedIraceParameterCount" : 1016,
+    "generatedForbiddenConstraintCount" : 60
+  },
+  "roots" : [ "CMSA", "CMSANew", "IteratedGreedy", "LMLS", "LMLSNew", "ScatterSearch", "ScatterSearchNew", "SimpleAlgorithm", "VNS" ],
+  "components" : [ {
+    "name" : "CMSA",
+    "parameters" : [ {
+      "name" : "ageMax",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 0,
+      "maximum" : 100,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "constructive",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "MREFLPCMSAConstructiveNew" ]
+    }, {
+      "name" : "maxIterations",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 0,
+      "maximum" : 1000000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "name",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "objective",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "solutionsPerIteration",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 1000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "solver",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "MREFLPCMSASolverNew" ]
+    }, {
+      "name" : "solverTimeLimitInMillis",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 60000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "CMSANew",
+    "parameters" : [ {
+      "name" : "ageMax",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 0,
+      "maximum" : 100,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "constructive",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "MREFLPCMSAConstructiveNew" ]
+    }, {
+      "name" : "maxIterations",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 0,
+      "maximum" : 1000000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "name",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "objective",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "solutionsPerIteration",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 1000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "solver",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "MREFLPCMSASolverNew" ]
+    }, {
+      "name" : "solverTimeLimitInMillis",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 60000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "DestroyRebuild",
+    "parameters" : [ {
+      "name" : "constructive",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "GreedyRandomGRASPConstructive", "MREFLPReconstructiveNew", "RandomGreedyGRASPConstructive" ]
+    }, {
+      "name" : "destructive",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "MREFLPDestructiveNew", "NullDestructive" ]
+    } ]
+  }, {
+    "name" : "GreedyRandomGRASPConstructive",
+    "parameters" : [ {
+      "name" : "alpha",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0,
+      "maximum" : 1,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "candidateListManager",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "NullGraspListManager" ]
+    }, {
+      "name" : "objective",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "IteratedGreedy",
+    "parameters" : [ {
+      "name" : "constructive",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "GreedyRandomGRASPConstructive", "MREFLPCMSAConstructiveNew", "MREFLPConstructive", "MREFLPConstructiveNew", "MREFLPReconstructiveNew", "NullConstructive", "RandomConstructive", "RandomGreedyGRASPConstructive" ]
+    }, {
+      "name" : "destructionReconstruction",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "DestroyRebuild", "MREFLPShakeNew", "NullShake", "RandomMoveShake" ]
+    }, {
+      "name" : "improver",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "LocalSearchBestImprovement", "LocalSearchFirstImprovement", "MREFLPSimulatedAnnealingNew", "NullImprover", "OneMoveDescentNew", "OneMoveTabuSearch", "OneMoveTabuSearchNew", "SimulatedAnnealing", "SwapDescent", "SwapDescentNew", "VND" ]
+    }, {
+      "name" : "maxIterations",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 0,
+      "maximum" : 1000000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "name",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "stopIfNotImprovedIn",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 1000000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "LMLS",
+    "parameters" : [ {
+      "name" : "alpha",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.01,
+      "maximum" : 0.99,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "beta",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.01,
+      "maximum" : 0.99,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "epsilon",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.0,
+      "maximum" : 1.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "gamma",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.01,
+      "maximum" : 0.99,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "maxIter",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 1000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "maxRestarts",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 0,
+      "maximum" : 1000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "rho",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.01,
+      "maximum" : 0.99,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "tenure",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 100,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "variant",
+      "kind" : "CATEGORICAL",
+      "values" : [ "LMLS", "RANDOM", "GREEDY", "WITHOUT_TABU", "WITHOUT_SWAP", "DIRECT_ONE_MOVE", "DIRECT_SWAP" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "LMLSNew",
+    "parameters" : [ {
+      "name" : "alpha",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.01,
+      "maximum" : 0.99,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "beta",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.01,
+      "maximum" : 0.99,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "constructive",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "MREFLPConstructiveNew" ]
+    }, {
+      "name" : "epsilon",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.0,
+      "maximum" : 1.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "gamma",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.01,
+      "maximum" : 0.99,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "improver",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "LocalSearchBestImprovement", "LocalSearchFirstImprovement", "MREFLPSimulatedAnnealingNew", "NullImprover", "OneMoveDescentNew", "OneMoveTabuSearch", "OneMoveTabuSearchNew", "SimulatedAnnealing", "SwapDescent", "SwapDescentNew", "VND" ]
+    }, {
+      "name" : "learningEnabled",
+      "kind" : "CATEGORICAL",
+      "values" : [ "true", "false" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "maxRestarts",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 0,
+      "maximum" : 1000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "name",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "normalize",
+      "kind" : "CATEGORICAL",
+      "values" : [ "true", "false" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "rho",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.01,
+      "maximum" : 0.99,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "LocalSearchBestImprovement",
+    "parameters" : [ {
+      "name" : "neighborhood",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "EmptyNeighborhood", "MREFLPMixedNeighborhoodNew", "MREFLPRelocationNeighborhoodNew", "MREFLPSwapNeighborhoodNew", "TestNeighborhood" ]
+    } ]
+  }, {
+    "name" : "LocalSearchFirstImprovement",
+    "parameters" : [ {
+      "name" : "neighborhood",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "EmptyNeighborhood", "MREFLPMixedNeighborhoodNew", "MREFLPRelocationNeighborhoodNew", "MREFLPSwapNeighborhoodNew", "TestNeighborhood" ]
+    } ]
+  }, {
+    "name" : "MREFLPCMSAConstructiveNew",
+    "parameters" : [ {
+      "name" : "constructive",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "MREFLPConstructiveNew" ]
+    } ]
+  }, {
+    "name" : "MREFLPCMSASolverNew",
+    "parameters" : [ {
+      "name" : "maxNodes",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 1000000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "MREFLPConstructive",
+    "parameters" : [ {
+      "name" : "epsilon",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.0,
+      "maximum" : 1.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "variant",
+      "kind" : "CATEGORICAL",
+      "values" : [ "LMLS", "RANDOM", "GREEDY" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "MREFLPConstructiveNew",
+    "parameters" : [ {
+      "name" : "order",
+      "kind" : "CATEGORICAL",
+      "values" : [ "RANDOM", "FLOW_DESCENDING" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "policy",
+      "kind" : "CATEGORICAL",
+      "values" : [ "RANDOM", "GREEDY", "RCL" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "rcl",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.0,
+      "maximum" : 1.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "MREFLPDestructiveNew",
+    "parameters" : [ {
+      "name" : "fraction",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.05,
+      "maximum" : 0.3,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "policy",
+      "kind" : "CATEGORICAL",
+      "values" : [ "RANDOM", "RELATED" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "MREFLPMixedNeighborhoodNew",
+    "parameters" : [ {
+      "name" : "relocationProbability",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.0,
+      "maximum" : 1.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "MREFLPReconstructiveNew",
+    "parameters" : [ {
+      "name" : "order",
+      "kind" : "CATEGORICAL",
+      "values" : [ "RANDOM", "FLOW_DESCENDING" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "policy",
+      "kind" : "CATEGORICAL",
+      "values" : [ "RANDOM", "GREEDY", "RCL" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "rcl",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.0,
+      "maximum" : 1.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "MREFLPRelocationNeighborhoodNew",
+    "parameters" : [ ]
+  }, {
+    "name" : "MREFLPShakeNew",
+    "parameters" : [ {
+      "name" : "relocationProbability",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.0,
+      "maximum" : 1.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "strength",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.01,
+      "maximum" : 0.2,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "MREFLPSimulatedAnnealingNew",
+    "parameters" : [ {
+      "name" : "cooling",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.5,
+      "maximum" : 0.99,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "cycleLength",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 1000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "maxIterations",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 1000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "neighborhood",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "EmptyNeighborhood", "MREFLPMixedNeighborhoodNew", "MREFLPRelocationNeighborhoodNew", "MREFLPSwapNeighborhoodNew", "TestNeighborhood" ]
+    }, {
+      "name" : "temperatureScale",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.01,
+      "maximum" : 10.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "MREFLPSolutionCombinatorNew",
+    "parameters" : [ {
+      "name" : "parentBias",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.0,
+      "maximum" : 1.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "rcl",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.0,
+      "maximum" : 1.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "MREFLPSolutionDistanceNew",
+    "parameters" : [ ]
+  }, {
+    "name" : "MREFLPSwapNeighborhoodNew",
+    "parameters" : [ ]
+  }, {
+    "name" : "NullImprover",
+    "parameters" : [ ]
+  }, {
+    "name" : "OneMoveDescentNew",
+    "parameters" : [ {
+      "name" : "cached",
+      "kind" : "CATEGORICAL",
+      "values" : [ "true", "false" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "policy",
+      "kind" : "CATEGORICAL",
+      "values" : [ "BEST", "FIRST" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "OneMoveTabuSearch",
+    "parameters" : [ {
+      "name" : "cached",
+      "kind" : "CATEGORICAL",
+      "values" : [ "true", "false" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "maxIter",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 1000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "tenure",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 100,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "OneMoveTabuSearchNew",
+    "parameters" : [ {
+      "name" : "cached",
+      "kind" : "CATEGORICAL",
+      "values" : [ "true", "false" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "maxIter",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 1000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "tenure",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 100,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "RandomGreedyGRASPConstructive",
+    "parameters" : [ {
+      "name" : "alpha",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0,
+      "maximum" : 1,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "candidateListManager",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "NullGraspListManager" ]
+    }, {
+      "name" : "objective",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "RandomMoveShake",
+    "parameters" : [ {
+      "name" : "neighborhood",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "EmptyNeighborhood", "MREFLPMixedNeighborhoodNew", "MREFLPRelocationNeighborhoodNew", "MREFLPSwapNeighborhoodNew", "TestNeighborhood" ]
+    }, {
+      "name" : "ratio",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 1000,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "ScatterSearch",
+    "parameters" : [ {
+      "name" : "combinator",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "MREFLPSolutionCombinatorNew" ]
+    }, {
+      "name" : "constructiveGoodDiversity",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "GreedyRandomGRASPConstructive", "MREFLPCMSAConstructiveNew", "MREFLPConstructive", "MREFLPConstructiveNew", "MREFLPReconstructiveNew", "NullConstructive", "RandomConstructive", "RandomGreedyGRASPConstructive" ]
+    }, {
+      "name" : "constructiveGoodValues",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "GreedyRandomGRASPConstructive", "MREFLPCMSAConstructiveNew", "MREFLPConstructive", "MREFLPConstructiveNew", "MREFLPReconstructiveNew", "NullConstructive", "RandomConstructive", "RandomGreedyGRASPConstructive" ]
+    }, {
+      "name" : "diversityRatio",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.0,
+      "maximum" : 1.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "improver",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "LocalSearchBestImprovement", "LocalSearchFirstImprovement", "MREFLPSimulatedAnnealingNew", "NullImprover", "OneMoveDescentNew", "OneMoveTabuSearch", "OneMoveTabuSearchNew", "SimulatedAnnealing", "SwapDescent", "SwapDescentNew", "VND" ]
+    }, {
+      "name" : "initialRatio",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 1.0,
+      "maximum" : 10.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "maxIterations",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 1073741823,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "name",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "objective",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "refsetSize",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 10,
+      "maximum" : 30,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "softRestartEnabled",
+      "kind" : "CATEGORICAL",
+      "values" : [ "true", "false" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "solutionDistance",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "MREFLPSolutionDistanceNew" ]
+    } ]
+  }, {
+    "name" : "ScatterSearchNew",
+    "parameters" : [ {
+      "name" : "combinator",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "MREFLPSolutionCombinatorNew" ]
+    }, {
+      "name" : "constructiveGoodDiversity",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "GreedyRandomGRASPConstructive", "MREFLPCMSAConstructiveNew", "MREFLPConstructive", "MREFLPConstructiveNew", "MREFLPReconstructiveNew", "NullConstructive", "RandomConstructive", "RandomGreedyGRASPConstructive" ]
+    }, {
+      "name" : "constructiveGoodValues",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "GreedyRandomGRASPConstructive", "MREFLPCMSAConstructiveNew", "MREFLPConstructive", "MREFLPConstructiveNew", "MREFLPReconstructiveNew", "NullConstructive", "RandomConstructive", "RandomGreedyGRASPConstructive" ]
+    }, {
+      "name" : "diversityRatio",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.0,
+      "maximum" : 1.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "improver",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "LocalSearchBestImprovement", "LocalSearchFirstImprovement", "MREFLPSimulatedAnnealingNew", "NullImprover", "OneMoveDescentNew", "OneMoveTabuSearch", "OneMoveTabuSearchNew", "SimulatedAnnealing", "SwapDescent", "SwapDescentNew", "VND" ]
+    }, {
+      "name" : "initialRatio",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 1.0,
+      "maximum" : 10.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "maxIterations",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 1073741823,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "name",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "objective",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "refsetSize",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 10,
+      "maximum" : 30,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "softRestartEnabled",
+      "kind" : "CATEGORICAL",
+      "values" : [ "true", "false" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "solutionDistance",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "MREFLPSolutionDistanceNew" ]
+    } ]
+  }, {
+    "name" : "SimpleAlgorithm",
+    "parameters" : [ {
+      "name" : "algorithmName",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "constructive",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "GreedyRandomGRASPConstructive", "MREFLPCMSAConstructiveNew", "MREFLPConstructive", "MREFLPConstructiveNew", "MREFLPReconstructiveNew", "NullConstructive", "RandomConstructive", "RandomGreedyGRASPConstructive" ]
+    }, {
+      "name" : "improver",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "LocalSearchBestImprovement", "LocalSearchFirstImprovement", "MREFLPSimulatedAnnealingNew", "NullImprover", "OneMoveDescentNew", "OneMoveTabuSearch", "OneMoveTabuSearchNew", "SimulatedAnnealing", "SwapDescent", "SwapDescentNew", "VND" ]
+    } ]
+  }, {
+    "name" : "SwapDescent",
+    "parameters" : [ {
+      "name" : "cached",
+      "kind" : "CATEGORICAL",
+      "values" : [ "true", "false" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "SwapDescentNew",
+    "parameters" : [ {
+      "name" : "cached",
+      "kind" : "CATEGORICAL",
+      "values" : [ "true", "false" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "policy",
+      "kind" : "CATEGORICAL",
+      "values" : [ "BEST", "FIRST" ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "sampleFraction",
+      "kind" : "REAL",
+      "values" : [ ],
+      "minimum" : 0.05,
+      "maximum" : 1.0,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    } ]
+  }, {
+    "name" : "VND",
+    "parameters" : [ {
+      "name" : "improvers",
+      "kind" : "COMBINATION",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : 2,
+      "maxItems" : 5,
+      "choices" : [ "LocalSearchBestImprovement", "LocalSearchFirstImprovement", "MREFLPSimulatedAnnealingNew", "OneMoveDescentNew", "OneMoveTabuSearch", "OneMoveTabuSearchNew", "SimulatedAnnealing", "SwapDescent", "SwapDescentNew" ]
+    } ]
+  }, {
+    "name" : "VNS",
+    "parameters" : [ {
+      "name" : "algorithmName",
+      "kind" : "PROVIDED",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "constructive",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "GreedyRandomGRASPConstructive", "MREFLPCMSAConstructiveNew", "MREFLPConstructive", "MREFLPConstructiveNew", "MREFLPReconstructiveNew", "NullConstructive", "RandomConstructive", "RandomGreedyGRASPConstructive" ]
+    }, {
+      "name" : "improver",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "LocalSearchBestImprovement", "LocalSearchFirstImprovement", "MREFLPSimulatedAnnealingNew", "NullImprover", "OneMoveDescentNew", "OneMoveTabuSearch", "OneMoveTabuSearchNew", "SimulatedAnnealing", "SwapDescent", "SwapDescentNew", "VND" ]
+    }, {
+      "name" : "maxK",
+      "kind" : "INTEGER",
+      "values" : [ ],
+      "minimum" : 1,
+      "maximum" : 100,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ ]
+    }, {
+      "name" : "shake",
+      "kind" : "COMPONENT",
+      "values" : [ ],
+      "minimum" : null,
+      "maximum" : null,
+      "minItems" : null,
+      "maxItems" : null,
+      "choices" : [ "DestroyRebuild", "MREFLPShakeNew", "NullShake", "RandomMoveShake" ]
+    } ]
+  } ]
+}
