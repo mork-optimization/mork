@@ -12,7 +12,7 @@ import java.util.Map;
 public class ReferenceCatalog {
     private final Map<String, PublishedReference> values = new HashMap<>();
     public ReferenceCatalog() throws IOException {
-        for (var reference : WorkbookUtil.read(Path.of("results/results.xlsx"))) values.put(reference.caseId() + ":" + reference.method(), reference);
+        for (var reference : WorkbookUtil.read(Path.of("results/results_sota.xlsx"))) values.put(reference.caseId() + ":" + reference.method(), reference);
     }
     public PublishedReference get(String caseId, String method) { return values.get(caseId + ":" + method); }
 }
