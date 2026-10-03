@@ -1,0 +1,19 @@
+{
+  "properties": [
+    {
+      "name": "instances.path.keys",
+      "type": "java.lang.String",
+      "description": "Experiment name."
+    },
+    {
+      "name": "instances.path.values",
+      "type": "java.lang.String",
+      "description": "Instance path, can be either a folder or a file."
+    },
+    {
+      "name": "instances.path.default",
+      "type": "java.lang.String",
+      "description": "Default instance path for all experiments."
+    }
+  ]
+}
