@@ -83,7 +83,7 @@ public final class ReproductionReportUtil {
             }
         }
         var references = new HashMap<String, List<PublishedReference>>();
-        for (var r : WorkbookUtil.read(root.resolve("results/results.xlsx"))) {
+        for (var r : WorkbookUtil.read(root.resolve("results/results_sota.xlsx"))) {
             references.computeIfAbsent(r.caseId(), ignored -> new ArrayList<>()).add(r);
         }
         var files = new TreeSet<Path>();
@@ -215,7 +215,7 @@ public final class ReproductionReportUtil {
                 .append("- Group counts use Anjos et al. (2018), Theorem 3 / Table 1. The paper does not provide a per-case group-count manifest. Seeded uniform ties, random facility order for greedy construction, facility tabu expiration, phase-best aspiration, idle iterations when all feasible moves are tabu, and one smoothing pass without row normalization are explicit implementation conventions.\n")
                 .append("- Main LMLS and all six ablations are implemented. This report compares available runs with every available workbook method; external ILP/SDP/AMA/GRASP solvers are published references, not reimplemented baselines.\n\n")
                 .append("## Provenance\n\n");
-        for (String source : List.of("paper.pdf", "results/results.xlsx", "results/readme.md")) {
+        for (String source : List.of("paper.pdf", "results/results_sota.xlsx", "results/readme.md")) {
             report.append("- ").append(source).append(": ").append(MREFLPInstanceUtil.sha256(root.resolve(source))).append("\n");
         }
         for (String artifact : artifacts) report.append("- Executable SHA-256: ").append(artifact).append("\n");

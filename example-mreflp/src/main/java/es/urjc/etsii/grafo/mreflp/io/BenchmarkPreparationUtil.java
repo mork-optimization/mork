@@ -45,7 +45,7 @@ public final class BenchmarkPreparationUtil {
                 }
             }
         }
-        var references = WorkbookUtil.read(root.resolve("results/results.xlsx"));
+        var references = WorkbookUtil.read(root.resolve("results/results_sota.xlsx"));
         var covered = new HashSet<String>();
         int optimal = 0, flagged = 0;
         for (var reference : references) {
@@ -66,7 +66,7 @@ public final class BenchmarkPreparationUtil {
         AtomicFileUtil.write(directory.resolve("cases.json"), mapper.writerWithDefaultPrettyPrinter().writeValueAsString(cases));
         AtomicFileUtil.write(directory.resolve("references.json"), mapper.writerWithDefaultPrettyPrinter().writeValueAsString(references));
         var hashes = new LinkedHashMap<String, String>();
-        for (String file : List.of("paper.pdf", "results/results.xlsx", "results/readme.md")) hashes.put(file, MREFLPInstanceUtil.sha256(root.resolve(file)));
+        for (String file : List.of("paper.pdf", "results/results_sota.xlsx", "results/readme.md")) hashes.put(file, MREFLPInstanceUtil.sha256(root.resolve(file)));
         AtomicFileUtil.write(directory.resolve("source-hashes.json"), mapper.writerWithDefaultPrettyPrinter().writeValueAsString(hashes));
         AtomicFileUtil.write(instances.resolve("all.index"), String.join("\n", index) + "\n");
         AtomicFileUtil.write(instances.resolve("pilot.index"), String.join("\n", pilot) + "\n");

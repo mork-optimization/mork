@@ -94,7 +94,7 @@ class MREFLPArtifactsTest {
     }
 
     @Test void workbookMappingPreservesRawAnomaliesAndLargeNumbers() throws Exception {
-        var references = WorkbookUtil.read(Path.of("results/results.xlsx"));
+        var references = WorkbookUtil.read(Path.of("results/results_sota.xlsx"));
         int lmls = 0, optimal = 0, flagged = 0, flaggedLmls = 0;
         double largest = 0;
         for (var r : references) {
@@ -134,7 +134,7 @@ class MREFLPArtifactsTest {
         Files.createSymbolicLink(temporary.resolve("instances/raw"), Path.of("instances/raw").toAbsolutePath());
         Files.createSymbolicLink(temporary.resolve("results"), Path.of("results").toAbsolutePath());
         Files.createSymbolicLink(temporary.resolve("paper.pdf"), Path.of("paper.pdf").toAbsolutePath());
-        String hash = MREFLPInstanceUtil.sha256(Path.of("results/results.xlsx"));
+        String hash = MREFLPInstanceUtil.sha256(Path.of("results/results_sota.xlsx"));
         BenchmarkPreparationUtil.prepare(temporary);
         var index = Files.readAllLines(temporary.resolve("instances/all.index"));
         assertEquals(572, index.size());
@@ -143,7 +143,7 @@ class MREFLPArtifactsTest {
             var descriptor = Files.readAllLines(temporary.resolve("instances").resolve(entry));
             assertTrue(Files.isRegularFile(temporary.resolve(descriptor.getFirst())));
         }
-        assertEquals(hash, MREFLPInstanceUtil.sha256(Path.of("results/results.xlsx")));
+        assertEquals(hash, MREFLPInstanceUtil.sha256(Path.of("results/results_sota.xlsx")));
         String audit = Files.readString(temporary.resolve("benchmark/audit.md"));
         assertTrue(audit.contains("N-15-r2"));
         assertTrue(audit.contains("Table A.12!E36"));
