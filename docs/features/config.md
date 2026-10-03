@@ -49,7 +49,7 @@ The following is a reference configuration as can be found in the generated proj
 ```yml
 # Defines any custom property or configuration for the current problem.
 # The config values can be retrieved at runtime, for example inside the experiment
-# See https://mork-optimization.readthedocs.io/en/latest/features/config/ for more details
+# See https://docs.mork-optimization.com/dev/features/config/ for more details
 custom:
   my-property: 'myvalue'
 

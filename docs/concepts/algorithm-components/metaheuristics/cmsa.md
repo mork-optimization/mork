@@ -56,7 +56,7 @@ Components that keep being selected by the exact method stay in `Csub` indefinit
 
 CMSA is implemented in [`CMSA`](../../../apidocs/es/urjc/etsii/grafo/algorithms/cmsa/CMSA.html), and depends on two problem-specific components:
 
-- [`CMSAConstructive`](../../../apidocs/es/urjc/etsii/grafo/algorithms/cmsa/CMSAConstructive.html): a regular [`Constructive`](../constructors) that additionally knows how to extract the set of solution components used by any given solution. Solution components can be represented using any type that properly implements `equals`/`hashCode`, for example a record such as `record Edge(int from, int to)`.
+- [`CMSAConstructive`](../../../apidocs/es/urjc/etsii/grafo/algorithms/cmsa/CMSAConstructive.html): a regular [`Constructive`](../constructors/constructive.md) that additionally knows how to extract the set of solution components used by any given solution. Solution components can be represented using any type that properly implements `equals`/`hashCode`, for example a record such as `record Edge(int from, int to)`.
 - [`CMSASolver`](../../../apidocs/es/urjc/etsii/grafo/algorithms/cmsa/CMSASolver.html): solves, exactly or as close to exactly as possible, the sub-instance induced by a given set of solution components, within a time budget.
 
 !!! info

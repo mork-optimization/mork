@@ -4,7 +4,7 @@
 
 # MORK: Metaheuristic Optimization framewoRK 
 
-[![Maven Central](https://maven-badges.sml.io/sonatype-central/es.urjc.etsii.grafo/mork/badge.svg?style=flat&subject=Maven%20Central&color=blue)](https://search.maven.org/artifact/es.urjc.etsii.grafo/mork) 
+[![Maven Central](https://maven-badges.sml.io/sonatype-central/es.urjc.etsii.grafo/mork/badge.svg?style=flat&subject=Maven%20Central&color=blue)](https://central.sonatype.com/artifact/es.urjc.etsii.grafo/mork)
 [![Bugs](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=bugs)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Vulnerabilities](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=vulnerabilities)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork)
 [![Coverage](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=coverage)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork) [![Duplicated Lines (%)](https://sonarcloud.io/api/project_badges/measure?project=rmartinsanta_mork&metric=duplicated_lines_density)](https://sonarcloud.io/dashboard?id=rmartinsanta_mork)
 
@@ -35,7 +35,7 @@ The idea of the project is to provide both high quality and tested componentes t
 TLDR: Automatically generate a project using [https://generator.mork-optimization.com/](https://generator.mork-optimization.com/), 
 import in your favourite IDE and start working!
 
-See [Getting started page](https://mork-optimization.readthedocs.io/en/latest/quickstart/starting/) in the [Official Documentation](https://mork-optimization.readthedocs.io/en/latest/) for more details.
+See [Getting started page](https://docs.mork-optimization.com/dev/quickstart/starting/) in the [Official Documentation](https://docs.mork-optimization.com/dev/) for more details.
 
 ## Citing
 

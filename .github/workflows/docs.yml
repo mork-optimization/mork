@@ -4,18 +4,28 @@ on:
   push:
     branches:
       - master
+    tags:
+      - 'mork-parent-*'
+
+concurrency:
+  group: docs
+  cancel-in-progress: false
 
 jobs:
   build:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - uses: actions/setup-python@v7
         with:
           python-version: 3.x
           cache: 'pip'
       - run: python -m pip install --require-hashes -r mkdocs-requirements.txt
-      
+
       - name: Set up JDK 25
         uses: graalvm/setup-graalvm@v1
         with:
@@ -30,18 +40,41 @@ jobs:
           restore-keys: ${{ runner.os }}-m2
 
       - run: ./mvnw javadoc:aggregate
-      - run: mkdocs build
+      - name: Configure Git author
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+      - name: Publish versioned documentation
+        env:
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          if [ "$REF_TYPE" = "tag" ]; then
+            version="${REF_NAME#mork-parent-}"
+            mike deploy --push --update-aliases "$version" stable
+            mike set-default --push stable
+          else
+            mike deploy --push --update-aliases --title Development master dev
+            if ! mike list stable > /dev/null 2>&1; then
+              mike set-default --push dev
+            fi
+          fi
+      - name: Prepare GitHub Pages artifact
+        run: |
+          git fetch origin gh-pages
+          mkdir published-site
+          git archive FETCH_HEAD | tar -x -C published-site
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v5
         with:
-          path: site/
+          path: published-site/
 
   deploy:
     environment:
       name: github-pages
-      url: ${{steps.deployment.outputs.page_url}}
+      url: ${{ steps.deployment.outputs.page_url }}
     permissions:
-      contents: write
+      contents: read
       pages: write
       id-token: write
     runs-on: ubuntu-latest

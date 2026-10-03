@@ -1,6 +1,6 @@
 # yaml-language-server: $schema=https://squidfunk.github.io/mkdocs-material/schema.json
 site_name: "Mork Developers Guide"
-site_url: "https://docs.mork-optimization.com"
+site_url: "https://docs.mork-optimization.com/"
 repo_url: https://github.com/mork-optimization/mork
 edit_uri: edit/master/docs/
 theme:
@@ -49,6 +49,9 @@ plugins:
   - awesome-pages:
       collapse_single_pages: true
   - git-revision-date-localized
+  - mike:
+      alias_type: redirect
+      canonical_version: stable
 
 markdown_extensions:
   - admonition
@@ -76,3 +79,9 @@ markdown_extensions:
 extra_javascript:
   #  - https://polyfill.io/v3/polyfill.min.js?features=es6
   - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+extra:
+  version:
+    provider: mike
+    default: stable
+    alias: true
