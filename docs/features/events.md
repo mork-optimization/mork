@@ -1,15 +1,17 @@
 # Event system
 
 ## What
+
 Events are actions or occurrences in any part of the application that may or may not be handled by listeners. Events are queued by Mork and dispatched from a single event dispatcher thread when certain actions happen (an instance is loaded, a solution is generated, an experiment ends, etc.). Framework event payloads are immutable Java records that implement the empty `MorkEvent` marker interface.
 
 ## Why
+
 Events allow users to easily extend the framework functionality without directly modifying it. Any application component can listen to events and react to them, even triggering events in response.
 Although not being able to immediately execute a method when something happens may appear a disadvantage, the dispatcher keeps user listener code outside the solver's critical path while preserving a simple interface.
 
 ## Event guarantees
 
-- Event payloads are immutable. 
+- Event payloads are immutable.
 - Events cannot be canceled or deleted once accepted.
 - All Mork events are assigned an increasing event ID during dispatch and are dispatched in queue order, even when the execution order itself is not deterministic, such as when using a concurrent executor.
 - An exception from one Mork backend listener does not prevent the remaining Mork listeners from receiving the same event.
@@ -21,6 +23,7 @@ The event queue accepts up to 100,000 events. Publication is non-blocking and fa
 At shutdown, Mork rejects new events from external threads and drains every event that it already accepted. Events published recursively by a listener on the dispatcher thread are still accepted and processed. Draining has no timeout: it completes only when the queue, including recursively generated events, is completed. The Spring context is closed only after `ExecutionEndedEvent` has been published and the event publisher has finished draining.
 
 ## Event lifecycle
+
 Event lifecycle or dispatch order. You may safely assume that the solver engine behaves like a state machine transitioning using the events defined in the diagram.
 
 ```mermaid
@@ -42,34 +45,34 @@ graph TD;
     AlgE-->InsE;
     InsE-->ExpE;
     ExpE-->ExecE;
-    
+
     SolG-->|1 to N| SolG;
     AlgE-->AlgS;
     InsE-->InsS;
     ExpE-->ExpS;
-    
+
 ```
 
-
 ## Event types list
-Most event names are self-explanatory, in case not:
 
-| Event name                       | Explanation                                                                           |
-|----------------------------------|---------------------------------------------------------------------------------------|
-| `ExecutionStartedEvent`          | Fired once when solver is ready to start generating solutions                         |
-| `ExperimentStartedEvent`         | Fired when starting each experiment                                                   |
-| `InstanceProcessingStartedEvent` | An instance has been loaded and is going to be solved by different algorithms         |
-| `AlgorithmProcessingStartedEvent` | A pair (instance, algorithm) is scheduled for execution                              |
-| `SolutionGeneratedEvent`         | A solution has been generated for the tuple (Instance, AlgorithmConfig, Iteration)    |
-| `AlgorithmProcessingEndedEvent`  | A pair (instance, algorithm) has finished executing                                   |
-| `InstanceProcessingEndedEvent`   | An instance has been solved with all algorithm configurations and is no longer needed |
-| `ExperimentEndedEvent`           | Experiment finalized, if there are no more experiments queued end                     |
-| `ExecutionEndedEvent`            | All experiments done, fired before solver shutdowns                                   |
+At different times during the experimentation, different events are triggered. The most relevant are: 
 
+| Event name                        | Explanation                                                                           |
+| --------------------------------- | ------------------------------------------------------------------------------------- |
+| `ExecutionStartedEvent`           | Fired once when solver is ready to start generating solutions                         |
+| `ExperimentStartedEvent`          | Fired when starting each experiment                                                   |
+| `InstanceProcessingStartedEvent`  | An instance has been loaded and is going to be solved by different algorithms         |
+| `AlgorithmProcessingStartedEvent` | A pair (instance, algorithm) is scheduled for execution                               |
+| `SolutionGeneratedEvent`          | A solution has been generated for the tuple (Instance, AlgorithmConfig, Iteration)    |
+| `AlgorithmProcessingEndedEvent`   | A pair (instance, algorithm) has finished executing                                   |
+| `InstanceProcessingEndedEvent`    | An instance has been solved with all algorithm configurations and is no longer needed |
+| `ExperimentEndedEvent`            | Experiment finalized, if there are no more experiments queued end                     |
+| `ExecutionEndedEvent`             | All experiments done, fired before solver shutdowns                                   |
 
 ## Implementing an event listener
 
 ### Backend
+
 Implement `MorkEventListener`. Implementations are discovered automatically by Mork if they follow the template structure. If they are not discovered automatically, you can add the `@Component` or another Spring stereotype. Mork will invoke each listener directly on its dispatcher thread. Use pattern matching to select the event types the listener consumes. As an example, this is how the Telegram integration works:
 
 ```java
@@ -97,13 +100,24 @@ public class TelegramEventListener implements MorkEventListener {
 }
 ```
 
-Every listener receives the `MorkEvent` marker type and decides which payload types it consumes. An exception from one listener is logged and does not prevent the remaining listeners or later events from being dispatched. Listener classes may request  `MorkEventPublisher` via the constructor and publish their own events, but be careful of infinite recursion.
+Every listener receives the `MorkEvent` marker type and decides which payload types it consumes. An exception from one listener is logged and does not prevent the remaining listeners or later events from being dispatched. Listener classes may request `MorkEventPublisher` via the constructor and publish their own events, but be careful of infinite recursion.
 
 ### Frontend
 
-TODO: currently being rewritten
+The template dashboard consumes the same event stream through STOMP at `/topic/events` and uses the REST endpoints `/lastevent` and `/events?from=<inclusive>&to=<exclusive>` for replay and recovery. It subscribes to live events before reading history, buffers envelopes by event ID, downloads history in batches of 1,000, ignores duplicates, and only reduces contiguous IDs. A live gap triggers a REST range request. After a WebSocket reconnect it resumes from the last processed ID; if the backend has restarted and its IDs begin again at zero, the dashboard clears the old execution state and replays the new log.
+
+Transport metadata remains in `EventEnvelope`; payload objects are never modified. Ping and custom event types advance event accounting but are otherwise ignored. `ErrorEvent` is shown in the dashboard.
+
+The dashboard derives progress from lifecycle events. Every `SolutionGeneratedEvent`, including a failed result, advances repetition progress. Failed results are excluded from scores, convergence, and best-solution calculation. The first ordered objective from `ExecutionStartedEvent` is selected by default, and users can switch to any published objective. Switching recomputes raw scores, reference lines, convergence, and best results using the objective's `MINIMIZE` or `MAXIMIZE` mode.
+
+Chart data for the ten newest instances is accumulated continuously and published to the UI at most once every two seconds, with immediate final updates at synchronization, objective changes, instance completion, and execution completion.
+
+From `template/frontend`, run `npm start` for development, `npm run typecheck`, `npm test`, or `npm run build`. Release builds use `npm run build:static` and commit the generated `template/src/main/resources/static` files so generated projects require no Node.js installation.
+
+Problem-specific visualization belongs in `SolutionRenderer`. It receives the current instance dashboard model, selected objective, and best successful `SolutionGeneratedEvent` as typed signal inputs. The default implementation is a placeholder; extend the backend event payload when the renderer needs additional solution data.
 
 ## Using custom events
+
 Triggering custom events is extremely easy, for example in custom algorithms such as genetic algorithms.
 
 Define an immutable record that implements `MorkEvent`, fill it with data from any part of your code, and propagate it to the framework using `MorkEventPublisher`.
@@ -134,6 +148,7 @@ public class GeneticAlgorithm extends Algorithm<MySolution, MyInstance> {
 Records are the preferred event payload type because their components are final and their accessors are unambiguous. If a record component is a mutable collection, make a defensive copy in the compact constructor.
 
 ## Event API
+
 The REST and WebSocket APIs expose event envelopes. Transport metadata exists only in the envelope: `eventId` is assigned during ordered dispatch, `timestamp` is the event acceptance time, and `workerName` is the producer thread name. Payload JSON contains only event-specific data and does not duplicate `type`, `timestamp`, or `workerName`:
 
 ```json

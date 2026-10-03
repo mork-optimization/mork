@@ -1,121 +1,109 @@
-import {Solution} from "./Solution";
+export type ObjectiveMode = 'MINIMIZE' | 'MAXIMIZE';
 
-export type EventHandler = (event: MorkEvent) => void;
-
-export class EventEnvelope<T extends MorkEvent = MorkEvent> {
-  eventId: number = -1;
-  type: EventType = EventType.Undefined;
-  timestamp: number = -1;
-  workerName: string = "";
-  payload!: T;
+export interface ErrorEvent {
+  readonly exceptionType: string;
+  readonly message: string | null;
 }
 
-export class MorkEvent {
-  type: EventType = EventType.Undefined;
-  eventId: number = -1;
-  workerName: string = "";
+export type PingEvent = Readonly<Record<string, never>>;
+
+export interface ExecutionStartedEvent {
+  readonly objectives: Readonly<Record<string, ObjectiveMode>>;
+  readonly experimentNames: readonly string[];
 }
 
-export class ErrorEvent extends MorkEvent {
-  override type = EventType.ErrorEvent;
-  exceptionType: string = "";
-  message: string = "";
+export interface ExecutionEndedEvent {
+  readonly executionTime: number;
 }
 
-export class PingEvent extends MorkEvent {
-  override type = EventType.PingEvent;
-  message: string = "";
+export interface ExperimentStartedEvent {
+  readonly experimentName: string;
+  readonly instanceNames: readonly string[];
 }
 
-export class ExecutionStartedEvent extends MorkEvent {
-  override type = EventType.ExecutionStartedEvent;
-  experimentNames!: string[];
-  objectives!: Record<string, string>;
+export interface ExperimentEndedEvent {
+  readonly experimentName: string;
+  readonly executionTime: number;
+  readonly experimentStartTime: number;
 }
 
-export class ExecutionEndedEvent extends MorkEvent {
-  override type = EventType.ExecutionEndedEvent;
-  executionTime!: number;
+export interface InstanceProcessingStartedEvent {
+  readonly experimentName: string;
+  readonly instanceName: string;
+  readonly algorithms: readonly string[];
+  readonly repetitions: number;
+  readonly refValues: Readonly<Record<string, number>>;
 }
 
-export class ExperimentStartedEvent extends MorkEvent {
-  override type = EventType.ExperimentStartedEvent;
-  experimentName!: string;
-  instanceNames!: string[];
+export interface InstanceProcessingEndedEvent {
+  readonly experimentName: string;
+  readonly instanceName: string;
+  readonly executionTime: number;
+  readonly experimentStartTime: number;
 }
 
-export class ExperimentEndedEvent extends MorkEvent {
-  override type = EventType.ExperimentEndedEvent;
-  experimentName!: string;
-
-  /**
-   * Execution time in nanoseconds
-   */
-  executionTime!: number;
-
-  /**
-   * Experiment start timestamp
-   */
-  experimentStartTime!: number;
+export interface AlgorithmProcessingStartedEvent {
+  readonly experimentName: string;
+  readonly instanceName: string;
+  readonly algorithmName: string;
+  readonly repetitions: number;
 }
 
-export class InstanceProcessingStartedEvent extends MorkEvent {
-  override type = EventType.InstanceProcessingStartedEvent;
-  experimentName!: string;
-  instanceName!: string;
-  algorithms!: string[];
-  repetitions!: number;
-  refValues!: Record<string, number>;
+export interface AlgorithmProcessingEndedEvent {
+  readonly experimentName: string;
+  readonly instanceName: string;
+  readonly algorithmName: string;
+  readonly repetitions: number;
 }
 
-export class InstanceProcessingEndedEvent extends MorkEvent {
-  override type = EventType.InstanceProcessingEndedEvent;
-  experimentName!: string;
-  instanceName!: string;
-  executionTime!: number;
-  experimentStartTime!: number;
+export interface SolutionGeneratedEvent {
+  readonly resultId: string;
+  readonly success: boolean;
+  readonly experimentName: string;
+  readonly instanceName: string;
+  readonly algorithmName: string;
+  readonly iteration: string;
+  readonly objectives: Readonly<Record<string, number>>;
+  readonly score: number;
+  readonly executionTime: number;
+  readonly timeToBest: number;
 }
 
-export class AlgorithmProcessingStartedEvent extends MorkEvent {
-  override type = EventType.AlgorithmProcessingStartedEvent;
-  experimentName!: string;
-  instanceName!: string;
-  algorithmName!: string;
-  repetitions!: number;
+export interface EventPayloadMap {
+  readonly ErrorEvent: ErrorEvent;
+  readonly PingEvent: PingEvent;
+  readonly ExecutionStartedEvent: ExecutionStartedEvent;
+  readonly ExecutionEndedEvent: ExecutionEndedEvent;
+  readonly ExperimentStartedEvent: ExperimentStartedEvent;
+  readonly ExperimentEndedEvent: ExperimentEndedEvent;
+  readonly InstanceProcessingStartedEvent: InstanceProcessingStartedEvent;
+  readonly InstanceProcessingEndedEvent: InstanceProcessingEndedEvent;
+  readonly AlgorithmProcessingStartedEvent: AlgorithmProcessingStartedEvent;
+  readonly AlgorithmProcessingEndedEvent: AlgorithmProcessingEndedEvent;
+  readonly SolutionGeneratedEvent: SolutionGeneratedEvent;
 }
 
-export class AlgorithmProcessingEndedEvent extends MorkEvent {
-  override type = EventType.AlgorithmProcessingEndedEvent;
-  experimentName!: string;
-  instanceName!: string;
-  algorithmName!: string;
-  repetitions!: number;
+export type KnownEventType = keyof EventPayloadMap;
+
+export interface EventEnvelope<TType extends string, TPayload> {
+  readonly eventId: number;
+  readonly type: TType;
+  readonly timestamp: number;
+  readonly workerName: string;
+  readonly payload: TPayload;
 }
 
-export class SolutionGeneratedEvent extends MorkEvent {
-  override type = EventType.SolutionGeneratedEvent;
-  resultId!: string;
-  experimentName!: string;
-  instanceName!: string;
-  algorithmName!: string;
-  iteration!: number;
-  score!: number;
-  executionTime!: number;
-  timeToBest!: number;
-  solution?: Solution;
-}
+export type KnownEventEnvelope = {
+  readonly [TType in KnownEventType]: EventEnvelope<TType, EventPayloadMap[TType]>;
+}[KnownEventType];
 
-export enum EventType {
-  Undefined = "Undefined",
-  ErrorEvent = "ErrorEvent",
-  PingEvent = "PingEvent",
-  ExecutionStartedEvent = "ExecutionStartedEvent",
-  ExecutionEndedEvent = "ExecutionEndedEvent",
-  ExperimentStartedEvent = "ExperimentStartedEvent",
-  ExperimentEndedEvent = "ExperimentEndedEvent",
-  InstanceProcessingStartedEvent = "InstanceProcessingStartedEvent",
-  InstanceProcessingEndedEvent = "InstanceProcessingEndedEvent",
-  AlgorithmProcessingStartedEvent = "AlgorithmProcessingStartedEvent",
-  AlgorithmProcessingEndedEvent = "AlgorithmProcessingEndedEvent",
-  SolutionGeneratedEvent = "SolutionGeneratedEvent"
+export type UnknownEventEnvelope = EventEnvelope<string, unknown>;
+
+export type MorkEventEnvelope = KnownEventEnvelope | UnknownEventEnvelope;
+
+export function isEnvelopeType<TType extends KnownEventType>(
+  envelope: MorkEventEnvelope,
+  type: TType,
+): envelope is EventEnvelope<TType, EventPayloadMap[TType]> {
+  return envelope.type === type;
 }

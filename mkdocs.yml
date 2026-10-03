@@ -6,7 +6,7 @@ edit_uri: edit/master/docs/
 theme:
   name: material
   logo: assets/logo_white.svg
-  favicon: assets/logo_white.svg
+  favicon: assets/logo.svg
   icon:
     edit: material/lead-pencil
   features:

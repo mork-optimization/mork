@@ -1,0 +1,128 @@
+<mat-toolbar class="topbar">
+  <span class="brand">Mork dashboard</span>
+  <span class="toolbar-spacer"></span>
+  <mat-chip-set aria-label="Connection state">
+    <mat-chip [class.live]="store.connectionState() === 'live'">
+      {{ store.connectionLabel() }}
+    </mat-chip>
+  </mat-chip-set>
+</mat-toolbar>
+
+<main>
+  <mat-card appearance="outlined" class="status-card">
+    <mat-card-content>
+      <section class="summary" aria-label="Execution summary">
+        <div>
+          <span class="eyebrow">Experiment</span>
+          <strong>{{ store.currentExperiment() ?? 'Waiting for execution' }}</strong>
+        </div>
+        <div>
+          <span class="eyebrow">Processed events</span>
+          <strong>{{ store.processedEventCount() }}</strong>
+        </div>
+        <div>
+          <span class="eyebrow">Last event ID</span>
+          <strong>{{ store.lastEventId() }}</strong>
+        </div>
+
+        @if (store.objectives().length > 0) {
+          <mat-form-field appearance="outline" subscriptSizing="dynamic">
+            <mat-label>Objective</mat-label>
+            <mat-select
+              [value]="store.selectedObjective()"
+              (selectionChange)="selectObjective($event.value)"
+            >
+              @for (objective of store.objectives(); track objective.name) {
+                <mat-option [value]="objective.name">
+                  {{ objective.name }} ·
+                  {{ objective.mode === 'MINIMIZE' ? 'Minimize' : 'Maximize' }}
+                </mat-option>
+              }
+            </mat-select>
+          </mat-form-field>
+        }
+      </section>
+
+      <section class="progress-grid" aria-label="Execution progress">
+        @let progress = store.progress();
+        <div class="progress-item">
+          <div class="progress-label">
+            <span>Instances</span>
+            <span>{{ progress.instances.completed }} / {{ progress.instances.total }}</span>
+          </div>
+          <mat-progress-bar
+            mode="determinate"
+            [value]="progressValue(progress.instances.completed, progress.instances.total)"
+          />
+        </div>
+        <div class="progress-item">
+          <div class="progress-label">
+            <span>Algorithms</span>
+            <span>{{ progress.algorithms.completed }} / {{ progress.algorithms.total }}</span>
+          </div>
+          <mat-progress-bar
+            mode="determinate"
+            [value]="progressValue(progress.algorithms.completed, progress.algorithms.total)"
+          />
+        </div>
+        <div class="progress-item">
+          <div class="progress-label">
+            <span>Repetitions</span>
+            <span>{{ progress.repetitions.completed }} / {{ progress.repetitions.total }}</span>
+          </div>
+          <mat-progress-bar
+            mode="determinate"
+            [value]="progressValue(progress.repetitions.completed, progress.repetitions.total)"
+          />
+        </div>
+      </section>
+    </mat-card-content>
+  </mat-card>
+
+  @if (store.latestError(); as error) {
+    <mat-card appearance="outlined" class="error-card" role="alert">
+      <mat-card-content>
+        <strong>{{ error.exceptionType }}</strong>
+        <span>{{ error.message ?? 'No error details were provided.' }}</span>
+      </mat-card-content>
+    </mat-card>
+  }
+
+  <section class="instances" aria-label="Instance dashboards">
+    @for (instance of store.instances(); track instance.key) {
+      <mat-card appearance="outlined" class="instance-card">
+        <mat-card-header>
+          <mat-card-title>{{ instance.instanceName }}</mat-card-title>
+          <mat-card-subtitle>
+            {{ instance.experimentName }}
+            @if (instance.referenceValue !== null) {
+              · Reference {{ instance.referenceValue }}
+            }
+          </mat-card-subtitle>
+        </mat-card-header>
+        <mat-card-content class="dashboard-grid">
+          <section>
+            <h2>Best solution</h2>
+            <app-solution-renderer
+              [instance]="instance"
+              [selectedObjective]="store.selectedObjective()"
+              [bestSolution]="instance.bestSolution"
+            />
+          </section>
+          <section>
+            <h2>Score convergence</h2>
+            <app-dashboard-chart [model]="instance.convergenceChart" />
+          </section>
+          <section>
+            <h2>Scores</h2>
+            <app-dashboard-chart [model]="instance.scoreChart" />
+          </section>
+        </mat-card-content>
+      </mat-card>
+    } @empty {
+      <section class="empty-state">
+        <p>Instance charts will appear as execution events arrive.</p>
+      </section>
+    }
+  </section>
+</main>
