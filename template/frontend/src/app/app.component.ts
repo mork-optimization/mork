@@ -6,9 +6,8 @@ import {HttpClient} from "@angular/common/http";
 
 import * as Highcharts from 'highcharts';
 
-import {Chart, Point} from "highcharts";
+import {Chart} from "highcharts";
 import {environment} from "../environments/environment";
-import {ChartConfig} from "./charts/base-chart/ChartConfig";
 import {ConvergenceChartComponent} from "./charts/convergence-chart/convergence-chart.component";
 import {SolutionChartComponent} from "./charts/solution-chart/solution-chart.component";
 import {ScoresChartComponent} from "./charts/scores-chart/scores-chart.component";
@@ -22,7 +21,6 @@ import {SolutionChartConfig} from "./charts/solution-chart/SolutionChartConfig";
   styleUrls: ['./app.component.css']
 })
 export class AppComponent {
-  title = 'frontend';
   status = "Connecting...";
   experimentName = "";
   eventCount: number = 0;
@@ -123,7 +121,6 @@ export class AppComponent {
             // Each time an instance finishes executing redraw its charts one last time and delete oldest ones
             this.convergenceCharts.get(0)?.chart.redraw();
             this.chartCurrents.get(0)?.chart.redraw();
-            this.bestSolutions.get(0)?.chart?.redraw();
 
             this.event_queue = [];
             this.isUpToDate = true;
@@ -209,7 +206,7 @@ export class AppComponent {
     this.firstObjectiveMaximizing = firstObjectiveMode === "MAXIMIZE";
   }
 
-  onExecutionEnd(event: ExecutionEndedEvent) {
+  onExecutionEnd(_event: ExecutionEndedEvent) {
     this.status = 'FINISHED';
   }
 
@@ -220,7 +217,7 @@ export class AppComponent {
   }
 
 
-  onExperimentEnd(event: ExperimentEndedEvent) {
+  onExperimentEnd(_event: ExperimentEndedEvent) {
     this.experimentName = '[Waiting]';
   }
 
@@ -250,21 +247,13 @@ export class AppComponent {
     this.convergence_chart_series = {};
     this.minimum_algorithm = {};
     this.current_chart_series = {};
-    // old first argument: 'chart-current-' + instanceName,
-
-    // Draw best solution found
     this.bestValue = NaN;
-
-    // END Define how the current solution should be drawn.
-
-
   }
 
-  onInstanceProcessingEnd(event: InstanceProcessingEndedEvent) {
+  onInstanceProcessingEnd(_event: InstanceProcessingEndedEvent) {
     // Each time an instance finishes executing redraw its charts one last time and delete oldest ones
     this.convergenceCharts.get(0)?.chart.redraw();
     this.chartCurrents.get(0)?.chart.redraw();
-    this.bestSolutions.get(0)?.chart?.redraw();
 
     this.removeExtraCharts(this.chartConfigs);
 
@@ -284,11 +273,6 @@ export class AppComponent {
     }
     this.currentRepetitions++;
     this.updateStatusChart();
-
-    // if (!this.convergence_chart || !this.current_chart || !this.current_solution_chart) {
-    //   console.log("Skipping onSolutionGenerated due to missing charts, probably a bug!!");
-    //   return;
-    // }
 
     const currentTime = new Date();
     const ellapsedTime = currentTime.valueOf() - this.last_redraw.valueOf();
@@ -317,10 +301,6 @@ export class AppComponent {
 
 
     // Update current value graph
-    // if (!this.current_chart) {
-    //   //console.log("Skipping due to missing char");
-    //   return;
-    // }
     if (!this.current_chart_series.hasOwnProperty(event.algorithmName)) {
       this.current_chart_series[event.algorithmName] = this.chartCurrents.get(0)?.chart.addSeries({  // TODO get(0)
         name: event.algorithmName,
@@ -491,20 +471,6 @@ export class AppComponent {
     // @ts-ignore
     instance!.update(Math.round(this.currentInstances / this.nInstances * 100), redraw);
   }
-
-  // removeExtraCharts(selector) {
-  //   $(selector).children().slice(max_charts - 1).each(function () {
-  //     const c = $(this);
-  //     try {
-  //       console.log("Deleting chart:");
-  //       console.log(c);
-  //       c.highcharts().destroy();
-  //       c.remove();
-  //     } catch (e) {
-  //       console.log(e);
-  //     }
-  //   });
-  // }
 
   removeExtraCharts(data: any[]) {
     for (let i = 0; i < (data.length - AppComponent.max_charts - 1); i++) {

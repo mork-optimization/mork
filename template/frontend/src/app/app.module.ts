@@ -1,13 +1,9 @@
 import { NgModule } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 
-import { AppRoutingModule } from './app-routing.module';
 import { AppComponent } from './app.component';
 
-import { HighchartsChartModule } from 'highcharts-angular';
-
 import { ChartComponent } from './charts/base-chart/chart.component';
-import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import {RxStompService} from "./service/rx-stomp.service";
 import {rxStompServiceFactory} from "./service/rx-stomp-service-factory";
 import {HttpClientModule} from "@angular/common/http";
@@ -25,10 +21,7 @@ import { ScoresChartComponent } from './charts/scores-chart/scores-chart.compone
   ],
   imports: [
     BrowserModule,
-    HttpClientModule,
-    AppRoutingModule,
-    HighchartsChartModule,
-    NgbModule
+    HttpClientModule
   ],
   providers: [
     {

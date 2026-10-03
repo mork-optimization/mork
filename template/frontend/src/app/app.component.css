@@ -1,5 +1,7 @@
 #main-content {
-  margin-top: 30px;
+  width: calc(100% - 32px);
+  max-width: 1320px;
+  margin: 30px auto 0;
   border-bottom: 1px black solid;
 }
 
@@ -13,9 +15,40 @@ header {
 }
 
 .app-status {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 300px));
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+}
+
+.status-summary,
+.chart-headings {
+  text-align: center;
+}
+
+.progress-chart-outer {
+  display: flex;
+  justify-content: center;
 }
 
 #progress-chart {
   width: 200px;
   margin-top: -20px;
+}
+
+.chart-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.chart-cell {
+  min-width: 0;
+}
+
+@media (max-width: 767px) {
+  .app-status,
+  .chart-grid {
+    grid-template-columns: 1fr;
+  }
 }

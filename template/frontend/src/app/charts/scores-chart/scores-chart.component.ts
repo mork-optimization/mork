@@ -1,4 +1,4 @@
-import {AfterViewInit, Component, ElementRef, Input, OnDestroy, ViewChild} from '@angular/core';
+import {Component, Input, ViewChild} from '@angular/core';
 import {ChartComponent} from "../base-chart/chart.component";
 import {ChartConfig} from "../base-chart/ChartConfig";
 import {ScoresChartConfig} from "./ScoresChartConfig";

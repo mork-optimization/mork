@@ -16,6 +16,7 @@ describe('SolutionChartComponent', () => {
   beforeEach(() => {
     fixture = TestBed.createComponent(SolutionChartComponent);
     component = fixture.componentInstance;
+    component.config = {instance_name: 'test-instance'};
     fixture.detectChanges();
   });
 

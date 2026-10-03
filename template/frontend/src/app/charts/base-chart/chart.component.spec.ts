@@ -16,6 +16,10 @@ describe('ChartComponent', () => {
   beforeEach(() => {
     fixture = TestBed.createComponent(ChartComponent);
     component = fixture.componentInstance;
+    component.config = {
+      id: 'test-chart',
+      options: {}
+    };
     fixture.detectChanges();
   });
 
