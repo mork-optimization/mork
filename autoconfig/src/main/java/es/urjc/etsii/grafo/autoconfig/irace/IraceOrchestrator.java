@@ -25,7 +25,7 @@ import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.boot.web.server.context.WebServerApplicationContext;
+import org.springframework.core.env.Environment;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -68,7 +68,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final BlockConfig blockConfig;
     private final InstanceConfiguration instanceConfiguration;
     private final IraceIntegration iraceIntegration;
-    private final WebServerApplicationContext webServerApplicationContext;
+    private final Environment environment;
     private final InstanceManager<I> instanceManager;
     private final AutoconfigSearchSpace searchSpace;
     private final MorkEventPublisher eventPublisher;
@@ -81,7 +81,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      *
      * @param solverConfig                a {@link SolverConfig} object.
      * @param blockConfig                 block execution configuration
-     * @param webServerApplicationContext main application context containing the running web server
+     * @param environment                 application environment
      * @param instanceConfiguration
      * @param iraceIntegration            a {@link IraceIntegration} object.
      * @param instanceManager             a {@link InstanceManager} object.
@@ -94,7 +94,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     public IraceOrchestrator(
             SolverConfig solverConfig,
             BlockConfig blockConfig,
-            WebServerApplicationContext webServerApplicationContext,
+            Environment environment,
             InstanceConfiguration instanceConfiguration,
             IraceIntegration iraceIntegration,
             InstanceManager<I> instanceManager,
@@ -107,7 +107,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         this.solverConfig = solverConfig;
         this.blockConfig = blockConfig;
         this.instanceConfiguration = instanceConfiguration;
-        this.webServerApplicationContext = webServerApplicationContext;
+        this.environment = environment;
         this.iraceIntegration = iraceIntegration;
         this.instanceManager = instanceManager;
         this.searchSpace = searchSpace;
@@ -192,11 +192,11 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         int parameterCount = 0;
         boolean automaticMode = runState.isAutomaticMode();
         try {
-            var webServer = webServerApplicationContext.getWebServer();
-            if (webServer == null) {
+            Integer resolvedPort = environment.getProperty("local.server.port", Integer.class);
+            if (resolvedPort == null) {
                 throw new IllegalStateException("Cannot launch irace before the web server has started");
             }
-            int port = webServer.getPort();
+            int port = resolvedPort;
             if (port < 1 || port > 65535) {
                 throw new IllegalStateException("Cannot launch irace with invalid web server port: " + port);
             }

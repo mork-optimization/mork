@@ -1,0 +1,44 @@
+name: Frontend
+
+on:
+  push:
+    paths:
+      - "template/frontend/**"
+      - "template/src/main/resources/static/**"
+      - ".github/workflows/frontend.yml"
+      - "core/src/main/java/es/urjc/etsii/grafo/events/**"
+      - "core/src/main/java/es/urjc/etsii/grafo/restcontroller/EventController.java"
+  pull_request:
+    paths:
+      - "template/frontend/**"
+      - "template/src/main/resources/static/**"
+      - ".github/workflows/frontend.yml"
+      - "core/src/main/java/es/urjc/etsii/grafo/events/**"
+      - "core/src/main/java/es/urjc/etsii/grafo/restcontroller/EventController.java"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: template/frontend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "26"
+          cache: npm
+          cache-dependency-path: template/frontend/package-lock.json
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build:static
+      - run: npm run verify:static
+      - name: Verify committed Spring assets
+        working-directory: .
+        run: |
+          git diff --exit-code -- template/src/main/resources/static
+          test -z "$(git ls-files --others --exclude-standard -- template/src/main/resources/static)"
