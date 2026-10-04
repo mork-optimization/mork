@@ -1,162 +1,38 @@
 :host {
   display: block;
   min-height: 100vh;
+}
+
+.mode-state {
+  display: grid;
+  place-content: center;
+  min-height: 100vh;
+  padding: 1rem;
+  color: var(--mat-sys-on-surface);
   background:
     radial-gradient(
-      circle at 90% 0%,
-      color-mix(in srgb, var(--mat-sys-tertiary) 13%, transparent),
-      transparent 30rem
+      circle at 50% 20%,
+      color-mix(in srgb, var(--mat-sys-tertiary) 16%, transparent),
+      transparent 25rem
     ),
     var(--mat-sys-surface-container-lowest);
-  color: var(--mat-sys-on-surface);
 }
 
-.topbar {
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  border-bottom: 1px solid var(--mat-sys-outline-variant);
-  background: color-mix(in srgb, var(--mat-sys-surface) 94%, transparent);
-  backdrop-filter: blur(12px);
+.mode-state > img {
+  width: 5rem;
+  height: 5rem;
+  margin: 0 auto 1.25rem;
 }
 
-.brand {
-  font: var(--mat-sys-title-large);
-  font-weight: 700;
-  letter-spacing: -0.02em;
+.mode-state mat-card {
+  width: min(32rem, calc(100vw - 2rem));
 }
 
-.toolbar-spacer {
-  flex: 1;
-}
-
-mat-chip.live {
-  --mdc-chip-elevated-container-color: color-mix(in srgb, var(--mat-sys-tertiary) 18%, transparent);
-}
-
-main {
-  width: min(100% - 2rem, 96rem);
-  margin: 0 auto;
-  padding: 1.5rem 0 4rem;
-}
-
-.status-card {
-  margin-bottom: 1rem;
-}
-
-.summary {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(8rem, 1fr)) minmax(13rem, 1.2fr);
-  gap: 1.25rem;
-  align-items: center;
-}
-
-.summary > div {
-  display: grid;
-  gap: 0.2rem;
-}
-
-.eyebrow {
+.mode-state.detecting {
+  justify-items: center;
   color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-label-medium);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
 }
 
-.summary strong {
-  font: var(--mat-sys-title-medium);
-}
-
-.progress-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 1.5rem;
-  margin-top: 1.5rem;
-  padding-top: 1.25rem;
-  border-top: 1px solid var(--mat-sys-outline-variant);
-}
-
-.progress-item,
-.progress-label {
-  display: grid;
-  gap: 0.55rem;
-}
-
-.progress-label {
-  grid-template-columns: 1fr auto;
-  color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-label-large);
-}
-
-.error-card {
-  margin-bottom: 1rem;
-  border-color: var(--mat-sys-error);
-  color: var(--mat-sys-on-error-container);
-  background: var(--mat-sys-error-container);
-}
-
-.error-card mat-card-content {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.instances {
-  display: grid;
-  gap: 1rem;
-}
-
-.instance-card mat-card-header {
-  padding-bottom: 1rem;
-}
-
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: minmax(15rem, 0.8fr) repeat(2, minmax(20rem, 1.35fr));
-  gap: 1rem;
-}
-
-.dashboard-grid > section {
-  min-width: 0;
-}
-
-h2 {
-  margin: 0 0 0.6rem;
-  color: var(--mat-sys-on-surface-variant);
-  font: var(--mat-sys-title-small);
-}
-
-.empty-state {
-  min-height: 18rem;
-  display: grid;
-  place-items: center;
-  color: var(--mat-sys-on-surface-variant);
-  text-align: center;
-}
-
-@media (max-width: 72rem) {
-  .dashboard-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .dashboard-grid > section:first-child {
-    grid-column: 1 / -1;
-  }
-}
-
-@media (max-width: 48rem) {
-  main {
-    width: min(100% - 1rem, 96rem);
-    padding-top: 0.75rem;
-  }
-
-  .summary,
-  .progress-grid,
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .dashboard-grid > section:first-child {
-    grid-column: auto;
-  }
+.mode-state.detecting > img {
+  margin-bottom: 1.5rem;
 }

@@ -6,6 +6,7 @@ import es.urjc.etsii.grafo.autoconfig.controller.dto.MultiExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.exception.InvalidIntegrationKeyException;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigRunState;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigArtifactService;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.config.BlockConfig;
@@ -14,8 +15,10 @@ import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializerListener;
 import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
+import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
+import es.urjc.etsii.grafo.util.Context;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.env.Environment;
@@ -34,6 +37,7 @@ class IraceOrchestratorTest {
     @Test
     @SuppressWarnings("unchecked")
     void followerModeDoesNotPublishTerminalEventsOrRequestShutdown() {
+        Context.Configurator.setObjectives(Objective.ofMinimizing("test", solution -> 0));
         var eventPublisher = mock(MorkEventPublisher.class);
         var lifecycle = mock(ExecutionLifecycleCoordinator.class);
         var resultsSerializer = (ResultsSerializerListener<TestSolution, TestInstance>) mock(ResultsSerializerListener.class);
@@ -45,12 +49,14 @@ class IraceOrchestratorTest {
                 mock(Environment.class),
                 new InstanceConfiguration(),
                 integration,
+                new IraceConfig(),
                 instanceManager,
                 mock(AutoconfigSearchSpace.class),
                 eventPublisher,
                 lifecycle,
                 resultsSerializer,
-                mock(AutoconfigRunState.class)
+                mock(AutoconfigRunState.class),
+                mock(AutoconfigArtifactService.class)
         );
 
         orchestrator.run("--follower");

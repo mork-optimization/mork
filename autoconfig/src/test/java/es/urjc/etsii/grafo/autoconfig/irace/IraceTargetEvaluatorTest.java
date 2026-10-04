@@ -65,7 +65,7 @@ class IraceTargetEvaluatorTest {
         solverConfig.setRandomType(RandomType.DEFAULT);
         var iraceConfig = new IraceConfig();
         runState = new AutoconfigRunState(mock(AutomaticAlgorithmBuilder.class));
-        runState.prepareWorker(false);
+        prepareWorker(false);
 
         instance = new TestInstance("instance");
         var instanceManager = (InstanceManager<TestInstance>) mock(InstanceManager.class);
@@ -178,7 +178,7 @@ class IraceTargetEvaluatorTest {
 
     @Test
     void automaticModeRejectsInvalidSolutionBeforeScoringAndClearsDeadline() {
-        runState.prepareWorker(true);
+        prepareWorker(true);
         solverConfig.setIgnoreInitialMillis(0);
         solverConfig.setIntervalDurationMillis(1);
         configureMixedValidityBatch();
@@ -254,7 +254,7 @@ class IraceTargetEvaluatorTest {
 
     @Test
     void automaticModeUsesAreaUnderTheObjectiveCurve() {
-        runState.prepareWorker(true);
+        prepareWorker(true);
         solverConfig.setIgnoreInitialMillis(0);
         solverConfig.setIntervalDurationMillis(1);
         solverConfig.setLogScaleArea(false);
@@ -276,6 +276,24 @@ class IraceTargetEvaluatorTest {
 
     private static IraceExecuteConfig configuration(String id) {
         return configuration(id, 0);
+    }
+
+    private void prepareWorker(boolean automatic) {
+        var mode = automatic
+                ? AutoconfigRunState.RunMode.AUTOCONFIG
+                : AutoconfigRunState.RunMode.IRACE;
+        var kind = automatic
+                ? AutoconfigRunState.CostMetricKind.AREA_UNDER_CURVE
+                : AutoconfigRunState.CostMetricKind.OBJECTIVE;
+        var auc = automatic ? new AutoconfigRunState.AucSettings(0, 1, false) : null;
+        runState.prepareWorker(mode, new AutoconfigRunState.CostMetricSnapshot(
+                "Test",
+                FMode.MINIMIZE,
+                kind,
+                FMode.MINIMIZE,
+                false,
+                auc
+        ));
     }
 
     private static IraceExecuteConfig configuration(String id, double score) {

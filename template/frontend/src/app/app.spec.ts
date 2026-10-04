@@ -1,89 +1,53 @@
-import { computed, provideZonelessChangeDetection, signal } from '@angular/core';
+import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
-import { MatProgressBarHarness } from '@angular/material/progress-bar/testing';
-import { MatSelectHarness } from '@angular/material/select/testing';
-import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { App } from './app';
-import { ObjectiveModel, ProgressModel } from './model/dashboard';
-import { DashboardStore } from './store/dashboard-store';
+import { ApplicationView, AutoconfigStore } from './store/autoconfig-store';
 
-class FakeDashboardStore {
-  readonly connectionState = signal<'live'>('live');
-  readonly connectionLabel = computed(() => 'Live');
-  readonly currentExperiment = signal<string | null>(null);
-  readonly processedEventCount = signal(0);
-  readonly lastEventId = signal(-1);
-  readonly objectives = signal<readonly ObjectiveModel[]>([]);
-  readonly selectedObjective = signal<string | null>(null);
-  readonly progress = signal<ProgressModel>({
-    instances: { completed: 0, total: 0 },
-    algorithms: { completed: 0, total: 0 },
-    repetitions: { completed: 0, total: 0 },
-  });
-  readonly latestError = signal(null);
-  readonly instances = signal([]);
+class FakeAutoconfigStore {
+  readonly viewMode = signal<ApplicationView>('detecting');
+  readonly latestError = signal<string | null>(null);
   readonly start = vi.fn();
-  readonly selectObjective = vi.fn((name: string) => this.selectedObjective.set(name));
+  readonly retryNow = vi.fn();
 }
 
-describe('App', () => {
-  let store: FakeDashboardStore;
+describe('App mode selection', () => {
+  let store: FakeAutoconfigStore;
 
   beforeEach(async () => {
-    store = new FakeDashboardStore();
+    store = new FakeAutoconfigStore();
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideZonelessChangeDetection(), { provide: DashboardStore, useValue: store }],
+      providers: [provideZonelessChangeDetection(), { provide: AutoconfigStore, useValue: store }],
     }).compileComponents();
   });
 
   afterEach(() => TestBed.resetTestingModule());
 
-  it('renders signal updates from event-driven state without manual change detection', async () => {
+  it('starts automatic mode detection and renders signal-driven worker state', async () => {
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
-    expect(store.start).toHaveBeenCalledOnce();
 
-    store.currentExperiment.set('HTTP replay experiment');
-    store.processedEventCount.set(42);
+    expect(store.start).toHaveBeenCalledOnce();
+    expect(fixture.nativeElement.textContent).toContain('Detecting experiment mode');
+
+    store.viewMode.set('worker');
     await fixture.whenStable();
 
-    expect(fixture.nativeElement.textContent).toContain('HTTP replay experiment');
-    expect(fixture.nativeElement.textContent).toContain('42');
+    expect(fixture.nativeElement.textContent).toContain('Autoconfig worker');
+    expect(fixture.nativeElement.textContent).toContain('coordinator process');
   });
 
-  it('forwards Material objective selection to the store', async () => {
-    store.objectives.set([
-      { name: 'Cost', mode: 'MINIMIZE' },
-      { name: 'Quality', mode: 'MAXIMIZE' },
-    ]);
-    store.selectedObjective.set('Cost');
+  it('offers an immediate retry when mode detection is unavailable', async () => {
+    store.viewMode.set('unavailable');
+    store.latestError.set('Backend request failed (network error)');
     const fixture = TestBed.createComponent(App);
     fixture.detectChanges();
 
-    const loader = TestbedHarnessEnvironment.loader(fixture);
-    const select = await loader.getHarness(MatSelectHarness);
-    await select.open();
-    await select.clickOptions({ text: /Quality/ });
+    const button = fixture.nativeElement.querySelector('button') as HTMLButtonElement;
+    button.click();
+    await fixture.whenStable();
 
-    expect(store.selectObjective).toHaveBeenCalledWith('Quality');
-  });
-
-  it('renders three labeled Material progress bars', async () => {
-    store.progress.set({
-      instances: { completed: 1, total: 2 },
-      algorithms: { completed: 2, total: 4 },
-      repetitions: { completed: 3, total: 6 },
-    });
-    const fixture = TestBed.createComponent(App);
-    fixture.detectChanges();
-
-    const loader = TestbedHarnessEnvironment.loader(fixture);
-    const bars = await loader.getAllHarnesses(MatProgressBarHarness);
-    expect(bars).toHaveLength(3);
-    expect(await Promise.all(bars.map((bar) => bar.getValue()))).toEqual([50, 50, 50]);
-    expect(fixture.nativeElement.textContent).toContain('Instances');
-    expect(fixture.nativeElement.textContent).toContain('Algorithms');
-    expect(fixture.nativeElement.textContent).toContain('Repetitions');
+    expect(fixture.nativeElement.textContent).toContain('Backend request failed');
+    expect(store.retryNow).toHaveBeenCalledOnce();
   });
 });

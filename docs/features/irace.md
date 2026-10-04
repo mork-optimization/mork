@@ -103,6 +103,12 @@ To apply your `TimeLimitCalculator` budget to each manual tuning evaluation, set
 It defaults to `false`. See [Time limits during tuning](time-limits.md#time-limits-during-tuning) for the
 calculator requirement and how per-evaluation limits differ from the scenario's total tuning budget.
 
+## Monitoring a tuning run
+
+The read-only [Autoconfig REST API](autoconfig-rest-api.md) exposes the current IRACE or autoconfig run for
+monitoring dashboards. It includes the detailed lifecycle phase, effective cost metric, budget and evaluation
+counters, a revisioned evaluation feed, elite history, candidate details, and the final IRACE files and logs.
+
 
 ## More info
 Check full parameter.txt and scenario.txt documentation in [the official Irace manual](https://cran.r-project.org/web/packages/irace/vignettes/irace-package.pdf).

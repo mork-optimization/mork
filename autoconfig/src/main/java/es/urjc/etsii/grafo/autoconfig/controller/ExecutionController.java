@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.autoconfig.controller;
 
 import es.urjc.etsii.grafo.autoconfig.controller.dto.ExecuteResponse;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.AutoconfigProgressRequest;
+import es.urjc.etsii.grafo.autoconfig.controller.dto.AutoconfigPhaseRequest;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.MultiExecuteRequest;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceTargetEvaluator;
@@ -88,6 +89,23 @@ public class ExecutionController<S extends Solution<S, I>, I extends Instance> {
                     request.getElites(),
                     request.getProgress()
             );
+            return ResponseEntity.noContent().build();
+        } catch (IllegalStateException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Receive a lifecycle phase produced by the bundled IRACE runner.
+     *
+     * @param request authenticated phase update
+     * @return empty successful response
+     */
+    @PostMapping("/internal/autoconfig/irace/phase")
+    public ResponseEntity<Void> phase(@RequestBody AutoconfigPhaseRequest request) {
+        request.checkValid(this.orchestrator.getIntegrationKey());
+        try {
+            this.orchestrator.iracePhaseCallback(request.getRunId(), request.getPhase());
             return ResponseEntity.noContent().build();
         } catch (IllegalStateException e) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage(), e);

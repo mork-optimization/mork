@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceRuntimeConfiguration;
+import es.urjc.etsii.grafo.algorithms.FMode;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -35,11 +36,14 @@ public class AutoconfigRunState {
 
     private final AutomaticAlgorithmBuilder<?, ?> algorithmBuilder;
     private final NavigableMap<Long, MutableEvaluation> evaluations = new TreeMap<>();
+    private final NavigableMap<Long, EvaluationChange> evaluationChanges = new TreeMap<>();
+    private final NavigableMap<Integer, EliteIterationSnapshot> eliteHistory = new TreeMap<>();
     private final Map<String, MutableCandidate> candidates = new LinkedHashMap<>();
 
-    private boolean automaticMode;
+    private RunMode mode = RunMode.DISABLED;
     private Role role = Role.DISABLED;
-    private RunStatus state = RunStatus.NOT_STARTED;
+    private RunPhase phase = RunPhase.NOT_STARTED;
+    private CostMetricSnapshot metric;
     private String runId;
     private Instant preparedAt;
     private Instant startedAt;
@@ -47,7 +51,9 @@ public class AutoconfigRunState {
     private FailureSnapshot failure;
     private int maximumBudget;
     private int generatedParameterCount;
+    private Integer trainingInstanceCount;
     private long nextEvaluationId;
+    private long latestEvaluationRevision;
     private long used;
     private long running;
     private long succeeded;
@@ -60,20 +66,32 @@ public class AutoconfigRunState {
         this.algorithmBuilder = algorithmBuilder;
     }
 
-    public synchronized String prepareCoordinator(boolean automaticMode) {
+    public synchronized String prepareCoordinator(RunMode mode, CostMetricSnapshot metric) {
         reset();
-        this.automaticMode = automaticMode;
+        requireTuningMode(mode);
+        this.mode = mode;
         this.role = Role.COORDINATOR;
-        this.state = RunStatus.PREPARING;
+        this.phase = RunPhase.PREPARING;
+        this.metric = Objects.requireNonNull(metric, "Cost metric cannot be null");
         this.runId = UUID.randomUUID().toString();
         this.preparedAt = Instant.now();
         return runId;
     }
 
-    public synchronized void prepareWorker(boolean automaticMode) {
+    public synchronized void prepareWorker(RunMode mode, CostMetricSnapshot metric) {
         reset();
-        this.automaticMode = automaticMode;
+        requireTuningMode(mode);
+        this.mode = mode;
         this.role = Role.WORKER;
+        this.phase = RunPhase.WAITING_FOR_WORK;
+        this.metric = Objects.requireNonNull(metric, "Cost metric cannot be null");
+    }
+
+    private static void requireTuningMode(RunMode mode) {
+        Objects.requireNonNull(mode, "Run mode cannot be null");
+        if (mode == RunMode.DISABLED) {
+            throw new IllegalArgumentException("A tuning run cannot use DISABLED mode");
+        }
     }
 
     /**
@@ -82,32 +100,42 @@ public class AutoconfigRunState {
      * @return true in automatic configuration mode
      */
     public synchronized boolean isAutomaticMode() {
-        return automaticMode;
+        return mode == RunMode.AUTOCONFIG;
     }
 
     public synchronized void markRunning(int maximumBudget) {
         if (maximumBudget < 1) {
             throw new IllegalArgumentException("Maximum budget must be positive");
         }
-        if (role != Role.COORDINATOR || state != RunStatus.PREPARING) {
+        if (role != Role.COORDINATOR || phase != RunPhase.PREPARING) {
             throw new IllegalStateException("Autoconfig run is not preparing");
         }
         this.maximumBudget = maximumBudget;
         this.startedAt = Instant.now();
-        this.state = RunStatus.RUNNING;
+        this.phase = RunPhase.CHECKING_SCENARIO;
     }
 
     public synchronized void publishGeneratedSearchSpace(int generatedParameterCount) {
         if (generatedParameterCount < 1) {
             throw new IllegalArgumentException("Generated parameter count must be positive");
         }
-        if (role != Role.COORDINATOR || state != RunStatus.PREPARING) {
+        if (role != Role.COORDINATOR || phase != RunPhase.PREPARING) {
             throw new IllegalStateException("Autoconfig run is not preparing");
         }
-        if (!automaticMode) {
+        if (mode != RunMode.AUTOCONFIG) {
             throw new IllegalStateException("The current run does not use the automatic search space");
         }
         this.generatedParameterCount = generatedParameterCount;
+    }
+
+    public synchronized void publishTrainingInstanceCount(int trainingInstanceCount) {
+        if (trainingInstanceCount < 0) {
+            throw new IllegalArgumentException("Training instance count cannot be negative");
+        }
+        if (role != Role.COORDINATOR || phase != RunPhase.PREPARING) {
+            throw new IllegalStateException("Autoconfig run is not preparing");
+        }
+        this.trainingInstanceCount = trainingInstanceCount;
     }
 
     public synchronized boolean hasGeneratedSearchSpace() {
@@ -115,21 +143,44 @@ public class AutoconfigRunState {
     }
 
     public synchronized void markCompleted() {
-        if (role != Role.COORDINATOR || state != RunStatus.RUNNING) {
+        if (role != Role.COORDINATOR || !phase.isActiveCoordinatorPhase()) {
             throw new IllegalStateException("Autoconfig run is not running");
         }
         this.finishedAt = Instant.now();
-        this.state = RunStatus.COMPLETED;
+        this.phase = RunPhase.COMPLETED;
     }
 
     public synchronized void markFailed(Throwable throwable) {
         Objects.requireNonNull(throwable, "Failure cannot be null");
+        if (role != Role.COORDINATOR || phase == RunPhase.COMPLETED || phase == RunPhase.FAILED) {
+            throw new IllegalStateException("Autoconfig run cannot transition to failed from " + phase);
+        }
         this.finishedAt = Instant.now();
         this.failure = new FailureSnapshot(
                 throwable.getClass().getSimpleName(),
                 safeMessage(throwable)
         );
-        this.state = RunStatus.FAILED;
+        this.phase = RunPhase.FAILED;
+    }
+
+    public synchronized void reportPhase(String reportedRunId, RunPhase reportedPhase) {
+        requireCurrentCoordinatorRun(reportedRunId);
+        Objects.requireNonNull(reportedPhase, "Run phase cannot be null");
+        if (reportedPhase != RunPhase.RACING && reportedPhase != RunPhase.POSTPROCESSING) {
+            throw new IllegalArgumentException("IRACE may only report RACING or POSTPROCESSING");
+        }
+        if (reportedPhase == phase) {
+            return;
+        }
+        boolean validTransition = switch (reportedPhase) {
+            case RACING -> phase == RunPhase.CHECKING_SCENARIO;
+            case POSTPROCESSING -> phase == RunPhase.CHECKING_SCENARIO || phase == RunPhase.RACING;
+            default -> false;
+        };
+        if (!validTransition) {
+            throw new IllegalStateException("IRACE phase cannot move from %s to %s".formatted(phase, reportedPhase));
+        }
+        this.phase = reportedPhase;
     }
 
     public synchronized String getRunId() {
@@ -142,6 +193,9 @@ public class AutoconfigRunState {
                 configuration.getCandidateConfiguration(),
                 configuration.getAlgorithmConfig().getConfig()
         );
+        if (role == Role.COORDINATOR && phase == RunPhase.CHECKING_SCENARIO) {
+            phase = RunPhase.RACING;
+        }
         long evaluationId = ++nextEvaluationId;
         var evaluation = new MutableEvaluation(
                 evaluationId,
@@ -155,6 +209,7 @@ public class AutoconfigRunState {
         used++;
         running++;
         candidate.running++;
+        recordEvaluationChange(evaluation);
         return evaluationId;
     }
 
@@ -179,6 +234,7 @@ public class AutoconfigRunState {
         if (evaluation.slow) {
             candidate.slow++;
         }
+        recordEvaluationChange(evaluation);
     }
 
     public synchronized void evaluationRejected(
@@ -202,6 +258,7 @@ public class AutoconfigRunState {
         if (evaluation.slow) {
             candidate.slow++;
         }
+        recordEvaluationChange(evaluation);
     }
 
     public synchronized void evaluationFailed(long evaluationId, Throwable throwable) {
@@ -216,6 +273,12 @@ public class AutoconfigRunState {
         var candidate = candidates.get(evaluation.configurationId);
         candidate.running--;
         candidate.failed++;
+        recordEvaluationChange(evaluation);
+    }
+
+    private void recordEvaluationChange(MutableEvaluation evaluation) {
+        long revision = ++latestEvaluationRevision;
+        evaluationChanges.put(revision, new EvaluationChange(revision, evaluation.view()));
     }
 
     public synchronized void publishProgress(
@@ -235,12 +298,20 @@ public class AutoconfigRunState {
 
         var views = eliteViews(reportedElites);
         warnIfInconsistent(reportedIteration, progress);
+        if (phase == RunPhase.CHECKING_SCENARIO) {
+            phase = RunPhase.RACING;
+        }
+        var updatedAt = Instant.now();
         this.irace = new StoredIraceSnapshot(
                 reportedIteration,
-                Instant.now(),
+                updatedAt,
                 false,
                 progress,
                 views
+        );
+        this.eliteHistory.put(
+                reportedIteration,
+                new EliteIterationSnapshot(reportedIteration, updatedAt, progress, views)
         );
     }
 
@@ -250,6 +321,9 @@ public class AutoconfigRunState {
     ) {
         requireProgressRun(reportedRunId);
         var views = eliteViews(reportedElites);
+        if (phase == RunPhase.CHECKING_SCENARIO || phase == RunPhase.RACING) {
+            phase = RunPhase.POSTPROCESSING;
+        }
         this.irace = new StoredIraceSnapshot(
                 irace.iteration(),
                 Instant.now(),
@@ -260,14 +334,21 @@ public class AutoconfigRunState {
     }
 
     private void requireProgressRun(String reportedRunId) {
-        if (runId == null || !runId.equals(reportedRunId)) {
-            throw new IllegalStateException("Elite snapshot belongs to a different autoconfig run");
-        }
-        if (role != Role.COORDINATOR || state != RunStatus.RUNNING) {
+        requireCurrentCoordinatorRun(reportedRunId);
+        if (!phase.isActiveCoordinatorPhase()) {
             throw new IllegalStateException("Autoconfig run is not accepting elite snapshots");
         }
         if (irace.finalSnapshot()) {
             throw new IllegalStateException("The final elite snapshot has already been published");
+        }
+    }
+
+    private void requireCurrentCoordinatorRun(String reportedRunId) {
+        if (runId == null || !runId.equals(reportedRunId)) {
+            throw new IllegalStateException("Update belongs to a different autoconfig run");
+        }
+        if (role != Role.COORDINATOR) {
+            throw new IllegalStateException("The current process is not the autoconfig coordinator");
         }
     }
 
@@ -293,7 +374,7 @@ public class AutoconfigRunState {
             if (candidate == null) {
                 candidate = createCandidate(definition.configurationId(), definition.parameters());
             }
-            if (automaticMode && candidate.algorithm == null) {
+            if (mode == RunMode.AUTOCONFIG && candidate.algorithm == null) {
                 throw new IllegalArgumentException(
                         "Cannot decode elite configuration %s: %s"
                                 .formatted(candidate.configurationId, candidate.decodeError)
@@ -371,15 +452,20 @@ public class AutoconfigRunState {
         long remaining = maximumBudget == 0 ? 0 : Math.max(0, maximumBudget - used);
         return new StatusSnapshot(
                 runId,
+                mode,
                 role,
-                state,
+                phase.status(),
+                phase,
                 preparedAt,
                 startedAt,
                 finishedAt,
                 elapsedMillis,
                 new BudgetSnapshot(maximumBudget, used, remaining),
                 new EvaluationCounts(running, succeeded, rejected, failed, slow),
+                latestEvaluationRevision,
                 generatedParameterCount,
+                trainingInstanceCount,
+                metric,
                 new IraceProgress(
                         irace.iteration(),
                         irace.elites().size(),
@@ -399,6 +485,10 @@ public class AutoconfigRunState {
                 irace.finalSnapshot(),
                 irace.elites()
         );
+    }
+
+    public synchronized EliteHistorySnapshot eliteHistory() {
+        return new EliteHistorySnapshot(runId, List.copyOf(eliteHistory.values()));
     }
 
     public synchronized EvaluationPage evaluations(
@@ -435,15 +525,44 @@ public class AutoconfigRunState {
         );
     }
 
+    public synchronized EvaluationChangePage evaluationChanges(Long after, Integer requestedLimit) {
+        long cursor = after == null ? 0 : after;
+        if (cursor < 0) {
+            throw new IllegalArgumentException("Evaluation revision cursor cannot be negative");
+        }
+        int limit = requestedLimit == null ? DEFAULT_PAGE_SIZE : requestedLimit;
+        if (limit < 1 || limit > MAX_PAGE_SIZE) {
+            throw new IllegalArgumentException("Evaluation change limit must be between 1 and " + MAX_PAGE_SIZE);
+        }
+
+        var changes = new ArrayList<EvaluationChange>(limit);
+        long nextRevision = cursor;
+        for (var change : evaluationChanges.tailMap(cursor, false).values()) {
+            changes.add(change);
+            nextRevision = change.revision();
+            if (changes.size() == limit) {
+                break;
+            }
+        }
+
+        return new EvaluationChangePage(
+                runId,
+                latestEvaluationRevision,
+                nextRevision,
+                List.copyOf(changes)
+        );
+    }
+
     public synchronized CandidateView candidate(String configurationId) {
         var candidate = candidates.get(configurationId);
         return candidate == null ? null : candidate.view();
     }
 
     private void reset() {
-        this.automaticMode = false;
+        this.mode = RunMode.DISABLED;
         this.role = Role.DISABLED;
-        this.state = RunStatus.NOT_STARTED;
+        this.phase = RunPhase.NOT_STARTED;
+        this.metric = null;
         this.runId = null;
         this.preparedAt = null;
         this.startedAt = null;
@@ -451,7 +570,9 @@ public class AutoconfigRunState {
         this.failure = null;
         this.maximumBudget = 0;
         this.generatedParameterCount = 0;
+        this.trainingInstanceCount = null;
         this.nextEvaluationId = 0;
+        this.latestEvaluationRevision = 0;
         this.used = 0;
         this.running = 0;
         this.succeeded = 0;
@@ -460,6 +581,8 @@ public class AutoconfigRunState {
         this.slow = 0;
         this.irace = StoredIraceSnapshot.empty();
         this.evaluations.clear();
+        this.evaluationChanges.clear();
+        this.eliteHistory.clear();
         this.candidates.clear();
     }
 
@@ -495,7 +618,7 @@ public class AutoconfigRunState {
     ) {
         JsonNode algorithm = null;
         String decodeError = null;
-        if (automaticMode) {
+        if (mode == RunMode.AUTOCONFIG) {
             try {
                 algorithm = algorithmBuilder.asJsonTree(new AlgorithmConfiguration(normalizedParameters));
             } catch (RuntimeException e) {
@@ -552,6 +675,37 @@ public class AutoconfigRunState {
                 : message;
     }
 
+    public enum RunMode {
+        DISABLED,
+        IRACE,
+        AUTOCONFIG
+    }
+
+    public enum RunPhase {
+        NOT_STARTED,
+        PREPARING,
+        CHECKING_SCENARIO,
+        RACING,
+        POSTPROCESSING,
+        WAITING_FOR_WORK,
+        COMPLETED,
+        FAILED;
+
+        private boolean isActiveCoordinatorPhase() {
+            return this == CHECKING_SCENARIO || this == RACING || this == POSTPROCESSING;
+        }
+
+        private RunStatus status() {
+            return switch (this) {
+                case NOT_STARTED -> RunStatus.NOT_STARTED;
+                case PREPARING -> RunStatus.PREPARING;
+                case CHECKING_SCENARIO, RACING, POSTPROCESSING, WAITING_FOR_WORK -> RunStatus.RUNNING;
+                case COMPLETED -> RunStatus.COMPLETED;
+                case FAILED -> RunStatus.FAILED;
+            };
+        }
+    }
+
     public enum Role {
         COORDINATOR,
         WORKER,
@@ -573,20 +727,67 @@ public class AutoconfigRunState {
         FAILED
     }
 
+    public enum CostMetricKind {
+        OBJECTIVE,
+        AREA_UNDER_CURVE
+    }
+
     public record StatusSnapshot(
             String runId,
+            RunMode mode,
             Role role,
             RunStatus state,
+            RunPhase phase,
             Instant preparedAt,
             Instant startedAt,
             Instant finishedAt,
             Long elapsedMillis,
             BudgetSnapshot budget,
             EvaluationCounts evaluations,
+            long latestEvaluationRevision,
             int generatedParameterCount,
+            Integer trainingInstanceCount,
+            CostMetricSnapshot metric,
             IraceProgress irace,
             FailureSnapshot failure
     ) {
+    }
+
+    public record CostMetricSnapshot(
+            String objectiveName,
+            FMode objectiveMode,
+            CostMetricKind kind,
+            FMode costMode,
+            boolean negated,
+            AucSettings auc
+    ) {
+        public CostMetricSnapshot {
+            Objects.requireNonNull(objectiveName, "Objective name cannot be null");
+            Objects.requireNonNull(objectiveMode, "Objective mode cannot be null");
+            Objects.requireNonNull(kind, "Cost metric kind cannot be null");
+            Objects.requireNonNull(costMode, "Cost mode cannot be null");
+            if (costMode != FMode.MINIMIZE) {
+                throw new IllegalArgumentException("IRACE cost mode must be MINIMIZE");
+            }
+            if ((kind == CostMetricKind.AREA_UNDER_CURVE) != (auc != null)) {
+                throw new IllegalArgumentException("AUC settings must be present exactly for AREA_UNDER_CURVE metrics");
+            }
+        }
+    }
+
+    public record AucSettings(
+            long ignoreInitialMillis,
+            long intervalDurationMillis,
+            boolean logScale
+    ) {
+        public AucSettings {
+            if (ignoreInitialMillis < 0) {
+                throw new IllegalArgumentException("Ignored initial duration cannot be negative");
+            }
+            if (intervalDurationMillis <= 0) {
+                throw new IllegalArgumentException("AUC interval duration must be positive");
+            }
+        }
     }
 
     public record BudgetSnapshot(int maximum, long used, long remaining) {
@@ -622,6 +823,26 @@ public class AutoconfigRunState {
     ) {
     }
 
+    public record EliteHistorySnapshot(
+            String runId,
+            List<EliteIterationSnapshot> iterations
+    ) {
+        public EliteHistorySnapshot {
+            iterations = List.copyOf(iterations);
+        }
+    }
+
+    public record EliteIterationSnapshot(
+            int iteration,
+            Instant updatedAt,
+            IraceProgressDetails progress,
+            List<EliteView> elites
+    ) {
+        public EliteIterationSnapshot {
+            elites = List.copyOf(elites);
+        }
+    }
+
     public record EliteView(
             String configurationId,
             int position,
@@ -635,6 +856,20 @@ public class AutoconfigRunState {
             long nextCursor,
             List<EvaluationView> evaluations
     ) {
+    }
+
+    public record EvaluationChangePage(
+            String runId,
+            long latestRevision,
+            long nextRevision,
+            List<EvaluationChange> changes
+    ) {
+        public EvaluationChangePage {
+            changes = List.copyOf(changes);
+        }
+    }
+
+    public record EvaluationChange(long revision, EvaluationView evaluation) {
     }
 
     public record EvaluationView(

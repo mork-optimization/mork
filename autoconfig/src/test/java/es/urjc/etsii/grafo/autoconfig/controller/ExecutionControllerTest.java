@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceOrchestrator;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceTargetEvaluator;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigRunState;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import org.junit.jupiter.api.BeforeEach;
@@ -187,6 +188,34 @@ class ExecutionControllerTest {
         mockMvc.perform(post("/internal/autoconfig/irace/progress")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(request))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void acceptsOnlyAuthenticatedRunnerPhases() throws Exception {
+        String request = """
+                {
+                  "key": "secret",
+                  "runId": "run-1",
+                  "phase": "RACING"
+                }
+                """;
+
+        mockMvc.perform(post("/internal/autoconfig/irace/phase")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request))
+                .andExpect(status().isNoContent());
+
+        verify(orchestrator).iracePhaseCallback("run-1", AutoconfigRunState.RunPhase.RACING);
+
+        mockMvc.perform(post("/internal/autoconfig/irace/phase")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request.replace("secret", "wrong")))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/internal/autoconfig/irace/phase")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(request.replace("RACING", "PREPARING")))
                 .andExpect(status().isBadRequest());
     }
 }

@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpecJsonCodec;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigArtifactService;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigRunState;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.BlockConfig;
@@ -68,6 +69,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final BlockConfig blockConfig;
     private final InstanceConfiguration instanceConfiguration;
     private final IraceIntegration iraceIntegration;
+    private final IraceConfig iraceConfig;
     private final Environment environment;
     private final InstanceManager<I> instanceManager;
     private final AutoconfigSearchSpace searchSpace;
@@ -75,6 +77,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     private final ExecutionLifecycleCoordinator lifecycleCoordinator;
     private final ResultsSerializerListener<S, I> resultsSerializer;
     private final AutoconfigRunState runState;
+    private final AutoconfigArtifactService artifactService;
 
     /**
      * <p>Constructor for IraceOrchestrator.</p>
@@ -84,12 +87,14 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
      * @param environment                 application environment
      * @param instanceConfiguration
      * @param iraceIntegration            a {@link IraceIntegration} object.
+     * @param iraceConfig                 IRACE configuration
      * @param instanceManager             a {@link InstanceManager} object.
      * @param searchSpace
      * @param eventPublisher              application event publisher
      * @param lifecycleCoordinator        application lifecycle coordinator
      * @param resultsSerializer           final result serializer
      * @param runState                    shared autoconfig run state
+     * @param artifactService             current-run artifact manager
      */
     public IraceOrchestrator(
             SolverConfig solverConfig,
@@ -97,24 +102,28 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             Environment environment,
             InstanceConfiguration instanceConfiguration,
             IraceIntegration iraceIntegration,
+            IraceConfig iraceConfig,
             InstanceManager<I> instanceManager,
             AutoconfigSearchSpace searchSpace,
             MorkEventPublisher eventPublisher,
             ExecutionLifecycleCoordinator lifecycleCoordinator,
             ResultsSerializerListener<S, I> resultsSerializer,
-            AutoconfigRunState runState
+            AutoconfigRunState runState,
+            AutoconfigArtifactService artifactService
     ) {
         this.solverConfig = solverConfig;
         this.blockConfig = blockConfig;
         this.instanceConfiguration = instanceConfiguration;
         this.environment = environment;
         this.iraceIntegration = iraceIntegration;
+        this.iraceConfig = iraceConfig;
         this.instanceManager = instanceManager;
         this.searchSpace = searchSpace;
         this.eventPublisher = eventPublisher;
         this.lifecycleCoordinator = lifecycleCoordinator;
         this.resultsSerializer = resultsSerializer;
         this.runState = runState;
+        this.artifactService = artifactService;
     }
 
     /**
@@ -135,20 +144,25 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             }
         }
         log.info("Starting tuning engine... {isAutoconfig: {}, isFollower: {}}", automaticMode, follower);
+        var mode = automaticMode
+                ? AutoconfigRunState.RunMode.AUTOCONFIG
+                : AutoconfigRunState.RunMode.IRACE;
+        var metric = IraceCostMetricUtil.describe(mode, solverConfig, iraceConfig);
 
         if (follower) {
-            this.runState.prepareWorker(automaticMode);
+            this.runState.prepareWorker(mode, metric);
             this.integrationKey = solverConfig.getIntegrationKey();
             log.info("Mork is running in follower mode, waiting for commands...");
             return;
         }
 
-        this.runState.prepareCoordinator(automaticMode);
+        String runId = this.runState.prepareCoordinator(mode, metric);
         log.info("Ready to start!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
-        eventPublisher.publish(new ExecutionStartedEvent(Context.getObjectivesW(), experimentName));
         try {
+            this.artifactService.prepareRun(runId);
+            eventPublisher.publish(new ExecutionStartedEvent(Context.getObjectivesW(), experimentName));
             launchIrace();
             this.runState.markCompleted();
         } catch (RuntimeException e) {
@@ -203,6 +217,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             log.info("irace callback endpoint: http://127.0.0.1:{}", port);
             var trainingInstances = instanceManager.getInstanceSolveOrder(IRACE_INSTANCE_PATH_KEY, false);
             IraceInstanceUtil.write(Path.of(F_TRAIN_INSTANCES), trainingInstances);
+            this.runState.publishTrainingInstanceCount(trainingInstances.size());
             log.info("Prepared {} irace training instances in {}", trainingInstances.size(), F_TRAIN_INSTANCES);
             if (automaticMode) {
                 if (searchSpace.roots().isEmpty()) {
@@ -305,6 +320,10 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             IraceProgressDetails progress
     ) {
         this.runState.publishProgress(runId, iteration, elites, progress);
+    }
+
+    public void iracePhaseCallback(String runId, AutoconfigRunState.RunPhase phase) {
+        this.runState.reportPhase(runId, phase);
     }
 
     public String getIntegrationKey() {

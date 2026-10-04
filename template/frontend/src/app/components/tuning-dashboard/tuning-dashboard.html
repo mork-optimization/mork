@@ -1,0 +1,318 @@
+@let status = store.status();
+
+<mat-toolbar class="topbar">
+  <span class="brand"><img src="favicon.svg" alt="" /> Mork tuning monitor</span>
+  <span class="toolbar-spacer"></span>
+  <mat-chip-set aria-label="Synchronization state">
+    <mat-chip [class.live]="store.syncState() === 'live'">{{ store.connectionLabel() }}</mat-chip>
+  </mat-chip-set>
+  <button
+    mat-button
+    type="button"
+    class="alerts-button"
+    [matMenuTriggerFor]="alertsMenu"
+    [matBadge]="store.unseenAlertCount()"
+    [matBadgeHidden]="store.unseenAlertCount() === 0"
+    matBadgeColor="warn"
+    aria-label="Tuning alerts"
+    (menuOpened)="store.markAlertsSeen()"
+  >
+    Alerts
+  </button>
+  <mat-menu #alertsMenu="matMenu" class="alerts-menu">
+    @for (alert of store.alerts().slice(0, 10); track alert.key) {
+      <button mat-menu-item type="button" (click)="showIssues()">
+        <span class="alert-item">
+          <strong [class.critical]="alert.severity === 'critical'">{{ alert.title }}</strong>
+          <small>{{ alert.message }}</small>
+        </span>
+      </button>
+    } @empty {
+      <span class="menu-empty">No evaluation alerts</span>
+    }
+    @if (store.alerts().length > 0) {
+      <button mat-menu-item type="button" (click)="showIssues()">
+        <strong>View all issues</strong>
+      </button>
+    }
+  </mat-menu>
+</mat-toolbar>
+
+@if (status) {
+  <section class="budget-ribbon" aria-label="Evaluation budget">
+    <div class="budget-copy">
+      <span class="eyebrow">Evaluation budget</span>
+      <strong>{{ status.budget.used | number }} / {{ status.budget.maximum | number }}</strong>
+      <span>{{ status.budget.remaining | number }} remaining</span>
+    </div>
+    <mat-progress-bar mode="determinate" [value]="store.budgetPercent()" />
+    <div class="phase">
+      <span class="phase-dot" [class.complete]="status.state === 'COMPLETED'"></span>
+      {{ phaseLabel(status.phase) }}
+    </div>
+  </section>
+}
+
+<main>
+  @if (store.latestError(); as error) {
+    <section class="request-error" role="alert">
+      <strong>Monitor connection problem</strong>
+      <span>{{ error }}</span>
+      <button mat-button type="button" (click)="store.retryNow()">Retry now</button>
+    </section>
+  }
+
+  @if (status?.failure; as failure) {
+    <section class="run-error" role="alert">
+      <strong>{{ failure.type }}</strong>
+      <span>{{ failure.message ?? 'The tuning run stopped unexpectedly.' }}</span>
+    </section>
+  }
+
+  <mat-tab-group
+    animationDuration="150ms"
+    [selectedIndex]="selectedTab()"
+    (selectedIndexChange)="selectTab($event)"
+  >
+    <mat-tab label="Overview">
+      <section class="tab-page overview">
+        <div class="overview-actions">
+          <span>Live view of the current tuning run</span>
+          <button mat-button type="button" [matMenuTriggerFor]="panelMenu">Panels</button>
+          <mat-menu #panelMenu="matMenu">
+            @for (panel of panels; track panel.id) {
+              @if (preferences.isHidden(panel.id)) {
+                <button mat-menu-item type="button" (click)="preferences.show(panel.id)">
+                  Show {{ panel.label }}
+                </button>
+              }
+            }
+            <button mat-menu-item type="button" (click)="preferences.reset()">
+              Restore all panels
+            </button>
+          </mat-menu>
+        </div>
+
+        <app-monitor-panel panelId="evaluation-health" title="Evaluation health" class="wide">
+          <section class="kpi-grid">
+            <article class="kpi">
+              <span>Running</span><strong>{{ status?.evaluations?.running ?? 0 }}</strong>
+            </article>
+            <article class="kpi success">
+              <span>Succeeded</span><strong>{{ status?.evaluations?.succeeded ?? 0 }}</strong>
+            </article>
+            <article class="kpi warning">
+              <span>Rejected</span><strong>{{ status?.evaluations?.rejected ?? 0 }}</strong>
+            </article>
+            <article class="kpi danger">
+              <span>Failed</span><strong>{{ status?.evaluations?.failed ?? 0 }}</strong>
+            </article>
+            <article class="kpi warning">
+              <span>Slow</span><strong>{{ status?.evaluations?.slow ?? 0 }}</strong>
+            </article>
+          </section>
+        </app-monitor-panel>
+
+        <app-monitor-panel panelId="evaluation-cost" title="Evaluation cost">
+          <app-dashboard-chart [model]="store.evaluationCostChart()" />
+        </app-monitor-panel>
+
+        <app-monitor-panel panelId="elite-evolution" title="Elite rank evolution">
+          <app-dashboard-chart [model]="store.eliteRankChart()" />
+        </app-monitor-panel>
+
+        <app-monitor-panel panelId="current-elites" title="Current elites">
+          <div class="elite-list">
+            @for (elite of store.elites()?.elites ?? []; track elite.configurationId) {
+              <button
+                type="button"
+                class="elite-row"
+                (click)="inspectCandidate(elite.configurationId)"
+              >
+                <span class="medal" [class]="rankClass(elite.position)">{{ elite.position }}</span>
+                <span
+                  ><strong>Configuration {{ elite.configurationId }}</strong
+                  ><small>{{ parameterPreview(elite) }}</small></span
+                >
+              </button>
+            } @empty {
+              <p class="empty-state">Elites appear after the first completed race checkpoint.</p>
+            }
+          </div>
+        </app-monitor-panel>
+
+        <app-monitor-panel panelId="run-information" title="Run information">
+          <dl class="run-info">
+            <dt>Run ID</dt>
+            <dd>{{ status?.runId ?? '—' }}</dd>
+            <dt>Mode</dt>
+            <dd>{{ status?.mode ?? '—' }}</dd>
+            <dt>Elapsed</dt>
+            <dd>{{ elapsedLabel(status?.elapsedMillis ?? null) }}</dd>
+            <dt>Training instances</dt>
+            <dd>{{ status?.trainingInstanceCount ?? 'Preparing…' }}</dd>
+            <dt>Generated parameters</dt>
+            <dd>{{ status?.generatedParameterCount ?? 0 }}</dd>
+            <dt>Cost metric</dt>
+            <dd>{{ metricLabel() }}</dd>
+            <dt>Last update</dt>
+            <dd>{{ store.lastUpdated() | date: 'mediumTime' }}</dd>
+          </dl>
+          @if (store.searchSpace()) {
+            <button mat-stroked-button type="button" (click)="inspectSearchSpace()">
+              Inspect search space
+            </button>
+          }
+        </app-monitor-panel>
+      </section>
+    </mat-tab>
+
+    <mat-tab label="Evaluations">
+      <section class="tab-page">
+        <section class="two-column">
+          <mat-card appearance="outlined">
+            <mat-card-header><mat-card-title>Evaluation activity</mat-card-title></mat-card-header>
+            <mat-card-content
+              ><app-dashboard-chart [model]="store.evaluationActivityChart()"
+            /></mat-card-content>
+          </mat-card>
+          <mat-card appearance="outlined">
+            <mat-card-header><mat-card-title>Instance summary</mat-card-title></mat-card-header>
+            <mat-card-content class="summary-scroll">
+              <table class="summary-table">
+                <thead>
+                  <tr>
+                    <th>Instance</th>
+                    <th>Runs</th>
+                    <th>Best cost</th>
+                    <th>Issues</th>
+                    <th>Slow</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (instance of store.instanceSummaries(); track instance.instanceName) {
+                    <tr>
+                      <td>{{ instance.instanceName }}</td>
+                      <td>{{ instance.evaluations }}</td>
+                      <td>
+                        {{
+                          instance.bestCost === null ? '—' : (instance.bestCost | number: '1.0-5')
+                        }}
+                      </td>
+                      <td>{{ instance.issues }}</td>
+                      <td>{{ instance.slow }}</td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="5" class="empty-state">No instance activity yet.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </mat-card-content>
+          </mat-card>
+        </section>
+        <mat-card appearance="outlined" class="evaluation-card">
+          <mat-card-header><mat-card-title>Evaluation ledger</mat-card-title></mat-card-header>
+          <mat-card-content>
+            <app-evaluation-table
+              [evaluations]="store.evaluations()"
+              [forceIssues]="forceIssues()"
+              (candidateSelected)="inspectCandidate($event)"
+            />
+          </mat-card-content>
+        </mat-card>
+      </section>
+    </mat-tab>
+
+    <mat-tab label="Elites">
+      <section class="tab-page">
+        <section class="two-column elite-layout">
+          <mat-card appearance="outlined">
+            <mat-card-header>
+              <mat-card-title>Current elite set</mat-card-title>
+              <mat-card-subtitle>
+                @if (store.elites()?.finalSnapshot) {
+                  Final result
+                } @else {
+                  Latest completed checkpoint
+                }
+              </mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+              <div class="elite-list detailed">
+                @for (elite of store.elites()?.elites ?? []; track elite.configurationId) {
+                  <button
+                    type="button"
+                    class="elite-row"
+                    (click)="inspectCandidate(elite.configurationId)"
+                  >
+                    <span class="medal" [class]="rankClass(elite.position)">{{
+                      elite.position
+                    }}</span>
+                    <span
+                      ><strong>Configuration {{ elite.configurationId }}</strong
+                      ><small>{{ parameterPreview(elite) }}</small></span
+                    >
+                  </button>
+                } @empty {
+                  <p class="empty-state">No elite snapshot is available yet.</p>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+          <mat-card appearance="outlined">
+            <mat-card-header><mat-card-title>Rank history</mat-card-title></mat-card-header>
+            <mat-card-content
+              ><app-dashboard-chart [model]="store.eliteRankChart()"
+            /></mat-card-content>
+          </mat-card>
+        </section>
+
+        <mat-card appearance="outlined">
+          <mat-card-header><mat-card-title>Race checkpoints</mat-card-title></mat-card-header>
+          <mat-card-content class="history-list">
+            @for (snapshot of store.eliteHistory()?.iterations ?? []; track snapshot.iteration) {
+              <article>
+                <strong>Checkpoint {{ snapshot.iteration }}</strong>
+                <span>{{ snapshot.updatedAt | date: 'medium' }}</span>
+                <span>{{ snapshot.progress.experimentsUsed | number }} evaluations used</span>
+                <span>{{ snapshot.elites.length }} elites</span>
+              </article>
+            } @empty {
+              <p class="empty-state">No completed race checkpoints yet.</p>
+            }
+          </mat-card-content>
+        </mat-card>
+      </section>
+    </mat-tab>
+
+    <mat-tab label="Artifacts">
+      <section class="tab-page">
+        <mat-card appearance="outlined">
+          <mat-card-header>
+            <mat-card-title>Run artifacts</mat-card-title>
+            <span class="toolbar-spacer"></span>
+            <button mat-button type="button" (click)="store.refreshArtifacts()">Refresh</button>
+          </mat-card-header>
+          <mat-card-content class="artifact-list">
+            @for (artifact of store.artifacts()?.artifacts ?? []; track artifact.id) {
+              <a [href]="store.artifactUrl(artifact.id)" download>
+                <span
+                  ><strong>{{ artifact.filename }}</strong
+                  ><small>{{ artifact.mediaType }}</small></span
+                >
+                <span>{{ artifactSize(artifact) }}</span>
+                <span>Download</span>
+              </a>
+            } @empty {
+              <p class="empty-state">
+                Artifacts appear as IRACE writes logs, plots, workspace data, and final elites.
+              </p>
+            }
+          </mat-card-content>
+        </mat-card>
+      </section>
+    </mat-tab>
+  </mat-tab-group>
+</main>

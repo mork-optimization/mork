@@ -1,128 +1,41 @@
-<mat-toolbar class="topbar">
-  <span class="brand">Mork dashboard</span>
-  <span class="toolbar-spacer"></span>
-  <mat-chip-set aria-label="Connection state">
-    <mat-chip [class.live]="store.connectionState() === 'live'">
-      {{ store.connectionLabel() }}
-    </mat-chip>
-  </mat-chip-set>
-</mat-toolbar>
-
-<main>
-  <mat-card appearance="outlined" class="status-card">
-    <mat-card-content>
-      <section class="summary" aria-label="Execution summary">
-        <div>
-          <span class="eyebrow">Experiment</span>
-          <strong>{{ store.currentExperiment() ?? 'Waiting for execution' }}</strong>
-        </div>
-        <div>
-          <span class="eyebrow">Processed events</span>
-          <strong>{{ store.processedEventCount() }}</strong>
-        </div>
-        <div>
-          <span class="eyebrow">Last event ID</span>
-          <strong>{{ store.lastEventId() }}</strong>
-        </div>
-
-        @if (store.objectives().length > 0) {
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Objective</mat-label>
-            <mat-select
-              [value]="store.selectedObjective()"
-              (selectionChange)="selectObjective($event.value)"
-            >
-              @for (objective of store.objectives(); track objective.name) {
-                <mat-option [value]="objective.name">
-                  {{ objective.name }} ·
-                  {{ objective.mode === 'MINIMIZE' ? 'Minimize' : 'Maximize' }}
-                </mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-        }
-      </section>
-
-      <section class="progress-grid" aria-label="Execution progress">
-        @let progress = store.progress();
-        <div class="progress-item">
-          <div class="progress-label">
-            <span>Instances</span>
-            <span>{{ progress.instances.completed }} / {{ progress.instances.total }}</span>
-          </div>
-          <mat-progress-bar
-            mode="determinate"
-            [value]="progressValue(progress.instances.completed, progress.instances.total)"
-          />
-        </div>
-        <div class="progress-item">
-          <div class="progress-label">
-            <span>Algorithms</span>
-            <span>{{ progress.algorithms.completed }} / {{ progress.algorithms.total }}</span>
-          </div>
-          <mat-progress-bar
-            mode="determinate"
-            [value]="progressValue(progress.algorithms.completed, progress.algorithms.total)"
-          />
-        </div>
-        <div class="progress-item">
-          <div class="progress-label">
-            <span>Repetitions</span>
-            <span>{{ progress.repetitions.completed }} / {{ progress.repetitions.total }}</span>
-          </div>
-          <mat-progress-bar
-            mode="determinate"
-            [value]="progressValue(progress.repetitions.completed, progress.repetitions.total)"
-          />
-        </div>
-      </section>
-    </mat-card-content>
-  </mat-card>
-
-  @if (store.latestError(); as error) {
-    <mat-card appearance="outlined" class="error-card" role="alert">
-      <mat-card-content>
-        <strong>{{ error.exceptionType }}</strong>
-        <span>{{ error.message ?? 'No error details were provided.' }}</span>
-      </mat-card-content>
-    </mat-card>
+@switch (store.viewMode()) {
+  @case ('standard') {
+    <app-standard-dashboard />
   }
-
-  <section class="instances" aria-label="Instance dashboards">
-    @for (instance of store.instances(); track instance.key) {
-      <mat-card appearance="outlined" class="instance-card">
-        <mat-card-header>
-          <mat-card-title>{{ instance.instanceName }}</mat-card-title>
-          <mat-card-subtitle>
-            {{ instance.experimentName }}
-            @if (instance.referenceValue !== null) {
-              · Reference {{ instance.referenceValue }}
-            }
-          </mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content class="dashboard-grid">
-          <section>
-            <h2>Best solution</h2>
-            <app-solution-renderer
-              [instance]="instance"
-              [selectedObjective]="store.selectedObjective()"
-              [bestSolution]="instance.bestSolution"
-            />
-          </section>
-          <section>
-            <h2>Score convergence</h2>
-            <app-dashboard-chart [model]="instance.convergenceChart" />
-          </section>
-          <section>
-            <h2>Scores</h2>
-            <app-dashboard-chart [model]="instance.scoreChart" />
-          </section>
+  @case ('tuning') {
+    <app-tuning-dashboard />
+  }
+  @case ('worker') {
+    <main class="mode-state">
+      <img src="favicon.svg" alt="Mork" />
+      <mat-card appearance="outlined">
+        <mat-card-header><mat-card-title>Autoconfig worker</mat-card-title></mat-card-header>
+        <mat-card-content>
+          <p>This process executes evaluations for the coordinator.</p>
+          <p>The monitoring glass panel is available on the coordinator process.</p>
         </mat-card-content>
       </mat-card>
-    } @empty {
-      <section class="empty-state">
-        <p>Instance charts will appear as execution events arrive.</p>
-      </section>
-    }
-  </section>
-</main>
+    </main>
+  }
+  @case ('unavailable') {
+    <main class="mode-state">
+      <img src="favicon.svg" alt="Mork" />
+      <mat-card appearance="outlined">
+        <mat-card-header
+          ><mat-card-title>Waiting for the Mork backend</mat-card-title></mat-card-header
+        >
+        <mat-card-content>
+          <p>{{ store.latestError() ?? 'The run mode could not be detected.' }}</p>
+          <button mat-flat-button type="button" (click)="store.retryNow()">Retry now</button>
+        </mat-card-content>
+      </mat-card>
+    </main>
+  }
+  @default {
+    <main class="mode-state detecting" aria-label="Detecting experiment mode">
+      <img src="favicon.svg" alt="Mork" />
+      <mat-spinner diameter="36" />
+      <p>Detecting experiment mode…</p>
+    </main>
+  }
+}

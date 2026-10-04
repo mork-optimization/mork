@@ -26,6 +26,8 @@ class IraceIntegrationTest {
         );
         assertBundledResourceContains("runner.R", "progress = progress");
         assertBundledResourceContains("runner.R", "vapply(progress, anyNA");
+        assertBundledResourceContains("runner.R", "report_phase(\"RACING\")");
+        assertBundledResourceContains("runner.R", "report_phase(\"POSTPROCESSING\")");
         assertBundledResourceContains("scenario.txt", "targetRunnerParallel");
         assertBundledResourceContains("parameters.txt", "START PARAMETER DECLARATION");
         assertThrows(IOException.class, () -> getInputStreamForIrace("missing", true));

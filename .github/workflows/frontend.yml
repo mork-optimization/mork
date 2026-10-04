@@ -6,15 +6,15 @@ on:
       - "template/frontend/**"
       - "template/src/main/resources/static/**"
       - ".github/workflows/frontend.yml"
-      - "core/src/main/java/es/urjc/etsii/grafo/events/**"
-      - "core/src/main/java/es/urjc/etsii/grafo/restcontroller/EventController.java"
+      - "core/src/main/java/es/urjc/etsii/grafo/**"
+      - "autoconfig/src/main/java/es/urjc/etsii/grafo/autoconfig/**"
   pull_request:
     paths:
       - "template/frontend/**"
       - "template/src/main/resources/static/**"
       - ".github/workflows/frontend.yml"
-      - "core/src/main/java/es/urjc/etsii/grafo/events/**"
-      - "core/src/main/java/es/urjc/etsii/grafo/restcontroller/EventController.java"
+      - "core/src/main/java/es/urjc/etsii/grafo/**"
+      - "autoconfig/src/main/java/es/urjc/etsii/grafo/autoconfig/**"
 
 permissions:
   contents: read

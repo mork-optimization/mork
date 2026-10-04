@@ -104,7 +104,11 @@ Every listener receives the `MorkEvent` marker type and decides which payload ty
 
 ### Frontend
 
-The template dashboard consumes the same event stream through STOMP at `/topic/events` and uses the REST endpoints `/lastevent` and `/events?from=<inclusive>&to=<exclusive>` for replay and recovery. It subscribes to live events before reading history, buffers envelopes by event ID, downloads history in batches of 1,000, ignores duplicates, and only reduces contiguous IDs. A live gap triggers a REST range request. After a WebSocket reconnect it resumes from the last processed ID; if the backend has restarted and its IDs begin again at zero, the dashboard clears the old execution state and replays the new log.
+The template frontend first reads `/api/autoconfig/status`. Standard execution mode opens the event dashboard
+described below; coordinator IRACE/autoconfig mode opens the [tuning glass panel](irace.md#monitoring-a-tuning-run),
+and follower mode shows a worker notice.
+
+The standard dashboard consumes the event stream through STOMP at `/topic/events` and uses the REST endpoints `/lastevent` and `/events?from=<inclusive>&to=<exclusive>` for replay and recovery. It subscribes to live events before reading history, buffers envelopes by event ID, downloads history in batches of 1,000, ignores duplicates, and only reduces contiguous IDs. A live gap triggers a REST range request. After a WebSocket reconnect it resumes from the last processed ID; if the backend has restarted and its IDs begin again at zero, the dashboard clears the old execution state and replays the new log.
 
 Transport metadata remains in `EventEnvelope`; payload objects are never modified. Ping and custom event types advance event accounting but are otherwise ignored. `ErrorEvent` is shown in the dashboard.
 

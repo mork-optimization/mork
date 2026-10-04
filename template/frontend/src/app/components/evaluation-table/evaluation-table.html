@@ -1,0 +1,117 @@
+<section class="filters" aria-label="Evaluation filters">
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>Search</mat-label>
+    <input
+      matInput
+      type="search"
+      placeholder="ID, configuration, or instance"
+      [ngModel]="search()"
+      (ngModelChange)="updateSearch($event)"
+    />
+  </mat-form-field>
+
+  <mat-form-field appearance="outline" subscriptSizing="dynamic">
+    <mat-label>State</mat-label>
+    <mat-select [ngModel]="state()" (ngModelChange)="updateState($event)">
+      <mat-option value="ALL">All states</mat-option>
+      <mat-option value="RUNNING">Running</mat-option>
+      <mat-option value="SUCCEEDED">Succeeded</mat-option>
+      <mat-option value="REJECTED">Rejected</mat-option>
+      <mat-option value="FAILED">Failed</mat-option>
+    </mat-select>
+  </mat-form-field>
+
+  <mat-checkbox [ngModel]="slowOnly()" (ngModelChange)="updateSlowOnly($event)">
+    Slow only
+  </mat-checkbox>
+  <mat-checkbox
+    [ngModel]="issueOnly() || forceIssues()"
+    [disabled]="forceIssues()"
+    (ngModelChange)="updateIssueOnly($event)"
+  >
+    Issues only
+  </mat-checkbox>
+</section>
+
+<div class="table-scroll">
+  <table>
+    <thead>
+      <tr>
+        <th>
+          <button type="button" (click)="sortBy('id')">ID{{ sortIndicator('id') }}</button>
+        </th>
+        <th>
+          <button type="button" (click)="sortBy('configurationId')">
+            Configuration{{ sortIndicator('configurationId') }}
+          </button>
+        </th>
+        <th>
+          <button type="button" (click)="sortBy('instanceName')">
+            Instance{{ sortIndicator('instanceName') }}
+          </button>
+        </th>
+        <th>
+          <button type="button" (click)="sortBy('state')">State{{ sortIndicator('state') }}</button>
+        </th>
+        <th>
+          <button type="button" (click)="sortBy('cost')">Cost{{ sortIndicator('cost') }}</button>
+        </th>
+        <th>
+          <button type="button" (click)="sortBy('timeSeconds')">
+            Time{{ sortIndicator('timeSeconds') }}
+          </button>
+        </th>
+        <th>Finished</th>
+        <th>Details</th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (evaluation of page(); track evaluation.id) {
+        <tr [class.issue]="evaluation.state === 'FAILED' || evaluation.state === 'REJECTED'">
+          <td>{{ evaluation.id }}</td>
+          <td>
+            <button
+              class="candidate-link"
+              type="button"
+              (click)="candidateSelected.emit(evaluation.configurationId)"
+            >
+              {{ evaluation.configurationId }}
+            </button>
+          </td>
+          <td class="instance" [title]="evaluation.instanceName">{{ evaluation.instanceName }}</td>
+          <td>
+            <span class="state" [class]="stateClass(evaluation.state)">{{ evaluation.state }}</span>
+          </td>
+          <td>{{ evaluation.cost === null ? '—' : (evaluation.cost | number: '1.0-5') }}</td>
+          <td>
+            {{
+              evaluation.timeSeconds === null
+                ? '—'
+                : (evaluation.timeSeconds | number: '1.2-2') + ' s'
+            }}
+            @if (evaluation.slow) {
+              <span class="slow">slow</span>
+            }
+          </td>
+          <td>
+            {{ evaluation.finishedAt ? (evaluation.finishedAt | date: 'HH:mm:ss') : 'Running' }}
+          </td>
+          <td class="details">{{ evaluation.message ?? evaluation.reasonCode ?? '—' }}</td>
+        </tr>
+      } @empty {
+        <tr>
+          <td colspan="8" class="empty">No evaluations match these filters.</td>
+        </tr>
+      }
+    </tbody>
+  </table>
+</div>
+
+<mat-paginator
+  [length]="filtered().length"
+  [pageIndex]="pageIndex()"
+  [pageSize]="pageSize()"
+  [pageSizeOptions]="[25, 50, 100]"
+  (page)="updatePage($event)"
+  aria-label="Evaluation pages"
+/>

@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.service;
 
+import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.EliteConfiguration;
 import es.urjc.etsii.grafo.autoconfig.controller.dto.IraceProgressDetails;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
@@ -29,36 +30,54 @@ class AutoconfigRunStateTest {
         var state = newState();
 
         assertFalse(state.isAutomaticMode());
-        state.prepareCoordinator(true);
+        prepareCoordinator(state, true);
         assertTrue(state.isAutomaticMode());
-        state.prepareWorker(false);
+        prepareWorker(state, false);
         assertFalse(state.isAutomaticMode());
     }
 
     @Test
     void publishesSearchSpaceOnlyForAutomaticCoordinatorRuns() {
         var state = newState();
-        state.prepareCoordinator(true);
+        prepareCoordinator(state, true);
         assertFalse(state.hasGeneratedSearchSpace());
 
         state.publishGeneratedSearchSpace(3);
         assertTrue(state.hasGeneratedSearchSpace());
         assertEquals(3, state.status().generatedParameterCount());
 
-        state.prepareCoordinator(false);
+        prepareCoordinator(state, false);
         assertFalse(state.hasGeneratedSearchSpace());
         assertThrows(IllegalStateException.class, () -> state.publishGeneratedSearchSpace(3));
         assertThrows(IllegalArgumentException.class, () -> state.publishGeneratedSearchSpace(0));
 
-        state.prepareWorker(true);
+        prepareWorker(state, true);
         assertFalse(state.hasGeneratedSearchSpace());
         assertThrows(IllegalStateException.class, () -> state.publishGeneratedSearchSpace(3));
     }
 
     @Test
+    void publishesTrainingInstanceCountOnlyWhileCoordinatorIsPreparing() {
+        var state = newState();
+        prepareCoordinator(state, false);
+
+        assertNull(state.status().trainingInstanceCount());
+        state.publishTrainingInstanceCount(12);
+        assertEquals(12, state.status().trainingInstanceCount());
+        assertThrows(IllegalArgumentException.class, () -> state.publishTrainingInstanceCount(-1));
+
+        state.markRunning(20);
+        assertThrows(IllegalStateException.class, () -> state.publishTrainingInstanceCount(13));
+
+        prepareWorker(state, false);
+        assertNull(state.status().trainingInstanceCount());
+        assertThrows(IllegalStateException.class, () -> state.publishTrainingInstanceCount(1));
+    }
+
+    @Test
     void correlatesMorkStateWithLatestIraceSnapshot() {
         var state = newState();
-        String runId = state.prepareCoordinator(true);
+        String runId = prepareCoordinator(state, true);
         state.publishGeneratedSearchSpace(7);
         state.markRunning(20);
 
@@ -106,7 +125,7 @@ class AutoconfigRunStateTest {
     @Test
     void retainsEvaluationsBeyondTheFormerHistoryLimit() {
         var state = newState();
-        state.prepareCoordinator(true);
+        prepareCoordinator(state, true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10_001);
 
@@ -132,7 +151,7 @@ class AutoconfigRunStateTest {
     @Test
     void filtersEvaluationsByStateAndKeepsPageCursorOnMatchingRecords() {
         var state = newState();
-        state.prepareCoordinator(true);
+        prepareCoordinator(state, true);
         state.markRunning(10);
 
         long running = state.evaluationStarted(configuration("running", 1));
@@ -162,7 +181,7 @@ class AutoconfigRunStateTest {
     @Test
     void evaluationPagesAreRefetchableSnapshots() {
         var state = newState();
-        state.prepareCoordinator(true);
+        prepareCoordinator(state, true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
 
@@ -181,7 +200,7 @@ class AutoconfigRunStateTest {
     @Test
     void rejectsStaleSnapshotsAndInvalidPagination() {
         var state = newState();
-        String runId = state.prepareCoordinator(true);
+        String runId = prepareCoordinator(state, true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
         state.publishProgress(runId, 4, List.of(), experimentProgress(4, 10, 0, 10));
@@ -196,12 +215,14 @@ class AutoconfigRunStateTest {
         );
         assertThrows(IllegalArgumentException.class, () -> state.evaluations(-1L, 10, null));
         assertThrows(IllegalArgumentException.class, () -> state.evaluations(0L, 501, null));
+        assertThrows(IllegalArgumentException.class, () -> state.evaluationChanges(-1L, 10));
+        assertThrows(IllegalArgumentException.class, () -> state.evaluationChanges(0L, 501));
     }
 
     @Test
     void acceptsRepeatedAndSkippedIterationSnapshots() {
         var state = newState();
-        String runId = state.prepareCoordinator(true);
+        String runId = prepareCoordinator(state, true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
 
@@ -215,7 +236,7 @@ class AutoconfigRunStateTest {
     @Test
     void preservesCurrentSnapshotWhenAReplacementIsInvalid() {
         var state = newState();
-        String runId = state.prepareCoordinator(true);
+        String runId = prepareCoordinator(state, true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
 
@@ -254,7 +275,7 @@ class AutoconfigRunStateTest {
     @Test
     void rejectedSnapshotDoesNotRegisterCandidates() {
         var state = newState();
-        String runId = state.prepareCoordinator(true);
+        String runId = prepareCoordinator(state, true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
 
@@ -279,7 +300,7 @@ class AutoconfigRunStateTest {
     @Test
     void acceptsMismatchedAndTimeBudgetProgressWithoutChangingMorkBudget() {
         var state = newState();
-        String runId = state.prepareCoordinator(true);
+        String runId = prepareCoordinator(state, true);
         state.publishGeneratedSearchSpace(1);
         state.markRunning(10);
         long evaluation = state.evaluationStarted(configuration("12", 1));
@@ -303,7 +324,7 @@ class AutoconfigRunStateTest {
     @Test
     void acceptsParameterOnlyCandidatesForCustomIraceBuilders() {
         var state = newState();
-        String runId = state.prepareCoordinator(false);
+        String runId = prepareCoordinator(state, false);
         state.markRunning(10);
         var parameters = Map.of("alpha", "0.1", "strategy", "custom");
 
@@ -321,14 +342,122 @@ class AutoconfigRunStateTest {
     @Test
     void workerHasNoCoordinatorLifecycleOrBudget() {
         var state = newState();
-        state.prepareWorker(false);
+        prepareWorker(state, false);
 
         var status = state.status();
         assertEquals(AutoconfigRunState.Role.WORKER, status.role());
-        assertEquals(AutoconfigRunState.RunStatus.NOT_STARTED, status.state());
+        assertEquals(AutoconfigRunState.RunStatus.RUNNING, status.state());
+        assertEquals(AutoconfigRunState.RunPhase.WAITING_FOR_WORK, status.phase());
         assertEquals(0, status.budget().maximum());
         assertFalse(status.irace().finalSnapshot());
         assertNull(status.irace().progress());
+    }
+
+    @Test
+    void exposesModeMetricAndDetailedCoordinatorPhases() {
+        var state = newState();
+        String runId = prepareCoordinator(state, true);
+
+        assertEquals(AutoconfigRunState.RunMode.AUTOCONFIG, state.status().mode());
+        assertEquals(AutoconfigRunState.RunPhase.PREPARING, state.status().phase());
+        assertEquals(AutoconfigRunState.RunStatus.PREPARING, state.status().state());
+        assertEquals(AutoconfigRunState.CostMetricKind.AREA_UNDER_CURVE, state.status().metric().kind());
+
+        state.markRunning(100);
+        assertEquals(AutoconfigRunState.RunPhase.CHECKING_SCENARIO, state.status().phase());
+        state.reportPhase(runId, AutoconfigRunState.RunPhase.RACING);
+        state.reportPhase(runId, AutoconfigRunState.RunPhase.RACING);
+        state.reportPhase(runId, AutoconfigRunState.RunPhase.POSTPROCESSING);
+
+        assertThrows(
+                IllegalStateException.class,
+                () -> state.reportPhase(runId, AutoconfigRunState.RunPhase.RACING)
+        );
+        assertThrows(
+                IllegalArgumentException.class,
+                () -> state.reportPhase(runId, AutoconfigRunState.RunPhase.PREPARING)
+        );
+
+        state.markCompleted();
+        assertEquals(AutoconfigRunState.RunStatus.COMPLETED, state.status().state());
+        assertThrows(IllegalStateException.class, () -> state.markFailed(new IllegalStateException("late")));
+    }
+
+    @Test
+    void firstCoordinatorEvaluationStartsRacingWithoutAPhaseCallback() {
+        var state = newState();
+        prepareCoordinator(state, false);
+        state.markRunning(10);
+
+        state.evaluationStarted(configuration("12", 1));
+
+        assertEquals(AutoconfigRunState.RunPhase.RACING, state.status().phase());
+    }
+
+    @Test
+    void recordsRevisionedEvaluationChangesAndResetsThemForANewRun() {
+        var state = newState();
+        prepareWorker(state, false);
+
+        long evaluationId = state.evaluationStarted(configuration("12", 1));
+        state.evaluationSucceeded(evaluationId, 4.5, 0.2, 0);
+
+        var firstPage = state.evaluationChanges(null, 1);
+        assertEquals(2, firstPage.latestRevision());
+        assertEquals(1, firstPage.nextRevision());
+        assertEquals(AutoconfigRunState.EvaluationState.RUNNING, firstPage.changes().getFirst().evaluation().state());
+
+        var secondPage = state.evaluationChanges(firstPage.nextRevision(), 1);
+        assertEquals(2, secondPage.nextRevision());
+        assertEquals(AutoconfigRunState.EvaluationState.SUCCEEDED, secondPage.changes().getFirst().evaluation().state());
+        assertEquals(4.5, secondPage.changes().getFirst().evaluation().cost());
+
+        prepareWorker(state, false);
+        assertEquals(0, state.status().latestEvaluationRevision());
+        assertTrue(state.evaluationChanges(null, null).changes().isEmpty());
+    }
+
+    @Test
+    void retainsOneReplaceableEliteSnapshotPerIteration() {
+        var state = newState();
+        String runId = prepareCoordinator(state, true);
+        state.publishGeneratedSearchSpace(1);
+        state.markRunning(20);
+
+        long first = state.evaluationStarted(configuration("12", 1));
+        state.evaluationSucceeded(first, 2, 0.1, 0);
+        long second = state.evaluationStarted(configuration("13", 2));
+        state.evaluationSucceeded(second, 1, 0.1, 0);
+
+        state.publishProgress(
+                runId,
+                1,
+                List.of(new EliteConfiguration("12", Map.of("ROOT", "TestAlgorithm"))),
+                experimentProgress(3, 20, 2, 18)
+        );
+        state.publishProgress(
+                runId,
+                1,
+                List.of(new EliteConfiguration("13", Map.of("ROOT", "TestAlgorithm"))),
+                experimentProgress(3, 20, 2, 18)
+        );
+        state.publishProgress(
+                runId,
+                3,
+                List.of(new EliteConfiguration("13", Map.of("ROOT", "TestAlgorithm"))),
+                experimentProgress(3, 20, 2, 18)
+        );
+
+        var history = state.eliteHistory();
+        assertEquals(List.of(1, 3), history.iterations().stream().map(AutoconfigRunState.EliteIterationSnapshot::iteration).toList());
+        assertEquals("13", history.iterations().getFirst().elites().getFirst().configurationId());
+
+        state.publishFinalElites(
+                runId,
+                List.of(new EliteConfiguration("12", Map.of("ROOT", "TestAlgorithm")))
+        );
+        assertEquals(2, state.eliteHistory().iterations().size());
+        assertEquals("12", state.eliteSnapshot().elites().getFirst().configurationId());
     }
 
     private static IraceProgressDetails experimentProgress(
@@ -362,6 +491,33 @@ class AutoconfigRunStateTest {
             return node;
         });
         return new AutoconfigRunState(builder);
+    }
+
+    private static String prepareCoordinator(AutoconfigRunState state, boolean automatic) {
+        return state.prepareCoordinator(mode(automatic), metric(automatic));
+    }
+
+    private static void prepareWorker(AutoconfigRunState state, boolean automatic) {
+        state.prepareWorker(mode(automatic), metric(automatic));
+    }
+
+    private static AutoconfigRunState.RunMode mode(boolean automatic) {
+        return automatic ? AutoconfigRunState.RunMode.AUTOCONFIG : AutoconfigRunState.RunMode.IRACE;
+    }
+
+    private static AutoconfigRunState.CostMetricSnapshot metric(boolean automatic) {
+        var kind = automatic
+                ? AutoconfigRunState.CostMetricKind.AREA_UNDER_CURVE
+                : AutoconfigRunState.CostMetricKind.OBJECTIVE;
+        var auc = automatic ? new AutoconfigRunState.AucSettings(10_000, 50_000, true) : null;
+        return new AutoconfigRunState.CostMetricSnapshot(
+                "objective",
+                FMode.MINIMIZE,
+                kind,
+                FMode.MINIMIZE,
+                false,
+                auc
+        );
     }
 
     private static IraceRuntimeConfiguration configuration(String configurationId, long seed) {

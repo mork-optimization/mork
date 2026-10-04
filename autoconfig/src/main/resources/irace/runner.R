@@ -84,6 +84,24 @@ report_progress <- function(iteration, elites, progress, ...) {
   })
 }
 
+report_phase <- function(phase) {
+  tryCatch({
+    response <- POST(
+      "http://127.0.0.1:__PORT__/internal/autoconfig/irace/phase",
+      timeout(30),
+      body = list(
+        key = integration_key,
+        runId = run_id,
+        phase = phase
+      ),
+      encode = "json"
+    )
+    stop_for_status(response)
+  }, error = function(error) {
+    warning("Could not publish IRACE phase: ", conditionMessage(error))
+  })
+}
+
 write_final_elites <- function(configurations) {
   jsonlite::write_json(
     list(elites = configuration_list(configurations)),
@@ -100,8 +118,10 @@ scenario$iterationCallback <- report_progress
 options(mork.irace.preflight = TRUE)
 checkIraceScenario(scenario = scenario)
 options(mork.irace.preflight = FALSE)
+report_phase("RACING")
 elite_configurations <- irace_main(scenario = scenario)
 write_final_elites(elite_configurations)
+report_phase("POSTPROCESSING")
 options(mork.irace.preflight = TRUE)
 ablation_log <- ablation_cmdline(c("-l", "irace.Rdata", "-s", "scenario.txt"))
 plotAblation(ablation_log, pdf_file = "plots.pdf", height = 20, type = c("rank", "boxplot"))
