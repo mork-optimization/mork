@@ -1,0 +1,359 @@
+<section class="component-page">
+  <div class="controls">
+    <mat-form-field appearance="outline">
+      <mat-label>Configurations</mat-label>
+      <mat-select
+        [value]="store.componentScope()"
+        (selectionChange)="store.selectComponentScope($event.value)"
+      >
+        <mat-option value="ALL">All evaluated candidates</mat-option>
+        <mat-option value="CURRENT_ELITES">Current elites</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Count by</mat-label>
+      <mat-select [value]="basis()" (selectionChange)="basis.set($event.value)">
+        <mat-option value="CANDIDATE">Candidate structures</mat-option>
+        <mat-option value="EVALUATION">Evaluation exposure</mat-option>
+      </mat-select>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Find component</mat-label>
+      <input matInput [value]="search()" (input)="updateSearch($event)" />
+    </mat-form-field>
+    <mat-button-toggle-group
+      [value]="view()"
+      (change)="view.set($event.value)"
+      aria-label="Component visualization"
+    >
+      <mat-button-toggle value="usage">Usage map</mat-button-toggle>
+      <mat-button-toggle value="matrix">Relationship matrix</mat-button-toggle>
+    </mat-button-toggle-group>
+  </div>
+  <p class="explanation">
+    @if (basis() === 'CANDIDATE') {
+      Count each unique configuration tree once. Repeated components within a tree count as separate
+      placements.
+    } @else {
+      Weight each placement by accepted evaluations, including evaluations that later fail or are
+      rejected.
+    }
+  </p>
+
+  @if (store.componentError(); as error) {
+    <p role="alert" class="warning">
+      {{ error }} <button mat-button (click)="store.refreshComponentUsage()">Retry</button>
+    </p>
+  }
+  @if (store.componentUsage(); as snapshot) {
+    <div class="totals">
+      <article>
+        <span>Decoded configurations</span
+        ><strong
+          >{{ snapshot.decodedConfigurationCount | number }} /
+          {{ snapshot.configurationCount | number }}</strong
+        >
+      </article>
+      <article>
+        <span>{{ basis() === 'CANDIDATE' ? 'Component placements' : 'Evaluation placements' }}</span
+        ><strong>{{
+          (basis() === 'CANDIDATE'
+            ? snapshot.candidatePlacementCount
+            : snapshot.evaluationPlacementCount
+          ) | number
+        }}</strong>
+      </article>
+      <article>
+        <span>Distinct components</span><strong>{{ snapshot.components.length | number }}</strong>
+      </article>
+      <article>
+        <span>Accepted evaluations</span><strong>{{ snapshot.evaluationCount | number }}</strong>
+      </article>
+    </div>
+    @if (snapshot.unavailableConfigurationCount > 0) {
+      <p class="warning">
+        {{ snapshot.unavailableConfigurationCount | number }} configurations have unavailable
+        component trees and are excluded from placement counts.
+      </p>
+    }
+    @if (snapshot.components.length === 0) {
+      <p class="empty">
+        {{
+          store.componentScope() === 'CURRENT_ELITES'
+            ? 'Elites appear after the first race checkpoint.'
+            : 'Component usage appears when the first decoded candidate is evaluated.'
+        }}
+      </p>
+    } @else if (components().length === 0) {
+      <p class="empty">No components match this search.</p>
+    } @else {
+      <div class="layout">
+        <mat-card appearance="outlined" class="visualization">
+          @if (view() === 'usage') {
+            <mat-card-header><mat-card-title>Component usage</mat-card-title></mat-card-header>
+            <mat-card-content>
+              <app-dashboard-chart [model]="treemap()" />
+              @if (basis() === 'EVALUATION' && snapshot.evaluationPlacementCount === 0) {
+                <p class="empty">
+                  These configurations have no accepted evaluations yet. Select candidate structures
+                  to inspect their composition.
+                </p>
+              }
+              <div class="component-list" aria-label="Select a component">
+                @for (component of components(); track component.name) {
+                  <button
+                    type="button"
+                    [class.selected]="selected()?.name === component.name"
+                    [attr.aria-pressed]="selected()?.name === component.name"
+                    (click)="selectComponent(component.name)"
+                  >
+                    <span>{{ component.name }}</span
+                    ><strong>{{ count(component) | number }}</strong>
+                  </button>
+                }
+              </div>
+            </mat-card-content>
+          } @else {
+            <mat-card-header
+              ><mat-card-title>Direct component relationships</mat-card-title></mat-card-header
+            >
+            <mat-card-content>
+              <div class="matrix-controls">
+                <mat-form-field appearance="outline"
+                  ><mat-label>Maximum rows / columns</mat-label>
+                  <mat-select
+                    [value]="matrixLimit()"
+                    (selectionChange)="matrixLimit.set($event.value)"
+                  >
+                    <mat-option [value]="10">10</mat-option><mat-option [value]="20">20</mat-option
+                    ><mat-option [value]="50">50</mat-option>
+                  </mat-select>
+                </mat-form-field>
+                <mat-button-toggle-group
+                  [value]="matrixPercent()"
+                  (change)="matrixPercent.set($event.value)"
+                  aria-label="Matrix values"
+                >
+                  <mat-button-toggle [value]="false">Count</mat-button-toggle>
+                  <mat-button-toggle [value]="true">% of parent configurations</mat-button-toggle>
+                </mat-button-toggle-group>
+              </div>
+              <p class="explanation">
+                Rows identify the parent and parameter role; columns identify the direct child. The
+                most frequent matching components are shown.
+              </p>
+              <div
+                class="matrix-scroll"
+                tabindex="0"
+                aria-label="Scrollable component relationship matrix"
+              >
+                <table class="matrix">
+                  <caption>
+                    Direct parent-role to child usage
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Parent · role</th>
+                      @for (column of matrix().columns; track column.name) {
+                        <th scope="col">{{ column.name }}</th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (row of matrix().rows; track row.parent + ':' + row.role) {
+                      <tr>
+                        <th scope="row">
+                          {{ row.parent }}<small>{{ row.role }}</small>
+                        </th>
+                        @for (edge of row.cells; track $index) {
+                          <td>
+                            @if (edge) {
+                              <button
+                                type="button"
+                                [style.background-color]="cellColor(edge)"
+                                [attr.aria-label]="cellDescription(edge)"
+                                (click)="selectRelationship(edge)"
+                              >
+                                {{ cellLabel(edge) }}
+                              </button>
+                            } @else {
+                              <span>—</span>
+                            }
+                          </td>
+                        }
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td [attr.colspan]="matrix().columns.length + 1">
+                          No direct relationships in this selection.
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+            </mat-card-content>
+          }
+        </mat-card>
+
+        @if (selected(); as component) {
+          <mat-card appearance="outlined" class="inspector">
+            <mat-card-header
+              ><mat-card-title>{{ component.name }}</mat-card-title
+              ><mat-card-subtitle>Component inspector</mat-card-subtitle></mat-card-header
+            >
+            <mat-card-content>
+              <dl>
+                <dt>Candidate placements</dt>
+                <dd>{{ component.candidatePlacements | number }}</dd>
+                <dt>Evaluation exposure</dt>
+                <dd>{{ component.evaluationPlacements | number }}</dd>
+                <dt>Configuration coverage</dt>
+                <dd>
+                  {{ component.configurationCount | number }} ({{
+                    selectedCoverage() | number: '1.0-1'
+                  }}%)
+                </dd>
+                <dt>Root placements / exposure</dt>
+                <dd>
+                  {{ component.rootCandidatePlacements | number }} /
+                  {{ component.rootEvaluationPlacements | number }}
+                </dd>
+              </dl>
+              <h3>Used by</h3>
+              <div class="relationships">
+                @for (edge of incoming(); track edge.parent + ':' + edge.role) {
+                  <button type="button" (click)="selectRelationship(edge)">
+                    <span
+                      ><strong>{{ edge.parent }}</strong
+                      ><small>{{ edge.role }}</small></span
+                    ><span
+                      >{{ count(edge) | number
+                      }}<small>{{ edge.configurationCount | number }} configurations</small></span
+                    >
+                  </button>
+                } @empty {
+                  <p>No direct parents; this component is used only at the root.</p>
+                }
+              </div>
+              <h3>Contains</h3>
+              <div class="relationships">
+                @for (edge of outgoing(); track edge.role + ':' + edge.child) {
+                  <button type="button" (click)="selectRelationship(edge)">
+                    <span
+                      ><strong>{{ edge.child }}</strong
+                      ><small>{{ edge.role }}</small></span
+                    ><span
+                      >{{ count(edge) | number
+                      }}<small>{{ edge.configurationCount | number }} configurations</small></span
+                    >
+                  </button>
+                } @empty {
+                  <p>No direct child components.</p>
+                }
+              </div>
+            </mat-card-content>
+          </mat-card>
+        }
+
+        @if (view() === 'usage' && (incoming().length > 0 || outgoing().length > 0)) {
+          <mat-card appearance="outlined" class="wide">
+            <mat-card-header
+              ><mat-card-title
+                >Neighborhood of {{ selected()?.name }}</mat-card-title
+              ></mat-card-header
+            >
+            <mat-card-content
+              ><app-dashboard-chart [model]="sankey()" />
+              <p class="explanation">
+                Direct parents → selected component → direct children. Up to ten relationships are
+                shown on each side; the inspector lists all relationships.
+              </p></mat-card-content
+            >
+          </mat-card>
+        }
+
+        <mat-card appearance="outlined" class="wide">
+          <mat-card-header
+            ><mat-card-title>Matching configurations</mat-card-title></mat-card-header
+          >
+          <mat-card-content>
+            @if (relationship(); as edge) {
+              <p>
+                {{ edge.parent }} → {{ edge.role }} → {{ edge.child }}
+                <button mat-button (click)="selectedEdge.set(null)">
+                  Show all using {{ selected()?.name }}
+                </button>
+              </p>
+            } @else {
+              <p>Configurations containing {{ selected()?.name }}</p>
+            }
+            @if (pageError(); as error) {
+              <p role="alert">
+                {{ error }} <button mat-button (click)="retryPage()">Retry</button>
+              </p>
+            }
+            <div class="table-scroll" [attr.aria-busy]="loading()">
+              <table class="candidate-table">
+                <thead>
+                  <tr>
+                    <th scope="col">Configuration</th>
+                    <th scope="col">Tree placements</th>
+                    <th scope="col">Evaluation exposure</th>
+                    <th scope="col">Running / succeeded / rejected / failed</th>
+                    <th scope="col">Elite rank</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (candidate of page()?.candidates ?? []; track candidate.configurationId) {
+                    <tr>
+                      <td>
+                        <button mat-button (click)="inspectCandidate(candidate.configurationId)">
+                          {{ candidate.configurationId }}
+                        </button>
+                      </td>
+                      <td>{{ candidate.occurrences | number }}</td>
+                      <td>{{ candidate.evaluationPlacements | number }}</td>
+                      <td>
+                        {{ candidate.evaluations.running }} /
+                        {{ candidate.evaluations.succeeded }} /
+                        {{ candidate.evaluations.rejected }} / {{ candidate.evaluations.failed }}
+                      </td>
+                      <td>{{ candidate.elitePosition ?? '—' }}</td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="5">
+                        {{ loading() ? 'Loading configurations…' : 'No matching configurations.' }}
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <div class="pagination">
+              <span>{{ page()?.total ?? 0 | number }} matching configurations</span>
+              <button
+                mat-button
+                [disabled]="offset() === 0 || loading()"
+                (click)="offset.set(offset() - 25)"
+              >
+                Previous
+              </button>
+              <span>Page {{ offset() / 25 + 1 }}</span>
+              <button
+                mat-button
+                [disabled]="page()?.nextOffset == null || loading()"
+                (click)="offset.set(page()?.nextOffset ?? 0)"
+              >
+                Next
+              </button>
+            </div>
+          </mat-card-content>
+        </mat-card>
+      </div>
+    }
+  } @else if (!store.componentError()) {
+    <p class="empty">Loading component usage…</p>
+  }
+</section>

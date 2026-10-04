@@ -213,6 +213,72 @@ All evaluation records remain available until the application starts a new run o
 memory together with at most two change records per evaluation, so large runs require proportionally more JVM
 heap; it does not persist records across restarts.
 
+## Component usage
+
+`GET /api/autoconfig/components/usage?scope=ALL` returns backend-aggregated composition statistics for the current
+automatic coordinator run. `scope` accepts `ALL` (the default, all evaluated configurations) or `CURRENT_ELITES`
+(only the latest elite set). Manual `--irace`, workers, and disabled runs return 404. The endpoint is available during
+preparation and returns an empty snapshot until data exists.
+
+The snapshot contains `runId`, `scope`, `latestEvaluationRevision`, `eliteUpdatedAt`, `configurationCount`,
+`decodedConfigurationCount`, `unavailableConfigurationCount`, `evaluationCount`, `candidatePlacementCount`,
+`evaluationPlacementCount`, `components`, and `relationships`. Unavailable trees remain in configuration and
+evaluation totals but contribute no placements. Each decoded tree is analyzed once, and the all-evaluated aggregate
+is updated incrementally; statistics are kept in memory and reset with the run.
+
+The two counting bases answer different questions:
+
+- **Candidate structures:** count each unique configuration tree once. A component repeated three times in one
+  tree contributes three `candidatePlacements` but only one `configurationCount` for that component.
+- **Evaluation exposure:** multiply each tree occurrence by the number of accepted evaluation starts. Running,
+  succeeded, rejected, and failed evaluations all contribute; completing an evaluation does not add exposure again.
+
+`ALL` includes a configuration after its first accepted evaluation. `CURRENT_ELITES` includes all current elites,
+including those with no local evaluations; these contribute structural placements but zero evaluation exposure.
+Replacing or publishing the final elite set changes the elite scope without modifying the all-evaluated aggregate.
+
+Each component entry has `name`, `candidatePlacements`, `configurationCount`, `evaluationPlacements`,
+`rootCandidatePlacements`, `rootConfigurationCount`, and `rootEvaluationPlacements`. Root counts include only
+placements at the algorithm root. Each relationship entry has `parent`, `role`, `child`, `candidatePlacements`,
+`configurationCount`, and `evaluationPlacements`. Relationships are direct parameter edges, not transitive paths;
+array roles use `parameter[]` (with another `[]` for each nested array level). Scalars do not contribute. Components
+are sorted by name; relationships are sorted by parent, role, then child.
+
+For example, a tree with two `Local` children in `Root.improvers`, evaluated three times, contributes:
+
+```json
+{
+  "parent": "Root",
+  "role": "improvers[]",
+  "child": "Local",
+  "candidatePlacements": 2,
+  "configurationCount": 1,
+  "evaluationPlacements": 6
+}
+```
+
+`GET /api/autoconfig/components/candidates` retrieves matching configurations without downloading their trees.
+Select either `component=Local` or an exact relationship using all three parameters
+`parent=Root&role=improvers%5B%5D&child=Local`. Mixed, missing, or blank selectors return 400. It also accepts:
+
+| Parameter | Default     | Values                    |
+|-----------|-------------|---------------------------|
+| `scope`   | `ALL`       | `ALL`, `CURRENT_ELITES`   |
+| `basis`   | `CANDIDATE` | `CANDIDATE`, `EVALUATION` |
+| `offset`  | `0`         | Nonnegative integer       |
+| `limit`   | `25`        | Integer from 1 to 100     |
+
+The response contains `runId`, `scope`, `total`, `offset`, nullable `nextOffset`, and `candidates`. Each row includes
+`configurationId`, `occurrences` in its tree, `evaluationPlacements`, nullable `elitePosition`, and the current
+`evaluations` counts. Rows are ordered by the selected basis descending, elite position ascending (non-elites last),
+then configuration ID lexicographically. Unknown components or relationships return an empty 200 page. Pages are
+live snapshots: counts and ordering can change between requests. Fetch `/candidates/{configurationId}` to inspect
+the complete tree and parameters.
+
+The Components dashboard uses a treemap for frequency, a focused direct-parent/direct-child Sankey for composition,
+and a role-aware relationship matrix for comparison. The matrix percentage is the relationship's distinct
+configuration count divided by the parent's distinct configuration count; it does not sum counts across roles.
+
 ## Artifacts
 
 `GET /api/autoconfig/artifacts` lists files currently available for the process-owned coordinator run. Each entry
@@ -240,7 +306,10 @@ A REST client can monitor a run without downloading repeated candidate descripti
 2. Fetch `/evaluations/changes` when `latestEvaluationRevision` advances and upsert its evaluation views.
 3. Refresh `/elites` and `/elites/history` when the iteration or elite update timestamp changes.
 4. Fetch `/candidates/{configurationId}` when the user opens an evaluation or elite.
-5. Refresh `/artifacts` during postprocessing and after a terminal state.
+5. In automatic coordinator runs, refresh `/components/usage` when the evaluation revision or elite update marker
+   changes, or when the user changes scope. Fetch matching component/relationship candidates on demand and refresh
+   the currently displayed page as the aggregate changes.
+6. Refresh `/artifacts` during postprocessing and after a terminal state.
 
 The existing generic Mork event API remains separate from these autoconfig snapshots.
 

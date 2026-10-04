@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.autoconfig.controller;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigArtifactService;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigRunState;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
+import es.urjc.etsii.grafo.autoconfig.service.ComponentUsage;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
@@ -103,6 +104,36 @@ public class AutoconfigController {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No artifacts are available for the current run");
         }
         return manifest;
+    }
+
+    @GetMapping("/components/usage")
+    public ComponentUsage.Snapshot componentUsage(
+            @RequestParam(defaultValue = "ALL") ComponentUsage.Scope scope
+    ) {
+        requireComponentUsage();
+        return runState.componentUsage(scope);
+    }
+
+    @GetMapping("/components/candidates")
+    public ComponentUsage.CandidatePage componentCandidates(
+            @RequestParam(defaultValue = "ALL") ComponentUsage.Scope scope,
+            @RequestParam(defaultValue = "CANDIDATE") ComponentUsage.Basis basis,
+            @RequestParam(required = false) String component,
+            @RequestParam(required = false) String parent,
+            @RequestParam(required = false) String role,
+            @RequestParam(required = false) String child,
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(defaultValue = "25") int limit
+    ) {
+        requireComponentUsage();
+        return runState.componentCandidates(scope, basis, component, parent, role, child, offset, limit);
+    }
+
+    private void requireComponentUsage() {
+        if (!runState.hasComponentUsage()) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND,
+                    "Component usage is only available for automatic coordinator runs");
+        }
     }
 
     @GetMapping("/artifacts/{artifactId}")

@@ -219,6 +219,12 @@ The generated `autoconfig-initial-configurations.txt` is written in the applicat
 The REST API retains every evaluation record in memory for the current run. See
 [Autoconfig REST API](autoconfig-rest-api.md) for monitoring and filtering evaluations.
 
+The automatic coordinator's dashboard also includes a **Components** tab. Explore which components occur most
+often, their direct parent roles and children, and the configurations that contain them. Switch between unique
+candidate-tree placements and evaluation-weighted exposure, and between all evaluated candidates and the current
+elites. A treemap summarizes frequency, a focused flow shows composition, and a role-aware matrix compares direct
+relationships. These statistics are aggregated by the backend for the active run.
+
 ## Troubleshooting
 
 If a component is missing from the generated space, check that it is public, under `advanced.scan-pkgs`, and either annotated with `@AlgorithmComponent` or extends an annotated component base class.

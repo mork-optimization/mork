@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -39,6 +40,7 @@ public class AutoconfigRunState {
     private final NavigableMap<Long, EvaluationChange> evaluationChanges = new TreeMap<>();
     private final NavigableMap<Integer, EliteIterationSnapshot> eliteHistory = new TreeMap<>();
     private final Map<String, MutableCandidate> candidates = new LinkedHashMap<>();
+    private ComponentUsageAggregator componentUsage = new ComponentUsageAggregator();
 
     private RunMode mode = RunMode.DISABLED;
     private Role role = Role.DISABLED;
@@ -208,6 +210,9 @@ public class AutoconfigRunState {
         evaluations.put(evaluationId, evaluation);
         used++;
         running++;
+        if (mode == RunMode.AUTOCONFIG && role == Role.COORDINATOR) {
+            componentUsage.add(candidate.footprint, candidate.totalEvaluations() == 0, 1);
+        }
         candidate.running++;
         recordEvaluationChange(evaluation);
         return evaluationId;
@@ -558,6 +563,68 @@ public class AutoconfigRunState {
         return candidate == null ? null : candidate.view();
     }
 
+    public synchronized boolean hasComponentUsage() {
+        return mode == RunMode.AUTOCONFIG && role == Role.COORDINATOR;
+    }
+
+    public synchronized ComponentUsage.Snapshot componentUsage(ComponentUsage.Scope scope) {
+        var aggregate = componentUsage;
+        if (scope == ComponentUsage.Scope.CURRENT_ELITES) {
+            aggregate = new ComponentUsageAggregator();
+            for (var elite : irace.elites()) {
+                var candidate = candidates.get(elite.configurationId());
+                aggregate.add(candidate.footprint, true, candidate.totalEvaluations());
+            }
+        }
+        return aggregate.snapshot(runId, scope, latestEvaluationRevision, irace.updatedAt());
+    }
+
+    public synchronized ComponentUsage.CandidatePage componentCandidates(
+            ComponentUsage.Scope scope, ComponentUsage.Basis basis,
+            String component, String parent, String role, String child, int offset, int limit
+    ) {
+        if (offset < 0 || limit < 1 || limit > 100) {
+            throw new IllegalArgumentException("Offset must be nonnegative and limit must be between 1 and 100");
+        }
+        boolean componentSelector = component != null;
+        boolean anyRelationship = parent != null || role != null || child != null;
+        if (componentSelector == anyRelationship || (componentSelector && component.isBlank())
+                || (anyRelationship && (parent == null || parent.isBlank() || role == null || role.isBlank()
+                || child == null || child.isBlank()))) {
+            throw new IllegalArgumentException("Select either a nonblank component or a complete parent, role and child relationship");
+        }
+        var elitePositions = new LinkedHashMap<String, Integer>();
+        for (var elite : irace.elites()) {
+            elitePositions.put(elite.configurationId(), elite.position());
+        }
+        var key = componentSelector ? null : new ComponentUsage.RelationshipKey(parent, role, child);
+        var matches = new ArrayList<ComponentUsage.Candidate>();
+        for (var candidate : candidates.values()) {
+            if (candidate.footprint == null
+                    || (scope == ComponentUsage.Scope.ALL && candidate.totalEvaluations() == 0)
+                    || (scope == ComponentUsage.Scope.CURRENT_ELITES && !elitePositions.containsKey(candidate.configurationId))) {
+                continue;
+            }
+            long occurrences = componentSelector
+                    ? candidate.footprint.components().getOrDefault(component, 0L)
+                    : candidate.footprint.relationships().getOrDefault(key, 0L);
+            if (occurrences > 0) {
+                matches.add(new ComponentUsage.Candidate(candidate.configurationId, occurrences,
+                        occurrences * candidate.totalEvaluations(), elitePositions.get(candidate.configurationId),
+                        candidate.evaluationCounts()));
+            }
+        }
+        Comparator<ComponentUsage.Candidate> ordering = Comparator.comparingLong(item ->
+                basis == ComponentUsage.Basis.CANDIDATE ? item.occurrences() : item.evaluationPlacements());
+        matches.sort(ordering.reversed()
+                .thenComparing(ComponentUsage.Candidate::elitePosition, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(ComponentUsage.Candidate::configurationId));
+        int end = (int) Math.min(matches.size(), (long) offset + limit);
+        var page = offset >= matches.size() ? List.<ComponentUsage.Candidate>of() : matches.subList(offset, end);
+        return new ComponentUsage.CandidatePage(runId, scope, matches.size(), offset,
+                end < matches.size() ? end : null, page);
+    }
+
     private void reset() {
         this.mode = RunMode.DISABLED;
         this.role = Role.DISABLED;
@@ -584,6 +651,7 @@ public class AutoconfigRunState {
         this.evaluationChanges.clear();
         this.eliteHistory.clear();
         this.candidates.clear();
+        this.componentUsage = new ComponentUsageAggregator();
     }
 
     private MutableCandidate candidate(String configurationId, Map<String, String> parameters) {
@@ -618,18 +686,27 @@ public class AutoconfigRunState {
     ) {
         JsonNode algorithm = null;
         String decodeError = null;
+        ComponentUsage.Footprint footprint = null;
         if (mode == RunMode.AUTOCONFIG) {
             try {
                 algorithm = algorithmBuilder.asJsonTree(new AlgorithmConfiguration(normalizedParameters));
             } catch (RuntimeException e) {
                 decodeError = safeMessage(e);
             }
+            if (algorithm != null && role == Role.COORDINATOR) {
+                try {
+                    footprint = ComponentUsageUtil.analyze(algorithm);
+                } catch (RuntimeException e) {
+                    log.warn("Component analytics unavailable for configuration {}", configurationId, e);
+                }
+            }
         }
         var candidate = new MutableCandidate(
                 configurationId,
                 normalizedParameters,
                 algorithm,
-                decodeError
+                decodeError,
+                footprint
         );
         return candidate;
     }
@@ -913,6 +990,7 @@ public class AutoconfigRunState {
         private final Map<String, String> parameters;
         private final JsonNode algorithm;
         private final String decodeError;
+        private final ComponentUsage.Footprint footprint;
         private long running;
         private long succeeded;
         private long rejected;
@@ -923,12 +1001,22 @@ public class AutoconfigRunState {
                 String configurationId,
                 Map<String, String> parameters,
                 JsonNode algorithm,
-                String decodeError
+                String decodeError,
+                ComponentUsage.Footprint footprint
         ) {
             this.configurationId = configurationId;
             this.parameters = parameters;
             this.algorithm = algorithm;
             this.decodeError = decodeError;
+            this.footprint = footprint;
+        }
+
+        private long totalEvaluations() {
+            return running + succeeded + rejected + failed;
+        }
+
+        private CandidateEvaluationCounts evaluationCounts() {
+            return new CandidateEvaluationCounts(running, succeeded, rejected, failed, slow);
         }
 
         private CandidateView view() {
@@ -937,7 +1025,7 @@ public class AutoconfigRunState {
                     parameters,
                     algorithm,
                     decodeError,
-                    new CandidateEvaluationCounts(running, succeeded, rejected, failed, slow)
+                    evaluationCounts()
             );
         }
     }

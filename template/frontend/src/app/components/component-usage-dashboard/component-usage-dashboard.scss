@@ -1,0 +1,218 @@
+:host {
+  display: block;
+}
+.component-page {
+  padding: 1.4rem 0;
+}
+.controls,
+.matrix-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  align-items: center;
+}
+.controls mat-form-field {
+  flex: 1 1 12rem;
+}
+.explanation {
+  color: #526477;
+  line-height: 1.5;
+  font-size: 0.9rem;
+  margin: 0.5rem 0 1.25rem;
+}
+.totals {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+  margin-bottom: 1.4rem;
+}
+.totals article {
+  border: 1px solid #d9e3ec;
+  border-radius: 0.8rem;
+  padding: 1rem;
+  background: #fff;
+}
+.totals span,
+.totals strong {
+  display: block;
+}
+.totals span {
+  color: #526477;
+  font-size: 0.85rem;
+}
+.totals strong {
+  color: #174b80;
+  margin-top: 0.4rem;
+  font-size: 1.5rem;
+}
+.warning {
+  background: #fff5dc;
+  padding: 0.8rem 1rem;
+  border-radius: 0.6rem;
+}
+.empty {
+  padding: 2rem;
+  text-align: center;
+  color: #526477;
+}
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(18rem, 1fr);
+  gap: 1.25rem;
+}
+.layout > * {
+  min-width: 0;
+}
+.wide {
+  grid-column: 1 / -1;
+}
+mat-card-header {
+  margin-bottom: 1rem;
+}
+.component-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.3rem;
+  max-height: 15rem;
+  overflow: auto;
+  margin-top: 1rem;
+}
+.component-list button,
+.relationships button {
+  border: 0;
+  background: #f3f7fb;
+  cursor: pointer;
+  border-radius: 0.4rem;
+  padding: 0.65rem;
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  text-align: left;
+  color: #193b59;
+}
+.component-list button.selected {
+  background: #d5e8f7;
+  outline: 2px solid #2265a7;
+  outline-offset: -2px;
+}
+.component-list span {
+  overflow-wrap: anywhere;
+}
+.relationships {
+  max-height: 17rem;
+  overflow: auto;
+  display: grid;
+  gap: 0.35rem;
+}
+.relationships small {
+  display: block;
+  color: #526477;
+  margin-top: 0.25rem;
+}
+.relationships button > span:last-child {
+  text-align: right;
+}
+.relationships p {
+  color: #526477;
+}
+dl {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.8rem;
+  font-size: 0.9rem;
+}
+dt {
+  color: #526477;
+}
+dd {
+  margin: 0;
+  text-align: right;
+}
+h3 {
+  font-size: 1rem;
+  margin: 1.4rem 0 0.7rem;
+}
+.matrix-scroll,
+.table-scroll {
+  overflow: auto;
+}
+table {
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.85rem;
+  width: 100%;
+}
+th,
+td {
+  padding: 0.65rem;
+  border-bottom: 1px solid #dce5ee;
+  text-align: left;
+}
+th {
+  color: #526477;
+  font-weight: 600;
+}
+.matrix caption {
+  text-align: left;
+  padding: 0.5rem 0;
+  color: #526477;
+}
+.matrix th {
+  min-width: 7rem;
+}
+.matrix th small {
+  display: block;
+  margin-top: 0.2rem;
+  font-weight: 400;
+}
+.matrix tbody th {
+  position: sticky;
+  left: 0;
+  background: white;
+  z-index: 1;
+}
+.matrix td {
+  padding: 0.2rem;
+  text-align: center;
+}
+.matrix td button {
+  width: 100%;
+  min-width: 5rem;
+  min-height: 2.8rem;
+  border: 0;
+  border-radius: 0.25rem;
+  cursor: pointer;
+  color: #112e3b;
+}
+.pagination {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.7rem;
+  margin-top: 0.8rem;
+}
+.pagination > span:first-child {
+  margin-right: auto;
+}
+@media (max-width: 1050px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+  .totals {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 600px) {
+  .component-list {
+    grid-template-columns: 1fr;
+  }
+  .controls mat-button-toggle-group,
+  .matrix-controls mat-button-toggle-group {
+    max-width: 100%;
+    overflow: auto;
+  }
+  .totals strong {
+    font-size: 1.2rem;
+  }
+}
