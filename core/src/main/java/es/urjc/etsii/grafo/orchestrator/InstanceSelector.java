@@ -14,6 +14,8 @@ import org.slf4j.LoggerFactory;
 
 import java.util.*;
 
+import static es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.*;
+
 public class InstanceSelector<I extends Instance> extends InstanceProperties<I> {
 
     private static final Logger log = LoggerFactory.getLogger(InstanceSelector.class);
@@ -30,15 +32,19 @@ public class InstanceSelector<I extends Instance> extends InstanceProperties<I> 
     @Override
     public void run(String... args) {
         long start = System.nanoTime();
+        var outcome = SUCCEEDED;
         try {
             eventPublisher.publish(new ExecutionStartedEvent(Context.getObjectivesW(), List.of("Instance analysis")));
             analyzeInstances();
             log.info("Launching selector");
             selectInstances();
             log.info("Completed");
+        } catch (RuntimeException | Error e) {
+            outcome = FAILED;
+            throw e;
         } finally {
             long end = System.nanoTime();
-            lifecycleCoordinator.complete(end - start);
+            lifecycleCoordinator.complete(end - start, outcome);
         }
     }
 

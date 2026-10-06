@@ -6,6 +6,10 @@ import {
   ArtifactManifest,
   AutoconfigStatus,
   CandidateView,
+  ComponentCandidatePage,
+  ComponentCandidateQuery,
+  ComponentUsageScope,
+  ComponentUsageSnapshot,
   EliteHistorySnapshot,
   EliteSnapshot,
   EvaluationChangePage,
@@ -18,6 +22,28 @@ export class AutoconfigClient {
 
   getStatus(): Promise<AutoconfigStatus> {
     return firstValueFrom(this.http.get<AutoconfigStatus>(this.endpoint('/status')));
+  }
+
+  getComponentUsage(scope: ComponentUsageScope): Promise<ComponentUsageSnapshot> {
+    return firstValueFrom(
+      this.http.get<ComponentUsageSnapshot>(this.endpoint('/components/usage'), {
+        params: { scope },
+      }),
+    );
+  }
+
+  getComponentCandidates(query: ComponentCandidateQuery): Promise<ComponentCandidatePage> {
+    return firstValueFrom(
+      this.http.get<ComponentCandidatePage>(this.endpoint('/components/candidates'), {
+        params: {
+          scope: query.scope,
+          basis: query.basis,
+          offset: query.offset,
+          limit: query.limit,
+          ...query.selector,
+        },
+      }),
+    );
   }
 
   getEvaluationChanges(after: number, limit: number): Promise<EvaluationChangePage> {

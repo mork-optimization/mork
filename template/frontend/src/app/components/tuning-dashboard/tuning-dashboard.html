@@ -72,7 +72,7 @@
   <mat-tab-group
     animationDuration="150ms"
     [selectedIndex]="selectedTab()"
-    (selectedIndexChange)="selectTab($event)"
+    (selectedTabChange)="selectTab($event)"
   >
     <mat-tab label="Overview">
       <section class="tab-page overview">
@@ -286,6 +286,12 @@
         </mat-card>
       </section>
     </mat-tab>
+
+    @if (status?.mode === 'AUTOCONFIG') {
+      <mat-tab label="Components">
+        <ng-template matTabContent><app-component-usage-dashboard /></ng-template>
+      </mat-tab>
+    }
 
     <mat-tab label="Artifacts">
       <section class="tab-page">

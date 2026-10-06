@@ -136,7 +136,7 @@ class WorkUnitResultTest {
     }
 
     private WorkUnitResult<TestSolution, TestInstance> successfulResult(TestSolution solution) {
-        var workUnit = new WorkUnit<TestSolution, TestInstance>("experiment", "path", new TestAlgorithm(), 1);
+        var workUnit = new WorkUnit<>(UUID.randomUUID(), "experiment", "path", new TestAlgorithm(), 1);
         return WorkUnitResult.ok(UUID.randomUUID(), workUnit, instance.getId(), solution, 10, 5, new MetricsStorage());
     }
 

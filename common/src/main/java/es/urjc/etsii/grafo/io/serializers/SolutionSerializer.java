@@ -12,8 +12,10 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 
 import static es.urjc.etsii.grafo.util.IOUtil.createFolder;
 
@@ -53,7 +55,7 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      * Write a solution to disk.
      * @param r result of execution
      */
-    public final void exportSolution(WorkUnitResult<S,I> r) {
+    public final List<Path> exportSolution(WorkUnitResult<S,I> r) {
         var solution = r.solution();
         var instance = solution.getInstance();
         // r.workUnit().experimentName(), r.workUnit().algorithm(), r.solution(), String.valueOf(r.workUnit().i())
@@ -62,12 +64,13 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
         var solutionFolder = this.config.getFolder();
         createFolder(solutionFolder);
         long start = System.nanoTime();
-        this.export(solutionFolder, filename, r);
+        var files = this.export(solutionFolder, filename, r);
         long elapsed = System.nanoTime() - start;
         if(elapsed > WARN_THRESHOLD && !warnedSlow){
             log.warn("Slow serialization detected in {}, last execution took {} ms. Consider using a faster format, or use an async event listener to improve performance", this.getClass().getSimpleName(), elapsed / TimeUtil.NANOS_IN_MILLISECOND);
             warnedSlow = true;
         }
+        return files;
     }
 
     /**
@@ -89,13 +92,14 @@ public abstract class SolutionSerializer<S extends Solution<S, I>, I extends Ins
      * @param suggestedFilename Suggested filename, can be ignored by the implementation
      * @param result result to export, contains solution and extra data
      */
-    public void export(String folder, String suggestedFilename, WorkUnitResult<S,I> result) {
+    public List<Path> export(String folder, String suggestedFilename, WorkUnitResult<S,I> result) {
         var f = new File(folder, suggestedFilename);
         try (var bw = new BufferedWriter(new FileWriter(f))) {
             this.export(bw, result);
         } catch (IOException e) {
-            log.warn("IOException exporting solution, skipping.", e);
+            throw new IllegalStateException("Solution export failed", e);
         }
+        return List.of(f.toPath());
     }
 
     /**

@@ -4,6 +4,10 @@ import {
   ArtifactManifest,
   AutoconfigStatus,
   CandidateView,
+  ComponentCandidatePage,
+  ComponentCandidateQuery,
+  ComponentUsageScope,
+  ComponentUsageSnapshot,
   EliteHistorySnapshot,
   EliteSnapshot,
   EvaluationView,
@@ -41,6 +45,9 @@ export class AutoconfigStore {
   private readonly destroyRef = inject(DestroyRef);
 
   private readonly statusSignal = signal<AutoconfigStatus | null>(null);
+  private readonly componentUsageSignal = signal<ComponentUsageSnapshot | null>(null);
+  private readonly componentScopeSignal = signal<ComponentUsageScope>('ALL');
+  private readonly componentErrorSignal = signal<string | null>(null);
   private readonly syncStateSignal = signal<TuningSyncState>('detecting');
   private readonly latestErrorSignal = signal<string | null>(null);
   private readonly evaluationsSignal = signal<readonly EvaluationView[]>([]);
@@ -59,6 +66,8 @@ export class AutoconfigStore {
   private currentRunId: string | null = null;
   private evaluationRevision = 0;
   private eliteMarker: string | null = null;
+  private componentMarker: string | null = null;
+  private componentRequest = 0;
   private searchSpaceLoaded = false;
   private lastArtifactFetch = 0;
   private lastArtifactPhase: string | null = null;
@@ -66,6 +75,9 @@ export class AutoconfigStore {
   private destroyed = false;
 
   readonly status = this.statusSignal.asReadonly();
+  readonly componentUsage = this.componentUsageSignal.asReadonly();
+  readonly componentScope = this.componentScopeSignal.asReadonly();
+  readonly componentError = this.componentErrorSignal.asReadonly();
   readonly syncState = this.syncStateSignal.asReadonly();
   readonly latestError = this.latestErrorSignal.asReadonly();
   readonly evaluations = this.evaluationsSignal.asReadonly();
@@ -168,9 +180,41 @@ export class AutoconfigStore {
     if (cached) {
       return cached;
     }
+    const runId = this.currentRunId;
     const candidate = await this.client.getCandidate(configurationId);
-    this.candidateCache.set(configurationId, candidate);
+    if (runId !== this.currentRunId) {
+      throw new Error('Candidate belongs to an obsolete autoconfig run');
+    }
+    // Evaluation totals may change while the dialog is open; only reuse immutable trees after completion.
+    if (this.statusSignal()?.state === 'COMPLETED' || this.statusSignal()?.state === 'FAILED') {
+      this.candidateCache.set(configurationId, candidate);
+    }
     return candidate;
+  }
+
+  selectComponentScope(scope: ComponentUsageScope): void {
+    if (scope === this.componentScopeSignal()) {
+      return;
+    }
+    this.componentScopeSignal.set(scope);
+    this.componentUsageSignal.set(null);
+    this.componentMarker = null;
+    const status = this.statusSignal();
+    if (status) {
+      void this.synchronizeComponentUsage(status);
+    }
+  }
+
+  loadComponentCandidates(query: ComponentCandidateQuery): Promise<ComponentCandidatePage> {
+    return this.client.getComponentCandidates(query);
+  }
+
+  refreshComponentUsage(): void {
+    this.componentMarker = null;
+    const status = this.statusSignal();
+    if (status) {
+      void this.synchronizeComponentUsage(status);
+    }
   }
 
   async refreshArtifacts(): Promise<void> {
@@ -239,6 +283,7 @@ export class AutoconfigStore {
     await this.synchronizeEvaluations(status);
     await this.synchronizeElites(status);
     await this.synchronizeSearchSpace(status);
+    await this.synchronizeComponentUsage(status);
     await this.synchronizeArtifacts(status);
   }
 
@@ -308,6 +353,38 @@ export class AutoconfigStore {
     }
   }
 
+  private async synchronizeComponentUsage(status: AutoconfigStatus): Promise<void> {
+    if (status.mode !== 'AUTOCONFIG' || status.role !== 'COORDINATOR' || !status.runId) {
+      return;
+    }
+    const scope = this.componentScopeSignal();
+    const marker = `${status.runId}|${scope}|${status.latestEvaluationRevision}|${status.irace.updatedAt ?? ''}|${status.irace.finalSnapshot}`;
+    if (marker === this.componentMarker) {
+      return;
+    }
+    const request = ++this.componentRequest;
+    try {
+      const snapshot = await this.client.getComponentUsage(scope);
+      if (
+        this.destroyed ||
+        request !== this.componentRequest ||
+        scope !== this.componentScopeSignal()
+      ) {
+        return;
+      }
+      if (snapshot.runId !== this.currentRunId || snapshot.scope !== scope) {
+        throw new Error('Component usage belongs to a different run or scope');
+      }
+      this.componentUsageSignal.set(snapshot);
+      this.componentMarker = marker;
+      this.componentErrorSignal.set(null);
+    } catch (error: unknown) {
+      if (request === this.componentRequest && !this.destroyed) {
+        this.componentErrorSignal.set(this.errorMessage(error));
+      }
+    }
+  }
+
   private async synchronizeArtifacts(status: AutoconfigStatus): Promise<void> {
     const now = Date.now();
     const phaseChanged = status.phase !== this.lastArtifactPhase;
@@ -372,6 +449,11 @@ export class AutoconfigStore {
     this.evaluationRevision = 0;
     this.evaluationMap.clear();
     this.candidateCache.clear();
+    this.componentRequest++;
+    this.componentUsageSignal.set(null);
+    this.componentScopeSignal.set('ALL');
+    this.componentErrorSignal.set(null);
+    this.componentMarker = null;
     this.evaluationsSignal.set([]);
     this.elitesSignal.set(null);
     this.eliteHistorySignal.set(null);

@@ -1,356 +1,223 @@
 import { TestBed } from '@angular/core/testing';
-import { Subject } from 'rxjs';
-import { EventClient } from '../service/event-client';
-import { MorkEventEnvelope } from '../model/Events';
+import { BehaviorSubject, Subject } from 'rxjs';
 import { DashboardStore } from './dashboard-store';
+import { ExperimentClient } from '../service/experiment-client';
+import { EventClient, EventConnectionState } from '../service/event-client';
+import { MorkEventEnvelope } from '../model/Events';
+import { normalDetail, normalStatus, normalResult } from '../testing/normal-experiment-fixture';
+import { InstanceQuery, ResultQuery, WorkState } from '../model/normal-experiment';
 
-class FakeEventClient {
-  readonly envelopesSubject = new Subject<MorkEventEnvelope>();
-  readonly connectedSubject = new Subject<void>();
-  readonly disconnectedSubject = new Subject<void>();
-  readonly errorsSubject = new Subject<unknown>();
-
-  readonly envelopes$ = this.envelopesSubject.asObservable();
-  readonly connected$ = this.connectedSubject.asObservable();
-  readonly disconnected$ = this.disconnectedSubject.asObservable();
-  readonly errors$ = this.errorsSubject.asObservable();
-
-  history: MorkEventEnvelope[] = [];
-  readonly start = vi.fn();
-  readonly getLastEvent = vi.fn(async (): Promise<MorkEventEnvelope | null> => {
-    return this.history.at(-1) ?? null;
-  });
-  readonly getEvents = vi.fn(
-    async (from: number, to: number): Promise<readonly MorkEventEnvelope[]> => {
-      return this.history.filter((event) => event.eventId >= from && event.eventId < to);
-    },
+class FakeClient {
+  status = normalStatus();
+  getStatus = vi.fn(async () => this.status);
+  getInstances = vi.fn(async (runId: string, query: InstanceQuery) => ({
+    runId,
+    revision: this.status.revision,
+    total: 12,
+    offset: query.offset,
+    limit: query.limit,
+    items: Array.from({ length: Math.min(query.limit, 12 - query.offset) }, (_, index) => ({
+      ...normalDetail('instance-' + (query.offset + index)).instance,
+      revision: this.status.revision,
+    })),
+  }));
+  getInstance = vi.fn(async (runId: string, id: string, objective: string) =>
+    normalDetail(id, objective, { runId, revision: this.status.revision }),
   );
+  getResults = vi.fn(async (runId: string, query: ResultQuery) => ({
+    runId,
+    revision: this.status.revision,
+    total: 1,
+    offset: query.offset,
+    limit: query.limit,
+    items: [normalResult()],
+  }));
+  getIssues = vi.fn(async (runId: string) => ({
+    runId,
+    revision: this.status.revision,
+    total: 0,
+    offset: 0,
+    limit: 25,
+    items: [],
+  }));
+  getArtifacts = vi.fn(async (runId: string) => ({ runId, artifacts: [] }));
+  getResult = vi.fn(async (runId: string) => ({
+    runId,
+    revision: 1,
+    result: normalResult(),
+    issues: [],
+    rendering: { state: 'UNSUPPORTED' as const, rendererId: null, data: {} },
+  }));
+}
+class FakeEvents {
+  state$ = new BehaviorSubject<EventConnectionState>('live');
+  envelopes$ = new Subject<MorkEventEnvelope>();
+  connected$ = new Subject<void>();
+  errors$ = new Subject<unknown>();
+  lastEventId = 0;
+  start = vi.fn();
+  retryNow = vi.fn();
 }
 
-function envelope(eventId: number, type: string, payload: object = {}): MorkEventEnvelope {
-  return {
-    eventId,
-    type,
-    timestamp: eventId + 1_000,
-    workerName: 'test-worker',
-    payload,
-  } as MorkEventEnvelope;
-}
-
-function executionStarted(
-  eventId: number,
-  objectives: Readonly<Record<string, 'MINIMIZE' | 'MAXIMIZE'>> = {
-    Cost: 'MINIMIZE',
-    Quality: 'MAXIMIZE',
-  },
-): MorkEventEnvelope {
-  return envelope(eventId, 'ExecutionStartedEvent', {
-    objectives,
-    experimentNames: ['Benchmark'],
-  });
-}
-
-function experimentStarted(eventId: number, instanceNames = ['alpha.dat']): MorkEventEnvelope {
-  return envelope(eventId, 'ExperimentStartedEvent', {
-    experimentName: 'Benchmark',
-    instanceNames,
-  });
-}
-
-function instanceStarted(eventId: number, instanceName = 'alpha.dat'): MorkEventEnvelope {
-  return envelope(eventId, 'InstanceProcessingStartedEvent', {
-    experimentName: 'Benchmark',
-    instanceName,
-    algorithms: ['Greedy'],
-    repetitions: 3,
-    refValues: { Cost: 6, Quality: 6 },
-  });
-}
-
-function algorithmStarted(eventId: number, instanceName = 'alpha.dat'): MorkEventEnvelope {
-  return envelope(eventId, 'AlgorithmProcessingStartedEvent', {
-    experimentName: 'Benchmark',
-    instanceName,
-    algorithmName: 'Greedy',
-    repetitions: 3,
-  });
-}
-
-function solution(
-  eventId: number,
-  resultId: string,
-  success: boolean,
-  cost: number,
-  quality: number,
-  iteration: string,
-): MorkEventEnvelope {
-  return envelope(eventId, 'SolutionGeneratedEvent', {
-    resultId,
-    success,
-    experimentName: 'Benchmark',
-    instanceName: 'alpha.dat',
-    algorithmName: 'Greedy',
-    iteration,
-    objectives: { Cost: cost, Quality: quality },
-    score: cost,
-    executionTime: 10,
-    timeToBest: 5,
-  });
-}
-
-async function connect(store: DashboardStore, client: FakeEventClient): Promise<void> {
-  store.start();
-  client.connectedSubject.next();
-  await vi.waitFor(() => {
-    expect(['live', 'finished']).toContain(store.connectionState());
-  });
-}
-
-describe('DashboardStore', () => {
-  let client: FakeEventClient;
-  let store: DashboardStore;
-
+describe('DashboardStore backend snapshots', () => {
+  let client: FakeClient, events: FakeEvents, store: DashboardStore;
   beforeEach(() => {
-    client = new FakeEventClient();
+    vi.useFakeTimers();
+    localStorage.clear();
+    client = new FakeClient();
+    events = new FakeEvents();
     TestBed.configureTestingModule({
-      providers: [DashboardStore, { provide: EventClient, useValue: client }],
+      providers: [
+        DashboardStore,
+        { provide: ExperimentClient, useValue: client },
+        { provide: EventClient, useValue: events },
+      ],
     });
     store = TestBed.inject(DashboardStore);
+    store.start();
   });
-
-  afterEach(() => TestBed.resetTestingModule());
-
-  it('reduces the full lifecycle, counts failures, and recomputes charts for each objective', async () => {
-    client.history = [
-      executionStarted(0),
-      experimentStarted(1),
-      instanceStarted(2),
-      algorithmStarted(3),
-      solution(4, '00000000-0000-0000-0000-000000000004', false, 1, 100, 'failed-iteration'),
-      solution(5, '00000000-0000-0000-0000-000000000005', true, 10, 5, 'phase-A'),
-      solution(6, '00000000-0000-0000-0000-000000000006', true, 7, 3, 'phase-B'),
-      envelope(7, 'AlgorithmProcessingEndedEvent', {
-        experimentName: 'Benchmark',
-        instanceName: 'alpha.dat',
-        algorithmName: 'Greedy',
-        repetitions: 3,
-      }),
-      envelope(8, 'InstanceProcessingEndedEvent', {
-        experimentName: 'Benchmark',
-        instanceName: 'alpha.dat',
-        executionTime: 20,
-        experimentStartTime: 1,
-      }),
-      envelope(9, 'ExperimentEndedEvent', {
-        experimentName: 'Benchmark',
-        executionTime: 30,
-        experimentStartTime: 1,
-      }),
-      envelope(10, 'ExecutionEndedEvent', { executionTime: 40 }),
-    ];
-
-    await connect(store, client);
-
-    expect(store.connectionState()).toBe('finished');
-    expect(store.processedEventCount()).toBe(11);
-    expect(store.progress()).toEqual({
-      instances: { completed: 1, total: 1 },
-      algorithms: { completed: 1, total: 1 },
-      repetitions: { completed: 3, total: 3 },
-    });
+  afterEach(() => {
+    TestBed.resetTestingModule();
+    vi.useRealTimers();
+  });
+  async function flush(): Promise<void> {
+    await vi.advanceTimersByTimeAsync(0);
+  }
+  it('uses authoritative totals, including failures, and defaults to the first objective', async () => {
+    await flush();
     expect(store.selectedObjective()).toBe('Cost');
-    expect(store.instances()[0]?.bestSolution?.resultId).toBe(
-      '00000000-0000-0000-0000-000000000006',
-    );
-
-    const costSeries = store.instances()[0]?.convergenceChart.options.series?.[0] as {
-      data: Array<{ x: number; y: number; custom: { iteration: string } }>;
-    };
-    expect(costSeries.data).toEqual([
-      { x: 2, y: 10, custom: { iteration: 'phase-A' } },
-      { x: 3, y: 7, custom: { iteration: 'phase-B' } },
-    ]);
-
-    store.selectObjective('Quality');
-    expect(store.instances()[0]?.bestSolution?.resultId).toBe(
-      '00000000-0000-0000-0000-000000000005',
-    );
-    const qualitySeries = store.instances()[0]?.convergenceChart.options.series?.[0] as {
-      data: Array<{ x: number; y: number; custom: { iteration: string } }>;
-    };
-    expect(qualitySeries.data).toEqual([
-      { x: 2, y: 5, custom: { iteration: 'phase-A' } },
-      { x: 3, y: 5, custom: { iteration: 'phase-B' } },
-    ]);
+    expect(store.progress().repetitions).toEqual({ completed: 2, total: 2 });
+    expect(store.charts()?.bestSolution?.resultId).toBe('result-0');
   });
-
-  it('advances repetition progress for a failed result but excludes it from charts', async () => {
-    await connect(store, client);
-    client.envelopesSubject.next(executionStarted(0));
-    client.envelopesSubject.next(experimentStarted(1));
-    client.envelopesSubject.next(instanceStarted(2));
-    client.envelopesSubject.next(algorithmStarted(3));
-    client.envelopesSubject.next(
-      solution(4, '00000000-0000-0000-0000-000000000004', false, 1, 100, 'failed'),
-    );
-
-    expect(store.progress().repetitions).toEqual({ completed: 1, total: 3 });
-    store.selectObjective('Quality');
-    expect(store.instances()[0]?.bestSolution).toBeNull();
-    const series = store.instances()[0]?.scoreChart.options.series?.[0] as { data: unknown[] };
-    expect(series.data).toEqual([]);
-  });
-
-  it('throttles chart publication and flushes immediately when an instance completes', async () => {
-    await connect(store, client);
-    client.envelopesSubject.next(executionStarted(0));
-    client.envelopesSubject.next(experimentStarted(1));
-    client.envelopesSubject.next(instanceStarted(2));
-    client.envelopesSubject.next(algorithmStarted(3));
-    expect(store.instances()[0]?.scoreChart.options.series?.[0]).toMatchObject({ data: [] });
-
-    vi.useFakeTimers();
-    try {
-      client.envelopesSubject.next(
-        solution(4, '00000000-0000-0000-0000-000000000004', true, 10, 5, 'first'),
-      );
-      expect(store.instances()[0]?.scoreChart.options.series?.[0]).toMatchObject({ data: [] });
-
-      vi.advanceTimersByTime(2_000);
-      expect(store.instances()[0]?.scoreChart.options.series?.[0]).toMatchObject({
-        data: [{ x: 1, y: 10, custom: { iteration: 'first' } }],
-      });
-
-      client.envelopesSubject.next(
-        solution(5, '00000000-0000-0000-0000-000000000005', true, 7, 3, 'second'),
-      );
-      client.envelopesSubject.next(
-        envelope(6, 'InstanceProcessingEndedEvent', {
-          experimentName: 'Benchmark',
-          instanceName: 'alpha.dat',
-          executionTime: 20,
-          experimentStartTime: 1,
-        }),
-      );
-      expect(store.instances()[0]?.scoreChart.options.series?.[0]).toMatchObject({
-        data: [
-          { x: 1, y: 10, custom: { iteration: 'first' } },
-          { x: 2, y: 7, custom: { iteration: 'second' } },
-        ],
-      });
-    } finally {
-      vi.useRealTimers();
-    }
-  });
-
-  it('downloads history in exact 1,000-event batches', async () => {
-    for (let eventId = 0; eventId <= 2_000; eventId++) {
-      client.history.push(envelope(eventId, 'PingEvent'));
-    }
-
-    await connect(store, client);
-
-    expect(client.getEvents.mock.calls).toEqual([
-      [0, 1_000],
-      [1_000, 2_000],
-      [2_000, 2_001],
-    ]);
-    expect(store.processedEventCount()).toBe(2_001);
-    expect(store.lastEventId()).toBe(2_000);
-  });
-
-  it('merges events that arrive while history is downloading', async () => {
-    client.history = [envelope(0, 'PingEvent'), envelope(1, 'PingEvent'), envelope(2, 'PingEvent')];
-    let emittedLiveEvent = false;
-    client.getEvents.mockImplementation(async (from: number, to: number) => {
-      if (!emittedLiveEvent) {
-        emittedLiveEvent = true;
-        client.envelopesSubject.next(envelope(3, 'CustomEvent', { value: 42 }));
-      }
-      return client.history.filter((event) => event.eventId >= from && event.eventId < to);
+  it('does not manufacture completion or erase the final experiment', async () => {
+    await flush();
+    client.status = normalStatus({
+      revision: 2,
+      phase: 'FAILED',
+      completedInstances: 0,
+      counts: { planned: 10, pending: 0, running: 0, succeeded: 1, failed: 1, cancelled: 8 },
     });
-
-    await connect(store, client);
-
-    expect(store.lastEventId()).toBe(3);
-    expect(store.processedEventCount()).toBe(4);
+    store.refreshNow();
+    await flush();
+    expect(store.status()?.counts.succeeded).toBe(1);
+    expect(store.progress().instances.completed).toBe(0);
+    expect(store.status()?.currentExperiment).toBe('Experiment A');
+    expect(store.terminal()).toBe(true);
   });
-
-  it('deduplicates, reorders, and fills a live delivery gap', async () => {
-    await connect(store, client);
-    client.history = [envelope(0, 'PingEvent')];
-    client.envelopesSubject.next(client.history[0]!);
-
-    client.history.push(envelope(1, 'PingEvent'), envelope(2, 'PingEvent'));
-    client.envelopesSubject.next(client.history[2]!);
-
-    await vi.waitFor(() => expect(store.lastEventId()).toBe(2));
-    client.envelopesSubject.next(client.history[1]!);
-
-    expect(store.processedEventCount()).toBe(3);
+  it('recovers from a REST failure while the socket stays live', async () => {
+    await flush();
+    client.getStatus.mockRejectedValueOnce(new Error('temporary'));
+    store.refreshNow();
+    await flush();
+    expect(store.syncState()).toBe('retrying');
+    expect(store.detail()).not.toBeNull();
+    await vi.advanceTimersByTimeAsync(500);
+    expect(store.syncState()).toBe('live');
+    expect(store.latestError()).toBeNull();
+    expect(store.transportState()).toBe('live');
   });
-
-  it('catches up after reconnect and resets state when backend event IDs restart', async () => {
-    client.history = [executionStarted(0), envelope(1, 'PingEvent')];
-    await connect(store, client);
-    expect(store.lastEventId()).toBe(1);
-
-    client.disconnectedSubject.next();
-    expect(store.connectionState()).toBe('disconnected');
-    client.history = [executionStarted(0, { Distance: 'MINIMIZE' })];
-    client.connectedSubject.next();
-
-    await vi.waitFor(() => expect(store.connectionState()).toBe('live'));
-    expect(store.lastEventId()).toBe(0);
-    expect(store.processedEventCount()).toBe(1);
-    expect(store.objectives()).toEqual([{ name: 'Distance', mode: 'MINIMIZE' }]);
+  it('keeps transport failures separate from experiment state', async () => {
+    await flush();
+    events.errors$.next(new Error('socket'));
+    events.state$.next('disconnected');
+    expect(store.transportError()).toBe('socket');
+    expect(store.status()?.phase).toBe('RUNNING');
+    expect(store.connectionLabel()).toBe('Live via HTTP');
+    events.state$.next('live');
+    expect(store.transportError()).toBeNull();
   });
-
-  it('clears stale execution state when reconnecting to an empty restarted backend', async () => {
-    client.history = [executionStarted(0), envelope(1, 'PingEvent')];
-    await connect(store, client);
-
-    client.disconnectedSubject.next();
-    client.history = [];
-    client.connectedSubject.next();
-
-    await vi.waitFor(() => expect(store.connectionState()).toBe('live'));
-    expect(store.lastEventId()).toBe(-1);
-    expect(store.processedEventCount()).toBe(0);
-    expect(store.objectives()).toEqual([]);
+  it('switches objectives and loads a fresh immutable view immediately', async () => {
+    await flush();
+    store.selectObjective('Quality');
+    await flush();
+    expect(client.getInstance).toHaveBeenLastCalledWith('run-a', 'instance-0', 'Quality');
+    expect(store.detail()?.objective).toBe('Quality');
+    expect(store.charts()?.selectedObjective).toBe('Quality');
   });
-
-  it('retains exactly the ten newest instances', async () => {
-    client.history.push(executionStarted(0));
-    const names: string[] = [];
-    for (let index = 0; index < 11; index++) {
-      names.push(`instance-${index}`);
+  it('bounds cached details to exactly ten without losing older instances', async () => {
+    await flush();
+    for (let index = 1; index < 12; index++) {
+      store.selectInstance('instance-' + index);
+      await flush();
     }
-    client.history.push(experimentStarted(1, names));
-    for (let index = 0; index < 11; index++) {
-      client.history.push(instanceStarted(index + 2, names[index]));
-    }
-
-    await connect(store, client);
-
-    expect(store.instances()).toHaveLength(10);
-    expect(store.instances()[0]?.instanceName).toBe('instance-10');
-    expect(store.instances()[9]?.instanceName).toBe('instance-1');
+    expect(store.instancePage()?.total).toBe(12);
+    const before = client.getInstance.mock.calls.length;
+    store.selectInstance('instance-0');
+    await flush();
+    expect(client.getInstance).toHaveBeenCalledTimes(before + 1);
+    expect(store.detail()?.instance.id).toBe('instance-0');
   });
-
-  it('advances accounting for pings and unknown events and surfaces ErrorEvent', async () => {
-    client.history = [
-      envelope(0, 'PingEvent'),
-      envelope(1, 'PluginSpecificEvent', { plugin: true }),
-      envelope(2, 'ErrorEvent', { exceptionType: 'IllegalStateException', message: 'boom' }),
-    ];
-
-    await connect(store, client);
-
-    expect(store.processedEventCount()).toBe(3);
-    expect(store.latestError()).toEqual({
-      exceptionType: 'IllegalStateException',
-      message: 'boom',
-    });
+  it('invalidates old responses when objective selection changes', async () => {
+    await flush();
+    let resolve!: (value: ReturnType<typeof normalDetail>) => void;
+    client.status = normalStatus({ revision: 2 });
+    client.getInstance.mockImplementationOnce(() => new Promise((r) => (resolve = r)));
+    store.selectInstance('instance-1');
+    await flush();
+    store.selectObjective('Quality');
+    resolve(normalDetail('instance-1', 'Cost'));
+    await flush();
+    expect(store.detail()?.objective).toBe('Quality');
+  });
+  it('resets run-specific state on a new execution identity', async () => {
+    await flush();
+    store.markIssuesSeen();
+    client.status = normalStatus({ runId: 'run-b', revision: 500 });
+    store.refreshNow();
+    await flush();
+    expect(store.status()?.runId).toBe('run-b');
+    expect(store.detail()?.runId).toBe('run-b');
+    expect(store.seenIssueId()).toBe(0);
+  });
+  it('throttles chart refreshes and forces the terminal flush', async () => {
+    await flush();
+    client.status = normalStatus({ revision: 2 });
+    store.refreshNow();
+    await flush();
+    expect(client.getInstance).toHaveBeenCalledTimes(1);
+    client.status = normalStatus({ revision: 3, phase: 'SUCCEEDED' });
+    store.refreshNow();
+    await flush();
+    expect(client.getInstance).toHaveBeenCalledTimes(2);
+  });
+  it('keeps unchanged completed chart models across status polls', async () => {
+    await flush();
+    const charts = store.charts();
+    client.status = normalStatus({ elapsedMillis: 2000 });
+    store.refreshNow();
+    await flush();
+    expect(store.charts()).toBe(charts);
+    store.filterResults('', 'unknown algorithm', '', '');
+    await flush();
+    expect(store.progress().repetitionScope).toBe('selected instance');
+  });
+  it('passes server-side filters and pagination through without truncating the run', async () => {
+    await flush();
+    store.selectTab(1);
+    store.filterResults('', 'Algorithm A', 'FAILED' as WorkState, 'instance');
+    await flush();
+    expect(client.getResults).toHaveBeenLastCalledWith(
+      'run-a',
+      expect.objectContaining({ algorithm: 'Algorithm A', state: 'FAILED', search: 'instance' }),
+    );
+    store.pageResults(25);
+    await flush();
+    expect(client.getResults).toHaveBeenLastCalledWith(
+      'run-a',
+      expect.objectContaining({ offset: 25 }),
+    );
+    store.sortResults('RUNTIME');
+    await flush();
+    expect(client.getResults).toHaveBeenLastCalledWith(
+      'run-a',
+      expect.objectContaining({ order: 'RUNTIME', offset: 0 }),
+    );
+  });
+  it('does not schedule more requests after destruction', async () => {
+    await flush();
+    const calls = client.getStatus.mock.calls.length;
+    TestBed.resetTestingModule();
+    await vi.advanceTimersByTimeAsync(60000);
+    expect(client.getStatus).toHaveBeenCalledTimes(calls);
   });
 });

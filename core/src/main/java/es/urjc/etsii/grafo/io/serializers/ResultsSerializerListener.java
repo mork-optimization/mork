@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.io.serializers;
 
 import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.io.Instance;
+import es.urjc.etsii.grafo.monitoring.MonitoringArtifactRegistry;
+import es.urjc.etsii.grafo.monitoring.NormalExperimentRunState;
 import es.urjc.etsii.grafo.results.ResultStore;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ExceptionUtil;
@@ -40,15 +42,20 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
      * List of declared result serializers
      */
     private final List<ResultsSerializer<S,I>> serializers;
+    private final MonitoringArtifactRegistry artifacts;
+    private final NormalExperimentRunState<S, I> runState;
 
     /**
      * Construct a result serializer listener.
      * @param resultStore result storage service
      * @param serializers List of available Result Serializers
      */
-    public ResultsSerializerListener(ResultStore<S,I> resultStore, List<ResultsSerializer<S,I>> serializers) {
+    public ResultsSerializerListener(ResultStore<S,I> resultStore, List<ResultsSerializer<S,I>> serializers,
+            MonitoringArtifactRegistry artifacts, NormalExperimentRunState<S, I> runState) {
         this.resultStore = resultStore;
         this.serializers = List.copyOf(serializers);
+        this.artifacts = artifacts;
+        this.runState = runState;
     }
 
     /**
@@ -99,6 +106,7 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
                 tempFile = Path.of(config.getFolder(), filename + TEMP_SUFFIX);
                 serializer.serializeResults(expName, data, tempFile);
                 Files.move(tempFile, realFile, StandardCopyOption.REPLACE_EXISTING);
+                artifacts.register(realFile, expName, null);
             } catch (IOException | RuntimeException e) {
                 var failure = buildSerializationException(
                         serializer,
@@ -157,7 +165,7 @@ public class ResultsSerializerListener<S extends Solution<S,I>, I extends Instan
     }
 
     private List<WorkUnitResult<S,I>> getExpData(String expName){
-        return resultStore.getResultsForExperiment(expName);
+        return runState.orderedResults(expName);
     }
 
     /**

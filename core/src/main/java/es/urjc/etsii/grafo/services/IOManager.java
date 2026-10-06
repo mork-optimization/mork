@@ -8,6 +8,8 @@ import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.SolutionExportFrequency;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
+import es.urjc.etsii.grafo.monitoring.MonitoringArtifactRegistry;
+import es.urjc.etsii.grafo.monitoring.NormalExperimentRunState;
 import es.urjc.etsii.grafo.solution.Solution;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,6 +39,8 @@ public class IOManager<S extends Solution<S, I>, I extends Instance> {
     private final ErrorConfig errorConfig;
 
     private final List<SolutionSerializer<S, I>> solutionSerializers;
+    private final MonitoringArtifactRegistry artifacts;
+    private final NormalExperimentRunState<S, I> runState;
 
     /**
      * Initialize IOManager
@@ -44,9 +48,12 @@ public class IOManager<S extends Solution<S, I>, I extends Instance> {
      * @param errorConfig         error configuration
      * @param solutionSerializers solution serializers
      */
-    public IOManager(ErrorConfig errorConfig, List<SolutionSerializer<S, I>> solutionSerializers) {
+    public IOManager(ErrorConfig errorConfig, List<SolutionSerializer<S, I>> solutionSerializers,
+                     MonitoringArtifactRegistry artifacts, NormalExperimentRunState<S, I> runState) {
         this.errorConfig = errorConfig;
         this.solutionSerializers = solutionSerializers;
+        this.artifacts = artifacts;
+        this.runState = runState;
 
         log.debug("Detected solution serializers: " + this.solutionSerializers);
     }
@@ -61,7 +68,7 @@ public class IOManager<S extends Solution<S, I>, I extends Instance> {
         // String experimentName, Algorithm<S,I> alg, S solution, String iteration,
         for (var serializer : this.solutionSerializers) {
             if (serializer.isEnabled() && serializer.getConfig().getFrequency().matches(current)) {
-                serializer.exportSolution(r);
+                for (var path : serializer.exportSolution(r)) artifacts.register(path, r.experimentName(), r.resultId());
             }
         }
     }
@@ -80,19 +87,21 @@ public class IOManager<S extends Solution<S, I>, I extends Instance> {
             log.debug("Skipping exporting exception or error to disk, disabled in config.");
             return;
         }
-        createFolder(this.errorConfig.getFolder());
-
-        // Directamente desde aqui, si se quiere customizar se puede pisar el DefaultExceptionHandler
-        var formatter = DateTimeFormatter.ofPattern("HH.mm.ss.SSS");
-        LocalDateTime d = LocalDateTime.now();
-        String filename = experimentName + "_" + formatter.format(d) + "_.json";
-        var errorData = Map.of("Algorithm", alg, "InstanceName", i.getId(), "StackTrace", stacktrace, "Error", t);
-        var p = Path.of(this.errorConfig.getFolder(), filename);
-        try (var outputStream = Files.newOutputStream(p)) {
-            var writer = new ObjectMapper().writer(new DefaultPrettyPrinter());
-            writer.writeValue(outputStream, errorData);
-        } catch (IOException e) {
-            throw new RuntimeException("Additional error while writting errors to path " + p, e);
+        try {
+            createFolder(this.errorConfig.getFolder());
+            var formatter = DateTimeFormatter.ofPattern("HH.mm.ss.SSS");
+            String filename = experimentName + "_" + formatter.format(LocalDateTime.now()) + "_.json";
+            var errorData = Map.of("Algorithm", alg, "InstanceName", i.getId(), "StackTrace", stacktrace, "Error", t);
+            var path = Path.of(this.errorConfig.getFolder(), filename);
+            try (var outputStream = Files.newOutputStream(path)) {
+                var writer = new ObjectMapper().writer(new DefaultPrettyPrinter());
+                writer.writeValue(outputStream, errorData);
+            }
+            artifacts.register(path, experimentName, null);
+        } catch (IOException | RuntimeException e) {
+            // Do not mask the original computation failure or prevent its result from being recorded.
+            log.error("Error-report export failed for experiment {}", experimentName, e);
+            runState.issue("WARNING", "EXPORT", e, null, experimentName);
         }
 
     }

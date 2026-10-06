@@ -63,11 +63,12 @@ At different times during the experimentation, different events are triggered. T
 | `ExperimentStartedEvent`          | Fired when starting each experiment                                                   |
 | `InstanceProcessingStartedEvent`  | An instance has been loaded and is going to be solved by different algorithms         |
 | `AlgorithmProcessingStartedEvent` | A pair (instance, algorithm) is scheduled for execution                               |
+| `WorkUnitStartedEvent`            | A measured repetition starts: result UUID, ordinal and reproducible seed              |
 | `SolutionGeneratedEvent`          | A solution has been generated for the tuple (Instance, AlgorithmConfig, Iteration)    |
 | `AlgorithmProcessingEndedEvent`   | A pair (instance, algorithm) has finished executing                                   |
 | `InstanceProcessingEndedEvent`    | An instance has been solved with all algorithm configurations and is no longer needed |
 | `ExperimentEndedEvent`            | Experiment finalized, if there are no more experiments queued end                     |
-| `ExecutionEndedEvent`             | All experiments done, fired before solver shutdowns                                   |
+| `ExecutionEndedEvent`             | Terminal outcome: SUCCEEDED, COMPLETED_WITH_ERRORS, FAILED or CANCELLED                |
 
 ## Implementing an event listener
 

@@ -2,6 +2,7 @@ import { TestBed } from '@angular/core/testing';
 import {
   ArtifactManifest,
   AutoconfigStatus,
+  ComponentUsageScope,
   EliteHistorySnapshot,
   EliteSnapshot,
   EvaluationChangePage,
@@ -9,6 +10,7 @@ import {
 } from '../model/autoconfig';
 import { AutoconfigClient } from '../service/autoconfig-client';
 import { AutoconfigStore } from './autoconfig-store';
+import { componentUsageFixture } from '../testing/component-usage-fixture';
 
 function status(overrides: Partial<AutoconfigStatus> = {}): AutoconfigStatus {
   return {
@@ -125,6 +127,11 @@ class FakeAutoconfigClient {
     artifacts: [],
   }));
   readonly getCandidate = vi.fn();
+  readonly getComponentUsage = vi.fn(async (scope: ComponentUsageScope) => ({
+    ...componentUsageFixture,
+    runId: this.currentStatus.runId!,
+    scope,
+  }));
   readonly artifactUrl = vi.fn((id: string) => `/api/autoconfig/artifacts/${id}`);
 }
 
@@ -158,6 +165,7 @@ describe('AutoconfigStore', () => {
     expect(store.elites()?.elites[0].configurationId).toBe('7');
     expect(store.searchSpace()?.summary.generatedIraceParameterCount).toBe(4);
     expect(store.unseenAlertCount()).toBe(1);
+    expect(store.componentUsage()?.candidatePlacementCount).toBe(7);
     expect(store.instanceSummaries()[0]).toMatchObject({ issues: 1, slow: 1 });
 
     store.markAlertsSeen();
@@ -203,5 +211,56 @@ describe('AutoconfigStore', () => {
     expect(store.status()?.runId).toBe('run-2');
     expect(store.evaluations()).toEqual([]);
     expect(store.unseenAlertCount()).toBe(0);
+    expect(store.componentUsage()?.runId).toBe('run-2');
+  });
+
+  it('refreshes usage only on evaluation or elite changes and immediately on scope selection', async () => {
+    store.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(client.getComponentUsage).toHaveBeenCalledTimes(1);
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(client.getComponentUsage).toHaveBeenCalledTimes(1);
+    client.currentStatus = status({ latestEvaluationRevision: 3 });
+    client.changePage = { ...client.changePage, nextRevision: 3, latestRevision: 3, changes: [] };
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(client.getComponentUsage).toHaveBeenCalledTimes(2);
+    store.selectComponentScope('CURRENT_ELITES');
+    await Promise.resolve();
+    expect(client.getComponentUsage).toHaveBeenLastCalledWith('CURRENT_ELITES');
+    expect(store.componentUsage()?.scope).toBe('CURRENT_ELITES');
+    client.currentStatus = {
+      ...client.currentStatus,
+      irace: { ...client.currentStatus.irace, updatedAt: '2026-10-04T00:01:00Z' },
+    };
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(client.getComponentUsage).toHaveBeenCalledTimes(4);
+  });
+
+  it('does not fetch component trees for manual irace runs or workers', async () => {
+    client.currentStatus = status({ mode: 'IRACE' });
+    store.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(client.getComponentUsage).not.toHaveBeenCalled();
+    client.currentStatus = status({ runId: null, role: 'WORKER' });
+    await vi.advanceTimersByTimeAsync(2_000);
+    expect(client.getComponentUsage).not.toHaveBeenCalled();
+  });
+
+  it('discards a late response from an obsolete scope', async () => {
+    store.start();
+    await vi.advanceTimersByTimeAsync(0);
+    let resolve!: (value: typeof componentUsageFixture) => void;
+    client.getComponentUsage.mockImplementationOnce(
+      () =>
+        new Promise((done) => {
+          resolve = done;
+        }),
+    );
+    store.selectComponentScope('CURRENT_ELITES');
+    store.selectComponentScope('ALL');
+    await Promise.resolve();
+    resolve({ ...componentUsageFixture, scope: 'CURRENT_ELITES' });
+    await Promise.resolve();
+    expect(store.componentUsage()?.scope).toBe('ALL');
   });
 });

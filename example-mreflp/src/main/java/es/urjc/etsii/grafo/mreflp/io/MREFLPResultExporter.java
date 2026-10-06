@@ -10,6 +10,7 @@ import tools.jackson.databind.json.JsonMapper;
 import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.*;
+import java.util.List;
 import java.util.Map;
 
 /** Atomic, per-run checkpoints. Export and independent validation are outside measured algorithm time. */
@@ -36,13 +37,14 @@ public class MREFLPResultExporter extends SolutionSerializer<MREFLPSolution, MRE
                 System.getProperty("os.name"), System.getProperty("os.arch"), Runtime.getRuntime().availableProcessors(),
                 solver.getWarmup().isEnabled(), solver.getWarmup().getRepetitions(), solver.getWarmup().getMaxMillis());
     }
-    @Override public void export(String folder, String suggestedFilename, WorkUnitResult<MREFLPSolution, MREFLPInstance> result) {
+    @Override public List<Path> export(String folder, String suggestedFilename, WorkUnitResult<MREFLPSolution, MREFLPInstance> result) {
         // The framework also exports aggregate winners; only individual runs are checkpoints.
-        if (!result.iteration().matches("\\d+")) return;
+        if (!result.iteration().matches("\\d+")) return List.of();
         Path target = Path.of(folder).resolve(suggestedFilename);
         try {
             AtomicFileUtil.write(target, JsonMapper.builder().build().writerWithDefaultPrettyPrinter().writeValueAsString(record(result)));
         } catch (IOException e) { throw new IllegalStateException("Cannot checkpoint " + target, e); }
+        return List.of(target);
     }
     @Override public void export(BufferedWriter writer, WorkUnitResult<MREFLPSolution, MREFLPInstance> result) throws IOException {
         writer.write(JsonMapper.builder().build().writeValueAsString(record(result)));

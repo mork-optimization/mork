@@ -211,3 +211,67 @@ export interface TuningAlert {
   readonly timestamp: string | null;
   readonly evaluationId: number | null;
 }
+
+export type ComponentUsageScope = 'ALL' | 'CURRENT_ELITES';
+export type ComponentUsageBasis = 'CANDIDATE' | 'EVALUATION';
+
+export interface ComponentUsageStats {
+  readonly name: string;
+  readonly candidatePlacements: number;
+  readonly configurationCount: number;
+  readonly evaluationPlacements: number;
+  readonly rootCandidatePlacements: number;
+  readonly rootConfigurationCount: number;
+  readonly rootEvaluationPlacements: number;
+}
+
+export interface ComponentRelationship {
+  readonly parent: string;
+  readonly role: string;
+  readonly child: string;
+  readonly candidatePlacements: number;
+  readonly configurationCount: number;
+  readonly evaluationPlacements: number;
+}
+
+export interface ComponentUsageSnapshot {
+  readonly runId: string;
+  readonly scope: ComponentUsageScope;
+  readonly latestEvaluationRevision: number;
+  readonly eliteUpdatedAt: string | null;
+  readonly configurationCount: number;
+  readonly decodedConfigurationCount: number;
+  readonly unavailableConfigurationCount: number;
+  readonly evaluationCount: number;
+  readonly candidatePlacementCount: number;
+  readonly evaluationPlacementCount: number;
+  readonly components: readonly ComponentUsageStats[];
+  readonly relationships: readonly ComponentRelationship[];
+}
+
+export type ComponentCandidateSelector =
+  | { readonly component: string }
+  | { readonly parent: string; readonly role: string; readonly child: string };
+
+export interface ComponentCandidateQuery {
+  readonly scope: ComponentUsageScope;
+  readonly basis: ComponentUsageBasis;
+  readonly selector: ComponentCandidateSelector;
+  readonly offset: number;
+  readonly limit: number;
+}
+
+export interface ComponentCandidatePage {
+  readonly runId: string;
+  readonly scope: ComponentUsageScope;
+  readonly total: number;
+  readonly offset: number;
+  readonly nextOffset: number | null;
+  readonly candidates: readonly {
+    readonly configurationId: string;
+    readonly occurrences: number;
+    readonly evaluationPlacements: number;
+    readonly elitePosition: number | null;
+    readonly evaluations: EvaluationCounts;
+  }[];
+}

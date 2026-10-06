@@ -14,10 +14,16 @@ export const appConfig: ApplicationConfig = {
     provideHighcharts({
       instance: () => import('highcharts/esm/highcharts').then((module) => module.default),
       modules: () => [
-        import('highcharts/esm/modules/exporting'),
-        import('highcharts/esm/modules/offline-exporting'),
-        import('highcharts/esm/modules/boost'),
-        import('highcharts/esm/modules/accessibility'),
+        // Offline exporting composes Exporting; accessibility must see all registered series.
+        Promise.all([
+          import('highcharts/esm/modules/exporting').then(
+            () => import('highcharts/esm/modules/offline-exporting'),
+          ),
+          import('highcharts/esm/modules/boost'),
+          import('highcharts/esm/modules/treemap'),
+          import('highcharts/esm/modules/sankey'),
+          import('highcharts/esm/highcharts-more'),
+        ]).then(() => import('highcharts/esm/modules/accessibility')),
       ],
     }),
   ],

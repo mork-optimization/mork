@@ -1,128 +1,636 @@
 <mat-toolbar class="topbar">
-  <span class="brand">Mork dashboard</span>
-  <span class="toolbar-spacer"></span>
-  <mat-chip-set aria-label="Connection state">
-    <mat-chip [class.live]="store.connectionState() === 'live'">
-      {{ store.connectionLabel() }}
-    </mat-chip>
-  </mat-chip-set>
+  <img class="logo" src="favicon.svg" alt="Mork" /><span class="brand">Experiment monitor</span
+  ><span class="toolbar-spacer"></span>
+  <mat-chip-set aria-label="Connection state"
+    ><mat-chip>{{ store.connectionLabel() }}</mat-chip></mat-chip-set
+  >
+  <button mat-button [matMenuTriggerFor]="panelMenu" aria-label="Choose dashboard panels">
+    Panels
+  </button>
+  <mat-menu #panelMenu="matMenu">
+    @for (panel of panels; track panel.id) {
+      <button
+        mat-menu-item
+        (click)="
+          preferences.isHidden(panel.id) ? preferences.show(panel.id) : preferences.hide(panel.id)
+        "
+      >
+        {{ preferences.isHidden(panel.id) ? 'Show' : 'Hide' }} {{ panel.label }}
+      </button>
+    }
+    <button mat-menu-item (click)="preferences.reset()">Reset panels</button>
+  </mat-menu>
 </mat-toolbar>
-
 <main>
-  <mat-card appearance="outlined" class="status-card">
-    <mat-card-content>
+  @if (store.latestError(); as error) {
+    <mat-card class="error-card" role="alert"
+      ><mat-card-content>
+        <strong>Connection problem · showing last known data</strong>
+        <p>{{ error }}</p>
+        <button mat-flat-button (click)="store.retryNow()">Retry now</button>
+      </mat-card-content></mat-card
+    >
+  }
+  <mat-card appearance="outlined" class="status-card"
+    ><mat-card-content>
+      @let status = store.status();
       <section class="summary" aria-label="Execution summary">
         <div>
-          <span class="eyebrow">Experiment</span>
-          <strong>{{ store.currentExperiment() ?? 'Waiting for execution' }}</strong>
+          <span class="eyebrow">Execution</span
+          ><strong class="phase">{{ phaseLabel(status?.phase ?? 'IDLE') }}</strong>
         </div>
         <div>
-          <span class="eyebrow">Processed events</span>
-          <strong>{{ store.processedEventCount() }}</strong>
+          <span class="eyebrow">Experiment</span
+          ><strong>{{ status?.currentExperiment ?? 'Waiting for execution' }}</strong>
         </div>
         <div>
-          <span class="eyebrow">Last event ID</span>
-          <strong>{{ store.lastEventId() }}</strong>
+          <span class="eyebrow">Elapsed</span
+          ><strong>{{ elapsedLabel(status?.elapsedMillis ?? 0) }}</strong>
         </div>
-
-        @if (store.objectives().length > 0) {
-          <mat-form-field appearance="outline" subscriptSizing="dynamic">
-            <mat-label>Objective</mat-label>
-            <mat-select
-              [value]="store.selectedObjective()"
-              (selectionChange)="selectObjective($event.value)"
-            >
-              @for (objective of store.objectives(); track objective.name) {
-                <mat-option [value]="objective.name">
-                  {{ objective.name }} ·
-                  {{ objective.mode === 'MINIMIZE' ? 'Minimize' : 'Maximize' }}
-                </mat-option>
-              }
-            </mat-select>
-          </mat-form-field>
-        }
+        <mat-form-field appearance="outline" subscriptSizing="dynamic"
+          ><mat-label>Objective</mat-label>
+          <mat-select
+            [value]="store.selectedObjective()"
+            (selectionChange)="store.selectObjective($event.value)"
+          >
+            @for (objective of store.objectives(); track objective.name) {
+              <mat-option [value]="objective.name"
+                >{{ objective.name }} ·
+                {{ objective.mode === 'MINIMIZE' ? 'Minimize' : 'Maximize' }}</mat-option
+              >
+            }
+          </mat-select>
+        </mat-form-field>
       </section>
-
+      <section class="metrics" aria-label="Repetition outcomes">
+        <div>
+          <span>Planned</span><strong>{{ status?.counts?.planned ?? 0 }}</strong>
+        </div>
+        <div>
+          <span>Pending</span><strong>{{ status?.counts?.pending ?? 0 }}</strong>
+        </div>
+        <div>
+          <span>Running</span><strong>{{ status?.counts?.running ?? 0 }}</strong>
+        </div>
+        <div>
+          <span>Successful</span><strong>{{ status?.counts?.succeeded ?? 0 }}</strong>
+        </div>
+        <div>
+          <span>Failed</span><strong>{{ status?.counts?.failed ?? 0 }}</strong>
+        </div>
+        <div>
+          <span>Cancelled</span><strong>{{ status?.counts?.cancelled ?? 0 }}</strong>
+        </div>
+      </section>
       <section class="progress-grid" aria-label="Execution progress">
         @let progress = store.progress();
         <div class="progress-item">
           <div class="progress-label">
-            <span>Instances</span>
-            <span>{{ progress.instances.completed }} / {{ progress.instances.total }}</span>
+            <span>Instances · execution</span
+            ><span>{{ progress.instances.completed }} / {{ progress.instances.total }}</span>
           </div>
           <mat-progress-bar
             mode="determinate"
             [value]="progressValue(progress.instances.completed, progress.instances.total)"
+            aria-label="Finalized instances in execution"
           />
         </div>
         <div class="progress-item">
           <div class="progress-label">
-            <span>Algorithms</span>
-            <span>{{ progress.algorithms.completed }} / {{ progress.algorithms.total }}</span>
+            <span>Algorithms · selected instance</span
+            ><span>{{ progress.algorithms.completed }} / {{ progress.algorithms.total }}</span>
           </div>
           <mat-progress-bar
             mode="determinate"
             [value]="progressValue(progress.algorithms.completed, progress.algorithms.total)"
+            aria-label="Finalized algorithms in selected instance"
           />
         </div>
         <div class="progress-item">
           <div class="progress-label">
-            <span>Repetitions</span>
-            <span>{{ progress.repetitions.completed }} / {{ progress.repetitions.total }}</span>
+            <span>Repetitions · {{ progress.repetitionScope }}</span
+            ><span>{{ progress.repetitions.completed }} / {{ progress.repetitions.total }}</span>
           </div>
           <mat-progress-bar
             mode="determinate"
             [value]="progressValue(progress.repetitions.completed, progress.repetitions.total)"
+            aria-label="Completed repetitions in selection"
           />
         </div>
       </section>
-    </mat-card-content>
-  </mat-card>
+      <p class="status-footnote">
+        {{ status?.runningInstances ?? 0 }} active instances ·
+        {{ status?.runningAlgorithms ?? 0 }} active algorithms. Completed repetitions include
+        failures; cancelled work does not count as completed.
+        @if (store.lastUpdated(); as updated) {
+          Last refreshed {{ updated | date: 'mediumTime' }}.
+        }
+      </p>
+      @if (store.estimatedRemainingMillis(); as remaining) {
+        <p class="status-footnote">
+          Approximate time remaining: {{ elapsedLabel(remaining) }} · based on observed throughput;
+          different instance sizes can change this estimate.
+        </p>
+      }
+      @if (store.unseenIssues() > 0) {
+        <button mat-button (click)="store.selectTab(2)">
+          {{ store.unseenIssues() }} unseen issues
+        </button>
+      }
+    </mat-card-content></mat-card
+  >
 
-  @if (store.latestError(); as error) {
-    <mat-card appearance="outlined" class="error-card" role="alert">
-      <mat-card-content>
-        <strong>{{ error.exceptionType }}</strong>
-        <span>{{ error.message ?? 'No error details were provided.' }}</span>
-      </mat-card-content>
-    </mat-card>
-  }
-
-  <section class="instances" aria-label="Instance dashboards">
-    @for (instance of store.instances(); track instance.key) {
-      <mat-card appearance="outlined" class="instance-card">
-        <mat-card-header>
-          <mat-card-title>{{ instance.instanceName }}</mat-card-title>
-          <mat-card-subtitle>
-            {{ instance.experimentName }}
-            @if (instance.referenceValue !== null) {
-              · Reference {{ instance.referenceValue }}
+  <mat-tab-group
+    [selectedIndex]="store.tab()"
+    (selectedIndexChange)="store.selectTab($event)"
+    animationDuration="0ms"
+  >
+    <mat-tab label="Overview">
+      <ng-template matTabContent>
+        <mat-card appearance="outlined" class="browser"
+          ><mat-card-content>
+            <h2>Instances</h2>
+            <div class="filters">
+              <mat-form-field appearance="outline"
+                ><mat-label>Experiment</mat-label>
+                <mat-select
+                  [value]="store.instanceQuery().experiment"
+                  (selectionChange)="
+                    store.filterInstances($event.value, store.instanceQuery().search)
+                  "
+                >
+                  <mat-option value="">All experiments</mat-option>
+                  @for (experiment of store.status()?.experiments ?? []; track experiment.name) {
+                    <mat-option [value]="experiment.name">{{ experiment.name }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline"
+                ><mat-label>Search instances</mat-label>
+                <input
+                  matInput
+                  [value]="store.instanceQuery().search"
+                  (input)="
+                    store.filterInstances(
+                      store.instanceQuery().experiment,
+                      $any($event.target).value
+                    )
+                  "
+                />
+              </mat-form-field>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <caption class="sr-only">
+                  Instances across the execution
+                </caption>
+                <thead>
+                  <tr>
+                    <th>Instance</th>
+                    <th>Experiment</th>
+                    <th>Completed repetitions</th>
+                    <th>Running</th>
+                    <th>Outcome</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (instance of store.instancePage()?.items ?? []; track instance.id) {
+                    <tr [class.selected]="instance.id === store.selectedInstanceId()">
+                      <td>
+                        <button mat-button (click)="store.selectInstance(instance.id)">
+                          {{ instance.instanceName }}
+                        </button>
+                      </td>
+                      <td>{{ instance.experimentName }}</td>
+                      <td>
+                        {{ instance.counts.succeeded + instance.counts.failed }} /
+                        {{ instance.counts.planned }}
+                      </td>
+                      <td>{{ instance.counts.running }}</td>
+                      <td>
+                        {{ instance.counts.failed }} failed ·
+                        {{ instance.finalized ? 'finalized' : 'processing' }}
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="5">No matching instances yet.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <mat-paginator
+              [length]="store.instancePage()?.total ?? 0"
+              [pageSize]="25"
+              [pageIndex]="store.instanceQuery().offset / 25"
+              (page)="store.pageInstances($event.pageIndex * $event.pageSize)"
+              aria-label="Instance pages"
+            /> </mat-card-content
+        ></mat-card>
+        @if (store.detail(); as detail) {
+          <h2 class="detail-title">
+            {{ detail.instance.instanceName }} <small>{{ detail.instance.experimentName }}</small>
+          </h2>
+          @if (detail.sampled) {
+            <p class="status-footnote">
+              Charts show {{ detail.results.length }} sampled points from
+              {{ detail.resultCount }} repetitions. Statistics are exact; full data is available in
+              Results and exports.
+            </p>
+          }
+          <app-monitor-panel panelId="normal-comparison" title="Algorithm comparison">
+            <div class="table-scroll">
+              <table>
+                <caption class="sr-only">
+                  {{
+                    detail.objective
+                  }}
+                  statistics by algorithm
+                </caption>
+                <thead>
+                  <tr>
+                    <th>Algorithm</th>
+                    <th>Successful / attempted</th>
+                    <th>Valid scores</th>
+                    <th>Best</th>
+                    <th>Median</th>
+                    <th>Mean ± SD</th>
+                    <th>Gap to reference</th>
+                    <th>Runtime median</th>
+                    <th>Time-to-best median</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (algorithm of detail.algorithms; track algorithm.name) {
+                    <tr>
+                      <td>{{ algorithm.name }}</td>
+                      <td>
+                        {{ algorithm.counts.succeeded }} /
+                        {{ algorithm.counts.succeeded + algorithm.counts.failed }}
+                      </td>
+                      <td>{{ algorithm.objective.count }}</td>
+                      <td>{{ (algorithm.objective.best | number: '1.0-4') ?? '—' }}</td>
+                      <td>{{ (algorithm.objective.median | number: '1.0-4') ?? '—' }}</td>
+                      <td>
+                        {{ (algorithm.objective.mean | number: '1.0-4') ?? '—' }} ±
+                        {{ (algorithm.objective.standardDeviation | number: '1.0-4') ?? '—' }}
+                      </td>
+                      <td>
+                        {{ (algorithm.objective.absoluteGap | number: '1.0-4') ?? '—' }}
+                        @if (algorithm.objective.percentageGap !== null) {
+                          ({{ algorithm.objective.percentageGap | number: '1.0-2' }}%)
+                        }
+                      </td>
+                      <td>{{ (algorithm.runtimeMillis.median | number: '1.0-2') ?? '—' }} ms</td>
+                      <td>{{ (algorithm.timeToBestMillis.median | number: '1.0-2') ?? '—' }} ms</td>
+                      <td>
+                        <button
+                          mat-button
+                          [disabled]="!algorithm.bestResultId"
+                          (click)="store.inspectResult(algorithm.bestResultId!)"
+                        >
+                          Best result
+                        </button>
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <p class="status-footnote">
+              Statistics use successful results with finite values. Scores from different instances
+              are not averaged. Negative gaps improve on the reference.
+            </p>
+          </app-monitor-panel>
+          @if (store.charts(); as charts) {
+            <div class="chart-grid">
+              <app-monitor-panel panelId="normal-scores" title="Scores">
+                @if (
+                  !preferences.isHidden('normal-scores') &&
+                  !preferences.isCollapsed('normal-scores')
+                ) {
+                  <app-dashboard-chart [model]="charts.scoreChart" />
+                }
+              </app-monitor-panel>
+              <app-monitor-panel panelId="normal-best" title="Best score across repetitions">
+                @if (
+                  !preferences.isHidden('normal-best') && !preferences.isCollapsed('normal-best')
+                ) {
+                  <app-dashboard-chart [model]="charts.convergenceChart" />
+                }
+                <p class="status-footnote">
+                  Independent repetitions, not the optimization trajectory within a single run.
+                  Failures are gaps.
+                </p>
+              </app-monitor-panel>
+              <app-monitor-panel panelId="normal-distribution" title="Score distribution">
+                @if (
+                  !preferences.isHidden('normal-distribution') &&
+                    !preferences.isCollapsed('normal-distribution') &&
+                    store.distribution();
+                  as model
+                ) {
+                  <app-dashboard-chart [model]="model" />
+                }
+              </app-monitor-panel>
+              <app-monitor-panel panelId="normal-runtime" title="Score versus runtime">
+                @if (
+                  !preferences.isHidden('normal-runtime') &&
+                    !preferences.isCollapsed('normal-runtime') &&
+                    store.qualityRuntime();
+                  as model
+                ) {
+                  <app-dashboard-chart [model]="model" />
+                }
+              </app-monitor-panel>
+            </div>
+          }
+        } @else {
+          <p class="empty-state">Select an instance to inspect its results and charts.</p>
+        }
+      </ng-template>
+    </mat-tab>
+    <mat-tab label="Results"
+      ><ng-template matTabContent>
+        <mat-card appearance="outlined" class="browser"
+          ><mat-card-content>
+            <div class="filters">
+              <mat-form-field appearance="outline"
+                ><mat-label>Search experiment, instance or algorithm</mat-label>
+                <input
+                  matInput
+                  [value]="store.resultQuery().search"
+                  (input)="
+                    store.filterResults(
+                      store.resultQuery().instanceId,
+                      store.resultQuery().algorithm,
+                      store.resultQuery().state,
+                      $any($event.target).value
+                    )
+                  "
+              /></mat-form-field>
+              <mat-form-field appearance="outline"
+                ><mat-label>Outcome</mat-label>
+                <mat-select
+                  [value]="store.resultQuery().state"
+                  (selectionChange)="
+                    store.filterResults(
+                      store.resultQuery().instanceId,
+                      store.resultQuery().algorithm,
+                      $event.value,
+                      store.resultQuery().search
+                    )
+                  "
+                >
+                  @for (state of workStates; track state) {
+                    <mat-option [value]="state">{{
+                      state ? phaseLabel(state) : 'All outcomes'
+                    }}</mat-option>
+                  }
+                </mat-select></mat-form-field
+              >
+              <mat-form-field appearance="outline"
+                ><mat-label>Algorithm name</mat-label
+                ><input
+                  matInput
+                  [value]="store.resultQuery().algorithm"
+                  (input)="
+                    store.filterResults(
+                      store.resultQuery().instanceId,
+                      $any($event.target).value,
+                      store.resultQuery().state,
+                      store.resultQuery().search
+                    )
+                  "
+              /></mat-form-field>
+              <mat-form-field appearance="outline"
+                ><mat-label>Sort results</mat-label
+                ><mat-select
+                  [value]="store.resultQuery().order ?? 'PLANNED'"
+                  (selectionChange)="store.sortResults($event.value)"
+                >
+                  <mat-option value="PLANNED">Planned order</mat-option
+                  ><mat-option value="INSTANCE">Instance name</mat-option
+                  ><mat-option value="ALGORITHM">Algorithm name</mat-option
+                  ><mat-option value="STATE">Outcome</mat-option
+                  ><mat-option value="RUNTIME">Runtime · fastest first</mat-option>
+                </mat-select></mat-form-field
+              >
+              <button
+                mat-button
+                (click)="
+                  store.filterResults(
+                    store.selectedInstanceId() ?? '',
+                    store.resultQuery().algorithm,
+                    store.resultQuery().state,
+                    store.resultQuery().search
+                  )
+                "
+              >
+                Selected instance only
+              </button>
+              <button mat-button (click)="store.filterResults('', '', '', '')">
+                Clear filters
+              </button>
+              @if (store.status()?.runId) {
+                <a mat-button [href]="store.exportUrl('csv')">CSV</a
+                ><a mat-button [href]="store.exportUrl('json')">JSON</a>
+              }
+            </div>
+            <div class="table-scroll">
+              <table>
+                <caption class="sr-only">
+                  Repetition result ledger
+                </caption>
+                <thead>
+                  <tr>
+                    <th>Experiment / instance</th>
+                    <th>Algorithm</th>
+                    <th>Iteration</th>
+                    <th>Seed</th>
+                    <th>Outcome</th>
+                    <th>{{ store.selectedObjective() ?? 'Objective' }}</th>
+                    <th>Runtime</th>
+                    <th>Details</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (result of store.resultPage()?.items ?? []; track result.resultId) {
+                    <tr>
+                      <td>{{ result.experimentName }} / {{ result.instanceName }}</td>
+                      <td>{{ result.algorithmName }}</td>
+                      <td>{{ result.iteration }}</td>
+                      <td>{{ result.seed }}</td>
+                      <td>{{ phaseLabel(result.state) }}</td>
+                      <td>
+                        {{
+                          (result.objectives[store.selectedObjective() ?? ''] | number: '1.0-4') ??
+                            '—'
+                        }}
+                      </td>
+                      <td>
+                        {{
+                          result.executionTime === null
+                            ? '—'
+                            : (result.executionTime / 1000000 | number: '1.0-2') + ' ms'
+                        }}
+                      </td>
+                      <td>
+                        <button mat-button (click)="store.inspectResult(result.resultId)">
+                          Inspect
+                        </button>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="8">No matching repetitions.</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            </div>
+            <mat-paginator
+              [length]="store.resultPage()?.total ?? 0"
+              [pageSize]="25"
+              [pageIndex]="store.resultQuery().offset / 25"
+              (page)="store.pageResults($event.pageIndex * $event.pageSize)"
+              aria-label="Result pages"
+            /> </mat-card-content
+        ></mat-card> </ng-template
+    ></mat-tab>
+    <mat-tab label="Issues"
+      ><ng-template matTabContent>
+        <div class="filters">
+          <mat-form-field appearance="outline"
+            ><mat-label>Severity</mat-label>
+            <mat-select
+              [value]="store.issueSeverity()"
+              (selectionChange)="store.filterIssues($event.value)"
+            >
+              <mat-option value="">All severities</mat-option
+              ><mat-option value="FATAL">Fatal</mat-option
+              ><mat-option value="ERROR">Error</mat-option
+              ><mat-option value="WARNING">Warning</mat-option>
+            </mat-select></mat-form-field
+          ><button mat-button (click)="store.markIssuesSeen()">Mark issues seen</button>
+        </div>
+        @for (issue of store.issuePage()?.items ?? []; track issue.id) {
+          <mat-card appearance="outlined" class="issue"
+            ><mat-card-content>
+              <strong>{{ issue.severity }} · {{ issue.scope }} · {{ issue.exceptionType }}</strong>
+              <p>{{ issue.message ?? 'No details provided' }}</p>
+              <p>
+                {{ issue.experimentName }} / {{ issue.instanceName }} / {{ issue.algorithmName }}
+                @if (issue.iteration !== null) {
+                  · iteration {{ issue.iteration }} · seed {{ issue.seed }}
+                }
+                · {{ issue.timestamp | date: 'medium' }}
+              </p>
+              @if (issue.resultId) {
+                <button mat-button (click)="store.inspectResult(issue.resultId)">
+                  Inspect result
+                </button>
+              }
+            </mat-card-content></mat-card
+          >
+        } @empty {
+          <p class="empty-state">No experiment issues have been reported.</p>
+        }
+        <mat-paginator
+          [length]="store.issuePage()?.total ?? 0"
+          [pageSize]="25"
+          [pageIndex]="store.issueOffset() / 25"
+          (page)="store.pageIssues($event.pageIndex * $event.pageSize)"
+          aria-label="Issue pages"
+        /> </ng-template
+    ></mat-tab>
+    <mat-tab label="Artifacts"
+      ><ng-template matTabContent>
+        <p>
+          Only successfully exported, registered files are available. Result exports use the current
+          Results filters.
+        </p>
+        @if (store.status()?.runId) {
+          <a mat-button [href]="store.exportUrl('csv')">Download results CSV</a
+          ><a mat-button [href]="store.exportUrl('json')">Download results JSON</a>
+        }
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>File</th>
+                <th>Experiment</th>
+                <th>Bytes</th>
+                <th>Updated</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (artifact of store.artifacts()?.artifacts ?? []; track artifact.id) {
+                <tr>
+                  <td>
+                    <a [href]="store.artifactUrl(artifact.id)">{{ artifact.filename }}</a>
+                  </td>
+                  <td>{{ artifact.experimentName }}</td>
+                  <td>{{ artifact.size | number }}</td>
+                  <td>{{ artifact.modifiedAt | date: 'medium' }}</td>
+                </tr>
+              } @empty {
+                <tr>
+                  <td colspan="4">No exported artifacts are available yet.</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </ng-template></mat-tab
+    >
+    <mat-tab label="Diagnostics"
+      ><ng-template matTabContent>
+        <mat-card class="browser"
+          ><mat-card-content
+            ><h2>Transport diagnostics</h2>
+            <p>Run: {{ store.status()?.runId ?? 'No execution' }}</p>
+            <p>Revision: {{ store.status()?.revision ?? 0 }}</p>
+            <p>WebSocket: {{ store.transportState() }}</p>
+            <p>Last processed notification ID: {{ store.lastEventId() }}</p>
+            @if (store.transportError(); as error) {
+              <p>{{ error }}</p>
             }
-          </mat-card-subtitle>
-        </mat-card-header>
-        <mat-card-content class="dashboard-grid">
-          <section>
-            <h2>Best solution</h2>
-            <app-solution-renderer
-              [instance]="instance"
-              [selectedObjective]="store.selectedObjective()"
-              [bestSolution]="instance.bestSolution"
-            />
-          </section>
-          <section>
-            <h2>Score convergence</h2>
-            <app-dashboard-chart [model]="instance.convergenceChart" />
-          </section>
-          <section>
-            <h2>Scores</h2>
-            <app-dashboard-chart [model]="instance.scoreChart" />
-          </section>
-        </mat-card-content>
-      </mat-card>
-    } @empty {
-      <section class="empty-state">
-        <p>Instance charts will appear as execution events arrive.</p>
-      </section>
-    }
-  </section>
+            <p>
+              Summaries and results come from backend snapshots. Connection health is independent of
+              execution outcome.
+            </p>
+            <button mat-button (click)="store.retryNow()">Reconnect / refresh</button>
+          </mat-card-content></mat-card
+        >
+      </ng-template></mat-tab
+    >
+  </mat-tab-group>
+
+  @if (store.resultError(); as error) {
+    <mat-card class="error-card" role="alert"
+      ><mat-card-content
+        >{{ error
+        }}<button mat-button (click)="store.closeResult()">Close</button></mat-card-content
+      ></mat-card
+    >
+  }
+  @if (store.inspectedResult(); as result) {
+    <mat-card appearance="outlined" class="result-detail" aria-label="Result details"
+      ><mat-card-content>
+        <div class="result-heading">
+          <h2>Result details</h2>
+          <button mat-button (click)="store.closeResult()">Close</button>
+        </div>
+        <app-solution-renderer [detail]="result" [selectedObjective]="store.selectedObjective()" />
+        @for (artifact of store.artifacts()?.artifacts ?? []; track artifact.id) {
+          @if (artifact.resultId === result.result.resultId) {
+            <a mat-button [href]="store.artifactUrl(artifact.id)">{{ artifact.filename }}</a>
+          }
+        }
+      </mat-card-content></mat-card
+    >
+  }
 </main>

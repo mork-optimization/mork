@@ -55,7 +55,7 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S, I>, I extends I
      * JSON export method. Exports the given solution to the provided file in JSON format.
      */
     @Override
-    public void export(String folder, String suggestedFilename, WorkUnitResult<S,I> result) {
+    public java.util.List<java.nio.file.Path> export(String folder, String suggestedFilename, WorkUnitResult<S,I> result) {
         var f = new File(folder, suggestedFilename);
         if (config.isEnabled()) {
             try {
@@ -64,5 +64,6 @@ public class DefaultJSONSolutionSerializer<S extends Solution<S, I>, I extends I
                 throw new RuntimeException("IOException while writing to file: " + f.getAbsolutePath(), e);
             }
         }
+        return config.isEnabled() ? java.util.List.of(f.toPath()) : java.util.List.of();
     }
 }

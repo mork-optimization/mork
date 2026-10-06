@@ -2,7 +2,7 @@ import { ChangeDetectionStrategy, Component, inject, input } from '@angular/core
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatMenuModule } from '@angular/material/menu';
-import { PanelPreferences, TuningPanelId } from '../../store/panel-preferences';
+import { PanelPreferences, MonitorPanelId } from '../../store/panel-preferences';
 
 @Component({
   selector: 'app-monitor-panel',
@@ -90,6 +90,6 @@ import { PanelPreferences, TuningPanelId } from '../../store/panel-preferences';
 })
 export class MonitorPanel {
   readonly preferences = inject(PanelPreferences);
-  readonly panelId = input.required<TuningPanelId>();
+  readonly panelId = input.required<MonitorPanelId>();
   readonly title = input.required<string>();
 }

@@ -188,7 +188,7 @@ class ExecutorTest {
         executor.solverConfig.setRandomType(RandomType.DEFAULT);
         var recorder = mock(es.urjc.etsii.grafo.metrics.timing.TimeStatsRecorder.class);
         when(executor.timeStats.open(any())).thenReturn(recorder);
-        var work = new WorkUnit<>("exp", "inst1", new CountingAlgorithm("count"), 4);
+        var work = new WorkUnit<>(java.util.UUID.randomUUID(), "exp", "inst1", new CountingAlgorithm("count"), 4);
         var result = executor.doWork(work);
         assertTrue(result.success());
         var metadata = org.mockito.ArgumentCaptor.forClass(es.urjc.etsii.grafo.metrics.timing.TimeStatsExecution.class);
@@ -199,13 +199,13 @@ class ExecutorTest {
         assertNull(es.urjc.etsii.grafo.util.TimeStatsUtil.current());
 
         doThrow(new IllegalStateException("invalid solution")).when(validator).validate(any());
-        assertFalse(executor.doWork(work).success());
+        assertFalse(executor.doWork(new WorkUnit<>(java.util.UUID.randomUUID(), work.experimentName(), work.instancePath(), work.algorithm(), work.i())).success());
         verify(recorder, times(2)).close();
         assertNull(es.urjc.etsii.grafo.util.TimeStatsUtil.current());
 
         var algorithm = mock(Algorithm.class);
         when(algorithm.algorithm(any())).thenThrow(new IllegalStateException("algorithm failed"));
-        assertFalse(executor.doWork(new WorkUnit<>("exp", "inst1", algorithm, 5)).success());
+        assertFalse(executor.doWork(new WorkUnit<>(java.util.UUID.randomUUID(), "exp", "inst1", algorithm, 5)).success());
         verify(recorder, times(3)).close();
         assertNull(es.urjc.etsii.grafo.util.TimeStatsUtil.current());
     }
@@ -280,7 +280,7 @@ class ExecutorTest {
                 TestMove::getScoreChange
         ));
         var algorithm = new CountingAlgorithm("algorithm");
-        var workUnit = new WorkUnit<>("exp", "inst1", algorithm, 0);
+        var workUnit = new WorkUnit<>(java.util.UUID.randomUUID(), "exp", "inst1", algorithm, 0);
         var candidateSolution = new TestSolution(new TestInstance("inst1"), 1.0);
         var bestSolution = new TestSolution(new TestInstance("inst1"), 2.0);
         var candidate = WorkUnitResult.ok(java.util.UUID.randomUUID(), workUnit, "inst1", candidateSolution, 1L, 1L, null);
@@ -320,7 +320,7 @@ class ExecutorTest {
 
         ) {
             super(solutionValidator, timeLimitCalculator,
-                    io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore, resultsSerializer, mock(TimeStatsService.class));
+                    io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore, resultsSerializer, mock(TimeStatsService.class), new es.urjc.etsii.grafo.monitoring.NormalExperimentRunState<>(resultStore, mock(org.springframework.beans.factory.ObjectProvider.class)));
         }
 
         @Override

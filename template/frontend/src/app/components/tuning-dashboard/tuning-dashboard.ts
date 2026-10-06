@@ -7,7 +7,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatDialog } from '@angular/material/dialog';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
-import { MatTabsModule } from '@angular/material/tabs';
+import { MatTabChangeEvent, MatTabsModule } from '@angular/material/tabs';
 import { MatToolbarModule } from '@angular/material/toolbar';
 import { ArtifactView, AutoconfigPhase, EliteView } from '../../model/autoconfig';
 import { AutoconfigStore } from '../../store/autoconfig-store';
@@ -17,6 +17,7 @@ import { DashboardChart } from '../dashboard-chart/dashboard-chart';
 import { EvaluationTable } from '../evaluation-table/evaluation-table';
 import { MonitorPanel } from '../monitor-panel/monitor-panel';
 import { SearchSpaceDialog } from '../search-space-dialog/search-space-dialog';
+import { ComponentUsageDashboard } from '../component-usage-dashboard/component-usage-dashboard';
 
 @Component({
   selector: 'app-tuning-dashboard',
@@ -34,6 +35,7 @@ import { SearchSpaceDialog } from '../search-space-dialog/search-space-dialog';
     MatTabsModule,
     MatToolbarModule,
     MonitorPanel,
+    ComponentUsageDashboard,
   ],
   templateUrl: './tuning-dashboard.html',
   styleUrl: './tuning-dashboard.scss',
@@ -47,12 +49,14 @@ export class TuningDashboard {
   readonly forceIssues = signal(false);
   private readonly dialog = inject(MatDialog);
 
-  selectTab(index: number): void {
-    this.selectedTab.set(index);
-    if (index !== 1) {
+  constructor() { this.store.start(); }
+
+  selectTab(event: MatTabChangeEvent): void {
+    this.selectedTab.set(event.index);
+    if (event.tab.textLabel !== 'Evaluations') {
       this.forceIssues.set(false);
     }
-    if (index === 3) {
+    if (event.tab.textLabel === 'Artifacts') {
       void this.store.refreshArtifacts();
     }
   }

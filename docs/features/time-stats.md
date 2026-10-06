@@ -74,4 +74,21 @@ and disk bandwidth: compare overhead and loss counts before using traces for
 performance conclusions. Increasing queue capacity can absorb temporary bursts;
 it cannot fix sustained input faster than the writer.
 
-TimeStats can be analyzed by using the Python script: TODO complete doc.
+## Analyzing a trace
+
+Check `manifest.json` for completeness/loss before aggregating. With pandas installed, join on both run and execution IDs:
+
+```python
+from pathlib import Path
+import pandas as pd
+
+directory = Path("time-stats/<run-directory>")
+events = pd.read_csv(directory / "events.csv")
+executions = pd.read_csv(directory / "executions.csv")
+trace = events.merge(executions, on=["run_id", "execution_id"], validate="many_to_one")
+trace["duration_ms"] = (trace["end_ns"] - trace["start_ns"]) / 1_000_000
+summary = trace.groupby(["experiment", "algorithm", "component_class", "method_signature"])["duration_ms"].agg(["count", "sum", "mean", "median", "max"])
+print(summary)
+```
+
+These are inclusive call durations. Do not sum parents and children to estimate total execution time or treat summed parallel durations as wall-clock elapsed time. Compare repetitions/instances separately when workloads differ; inspect thread IDs and timestamp intervals when investigating concurrency. Partial/incomplete traces can provide examples but cannot establish exact call counts or complete time distributions.

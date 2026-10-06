@@ -2,7 +2,9 @@ package es.urjc.etsii.grafo.events;
 
 import org.springframework.stereotype.Service;
 
-import java.util.LinkedHashMap;
+import java.util.ArrayList;
+import java.util.TreeMap;
+import java.util.UUID;
 import java.util.List;
 
 /**
@@ -11,7 +13,30 @@ import java.util.List;
 @Service
 public class InMemoryEventLog {
 
-    private final LinkedHashMap<Integer, EventEnvelope> events = new LinkedHashMap<>();
+    private final String eventLogId = UUID.randomUUID().toString();
+    private final TreeMap<Integer, EventEnvelope> events = new TreeMap<>();
+
+    public String eventLogId() {
+        return eventLogId;
+    }
+
+    public synchronized Head head() {
+        return new Head(eventLogId, events.isEmpty() ? -1 : events.lastKey());
+    }
+
+    public record Head(String eventLogId, int lastEventId) {}
+    public record Page(String eventLogId, int lastEventId, int from, int to, List<EventEnvelope> events) {}
+
+    public synchronized Page page(String expectedLogId, int from, int to) {
+        if (!eventLogId.equals(expectedLogId)) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.CONFLICT, "Event log changed; fetch a new head");
+        }
+        if ((long) to - from > 1_000) {
+            throw new IllegalArgumentException("History pages cannot exceed 1000 events");
+        }
+        return new Page(eventLogId, head().lastEventId(), from, to, getEvents(from, to));
+    }
 
     /**
      * Store a published event envelope.
@@ -42,9 +67,11 @@ public class InMemoryEventLog {
         if (to < from) {
             throw new IllegalArgumentException("Invalid parameters: 'to' is less than 'from', %s < %s".formatted(to, from));
         }
-        return events.values().stream()
-                .filter(event -> event.eventId() >= from && event.eventId() < to)
-                .toList();
+        var result = new ArrayList<EventEnvelope>();
+        for (var event : events.subMap(from, true, to, false).values()) {
+            result.add(event);
+        }
+        return List.copyOf(result);
     }
 
     /**

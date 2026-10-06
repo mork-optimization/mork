@@ -11,5 +11,5 @@ import es.urjc.etsii.grafo.events.types.MorkEvent;
  * @param workerName thread that published the event
  * @param payload event-specific data
  */
-public record EventEnvelope(int eventId, String type, long timestamp, String workerName, MorkEvent payload) {
+public record EventEnvelope(String eventLogId, int eventId, String type, long timestamp, String workerName, MorkEvent payload) {
 }

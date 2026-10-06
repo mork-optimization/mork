@@ -48,4 +48,33 @@ describe('AutoconfigClient', () => {
       'http://localhost:8080/api/autoconfig/artifacts/log%2Fa',
     );
   });
+
+  it('requests scoped aggregates and exact role relationships with server pagination', async () => {
+    const snapshot = client.getComponentUsage('CURRENT_ELITES');
+    http
+      .expectOne('http://localhost:8080/api/autoconfig/components/usage?scope=CURRENT_ELITES')
+      .flush({ runId: 'run-1', scope: 'CURRENT_ELITES', components: [], relationships: [] });
+    await expect(snapshot).resolves.toMatchObject({ scope: 'CURRENT_ELITES' });
+    const page = client.getComponentCandidates({
+      scope: 'ALL',
+      basis: 'EVALUATION',
+      offset: 25,
+      limit: 25,
+      selector: { parent: 'Root', role: 'improvers[]', child: 'Local' },
+    });
+    const request = http.expectOne((request) => request.url.endsWith('/components/candidates'));
+    expect(request.request.params.get('role')).toBe('improvers[]');
+    expect(request.request.params.get('component')).toBeNull();
+    expect(request.request.params.get('offset')).toBe('25');
+    expect(request.request.params.get('basis')).toBe('EVALUATION');
+    request.flush({
+      runId: 'run-1',
+      scope: 'ALL',
+      total: 26,
+      offset: 25,
+      nextOffset: null,
+      candidates: [],
+    });
+    await expect(page).resolves.toMatchObject({ offset: 25 });
+  });
 });

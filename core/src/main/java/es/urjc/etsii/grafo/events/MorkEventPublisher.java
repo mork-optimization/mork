@@ -218,6 +218,7 @@ public class MorkEventPublisher implements DisposableBean {
     private void dispatch(PendingEvent pendingEvent) {
         var event = pendingEvent.payload();
         var envelope = new EventEnvelope(
+                eventLog.eventLogId(),
                 nextEventId++,
                 event.getClass().getSimpleName(),
                 pendingEvent.acceptedAt(),

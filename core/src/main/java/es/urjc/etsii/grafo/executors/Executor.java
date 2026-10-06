@@ -10,6 +10,8 @@ import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.events.types.InstanceProcessingEndedEvent;
 import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.events.types.WorkUnitStartedEvent;
+import es.urjc.etsii.grafo.monitoring.NormalExperimentRunState;
 import es.urjc.etsii.grafo.exception.ExceptionHandler;
 import es.urjc.etsii.grafo.exceptions.DefaultExceptionHandler;
 import es.urjc.etsii.grafo.experiment.Experiment;
@@ -63,6 +65,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     protected final MorkEventPublisher eventPublisher;
     protected final ResultStore<S, I> resultStore;
     protected final ResultsSerializerListener<S, I> resultsSerializer;
+    protected final NormalExperimentRunState<S, I> runState;
 
     protected final TimeStatsService timeStats;
 
@@ -106,7 +109,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             ReferenceResultManager referenceResultManager,
             MorkEventPublisher eventPublisher,
             ResultStore<S, I> resultStore,
-            ResultsSerializerListener<S, I> resultsSerializer, TimeStatsService timeStats) {
+            ResultsSerializerListener<S, I> resultsSerializer, TimeStatsService timeStats, NormalExperimentRunState<S, I> runState) {
         this.timeLimitCalculator = timeLimitCalculator;
         this.solverConfig = solverConfig;
         this.exceptionHandler = decideImplementation(exceptionHandlers, DefaultExceptionHandler.class);
@@ -119,6 +122,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         this.resultStore = resultStore;
         this.resultsSerializer = resultsSerializer;
         this.timeStats = timeStats;
+        this.runState = runState;
     }
 
     public abstract void executeExperiment(Experiment<S, I> experiment, List<String> instancePaths, long startTimestamp);
@@ -148,7 +152,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         try (var ignored = eventPublisher.mute()) {
             for (var algorithm : experiment.algorithms()) {
                 for (int i = 0; i < repetitions; i++) {
-                    var workUnit = new WorkUnit<>(experiment.name(), instancePath, algorithm, i);
+                    var workUnit = new WorkUnit<>(UUID.randomUUID(), experiment.name(), instancePath, algorithm, i);
                     var result = doWork(workUnit, warmupConfig.getMaxMillis(), false);
                     if (!result.success()) {
                         throw new IllegalStateException("JVM warm-up failed for experiment %s, instance %s, algorithm %s"
@@ -188,18 +192,26 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
      * @param recordTiming         false for warm-up executions
      */
     protected WorkUnitResult<S, I> doWork(WorkUnit<S, I> workUnit, long overrideMaxMillis, boolean recordTiming) {
+        if (recordTiming) runState.started(workUnit);
+        return recordResult(computeResult(workUnit, overrideMaxMillis, recordTiming), recordTiming);
+    }
+
+    private WorkUnitResult<S, I> computeResult(WorkUnit<S, I> workUnit, long overrideMaxMillis, boolean recordTiming) {
         S solution = null;
-        I instance = this.instanceManager.getInstance(workUnit.instancePath());
+        I instance = null;
         Algorithm<S, I> algorithm = workUnit.algorithm();
         boolean timeControlEnabled = false;
 
         long startTime = UNDEF_TIME, endTime = UNDEF_TIME;
 
-        var resultId = UUID.randomUUID();
-        var recorder = recordTiming ? timeStats.open(new TimeStatsExecution(
-                resultId, workUnit.experimentName(), workUnit.instancePath(), instance.getId(),
-                algorithm.getName(), workUnit.i(), solverConfig.getSeed() + workUnit.i())) : null;
-        try (var timing = TimeStatsUtil.bind(recorder)) {
+        var resultId = workUnit.resultId();
+        try {
+            instance = this.instanceManager.getInstance(workUnit.instancePath());
+            if (recordTiming) eventPublisher.publish(new WorkUnitStartedEvent(resultId, workUnit.experimentName(), instance.getId(), algorithm.getName(), workUnit.i() + 1, solverConfig.getSeed() + workUnit.i()));
+            var recorder = recordTiming ? timeStats.open(new TimeStatsExecution(
+                    resultId, workUnit.experimentName(), workUnit.instancePath(), instance.getId(),
+                    algorithm.getName(), workUnit.i(), solverConfig.getSeed() + workUnit.i())) : null;
+            try (var timing = TimeStatsUtil.bind(recorder)) {
             // Preparate current work unit
             Context.Configurator.resetRandom(solverConfig, workUnit.i());
             if (overrideMaxMillis > 0) {
@@ -232,6 +244,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             long executionTime = endTime - startTime;
             var metrics = Metrics.areMetricsEnabled()? Metrics.getCurrentThreadMetrics() : null;
             return WorkUnitResult.ok(resultId, workUnit, instance.getId(), solution, executionTime, timeToTarget, metrics);
+            }
         } catch (Exception e) {
             long totalTime = UNDEF_TIME;
             if(startTime != UNDEF_TIME){
@@ -243,20 +256,27 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             if (timeControlEnabled && TimeControl.isEnabled()) {
                 endTimeControl(true, workUnit);
             }
-            exceptionHandler.handleException(workUnit.experimentName(), workUnit.i(), e, Optional.ofNullable(solution), instance, workUnit.algorithm());
+            String name = instance == null ? org.apache.commons.io.FilenameUtils.getName(workUnit.instancePath()) : instance.getId();
+            var failed = WorkUnitResult.failure(resultId, workUnit, name, totalTime, UNDEF_TIME);
+            if (recordTiming) runState.issue("ERROR", "COMPUTATION", e, resultId, workUnit.experimentName());
             eventPublisher.publish(new ErrorEvent(e));
-            return WorkUnitResult.failure(resultId, workUnit, instance.getId(), totalTime, UNDEF_TIME);
+            if (instance != null) exceptionHandler.handleException(workUnit.experimentName(), workUnit.i(), e, Optional.ofNullable(solution), instance, workUnit.algorithm());
+            return failed;
         }
+    }
+
+    private WorkUnitResult<S, I> recordResult(WorkUnitResult<S, I> result, boolean measured) {
+        if (measured) {
+            resultStore.store(result);
+            runState.completed(result);
+            eventPublisher.publish(new SolutionGeneratedEvent(result));
+        }
+        return result;
     }
 
     protected void processWorkUnitResult(WorkUnitResult<S, I> r, ProgressBar pb) {
         pb.step();
-        if(r.success()){
-            io.exportSolution(r, SolutionExportFrequency.ALL);
-        }
-
-        resultStore.store(r);
-        eventPublisher.publish(new SolutionGeneratedEvent(r));
+        if(r.success()) exportSolution(r, SolutionExportFrequency.ALL);
         if (log.isDebugEnabled()) {
             log.debug(String.format("%4s.  T(s): %8.3f  TTB(s): %8.3f  %s", r.iteration(), nanosToSecs(r.executionTime()), nanosToSecs(r.timeToTarget()), r.solution()));
         }
@@ -272,6 +292,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         } catch (RuntimeException e) {
             log.error("Per-instance result serialization failed for experiment {}", experimentName, e);
             eventPublisher.publish(new ErrorEvent(e));
+            runState.issue("WARNING", "EXPORT", e, null, experimentName);
         }
     }
 
@@ -300,7 +321,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         }
         // replace best iteration number with generic text to avoid overwriting the corresponding work unit result
         var modifiedWorkUnit = WorkUnitResult.copyBestAlg(r);
-        io.exportSolution(modifiedWorkUnit, SolutionExportFrequency.BEST_PER_ALG_INSTANCE);
+        exportSolution(modifiedWorkUnit, SolutionExportFrequency.BEST_PER_ALG_INSTANCE);
     }
 
     protected void exportInstanceSolution(WorkUnitResult<S, I> r) {
@@ -310,7 +331,16 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
         }
         // replace best iteration number and algorithm name with generic text to avoid overwriting the corresponding work unit result
         var modifiedWorkUnit = WorkUnitResult.copyBestInstance(r);
-        io.exportSolution(modifiedWorkUnit, SolutionExportFrequency.BEST_PER_INSTANCE);
+        exportSolution(modifiedWorkUnit, SolutionExportFrequency.BEST_PER_INSTANCE);
+    }
+
+    private void exportSolution(WorkUnitResult<S, I> result, SolutionExportFrequency frequency) {
+        try {
+            io.exportSolution(result, frequency);
+        } catch (RuntimeException e) {
+            runState.issue("WARNING", "EXPORT", e, result.resultId(), result.experimentName());
+            eventPublisher.publish(new ErrorEvent(e));
+        }
     }
 
 
@@ -329,7 +359,7 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             for (var alg : experiment.algorithms()) {
                 var list = new ArrayList<WorkUnit<S, I>>();
                 for (int i = 0; i < repetitions; i++) {
-                    var workUnit = new WorkUnit<>(experiment.name(), instancePath, alg, i);
+                    var workUnit = new WorkUnit<>(runState.workId(experiment.name(), instancePath, alg.getName(), i), experiment.name(), instancePath, alg, i);
                     list.add(workUnit);
                 }
                 algWorkUnits.put(alg, list);

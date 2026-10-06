@@ -204,7 +204,7 @@ public class YourProblemSolutionSerializer extends SolutionSerializer<YourSoluti
 
 Note: If the method `export(BufferedWriter writer, WorkUnitResult<YourSolutionType, YourInstanceType> result)` does not provide enough flexibility, 
 for example if you want to export the solution as an image, you may leave it empty and override 
-`export(File f, WorkUnitResult<YourSolutionType, YourInstanceType> result)` instead.
+`List<Path> export(String folder, String suggestedFilename, WorkUnitResult<YourSolutionType, YourInstanceType> result)` instead. Return every successfully written file path (or an empty list when intentionally skipped) so the monitoring artifact registry can expose it. Throw on export failure; do not return a path that was not written. The standard `BufferedWriter` override is unchanged; its default wrapper returns the written path automatically. Export warnings appear in the normal monitor without being counted as failed computations.
 
 ## Metrics
 

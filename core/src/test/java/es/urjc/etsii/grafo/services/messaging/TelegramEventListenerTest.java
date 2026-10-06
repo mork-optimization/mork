@@ -57,7 +57,7 @@ public class TelegramEventListenerTest {
 
     @Test
     public void onExecutionEnd(){
-        telegramEventListener.onEvent(new ExecutionEndedEvent(1000));
+        telegramEventListener.onEvent(new ExecutionEndedEvent(1000, ExecutionEndedEvent.Outcome.SUCCEEDED));
         verify(telegramService).stop();
     }
 

@@ -43,6 +43,7 @@ const runningStatus: AutoconfigStatus = {
 };
 
 class FakeAutoconfigStore {
+  readonly start = vi.fn();
   readonly status = signal<AutoconfigStatus | null>(runningStatus);
   readonly syncState = signal<'live'>('live');
   readonly connectionLabel = signal('Live');
@@ -130,5 +131,24 @@ describe('TuningDashboard', () => {
 
     expect(component.selectedTab()).toBe(1);
     expect(component.forceIssues()).toBe(true);
+  });
+
+  it('shows Components only in automatic mode and refreshes Artifacts by tab identity', async () => {
+    const fixture = TestBed.createComponent(TuningDashboard);
+    fixture.detectChanges();
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Components');
+    const store = TestBed.inject(AutoconfigStore) as unknown as FakeAutoconfigStore;
+    store.status.set({ ...runningStatus, mode: 'IRACE' });
+    await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).not.toContain('Components');
+    fixture.componentInstance.selectTab({ index: 3, tab: { textLabel: 'Artifacts' } } as Parameters<
+      TuningDashboard['selectTab']
+    >[0]);
+    expect(store.refreshArtifacts).toHaveBeenCalled();
+    fixture.componentInstance.selectTab({ index: 4, tab: { textLabel: 'Artifacts' } } as Parameters<
+      TuningDashboard['selectTab']
+    >[0]);
+    expect(store.refreshArtifacts).toHaveBeenCalledTimes(2);
   });
 });

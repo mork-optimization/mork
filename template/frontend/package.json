@@ -9,7 +9,8 @@
     "verify:static": "node scripts/verify-static.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.app.json && tsc --noEmit -p tsconfig.spec.json",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test --watch=false"
+    "test": "ng test --watch=false",
+    "test:browser": "node scripts/test-browser.mjs"
   },
   "private": true,
   "engines": {

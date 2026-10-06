@@ -1,15 +1,15 @@
 package es.urjc.etsii.grafo.restcontroller;
 
-import es.urjc.etsii.grafo.events.EventEnvelope;
 import es.urjc.etsii.grafo.events.InMemoryEventLog;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.PingEvent;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
-import java.util.List;
 
 /**
  * Define API endpoints related to events.
@@ -40,18 +40,22 @@ public class EventController {
      * @return Events in range [from, to).
      */
     @GetMapping("/events")
-    public List<EventEnvelope> getEvents(@RequestParam int from, @RequestParam int to) {
-        return eventLog.getEvents(from, to);
+    public InMemoryEventLog.Page getEvents(@RequestParam String eventLogId, @RequestParam int from, @RequestParam int to) {
+        try {
+            return eventLog.page(eventLogId, from, to);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e);
+        }
     }
 
     /**
-     * Get latest generated event
+     * Get the process identity and last dispatched event ID (-1 for an empty log).
      *
-     * @return last event
+     * @return event log head
      */
     @GetMapping("/lastevent")
-    public EventEnvelope getLastEvent(){
-        return eventLog.getLastEvent();
+    public InMemoryEventLog.Head getLastEvent(){
+        return eventLog.head();
     }
 
     /**

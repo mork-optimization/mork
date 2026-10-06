@@ -56,7 +56,7 @@ export class ChartUtil {
     const points = this.groupSuccessfulPoints(instance, objectiveName, true, objectiveMode);
     return {
       options: this.chartOptions(
-        `${instance.started.instanceName} convergence`,
+        `${instance.started.instanceName} best score across repetitions`,
         objectiveName,
         referenceValue,
         points,
@@ -89,11 +89,12 @@ export class ChartUtil {
 
       for (const stored of instance.solutions) {
         const event = stored.event;
-        if (!event.success || event.algorithmName !== algorithmName) {
+        if (event.algorithmName !== algorithmName) {
           continue;
         }
-        const value = this.objectiveValue(event, objectiveName);
+        const value = event.success ? this.objectiveValue(event, objectiveName) : null;
         if (value === null) {
+          data.push({ x: stored.ordinal, y: null, custom: { iteration: event.iteration } });
           continue;
         }
         if (convergence) {

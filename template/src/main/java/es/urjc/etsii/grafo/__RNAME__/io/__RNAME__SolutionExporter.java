@@ -27,6 +27,7 @@
 //        // Export data to the BufferedWriter. If more control is desired,
 //        // for example if you want to create multiple files for each solution, ot write binary data
 //        // ignore this method (throw new UnsupportedOperationException()) and override this one instead:
-//        // public void export(String folder, String suggestedFilename, WorkUnitResult<__RNAME__Solution, __RNAME__Instance> solution)
+//        // public java.util.List<java.nio.file.Path> export(String folder, String suggestedFilename, WorkUnitResult<__RNAME__Solution, __RNAME__Instance> solution)
+//        // Return every successfully written path so the monitor can register downloadable artifacts.
 //    }
 //}

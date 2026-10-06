@@ -5,7 +5,13 @@ import { ChartViewModel } from '../../model/dashboard';
 @Component({
   selector: 'app-dashboard-chart',
   imports: [HighchartsChartComponent],
-  template: ` <highcharts-chart class="chart" [options]="model().options" [oneToOne]="true" /> `,
+  template: `
+    <highcharts-chart
+      class="chart highcharts-light"
+      [options]="model().options"
+      [oneToOne]="true"
+    />
+  `,
   styles: `
     :host,
     .chart {

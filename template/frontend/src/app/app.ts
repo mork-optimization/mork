@@ -4,7 +4,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { StandardDashboard } from './components/standard-dashboard/standard-dashboard';
 import { TuningDashboard } from './components/tuning-dashboard/tuning-dashboard';
-import { AutoconfigStore } from './store/autoconfig-store';
+import { MonitorStore } from './store/monitor-store';
 
 @Component({
   selector: 'app-root',
@@ -20,7 +20,7 @@ import { AutoconfigStore } from './store/autoconfig-store';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class App implements OnInit {
-  readonly store = inject(AutoconfigStore);
+  readonly store = inject(MonitorStore);
 
   ngOnInit(): void {
     this.store.start();

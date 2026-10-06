@@ -6,11 +6,13 @@ import es.urjc.etsii.grafo.solution.Solution;
 import org.springframework.stereotype.Service;
 
 import java.lang.ref.SoftReference;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.Map;
 
 /**
  * In-memory generated-result store.
@@ -25,6 +27,7 @@ import java.util.UUID;
 @Service
 public class ResultStore<S extends Solution<S, I>, I extends Instance> {
     private final LinkedHashMap<UUID, StoredResult<S, I>> results = new LinkedHashMap<>();
+    private final Map<String, List<UUID>> experimentIndex = new LinkedHashMap<>();
 
     /**
      * Store a work-unit result.
@@ -38,6 +41,7 @@ public class ResultStore<S extends Solution<S, I>, I extends Instance> {
             throw new IllegalStateException("Duplicate result id " + result.resultId());
         }
         results.put(result.resultId(), new StoredResult<>(result));
+        experimentIndex.computeIfAbsent(result.experimentName(), ignored -> new java.util.ArrayList<>()).add(result.resultId());
         return result;
     }
 
@@ -67,10 +71,9 @@ public class ResultStore<S extends Solution<S, I>, I extends Instance> {
      * Get an immutable insertion-ordered snapshot for an experiment.
      */
     public synchronized List<WorkUnitResult<S, I>> getResultsForExperiment(String experimentName) {
-        return results.values().stream()
-                .map(StoredResult::result)
-                .filter(result -> Objects.equals(result.experimentName(), experimentName))
-                .toList();
+        var snapshot = new ArrayList<WorkUnitResult<S, I>>();
+        for (var id : experimentIndex.getOrDefault(experimentName, List.of())) snapshot.add(results.get(id).result());
+        return List.copyOf(snapshot);
     }
 
     /**
@@ -78,9 +81,7 @@ public class ResultStore<S extends Solution<S, I>, I extends Instance> {
      * Cached objective values and custom properties remain in the stored result.
      */
     public synchronized void releaseSolutionsForExperiment(String experimentName) {
-        results.values().stream()
-                .filter(stored -> Objects.equals(stored.result().experimentName(), experimentName))
-                .forEach(StoredResult::releaseSolution);
+        for (var id : experimentIndex.getOrDefault(experimentName, List.of())) results.get(id).releaseSolution();
     }
 
     private static final class StoredResult<S extends Solution<S, I>, I extends Instance> {

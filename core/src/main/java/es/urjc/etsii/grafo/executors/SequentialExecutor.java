@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.executors;
 
+import es.urjc.etsii.grafo.monitoring.NormalExperimentRunState;
+
 import es.urjc.etsii.grafo.metrics.timing.TimeStatsService;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
@@ -52,9 +54,9 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
             ReferenceResultManager referenceResultManager,
             MorkEventPublisher eventPublisher,
             ResultStore<S, I> resultStore,
-            ResultsSerializerListener<S, I> resultsSerializer, TimeStatsService timeStats
+            ResultsSerializerListener<S, I> resultsSerializer, TimeStatsService timeStats, NormalExperimentRunState<S, I> runState
     ) {
-        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore, resultsSerializer, timeStats);
+        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore, resultsSerializer, timeStats, runState);
     }
 
     /**
@@ -75,6 +77,7 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                 pb.setExtraMessage(instanceName);
                 long instanceStartTime = System.nanoTime();
                 var refValues = referenceResultManager.getRefValueForAllObjectives(instanceName, false);
+                runState.instanceStarted(experimentName, instancePath, instanceName, refValues);
                 eventPublisher.publish(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), refValues));
 
                 for (var algorithmWork : instanceWork.getValue().entrySet()) {
@@ -97,6 +100,7 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                         exportAlgorithmInstanceSolution(algorithmBest);
                     }
                     eventPublisher.publish(new AlgorithmProcessingEndedEvent(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                    runState.algorithmFinalized(experimentName, instancePath, algorithm.getName());
                 }
                 assert instanceBest != null;
                 if(algorithms.size() > 1){
@@ -104,6 +108,7 @@ public class SequentialExecutor<S extends Solution<S, I>, I extends Instance> ex
                 }
                 long totalInstanceTime = System.nanoTime() - instanceStartTime;
                 finishInstance(experimentName, instanceName, totalInstanceTime, startTimestamp);
+                runState.instanceFinalized(experimentName, instancePath);
             }
         }
 

@@ -17,6 +17,11 @@
       </mat-card>
     </main>
   }
+  @case ('utility') {
+    <main class="mode-state"><img src="favicon.svg" alt="Mork" /><mat-card><mat-card-content>
+      <h1>Instance utility</h1><p>This process is analysing or selecting instances. It is not running a measured experiment.</p>
+    </mat-card-content></mat-card></main>
+  }
   @case ('unavailable') {
     <main class="mode-state">
       <img src="favicon.svg" alt="Mork" />

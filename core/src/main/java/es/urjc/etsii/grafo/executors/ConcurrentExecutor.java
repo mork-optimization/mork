@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.executors;
 
+import es.urjc.etsii.grafo.monitoring.NormalExperimentRunState;
+
 import es.urjc.etsii.grafo.metrics.timing.TimeStatsService;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.config.SolverConfig;
@@ -59,9 +61,9 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
             ReferenceResultManager referenceResultManager,
             MorkEventPublisher eventPublisher,
             ResultStore<S, I> resultStore,
-            ResultsSerializerListener<S, I> resultsSerializer, TimeStatsService timeStats
+            ResultsSerializerListener<S, I> resultsSerializer, TimeStatsService timeStats, NormalExperimentRunState<S, I> runState
     ) {
-        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore, resultsSerializer, timeStats);
+        super(validator, timeLimitCalculator, io, instanceManager, solverConfig, exceptionHandlers, referenceResultManager, eventPublisher, resultStore, resultsSerializer, timeStats, runState);
         this.nWorkers = solverConfig.getnWorkers();
     }
 
@@ -92,25 +94,32 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
         var experimentName = experiment.name();
         var workUnits = getOrderedWorkUnits(experiment, instancePaths, solverConfig.getRepetitions());
 
+        // Parent events describe processing/export scopes. WorkUnitStartedEvent and the run-state hooks
+        // describe actual concurrent activity; solution events are emitted directly on completion.
+        for (var instancePath : instancePaths) {
+            var name = instanceName(instancePath);
+            var refs = referenceResultManager.getRefValueForAllObjectives(name, false);
+            runState.instanceStarted(experimentName, instancePath, name, refs);
+            eventPublisher.publish(new InstanceProcessingStartedEvent(experimentName, name, algorithms, solverConfig.getRepetitions(), refs));
+            for (var algorithm : algorithms) eventPublisher.publish(new AlgorithmProcessingStartedEvent(experimentName, name, algorithm, solverConfig.getRepetitions()));
+        }
+
         try (var pb = getGlobalSolvingProgressBar(experimentName, workUnits)) {
             // Launch execution of all work units in parallel
             var futures = submitAll(workUnits);
 
-            // Simulate sequential execution to trigger all events in correct order
+            // Preserve scheduled export order, without delaying result storage or monitoring updates.
             // K: Instance load path --> V: List of WorkUnits
             for (var e : futures.entrySet()) {
                 WorkUnitResult<S, I> instanceBest = null;
                 var instancePath = e.getKey();
                 var instanceName = instanceName(instancePath);
                 long instanceStartTime = System.nanoTime();
-                var refValues = referenceResultManager.getRefValueForAllObjectives(instanceName, false);
-                eventPublisher.publish(new InstanceProcessingStartedEvent(experimentName, instanceName, algorithms, solverConfig.getRepetitions(), refValues));
 
                 pb.setExtraMessage(instanceName);
                 for (var algorithmWork : e.getValue().entrySet()) {
                     WorkUnitResult<S, I> algorithmBest = null;
                     var algorithm = algorithmWork.getKey();
-                    eventPublisher.publish(new AlgorithmProcessingStartedEvent(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
                     log.debug("Running algorithm {} for instance {}", algorithm.getName(), instanceName);
                     for (var workUnit : algorithmWork.getValue()) {
                         var workUnitResult = ConcurrencyUtil.await(workUnit);
@@ -127,6 +136,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
                         exportAlgorithmInstanceSolution(algorithmBest);
                     }
                     eventPublisher.publish(new AlgorithmProcessingEndedEvent(experimentName, instanceName, algorithm, solverConfig.getRepetitions()));
+                    runState.algorithmFinalized(experimentName, instancePath, algorithm.getName());
 
                 }
 
@@ -136,6 +146,7 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
                 }
                 long totalInstanceTime = System.nanoTime() - instanceStartTime;
                 finishInstance(experimentName, instanceName, totalInstanceTime, startTimestamp);
+                runState.instanceFinalized(experimentName, instancePath);
             }
         }
 
@@ -157,6 +168,14 @@ public class ConcurrentExecutor<S extends Solution<S, I>, I extends Instance> ex
     @Override
     public void shutdown() {
         log.debug("Requesting threadpool shutdown");
-        this.executor.shutdown();
+        if (this.executor == null) return;
+        this.executor.shutdownNow();
+        try {
+            if (!this.executor.awaitTermination(10, java.util.concurrent.TimeUnit.SECONDS))
+                throw new IllegalStateException("Solver tasks did not terminate after cancellation");
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while waiting for solver shutdown", e);
+        }
     }
 }

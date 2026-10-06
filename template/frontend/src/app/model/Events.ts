@@ -14,6 +14,7 @@ export interface ExecutionStartedEvent {
 
 export interface ExecutionEndedEvent {
   readonly executionTime: number;
+  readonly outcome: 'SUCCEEDED' | 'COMPLETED_WITH_ERRORS' | 'FAILED' | 'CANCELLED';
 }
 
 export interface ExperimentStartedEvent {
@@ -86,6 +87,7 @@ export interface EventPayloadMap {
 export type KnownEventType = keyof EventPayloadMap;
 
 export interface EventEnvelope<TType extends string, TPayload> {
+  readonly eventLogId: string;
   readonly eventId: number;
   readonly type: TType;
   readonly timestamp: number;

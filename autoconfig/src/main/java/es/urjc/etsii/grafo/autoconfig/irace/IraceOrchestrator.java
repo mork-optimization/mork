@@ -170,7 +170,9 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             throw e;
         } finally {
             long totalExecutionTime = System.nanoTime() - startTime;
-            lifecycleCoordinator.complete(totalExecutionTime);
+            lifecycleCoordinator.complete(totalExecutionTime, runState.status().failure() == null
+                    ? es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.SUCCEEDED
+                    : es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.FAILED);
             log.info("Total execution time: {} (s)", nanosToSecs(totalExecutionTime));
         }
     }

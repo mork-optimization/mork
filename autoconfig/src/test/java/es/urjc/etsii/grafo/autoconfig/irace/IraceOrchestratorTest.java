@@ -62,7 +62,7 @@ class IraceOrchestratorTest {
         orchestrator.run("--follower");
 
         verifyNoInteractions(eventPublisher, resultsSerializer, instanceManager, integration);
-        verify(lifecycle, never()).complete(anyLong());
+        verify(lifecycle, never()).complete(anyLong(), org.mockito.ArgumentMatchers.any());
     }
 
     @Test

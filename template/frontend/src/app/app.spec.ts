@@ -1,9 +1,9 @@
 import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { App } from './app';
-import { ApplicationView, AutoconfigStore } from './store/autoconfig-store';
+import { ApplicationView, MonitorStore } from './store/monitor-store';
 
-class FakeAutoconfigStore {
+class FakeMonitorStore {
   readonly viewMode = signal<ApplicationView>('detecting');
   readonly latestError = signal<string | null>(null);
   readonly start = vi.fn();
@@ -11,13 +11,13 @@ class FakeAutoconfigStore {
 }
 
 describe('App mode selection', () => {
-  let store: FakeAutoconfigStore;
+  let store: FakeMonitorStore;
 
   beforeEach(async () => {
-    store = new FakeAutoconfigStore();
+    store = new FakeMonitorStore();
     await TestBed.configureTestingModule({
       imports: [App],
-      providers: [provideZonelessChangeDetection(), { provide: AutoconfigStore, useValue: store }],
+      providers: [provideZonelessChangeDetection(), { provide: MonitorStore, useValue: store }],
     }).compileComponents();
   });
 

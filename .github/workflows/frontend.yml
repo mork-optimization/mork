@@ -7,6 +7,7 @@ on:
       - "template/src/main/resources/static/**"
       - ".github/workflows/frontend.yml"
       - "core/src/main/java/es/urjc/etsii/grafo/**"
+      - "common/src/main/java/es/urjc/etsii/grafo/**"
       - "autoconfig/src/main/java/es/urjc/etsii/grafo/autoconfig/**"
   pull_request:
     paths:
@@ -14,6 +15,7 @@ on:
       - "template/src/main/resources/static/**"
       - ".github/workflows/frontend.yml"
       - "core/src/main/java/es/urjc/etsii/grafo/**"
+      - "common/src/main/java/es/urjc/etsii/grafo/**"
       - "autoconfig/src/main/java/es/urjc/etsii/grafo/autoconfig/**"
 
 permissions:
@@ -37,6 +39,11 @@ jobs:
       - run: npm test
       - run: npm run build:static
       - run: npm run verify:static
+      - name: Production browser smoke test
+        run: npm run test:browser
+        env:
+          MORK_STATIC_ROOT: ../src/main/resources/static
+          MORK_BROWSER: /usr/bin/google-chrome
       - name: Verify committed Spring assets
         working-directory: .
         run: |

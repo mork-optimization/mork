@@ -66,7 +66,7 @@ public class ResultsSerializerListenerTest {
         when(this.serializer3.getConfig()).thenReturn(TestSerializerConfigUtils.create(false, ResultExportFrequency.EXPERIMENT_END, temp));
         doAnswer(answer).when(this.serializer3).serializeResults(anyString(), anyList(), any());
 
-        this.listener = new ResultsSerializerListener<>(this.resultStore, Arrays.asList(this.serializer1, this.serializer2, this.serializer3));
+        this.listener = new ResultsSerializerListener<>(this.resultStore, Arrays.asList(this.serializer1, this.serializer2, this.serializer3), new es.urjc.etsii.grafo.monitoring.MonitoringArtifactRegistry(), new es.urjc.etsii.grafo.monitoring.NormalExperimentRunState<>(this.resultStore, mock(org.springframework.beans.factory.ObjectProvider.class)));
     }
 
 
@@ -154,7 +154,7 @@ public class ResultsSerializerListenerTest {
             return null;
         }).when(laterSerializer).serializeResults(anyString(), anyList(), any());
         doThrow(new IllegalArgumentException("boom")).when(serializer2).serializeResults(anyString(), anyList(), any());
-        listener = new ResultsSerializerListener<>(resultStore, List.of(serializer2, laterSerializer));
+        listener = new ResultsSerializerListener<>(resultStore, List.of(serializer2, laterSerializer), new es.urjc.etsii.grafo.monitoring.MonitoringArtifactRegistry(), new es.urjc.etsii.grafo.monitoring.NormalExperimentRunState<>(resultStore, mock(org.springframework.beans.factory.ObjectProvider.class)));
 
         Assertions.assertThrows(
                 SerializerExecutionException.class,
@@ -173,7 +173,7 @@ public class ResultsSerializerListenerTest {
     public void serializerSetupFailureDoesNotPreventLaterFinalSerializer() {
         var brokenSerializer = (ResultsSerializer<TestSolution, TestInstance>) mock(ResultsSerializer.class);
         when(brokenSerializer.getConfig()).thenThrow(new IllegalStateException("config failed"));
-        listener = new ResultsSerializerListener<>(resultStore, List.of(brokenSerializer, serializer2));
+        listener = new ResultsSerializerListener<>(resultStore, List.of(brokenSerializer, serializer2), new es.urjc.etsii.grafo.monitoring.MonitoringArtifactRegistry(), new es.urjc.etsii.grafo.monitoring.NormalExperimentRunState<>(resultStore, mock(org.springframework.beans.factory.ObjectProvider.class)));
 
         var failure = Assertions.assertThrows(
                 SerializerExecutionException.class,
@@ -207,7 +207,7 @@ public class ResultsSerializerListenerTest {
             invocation.<Path>getArgument(2).toFile().createNewFile();
             return null;
         }).when(laterSerializer).serializeResults(anyString(), anyList(), any());
-        var service = new ResultsSerializerListener<>(realStore, List.of(failingSerializer, laterSerializer));
+        var service = new ResultsSerializerListener<>(realStore, List.of(failingSerializer, laterSerializer), new es.urjc.etsii.grafo.monitoring.MonitoringArtifactRegistry(), new es.urjc.etsii.grafo.monitoring.NormalExperimentRunState<>(realStore, mock(org.springframework.beans.factory.ObjectProvider.class)));
 
         Assertions.assertThrows(
                 SerializerExecutionException.class,

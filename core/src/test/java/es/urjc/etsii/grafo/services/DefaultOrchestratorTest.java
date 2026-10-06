@@ -88,7 +88,7 @@ class DefaultOrchestratorTest {
                 executor,
                 eventPublisher,
                 lifecycle,
-                resultsSerializer, mock(TimeStatsService.class)
+                resultsSerializer, mock(TimeStatsService.class), new es.urjc.etsii.grafo.monitoring.NormalExperimentRunState<TestSolution, TestInstance>(new es.urjc.etsii.grafo.results.ResultStore<>(), mock(org.springframework.beans.factory.ObjectProvider.class))
         );
 
         Assertions.assertDoesNotThrow(() -> orchestrator.run());
@@ -99,8 +99,31 @@ class DefaultOrchestratorTest {
         ordered.verify(eventPublisher).publish(isA(ErrorEvent.class));
         ordered.verify(eventPublisher).publish(isA(ExperimentEndedEvent.class));
         ordered.verify(executor).shutdown();
-        ordered.verify(lifecycle).complete(anyLong());
+        ordered.verify(lifecycle).complete(anyLong(), org.mockito.ArgumentMatchers.eq(ExecutionEndedEvent.Outcome.COMPLETED_WITH_ERRORS));
         verify(eventPublisher, never()).publish(isA(ExecutionEndedEvent.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void startupFailureIsNotMaskedByShutdownOrTerminalPublicationFailure() {
+        Context.Configurator.setObjectives(Objective.of("Test", FMode.MINIMIZE, TestSolution::getScore, TestMove::getScoreChange));
+        var solver = new SolverConfig(); solver.setBenchmark(false);
+        var experiments = (ExperimentManager<TestSolution, TestInstance>) mock(ExperimentManager.class);
+        when(experiments.getExperiments()).thenReturn(Map.of());
+        var executor = (Executor<TestSolution, TestInstance>) mock(Executor.class);
+        var initial = new IllegalStateException("startup failed");
+        doThrow(initial).when(executor).startup();
+        doThrow(new IllegalStateException("shutdown failed")).when(executor).shutdown();
+        var lifecycle = mock(ExecutionLifecycleCoordinator.class);
+        doThrow(new IllegalStateException("publication failed")).when(lifecycle).complete(anyLong(), org.mockito.ArgumentMatchers.any());
+        var state = new es.urjc.etsii.grafo.monitoring.NormalExperimentRunState<TestSolution, TestInstance>(new es.urjc.etsii.grafo.results.ResultStore<>(), mock(org.springframework.beans.factory.ObjectProvider.class));
+        var orchestrator = new DefaultOrchestrator<>(solver, new BlockConfig(), (InstanceManager<TestInstance>) mock(InstanceManager.class),
+                experiments, Optional.empty(), executor, mock(MorkEventPublisher.class), lifecycle,
+                (ResultsSerializerListener<TestSolution, TestInstance>) mock(ResultsSerializerListener.class), mock(TimeStatsService.class), state);
+        Assertions.assertSame(initial, Assertions.assertThrows(IllegalStateException.class, () -> orchestrator.run()));
+        Assertions.assertEquals(2, initial.getSuppressed().length);
+        Assertions.assertEquals(2, state.status().issueCount());
+        verify(lifecycle).complete(anyLong(), org.mockito.ArgumentMatchers.eq(ExecutionEndedEvent.Outcome.FAILED));
     }
 
     private TestData getTestData(int repetitions, int nInstances, int nAlgorithms){
