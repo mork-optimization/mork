@@ -2,6 +2,14 @@ import {Solution} from "./Solution";
 
 export type EventHandler = (event: MorkEvent) => void;
 
+export class EventEnvelope<T extends MorkEvent = MorkEvent> {
+  eventId: number = -1;
+  type: EventType = EventType.Undefined;
+  timestamp: number = -1;
+  workerName: string = "";
+  payload!: T;
+}
+
 export class MorkEvent {
   type: EventType = EventType.Undefined;
   eventId: number = -1;
@@ -10,7 +18,8 @@ export class MorkEvent {
 
 export class ErrorEvent extends MorkEvent {
   override type = EventType.ErrorEvent;
-  throwable: string = "";
+  exceptionType: string = "";
+  message: string = "";
 }
 
 export class PingEvent extends MorkEvent {
@@ -21,7 +30,7 @@ export class PingEvent extends MorkEvent {
 export class ExecutionStartedEvent extends MorkEvent {
   override type = EventType.ExecutionStartedEvent;
   experimentNames!: string[];
-  maximizing!: boolean;
+  objectives!: Record<string, string>;
 }
 
 export class ExecutionEndedEvent extends MorkEvent {
@@ -54,9 +63,9 @@ export class InstanceProcessingStartedEvent extends MorkEvent {
   override type = EventType.InstanceProcessingStartedEvent;
   experimentName!: string;
   instanceName!: string;
-  algorithms!: any[];
+  algorithms!: string[];
   repetitions!: number;
-  referenceValue?: number;
+  refValues!: Record<string, number>;
 }
 
 export class InstanceProcessingEndedEvent extends MorkEvent {
@@ -71,7 +80,7 @@ export class AlgorithmProcessingStartedEvent extends MorkEvent {
   override type = EventType.AlgorithmProcessingStartedEvent;
   experimentName!: string;
   instanceName!: string;
-  algorithm!: any;
+  algorithmName!: string;
   repetitions!: number;
 }
 
@@ -79,12 +88,13 @@ export class AlgorithmProcessingEndedEvent extends MorkEvent {
   override type = EventType.AlgorithmProcessingEndedEvent;
   experimentName!: string;
   instanceName!: string;
-  algorithm!: any;
+  algorithmName!: string;
   repetitions!: number;
 }
 
 export class SolutionGeneratedEvent extends MorkEvent {
   override type = EventType.SolutionGeneratedEvent;
+  resultId!: string;
   experimentName!: string;
   instanceName!: string;
   algorithmName!: string;
@@ -92,7 +102,6 @@ export class SolutionGeneratedEvent extends MorkEvent {
   score!: number;
   executionTime!: number;
   timeToBest!: number;
-  algorithm!: any;
   solution?: Solution;
 }
 
@@ -110,4 +119,3 @@ export enum EventType {
   AlgorithmProcessingEndedEvent = "AlgorithmProcessingEndedEvent",
   SolutionGeneratedEvent = "SolutionGeneratedEvent"
 }
-

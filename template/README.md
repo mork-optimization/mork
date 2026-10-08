@@ -20,7 +20,8 @@ Instances are categorized in different datasets inside the 'instances' folder. A
 
 You can easily compile and build an executable artifact of this project using Maven and a recent version of Java (17+):
 ```text
-mvn clean package
+# If using Windows, replace ./mvnw with .\mvnw.cmd
+./mvnw clean package
 ```
 
 ## Executing

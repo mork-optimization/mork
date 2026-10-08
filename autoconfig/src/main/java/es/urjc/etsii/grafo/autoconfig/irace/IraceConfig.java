@@ -10,10 +10,12 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 @ConfigurationProperties(prefix = "irace")
 public class IraceConfig {
+    public static final int DEFAULT_API_EVALUATION_HISTORY_LIMIT = 10_000;
+
     private boolean enabled;
-    private boolean shell;
     private boolean auc = false;
     private boolean timecontrol = false;
+    private int apiEvaluationHistoryLimit = DEFAULT_API_EVALUATION_HISTORY_LIMIT;
 
     /**
      * Is irace enabled?
@@ -31,24 +33,6 @@ public class IraceConfig {
      */
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
-    }
-
-    /**
-     * Execute Irace in shell or using GraalVM?
-     *
-     * @return true if irace should be executed using ShellRLangRunner, false to use GraalRLangRunner
-     */
-    public boolean isShell() {
-        return shell;
-    }
-
-    /**
-     * Execute Irace in shell or using GraalVM?
-     *
-     * @param shell true to execute irace using ShellRLangRunner, false to use GraalRLangRunner
-     */
-    public void setShell(boolean shell) {
-        this.shell = shell;
     }
 
     /**
@@ -81,5 +65,26 @@ public class IraceConfig {
      */
     public void setTimecontrol(boolean timecontrol) {
         this.timecontrol = timecontrol;
+    }
+
+    /**
+     * Maximum number of individual evaluations retained for the autoconfig REST API.
+     *
+     * @return evaluation history limit
+     */
+    public int getApiEvaluationHistoryLimit() {
+        return apiEvaluationHistoryLimit;
+    }
+
+    /**
+     * Configure the maximum number of evaluations retained by the autoconfig REST API.
+     *
+     * @param apiEvaluationHistoryLimit positive history limit
+     */
+    public void setApiEvaluationHistoryLimit(int apiEvaluationHistoryLimit) {
+        if (apiEvaluationHistoryLimit < 1) {
+            throw new IllegalArgumentException("irace.api-evaluation-history-limit must be positive");
+        }
+        this.apiEvaluationHistoryLimit = apiEvaluationHistoryLimit;
     }
 }

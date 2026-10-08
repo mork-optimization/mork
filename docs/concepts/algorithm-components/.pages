@@ -1,5 +1,6 @@
 nav:
     - intro.md
+    - json-descriptions.md
     - components.md
     - metaheuristics
     - constructors

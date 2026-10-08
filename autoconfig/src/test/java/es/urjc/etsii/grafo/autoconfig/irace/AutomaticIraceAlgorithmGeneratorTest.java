@@ -5,6 +5,7 @@ import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.autoconfig.generator.DefaultExplorationFilter;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.inventory.DefaultInventoryFilter;
+import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import org.junit.jupiter.api.BeforeAll;
 
@@ -21,7 +22,10 @@ class AutomaticIraceAlgorithmGeneratorTest {
         inventory.runComponentDiscovery("es.urjc.etsii.grafo");
         var candidateGenerator = new AlgorithmCandidateGenerator(inventory, new DefaultExplorationFilter());
         var builderService = new AlgorithmBuilderService(inventory);
-        generator = new AutomaticAlgorithmBuilder<>(config, candidateGenerator, builderService);
+        generator = new AutomaticAlgorithmBuilder<>(
+                new AutoconfigSearchSpace(config, candidateGenerator),
+                builderService
+        );
     }
 
 //    @Test // TODO complete test

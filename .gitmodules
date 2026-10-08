@@ -1,0 +1,6 @@
+[submodule "moocore"]
+	path = moocore
+	url = https://github.com/multi-objective/moocore
+[submodule "testsuite"]
+	path = testsuite
+	url = https://github.com/multi-objective/testsuite

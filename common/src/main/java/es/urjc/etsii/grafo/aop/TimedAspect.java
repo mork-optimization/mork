@@ -40,7 +40,7 @@ public final class TimedAspect {
         if(objective.isBetter(initialScore, endScore)){
             throw new IllegalStateException(String.format("Score has worsened after executing an improvement method: %s --> %s", initialScore, endScore));
         }
-        Metrics.addCurrentObjectives(solution);
+        Metrics.addCurrentObjectives(improvedSolution);
 
         return improvedSolution;
     }
@@ -85,4 +85,3 @@ public final class TimedAspect {
         return retVal;
     }
 }
-

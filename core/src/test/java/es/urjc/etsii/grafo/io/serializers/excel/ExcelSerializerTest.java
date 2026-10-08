@@ -10,8 +10,10 @@ import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
-import org.apache.poi.openxml4j.util.ZipSecureFile;
+import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.util.AreaReference;
+import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.junit.jupiter.api.Assertions;
@@ -19,7 +21,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-import org.mockito.Mockito;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -35,17 +36,14 @@ import java.util.Optional;
 
 import static es.urjc.etsii.grafo.testutil.TestHelperFactory.referencesGenerator;
 import static es.urjc.etsii.grafo.testutil.TestHelperFactory.solutionGenerator;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verifyNoMoreInteractions;
 
 public class ExcelSerializerTest {
 
     private static final Objective<TestMove, TestSolution, TestInstance> OBJ_MAX = Objective.of("Test", FMode.MAXIMIZE, TestSolution::getScore, TestMove::getScoreChange);
 
     @BeforeAll
-    static void configurePOI() {
-        // In order to read the file due to the size of the pivot table
-        ZipSecureFile.setMinInflateRatio(0.001);
+    static void configureObjectives() {
+        System.setProperty("java.awt.headless", "true");
         Context.Configurator.setObjectives(OBJ_MAX);
     }
 
@@ -77,8 +75,15 @@ public class ExcelSerializerTest {
     }
 
     @Test
-    void writeEmptyCalcExcel(@TempDir Path temp) {
+    void writeEmptyCalcExcel(@TempDir Path temp) throws IOException {
         writeEmptyExcelParameters(temp, new ArrayList<>());
+
+        try (var workbook = new XSSFWorkbook(new FileInputStream(temp.resolve("test.xlsx").toFile()))) {
+            var table = workbook.getTable(ExcelSerializer.RAW_TABLE);
+            Assertions.assertNotNull(table);
+            Assertions.assertEquals("A1:I2", table.getArea().formatAsString());
+            Assertions.assertEquals(2, workbook.getSheet(ExcelSerializer.RAW_SHEET).getPhysicalNumberOfRows());
+        }
     }
 
     @Test
@@ -99,16 +104,22 @@ public class ExcelSerializerTest {
     }
 
     @Test
-    void writeXLSXWithCustomizer(@TempDir Path temp) {
-        var customizer = Mockito.mock(ExcelCustomizer.class);
+    void writeXLSXWithCustomizer(@TempDir Path temp) throws IOException {
+        var customizer = new RecordingExcelCustomizer();
         var excel = initExcel(Optional.of(customizer), temp);
         var excelPath = temp.resolve("test2.xlsx");
 
         var data = solutionGenerator();
 
         excel.serializeResults("TestExperiment", data, excelPath);
-        Mockito.verify(customizer, Mockito.atLeastOnce()).customize(any());
-        verifyNoMoreInteractions(customizer);
+        Assertions.assertTrue(customizer.called);
+
+        try (var workbook = new XSSFWorkbook(new FileInputStream(excelPath.toFile()))) {
+            Assertions.assertEquals(
+                    "Customized",
+                    workbook.getSheet(ExcelSerializer.PIVOT_SHEET).getRow(10).getCell(0).getStringCellValue()
+            );
+        }
     }
 
     @Test
@@ -128,6 +139,24 @@ public class ExcelSerializerTest {
 
             Assertions.assertEquals(data.size() * 2, rawResults.getPhysicalNumberOfRows() - 1); // There are headers
 
+            var rawTable = workbook.getTable(ExcelSerializer.RAW_TABLE);
+            Assertions.assertNotNull(rawTable);
+            Assertions.assertEquals("A1:I7", rawTable.getArea().formatAsString());
+            Assertions.assertEquals("TableStyleLight1", rawTable.getStyleName());
+            Assertions.assertEquals("A1:I7", rawTable.getCTTable().getAutoFilter().getRef());
+
+            var rawHeaderComment = rawResults.getRow(0).getCell(0).getCellComment();
+            Assertions.assertNotNull(rawHeaderComment);
+            Assertions.assertEquals(ExcelSerializer.RAW_TABLE_INSTRUCTIONS, rawHeaderComment.getString().getString());
+
+            var pivotTables = workbook.getSheet(ExcelSerializer.PIVOT_SHEET).getPivotTables();
+            Assertions.assertEquals(1, pivotTables.size());
+            var cacheDefinition = pivotTables.getFirst().getPivotCacheDefinition().getCTPivotCacheDefinition();
+            var source = cacheDefinition.getCacheSource().getWorksheetSource();
+            Assertions.assertEquals(ExcelSerializer.RAW_TABLE, source.getName());
+            Assertions.assertFalse(source.isSetRef());
+            Assertions.assertTrue(cacheDefinition.getRefreshOnLoad());
+
             while (rowIterator.hasNext()) {
                 Row row = rowIterator.next();
 
@@ -137,6 +166,18 @@ public class ExcelSerializerTest {
                     Assertions.assertEquals(row.getCell(4).getNumericCellValue(), 10.10); // Seconds to nanoseconds
                 }
             }
+
+            var appendedRow = rawResults.createRow(7);
+            for (int i = 0; i < 9; i++) {
+                appendedRow.createCell(i).setBlank();
+            }
+            rawTable.setArea(new AreaReference(
+                    new CellReference(0, 0),
+                    new CellReference(7, 8),
+                    SpreadsheetVersion.EXCEL2007
+            ));
+            Assertions.assertEquals(ExcelSerializer.RAW_TABLE, source.getName());
+            Assertions.assertFalse(source.isSetRef());
         }
     }
 
@@ -210,6 +251,8 @@ public class ExcelSerializerTest {
             XSSFSheet rawSheet = wb.getSheet(ExcelSerializer.RAW_SHEET);
             Iterator<Row> rowIterator = rawSheet.iterator();
 
+            Assertions.assertEquals("A1:K4", wb.getTable(ExcelSerializer.RAW_TABLE).getArea().formatAsString());
+
             Assertions.assertTrue(rowIterator.hasNext(), "Missing headers in raw result sheet");
             var header = rowIterator.next();
             Assertions.assertEquals(11, header.getLastCellNum(), "Should have 9 common headers + 2 custom property headers");
@@ -277,6 +320,26 @@ public class ExcelSerializerTest {
         Assertions.assertTrue(causeMessage.contains("Instances"));
         Assertions.assertTrue(causeMessage.contains("HashSet"));
         Assertions.assertTrue(exception.getMessage().contains("Root cause: IllegalArgumentException"));
+    }
+
+    @Test
+    void rejectsMoreRowsThanExcelSupports() {
+        int maxDataRows = SpreadsheetVersion.EXCEL2007.getMaxRows() - 1;
+        var exception = Assertions.assertThrows(
+                IllegalArgumentException.class,
+                () -> ExcelSerializer.validateRawDataRowCount((long) maxDataRows + 1)
+        );
+        Assertions.assertTrue(exception.getMessage().contains(String.valueOf(maxDataRows)));
+    }
+
+    private static final class RecordingExcelCustomizer extends ExcelCustomizer {
+        private boolean called;
+
+        @Override
+        public void customize(XSSFWorkbook excelBook) {
+            called = true;
+            excelBook.getSheet(ExcelSerializer.PIVOT_SHEET).createRow(10).createCell(0).setCellValue("Customized");
+        }
     }
 
 }

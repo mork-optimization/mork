@@ -2,11 +2,21 @@ package es.urjc.etsii.grafo.graphs.model;
 
 import es.urjc.etsii.grafo.solution.Solution;
 
+import java.util.BitSet;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class MSTSolution extends Solution<MSTSolution, MSTInstance> {
 
     private double score;
+
+    /**
+     * Selected vertices, only used by the Minimum Vertex Cover (MVC) demo.
+     * Left empty by every other algorithm in this project.
+     */
+    private final BitSet cover;
+
     /**
      * Initialize solution from instance
      *
@@ -15,6 +25,7 @@ public class MSTSolution extends Solution<MSTSolution, MSTInstance> {
     public MSTSolution(MSTInstance instance) {
         super(instance);
         score = 0;
+        this.cover = new BitSet(instance.v());
     }
 
     /**
@@ -25,6 +36,7 @@ public class MSTSolution extends Solution<MSTSolution, MSTInstance> {
     public MSTSolution(MSTSolution solution) {
         super(solution);
         this.score = solution.score;
+        this.cover = (BitSet) solution.cover.clone();
     }
 
 
@@ -75,5 +87,50 @@ public class MSTSolution extends Solution<MSTSolution, MSTInstance> {
                 score += d[i][j];
             }
         }
+    }
+
+    /**
+     * Is the given vertex part of the vertex cover? Only meaningful for the MVC demo.
+     * @param vertex vertex id
+     * @return true if the vertex is currently selected
+     */
+    public boolean isInCover(int vertex) {
+        return this.cover.get(vertex);
+    }
+
+    /**
+     * Add a vertex to the vertex cover. Only meaningful for the MVC demo.
+     * @param vertex vertex id
+     */
+    public void addToCover(int vertex) {
+        this.cover.set(vertex);
+    }
+
+    /**
+     * Vertices currently selected as part of the vertex cover. Only meaningful for the MVC demo.
+     * @return a new set with the selected vertex ids
+     */
+    public Set<Integer> getCoverVertices() {
+        var result = new HashSet<Integer>();
+        for (int v = this.cover.nextSetBit(0); v >= 0; v = this.cover.nextSetBit(v + 1)) {
+            result.add(v);
+        }
+        return result;
+    }
+
+    /**
+     * Number of vertices currently selected as part of the vertex cover.
+     * @return cover size
+     */
+    public int getCoverSize() {
+        return this.cover.cardinality();
+    }
+
+    /**
+     * Set the solution score to the current vertex cover size. Only meaningful for the MVC demo,
+     * as the MVC objective is to minimize the number of selected vertices.
+     */
+    public void setScoreCover() {
+        score = this.cover.cardinality();
     }
 }

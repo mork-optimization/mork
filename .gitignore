@@ -44,10 +44,12 @@ target
 venv
 
 docs/apidocs
-solutions*
-results*
-log*
+/solutions*
+/results*
+/log*
+log.txt
 .benchmark
 **/docs
+!/docs/
 /example-graphs/instances/
 site/

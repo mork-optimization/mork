@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.io.serializers;
 
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
-import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.solution.Solution;
@@ -46,10 +46,10 @@ public abstract class ResultsSerializer<S extends Solution<S,I>, I extends Insta
 
     /**
      * Write experiment results to disk using the provided event list
-     * @param results Result data as a list of events.
+     * @param results Result data.
      * @param p Path where results file should be written. Could be a folder depending on the serializer.
      */
-    public void serializeResults(String experimentName, List<SolutionGeneratedEvent<S, I>> results, Path p){
+    public void serializeResults(String experimentName, List<WorkUnitResult<S, I>> results, Path p){
         this._serializeResults(experimentName, results, p);
     }
 
@@ -59,7 +59,7 @@ public abstract class ResultsSerializer<S extends Solution<S,I>, I extends Insta
      * @param results list of results
      * @param p       path
      */
-    protected abstract void _serializeResults(String experimentName, List<SolutionGeneratedEvent<S, I>> results, Path p);
+    protected abstract void _serializeResults(String experimentName, List<WorkUnitResult<S, I>> results, Path p);
 
 
 }

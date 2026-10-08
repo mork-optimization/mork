@@ -20,6 +20,7 @@
         <module>example-graphs</module>
         <module>example-vrpod</module>
         <module>common</module>
+        <module>moocore-java</module>
         <module>autoconfig</module>
         <module>integration-tests</module>
         <module>aggregate-report</module>
@@ -51,18 +52,18 @@
         <maven.compiler.source>25</maven.compiler.source>
         <maven.compiler.target>25</maven.compiler.target>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <jackson.version>3.0.4</jackson.version>
-        <springboot.version>4.1.0</springboot.version>
+        <jackson.version>3.2.1</jackson.version>
+        <springboot.version>4.1.1</springboot.version>
         <mdependency.version>3.11.0</mdependency.version>
         <msurefire.version>3.5.6</msurefire.version>
-        <mcompiler.version>3.15.0</mcompiler.version>
+        <mcompiler.version>3.16.0</mcompiler.version>
         <msource.version>3.4.0</msource.version>
         <mjavadoc.version>3.12.0</mjavadoc.version>
-        <mjar.version>3.5.0</mjar.version>
+        <mjar.version>3.5.1</mjar.version>
         <mgpg.version>3.2.8</mgpg.version>
+        <mrelease.version>3.3.1</mrelease.version>
         <mjacoco.version>0.8.15</mjacoco.version>
         <mclean.version>3.5.0</mclean.version>
-        <graalvm.version>25.1.3</graalvm.version>
         <maspectj.version>1.16.0</maspectj.version>
         <aspectj.version>1.9.25.1</aspectj.version>
         <apachepoi.version>5.5.1</apachepoi.version>
@@ -95,6 +96,12 @@
             <dependency>
                 <groupId>es.urjc.etsii.grafo</groupId>
                 <artifactId>mork-common</artifactId>
+                <version>0.23-SNAPSHOT</version>
+            </dependency>
+
+            <dependency>
+                <groupId>es.urjc.etsii.grafo</groupId>
+                <artifactId>mork-moocore</artifactId>
                 <version>0.23-SNAPSHOT</version>
             </dependency>
 
@@ -147,12 +154,17 @@
                 <version>${springboot.version}</version>
             </dependency>
 
-<!--            <dependency>-->
-<!--                <groupId>com.fasterxml.jackson.core</groupId>-->
-<!--                <artifactId>jackson-annotations</artifactId>-->
-<!--                <version>${jackson.version}</version>-->
-<!--                <scope>compile</scope>-->
-<!--            </dependency>-->
+            <dependency>
+                <groupId>tools.jackson.core</groupId>
+                <artifactId>jackson-databind</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>tools.jackson.dataformat</groupId>
+                <artifactId>jackson-dataformat-csv</artifactId>
+                <version>${jackson.version}</version>
+            </dependency>
 
             <dependency>
                 <groupId>org.aspectj</groupId>
@@ -267,17 +279,13 @@
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-gpg-plugin</artifactId>
-                <version>${mgpg.version}</version>
-                <executions>
-                    <execution>
-                        <id>sign-artifacts</id>
-                        <phase>verify</phase>
-                        <goals>
-                            <goal>sign</goal>
-                        </goals>
-                    </execution>
-                </executions>
+                <artifactId>maven-release-plugin</artifactId>
+                <version>${mrelease.version}</version>
+                <configuration>
+                    <autoVersionSubmodules>true</autoVersionSubmodules>
+                    <releaseProfiles>release</releaseProfiles>
+                    <tagNameFormat>@{project.artifactId}-@{project.version}</tagNameFormat>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -334,22 +342,46 @@
                     </compilerArgs>
                 </configuration>
             </plugin>
-            <plugin>
-                <groupId>org.sonatype.central</groupId>
-                <artifactId>central-publishing-maven-plugin</artifactId>
-                <version>0.11.0</version>
-                <extensions>true</extensions>
-                <configuration>
-                    <publishingServerId>central</publishingServerId>
-                    <excludeArtifacts>
-                        <excludeArtifact>mork-benchmarks</excludeArtifact>
-                    </excludeArtifacts>
-                </configuration>
-            </plugin>
         </plugins>
     </build>
 
     <profiles>
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>${mgpg.version}</version>
+                        <configuration>
+                            <bestPractices>true</bestPractices>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.sonatype.central</groupId>
+                        <artifactId>central-publishing-maven-plugin</artifactId>
+                        <version>0.11.0</version>
+                        <extensions>true</extensions>
+                        <configuration>
+                            <publishingServerId>central</publishingServerId>
+                            <excludeArtifacts>
+                                <excludeArtifact>mork-benchmarks</excludeArtifact>
+                            </excludeArtifacts>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
         <profile>
             <id>ultraclean</id>
             <build>
@@ -373,6 +405,7 @@
                                         <include>plots.pdf</include>
                                         <include>runner.R</include>
                                         <include>scenario.txt</include>
+                                        <include>autoconfig-final-elites.json</include>
                                         <include>instance_properties.csv</include>
                                         <include>report.html</include>
                                         <include>report_files/</include>

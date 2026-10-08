@@ -1,9 +1,7 @@
 package es.urjc.etsii.grafo.tsp.drawing;
 
 import es.urjc.etsii.grafo.tsp.model.TSPSolution;
-import es.urjc.etsii.grafo.events.AbstractEventStorage;
-import es.urjc.etsii.grafo.events.MemoryEventStorage;
-import es.urjc.etsii.grafo.events.types.SolutionGeneratedEvent;
+import es.urjc.etsii.grafo.results.ResultStore;
 import guru.nidi.graphviz.engine.Format;
 import guru.nidi.graphviz.engine.Graphviz;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -16,6 +14,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.Base64;
+import java.util.UUID;
 
 @RestController
 public class DotGenerator {
@@ -35,10 +34,10 @@ public class DotGenerator {
      */
     private static final String footer = "\n}";
 
-    private final AbstractEventStorage<?,?> eventStorage;
+    private final ResultStore<?,?> resultStore;
 
-    public DotGenerator(MemoryEventStorage<?,?> eventStorage) {
-        this.eventStorage = eventStorage;
+    public DotGenerator(ResultStore<?,?> resultStore) {
+        this.resultStore = resultStore;
     }
 
 
@@ -99,11 +98,11 @@ public class DotGenerator {
         return 1 - ((value - min) / (max - min));
     }
 
-    @GetMapping("/api/generategraph/{eventId}")
-    public String getSolutionAsDotString(@PathVariable int eventId) throws IOException {
-        var event =  eventStorage.getEvent(eventId);
-        if(event instanceof SolutionGeneratedEvent<?,?> solutionGeneratedEvent && solutionGeneratedEvent.getSolution().isPresent()){
-            var solution = (TSPSolution) solutionGeneratedEvent.getSolution().get();
+    @GetMapping("/api/generategraph/{resultId}")
+    public String getSolutionAsDotString(@PathVariable UUID resultId) throws IOException {
+        var storedSolution = resultStore.findSolution(resultId);
+        if (storedSolution.isPresent()) {
+            var solution = (TSPSolution) storedSolution.get();
             var viz = Graphviz.fromString(generateDotDiagram(solution));
             BufferedImage image = viz.render(Format.PNG).toImage();
             ByteArrayOutputStream baos = new ByteArrayOutputStream();
@@ -111,7 +110,7 @@ public class DotGenerator {
             byte[] bytes = baos.toByteArray();
             return new String(Base64.getEncoder().encode(bytes));
         } else {
-            return "Invalid eventId or solution expired";
+            return "Invalid resultId or solution expired";
         }
     }
 

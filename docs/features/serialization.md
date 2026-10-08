@@ -5,6 +5,14 @@ to export experiment results to CSV/TSV and XLSX (Microsoft Excel 2007+) and sol
 More formats can be added by the user. 
 If you implement a format that may be useful for other people, consider submitting a Pull Request!
 
+Result serialization is invoked directly and synchronously by the execution workflow; it is not performed by an event listener. Serializers configured with `PER_INSTANCE` run after an instance has been processed and before its `InstanceProcessingEndedEvent` is published. Serializers configured with `EXPERIMENT_END` run after experiment execution and before `ExperimentEndedEvent` is published. A serialization failure is reported as an execution error but does not prevent the corresponding final events or lifecycle finalization.
+
+## Result lifetime and access
+
+`ResultStore` keeps full solutions strongly reachable through the final experiment serialization attempt, allowing all result serializers and customizers to inspect or manipulate them. This guarantee also applies when a serializer fails. After that attempt, strong references are always released: the stored `WorkUnitResult` becomes a solutionless copy that retains its cached objective values, custom properties, metrics, and other metadata, while the solution itself is kept in a `SoftReference`.
+
+Use `ResultStore.findSolution(UUID)` when the solution is needed after release. The lookup is best-effort at that point and may return an empty `Optional` if memory pressure has reclaimed the solution. `getResultsForExperiment(String)` returns an immutable, insertion-ordered `List<WorkUnitResult<...>>` snapshot.
+
 ## CSV serialization
 
 Experiment data can be serialized to CSV like formats, using the separator defined in the configuration, which defaults to ','.
@@ -16,6 +24,11 @@ Experiment data can be exported to the XLSX format, which allows us to create ca
 and interactive data automatically without intervention. By default, the Excel file contains two sheets, 
 one with the raw data and another one with an interactive pivot table that allows us to quickly filter and 
 analyze the results.
+
+The raw results are stored in an Excel table named `RawResultsTable`, and the pivot table uses that table as its
+source. To add results manually, paste rows with the same columns into the first row directly below the raw results
+table, then refresh the pivot table using **Data > Refresh All**. Excel expands the source table automatically, so
+the pivot source range does not need to be edited. The first raw-data header contains the same instructions as a note.
 
 ### Configuring pivot table fields
 
@@ -75,19 +88,21 @@ Any dependency can be declared in the constructor of your implementation, and it
 ```java
 public class MyExcelCustomizer extends ExcelCustomizer {
 
-    private final AbstractEventStorage<MySolution, MyInstance> events;
-    public MyExcelCustomizer(AbstractEventStorage<MySolution, MyInstance> events) {
-        this.events = events;
+    private final ResultStore<MySolution, MyInstance> resultStore;
+
+    public MyExcelCustomizer(ResultStore<MySolution, MyInstance> resultStore) {
+        this.resultStore = resultStore;
     }
 
     @Override
     public void customize(XSSFWorkbook excelBook) {
         var sheet = excelBook.createSheet("MyCustomSheet");
 
-        var allSolutions = this.events.getEventsByType(SolutionGeneratedEvent.class).toList();
-        for(var event: allSolutions){
-            double score = event.getScore();
-            long execTime = event.getExecutionTime();
+        var results = this.resultStore.getResultsForExperiment("default");
+        for (var result : results) {
+            double score = result.mainObjectiveValue();
+            long execTime = result.executionTime();
+            var solution = result.solution();
             
             // Do some processing and write it to the excel file!
             sheet.createRow(); 
@@ -96,8 +111,8 @@ public class MyExcelCustomizer extends ExcelCustomizer {
     }
 }
 ```
-See [event docs](events.md) for more information about how the event system works. All events generated during the execution are available using an `AbstractEventStorage`.
-It is guaranteed that the customize method will be invoked **after** the default Excel sheets are generated, so you may always modify the existing data and adapt it to your needs.
+See [event docs](events.md) for more information about how the event system works. Generated solutions are available through `ResultStore`, which stores full `WorkUnitResult` instances separately from the lightweight event payloads.
+The customizer is invoked **after** the default Excel sheets are generated and before strong solution references are released, so it can modify the workbook and inspect the complete results.
 
 Mork uses Apache POI 5 to create the XLSX files, see the [official Javadoc](https://poi.apache.org/apidocs/index.html) for more information on how to
 do common operations such as creating new sheets and setting cell values.
@@ -158,18 +173,19 @@ serializers:
 ### Creating the Solution Serializer
 The last step is implementing the serializer by extending the AbstractSerializer.
 ```java
-public class YourProblemSolutionSerializerConfig extends SolutionSerializer<YourSolutionType, YourInstanceType> {
+public class YourProblemSolutionSerializer extends SolutionSerializer<YourSolutionType, YourInstanceType> {
 
     /**
      * Create a new solution serializer with the given config
      * @param config
      */
-    public YourProblemSolutionSeralizer(YourProblemSolutionSerializerConfig config) {
+    public YourProblemSolutionSerializer(YourProblemSolutionSerializerConfig config) {
         super(config);
     }
 
     @Override
     public void export(BufferedWriter writer, WorkUnitResult<YourSolutionType, YourInstanceType> result) throws IOException {
+        var solution = result.solution();
         var data = solution.getSolutionData();
         StringBuilder sb = new StringBuilder();
         for(var row: data){
@@ -183,6 +199,8 @@ public class YourProblemSolutionSerializerConfig extends SolutionSerializer<Your
     }
 }
 ```
+
+`WorkUnitResult` is a record. Use record accessors such as `resultId()`, `solution()`, `executionTime()`, `objectives()`, and `solutionProperties()`, plus the derived `mainObjectiveValue()` method. Objective values and custom properties are evaluated and cached when the result is created, so later solution mutation does not change serialized result metadata.
 
 Note: If the method `export(BufferedWriter writer, WorkUnitResult<YourSolutionType, YourInstanceType> result)` does not provide enough flexibility, 
 for example if you want to export the solution as an image, you may leave it empty and override 
@@ -247,4 +265,3 @@ All algorithms implemented in Mork register the changes to the objective functio
 Metrics.add(BestObjective.class, solution.getScore());
 ```
 where `solution` is the best solution managed by the algorithm.
-

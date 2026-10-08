@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.controller.dto;
 
+import es.urjc.etsii.grafo.autoconfig.exception.InvalidIntegrationKeyException;
+
 public class AuthenticatedExecuteRequest {
     protected final String key;
 
@@ -21,11 +23,11 @@ public class AuthenticatedExecuteRequest {
      */
     public void checkValid(String integrationKey) {
         if(this.key == null || this.key.isBlank()) {
-            throw new IllegalArgumentException("Integration key cannot be empty");
+            throw new InvalidIntegrationKeyException();
         }
 
         if (!getKey().equals(integrationKey)) {
-            throw new IllegalArgumentException(String.format("Invalid integration key: %s", getKey()));
+            throw new InvalidIntegrationKeyException();
         }
     }
 }

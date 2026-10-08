@@ -13,17 +13,30 @@ import java.util.function.ToDoubleFunction;
  * In single objective optimization, usually there is a single objective to optimize. However, sometimes it can be useful to use secondary functions, for example when the solution landscape is flat.
  * Usage of objectives is left to the user discretion.
  * In multi-objective optimization, of course there are multiple objective functions.
+ * Move evaluation is optional when the algorithms used do not operate on moves.
  * @param <S> Solution class
  * @param <I> Instance class
  */
 public abstract class Objective<M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> {
 
+    public static <S extends Solution<S,I>, I extends Instance> Objective<?,S,I> ofMinimizing(String name, ToDoubleFunction<S> evaluateSolution){
+        return Objective.ofMinimizing(name, evaluateSolution, null);
+    }
+
     public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> ofMinimizing(String name, ToDoubleFunction<S> evaluateSolution, ToDoubleFunction<M> evaluateMove){
         return new SimpleObjective<>(name, FMode.MINIMIZE, evaluateSolution, evaluateMove);
     }
 
+    public static <S extends Solution<S,I>, I extends Instance> Objective<?,S,I> ofMaximizing(String name, ToDoubleFunction<S> evaluateSolution){
+        return Objective.ofMaximizing(name, evaluateSolution, null);
+    }
+
     public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> ofMaximizing(String name, ToDoubleFunction<S> evaluateSolution, ToDoubleFunction<M> evaluateMove){
         return new SimpleObjective<>(name, FMode.MAXIMIZE, evaluateSolution, evaluateMove);
+    }
+
+    public static <S extends Solution<S,I>, I extends Instance> Objective<?,S,I> of(String name, FMode fMode, ToDoubleFunction<S> evaluateSolution){
+        return Objective.of(name, fMode, evaluateSolution, null);
     }
 
     public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> Objective<M,S,I> of(String name, FMode fMode, ToDoubleFunction<S> evaluateSolution, ToDoubleFunction<M> evaluateMove){

@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.algorithms.scattersearch;
 
 import es.urjc.etsii.grafo.create.Constructive;
 import es.urjc.etsii.grafo.improve.Improver;
+import es.urjc.etsii.grafo.metrics.Metrics;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
@@ -21,6 +22,7 @@ class ScatterSearchTest {
 
     @BeforeAll
     static void setupObjectives(){
+        Metrics.disableMetrics();
         Context.Configurator.setObjectives(minObj);
     }
 

@@ -15,6 +15,7 @@ import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 
 import static es.urjc.etsii.grafo.orchestrator.InstanceSelector.DEFAULT_OUTPUT_PATH;
+import static es.urjc.etsii.morktests.TestUtils.deleteGeneratedFiles;
 import static es.urjc.etsii.morktests.TestUtils.runJavaProcess;
 
 public class ComplexityAnalysisTest {
@@ -51,6 +52,8 @@ public class ComplexityAnalysisTest {
 
         // Sleep for 5 seconds to allow the webserver to be stopped
         ConcurrencyUtil.sleep(5, TimeUnit.SECONDS);
+
+        deleteGeneratedFiles(propertiesPath, Path.of("results"), Path.of("solutions"));
     }
 
     private static int runComplexityOnce() throws IOException, InterruptedException {

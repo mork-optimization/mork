@@ -14,7 +14,7 @@ public class MetricUtil {
      * @param duration   pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
      * @param logScale   Scale area under curve using natural logarithm
      * @return area calculation as a double value
-     * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
+     * @throws IllegalArgumentException if duration is negative, the area is unbounded, or the metric does not contain at least 1 datapoint.
      */
     public static double areaUnderCurve(Class<? extends AbstractMetric> metricType, long skipNanos, long duration, boolean logScale) {
         return areaUnderCurve(metricType.getSimpleName(), skipNanos, duration, logScale);
@@ -29,7 +29,7 @@ public class MetricUtil {
      * @param duration   pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
      * @param logScale   Scale area under curve using natural logarithm
      * @return area calculation as a double value
-     * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
+     * @throws IllegalArgumentException if duration is negative, the area is unbounded, or the metric does not contain at least 1 datapoint.
      */
     public static double areaUnderCurve(Objective<?, ?, ?> objective, long skipNanos, long duration, boolean logScale) {
         return areaUnderCurve(objective.getName(), skipNanos, duration, logScale);
@@ -44,7 +44,7 @@ public class MetricUtil {
      * @param duration   pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
      * @param logScale   Scale area under curve using natural logarithm
      * @return area calculation as a double value
-     * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
+     * @throws IllegalArgumentException if duration is negative, the area is unbounded, or the metric does not contain at least 1 datapoint.
      */
     public static double areaUnderCurve(String metricName, long skipNanos, long duration, boolean logScale) {
         return areaUnderCurve(Metrics.get(metricName), skipNanos, duration, logScale);
@@ -59,9 +59,13 @@ public class MetricUtil {
      * @param duration  pick only data points in range [referenceTime+skipNanos, referenceTime+skipNanos+duration]. Range is inclusive.
      * @param logScale  Scale area under curve using natural logarithm
      * @return area calculation as a double value
-     * @throws IllegalArgumentException if the area is unbounded or if the metric does not contain at least 1 datapoint.
+     * @throws IllegalArgumentException if duration is negative, the area is unbounded, or the metric does not contain at least 1 datapoint.
      */
     public static double areaUnderCurve(AbstractMetric metric, long skipNanos, long duration, boolean logScale) {
+        if (duration < 0) {
+            throw new IllegalArgumentException("Duration must be non-negative: " + duration);
+        }
+
         var set = metric.values;
         var name = metric.getName();
         if (set.isEmpty()) {
@@ -92,9 +96,7 @@ public class MetricUtil {
             }
             // Calculate area of current rectangle
             var height = lastValue;
-            if(DoubleComparator.isNegative(height)){
-                throw new IllegalArgumentException("Negative f.o value detected in metric " + name + " at time " + tv.instant() + " with value " + height);
-            }
+            validateHeight(name, lastTime, height);
             area += (tv.instant() - lastTime) * height;
             // Advance limit
             lastValue = tv.value();
@@ -102,17 +104,23 @@ public class MetricUtil {
         }
         // Complete the area until the right cutoff mark
         var height = lastValue;
+        validateHeight(name, lastTime, height);
         area += (endTime - lastTime) * height;
 
-        if(!logScale){
-            return area;
-        }
-        if(area > 0){
-            return Math.log(area);
-        }
-        if(area < 0 || !Double.isFinite(area)){
+        if (area < 0 || !Double.isFinite(area)) {
             throw new IllegalArgumentException("Cannot calculate AUC for metric " + name + ", invalid result: " + area);
         }
-        throw new AssertionError("Should be impossible to reach");
+
+        double result = logScale ? Math.log(area) : area;
+        if (!Double.isFinite(result)) {
+            throw new IllegalArgumentException("Cannot calculate AUC for metric " + name + ", invalid result: " + result);
+        }
+        return result;
+    }
+
+    private static void validateHeight(String metricName, long instant, double height) {
+        if (DoubleComparator.isNegative(height)) {
+            throw new IllegalArgumentException("Negative f.o value detected in metric " + metricName + " at time " + instant + " with value " + height);
+        }
     }
 }

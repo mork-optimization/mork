@@ -1,7 +1,7 @@
 import {Component, QueryList, ViewChildren} from '@angular/core';
 import {RxStompService} from "./service/rx-stomp.service";
 import {Message} from "@stomp/stompjs";
-import {MorkEvent, ExecutionStartedEvent, ExecutionEndedEvent, ExperimentStartedEvent, ExperimentEndedEvent, InstanceProcessingStartedEvent, InstanceProcessingEndedEvent, AlgorithmProcessingStartedEvent, AlgorithmProcessingEndedEvent, SolutionGeneratedEvent, EventType} from "./model/Events";
+import {MorkEvent, ExecutionStartedEvent, ExecutionEndedEvent, ExperimentStartedEvent, ExperimentEndedEvent, InstanceProcessingStartedEvent, InstanceProcessingEndedEvent, SolutionGeneratedEvent, EventType, EventEnvelope} from "./model/Events";
 import {HttpClient} from "@angular/common/http";
 
 import * as Highcharts from 'highcharts';
@@ -54,7 +54,8 @@ export class AppComponent {
 
   private bestValue: number = NaN;
   private alreadyConnected = false;
-  private maximizing!: boolean;
+  private firstObjectiveName!: string;
+  private firstObjectiveMaximizing!: boolean;
   private last_redraw = new Date().valueOf() - 1000;
   private lastEventId = -1;
 
@@ -97,7 +98,7 @@ export class AppComponent {
         console.log("First STOMP connection");
         this.alreadyConnected = true;
         // Download event data
-        this.http.get<MorkEvent>(environment.APIPath + "lastevent").subscribe((event) => {
+        this.http.get<EventEnvelope>(environment.APIPath + "lastevent").subscribe((event) => {
           console.log("Recieved first event with id: " + event.eventId);
           this.downloadOldEventData(0, event.eventId + 1); // [0, eventId]
         });
@@ -108,9 +109,9 @@ export class AppComponent {
   downloadOldEventData(from: number, to: number){
     this.status = 'RUNNING, SYNCING';
     const limit = Math.min(to, from + AppComponent.event_batch_size);
-    this.http.get<MorkEvent[]>(environment.APIPath + `events?from=${from}&to=${limit}`).subscribe(events => {
+    this.http.get<EventEnvelope[]>(environment.APIPath + `events?from=${from}&to=${limit}`).subscribe(events => {
       console.log(`API /events returned  [${from}, ${limit}): ` + events.length);
-      this.downloaded_events = this.downloaded_events.concat(events);
+      this.downloaded_events = this.downloaded_events.concat(events.map(event => this.fromEnvelope(event)));
       if (events.length < AppComponent.event_batch_size) {
         console.log(this.event_queue);
         this.event_queue = this.downloaded_events.concat(this.event_queue);
@@ -142,12 +143,20 @@ export class AppComponent {
   }
 
   eventHandler(message: Message, that: AppComponent){
-    const payload = JSON.parse(message.body) as MorkEvent;
+    const payload = this.fromEnvelope(JSON.parse(message.body) as EventEnvelope);
     if(that.isUpToDate){
       this.onEvent(payload);
     } else {
       that.event_queue.push(payload);
     }
+  }
+
+  fromEnvelope(envelope: EventEnvelope): MorkEvent {
+    const event = envelope.payload ?? envelope as unknown as MorkEvent;
+    event.type = envelope.type;
+    event.eventId = envelope.eventId;
+    event.workerName = envelope.workerName;
+    return event;
   }
 
   onEvent(event: MorkEvent) {
@@ -158,10 +167,10 @@ export class AppComponent {
       console.log(event);
       return;
     }
-    this.lastEventId++;
-    if(event.eventId !== this.lastEventId){
-      console.log(`Wrong event order, expected ${this.lastEventId}, for id ${event.eventId}`)
+    if(event.eventId !== this.lastEventId + 1){
+      console.log(`Wrong event order, expected ${this.lastEventId + 1}, for id ${event.eventId}`)
     }
+    this.lastEventId = event.eventId;
     switch (event.type) {
       case EventType.ExecutionStartedEvent:
         this.onExecutionStart(event as ExecutionStartedEvent);
@@ -195,7 +204,9 @@ export class AppComponent {
   }
   onExecutionStart(event: ExecutionStartedEvent) {
     this.createProgressChart();
-    this.maximizing = event.maximizing;
+    const [firstObjectiveName, firstObjectiveMode] = Object.entries(event.objectives)[0];
+    this.firstObjectiveName = firstObjectiveName;
+    this.firstObjectiveMaximizing = firstObjectiveMode === "MAXIMIZE";
   }
 
   onExecutionEnd(event: ExecutionEndedEvent) {
@@ -221,16 +232,17 @@ export class AppComponent {
     this.updateStatusChart();
 
     const instanceName = event.instanceName.replace(/\..+/g, "");
+    const referenceValue = event.refValues[this.firstObjectiveName];
 
     // Charts configuration
     this.chartConfigs.unshift({
       convergence: {
         instance_name: event.instanceName,
-        reference_value:event.referenceValue
+        reference_value: referenceValue
       },
       scores: {
         instance_name: event.instanceName,
-        reference_value: event.referenceValue
+        reference_value: referenceValue
       },
       best: {instance_name: instanceName}
     });
@@ -320,7 +332,7 @@ export class AppComponent {
     }
     this.current_chart_series[event.algorithmName].addPoint([event.iteration, event.score], redraw);
 
-    if (isNaN(this.bestValue) || this.isBetter(event.score, this.bestValue, this.maximizing)) {
+    if (isNaN(this.bestValue) || this.isBetter(event.score, this.bestValue, this.firstObjectiveMaximizing)) {
       this.bestValue = event.score;
       try {
         this.bestSolutions.get(0)?.renderSolution(event);
@@ -331,8 +343,8 @@ export class AppComponent {
     }
   }
 
-  isBetter(current: number, best: number, maximizing: boolean){
-    if(maximizing){
+  isBetter(current: number, best: number, firstObjectiveMaximizing: boolean){
+    if(firstObjectiveMaximizing){
       return current > best;
     } else {
       return current < best;
@@ -500,6 +512,3 @@ export class AppComponent {
     }
   }
 }
-
-
-

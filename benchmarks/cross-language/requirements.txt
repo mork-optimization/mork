@@ -1,0 +1,4 @@
+./moocore/python
+numpy
+matplotlib
+py-cpuinfo

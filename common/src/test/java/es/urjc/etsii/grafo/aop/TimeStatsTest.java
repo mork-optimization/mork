@@ -10,6 +10,7 @@ import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.TimeStatsEvent;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -24,6 +25,13 @@ public class TimeStatsTest {
         Metrics.enableMetrics();
         Metrics.enableTimeStats();
         Metrics.resetMetrics();
+        Context.Configurator.getAndResetTimeEvents();
+    }
+
+    @AfterEach
+    void tearDown() {
+        Metrics.disableTimeStats();
+        Metrics.disableMetrics();
         Context.Configurator.getAndResetTimeEvents();
     }
 
@@ -45,11 +53,5 @@ public class TimeStatsTest {
         Assertions.assertEquals(1, organizedData.get("improve").size());
         Assertions.assertEquals(1, organizedData.get("work1").size());
         Assertions.assertNull(organizedData.get("work2"));
-        Metrics.disableMetrics();
-    }
-
-    @Test
-    void testTimedNoMetrics() {
-
     }
 }

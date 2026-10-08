@@ -11,7 +11,8 @@ public enum ParameterType {
     ORDINAL("o"),
 
     PROVIDED("provided"),
-    NOT_ANNOTATED("notannotated");
+    NOT_ANNOTATED("notannotated"),
+    COMBINATION("combination");
 
     private static final EnumSet<ParameterType> iraceTypes = EnumSet.of(REAL, INTEGER, CATEGORICAL, ORDINAL);
 

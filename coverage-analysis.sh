@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-mvn -Dgpg.skip -B clean verify
+./mvnw -B clean verify
 
 path="aggregate-report/target/site/jacoco-aggregate/jacoco.xml"
 if command -v open > /dev/null 2>&1

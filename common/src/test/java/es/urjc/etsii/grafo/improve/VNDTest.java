@@ -83,7 +83,7 @@ public class VNDTest {
     @Test
     void testVNDminimizing(){
         Context.Configurator.setObjectives(minObj);
-        var vnd = new VND<>(improver1, improver2, improver3);
+        var vnd = new VND<>(List.of(improver1, improver2, improver3));
         assertEquals(6, solution.getScore());
         var improvedSolution = vnd.improve(solution);
         assertEquals(3, improvedSolution.getScore());
@@ -94,7 +94,7 @@ public class VNDTest {
     @Test
     void testVNDmaximizing(){
         Context.Configurator.setObjectives(maxObj);
-        var vnd = new VND<>(improver1, improver2, improver3);
+        var vnd = new VND<>(List.of(improver1, improver2, improver3));
         assertEquals(6, solution.getScore());
         var improvedSolution = vnd.improve(solution);
         assertEquals(9, improvedSolution.getScore());

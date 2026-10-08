@@ -1,6 +1,17 @@
 # Developing
+- (New) CMSA (Construct, Merge, Solve & Adapt) algorithm. See CMSA, CMSAConstructive, CMSASolver and CMSABuilder in the algorithms.cmsa package, and the new metaheuristics/cmsa.md doc page.
+- (Breaking) Remove the obsolete `irace.shell` property; R execution is selected through `RLangRunner` implementations.
+- (Breaking) Replace Spring-annotated Mork event listener methods with direct `MorkEventListener` implementations.
 - (Fix) Progress bar in console was drawn incorrectly while printing logs to console.
+- (Fix) Make the custom `BitSet` follow the `Set` equality and hash-code contract, with specialized fast paths for `BitSet` instances.
 - (Fix) Improve Excel serializer in some edge cases, print time with default with 2 decimals in pivot table.
+- (Fix) Build Excel pivot table from the generated raw-data table instead of reserving rows beforehand.
+- (Fix) Move artifact signing to a specific profile
+- (New) Use Context.suspendObjectiveTracking inside a try block to temporarily disable tracking of objective function. Used for example by Strategic Oscillation implementations.
+- (New) Autoconfig improvement: Categorical and ordinal params now pick all values if none are explicitly provided and target type is an enum.
+- (New) AlgorithmBuilder::buildFromStringParams(name, config) that sets a custom algorithm name (by default a rando one is generated).
+- (New) Experimental Moocore Java module
+- (New) Function to score move deltas was optional but not obvious, added two new Objective overloads: Objective::ofMinimizing(name, function), Objective::ofMaximizing(name, function)
 
 # v0.22
 - (Breaking) Simplify VNS implementation. New doc page for VNS.

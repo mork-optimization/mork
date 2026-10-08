@@ -44,7 +44,38 @@ public class FinalExperiment extends AbstractExperiment<VRPODSolution, VRPODInst
 //            }
 //        }
 
-        var algorithm = builder.buildFromStringParams("ROOT=IteratedGreedy ROOT_IteratedGreedy.constructive=VRPODGRASPConstructive ROOT_IteratedGreedy.constructive_VRPODGRASPConstructive.alpha=0.47 ROOT_IteratedGreedy.destructionReconstruction=RandomMovement ROOT_IteratedGreedy.destructionReconstruction_RandomMovement.multiplier=36 ROOT_IteratedGreedy.improver=VND ROOT_IteratedGreedy.improver_VND.improver1=LocalSearchBestImprovement ROOT_IteratedGreedy.improver_VND.improver1_LocalSearchBestImprovement.neighborhood=RouteToODNeigh ROOT_IteratedGreedy.improver_VND.improver2=LocalSearchBestImprovement ROOT_IteratedGreedy.improver_VND.improver2_LocalSearchBestImprovement.neighborhood=RouteToODNeigh ROOT_IteratedGreedy.improver_VND.improver3=LocalSearchBestImprovement ROOT_IteratedGreedy.improver_VND.improver3_LocalSearchBestImprovement.neighborhood=VRPODExtendedNeighborhood ROOT_IteratedGreedy.maxIterations=771701 ROOT_IteratedGreedy.stopIfNotImprovedIn=683424");
+        var algorithm = builder.buildFromJson("""
+                {
+                  "$component": "IteratedGreedy",
+                  "maxIterations": 771701,
+                  "stopIfNotImprovedIn": 683424,
+                  "constructive": {
+                    "$component": "VRPODGRASPConstructive",
+                    "alpha": 0.47
+                  },
+                  "destructionReconstruction": {
+                    "$component": "RandomMovement",
+                    "multiplier": 36
+                  },
+                  "improver": {
+                    "$component": "VND",
+                    "improvers": [
+                      {
+                        "$component": "LocalSearchBestImprovement",
+                        "neighborhood": {"$component": "RouteToODNeigh"}
+                      },
+                      {
+                        "$component": "LocalSearchBestImprovement",
+                        "neighborhood": {"$component": "RouteToODNeigh"}
+                      },
+                      {
+                        "$component": "LocalSearchBestImprovement",
+                        "neighborhood": {"$component": "VRPODExtendedNeighborhood"}
+                      }
+                    ]
+                  }
+                }
+                """);
         var multistart = new MultiStartAlgorithm<>("AutoConfig", Main.OBJ, algorithm, 1_000_000, 1_000_000, 1_000_000);
         algorithms.add(multistart);
         algorithms.add(FinalSotaExperiment.sotaAlgorithm());

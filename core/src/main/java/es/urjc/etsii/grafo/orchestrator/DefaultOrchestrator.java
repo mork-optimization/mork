@@ -2,9 +2,9 @@ package es.urjc.etsii.grafo.orchestrator;
 
 import es.urjc.etsii.grafo.config.BlockConfig;
 import es.urjc.etsii.grafo.config.SolverConfig;
-import es.urjc.etsii.grafo.events.EventPublisher;
-import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
+import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
+import es.urjc.etsii.grafo.events.types.ErrorEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentEndedEvent;
 import es.urjc.etsii.grafo.events.types.ExperimentStartedEvent;
 import es.urjc.etsii.grafo.exception.ResourceLimitException;
@@ -13,8 +13,10 @@ import es.urjc.etsii.grafo.experiment.Experiment;
 import es.urjc.etsii.grafo.experiment.ExperimentManager;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.io.serializers.ResultsSerializerListener;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
+import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
 import es.urjc.etsii.grafo.util.BenchmarkUtil;
 import es.urjc.etsii.grafo.util.Context;
 import org.slf4j.Logger;
@@ -40,6 +42,9 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
     private final Optional<SolutionValidator<S, I>> validator;
     private final Executor<S, I> executor;
     private final SolverConfig solverConfig;
+    private final MorkEventPublisher eventPublisher;
+    private final ExecutionLifecycleCoordinator lifecycleCoordinator;
+    private final ResultsSerializerListener<S, I> resultsSerializer;
 
     /**
      * <p>Constructor for UserExperimentOrchestrator.</p>
@@ -55,7 +60,10 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
             InstanceManager<I> instanceManager,
             ExperimentManager<S, I> experimentManager,
             Optional<SolutionValidator<S,I>> validator,
-            Executor<S, I> executor
+            Executor<S, I> executor,
+            MorkEventPublisher eventPublisher,
+            ExecutionLifecycleCoordinator lifecycleCoordinator,
+            ResultsSerializerListener<S, I> resultsSerializer
     ) {
         this.solverConfig = solverConfig;
         this.blockConfig = blockConfig;
@@ -63,6 +71,9 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
         this.experimentManager = experimentManager;
         this.validator = validator;
         this.executor = executor;
+        this.eventPublisher = eventPublisher;
+        this.lifecycleCoordinator = lifecycleCoordinator;
+        this.resultsSerializer = resultsSerializer;
     }
 
     protected void runBenchmark() {
@@ -93,7 +104,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
         if(experiments.size() > 1){
             log.info("Experiments to execute: {}", experiments.keySet());
         }
-        EventPublisher.getInstance().publishEvent(new ExecutionStartedEvent(Context.getObjectivesW(), new ArrayList<>(experiments.keySet())));
+        eventPublisher.publish(new ExecutionStartedEvent(Context.getObjectivesW(), new ArrayList<>(experiments.keySet())));
         long startTime = System.nanoTime();
         try {
             executor.startup();
@@ -101,9 +112,9 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
                 experimentWrapper(experiment);
             }
         } finally {
-            executor.shutdown();
             long totalExecutionTime = System.nanoTime() - startTime;
-            EventPublisher.getInstance().publishEvent(new ExecutionEndedEvent(totalExecutionTime));
+            executor.shutdown();
+            lifecycleCoordinator.complete(totalExecutionTime);
             log.info("Total execution time: {} (s)", String.format("%.2f", nanosToSecs(totalExecutionTime)));
         }
     }
@@ -119,10 +130,16 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
             var warmupInstancePath = instanceManager.getWarmupInstancePath(experiment.name(), instancePaths);
             executor.warmup(experiment, warmupInstancePath);
         }
-        EventPublisher.getInstance().publishEvent(new ExperimentStartedEvent(experiment.name(), instancePaths));
+        eventPublisher.publish(new ExperimentStartedEvent(experiment.name(), instancePaths));
         executor.executeExperiment(experiment, instancePaths, startTimestamp);
         long experimentExecutionTime = System.nanoTime() - startTime;
-        EventPublisher.getInstance().publishEvent(new ExperimentEndedEvent(experiment.name(), experimentExecutionTime, startTimestamp));
+        try {
+            resultsSerializer.serializeAtExperimentEnd(experiment.name(), startTimestamp);
+        } catch (RuntimeException e) {
+            log.error("Final result serialization failed for experiment {}", experiment.name(), e);
+            eventPublisher.publish(new ErrorEvent(e));
+        }
+        eventPublisher.publish(new ExperimentEndedEvent(experiment.name(), experimentExecutionTime, startTimestamp));
         log.info("Finished running experiment: {}", experiment.name());
     }
 

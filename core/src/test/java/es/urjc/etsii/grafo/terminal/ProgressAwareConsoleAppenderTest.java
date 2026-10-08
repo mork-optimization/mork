@@ -44,7 +44,7 @@ class ProgressAwareConsoleAppenderTest {
 
         String terminalOutput = output.toString(StandardCharsets.UTF_8);
         assertTrue(terminalOutput.contains("INFO hello\n"), sanitized(terminalOutput));
-        assertTrue(terminalOutput.endsWith("\r\u001B[2KExperiment 50%"), sanitized(terminalOutput));
+        assertTrue(terminalOutput.endsWith("\rExperiment 50%"), sanitized(terminalOutput));
 
         appender.stop();
         context.stop();

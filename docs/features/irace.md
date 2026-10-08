@@ -34,30 +34,17 @@ When running in IRACE tuning mode, user defined experiments are ignored, and a s
 
 ## Configuring R integration
 
-Inside the default `application.yml` you may see a section similar to this:
-```YML
-irace:
-  # False: use GraalVM implementation, does not need R installed locally
-  # True: Use shell to execute R scripts, R/Rscript need to be locally installed and in path
-  shell: true
-```
+By default, local IRACE tuning runs R scripts through the `Rscript` executable.
+Install [R for your environment](https://cran.r-project.org/bin/) and ensure both
+`R` and `Rscript` are available on `PATH` before starting Mork with `--irace` or
+`--autoconfig`. Applications may provide a custom Spring bean implementing
+`RLangRunner` when R scripts must be executed by another mechanism.
 
-In order to use Irace, you need to either use GraalVM (and set `irace.shell` to `false`) or install R/Rscript locally (and set `irace.shell` to `true`).
+Verify the installation from your terminal:
 
-## Option A: Using GraalVM
-- Install and configure the GraalVM, the recommended way is to use [sdkman](https://sdkman.io/).
-- Follow the instructions in https://www.graalvm.org/reference-manual/r/
-- Set `irace.shell` to `false`.
 ```bash
-# Example installation instructions
-sdk install java 21.3.0.r17-grl # Use sdk list java to see latest available GraalVM version
-gu install R
+Rscript --version
 ```
-
-## Option B: Using native R
-- Install and configure R for your environment: https://cran.r-project.org/bin/
-- Test that R and Rscript are available as commands in your favorite console.
-- Set `irace.shell` to `true`
 
 # How to use it
 Mork supports two irace workflows:
@@ -66,6 +53,9 @@ Mork supports two irace workflows:
 - Manual configuration, where you implement an `AlgorithmBuilder` and maintain `parameters.txt` yourself.
 
 This doc page documents the second use case. For the automatic configuration generation method, see the [Autoconfig](autoconfig.md) doc page.
+If you need to store or manually instantiate a nested component tree, see
+[JSON algorithm descriptions](../concepts/algorithm-components/json-descriptions.md). The flat command-line
+configuration accepted from IRACE remains separate from that JSON format.
 There are three main things that have to be done in order to use Irace manually.
 1. Configuring dynamic algorithm generation.
 2. Defining algorithm parameters to test.
@@ -87,7 +77,8 @@ Note that this method returns an Optional<String> if a default value is not prov
 
 
 ## Defining algorithm parameters to test
- The parameters of the target algorithm are defined by a parameter file `parameters.txt` located in `src/main/resources/irace/parameters.txt`.
+Mork provides a default `parameters.txt` in the `autoconfig` dependency. To customize the target algorithm parameters,
+place a copy of the file in `src/main/resources/irace/parameters.txt` in your project. A local `parameters.txt`, `runner.R` or `scenario.txt` always takes precedence.
 
 Each target parameter has an associated type that defines its domain and the way Irace handles them internally.  The four basic types supported by irace are: *Real*, *Integer*, *Categorical* and *Ordinal*. The parameter file format follows a table like scheme, where each row is defined as:
 
@@ -100,7 +91,8 @@ Each target parameter has an associated type that defines its domain and the way
  - An optional `condition` that determines whether the parameter is enabled or disabled, thus making the parameter conditional. If the condition evaluates to false, then no value is assigned to this parameter, and neither the parameter value nor the corresponding label are passed to algorithm. **The condition must be a valid R logical expression**.
 
 ## Adjusting scenario options
-The scenario allows specifying a text file that contains an initial set of configurations to start the execution of Irace. Particularly, this configuration is defined in `scenario.txt` file located in `src/main/resources/irace/scenario.txt` .
+Mork also provides the default `scenario.txt` and `runner.R` from the `autoconfig` dependency. To customize either
+file, place a copy in `src/main/resources/irace/scenario.txt` or `src/main/resources/irace/runner.R`. A local `parameters.txt`, `runner.R` or `scenario.txt` always takes precedence over the bundled version in the autoconfig module.
 
 
 ## More info

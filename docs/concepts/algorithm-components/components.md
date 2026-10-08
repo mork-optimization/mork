@@ -13,6 +13,7 @@ High-level algorithmic strategies that guide the search process. These are the m
 | **Iterated Greedy (IG)** | Destruction-reconstruction metaheuristic that iteratively destroys and rebuilds solutions | [IG Documentation](metaheuristics/iterated-greedy.md) |
 | **Scatter Search** | Population-based metaheuristic using reference sets and solution combination | [Scatter Search Documentation](metaheuristics/scatter-search.md) |
 | **Multi-Start Algorithm** | Simple but effective strategy that runs constructive+improvement methods multiple times | [Multi-Start Documentation](metaheuristics/multi-start.md) |
+| **CMSA (Construct, Merge, Solve & Adapt)** | Matheuristic that repeatedly solves a small, adaptively-selected sub-instance with an exact method | [CMSA Documentation](metaheuristics/cmsa.md) |
 
 ## Constructive Methods
 
@@ -26,13 +27,14 @@ Components that build initial solutions from scratch. These methods create feasi
 
 ## Improvement Methods
 
-Components that take a solution and try to improve it. These methods cannot return worse solutions than their input.
+Components that take a solution and try to improve it. By convention, they should return a result that is at least as good as their input under the configured objective; custom implementations are responsible for preserving this contract.
 
 | Improver | Description | Documentation |
 |----------|-------------|---------------|
 | **Improver (Base)** | Abstract base class for all improvement methods | [Improver Documentation](improvers/improver.md) |
 | **Local Search** | Base class for local search algorithms that explore neighborhoods and host the supported descent strategies | [Local Search Documentation](improvers/local-search.md) |
 | **LocalSearchBestImprovement** | Local search that always picks the best improving move in the neighborhood | [Best-improvement strategy](improvers/local-search.md#localsearchbestimprovement) |
+| **LocalSearchCachedBestImprovement** | Heuristic best improvement that reuses and refreshes cached candidates | [Cached best-improvement strategy](improvers/local-search.md#localsearchcachedbestimprovement) |
 | **LocalSearchFirstImprovement** | Local search that applies the first improving move found | [First-improvement strategy](improvers/local-search.md#localsearchfirstimprovement) |
 | **Simulated Annealing (as Improver)** | SA can be used as an improvement method with temperature-based acceptance | [SA Documentation](metaheuristics/simulated-annealing.md) |
 | **Variable Neighborhood Descent (VND)** | Systematic exploration of multiple neighborhood structures in a descent manner | [VND Documentation](metaheuristics/vnd.md) |
@@ -82,6 +84,8 @@ Components are automatically detected by the framework when annotated with `@Alg
 ### Automatic Algorithm Configuration
 
 Components can be automatically configured using the autoconfig module and irace integration. See [Autoconfig](../../features/autoconfig.md) for component annotations and [irace documentation](../../features/irace.md) for execution details.
+The resulting component tree can also be represented using
+[JSON algorithm descriptions](json-descriptions.md).
 
 ### Custom Component Types
 
