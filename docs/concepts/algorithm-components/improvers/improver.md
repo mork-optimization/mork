@@ -60,9 +60,9 @@ public class MyImprover<S extends Solution<S, I>, I extends Instance>
         extends Improver<S, I> {
     
     public MyImprover() {
-        // Improver stores an Objective for subclasses to use. Forward the main
-        // objective from the execution context, or accept a custom Objective
-        // as a constructor parameter.
+        // Improver's constructor takes the Objective used to compare solutions.
+        // Forward the main objective from the execution context (or accept an
+        // Objective as a constructor parameter if you need a custom one).
         super(Context.getMainObjective());
     }
     
