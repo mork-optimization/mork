@@ -18,7 +18,21 @@ flowchart TD
 
 ## Data inputs
 
-### Instance properties 
+### Instance properties
+
+Instance properties (also called *instance features*) are the numeric characteristics of each
+instance that the tool uses as the independent variables when fitting complexity functions — for
+example the number of nodes or edges of a graph, the number of jobs, the instance size, etc.
+
+These are the same properties you expose from your `Instance` class through `setProperty(key, value)`
+(or by overriding `customProperties()`). The analysis reads one value per property and instance and
+tries to explain the measured execution times as a function of them.
+
+!!! note
+    An instance property is only usable if it takes at least a handful of different values across the
+    analyzed instances (5 by default). Properties that are constant, or that barely change, are
+    discarded because they cannot explain how the execution time scales. The tool can fit against a
+    single property or a pair of properties, penalizing two-property fits to avoid overfitting.
 
 ### Time data
 
@@ -89,4 +103,21 @@ If the experiment has been run multiple times, all data is loaded and execution 
 
 ### TreeMap visualization
 
+The main output is an interactive **treemap**: each box represents an algorithm component, nested
+following the call hierarchy (an algorithm contains its constructive, its improver, and so on). Every
+box is annotated with the best complexity function found for that component with respect to the
+instance properties, so you can see at a glance which components dominate the running time and how
+each one scales.
+
+The treemap is interactive: only the top levels are shown initially, and clicking a component expands
+its children, letting you drill down into the parts of the algorithm that matter most.
+
 ### Fitness chart
+
+For any component you can open a **fitness chart** that plots the measured execution times (as data
+points) against the fitted complexity function (as a curve). When the best fit depends on a single
+instance property the chart is a 2D plot; when it depends on two properties it becomes a 3D surface.
+
+This chart is how you judge the quality of a fit: if the curve follows the data points closely the
+estimated complexity is trustworthy, whereas a poor fit hints that the component's cost depends on
+some property that is not being measured, or that more (or larger) instances are needed.
