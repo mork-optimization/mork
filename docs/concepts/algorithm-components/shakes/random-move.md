@@ -20,12 +20,16 @@ graph LR
 
 ```
 RandomMoveShake(solution, k):
-    perturbed = clone(solution)
-    
+    // The solution is modified IN PLACE, it is NOT cloned.
     for (i = 0; i < k; i++) {
-        move = generateRandomMove(perturbed)
-        apply(move, perturbed)
+        move = generateRandomMove(solution)
+        apply(move, solution)
     }
-    
-    return perturbed
+
+    return solution
 ```
+
+!!! warning
+    `RandomMoveShake` applies the random moves **in place** and returns the same solution
+    instance it received. The caller (for example a VNS algorithm) is responsible for cloning
+    the solution beforehand with `Solution::cloneSolution` if the original must be preserved.
