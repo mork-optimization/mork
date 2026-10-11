@@ -104,8 +104,6 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
 
     private final InstanceManager<I> instanceManager;
 
-    private Object[][] instancePropertyData;
-
     /**
      * Create an Excel serializer
      *
@@ -133,8 +131,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         File f = p.toFile();
 
         try {
-            this.instancePropertyData = null;
-            prepareInstancePropertyData(experimentName);
+            Object[][] instancePropertyData = prepareInstancePropertyData(experimentName);
             String[] customProperties = getCustomPropertyHeaders(results);
             String[] headers = getRawHeaders(customProperties);
             Object[][] rawData = buildRawSheetData(maximizing, results, referenceResultProviders, headers, customProperties);
@@ -163,7 +160,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
                     headRawSheet(rawSheet, customProperties);
 
                     // Check and fill instance sheet if appropiate
-                    fillInstanceSheet(experimentName, excelBook);
+                    fillInstanceSheet(excelBook, instancePropertyData);
 
                     fillOtherDataSheet(otherDataSheet);
 
@@ -252,20 +249,19 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         comment.setString(creationHelper.createRichTextString(RAW_TABLE_INSTRUCTIONS));
     }
 
-    protected void fillInstanceSheet(String expName, XSSFWorkbook excelBook) {
+    protected void fillInstanceSheet(XSSFWorkbook excelBook, Object[][] instancePropertyData) {
         if(!this.config.isInstanceSheetEnabled()){
             log.debug("Instance sheet disabled");
             return;
         }
 
         log.debug("Creating instance sheet...");
-        prepareInstancePropertyData(expName);
         var sheet = excelBook.createSheet(INSTANCE_SHEET);
 
         // Write matrix data to cell Excel sheet
-        for (int i = 0; i < this.instancePropertyData.length; i++) {
+        for (int i = 0; i < instancePropertyData.length; i++) {
             var row = sheet.createRow(i);
-            var rowData = this.instancePropertyData[i];
+            var rowData = instancePropertyData[i];
             for (int j = 0; j < rowData.length; j++) {
                 var cell = row.createCell(j);
                 writeCell(cell, rowData[j], CType.VALUE);
@@ -274,21 +270,18 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         log.debug("Instance sheet created");
     }
 
-    private void prepareInstancePropertyData(String expName) {
+    private Object[][] prepareInstancePropertyData(String expName) {
         if(!this.config.isInstanceSheetEnabled()){
-            return;
+            return new Object[0][];
         }
 
         var keys = Instance.getUniquePropertiesKeys().toArray(new String[0]);
 
         if (keys.length == 0) {
             log.debug("Instance sheet enabled, but no data available, skipping");
-            this.instancePropertyData = new Object[][]{{"Instance sheet is enabled but no properties found for any instance, remember to define properties using Instance::setProperty. If you do not want to use this feature, set serializers.xlsx.instance-sheet-enabled to false"}};
-        } else {
-            if(this.instancePropertyData == null){
-                this.instancePropertyData = getInstancePropertyData(expName, keys);
-            }
+            return new Object[][]{{"Instance sheet is enabled but no properties found for any instance, remember to define properties using Instance::setProperty. If you do not want to use this feature, set serializers.xlsx.instance-sheet-enabled to false"}};
         }
+        return getInstancePropertyData(expName, keys);
     }
 
     private Object[][] getInstancePropertyData(String expName, String[] keys) {
