@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -50,7 +51,9 @@ public class IraceIntegration {
         try {
             Files.deleteIfExists(finalElites);
             try (var inputStream = getInputStreamForIrace(RUNNER_SCRIPT, isJAR)) {
-                copyWithSubstitutions(inputStream, script, substitutions);
+                var values = new HashMap<>(substitutions);
+                values.putIfAbsent("__ABLATION__", "true");
+                copyWithSubstitutions(inputStream, script, values);
             }
             var result = runner.execute(new RExecutionRequest(script, workingDirectory, Map.of()));
             if (!result.successful()) {

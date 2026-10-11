@@ -297,6 +297,8 @@
                 <artifactId>maven-jar-plugin</artifactId>
                 <version>${mjar.version}</version>
                 <configuration>
+                    <!-- Spring Boot repackaging must refresh changed SNAPSHOT dependencies too. -->
+                    <forceCreation>true</forceCreation>
                     <archive>
                         <manifest>
                             <addDefaultImplementationEntries>true</addDefaultImplementationEntries>

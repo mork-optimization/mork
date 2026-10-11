@@ -49,6 +49,7 @@ class IraceTargetEvaluatorTest {
     private IraceTargetEvaluator<TestSolution, TestInstance> evaluator;
     private TestInstance instance;
     private SolutionValidator<TestSolution, TestInstance> validator;
+    private IraceConfig iraceConfig;
 
     @BeforeEach
     @SuppressWarnings("unchecked")
@@ -63,7 +64,7 @@ class IraceTargetEvaluatorTest {
         solverConfig = new SolverConfig();
         solverConfig.setParallelExecutor(false);
         solverConfig.setRandomType(RandomType.DEFAULT);
-        var iraceConfig = new IraceConfig();
+        iraceConfig = new IraceConfig();
         runState = new AutoconfigRunState(mock(AutomaticAlgorithmBuilder.class));
         prepareWorker(false);
 
@@ -120,6 +121,24 @@ class IraceTargetEvaluatorTest {
         assertEquals(4.5, response.getCost());
         assertEquals(0, runState.status().budget().used());
         assertNull(runState.candidate("12"));
+    }
+
+    @Test
+    void autoLlmExceptionsBecomeRejectionsAndPreflightIsDurablyRecorded(@org.junit.jupiter.api.io.TempDir java.nio.file.Path directory) {
+        iraceConfig.setRejectExecutionErrors(true);
+        when(algorithmBuilder.buildFromConfig(any())).thenThrow(new IllegalStateException("broken generated component"));
+        System.setProperty(es.urjc.etsii.grafo.util.ExecutionJournalUtil.DIRECTORY_PROPERTY, directory.toString());
+        try {
+            assertEquals("Inf 0", evaluator.preflightBatch(List.of(configuration("broken"))).getFirst().toIraceResultString());
+            var events = es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmFileUtil.events(directory.resolve("events.jsonl"));
+            var result = events.getLast();
+            assertEquals("REJECTED", result.get("state"));
+            assertEquals("CANDIDATE_EXCEPTION", result.get("rejectionCode"));
+            assertEquals(true, result.get("preflight"));
+            assertEquals(0, runState.status().budget().used());
+            assertEquals("Inf 0", evaluator.evaluateBatch(List.of(configuration("broken"))).getFirst().toIraceResultString());
+            assertEquals(1, runState.status().evaluations().rejected());
+        } finally { System.clearProperty(es.urjc.etsii.grafo.util.ExecutionJournalUtil.DIRECTORY_PROPERTY); }
     }
 
     @Test

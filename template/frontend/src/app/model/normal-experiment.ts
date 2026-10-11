@@ -164,6 +164,6 @@ export interface ResultQuery {
   readonly order?: ResultOrder;
 }
 export interface MonitorStatus {
-  readonly mode: 'DETECTING' | 'STANDARD' | 'TUNING' | 'WORKER' | 'UTILITY';
+  readonly mode: 'DETECTING' | 'STANDARD' | 'TUNING' | 'WORKER' | 'UTILITY' | 'AUTOLLM';
   readonly eventLogId: string;
 }

@@ -22,6 +22,8 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 import es.urjc.etsii.grafo.util.Context;
+import es.urjc.etsii.grafo.util.ExecutionJournalUtil;
+import es.urjc.etsii.grafo.util.ExceptionUtil;
 import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.TimeUtil;
 import org.slf4j.Logger;
@@ -37,6 +39,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import static es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator.decideImplementation;
+import static java.util.concurrent.TimeUnit.*;
 
 /**
  * Executes target configurations requested by IRACE.
@@ -55,6 +58,7 @@ public class IraceTargetEvaluator<S extends Solution<S, I>, I extends Instance> 
     private final Optional<SolutionValidator<S, I>> validator;
     private final Optional<TimeLimitCalculator<S, I>> timeLimitCalculator;
     private final AutoconfigRunState runState;
+    private final ThreadLocal<String> journalId = new ThreadLocal<>();
 
     public IraceTargetEvaluator(
             SolverConfig solverConfig,
@@ -100,7 +104,7 @@ public class IraceTargetEvaluator<S extends Solution<S, I>, I extends Instance> 
         boolean automaticMode = runState.isAutomaticMode();
         return executeBatch(
                 configurations,
-                config -> evaluate(new IraceRuntimeConfiguration(config), automaticMode).response()
+                config -> evaluateAndRecord(new IraceRuntimeConfiguration(config), automaticMode, false)
         );
     }
 
@@ -126,17 +130,32 @@ public class IraceTargetEvaluator<S extends Solution<S, I>, I extends Instance> 
     }
 
     private ExecuteResponse evaluateAndRecord(IraceRuntimeConfiguration config, boolean automaticMode) {
-        long evaluationId = runState.evaluationStarted(config);
+        return evaluateAndRecord(config, automaticMode, true);
+    }
+
+    private ExecuteResponse evaluateAndRecord(IraceRuntimeConfiguration config, boolean automaticMode, boolean tuning) {
+        long evaluationId = tuning ? runState.evaluationStarted(config) : -1;
+        String id = java.util.UUID.randomUUID().toString();
+        journalId.set(id);
+        var metadata = new java.util.LinkedHashMap<String, Object>();
+        metadata.put("id", id);
+        metadata.put("configurationId", config.getCandidateConfiguration());
+        metadata.put("parameters", config.getAlgorithmConfig().getConfig());
+        metadata.put("instance", config.getInstanceName());
+        metadata.put("seed", config.getSeed());
+        metadata.put("preflight", !tuning);
+        ExecutionJournalUtil.append("evaluation-start", metadata);
+        phase("LOADING", Long.getLong("mork.execution.phase-timeout", 300_000L));
         try {
             var result = evaluate(config, automaticMode);
-            if (result.rejectionCode() != null) {
+            if (tuning && result.rejectionCode() != null) {
                 runState.evaluationRejected(
                         evaluationId,
                         result.rejectionCode(),
                         result.rejectionMessage(),
                         result.slowOverrunMillis()
                 );
-            } else {
+            } else if (tuning) {
                 runState.evaluationSucceeded(
                         evaluationId,
                         result.response().getCost(),
@@ -144,14 +163,46 @@ public class IraceTargetEvaluator<S extends Solution<S, I>, I extends Instance> 
                         result.slowOverrunMillis()
                 );
             }
+            metadata.put("state", result.rejectionCode() == null ? "SUCCEEDED" : "REJECTED");
+            metadata.put("rejectionCode", result.rejectionCode());
+            metadata.put("rejectionMessage", result.rejectionMessage());
+            metadata.put("cost", Double.isFinite(result.response().getCost()) ? result.response().getCost() : null);
+            metadata.put("seconds", Double.isFinite(result.response().getTime()) ? result.response().getTime() : null);
+            metadata.put("slowOverrunMillis", result.slowOverrunMillis());
+            if (ExecutionJournalUtil.enabled() && result.rejectionCode() == null && Metrics.areMetricsEnabled()) {
+                var curves = new java.util.LinkedHashMap<String,Object>();
+                for (var entry : Metrics.getCurrentThreadMetrics().getMetrics().entrySet()) curves.put(entry.getKey(), entry.getValue().getValues());
+                metadata.put("curves", curves);
+            }
+            ExecutionJournalUtil.finished(id, metadata);
             return result.response();
         } catch (RuntimeException e) {
-            runState.evaluationFailed(evaluationId, e);
+            if (tuning) runState.evaluationFailed(evaluationId, e);
+            metadata.put("state", "FAILED");
+            metadata.put("failure", ExceptionUtil.stacktrace(e));
+            ExecutionJournalUtil.finished(id, metadata);
             throw e;
+        } finally {
+            journalId.remove();
         }
     }
 
+    private void phase(String name, long millis) {
+        ExecutionJournalUtil.phase(journalId.get(), name, millis, java.util.Map.of());
+    }
+
+    private ExecutionResult candidateFailure(Throwable failure) {
+        if (!iraceConfig.isRejectExecutionErrors()) {
+            if (failure instanceof RuntimeException runtime) throw runtime;
+            throw (AssertionError) failure;
+        }
+        return new ExecutionResult(new ExecuteResponse(), 0, "CANDIDATE_EXCEPTION", ExceptionUtil.stacktrace(failure));
+    }
+
     private ExecutionResult evaluate(IraceRuntimeConfiguration config, boolean automaticMode) {
+        if (ExecutionJournalUtil.enabled() && java.nio.file.Files.exists(ExecutionJournalUtil.directory().resolve("stop"))) {
+            return new ExecutionResult(new ExecuteResponse(), 0, "PILOT_STOPPED", "Pilot admission deadline reached");
+        }
         var instancePath = instanceManager.requireConfiguredInstancePath(
                 IRACE_INSTANCE_PATH_KEY,
                 config.getInstanceName()
@@ -168,6 +219,8 @@ public class IraceTargetEvaluator<S extends Solution<S, I>, I extends Instance> 
                     "INVALID_CONFIGURATION",
                     e.getMessage()
             );
+        } catch (RuntimeException | AssertionError e) {
+            return candidateFailure(e);
         }
 
         log.debug("Config {}. Built algorithm: {}", config, algorithm);
@@ -180,12 +233,12 @@ public class IraceTargetEvaluator<S extends Solution<S, I>, I extends Instance> 
                     throw new IllegalStateException("irace.timecontrol is true, but no time limit calculator has been found, time control will not be enabled");
                 }
                 var timelimit = timeLimitCalculator.get().timeLimitInMillis(instance, algorithm);
-                TimeControl.setMaxExecutionTime(timelimit, TimeUnit.MILLISECONDS);
+                TimeControl.setMaxExecutionTime(timelimit, MILLISECONDS);
                 TimeControl.start();
             }
 
             if (automaticMode) {
-                TimeControl.setMaxExecutionTime(maxExecTime, TimeUnit.MILLISECONDS);
+                TimeControl.setMaxExecutionTime(maxExecTime, MILLISECONDS);
                 TimeControl.start();
                 Metrics.enableMetrics();
             }
@@ -195,17 +248,27 @@ public class IraceTargetEvaluator<S extends Solution<S, I>, I extends Instance> 
             }
 
             long startTime = System.nanoTime();
-            var solution = algorithm.algorithm(instance);
+            long duration = TimeControl.isEnabled() ? Math.max(1, NANOSECONDS.toMillis(TimeControl.remaining())) : Long.getLong("mork.execution.phase-timeout", 300_000L);
+            phase("RUNNING", duration);
+            S solution;
+            try { solution = algorithm.algorithm(instance); }
+            catch (RuntimeException | AssertionError e) { return candidateFailure(e); }
             long endTime = System.nanoTime();
+            phase("VALIDATING", Long.getLong("mork.execution.phase-timeout", 300_000L));
 
             double score;
             long slowOverrunMillis = 0;
             Objective<?, S, I> mainObj = Context.getMainObjective();
             if (automaticMode || iraceConfig.isTimecontrol()) {
                 slowOverrunMillis = checkExecutionTime(algorithm, instance);
+                if (iraceConfig.isRejectExecutionErrors() && NANOSECONDS.toMillis(-TimeControl.remaining()) > Long.getLong("mork.execution.watchdog-grace", 30_000L)) {
+                    return new ExecutionResult(new ExecuteResponse(), slowOverrunMillis, "TIME_LIMIT_EXCEEDED", "Algorithm returned after its deadline and watchdog grace");
+                }
             }
             if (validator.isPresent()) {
-                var validation = validator.get().validate(solution);
+                es.urjc.etsii.grafo.solution.ValidationResult validation;
+                try { validation = validator.get().validate(solution); }
+                catch (RuntimeException | AssertionError e) { return candidateFailure(e); }
                 if (!validation.isValid()) {
                     String reason = validation.getReasonFailed();
                     log.warn("Rejecting invalid solution for configuration {}, instance {}, seed {}: {}. Parameters: {}",
@@ -225,13 +288,13 @@ public class IraceTargetEvaluator<S extends Solution<S, I>, I extends Instance> 
                             mainObj,
                             TimeUtil.convert(
                                     solverConfig.getIgnoreInitialMillis(),
-                                    TimeUnit.MILLISECONDS,
-                                    TimeUnit.NANOSECONDS
+                                    MILLISECONDS,
+                                    NANOSECONDS
                             ),
                             TimeUtil.convert(
                                     solverConfig.getIntervalDurationMillis(),
-                                    TimeUnit.MILLISECONDS,
-                                    TimeUnit.NANOSECONDS
+                                    MILLISECONDS,
+                                    NANOSECONDS
                             ),
                             solverConfig.isLogScaleArea()
                     );
@@ -252,13 +315,13 @@ public class IraceTargetEvaluator<S extends Solution<S, I>, I extends Instance> 
                         mainObj,
                         TimeUtil.convert(
                                 solverConfig.getIgnoreInitialMillis(),
-                                TimeUnit.MILLISECONDS,
-                                TimeUnit.NANOSECONDS
+                                MILLISECONDS,
+                                NANOSECONDS
                         ),
                         TimeUtil.convert(
                                 solverConfig.getIntervalDurationMillis(),
-                                TimeUnit.MILLISECONDS,
-                                TimeUnit.NANOSECONDS
+                                MILLISECONDS,
+                                NANOSECONDS
                         ),
                         solverConfig.isLogScaleArea()
                 );
@@ -309,7 +372,7 @@ public class IraceTargetEvaluator<S extends Solution<S, I>, I extends Instance> 
                     instance.getId(),
                     algorithm
             );
-            return TimeUnit.NANOSECONDS.toMillis(-remaining);
+            return NANOSECONDS.toMillis(-remaining);
         }
         return 0;
     }

@@ -133,6 +133,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         File f = p.toFile();
 
         try {
+            this.instancePropertyData = null;
             prepareInstancePropertyData(experimentName);
             String[] customProperties = getCustomPropertyHeaders(results);
             String[] headers = getRawHeaders(customProperties);

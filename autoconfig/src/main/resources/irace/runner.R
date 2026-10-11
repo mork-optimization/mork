@@ -21,10 +21,12 @@ if (!requireNamespace("irace", quietly = TRUE)) {
 }
 library(irace)
 
-if(!requireNamespace("iraceplot", quietly = TRUE)){
-    remotes::install_github("mork-optimization/iraceplot", upgrade=FALSE)
+if ("__ABLATION__" == "true") {
+  if(!requireNamespace("iraceplot", quietly = TRUE)){
+      remotes::install_github("mork-optimization/iraceplot", upgrade=FALSE)
+  }
+  library(iraceplot)
 }
-library(iraceplot)
 
 if (!requireNamespace("httr", quietly = TRUE)) {
   install.packages("httr", type = "source", repos = cran_repo)
@@ -121,8 +123,10 @@ options(mork.irace.preflight = FALSE)
 report_phase("RACING")
 elite_configurations <- irace_main(scenario = scenario)
 write_final_elites(elite_configurations)
-report_phase("POSTPROCESSING")
-options(mork.irace.preflight = TRUE)
-ablation_log <- ablation_cmdline(c("-l", "irace.Rdata", "-s", "scenario.txt"))
-plotAblation(ablation_log, pdf_file = "plots.pdf", height = 20, type = c("rank", "boxplot"))
-report("irace.Rdata")
+if ("__ABLATION__" == "true") {
+  report_phase("POSTPROCESSING")
+  options(mork.irace.preflight = TRUE)
+  ablation_log <- ablation_cmdline(c("-l", "irace.Rdata", "-s", "scenario.txt"))
+  plotAblation(ablation_log, pdf_file = "plots.pdf", height = 20, type = c("rank", "boxplot"))
+  report("irace.Rdata")
+}

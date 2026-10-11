@@ -6,6 +6,7 @@ import es.urjc.etsii.grafo.events.types.ExecutionStartedEvent;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
+import es.urjc.etsii.grafo.monitoring.MonitorModeState.Mode;
 import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
 import es.urjc.etsii.grafo.util.Context;
 import org.apache.commons.io.FilenameUtils;
@@ -20,6 +21,11 @@ import java.util.*;
 import static es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.*;
 
 public class InstanceProperties<I extends Instance> extends AbstractOrchestrator {
+
+    @Override
+    public Mode getMode() {
+        return Mode.UTILITY;
+    }
 
     private static final Logger log = LoggerFactory.getLogger(InstanceProperties.class);
     public static final String DEFAULT_OUTPUT_PATH = "instance_properties.csv";

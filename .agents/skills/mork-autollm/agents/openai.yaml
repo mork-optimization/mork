@@ -1,0 +1,4 @@
+interface:
+  display_name: "Mork AutoLLM"
+  short_description: "Configure and run Mork AutoLLM campaigns"
+  default_prompt: "Use $mork-autollm to configure an AutoLLM campaign for this Mork project."

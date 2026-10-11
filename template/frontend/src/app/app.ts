@@ -4,6 +4,7 @@ import { MatCardModule } from '@angular/material/card';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { StandardDashboard } from './components/standard-dashboard/standard-dashboard';
 import { TuningDashboard } from './components/tuning-dashboard/tuning-dashboard';
+import { AutoLlmDashboard } from './components/autollm-dashboard/autollm-dashboard';
 import { MonitorStore } from './store/monitor-store';
 
 @Component({
@@ -14,6 +15,7 @@ import { MonitorStore } from './store/monitor-store';
     MatProgressSpinnerModule,
     StandardDashboard,
     TuningDashboard,
+    AutoLlmDashboard,
   ],
   templateUrl: './app.html',
   styleUrl: './app.scss',

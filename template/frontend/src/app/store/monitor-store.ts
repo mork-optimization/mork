@@ -2,7 +2,7 @@ import { DestroyRef, Injectable, inject, signal } from '@angular/core';
 import { ExperimentClient } from '../service/experiment-client';
 
 export type ApplicationView =
-  'detecting' | 'standard' | 'tuning' | 'worker' | 'utility' | 'unavailable';
+  'detecting' | 'standard' | 'tuning' | 'worker' | 'utility' | 'autollm' | 'unavailable';
 @Injectable({ providedIn: 'root' })
 export class MonitorStore {
   private readonly client = inject(ExperimentClient);

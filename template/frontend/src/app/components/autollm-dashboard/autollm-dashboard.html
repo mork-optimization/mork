@@ -1,0 +1,81 @@
+<main>
+  <header><img src="favicon.svg" alt="Mork" /><div><h1>AutoLLM campaigns</h1><p>Generate components, tune algorithms, and compare each independent proposal against SOTA.</p></div></header>
+  @if (store.error()) { <p class="error" role="alert">{{ store.error() }}</p> }
+  @if (store.connectionError()) { <p class="error" role="alert">{{ store.connectionError() }}</p> }
+  @if (store.config(); as config) {
+    <mat-card><mat-card-content>
+      <details [open]="!store.campaign()"><summary>Configure a campaign</summary>
+        <fieldset [disabled]="!!store.active() || store.busy()">
+          <div class="fields">
+            <label>Baseline repository<input [value]="config.project.repository" (change)="update('project.repository', $event)" /></label>
+            <label>Git ref<input [value]="config.project.ref" (change)="update('project.ref', $event)" /></label>
+            <label>Build command (JSON arguments)<input [value]="config.project.buildCommand | json" (change)="buildCommand($event)" /></label>
+            <label>Built JAR path<input [value]="config.project.artifact" (change)="update('project.artifact', $event)" /></label>
+            <label>SOTA component JSON<input [value]="config.sotaFile ?? ''" (change)="update('sotaFile', $event)" /></label>
+            <label>Additional seeds (optional)<input [value]="config.initialConfigurationsFile ?? ''" (change)="update('initialConfigurationsFile', $event)" /></label>
+            <label>Training instances<input [value]="config.trainingPath ?? ''" (change)="update('trainingPath', $event)" /></label>
+            <label>Comparison instances<input [value]="config.comparisonPath ?? ''" (change)="update('comparisonPath', $event)" /></label>
+            <label>Independent trials<input type="number" min="1" [value]="config.trials" (change)="update('trials', $event, true)" /></label>
+            <label>Campaign seed<input type="number" [value]="config.seed" (change)="update('seed', $event, true)" /></label>
+            <label>Parameter limit<input type="number" min="1" max="299" [value]="config.maxParameters" (change)="update('maxParameters', $event, true)" /></label>
+            <label>Workers<input type="number" min="1" [value]="config.execution.workers" (change)="update('execution.workers', $event, true)" /></label>
+            <label>Main evaluations<input type="number" min="1" [value]="config.tuning.evaluations" (change)="update('tuning.evaluations', $event, true)" /></label>
+            <label>Comparison repetitions<input type="number" min="1" [value]="config.comparison.repetitions" (change)="update('comparison.repetitions', $event, true)" /></label>
+            <label>Pilot duration (milliseconds)<input type="number" min="1" [value]="config.preparation.pilotDurationMillis" (change)="update('preparation.pilotDurationMillis', $event, true)" /></label>
+            <label>Repair turns<input type="number" min="0" [value]="config.preparation.maxRepairs" (change)="update('preparation.maxRepairs', $event, true)" /></label>
+            <label>Codex model (optional)<input [value]="config.codex.model ?? ''" (change)="update('codex.model', $event)" /></label>
+            <label>Reasoning effort (optional)<input [value]="config.codex.reasoningEffort ?? ''" (change)="update('codex.reasoningEffort', $event)" /></label>
+            <label>Custom prompt file (optional)<input [value]="config.codex.promptFile ?? ''" (change)="update('codex.promptFile', $event)" /></label>
+          </div>
+          <label>Prompt override (optional)<textarea rows="6" [value]="config.codex.prompt ?? ''" (change)="update('codex.prompt', $event)"></textarea></label>
+          <details><summary>All settings, including time budgets and timeouts</summary><textarea rows="16" [value]="config | json" (change)="advanced($event)"></textarea></details>
+        </fieldset>
+        <p>Each trial starts from the same baseline. Both comparison algorithms restart within their time budget. Ablation is disabled.</p>
+        <button mat-flat-button [disabled]="!!store.active() || store.busy()" (click)="store.createAndStart()">Create and start campaign</button>
+      </details>
+    </mat-card-content></mat-card>
+  }
+  <label>Saved campaign<select [value]="store.selectedId()" (change)="store.select($any($event.target).value)">
+    <option value="">Select campaign</option>@for (campaign of store.campaigns(); track campaign.id) { <option [value]="campaign.id">{{ campaign.createdAt | date:'short' }} — {{ campaign.status }} — {{ campaign.id }}</option> }
+  </select></label>
+  @if (store.campaign(); as campaign) {
+    <mat-card><mat-card-content>
+      <div class="actions"><strong>{{ campaign.status }} · {{ store.completed() }}/{{ campaign.trials.length }} trials finished</strong>
+        @if (store.active() === campaign.id) { <button mat-button [disabled]="store.busy()" (click)="store.action('cancel')">Cancel campaign</button> }
+        @if (['INTERRUPTED', 'CANCELLED'].includes(campaign.status) && !store.active()) { <button mat-flat-button [disabled]="store.busy()" (click)="store.action('resume')">Resume from checkpoints</button> }
+        @if (campaign.status === 'DRAFT' && !store.active()) { <button mat-flat-button (click)="store.action('start')">Start saved draft</button> }
+        @if (campaign.status !== 'DRAFT' && !store.active()) { <button mat-button [disabled]="store.busy()" (click)="store.action('report')">Regenerate reports</button> }
+      </div>
+      <mat-progress-bar mode="determinate" [value]="100 * store.completed() / campaign.trials.length" />
+      @if (campaign.failure) { <pre class="error">{{ campaign.failure }}</pre> }
+      @if (campaign.reportFailure) { <details><summary>Report export failed</summary><pre class="error">{{ campaign.reportFailure }}</pre></details> }
+      <table><thead><tr><th>Trial</th><th>Stage / outcome</th><th>Tuning seed</th><th>Repairs</th><th>Inspect</th></tr></thead><tbody>
+        @for (trial of campaign.trials; track trial.number) { <tr><td>{{ trial.number }}</td><td>{{ trial.status }}</td><td>{{ trial.tuningSeed }}</td><td>{{ trial.repairTurns }}</td><td><button mat-button (click)="store.selectTrial(trial.number)">Open trial</button></td></tr> }
+      </tbody></table>
+    </mat-card-content></mat-card>
+    @if (store.trial(); as trial) {
+      <mat-card><mat-card-content><h2>Trial {{ trial.number }} · {{ trial.status }}</h2>
+        @if (store.tuning(); as tuning) { <p>{{ tuning.phase }} · {{ tuning.budget.used }}/{{ tuning.budget.maximum }} evaluations · {{ tuning.evaluations.succeeded }} succeeded · {{ tuning.evaluations.rejected }} rejected · {{ tuning.evaluations.failed }} failed</p><mat-progress-bar mode="determinate" [value]="100 * tuning.budget.used / tuning.budget.maximum" /> }
+        @if (trial.failure) { <pre class="error">{{ trial.failure }}</pre> }
+        @for (attempt of trial.attempts; track attempt.number) {
+          <div class="attempt"><span>{{ attempt.stage }} · {{ attempt.status }} · {{ attempt.startedAt | date:'short' }}</span>
+            <button mat-button (click)="store.selectLog(attempt.directory + (['PREPARATION'].includes(attempt.stage) ? '/build' : '') + '/stdout.log')">View log</button>
+            @if (attempt.failure) { <details><summary>Failure details</summary><pre>{{ attempt.failure }}</pre></details> }
+          </div>
+        }
+        @if (trial.winner) { <h3>First-ranked proposal: components and parameters</h3><p>Generated algorithm components end in New.</p><pre>{{ trial.winner | json }}</pre> }
+        @if (store.comparison()) { <details open><summary>Comparison results</summary><pre>{{ comparisonSummary() | json }}</pre></details> }
+        @if (instances().length) {
+          <div class="fields"><label>Convergence instance<select [value]="selectedInstance() || instances()[0]" (change)="selectedInstance.set($any($event.target).value)">@for (instance of instances(); track instance) { <option [value]="instance">{{ instance }}</option> }</select></label>
+            <label>Objective<select [value]="selectedObjective() || objectives()[0]" (change)="selectedObjective.set($any($event.target).value)">@for (objective of objectives(); track objective) { <option [value]="objective">{{ objective }}</option> }</select></label></div>
+          <app-dashboard-chart [model]="curveChart()" />
+        }
+      </mat-card-content></mat-card>
+    }
+    @if (store.logPath()) { <mat-card><mat-card-content><h2>{{ store.logPath() }}</h2><pre class="logs">{{ store.logLines().join('\n') }}</pre></mat-card-content></mat-card> }
+    <mat-card><mat-card-content><div class="actions"><h2>Saved data and artifacts</h2><button mat-button (click)="store.refreshArtifacts()">Refresh artifacts</button></div>
+      @for (artifact of store.artifacts(); track artifact.path) { <div class="artifact"><a [href]="store.artifactUrl(artifact.path)">{{ artifact.path }}</a><span>{{ artifact.size }} bytes</span>@if (artifact.path.endsWith('.log') || artifact.path.endsWith('.jsonl')) { <button mat-button (click)="store.selectLog(artifact.path)">View log</button> }</div> }
+      <details><summary>Frozen campaign settings and versions</summary><pre>{{ campaign.config | json }}</pre><pre>{{ campaign.versions | json }}</pre></details>
+    </mat-card-content></mat-card>
+  }
+</main>

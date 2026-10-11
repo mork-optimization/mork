@@ -18,10 +18,12 @@ import es.urjc.etsii.grafo.events.types.ExperimentStartedEvent;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializerListener;
+import es.urjc.etsii.grafo.monitoring.MonitorModeState.Mode;
 import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
 import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.Context;
+import es.urjc.etsii.grafo.util.ExecutionJournalUtil;
 import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
 import org.slf4j.Logger;
@@ -157,6 +159,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
         }
 
         String runId = this.runState.prepareCoordinator(mode, metric);
+        ExecutionJournalUtil.write("readiness.json", Map.of("startedAtMillis", System.currentTimeMillis(), "runId", runId,
+                "port", environment.getProperty("local.server.port", Integer.class, 0), "pid", ProcessHandle.current().pid()));
         log.info("Ready to start!");
         long startTime = System.nanoTime();
         var experimentName = List.of(IRACE_EXPNAME);
@@ -170,6 +174,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             throw e;
         } finally {
             long totalExecutionTime = System.nanoTime() - startTime;
+            ExecutionJournalUtil.write("tuning-status.json", this.runState.status());
             lifecycleCoordinator.complete(totalExecutionTime, runState.status().failure() == null
                     ? es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.SUCCEEDED
                     : es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.FAILED);
@@ -253,7 +258,9 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     }
 
     private void extractInitialConfigurations(boolean isJar, Path scenarioPath) throws IOException {
-        var input = IOUtil.findInputStreamForIrace(INITIAL_CONFIGURATIONS_RESOURCE, isJar);
+        var input = iraceConfig.getInitialConfigurationsFile() == null
+                ? IOUtil.findInputStreamForIrace(INITIAL_CONFIGURATIONS_RESOURCE, isJar)
+                : Files.newInputStream(Path.of(iraceConfig.getInitialConfigurationsFile()));
         if (input == null) {
             return;
         }
@@ -280,7 +287,7 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             int port,
             int parameterCount
     ) {
-        return Map.of(
+        var values = new java.util.HashMap<>(Map.of(
                 K_INTEGRATION_KEY, integrationKey,
                 K_INSTANCES_PATH, instanceConfiguration.getPath(IRACE_INSTANCE_PATH_KEY),
                 K_TRAIN_INSTANCES_FILE, "./" + F_TRAIN_INSTANCES,
@@ -290,7 +297,9 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
                 K_SEED, String.valueOf(solverConfig.getSeed()),
                 K_PORT, String.valueOf(port),
                 K_RUN_ID, this.runState.getRunId()
-        );
+        ));
+        values.put("__ABLATION__", Boolean.toString(iraceConfig.isAblation()));
+        return values;
     }
 
     protected static String calculateMaxExperiments(boolean autoconfigEnabled, SolverConfig solverConfig, int parameterCount) {
@@ -322,6 +331,8 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
             IraceProgressDetails progress
     ) {
         this.runState.publishProgress(runId, iteration, elites, progress);
+        ExecutionJournalUtil.append("elite-history", Map.of("iteration", iteration, "elites", elites, "progress", progress));
+        ExecutionJournalUtil.write("tuning-progress.json", this.runState.status());
     }
 
     public void iracePhaseCallback(String runId, AutoconfigRunState.RunPhase phase) {
@@ -335,6 +346,11 @@ public class IraceOrchestrator<S extends Solution<S, I>, I extends Instance> ext
     @Override
     public List<String> getNames() {
         return List.of("irace", "autoconfig");
+    }
+
+    @Override
+    public Mode getMode() {
+        return Mode.TUNING;
     }
 
 }

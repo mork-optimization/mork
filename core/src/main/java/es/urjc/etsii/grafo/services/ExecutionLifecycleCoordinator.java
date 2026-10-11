@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.metrics.timing.TimeStatsService;
 import es.urjc.etsii.grafo.events.EventWebserverConfig;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.events.types.ExecutionEndedEvent;
+import es.urjc.etsii.grafo.util.ExecutionJournalUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ConfigurableApplicationContext;
@@ -63,6 +64,7 @@ public class ExecutionLifecycleCoordinator {
             }
         }
         outcome = runState.finish(outcome);
+        ExecutionJournalUtil.terminal(outcome.name());
         if (!stopOnExecutionEnd) {
             eventPublisher.publish(new ExecutionEndedEvent(executionTime, outcome));
             log.info("event.webserver.stopOnExecutionEnd disabled, app must be manually stopped by user");

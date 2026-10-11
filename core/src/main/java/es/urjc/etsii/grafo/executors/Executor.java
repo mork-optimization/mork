@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.executors;
 
 import es.urjc.etsii.grafo.metrics.timing.TimeStatsService;
 import es.urjc.etsii.grafo.metrics.timing.TimeStatsExecution;
+import es.urjc.etsii.grafo.util.ExecutionJournalUtil;
 import es.urjc.etsii.grafo.util.TimeStatsUtil;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
@@ -197,6 +198,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     }
 
     private WorkUnitResult<S, I> computeResult(WorkUnit<S, I> workUnit, long overrideMaxMillis, boolean recordTiming) {
+        if (ExecutionJournalUtil.enabled()) ExecutionJournalUtil.phase(workUnit.resultId().toString(), "LOADING",
+                Long.getLong("mork.execution.phase-timeout", 300_000L), java.util.Map.of("instance", workUnit.instancePath(), "algorithm", workUnit.algorithm().getName(), "measured", recordTiming, "iteration", Integer.toString(workUnit.i()), "seed", solverConfig.getSeed() + workUnit.i()));
         S solution = null;
         I instance = null;
         Algorithm<S, I> algorithm = workUnit.algorithm();
@@ -218,8 +221,9 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
                 TimeControl.setMaxExecutionTime(overrideMaxMillis, TimeUnit.MILLISECONDS);
                 TimeControl.start();
                 timeControlEnabled = true;
-            } else if (this.timeLimitCalculator.isPresent()) {
-                long maxDuration = this.timeLimitCalculator.get().timeLimitInMillis(instance, algorithm);
+            } else if (System.getProperty("mork.execution.time-limits") != null || this.timeLimitCalculator.isPresent()) {
+                Long override = ExecutionJournalUtil.timeLimit(workUnit.instancePath());
+                long maxDuration = override != null ? override : this.timeLimitCalculator.orElseThrow().timeLimitInMillis(instance, algorithm);
                 TimeControl.setMaxExecutionTime(maxDuration, TimeUnit.MILLISECONDS);
                 TimeControl.start();
                 timeControlEnabled = true;
@@ -231,11 +235,15 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
             }
 
             // Do real work
+            if (ExecutionJournalUtil.enabled()) ExecutionJournalUtil.phase(workUnit.resultId().toString(), "RUNNING",
+                    timeControlEnabled ? Math.max(1, TimeUnit.NANOSECONDS.toMillis(TimeControl.remaining())) : Long.getLong("mork.execution.phase-timeout", 300_000L),
+                    java.util.Map.of("instance", workUnit.instancePath(), "algorithm", algorithm.getName()));
             startTime = System.nanoTime();
             solution = algorithm.algorithm(instance);
             endTime = System.nanoTime();
 
             // Prepare work unit results and cleanup
+            ExecutionJournalUtil.phase(workUnit.resultId().toString(), "VALIDATING", Long.getLong("mork.execution.phase-timeout", 300_000L), java.util.Map.of());
             endTimeControl(timeControlEnabled, workUnit);
             timeControlEnabled = false;
             Context.validate(solution);
@@ -266,6 +274,8 @@ public abstract class Executor<S extends Solution<S, I>, I extends Instance> {
     }
 
     private WorkUnitResult<S, I> recordResult(WorkUnitResult<S, I> result, boolean measured) {
+        result = ExecutionJournalUtil.withMetadata(result);
+        ExecutionJournalUtil.result(result, measured, solverConfig.getSeed() + Integer.parseInt(result.iteration()));
         if (measured) {
             resultStore.store(result);
             runState.completed(result);

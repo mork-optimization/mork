@@ -39,6 +39,10 @@ public class ExceptionUtil {
         return sb.toString();
     }
 
+    public static String stacktrace(Throwable failure) {
+        return ExceptionUtils.getStackTrace(failure);
+    }
+
     private static boolean filterFrame(String frame){
         for(var filter: filterTerms){
             if(frame.contains(filter)){

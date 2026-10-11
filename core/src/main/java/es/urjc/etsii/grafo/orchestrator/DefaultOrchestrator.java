@@ -23,6 +23,7 @@ import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
 import es.urjc.etsii.grafo.util.BenchmarkUtil;
 import es.urjc.etsii.grafo.util.Context;
+import es.urjc.etsii.grafo.util.ExecutionJournalUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -103,6 +104,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
         Throwable failure = null;
         Outcome outcome = Outcome.SUCCEEDED;
         try {
+        ExecutionJournalUtil.write("readiness.json", java.util.Map.of("startedAtMillis", System.currentTimeMillis(), "pid", ProcessHandle.current().pid()));
         var modes = new LinkedHashMap<String, FMode>();
         for (var entry : Context.getObjectivesW().entrySet()) modes.put(entry.getKey(), entry.getValue().getFMode());
         runState.prepare(modes);

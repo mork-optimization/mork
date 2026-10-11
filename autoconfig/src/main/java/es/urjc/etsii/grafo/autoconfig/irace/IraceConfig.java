@@ -13,6 +13,16 @@ public class IraceConfig {
     private boolean enabled;
     private boolean auc = false;
     private boolean timecontrol = false;
+    private String initialConfigurationsFile;
+    private boolean ablation = true;
+    private boolean rejectExecutionErrors;
+
+    public String getInitialConfigurationsFile() { return initialConfigurationsFile; }
+    public void setInitialConfigurationsFile(String value) { initialConfigurationsFile = value; }
+    public boolean isAblation() { return ablation; }
+    public void setAblation(boolean value) { ablation = value; }
+    public boolean isRejectExecutionErrors() { return rejectExecutionErrors; }
+    public void setRejectExecutionErrors(boolean value) { rejectExecutionErrors = value; }
 
     /**
      * Is irace enabled?

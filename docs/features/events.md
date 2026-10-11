@@ -24,7 +24,7 @@ At shutdown, Mork rejects new events from external threads and drains every even
 
 ## Event lifecycle
 
-Event lifecycle or dispatch order. You may safely assume that the solver engine behaves like a state machine transitioning using the events defined in the diagram.
+The diagram describes processing and export scopes. In parallel execution, multiple instance and algorithm scopes may overlap. `WorkUnitStartedEvent` and `SolutionGeneratedEvent` describe actual repetition activity; solutions are published as soon as computation completes, independently of deterministic export order.
 
 ```mermaid
 graph TD;
@@ -58,7 +58,7 @@ graph TD;
 At different times during the experimentation, different events are triggered. The most relevant are: 
 
 | Event name                        | Explanation                                                                           |
-| --------------------------------- | ------------------------------------------------------------------------------------- |
+|-----------------------------------|---------------------------------------------------------------------------------------|
 | `ExecutionStartedEvent`           | Fired once when solver is ready to start generating solutions                         |
 | `ExperimentStartedEvent`          | Fired when starting each experiment                                                   |
 | `InstanceProcessingStartedEvent`  | An instance has been loaded and is going to be solved by different algorithms         |
@@ -68,7 +68,7 @@ At different times during the experimentation, different events are triggered. T
 | `AlgorithmProcessingEndedEvent`   | A pair (instance, algorithm) has finished executing                                   |
 | `InstanceProcessingEndedEvent`    | An instance has been solved with all algorithm configurations and is no longer needed |
 | `ExperimentEndedEvent`            | Experiment finalized, if there are no more experiments queued end                     |
-| `ExecutionEndedEvent`             | Terminal outcome: SUCCEEDED, COMPLETED_WITH_ERRORS, FAILED or CANCELLED                |
+| `ExecutionEndedEvent`             | Terminal outcome: SUCCEEDED, COMPLETED_WITH_ERRORS, FAILED or CANCELLED               |
 
 ## Implementing an event listener
 
@@ -105,21 +105,21 @@ Every listener receives the `MorkEvent` marker type and decides which payload ty
 
 ### Frontend
 
-The template frontend first reads `/api/autoconfig/status`. Standard execution mode opens the event dashboard
+The template frontend first reads `/api/monitor/status`. Standard execution mode opens the snapshot dashboard
 described below; coordinator IRACE/autoconfig mode opens the [tuning glass panel](irace.md#monitoring-a-tuning-run),
-and follower mode shows a worker notice.
+and follower mode shows a worker notice. Instance utilities show a separate utility notice. Mode detection works without the autoconfig module.
 
-The standard dashboard consumes the event stream through STOMP at `/topic/events` and uses the REST endpoints `/lastevent` and `/events?from=<inclusive>&to=<exclusive>` for replay and recovery. It subscribes to live events before reading history, buffers envelopes by event ID, downloads history in batches of 1,000, ignores duplicates, and only reduces contiguous IDs. A live gap triggers a REST range request. After a WebSocket reconnect it resumes from the last processed ID; if the backend has restarted and its IDs begin again at zero, the dashboard clears the old execution state and replays the new log.
+Standard results, issues and progress come from `/api/experiments` snapshots. The STOMP stream at `/topic/events` provides refresh notifications. On first connection the client subscribes before reading `/lastevent` and establishes the notification baseline from its head. Live messages are buffered/deduplicated by `(eventLogId,eventId)` and delivered contiguously. Gaps and reconnect catch-up use history batches of at most 1,000. REST polling remains active when WebSocket delivery is unavailable.
 
-Transport metadata remains in `EventEnvelope`; payload objects are never modified. Ping and custom event types advance event accounting but are otherwise ignored. `ErrorEvent` is shown in the dashboard.
+Transport metadata remains in `EventEnvelope`; payload objects are never modified. Ping and custom event types advance event accounting safely. 
 
-The dashboard derives progress from lifecycle events. Every `SolutionGeneratedEvent`, including a failed result, advances repetition progress. Failed results are excluded from scores, convergence, and best-solution calculation. The first ordered objective from `ExecutionStartedEvent` is selected by default, and users can switch to any published objective. Switching recomputes raw scores, reference lines, convergence, and best results using the objective's `MINIMIZE` or `MAXIMIZE` mode.
+The backend records actual starts and completions before ordered export handling. Successful and failed results count as completed repetitions; cancelled work does not. Failed/missing/non-finite scores do not enter statistics or best calculations. The first ordered status objective is selected by default; switching changes raw scores, references, best-across-repetitions, distributions, runtime plots and best-result selection using `MINIMIZE`/`MAXIMIZE`.
 
-Chart data for the ten newest instances is accumulated continuously and published to the UI at most once every two seconds, with immediate final updates at synchronization, objective changes, instance completion, and execution completion.
+All instances are server-paginated. The browser caches at most ten visited details and refreshes chart data at most every two seconds, with immediate selection/reconnect/final updates. Large charts are labelled sampled; statistics and result exports remain exact. See [normal experiment monitoring](normal-experiment-monitoring.md) for APIs, counter semantics and solution-view retention.
 
 From `template/frontend`, run `npm start` for development, `npm run typecheck`, `npm test`, or `npm run build`. Release builds use `npm run build:static` and commit the generated `template/src/main/resources/static` files so generated projects require no Node.js installation.
 
-Problem-specific visualization belongs in `SolutionRenderer`. It receives the current instance dashboard model, selected objective, and best successful `SolutionGeneratedEvent` as typed signal inputs. The default implementation is a placeholder; extend the backend event payload when the renderer needs additional solution data.
+Problem-specific visualization uses the optional backend `SolutionViewProvider` and frontend `SOLUTION_RENDERERS` registry. Renderers receive typed result metadata, selected objective and retained JSON view data; the default inspector remains useful without a custom renderer. See the frontend README for the extension contract.
 
 ## Using custom events
 
@@ -154,10 +154,13 @@ Records are the preferred event payload type because their components are final 
 
 ## Event API
 
-The REST and WebSocket APIs expose event envelopes. Transport metadata exists only in the envelope: `eventId` is assigned during ordered dispatch, `timestamp` is the event acceptance time, and `workerName` is the producer thread name. Payload JSON contains only event-specific data and does not duplicate `type`, `timestamp`, or `workerName`:
+`GET /lastevent` returns `{eventLogId,lastEventId}`; an empty log explicitly reports `lastEventId: -1`. `GET /events?eventLogId=<id>&from=<inclusive>&to=<exclusive>` returns `{eventLogId,lastEventId,from,to,events}`. Invalid ranges or ranges larger than 1,000 are HTTP 400; a different process identity is HTTP 409. Event ranges use an indexed lookup. A restarted backend has a different UUID even if its new head is numerically greater than the previous cursor.
+
+WebSocket messages and REST history entries expose envelopes. Transport metadata exists only in the envelope: `eventLogId` identifies the process log, `eventId` is assigned during ordered dispatch, `timestamp` is the event acceptance time, and `workerName` is the producer thread name. Payload JSON contains only event-specific data and does not duplicate `type`, `timestamp`, or `workerName`:
 
 ```json
 {
+  "eventLogId": "0a169cd8-9417-4d86-a5f7-cc718603bfe0",
   "eventId": 42,
   "type": "SolutionGeneratedEvent",
   "timestamp": 1782912345678,

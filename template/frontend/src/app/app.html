@@ -1,4 +1,7 @@
 @switch (store.viewMode()) {
+  @case ('autollm') {
+    <app-autollm-dashboard />
+  }
   @case ('standard') {
     <app-standard-dashboard />
   }

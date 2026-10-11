@@ -23,6 +23,12 @@ describe('core monitor mode selection', () => {
     store.start();
     expect(getMode).toHaveBeenCalledTimes(1);
   });
+  it('selects the AutoLLM campaign dashboard', async () => {
+    getMode.mockResolvedValue({ mode: 'AUTOLLM' });
+    store.start();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(store.viewMode()).toBe('autollm');
+  });
   it('recovers from unavailable mode detection with bounded retry', async () => {
     getMode.mockRejectedValueOnce(new Error('offline'));
     store.start();

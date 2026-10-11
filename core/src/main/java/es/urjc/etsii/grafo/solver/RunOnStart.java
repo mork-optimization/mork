@@ -1,8 +1,7 @@
 package es.urjc.etsii.grafo.solver;
 
+import es.urjc.etsii.grafo.monitoring.MonitorModeState;
 import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
-import es.urjc.etsii.grafo.orchestrator.DefaultOrchestrator;
-import es.urjc.etsii.grafo.orchestrator.InstanceProperties;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
@@ -20,9 +19,9 @@ public class RunOnStart implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(RunOnStart.class);
 
     private final Map<String, AbstractOrchestrator> orchestrators;
-    private final es.urjc.etsii.grafo.monitoring.MonitorModeState monitorMode;
+    private final MonitorModeState monitorMode;
 
-    public RunOnStart(List<AbstractOrchestrator> orchestrators, es.urjc.etsii.grafo.monitoring.MonitorModeState monitorMode) {
+    public RunOnStart(List<AbstractOrchestrator> orchestrators, MonitorModeState monitorMode) {
         this.monitorMode = monitorMode;
         this.orchestrators = new HashMap<>();
         for(var o: orchestrators){
@@ -37,11 +36,7 @@ public class RunOnStart implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
         var orchestrator = getOrchestrator(args);
-        var mode = orchestrator instanceof DefaultOrchestrator
-                ? STANDARD
-                : orchestrator instanceof InstanceProperties
-                ? UTILITY
-                : TUNING;
+        var mode = orchestrator.getMode();
         for (var arg : args) if (arg.equals("--follower")) mode = WORKER;
         monitorMode.select(mode);
         orchestrator.run(args);
@@ -52,7 +47,11 @@ public class RunOnStart implements CommandLineRunner {
         for(var string: args){
             var name = resolveOrchestratorName(string);
             if(orchestrators.containsKey(name)){
-                orchestrator = orchestrators.get(name);
+                var selected = orchestrators.get(name);
+                if (orchestrator != null && orchestrator != selected) {
+                    throw new IllegalArgumentException("Conflicting execution modes: " + orchestrator.getNames() + " and " + selected.getNames());
+                }
+                orchestrator = selected;
             }
         }
         if(orchestrator == null){

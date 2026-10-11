@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.orchestrator;
 
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
+import es.urjc.etsii.grafo.monitoring.MonitorModeState.Mode;
 
 import java.util.List;
 
@@ -40,6 +41,10 @@ public abstract class AbstractOrchestrator {
      * @param args command line parameters
      */
     public abstract void run(String... args);
+
+    public Mode getMode() {
+        return Mode.STANDARD;
+    }
 
     public List<String> getNames(){
         return List.of(this.getClass().getSimpleName().replace("Orchestrator", ""));

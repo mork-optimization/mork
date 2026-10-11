@@ -1,0 +1,48 @@
+package es.urjc.etsii.grafo.autoconfig.autollm;
+
+import org.springframework.stereotype.Service;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.*;
+import java.util.*;
+import java.util.function.BooleanSupplier;
+
+@Service
+public class CodexTaskRunner {
+    public record Manifest(List<String> inventory, List<String> metaheuristics, List<String> components,
+                           String blacklist, List<String> tests, List<String> limitations) {}
+    public record Result(String threadId, Manifest manifest) {}
+    private final AutoLlmProcessRunner processes;
+    public CodexTaskRunner(AutoLlmProcessRunner processes) { this.processes = processes; }
+
+    public Result run(AutoLlmConfig config, Path checkout, Path output, String prompt, String threadId, BooleanSupplier cancelled) {
+        try {
+            Files.createDirectories(output);
+            Files.writeString(output.resolve("prompt.txt"), prompt);
+            var properties = new LinkedHashMap<String, Object>();
+            for (String field : List.of("inventory", "metaheuristics", "components", "tests", "limitations")) properties.put(field, Map.of("type", "array", "items", Map.of("type", "string")));
+            properties.put("blacklist", Map.of("type", List.of("string", "null")));
+            AutoLlmFileUtil.write(output.resolve("schema.json"), Map.of("type", "object", "properties", properties, "required", properties.keySet(), "additionalProperties", false));
+            var args = new ArrayList<String>(List.of(config.codex().executable(), "exec"));
+            if (threadId != null) { args.add("resume"); args.add(threadId); }
+            else { args.add("--sandbox"); args.add("workspace-write"); }
+            args.addAll(List.of("--json", "--output-schema", output.resolve("schema.json").toString(), "--output-last-message", output.resolve("manifest.json").toString()));
+            if (config.codex().model() != null && !config.codex().model().isBlank()) args.addAll(List.of("--model", config.codex().model()));
+            if (config.codex().reasoningEffort() != null && !config.codex().reasoningEffort().isBlank()) args.addAll(List.of("-c", "model_reasoning_effort=\"" + config.codex().reasoningEffort() + "\""));
+            args.add(prompt);
+            var result = processes.run(args, checkout, output, config.execution().codexTimeoutMillis(), 0, config.execution().watchdogGraceMillis(), cancelled, false, 0);
+            String actualThread = threadId;
+            boolean completed = false;
+            for (var event : AutoLlmFileUtil.events(output.resolve("stdout.log"))) {
+                if ("thread.started".equals(event.get("type"))) actualThread = (String) event.get("thread_id");
+                if ("turn.completed".equals(event.get("type"))) completed = true;
+            }
+            if (actualThread != null) Files.writeString(output.resolve("thread-id.txt"), actualThread);
+            if (threadId != null && !threadId.equals(actualThread)) throw new IllegalStateException("Codex resumed a different conversation");
+            if (result.exitCode() != 0 || !completed || actualThread == null || !Files.isRegularFile(output.resolve("manifest.json"))) throw new IllegalStateException("Codex task failed; inspect generation logs");
+            var manifest = AutoLlmFileUtil.read(output.resolve("manifest.json"), Manifest.class);
+            if (manifest.inventory() == null || manifest.metaheuristics() == null || manifest.components() == null || manifest.tests() == null || manifest.limitations() == null) throw new IllegalStateException("Incomplete Codex manifest");
+            return new Result(actualThread, manifest);
+        } catch (IOException e) { throw new UncheckedIOException(e); }
+    }
+}
