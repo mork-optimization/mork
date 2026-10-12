@@ -27,7 +27,9 @@ class AutoLlmIntegrationTest {
         Files.writeString(codex, "#!/bin/sh\nexec '" + java.replace("'", "'\\''") + "' -cp '" + cp.replace("'", "'\\''") + "' " + AutoLlmFixture.class.getName() + " \"$@\"\n"); assertTrue(codex.toFile().setExecutable(true));
         Path workspace = temp.resolve("campaigns"), parentExecution = temp.resolve("parent/execution");
         var command = List.of(java, "-Dmork.execution.directory=" + parentExecution, "-cp", cp, "es.urjc.etsii.grafo.autoconfigtests.Main", "--autollm", "--server.port=0", "--server.address=0.0.0.0", "--whitelist=ACITestWhitelist", "--solver.benchmark=false", "--instances.preload=false", "--instances.path.default=" + repo.resolve("training.index"), "--autollm.workspace=" + workspace);
-        var parent = new ProcessBuilder(command).directory(temp.toFile()).redirectErrorStream(true).redirectOutput(temp.resolve("parent.log").toFile()).start();
+        var parentBuilder = new ProcessBuilder(command).directory(temp.toFile()).redirectErrorStream(true).redirectOutput(temp.resolve("parent.log").toFile());
+        parentBuilder.environment().put("CODEX_HOME", temp.resolve("codex-home").toString());
+        var parent = parentBuilder.start();
         try {
             long deadline = System.currentTimeMillis() + 150_000;
             while (!Files.exists(parentExecution.resolve("readiness.json")) && parent.isAlive() && System.currentTimeMillis() < deadline) Thread.sleep(100);
@@ -68,6 +70,14 @@ class AutoLlmIntegrationTest {
             assertEquals(50, AutoLlmFileUtil.JSON.readTree(read(root.resolve(trial.comparisonDirectory).resolve("execution/time-limits.json"))).properties().iterator().next().getValue().longValue());
             assertFalse(Files.exists(repo.resolve("src/main/java/es/urjc/etsii/grafo/autoconfigtests/components/FasterInvertedConstructiveNew.java")));
             var regenerated = request(client, base + "/campaigns/" + id + "/report", "{}"); assertTrue(regenerated.path("reportFailure").isNull());
+            assertEquals("COMPLETE", regenerated.path("codexUsage").path("status").stringValue());
+            assertEquals(20, regenerated.path("codexUsage").path("tokens").path("totalTokens").longValue());
+            var evidence = trial.attempts.getFirst().codexEvidence;
+            assertEquals("ARCHIVED", evidence.status()); assertEquals("fixture-model", evidence.conversations().getFirst().models().getFirst());
+            String archive = trial.attempts.getFirst().directory + "/" + evidence.conversations().getFirst().path();
+            var downloaded = client.send(HttpRequest.newBuilder(URI.create(base + "/campaigns/" + id + "/artifact?path=" + archive)).GET().build(), HttpResponse.BodyHandlers.ofString());
+            assertEquals(200, downloaded.statusCode()); assertEquals(read(root.resolve(archive)), downloaded.body());
+            assertTrue(Files.exists(root.resolve("reports/llm-usage.json"))); assertTrue(Files.exists(root.resolve("trials/001/llm-usage.json")));
         } finally { parent.destroy(); if (!parent.waitFor(5, TimeUnit.SECONDS)) parent.destroyForcibly(); new AutoLlmProcessRunner().reconcile(workspace); }
     }
     private tools.jackson.databind.JsonNode request(HttpClient client, String url, String json) throws Exception {

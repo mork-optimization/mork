@@ -3,6 +3,9 @@ package es.urjc.etsii.grafo.autoconfig.autollm;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.mock.env.MockEnvironment;
 import java.nio.file.*;
 import java.io.File;
 import java.util.*;
@@ -38,16 +41,17 @@ class AutoLlmLifecycleTest {
         assertFalse(ProcessHandle.of(((Number) owner.get("pid")).longValue()).map(ProcessHandle::isAlive).orElse(false));
         for (var event : AutoLlmFileUtil.events(directory.resolve("execution/events.jsonl"))) if ("evaluation-result".equals(event.get("kind"))) assertEquals("INTERRUPTED", event.get("state"));
     }
-    @Test void twoTrialsRetainIndependentDataAndContinueAfterMainHang() throws Exception {
+    @ParameterizedTest @ValueSource(booleans = {false, true})
+    void twoTrialsRetainIndependentDataAndContinueAfterFailure(boolean archiveFailure) throws Exception {
         Path repo = temp.resolve("baseline"); Files.createDirectories(repo.resolve("src/main/java")); Files.writeString(repo.resolve("src/main/java/Original.java"), "// original\n");
         Path input = repo.resolve("instance.txt"); Files.writeString(input, "instance\n"); Files.writeString(repo.resolve("train.index"), input + "\n"); Files.writeString(repo.resolve("comparison.index"), input + "\n");
         Files.writeString(repo.resolve("sota.json"), "{\"$component\":\"Dummy\"}");
         createJar(repo.resolve("template.jar"));
         git(repo, "init"); git(repo, "add", "."); git(repo, "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-m", "baseline");
         Path cli = temp.resolve("fake-codex");
-        Files.writeString(cli, "#!/bin/sh\nexec '" + java + "' -cp '" + classpath.replace("'", "'\\''") + "' " + AutoLlmCodexFixture.class.getName() + " \"$@\"\n"); cli.toFile().setExecutable(true);
+        Files.writeString(cli, "#!/bin/sh\nexport CODEX_HOME='" + temp.resolve("codex-home") + "'\nexec '" + java + "' -cp '" + classpath.replace("'", "'\\''") + "' " + AutoLlmCodexFixture.class.getName() + " \"$@\"\n"); cli.toFile().setExecutable(true);
         var settings = new AutoLlmConfig(new AutoLlmConfig.Project(repo.toString(), "HEAD", List.of(java, "-cp", classpath, AutoLlmBuildFixture.class.getName()), "target/project.jar", null), temp.resolve("campaigns").toString(), 2, 1234L, 299,
-                "sota.json", null, "train.index", "comparison.index", new AutoLlmConfig.Codex(cli.toString(), null, null, "repair-fixture", null), new AutoLlmConfig.Preparation(5000L, 1),
+                "sota.json", null, "train.index", "comparison.index", new AutoLlmConfig.Codex(cli.toString(), null, null, archiveFailure ? "missing-archive-fixture" : "repair-fixture", null), new AutoLlmConfig.Preparation(5000L, 1),
                 new AutoLlmConfig.Tuning(100, 2L, 20L, false), new AutoLlmConfig.Comparison(2, 20L), new AutoLlmConfig.Execution(2, 50L, 5000L, 5000L, 5000L, 5000L, 5000L, 10000L, "128m"));
         var runner = new AutoLlmProcessRunner() {
             @Override public Result run(List<String> command, Path cwd, Path output, long timeout, long planned, long grace, BooleanSupplier cancel, boolean watch, long startup) {
@@ -57,7 +61,7 @@ class AutoLlmLifecycleTest {
             }
         };
         var store = new AutoLlmCampaignStore(settings); var instances = new InstanceConfiguration(); instances.setPath(Map.of("default", input.toString()));
-        var service = new AutoLlmCampaignService(settings, store, runner, new CodexTaskRunner(runner), mock(AutoLlmReportService.class), instances);
+        var service = new AutoLlmCampaignService(settings, store, runner, codex(runner), mock(AutoLlmReportService.class), instances);
         try {
             var created = service.create(settings); service.start(created.id, false);
             long deadline = System.currentTimeMillis() + 30000;
@@ -66,15 +70,20 @@ class AutoLlmLifecycleTest {
             var campaign = store.load(created.id);
             assertEquals("COMPLETED_WITH_FAILURES", campaign.status, campaign.failure);
             assertEquals("FAILED", campaign.trials.getFirst().status, campaign.trials.getFirst().failure);
-            assertTrue(campaign.trials.getFirst().failure.contains("Hung evaluation"));
+            assertTrue(campaign.trials.getFirst().failure.contains(archiveFailure ? "could not be archived" : "Hung evaluation"));
             var second = campaign.trials.get(1); assertEquals("SUCCEEDED", second.status, second.failure);
             assertNotEquals(campaign.trials.getFirst().threadId, second.threadId); assertNotEquals(campaign.trials.getFirst().tuningSeed, second.tuningSeed);
             assertEquals(campaign.trials.getFirst().comparisonSeed, second.comparisonSeed);
             for (var trial : campaign.trials) {
-                assertEquals(1, trial.repairTurns);
+                assertEquals(archiveFailure ? 0 : 1, trial.repairTurns);
+                assertEquals(archiveFailure && trial.number == 1 ? "UNAVAILABLE" : "COMPLETE", trial.codexUsage.status());
+                if (!archiveFailure) assertEquals(40L, trial.codexUsage.tokens().totalTokens());
                 for (var repair : trial.attempts) if (repair.stage.equals("REPAIR")) {
                     Map<String,Object> owner = AutoLlmFileUtil.read(store.directory(campaign.id).resolve(repair.directory).resolve("owner.json"), Map.class);
                     var command = (List<String>) owner.get("command"); assertEquals(trial.threadId, command.get(command.indexOf("resume") + 1));
+                    assertEquals(1, repair.codexEvidence.conversations().size());
+                    assertEquals(20L, repair.codexEvidence.usage().tokens().totalTokens());
+                    assertEquals(7, Files.readAllLines(store.directory(campaign.id).resolve(repair.directory).resolve(repair.codexEvidence.conversations().getFirst().path())).size());
                 }
             }
             Path root = store.directory(campaign.id);
@@ -83,6 +92,9 @@ class AutoLlmLifecycleTest {
             int results = 0; for (var row : rows) if ("evaluation-result".equals(row.get("kind"))) results++;
             assertEquals(4, results);
             assertEquals("// original\n", Files.readString(repo.resolve("src/main/java/Original.java")));
+            assertTrue(Files.exists(root.resolve("reports/llm-usage.json")));
+            assertEquals(archiveFailure ? 20L : 80L, campaign.codexUsage.tokens().totalTokens());
+            assertEquals(archiveFailure ? "PARTIAL" : "COMPLETE", campaign.codexUsage.status());
             assertFalse(Files.exists(repo.resolve("src/main/java/FixtureUtil.java")));
             assertThrows(IllegalStateException.class, () -> service.start(campaign.id, true));
         } finally { service.close(); }
@@ -107,16 +119,27 @@ class AutoLlmLifecycleTest {
         var attempt = new AutoLlmCampaign.Attempt(); attempt.stage = "TUNING"; attempt.directory = "trials/002/attempts/001-tuning"; interrupted.attempts.add(attempt); campaign.trials.add(interrupted); store.save(campaign);
         var generation = new AutoLlmCampaign.Trial(); generation.number = 3; generation.status = "GENERATION";
         var generating = new AutoLlmCampaign.Attempt(); generating.stage = "GENERATION"; generating.directory = "trials/003/attempts/001-generation"; generation.attempts.add(generating); campaign.trials.add(generation); store.save(campaign);
-        Path log = store.directory(campaign.id).resolve(generating.directory).resolve("stdout.log"); Files.createDirectories(log.getParent()); Files.writeString(log, "{\"type\":\"thread.started\",\"thread_id\":\"exact-thread\"}\n");
+        String thread = UUID.randomUUID().toString();
+        Path log = store.directory(campaign.id).resolve(generating.directory).resolve("stdout.log"); Files.createDirectories(log.getParent()); Files.writeString(log, "{\"type\":\"thread.started\",\"thread_id\":\"" + thread + "\"}\n");
+        Path source = store.directory(campaign.id).resolve("trials/003/source");
+        CodexEvidenceUtil.begin(temp.resolve("codex-home"), source, log.getParent(), null);
+        AutoLlmFileUtil.append(temp.resolve("codex-home/sessions/rollout-" + thread + ".jsonl"), Map.of("type", "session_meta", "payload", Map.of("id", thread, "cwd", source.toString())));
+        var lost = new AutoLlmCampaign.Trial(); lost.number = 4; lost.status = "GENERATION";
+        var missing = new AutoLlmCampaign.Attempt(); missing.stage = "GENERATION"; missing.directory = "trials/004/attempts/001-generation"; lost.attempts.add(missing); campaign.trials.add(lost); store.save(campaign);
+        AutoLlmFileUtil.append(store.directory(campaign.id).resolve(missing.directory).resolve("stdout.log"), Map.of("type", "thread.started", "thread_id", UUID.randomUUID().toString()));
         var runner = new AutoLlmProcessRunner();
-        var service = new AutoLlmCampaignService(settings, store, runner, new CodexTaskRunner(runner), mock(AutoLlmReportService.class), new InstanceConfiguration());
+        var service = new AutoLlmCampaignService(settings, store, runner, codex(runner), mock(AutoLlmReportService.class), new InstanceConfiguration());
         try {
             service.recover(); var recovered = store.load(campaign.id);
             assertEquals("INTERRUPTED", recovered.status); assertEquals("SUCCEEDED", recovered.trials.getFirst().status); assertEquals("INTERRUPTED", recovered.trials.get(1).attempts.getFirst().status);
-            assertEquals("exact-thread", recovered.trials.get(2).threadId); assertTrue(recovered.trials.get(2).resumeTurn); assertEquals(0, recovered.trials.get(2).repairTurns);
+            assertEquals(thread, recovered.trials.get(2).threadId); assertTrue(recovered.trials.get(2).resumeTurn); assertEquals(0, recovered.trials.get(2).repairTurns);
+            assertEquals("ARCHIVED", recovered.trials.get(2).attempts.getFirst().codexEvidence.status());
+            assertEquals("FAILED", recovered.trials.get(3).status); assertFalse(recovered.trials.get(3).resumeTurn);
+            assertEquals("FAILED", recovered.trials.get(3).attempts.getFirst().codexEvidence.status());
             try (var lock = store.lock()) { assertThrows(IllegalStateException.class, store::lock); }
         } finally { service.close(); }
     }
+    private CodexTaskRunner codex(AutoLlmProcessRunner runner) { return new CodexTaskRunner(runner, new MockEnvironment().withProperty("CODEX_HOME", temp.resolve("codex-home").toString())); }
     private void git(Path repo, String... args) throws Exception { var command = new ArrayList<>(List.of("git")); command.addAll(List.of(args)); var process = new ProcessBuilder(command).directory(repo.toFile()).redirectErrorStream(true).start(); String output = new String(process.getInputStream().readAllBytes()); assertEquals(0, process.waitFor(), output); }
     private void createJar(Path file) throws Exception {
         var manifest = new Manifest(); manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0"); manifest.getMainAttributes().put(Attributes.Name.MAIN_CLASS, AutoLlmChildFixture.class.getName());

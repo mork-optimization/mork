@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.autollm;
 
 import org.springframework.stereotype.Service;
+import org.springframework.core.env.Environment;
 import java.io.IOException;
 import java.io.UncheckedIOException;
 import java.nio.file.*;
@@ -13,7 +14,15 @@ public class CodexTaskRunner {
                            String blacklist, List<String> tests, List<String> limitations) {}
     public record Result(String threadId, Manifest manifest) {}
     private final AutoLlmProcessRunner processes;
-    public CodexTaskRunner(AutoLlmProcessRunner processes) { this.processes = processes; }
+    private final Path codexHome;
+    public CodexTaskRunner(AutoLlmProcessRunner processes, Environment environment) {
+        this.processes = processes;
+        this.codexHome = Path.of(environment.getProperty("CODEX_HOME", Path.of(System.getProperty("user.home"), ".codex").toString()));
+    }
+
+    public CodexEvidenceUtil.Evidence archive(Path checkout, Path output, String threadId) {
+        return CodexEvidenceUtil.collect(codexHome, checkout, output, threadId);
+    }
 
     public Result run(AutoLlmConfig config, Path checkout, Path output, String prompt, String threadId, BooleanSupplier cancelled) {
         try {
@@ -30,16 +39,21 @@ public class CodexTaskRunner {
             if (config.codex().model() != null && !config.codex().model().isBlank()) args.addAll(List.of("--model", config.codex().model()));
             if (config.codex().reasoningEffort() != null && !config.codex().reasoningEffort().isBlank()) args.addAll(List.of("-c", "model_reasoning_effort=\"" + config.codex().reasoningEffort() + "\""));
             args.add(prompt);
-            var result = processes.run(args, checkout, output, config.execution().codexTimeoutMillis(), 0, config.execution().watchdogGraceMillis(), cancelled, false, 0);
-            String actualThread = threadId;
-            boolean completed = false;
-            for (var event : AutoLlmFileUtil.events(output.resolve("stdout.log"))) {
-                if ("thread.started".equals(event.get("type"))) actualThread = (String) event.get("thread_id");
-                if ("turn.completed".equals(event.get("type"))) completed = true;
+            CodexEvidenceUtil.begin(codexHome, checkout, output, threadId);
+            AutoLlmProcessRunner.Result result;
+            RuntimeException processFailure = null;
+            try {
+                result = processes.run(args, checkout, output, config.execution().codexTimeoutMillis(), 0, config.execution().watchdogGraceMillis(), cancelled, false, 0);
+            } catch (RuntimeException e) { processFailure = e; throw e; }
+            finally {
+                try { archive(checkout, output, threadId); }
+                catch (CodexEvidenceUtil.ArchiveException e) { if (processFailure != null) e.addSuppressed(processFailure); throw e; }
             }
+            var events = CodexEvidenceUtil.cli(output.resolve("stdout.log"));
+            String actualThread = events.threadId() == null ? threadId : events.threadId();
             if (actualThread != null) Files.writeString(output.resolve("thread-id.txt"), actualThread);
             if (threadId != null && !threadId.equals(actualThread)) throw new IllegalStateException("Codex resumed a different conversation");
-            if (result.exitCode() != 0 || !completed || actualThread == null || !Files.isRegularFile(output.resolve("manifest.json"))) throw new IllegalStateException("Codex task failed; inspect generation logs");
+            if (result.exitCode() != 0 || !events.completed() || actualThread == null || !Files.isRegularFile(output.resolve("manifest.json"))) throw new IllegalStateException("Codex task failed; inspect generation logs");
             var manifest = AutoLlmFileUtil.read(output.resolve("manifest.json"), Manifest.class);
             if (manifest.inventory() == null || manifest.metaheuristics() == null || manifest.components() == null || manifest.tests() == null || manifest.limitations() == null) throw new IllegalStateException("Incomplete Codex manifest");
             return new Result(actualThread, manifest);

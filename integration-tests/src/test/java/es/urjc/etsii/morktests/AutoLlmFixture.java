@@ -5,6 +5,8 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.jar.*;
 import javax.tools.ToolProvider;
+
+import es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmFileUtil;
 import tools.jackson.databind.json.JsonMapper;
 
 /** Deterministic Codex/build replacements; the child Mork and R processes are real. */
@@ -25,6 +27,10 @@ public class AutoLlmFixture {
                 """);
         int output = List.of(args).indexOf("--output-last-message");
         var json = new JsonMapper();
+        Path session = Path.of(System.getenv("CODEX_HOME"), "sessions", "rollout-" + thread + ".jsonl");
+        AutoLlmFileUtil.append(session, Map.of("type", "session_meta", "payload", Map.of("id", thread, "cwd", Path.of("").toAbsolutePath().toString(), "cli_version", "fixture-1")));
+        AutoLlmFileUtil.append(session, Map.of("type", "turn_context", "payload", Map.of("model", "fixture-model")));
+        AutoLlmFileUtil.append(session, Map.of("type", "token_usage_record", "payload", Map.of("response_id", UUID.randomUUID().toString(), "usage", Map.of("input_tokens", 10, "cached_input_tokens", 2, "cache_write_input_tokens", 0, "output_tokens", 10, "reasoning_output_tokens", 4, "total_tokens", 20))));
         Files.writeString(Path.of(args[output + 1]), json.writeValueAsString(Map.of("inventory", List.of("SimpleAlgorithm"), "metaheuristics", List.of("SimpleAlgorithm"), "components", List.of("FasterInvertedConstructiveNew"), "blacklist", "", "tests", List.of("fixture build"), "limitations", List.of("Deterministic fixture"))));
         System.out.println(json.writeValueAsString(Map.of("type", "thread.started", "thread_id", thread)));
         System.out.println("{\"type\":\"turn.completed\"}");

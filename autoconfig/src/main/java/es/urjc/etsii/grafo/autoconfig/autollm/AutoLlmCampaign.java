@@ -17,6 +17,7 @@ public class AutoLlmCampaign {
     public String baselineCommit;
     public String prompt;
     public Map<String, String> versions = Map.of();
+    public CodexEvidenceUtil.Summary codexUsage;
     public List<Trial> trials = new ArrayList<>();
     public static class Trial {
         public int number;
@@ -37,6 +38,7 @@ public class AutoLlmCampaign {
         public String mainDirectory;
         public String comparisonDirectory;
         public Object winner;
+        public CodexEvidenceUtil.Summary codexUsage;
         public List<Attempt> attempts = new ArrayList<>();
     }
     public static class Attempt {
@@ -47,5 +49,6 @@ public class AutoLlmCampaign {
         public String startedAt;
         public String finishedAt;
         public String failure;
+        public CodexEvidenceUtil.Evidence codexEvidence;
     }
 }

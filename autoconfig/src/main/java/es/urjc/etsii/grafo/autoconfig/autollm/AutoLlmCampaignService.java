@@ -105,7 +105,7 @@ public class AutoLlmCampaignService {
                 processes.reconcile(store.directory(id));
                 for (var t : c.trials) if (!List.of("SUCCEEDED", "FAILED", "PENDING").contains(t.status)) {
                     recoverTurn(c, t);
-                    t.status = "PENDING";
+                    if (!t.status.equals("FAILED")) t.status = "PENDING";
                     for (var a : t.attempts) if (a.status.equals("RUNNING")) { a.status = "INTERRUPTED"; a.finishedAt = Instant.now().toString(); }
                 }
             }
@@ -124,7 +124,7 @@ public class AutoLlmCampaignService {
         try (var lock = store.lock()) { var campaign = store.load(id); report(campaign, store.directory(id)); return campaign; }
     }
     private void report(AutoLlmCampaign campaign, Path directory) {
-        try { reports.report(campaign, directory); campaign.reportFailure = null; }
+        try { CodexEvidenceUtil.report(campaign, directory); reports.report(campaign, directory); campaign.reportFailure = null; }
         catch (RuntimeException e) { campaign.reportFailure = ExceptionUtil.stacktrace(e); store.event(campaign.id, "report-failed", campaign.reportFailure); }
         campaign.reportUpdatedAt = Instant.now().toString(); store.save(campaign);
     }
@@ -137,6 +137,7 @@ public class AutoLlmCampaignService {
                 processes.reconcile(store.directory(c.id)); c.status = "INTERRUPTED";
                 for (var t : c.trials) if (!List.of("SUCCEEDED", "FAILED").contains(t.status)) recoverTurn(c, t);
                 for (var t : c.trials) for (var a : t.attempts) if (a.status.equals("RUNNING")) { a.status = "INTERRUPTED"; a.finishedAt = Instant.now().toString(); }
+                CodexEvidenceUtil.report(c, store.directory(c.id));
                 store.save(c);
             }
         }
@@ -147,10 +148,15 @@ public class AutoLlmCampaignService {
         if (trial.attempts.isEmpty()) return;
         var attempt = trial.attempts.getLast();
         if (!List.of("GENERATION", "REPAIR").contains(attempt.stage) || !List.of("RUNNING", "INTERRUPTED").contains(attempt.status)) return;
-        for (var event : AutoLlmFileUtil.events(store.directory(c.id).resolve(attempt.directory).resolve("stdout.log"))) {
-            if ("thread.started".equals(event.get("type"))) trial.threadId = (String) event.get("thread_id");
+        Path root = store.directory(c.id);
+        try {
+            attempt.codexEvidence = codex.archive(root.resolve("trials/%03d/source".formatted(trial.number)), root.resolve(attempt.directory), trial.threadId);
+            if (attempt.codexEvidence.threadId() != null) trial.threadId = attempt.codexEvidence.threadId();
+            trial.resumeTurn = trial.threadId != null;
+        } catch (CodexEvidenceUtil.ArchiveException e) {
+            trial.status = "FAILED"; trial.failure = ExceptionUtil.stacktrace(e); trial.resumeTurn = false;
+            attempt.status = "FAILED"; attempt.failure = trial.failure; attempt.finishedAt = Instant.now().toString();
         }
-        trial.resumeTurn = trial.threadId != null;
     }
 
     private void run(AutoLlmCampaign c) {
@@ -246,6 +252,13 @@ public class AutoLlmCampaignService {
     private void finish(AutoLlmCampaign c, AutoLlmCampaign.Attempt a, RuntimeException failure) {
         a.status = failure == null ? "SUCCEEDED" : failure instanceof CancellationException ? "INTERRUPTED" : "FAILED";
         a.finishedAt = Instant.now().toString(); a.failure = failure == null ? null : ExceptionUtil.stacktrace(failure); store.save(c);
+        if (List.of("GENERATION", "REPAIR").contains(a.stage)) {
+            Path evidence = store.directory(c.id).resolve(a.directory).resolve("evidence.json");
+            if (Files.isRegularFile(evidence)) a.codexEvidence = AutoLlmFileUtil.read(evidence, CodexEvidenceUtil.Evidence.class);
+            try { CodexEvidenceUtil.report(c, store.directory(c.id)); }
+            catch (RuntimeException e) { c.reportFailure = ExceptionUtil.stacktrace(e); }
+            store.save(c);
+        }
     }
     private void runTrial(AutoLlmCampaign c, AutoLlmCampaign.Trial t) {
         Path root = store.directory(c.id); Path source = root.resolve("trials/%03d/source".formatted(t.number));
@@ -266,8 +279,10 @@ public class AutoLlmCampaignService {
                     var result = codex.run(c.config, source, dir, prompt, t.threadId, () -> cancelled);
                     t.threadId = result.threadId(); t.blacklist = result.manifest().blacklist(); t.generationDirectory = a.directory; t.nextStep = "VERIFY"; finish(c, a, null);
                 } catch (RuntimeException e) {
-                    for (var event : AutoLlmFileUtil.events(dir.resolve("stdout.log"))) if ("thread.started".equals(event.get("type"))) t.threadId = (String) event.get("thread_id");
-                    t.failure = ExceptionUtil.stacktrace(e); t.resumeTurn = e instanceof CancellationException && t.threadId != null; finish(c, a, e); if (e instanceof CancellationException) throw e;
+                    t.failure = ExceptionUtil.stacktrace(e); finish(c, a, e);
+                    if (a.codexEvidence != null && a.codexEvidence.threadId() != null) t.threadId = a.codexEvidence.threadId();
+                    t.resumeTurn = e instanceof CancellationException && t.threadId != null; store.save(c);
+                    if (e instanceof CancellationException || e instanceof CodexEvidenceUtil.ArchiveException) throw e;
                     if (t.threadId == null) throw new IllegalStateException("Codex generation failed before creating a conversation", e);
                     continue;
                 }
