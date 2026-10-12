@@ -1,9 +1,10 @@
-import { Component, input, provideZonelessChangeDetection, signal } from '@angular/core';
+import { Component, input, provideZonelessChangeDetection, signal, WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { DashboardChart } from '../dashboard-chart/dashboard-chart';
 import { ChartViewModel } from '../../model/dashboard';
 import { AutoLlmStore } from '../../store/autollm-store';
 import { AutoLlmDashboard } from './autollm-dashboard';
+import { AutoLlmCampaign, AutoLlmTrial } from '../../model/autollm';
 
 @Component({ selector: 'app-dashboard-chart', template: '' })
 class ChartStub { readonly model = input.required<ChartViewModel>(); }
@@ -27,5 +28,20 @@ describe('AutoLLM dashboard', () => {
   it('uses relative milliseconds for saved nanosecond progress curves', () => {
     const fixture = TestBed.createComponent(AutoLlmDashboard);
     expect(fixture.componentInstance.curveChart().options.series).toEqual([expect.objectContaining({ name: 'SOTA · repetition 1', data: [[0, 10], [10, 8]] })]);
+  });
+  it('shows unavailable usage for older campaigns', async () => {
+    const fixture = TestBed.createComponent(AutoLlmDashboard); fixture.detectChanges(); await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Codex token usage · UNAVAILABLE');
+  });
+  it('shows partial known totals, unknown fields, and conversation downloads', async () => {
+    const store = TestBed.inject(AutoLlmStore);
+    const usage = { status: 'PARTIAL' as const, tokens: { inputTokens: 1234, cachedInputTokens: null, cacheWriteInputTokens: null, outputTokens: 0, reasoningOutputTokens: null, totalTokens: null }, attempts: 2, completeAttempts: 0, partialAttempts: 1, unavailableAttempts: 1 };
+    (store.campaign as WritableSignal<AutoLlmCampaign | null>).update(c => c ? { ...c, codexUsage: usage } : c);
+    (store.trial as WritableSignal<AutoLlmTrial | null>).set({ ...store.trial()!, codexUsage: usage, attempts: [{ number: 1, stage: 'GENERATION', status: 'FAILED', directory: 'attempt', startedAt: '2026-10-12T00:00:00Z', finishedAt: null, failure: null, codexEvidence: { status: 'ARCHIVED', threadId: 'thread', failure: null, usage, conversations: [{ threadId: 'thread', parentThreadId: null, path: 'conversations/thread.jsonl', sha256: 'hash', cliVersion: 'fixture', models: ['fixture-model'] }] } }] });
+    (store as unknown as { artifactUrl: (path: string) => string }).artifactUrl = path => '/artifact?path=' + path;
+    const fixture = TestBed.createComponent(AutoLlmDashboard); fixture.detectChanges(); await fixture.whenStable();
+    expect(fixture.nativeElement.textContent).toContain('Input: 1,234'); expect(fixture.nativeElement.textContent).toContain('Output: 0'); expect(fixture.nativeElement.textContent).toContain('Total: Unknown');
+    expect(fixture.nativeElement.textContent).toContain('Known totals may be incomplete');
+    expect(fixture.nativeElement.querySelector('a').getAttribute('href')).toContain('attempt/conversations/thread.jsonl');
   });
 });

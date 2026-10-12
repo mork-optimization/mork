@@ -1,4 +1,4 @@
-import { JsonPipe, DatePipe } from '@angular/common';
+import { JsonPipe, DatePipe, DecimalPipe } from '@angular/common';
 import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -11,7 +11,7 @@ type CurveRow = { instance: string; instanceId: string; algorithm: string; itera
 
 @Component({
   selector: 'app-autollm-dashboard',
-  imports: [JsonPipe, DatePipe, MatButtonModule, MatCardModule, MatProgressBarModule, DashboardChart],
+  imports: [JsonPipe, DatePipe, DecimalPipe, MatButtonModule, MatCardModule, MatProgressBarModule, DashboardChart],
   templateUrl: './autollm-dashboard.html', styleUrl: './autollm-dashboard.scss',
   changeDetection: ChangeDetectionStrategy.OnPush,
 })

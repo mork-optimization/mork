@@ -2,7 +2,6 @@
 
 java -jar target/mreflp-0.23-SNAPSHOT.jar \
   --solver.experiments=FinalExperiment \
-  --blacklist=MREFLPFocusedInventoryFilterNew \
   --solver.repetitions=30 \
   --solver.parallelExecutor=true \
   --solver.nWorkers=30 \

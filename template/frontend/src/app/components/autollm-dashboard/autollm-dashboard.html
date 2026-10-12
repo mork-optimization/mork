@@ -47,6 +47,10 @@
         @if (campaign.status !== 'DRAFT' && !store.active()) { <button mat-button [disabled]="store.busy()" (click)="store.action('report')">Regenerate reports</button> }
       </div>
       <mat-progress-bar mode="determinate" [value]="100 * store.completed() / campaign.trials.length" />
+      @if (campaign.codexUsage; as usage) {
+        <p class="codex-usage">Codex token usage · {{ usage.status }} · Input: {{ usage.tokens.inputTokens === null ? 'Unknown' : (usage.tokens.inputTokens | number) }} · Output: {{ usage.tokens.outputTokens === null ? 'Unknown' : (usage.tokens.outputTokens | number) }} · Total: {{ usage.tokens.totalTokens === null ? 'Unknown' : (usage.tokens.totalTokens | number) }}</p>
+        <p>{{ usage.completeAttempts }}/{{ usage.attempts }} attempts have complete usage; {{ usage.partialAttempts }} partial, {{ usage.unavailableAttempts }} unavailable. Includes repairs and failed or interrupted attempts. @if (usage.status === 'PARTIAL') { Known totals may be incomplete. }</p>
+      } @else { <p class="codex-usage">Codex token usage · UNAVAILABLE</p> }
       @if (campaign.failure) { <pre class="error">{{ campaign.failure }}</pre> }
       @if (campaign.reportFailure) { <details><summary>Report export failed</summary><pre class="error">{{ campaign.reportFailure }}</pre></details> }
       <table><thead><tr><th>Trial</th><th>Stage / outcome</th><th>Tuning seed</th><th>Repairs</th><th>Inspect</th></tr></thead><tbody>
@@ -55,11 +59,16 @@
     </mat-card-content></mat-card>
     @if (store.trial(); as trial) {
       <mat-card><mat-card-content><h2>Trial {{ trial.number }} · {{ trial.status }}</h2>
+        @if (trial.codexUsage; as usage) { <p>Trial token usage · {{ usage.status }} · Input: {{ usage.tokens.inputTokens === null ? 'Unknown' : (usage.tokens.inputTokens | number) }} · Output: {{ usage.tokens.outputTokens === null ? 'Unknown' : (usage.tokens.outputTokens | number) }}</p> }
         @if (store.tuning(); as tuning) { <p>{{ tuning.phase }} · {{ tuning.budget.used }}/{{ tuning.budget.maximum }} evaluations · {{ tuning.evaluations.succeeded }} succeeded · {{ tuning.evaluations.rejected }} rejected · {{ tuning.evaluations.failed }} failed</p><mat-progress-bar mode="determinate" [value]="100 * tuning.budget.used / tuning.budget.maximum" /> }
         @if (trial.failure) { <pre class="error">{{ trial.failure }}</pre> }
         @for (attempt of trial.attempts; track attempt.number) {
           <div class="attempt"><span>{{ attempt.stage }} · {{ attempt.status }} · {{ attempt.startedAt | date:'short' }}</span>
             <button mat-button (click)="store.selectLog(attempt.directory + (['PREPARATION'].includes(attempt.stage) ? '/build' : '') + '/stdout.log')">View log</button>
+            @if (attempt.codexEvidence; as evidence) {
+              <span>Conversation: {{ evidence.status }} · Usage: {{ evidence.usage.status }}</span>
+              @for (conversation of evidence.conversations; track conversation.threadId) { <a [href]="store.artifactUrl(attempt.directory + '/' + conversation.path)">Download conversation {{ conversation.threadId }}</a> }
+            }
             @if (attempt.failure) { <details><summary>Failure details</summary><pre>{{ attempt.failure }}</pre></details> }
           </div>
         }

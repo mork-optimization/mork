@@ -2,12 +2,14 @@ package es.urjc.etsii.grafo.mreflp;
 
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
+import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpecJsonCodec;
 import es.urjc.etsii.grafo.autoconfig.fill.AlgorithmNameParam;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.autoconfig.generator.DefaultExplorationFilter;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
+import es.urjc.etsii.grafo.autoconfig.irace.InitialConfigurationUtil;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.SolverConfig;
@@ -16,6 +18,7 @@ import es.urjc.etsii.grafo.mreflp.alg.LMLSVariant;
 import es.urjc.etsii.grafo.mreflp.create.MREFLPConstructive;
 import es.urjc.etsii.grafo.mreflp.improve.OneMoveTabuSearch;
 import es.urjc.etsii.grafo.mreflp.improve.SwapDescent;
+import es.urjc.etsii.grafo.mreflp.experiments.PaperExperiment;
 import es.urjc.etsii.grafo.mreflp.model.MREFLPInstance;
 import es.urjc.etsii.grafo.mreflp.model.MREFLPSolution;
 import es.urjc.etsii.grafo.mreflp.model.MREFLPSolutionValidator;
@@ -27,6 +30,8 @@ import org.junit.jupiter.api.Timeout;
 
 import java.util.List;
 import java.util.Set;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static es.urjc.etsii.grafo.mreflp.MREFLPTestUtil.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -35,6 +40,7 @@ class MREFLPAutoconfigTest {
     private AlgorithmCandidateGenerator generator;
     private AlgorithmBuilderService builder;
     private AutomaticAlgorithmBuilder<MREFLPSolution, MREFLPInstance> automatic;
+    private AutoconfigSearchSpace space;
 
     @BeforeEach void setup() {
         context(1234);
@@ -44,10 +50,25 @@ class MREFLPAutoconfigTest {
         inventory.runComponentDiscovery("es.urjc.etsii.grafo.mreflp,es.urjc.etsii.grafo.algorithms");
         generator = new AlgorithmCandidateGenerator(inventory, new DefaultExplorationFilter());
         builder = new AlgorithmBuilderService(inventory);
-        automatic = new AutomaticAlgorithmBuilder<>(new AutoconfigSearchSpace(new SolverConfig(), generator), builder);
+        space = new AutoconfigSearchSpace(new SolverConfig(), generator);
+        automatic = new AutomaticAlgorithmBuilder<>(space, builder);
     }
 
     @AfterEach void cleanup() { TimeControl.remove(); }
+
+    @Test void iraceHasOnlyTheSotaStartingConfiguration() throws Exception {
+        var codec = new ComponentSpecJsonCodec();
+        var seeds = codec.parseList(Files.readString(Path.of("src/main/resources/irace/initial-configurations.json")));
+        assertEquals(1, seeds.size());
+        var sota = seeds.getFirst();
+        assertEquals("LMLS", sota.component());
+        assertEquals("LMLS", sota.parameters().get("variant"));
+        var paper = PaperExperiment.paperAlgorithm(LMLSVariant.LMLS, 4);
+        String table = InitialConfigurationUtil.toIraceTable(space, seeds);
+        assertEquals(2, table.split("\n").length);
+        var rebuilt = assertInstanceOf(LMLS.class, automatic.buildFromJson(codec.toJson(sota)));
+        assertEquals(paper.parameters(), rebuilt.parameters());
+    }
 
     @Test void generatedSearchSpaceIncludesEveryComponentAndBoundedScalarParameters() {
         var metadata = generator.componentParams();
