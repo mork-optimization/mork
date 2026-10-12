@@ -3,6 +3,7 @@ package es.urjc.etsii.grafo.tsptw.autoconfig;
 import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
+import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpecJsonCodec;
 import es.urjc.etsii.grafo.autoconfig.fill.AlgorithmNameParam;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
 import es.urjc.etsii.grafo.autoconfig.generator.CombinationTree;
@@ -11,8 +12,10 @@ import es.urjc.etsii.grafo.autoconfig.generator.IExplorationFilter;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeContext;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
+import es.urjc.etsii.grafo.autoconfig.inventory.DefaultInventoryFilter;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
+import es.urjc.etsii.grafo.autoconfig.irace.InitialConfigurationUtil;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.tsptw.alg.GVNS;
@@ -23,19 +26,17 @@ import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.tsptw.repair.TSPTWBackwardViolated;
 import es.urjc.etsii.grafo.tsptw.repair.TSPTWFeasibilityRepair;
-import es.urjc.etsii.grafo.tsptw.repair.TSPTWFeasibilityRepairFullNew;
 import es.urjc.etsii.grafo.tsptw.shake.TSPTWFeasibleInsertShake;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
-import org.springframework.core.env.MapPropertySource;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
 import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -52,32 +53,28 @@ class TSPTWAutoconfigTest {
     private AlgorithmBuilderService builder;
     private AutomaticAlgorithmBuilder<TSPTWSolution, TSPTWInstance> automaticBuilder;
     private TreeNode root;
+    private AutoconfigSearchSpace space;
 
     @BeforeEach
     void setUp() {
         initialize();
-        var inventory = new AlgorithmInventoryService(new TSPTWBaselineInventoryNew(), List.of(), List.of(new AlgorithmNameParam()));
-        // Freeze the original space while the separate New tests exercise the expanded catalog.
+        var inventory = new AlgorithmInventoryService(new DefaultInventoryFilter(), List.of(), List.of(new AlgorithmNameParam()));
         inventory.runComponentDiscovery("es.urjc.etsii.grafo.tsptw,es.urjc.etsii.grafo.algorithms");
-        generator = new AlgorithmCandidateGenerator(inventory, new TSPTWExplorationFilter(true));
+        generator = new AlgorithmCandidateGenerator(inventory, new TSPTWExplorationFilter());
         var roots = generator.buildTree(1000, 1);
         assertEquals(1, roots.size());
         root = roots.getFirst();
         assertEquals(GVNS.class, root.clazz());
         builder = new AlgorithmBuilderService(inventory);
-        automaticBuilder = new AutomaticAlgorithmBuilder<>(new AutoconfigSearchSpace(new SolverConfig(), generator), builder);
+        space = new AutoconfigSearchSpace(new SolverConfig(), generator);
+        automaticBuilder = new AutomaticAlgorithmBuilder<>(space, builder);
     }
 
     @AfterEach void tearDown() { cleanup(); }
 
-    @ParameterizedTest
-    @ValueSource(booleans = {false, true})
-    void springDiscoversTheGvnsFilterAndBindsLegacyMode(boolean legacy) {
+    @Test
+    void springDiscoversTheGvnsFilter() {
         try (var context = new AnnotationConfigApplicationContext()) {
-            if (legacy) {
-                context.getEnvironment().getPropertySources().addFirst(new MapPropertySource("test",
-                        Map.of("tsptw.legacy-repair-space", "true")));
-            }
             var scanner = new ClassPathBeanDefinitionScanner(context, false);
             // Use the same inherited-component filter as Mork's application scan.
             scanner.addIncludeFilter(new AnnotationTypeFilter(InheritedComponent.class));
@@ -92,8 +89,7 @@ class TSPTWAutoconfigTest {
             assertFalse(filter.reject(treeContext, GVNS.class));
             assertTrue(filter.reject(treeContext, TSPTWFeasibilityRepair.class));
             treeContext.push(GVNS.class);
-            assertEquals(!legacy, filter.reject(treeContext, TSPTWFeasibilityRepair.class));
-            assertFalse(filter.reject(treeContext, TSPTWFeasibilityRepairFullNew.class));
+            assertFalse(filter.reject(treeContext, TSPTWFeasibilityRepair.class));
         }
     }
 
@@ -144,6 +140,11 @@ class TSPTWAutoconfigTest {
             var documented = builder.buildAlgorithmFromJson(new String(input.readAllBytes(), StandardCharsets.UTF_8));
             assertEquals(defaults.toString(), documented.toString());
         }
+        var codec = new ComponentSpecJsonCodec();
+        var seeds = codec.parseList(Files.readString(Path.of("src/main/resources/irace/initial-configurations.json")));
+        assertEquals(1, seeds.size());
+        assertEquals(defaults.toString(), builder.buildAlgorithm(seeds.getFirst()).toString());
+        assertEquals(2, InitialConfigurationUtil.toIraceTable(space, seeds).split("\n").length);
         for (int level : new int[]{2, 16}) {
             for (int attempts : new int[]{1, 100}) {
                 assertInstanceOf(GVNS.class, automaticBuilder.buildFromConfig(config(phases, searches, level, attempts)));

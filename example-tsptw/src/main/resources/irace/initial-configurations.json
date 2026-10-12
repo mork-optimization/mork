@@ -9,7 +9,13 @@
         "$component": "TSPTWRandomConstructive"
       },
       "repair": {
-        "$component": "TSPTWFeasibilityRepairFullNew"
+        "$component": "TSPTWFeasibilityRepair",
+        "phases": [
+          {"$component": "TSPTWBackwardViolated"},
+          {"$component": "TSPTWForwardNonviolated"},
+          {"$component": "TSPTWForwardViolated"},
+          {"$component": "TSPTWBackwardNonviolated"}
+        ]
       },
       "perturbation": {
         "$component": "TSPTWUnrestrictedInsertShake"
