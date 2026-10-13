@@ -12,13 +12,13 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
 import static es.urjc.etsii.morktests.TestUtils.deleteGeneratedFiles;
 import static es.urjc.etsii.morktests.TestUtils.runJavaProcess;
+import static es.urjc.etsii.morktests.TestUtils.runProcess;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -84,7 +84,7 @@ public class IraceIntegrationTest {
                 assertFalse(generated.contains("http://127.0.0.1:0/"), "Callbacks cannot use port zero");
             }
 
-            var verification = new ProcessBuilder("Rscript", "-e", """
+            int verification = runProcess(Duration.ofSeconds(30), List.of("Rscript", "-e", """
                     library(irace)
                     expected <- readLines("autoconfig-instances.txt", encoding = "UTF-8")
                     actual <- getFromNamespace("readInstances", "irace")(
@@ -108,15 +108,8 @@ public class IraceIntegrationTest {
                     invalid[[selectors[[2L]]]] <- invalid[[selectors[[1L]]]]
                     filtered <- getFromNamespace("filter_forbidden", "irace")(invalid, parameters$forbidden)
                     stopifnot(nrow(filtered) == 0L)
-                    """).inheritIO().start();
-            try {
-                assertTrue(verification.waitFor(30, TimeUnit.SECONDS));
-                assertEquals(0, verification.exitValue());
-            } finally {
-                if (verification.isAlive()) {
-                    verification.destroyForcibly();
-                }
-            }
+                    """));
+            assertEquals(0, verification);
         } finally {
             deleteGeneratedFiles(
                     Path.of("autoconfig-instances.txt"),

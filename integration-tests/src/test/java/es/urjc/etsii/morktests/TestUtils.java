@@ -10,6 +10,7 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 public class TestUtils {
 
@@ -24,15 +25,29 @@ public class TestUtils {
         command.add(CLASSPATH);
         command.add(MAIN_CLASS);
         for (var a : args) command.add(a);
-        ProcessBuilder pb = new ProcessBuilder(command);
-        pb.inheritIO();
-        Process p = pb.start();
-        boolean finished = p.waitFor(timeout.toMillis(), java.util.concurrent.TimeUnit.MILLISECONDS);
-        if (!finished) {
-            p.destroyForcibly();
-            throw new RuntimeException("Subprocess did not finish within timeout: " + timeout);
+        return runProcess(timeout, command);
+    }
+
+    static int runProcess(Duration timeout, List<String> command) throws IOException, InterruptedException {
+        Path logs = Files.createDirectories(Path.of("target", "process-logs"));
+        Path output = Files.createTempFile(logs, "process-", ".log");
+        Process process = new ProcessBuilder(command)
+                .redirectErrorStream(true)
+                .redirectOutput(output.toFile())
+                .start();
+        try {
+            if (!process.waitFor(timeout.toMillis(), TimeUnit.MILLISECONDS)) {
+                throw new IllegalStateException("Subprocess did not finish within timeout: " + timeout + "; output: " + output);
+            }
+            return process.exitValue();
+        } finally {
+            if (process.isAlive()) {
+                process.destroyForcibly();
+                process.waitFor();
+            }
+            // Forward through Surefire's captured stream instead of the fork's native stdout.
+            Files.copy(output, System.out);
         }
-        return p.exitValue();
     }
 
     static void deleteGeneratedFiles(Path... paths) throws IOException {
