@@ -333,7 +333,7 @@ public class AlgorithmCandidateGenerator {
     public IraceParameterSpace toIraceParameterSpace(List<TreeNode> nodes) {
         var iraceParams = new ArrayList<String>();
         var forbidden = new ArrayList<String>();
-        Class<?>[] initialDecisionValues = new Class[nodes.size()];
+        Class<?>[] initialDecisionValues = new Class<?>[nodes.size()];
         for (int i = 0; i < nodes.size(); i++) {
             initialDecisionValues[i] = nodes.get(i).clazz();
         }
@@ -422,7 +422,7 @@ public class AlgorithmCandidateGenerator {
     }
 
     private Class<?>[] getValidChildrenValuesForParam(List<TreeNode> childrenForParameter, ComponentParameter p, TreeNode node) {
-        Class<?>[] validClasses = new Class[childrenForParameter.size()];
+        Class<?>[] validClasses = new Class<?>[childrenForParameter.size()];
         if (childrenForParameter.isEmpty()) {
             throw new IllegalStateException(String.format("Empty children for param %s in node %s, should have been pruned before", p, node));
         }

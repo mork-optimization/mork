@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.ExceptionUtil;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.type.TypeReference;
 import java.io.*;
 import java.nio.file.*;
 import java.time.Instant;
@@ -119,6 +120,7 @@ public class AutoLlmCampaignService {
         cancelled = true; return store.load(id);
     }
     public String active() { return active; }
+    @SuppressWarnings("try") // The resource holds workspace ownership throughout reporting.
     public synchronized AutoLlmCampaign report(String id) {
         if (active != null) throw new IllegalStateException("Wait for the active campaign before regenerating reports");
         try (var lock = store.lock()) { var campaign = store.load(id); report(campaign, store.directory(id)); return campaign; }
@@ -132,7 +134,7 @@ public class AutoLlmCampaignService {
         AutoLlmCampaignStore.ExecutionLock ownership;
         try { ownership = store.lock(); }
         catch (IllegalStateException e) { return; /* Another parent owns the workspace. */ }
-        try (var lock = ownership) {
+        try (ownership) {
             for (var c : store.list()) if (c.status.equals("RUNNING")) {
                 processes.reconcile(store.directory(c.id)); c.status = "INTERRUPTED";
                 for (var t : c.trials) if (!List.of("SUCCEEDED", "FAILED").contains(t.status)) recoverTurn(c, t);
@@ -199,16 +201,16 @@ public class AutoLlmCampaignService {
             runCommand(c, c.config.project().buildCommand(), baseline, preflight.resolve("build"), c.config.execution().buildTimeoutMillis());
             Path jar = AutoLlmFileUtil.inside(baseline, c.config.project().artifact()); if (!Files.isRegularFile(jar)) throw new IllegalStateException("Build did not produce configured JAR: " + jar);
             child(c, null, jar, preflight.resolve("check"), "--autollm-check", 0, c.config.execution().searchSpaceTimeoutMillis(), List.of());
-            var check = AutoLlmFileUtil.read(preflight.resolve("check/execution/check.json"), Map.class);
-            c.config = c.config.withPaths(snapshotInputs(root, "training", (List<String>) check.get("training")), snapshotInputs(root, "comparison", (List<String>) check.get("comparison")));
-            var originalBudgets = AutoLlmFileUtil.read(preflight.resolve("check/execution/comparison-time-limits.json"), Map.class);
-            var frozenBudgets = new LinkedHashMap<String,Object>();
-            Map<String,Map<String,Object>> comparisonInputs = AutoLlmFileUtil.read(root.resolve("data/comparison-manifest.json"), Map.class);
-            for (var entry : comparisonInputs.entrySet()) frozenBudgets.put(((Map<?,?>) entry.getValue()).get("path").toString(), originalBudgets.get(entry.getKey()));
+            var check = AutoLlmFileUtil.read(preflight.resolve("check/execution/check.json"), AutoLlmCheckOrchestrator.Check.class);
+            c.config = c.config.withPaths(snapshotInputs(root, "training", check.training()), snapshotInputs(root, "comparison", check.comparison()));
+            Map<String,Long> originalBudgets = AutoLlmFileUtil.read(preflight.resolve("check/execution/comparison-time-limits.json"), new TypeReference<>() {});
+            var frozenBudgets = new LinkedHashMap<String,Long>();
+            Map<String,Map<String,String>> comparisonInputs = AutoLlmFileUtil.read(root.resolve("data/comparison-manifest.json"), new TypeReference<>() {});
+            for (var entry : comparisonInputs.entrySet()) frozenBudgets.put(entry.getValue().get("path"), originalBudgets.get(entry.getKey()));
             AutoLlmFileUtil.write(root.resolve("control/comparison-time-limits.json"), frozenBudgets);
             AutoLlmFileUtil.write(root.resolve("control/config.json"), c.config);
             child(c, null, jar, preflight.resolve("probe"), "--autollm-probe", 0, c.config.execution().startupTimeoutMillis() + c.config.execution().phaseTimeoutMillis(), List.of());
-            var trainSet = new HashSet<>((List<String>) check.get("training")); trainSet.retainAll((List<String>) check.get("comparison"));
+            var trainSet = new HashSet<>(check.training()); trainSet.retainAll(check.comparison());
             AutoLlmFileUtil.write(root.resolve("baseline/instance-overlap.json"), trainSet);
             Files.copy(preflight.resolve("check/execution/components.json"), root.resolve("baseline/components.json"), StandardCopyOption.REPLACE_EXISTING);
             AutoLlmFileUtil.write(root.resolve("baseline/source-hashes.json"), AutoLlmFileUtil.sourceHashes(baseline));
@@ -218,8 +220,9 @@ public class AutoLlmCampaignService {
             for (String file : List.of("sota.json", "seeds.json", "comparison-time-limits.json")) controls.put("control/" + file, AutoLlmFileUtil.hash(root.resolve("control/" + file)));
             for (String name : List.of("training", "comparison")) {
                 controls.put("data/" + name + ".index", AutoLlmFileUtil.hash(root.resolve("data/" + name + ".index")));
-                for (var value : AutoLlmFileUtil.read(root.resolve("data/" + name + "-manifest.json"), Map.class).values()) {
-                    var input = (Map<String,String>) value; controls.put(root.relativize(Path.of(input.get("path"))).toString(), input.get("sha256"));
+                Map<String,Map<String,String>> manifest = AutoLlmFileUtil.read(root.resolve("data/" + name + "-manifest.json"), new TypeReference<>() {});
+                for (var input : manifest.values()) {
+                    controls.put(root.relativize(Path.of(input.get("path"))).toString(), input.get("sha256"));
                 }
             }
             AutoLlmFileUtil.write(root.resolve("control/frozen-hashes.json"), controls);
@@ -227,7 +230,7 @@ public class AutoLlmCampaignService {
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
     private String snapshotInputs(Path root, String name, List<String> source) throws IOException {
-        var index = new ArrayList<String>(); var hashes = new LinkedHashMap<String, Object>();
+        var index = new ArrayList<String>(); var hashes = new LinkedHashMap<String, Map<String, String>>();
         Path directory = root.resolve("data/" + name); Files.createDirectories(directory);
         for (int i = 0; i < source.size(); i++) {
             String original = source.get(i); String basename = original.substring(original.lastIndexOf('!') + 1); basename = Path.of(basename).getFileName().toString();
@@ -262,9 +265,9 @@ public class AutoLlmCampaignService {
     }
     private void runTrial(AutoLlmCampaign c, AutoLlmCampaign.Trial t) {
         Path root = store.directory(c.id); Path source = root.resolve("trials/%03d/source".formatted(t.number));
-        AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(root.resolve("control/frozen-hashes.json"), Map.class));
+        AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(root.resolve("control/frozen-hashes.json"), new TypeReference<>() {}));
         cloneProject(c, c.baselineCommit, source, root.resolve("trials/%03d/clone".formatted(t.number)));
-        Map<String,String> preserved = AutoLlmFileUtil.read(root.resolve("baseline/source-hashes.json"), Map.class);
+        Map<String,String> preserved = AutoLlmFileUtil.read(root.resolve("baseline/source-hashes.json"), new TypeReference<>() {});
         while (t.preparedArtifact == null) {
             if (cancelled) throw new CancellationException();
             if (t.nextStep.equals("GENERATE")) {
@@ -342,7 +345,7 @@ public class AutoLlmCampaignService {
     }
     private AutoLlmProcessRunner.Result child(AutoLlmCampaign c, AutoLlmCampaign.Trial t, Path jar, Path output, String mode, long pilotMillis, long hardTimeout, List<String> extra) {
         Path root = store.directory(c.id); Path controls = root.resolve("control/frozen-hashes.json");
-        if (Files.exists(controls)) AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(controls, Map.class));
+        if (Files.exists(controls)) AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(controls, new TypeReference<>() {}));
         String artifactHash = AutoLlmFileUtil.hash(jar);
         if (t != null && t.preparedArtifact != null && !artifactHash.equals(AutoLlmFileUtil.read(jar.getParent().resolve("artifact.json"), Map.class).get("sha256"))) throw new IllegalStateException("Frozen artifact was modified");
         long seed = t == null ? c.config.seed() : mode.equals("--default") ? t.comparisonSeed : mode.equals("--autoconfig") && pilotMillis == 0 ? t.tuningSeed : t.pilotSeed;

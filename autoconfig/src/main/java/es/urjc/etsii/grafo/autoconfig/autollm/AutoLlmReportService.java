@@ -25,15 +25,15 @@ public class AutoLlmReportService<S extends Solution<S,I>, I extends Instance> {
             if (trial.comparisonDirectory == null) continue;
             for (var row : AutoLlmFileUtil.events(root.resolve(trial.comparisonDirectory).resolve("execution/events.jsonl"))) {
                 if (!"evaluation-result".equals(row.get("kind")) || !Boolean.TRUE.equals(row.get("measured"))) continue;
-                var enriched = new LinkedHashMap<String, Object>(row);
+                var enriched = new LinkedHashMap<>(row);
                 enriched.put("campaignId", campaign.id); enriched.put("trial", trial.number); enriched.put("tuningSeed", trial.tuningSeed); enriched.put("trialStatus", trial.status);
                 portable.add(enriched);
                 if (!"SUCCEEDED".equals(row.get("state"))) continue;
                 String name = "T%02d-%s".formatted(trial.number, row.get("algorithm"));
                 var algorithm = new Algorithm<S,I>(name) { @Override public S algorithm(I instance) { throw new UnsupportedOperationException("Reporting name only"); } };
                 var objectives = new LinkedHashMap<String, Double>();
-                for (var entry : ((Map<String,Object>) row.get("objectives")).entrySet()) if (entry.getValue() instanceof Number value) objectives.put(entry.getKey(), value.doubleValue());
-                var properties = new LinkedHashMap<String, Object>((Map<String,Object>) row.get("properties"));
+                for (var entry : AutoLlmFileUtil.objectMap(row.get("objectives")).entrySet()) if (entry.getValue() instanceof Number value) objectives.put(entry.getKey(), value.doubleValue());
+                var properties = AutoLlmFileUtil.objectMap(row.get("properties"));
                 properties.put("AutoLLM trial", trial.number); properties.put("Tuning seed", trial.tuningSeed); properties.put("Comparison seed", row.get("seed")); properties.put("Algorithm role", row.get("algorithm"));
                 rows.add(new WorkUnitResult<>(UUID.fromString((String) row.get("id")), true, "autollm-campaign", (String) row.get("instance"), (String) row.get("instanceId"),
                         algorithm, (String) row.get("iteration"), null, objectives, properties, ((Number) row.get("executionTimeNanos")).longValue(), ((Number) row.get("timeToBestNanos")).longValue(), null));

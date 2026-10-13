@@ -21,7 +21,7 @@ public abstract class AbstractOrchestrator {
      * @param <T> Class type
      * @return Implementation to use
      */
-    public static <T> T decideImplementation(List<? extends T> list, Class<? extends T> defaultClass){
+    public static <T> T decideImplementation(List<? extends T> list, Class<?> defaultClass){
         // TODO This method could be deleted if using Spring's autowiring priorities
         T defaultImpl = null;
         for(var e: list){

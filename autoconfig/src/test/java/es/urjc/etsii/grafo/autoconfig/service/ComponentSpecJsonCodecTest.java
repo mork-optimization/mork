@@ -102,9 +102,9 @@ class ComponentSpecJsonCodecTest {
         var spec = new ComponentSpec("Root", Map.of("items", items));
         items.add(new ComponentSpec("Second"));
 
-        var copiedItems = assertInstanceOf(List.class, spec.parameters().get("items"));
+        List<?> copiedItems = assertInstanceOf(List.class, spec.parameters().get("items"));
         assertEquals(1, copiedItems.size());
-        assertThrows(UnsupportedOperationException.class, () -> copiedItems.add(new ComponentSpec("Third")));
+        assertThrows(UnsupportedOperationException.class, copiedItems::clear);
         assertThrows(UnsupportedOperationException.class, () -> spec.parameters().put("value", 1));
     }
 

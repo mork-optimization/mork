@@ -84,7 +84,7 @@ public class AutoLlmController {
                         timeToBest.computeIfAbsent(algorithm, _ -> new es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator()).add(((Number) event.get("timeToBestNanos")).doubleValue() / 1_000_000);
                         curves.add(Map.of("instance", event.get("instance"), "instanceId", event.get("instanceId"), "algorithm", algorithm, "iteration", event.get("iteration"), "curves", event.get("curves")));
                     }
-                    if ("SUCCEEDED".equals(event.get("state"))) for (var entry : ((Map<String,Object>) event.get("objectives")).entrySet()) {
+                    if ("SUCCEEDED".equals(event.get("state"))) for (var entry : AutoLlmFileUtil.objectMap(event.get("objectives")).entrySet()) {
                         if (entry.getValue() instanceof Number value) scores.computeIfAbsent(algorithm, _ -> new TreeMap<>()).computeIfAbsent(entry.getKey(), _ -> new es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator()).add(value.doubleValue());
                     }
                 }

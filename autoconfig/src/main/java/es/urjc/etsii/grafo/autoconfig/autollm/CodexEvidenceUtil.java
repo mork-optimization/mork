@@ -132,14 +132,14 @@ public final class CodexEvidenceUtil {
         try (var reader = Files.newBufferedReader(file)) {
             for (String line; (line = reader.readLine()) != null;) {
                 Map<String,Object> event;
-                try { event = AutoLlmFileUtil.JSON.readValue(line, Map.class); } catch (RuntimeException e) { continue; /* Interrupted output remains in the raw log. */ }
+                try { event = AutoLlmFileUtil.parseObject(line); } catch (RuntimeException e) { continue; /* Interrupted output remains in the raw log. */ }
                 if ("thread.started".equals(event.get("type")) && event.get("thread_id") instanceof String actual) {
                     if (thread != null && !thread.equals(actual)) throw new IllegalStateException("Codex emitted multiple conversation IDs");
                     thread = actual;
                 }
                 if ("turn.completed".equals(event.get("type"))) {
                     completed = true;
-                    if (event.get("usage") instanceof Map<?,?> reported) usage.add((Map<String,Object>) reported);
+                    if (event.get("usage") instanceof Map<?,?> reported) usage.add(AutoLlmFileUtil.objectMap(reported));
                 }
             }
             return new Cli(thread, completed, usage);
@@ -193,7 +193,7 @@ public final class CodexEvidenceUtil {
         try (var reader = Files.newBufferedReader(file)) {
             String line = reader.readLine(); if (line == null) return null;
             Map<String,Object> event;
-            try { event = AutoLlmFileUtil.JSON.readValue(line, Map.class); } catch (RuntimeException e) { return null; }
+            try { event = AutoLlmFileUtil.parseObject(line); } catch (RuntimeException e) { return null; }
             if (!"session_meta".equals(event.get("type")) || !(event.get("payload") instanceof Map<?,?> payload) || !(payload.get("id") instanceof String id)) return null;
             try { if (!UUID.fromString(id).toString().equalsIgnoreCase(id)) return null; } catch (IllegalArgumentException e) { return null; }
             return new Session(file, id, parent(payload.get("source")), (String) payload.get("cwd"), (String) payload.get("cli_version"));
@@ -213,7 +213,7 @@ public final class CodexEvidenceUtil {
             for (String line; (line = reader.readLine()) != null;) {
                 number++;
                 try {
-                    Map<String,Object> event = AutoLlmFileUtil.JSON.readValue(line, Map.class);
+                    Map<String,Object> event = AutoLlmFileUtil.parseObject(line);
                     if (!(event.get("payload") instanceof Map<?,?> payload)) continue;
                     if ("turn_context".equals(event.get("type")) && payload.get("model") instanceof String model) parsed.models.add(model);
                     if ("token_usage_record".equals(event.get("type"))) {

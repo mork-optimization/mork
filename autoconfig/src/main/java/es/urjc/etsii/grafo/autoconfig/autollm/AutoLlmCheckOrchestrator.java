@@ -20,6 +20,8 @@ import java.util.*;
 
 /** Child-only metadata checks, targeted seed/component probes, and winner export. */
 public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrchestrator {
+    public record Check(int parameters, List<String> added, List<String> training, List<String> comparison) {}
+
     private final Environment environment;
     private final AutoconfigSearchSpace space;
     private final AutomaticAlgorithmBuilder<S,I> builder;
@@ -80,7 +82,7 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
             }
             ExecutionJournalUtil.write("components.json", components);
             ExecutionJournalUtil.write("search-space.json", space.snapshot());
-            ExecutionJournalUtil.write("check.json", Map.of("parameters", space.iraceParameters().size(), "added", added, "training", training, "comparison", comparison));
+            ExecutionJournalUtil.write("check.json", new Check(space.iraceParameters().size(), added, training, comparison));
             for (String arg : args) if (arg.equals("--autollm-probe")) probe(seeds, added, training.getFirst(), codec);
         } catch (IOException e) { outcome = es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.FAILED; throw new UncheckedIOException(e); }
         catch (RuntimeException | Error e) { outcome = es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.FAILED; throw e; }

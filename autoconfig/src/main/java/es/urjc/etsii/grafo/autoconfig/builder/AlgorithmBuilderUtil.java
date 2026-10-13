@@ -108,7 +108,7 @@ public class AlgorithmBuilderUtil {
         }
 
         @Override
-        public int compareTo(RankedConstructor o) {
+        public int compareTo(RankedConstructor<T> o) {
             return Integer.compare(this.score(), o.score());
         }
     }
@@ -363,8 +363,12 @@ public class AlgorithmBuilderUtil {
 
         // If the origin class is a string and the target is an enum type, assume the enum contains the string
         if (target.isEnum()) {
-            //noinspection unchecked
-            return Enum.valueOf((Class<Enum>) target, s);
+            for (Object constant : target.getEnumConstants()) {
+                if (((Enum<?>) constant).name().equals(s)) {
+                    return constant;
+                }
+            }
+            throw new IllegalArgumentException("No enum constant " + target.getCanonicalName() + "." + s);
         }
 
         // If the origin class is a string and the target is a boolean like value, try to parse as boolean

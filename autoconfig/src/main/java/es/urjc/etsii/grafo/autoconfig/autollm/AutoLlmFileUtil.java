@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.autollm;
 
+import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
 import java.io.*;
 import java.nio.file.*;
@@ -8,6 +9,7 @@ import java.util.*;
 
 public final class AutoLlmFileUtil {
     public static final JsonMapper JSON = new JsonMapper();
+    private static final TypeReference<Map<String, Object>> OBJECT_TYPE = new TypeReference<>() {};
     private AutoLlmFileUtil() {}
     public static void write(Path path, Object value) {
         try {
@@ -22,6 +24,22 @@ public final class AutoLlmFileUtil {
         try { return JSON.readValue(Files.readString(path), type); }
         catch (IOException e) { throw new UncheckedIOException(e); }
     }
+    public static <T> T read(Path path, TypeReference<T> type) {
+        try { return JSON.readValue(Files.readString(path), type); }
+        catch (IOException e) { throw new UncheckedIOException(e); }
+    }
+    public static Map<String, Object> parseObject(String json) {
+        return JSON.readValue(json, OBJECT_TYPE);
+    }
+    /** Copy a JSON object while checking its string keys and retaining its value types. */
+    public static Map<String, Object> objectMap(Object value) {
+        var source = (Map<?, ?>) value;
+        var result = new LinkedHashMap<String, Object>();
+        for (var entry : source.entrySet()) {
+            result.put(String.class.cast(entry.getKey()), entry.getValue());
+        }
+        return result;
+    }
     public static void append(Path file, Map<String,?> event) {
         try {
             Files.createDirectories(file.getParent());
@@ -35,7 +53,7 @@ public final class AutoLlmFileUtil {
     public static void unfinished(Path output, String state, String failure) {
         Path active = output.resolve("execution/active.json"), journal = output.resolve("execution/events.jsonl");
         if (!Files.isRegularFile(active)) return;
-        Map<String,Map<String,Object>> remaining = read(active, Map.class);
+        Map<String,Map<String,Object>> remaining = read(active, new TypeReference<>() {});
         if (remaining.isEmpty()) return;
         var started = new HashMap<String,Map<String,Object>>();
         for (var event : events(journal)) if ("evaluation-start".equals(event.get("kind"))) started.put((String) event.get("id"), event);
@@ -122,7 +140,7 @@ public final class AutoLlmFileUtil {
             var lines = Files.readAllLines(file);
             for (int i = 0; i < lines.size(); i++) {
                 if (lines.get(i).isBlank()) continue;
-                try { result.add(JSON.readValue(lines.get(i), Map.class)); }
+                try { result.add(parseObject(lines.get(i))); }
                 catch (RuntimeException e) { if (i != lines.size() - 1) throw e; }
             }
         } catch (IOException e) { throw new UncheckedIOException(e); }

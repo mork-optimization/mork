@@ -79,8 +79,8 @@ class AutoLlmLifecycleTest {
                 assertEquals(archiveFailure && trial.number == 1 ? "UNAVAILABLE" : "COMPLETE", trial.codexUsage.status());
                 if (!archiveFailure) assertEquals(40L, trial.codexUsage.tokens().totalTokens());
                 for (var repair : trial.attempts) if (repair.stage.equals("REPAIR")) {
-                    Map<String,Object> owner = AutoLlmFileUtil.read(store.directory(campaign.id).resolve(repair.directory).resolve("owner.json"), Map.class);
-                    var command = (List<String>) owner.get("command"); assertEquals(trial.threadId, command.get(command.indexOf("resume") + 1));
+                    Map<?,?> owner = AutoLlmFileUtil.read(store.directory(campaign.id).resolve(repair.directory).resolve("owner.json"), Map.class);
+                    List<?> command = assertInstanceOf(List.class, owner.get("command")); assertEquals(trial.threadId, command.get(command.indexOf("resume") + 1));
                     assertEquals(1, repair.codexEvidence.conversations().size());
                     assertEquals(20L, repair.codexEvidence.usage().tokens().totalTokens());
                     assertEquals(7, Files.readAllLines(store.directory(campaign.id).resolve(repair.directory).resolve(repair.codexEvidence.conversations().getFirst().path())).size());
@@ -136,7 +136,10 @@ class AutoLlmLifecycleTest {
             assertEquals("ARCHIVED", recovered.trials.get(2).attempts.getFirst().codexEvidence.status());
             assertEquals("FAILED", recovered.trials.get(3).status); assertFalse(recovered.trials.get(3).resumeTurn);
             assertEquals("FAILED", recovered.trials.get(3).attempts.getFirst().codexEvidence.status());
-            try (var lock = store.lock()) { assertThrows(IllegalStateException.class, store::lock); }
+            try (var lock = store.lock()) {
+                assertTrue(lock.lock().isValid());
+                assertThrows(IllegalStateException.class, store::lock);
+            }
         } finally { service.close(); }
     }
     private CodexTaskRunner codex(AutoLlmProcessRunner runner) { return new CodexTaskRunner(runner, new MockEnvironment().withProperty("CODEX_HOME", temp.resolve("codex-home").toString())); }

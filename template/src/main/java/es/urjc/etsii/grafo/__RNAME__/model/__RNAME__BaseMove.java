@@ -22,7 +22,6 @@ public abstract class __RNAME__BaseMove extends Move<__RNAME__Solution, __RNAME_
      * to be implemented by each move type.
      * It is up to the implementation to decide if the original solution is modified
      * in place or a new one is created by cloning the original solution and then applying the changes.
-     * <p></p>
      * This method should be idempotent, i.e. calling it multiple times with the same solution
      * should return the same result
      * @param solution Solution where this move will be applied to.

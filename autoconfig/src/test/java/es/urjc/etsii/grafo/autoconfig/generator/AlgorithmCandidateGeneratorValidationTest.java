@@ -262,6 +262,7 @@ class AlgorithmCandidateGeneratorValidationTest {
     }
 
     public static class ArrayComponentHolder {
+        @SafeVarargs // The fixture does not retain or modify the generic varargs array.
         public ArrayComponentHolder(@ComponentParam Improver<TestSolution, TestInstance>... improvers) {
         }
     }
