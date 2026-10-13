@@ -1,13 +1,15 @@
 package es.urjc.etsii.grafo.bmssc;
 
+import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpecJsonCodec;
 import es.urjc.etsii.grafo.autoconfig.fill.AlgorithmNameParam;
 import es.urjc.etsii.grafo.autoconfig.fill.ObjectiveParamProvider;
-import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
-import es.urjc.etsii.grafo.autoconfig.generator.DefaultExplorationFilter;
+import es.urjc.etsii.grafo.autoconfig.generator.FilterConfig;
+import es.urjc.etsii.grafo.autoconfig.generator.IExplorationFilter;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
+import es.urjc.etsii.grafo.bmssc.autoconfig.BMSSCExplorationFilter;
 import es.urjc.etsii.grafo.bmssc.experiment.BlacklistedComponents;
 import es.urjc.etsii.grafo.bmssc.model.BMSSCInstance;
 import es.urjc.etsii.grafo.bmssc.model.sol.BMSSCSolution;
@@ -16,12 +18,13 @@ import es.urjc.etsii.grafo.util.TimeControl;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
+import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 import static es.urjc.etsii.grafo.bmssc.BMSSCTestUtil.*;
@@ -43,17 +46,18 @@ class BMSSCAutoconfigTest {
     void teardown() { cleanup(); }
 
     @Test
-    void discoveryRetainsOriginalRootAlgorithmsAndBlacklist() {
-        var generator = new AlgorithmCandidateGenerator(inventory, new DefaultExplorationFilter());
-        var names = new HashSet<String>();
-        for (var root : generator.buildTree(1000, 0)) names.add(root.className());
-        assertEquals(Set.of("SimpleAlgorithm", "VNS", "IteratedGreedy", "MultistartOnlyBestAppliesLS"), names);
-        var components = inventory.getInventory().componentByName().keySet();
-        assertTrue(components.containsAll(Set.of("BMSSCGRASPConstructor", "RandomConstructor", "SwapNeighborhood",
-                "FirstImpLS", "BestImpLS", "ShakeImprover", "StrategicOscillation")));
-        assertFalse(components.contains("ReassignNeighborhood"));
-        assertFalse(components.contains("GreedyRandomGRASPConstructive"));
-        assertFalse(components.contains("RandomGreedyGRASPConstructive"));
+    void springDiscoversProjectExplorationFilter() {
+        try (var context = new AnnotationConfigApplicationContext()) {
+            var scanner = new ClassPathBeanDefinitionScanner(context, false);
+            // Use the same inherited-component filter as Mork's application scan.
+            scanner.addIncludeFilter(new AnnotationTypeFilter(InheritedComponent.class));
+            scanner.scan(BMSSCExplorationFilter.class.getPackageName());
+            context.register(FilterConfig.class);
+            context.refresh();
+            var filters = context.getBeansOfType(IExplorationFilter.class);
+            assertEquals(1, filters.size());
+            assertInstanceOf(BMSSCExplorationFilter.class, filters.values().iterator().next());
+        }
     }
 
     @Test

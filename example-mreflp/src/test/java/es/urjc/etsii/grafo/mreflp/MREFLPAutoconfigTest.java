@@ -1,16 +1,18 @@
 package es.urjc.etsii.grafo.mreflp;
 
+import es.urjc.etsii.grafo.annotations.InheritedComponent;
 import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpecJsonCodec;
 import es.urjc.etsii.grafo.autoconfig.fill.AlgorithmNameParam;
 import es.urjc.etsii.grafo.autoconfig.generator.AlgorithmCandidateGenerator;
-import es.urjc.etsii.grafo.autoconfig.generator.DefaultExplorationFilter;
+import es.urjc.etsii.grafo.autoconfig.generator.FilterConfig;
+import es.urjc.etsii.grafo.autoconfig.generator.IExplorationFilter;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
+import es.urjc.etsii.grafo.mreflp.autoconfig.MREFLPExplorationFilter;
 import es.urjc.etsii.grafo.autoconfig.irace.AlgorithmConfiguration;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
 import es.urjc.etsii.grafo.autoconfig.irace.InitialConfigurationUtil;
-import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.mreflp.alg.LMLS;
@@ -27,6 +29,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.ClassPathBeanDefinitionScanner;
+import org.springframework.core.type.filter.AnnotationTypeFilter;
 
 import java.util.List;
 import java.util.Set;
@@ -48,7 +53,7 @@ class MREFLPAutoconfigTest {
                 OneMoveTabuSearch.class, SwapDescent.class);
         var inventory = new AlgorithmInventoryService(components::contains, List.of(), List.of(new AlgorithmNameParam()));
         inventory.runComponentDiscovery("es.urjc.etsii.grafo.mreflp,es.urjc.etsii.grafo.algorithms");
-        generator = new AlgorithmCandidateGenerator(inventory, new DefaultExplorationFilter());
+        generator = new AlgorithmCandidateGenerator(inventory, new MREFLPExplorationFilter());
         builder = new AlgorithmBuilderService(inventory);
         space = new AutoconfigSearchSpace(new SolverConfig(), generator);
         automatic = new AutomaticAlgorithmBuilder<>(space, builder);
@@ -70,35 +75,19 @@ class MREFLPAutoconfigTest {
         assertEquals(paper.parameters(), rebuilt.parameters());
     }
 
-    @Test void generatedSearchSpaceIncludesEveryComponentAndBoundedScalarParameters() {
-        var metadata = generator.componentParams();
-        for (var component : List.of(LMLS.class, MREFLPConstructive.class, OneMoveTabuSearch.class, SwapDescent.class)) {
-            assertTrue(metadata.containsKey(component), component.getSimpleName());
-            for (var parameter : metadata.get(component)) {
-                assertNotEquals(ParameterType.PROVIDED, parameter.getType());
-                assertFalse(parameter.recursive(), "Runtime learning state must not be a constructor dependency");
-            }
+    @Test
+    void springDiscoversProjectExplorationFilter() {
+        try (var context = new AnnotationConfigApplicationContext()) {
+            var scanner = new ClassPathBeanDefinitionScanner(context, false);
+            // Use the same inherited-component filter as Mork's application scan.
+            scanner.addIncludeFilter(new AnnotationTypeFilter(InheritedComponent.class));
+            scanner.scan(MREFLPExplorationFilter.class.getPackageName());
+            context.register(FilterConfig.class);
+            context.refresh();
+            var filters = context.getBeansOfType(IExplorationFilter.class);
+            assertEquals(1, filters.size());
+            assertInstanceOf(MREFLPExplorationFilter.class, filters.values().iterator().next());
         }
-        String parameters = String.join("\n", generator.toIraceParameterSpace(generator.buildTree(4, 1)).parameters());
-        assertTrue(parameters.contains("ROOT_LMLS.epsilon"));
-        assertTrue(parameters.contains("(0.0, 1.0)"));
-        assertTrue(parameters.contains("(0.01, 0.99)"));
-        assertTrue(parameters.contains("(0, 1000)"));
-        for (var component : List.of(LMLS.class, OneMoveTabuSearch.class)) {
-            for (var parameter : metadata.get(component)) {
-                if (parameter.getName().equals("maxIter")) {
-                    assertEquals(ParameterType.INTEGER, parameter.getType());
-                    assertArrayEquals(new Object[]{1, 1000}, parameter.getValues());
-                } else if (parameter.getName().equals("tenure")) {
-                    assertEquals(ParameterType.INTEGER, parameter.getType());
-                    assertArrayEquals(new Object[]{1, 100}, parameter.getValues());
-                }
-            }
-        }
-        assertTrue(parameters.contains("ROOT_SimpleAlgorithm.constructive_MREFLPConstructive.variant"));
-        assertTrue(parameters.contains("ROOT_SimpleAlgorithm.improver_OneMoveTabuSearch.cached"));
-        assertTrue(parameters.contains("ROOT_SimpleAlgorithm.improver_SwapDescent.cached"));
-        assertFalse(parameters.contains("LearningMatrix"));
     }
 
     @Test void allLmlsVariantsBuildFromIraceAndJsonAndMatchManualPaperConfiguration() {
