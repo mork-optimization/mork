@@ -6,6 +6,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.env.MockEnvironment;
+import tools.jackson.core.type.TypeReference;
 import java.nio.file.*;
 import java.io.File;
 import java.util.*;
@@ -13,6 +14,7 @@ import java.util.function.BooleanSupplier;
 import java.util.jar.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.mock;
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 class AutoLlmLifecycleTest {
     @TempDir Path temp;
@@ -44,6 +46,7 @@ class AutoLlmLifecycleTest {
     @ParameterizedTest @ValueSource(booleans = {false, true})
     void twoTrialsRetainIndependentDataAndContinueAfterFailure(boolean archiveFailure) throws Exception {
         Path repo = temp.resolve("baseline"); Files.createDirectories(repo.resolve("src/main/java")); Files.writeString(repo.resolve("src/main/java/Original.java"), "// original\n");
+        for (var entry : AutoLlmCodexFixture.BASELINE_SOURCES.entrySet()) Files.writeString(repo.resolve(entry.getKey()), entry.getValue());
         Path input = repo.resolve("instance.txt"); Files.writeString(input, "instance\n"); Files.writeString(repo.resolve("train.index"), input + "\n"); Files.writeString(repo.resolve("comparison.index"), input + "\n");
         Files.writeString(repo.resolve("sota.json"), "{\"$component\":\"Dummy\"}");
         createJar(repo.resolve("template.jar"));
@@ -74,16 +77,26 @@ class AutoLlmLifecycleTest {
             var second = campaign.trials.get(1); assertEquals("SUCCEEDED", second.status, second.failure);
             assertNotEquals(campaign.trials.getFirst().threadId, second.threadId); assertNotEquals(campaign.trials.getFirst().tuningSeed, second.tuningSeed);
             assertEquals(campaign.trials.getFirst().comparisonSeed, second.comparisonSeed);
+            String sourceInstructions;
+            try (var inputStream = getClass().getResourceAsStream("/autollm/source-instructions.txt")) {
+                sourceInstructions = new String(Objects.requireNonNull(inputStream).readAllBytes(), UTF_8);
+            }
             for (var trial : campaign.trials) {
                 assertEquals(archiveFailure ? 0 : 1, trial.repairTurns);
                 assertEquals(archiveFailure && trial.number == 1 ? "UNAVAILABLE" : "COMPLETE", trial.codexUsage.status());
                 if (!archiveFailure) assertEquals(40L, trial.codexUsage.tokens().totalTokens());
+                for (var generation : trial.attempts) if (List.of("GENERATION", "REPAIR").contains(generation.stage)) {
+                    String prompt = Files.readString(store.directory(campaign.id).resolve(generation.directory).resolve("prompt.txt"));
+                    assertTrue(prompt.startsWith(created.prompt));
+                    assertTrue(prompt.endsWith(sourceInstructions));
+                }
                 for (var repair : trial.attempts) if (repair.stage.equals("REPAIR")) {
                     Map<?,?> owner = AutoLlmFileUtil.read(store.directory(campaign.id).resolve(repair.directory).resolve("owner.json"), Map.class);
                     List<?> command = assertInstanceOf(List.class, owner.get("command")); assertEquals(trial.threadId, command.get(command.indexOf("resume") + 1));
                     assertEquals(1, repair.codexEvidence.conversations().size());
                     assertEquals(20L, repair.codexEvidence.usage().tokens().totalTokens());
                     assertEquals(7, Files.readAllLines(store.directory(campaign.id).resolve(repair.directory).resolve(repair.codexEvidence.conversations().getFirst().path())).size());
+                    assertTrue(Files.readString(store.directory(campaign.id).resolve(repair.directory).resolve("prompt.txt")).contains("Command failed"));
                 }
             }
             Path root = store.directory(campaign.id);
@@ -92,6 +105,17 @@ class AutoLlmLifecycleTest {
             int results = 0; for (var row : rows) if ("evaluation-result".equals(row.get("kind"))) results++;
             assertEquals(4, results);
             assertEquals("// original\n", Files.readString(repo.resolve("src/main/java/Original.java")));
+            Map<String, String> baselineHashes = AutoLlmFileUtil.read(root.resolve("baseline/source-hashes.json"), new TypeReference<>() {});
+            Map<String, String> finalHashes = AutoLlmFileUtil.read(root.resolve("trials/002/frozen/source-hashes.json"), new TypeReference<>() {});
+            try (var archive = new JarFile(root.resolve("trials/002/frozen/source.zip").toFile())) {
+                for (var entry : AutoLlmCodexFixture.MODIFIED_SOURCES.entrySet()) {
+                    assertEquals(AutoLlmCodexFixture.BASELINE_SOURCES.get(entry.getKey()), Files.readString(repo.resolve(entry.getKey())));
+                    assertNotEquals(baselineHashes.get(entry.getKey()), finalHashes.get(entry.getKey()));
+                    try (var archivedSource = archive.getInputStream(archive.getJarEntry(entry.getKey()))) {
+                        assertEquals(entry.getValue(), new String(archivedSource.readAllBytes(), UTF_8));
+                    }
+                }
+            }
             assertTrue(Files.exists(root.resolve("reports/llm-usage.json")));
             assertEquals(archiveFailure ? 20L : 80L, campaign.codexUsage.tokens().totalTokens());
             assertEquals(archiveFailure ? "PARTIAL" : "COMPLETE", campaign.codexUsage.status());
@@ -99,10 +123,11 @@ class AutoLlmLifecycleTest {
             assertThrows(IllegalStateException.class, () -> service.start(campaign.id, true));
         } finally { service.close(); }
     }
-    @Test void protectedFilesAndArtifactPathsCannotBeChangedOrEscaped() throws Exception {
+    @Test void frozenFilesArchivesAndArtifactPathsCannotBeChangedOrEscaped() throws Exception {
         Path source = temp.resolve("source"); Files.createDirectories(source.resolve("src/main/java")); Path file = source.resolve("src/main/java/Original.java"); Files.writeString(file, "before");
         var hashes = AutoLlmFileUtil.sourceHashes(source); Files.writeString(file, "after");
         assertThrows(IllegalStateException.class, () -> AutoLlmFileUtil.verifySources(source, hashes));
+        assertThrows(IllegalStateException.class, () -> AutoLlmFileUtil.archiveSources(source, temp.resolve("source.zip"), hashes));
         assertThrows(IllegalArgumentException.class, () -> AutoLlmFileUtil.inside(source, "../../outside"));
     }
     @Test void componentNamingAndActualParameterCapAreEnforced() {

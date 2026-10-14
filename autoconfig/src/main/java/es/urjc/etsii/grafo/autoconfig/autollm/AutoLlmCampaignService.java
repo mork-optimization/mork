@@ -267,7 +267,6 @@ public class AutoLlmCampaignService {
         Path root = store.directory(c.id); Path source = root.resolve("trials/%03d/source".formatted(t.number));
         AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(root.resolve("control/frozen-hashes.json"), new TypeReference<>() {}));
         cloneProject(c, c.baselineCommit, source, root.resolve("trials/%03d/clone".formatted(t.number)));
-        Map<String,String> preserved = AutoLlmFileUtil.read(root.resolve("baseline/source-hashes.json"), new TypeReference<>() {});
         while (t.preparedArtifact == null) {
             if (cancelled) throw new CancellationException();
             if (t.nextStep.equals("GENERATE")) {
@@ -292,9 +291,7 @@ public class AutoLlmCampaignService {
             }
             var a = attempt(c, t, "PREPARATION"); Path dir = root.resolve(a.directory);
             try {
-                AutoLlmFileUtil.verifySources(source, preserved);
                 runCommand(c, c.config.project().buildCommand(), source, dir.resolve("build"), c.config.execution().buildTimeoutMillis());
-                AutoLlmFileUtil.verifySources(source, preserved);
                 var generatedHashes = AutoLlmFileUtil.sourceHashes(source);
                 Path jar = AutoLlmFileUtil.inside(source, c.config.project().artifact());
                 var dependencies = AutoLlmFileUtil.dependencyHashes(jar);

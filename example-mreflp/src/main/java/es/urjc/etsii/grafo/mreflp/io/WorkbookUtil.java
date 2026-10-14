@@ -1,19 +1,21 @@
 package es.urjc.etsii.grafo.mreflp.io;
 
+import org.apache.commons.codec.digest.DigestUtils;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.core.io.ClassPathResource;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.*;
 
-/** Reads only the primary top-left table, stopping at its first empty instance cell. */
+/** Reads the bundled reference workbook's primary tables, stopping at the first empty instance cell. */
 public final class WorkbookUtil {
+    public static final String REFERENCE_RESOURCE = "results_sota.xlsx";
+
     private WorkbookUtil() {}
-    public static List<PublishedReference> read(Path workbook) throws IOException {
+    public static List<PublishedReference> read() throws IOException {
         var references = new ArrayList<PublishedReference>();
         var keys = new HashSet<String>();
-        try (var input = Files.newInputStream(workbook); var book = new XSSFWorkbook(input)) {
+        try (var input = new ClassPathResource(REFERENCE_RESOURCE).getInputStream(); var book = new XSSFWorkbook(input)) {
             for (int table = 1; table <= 16; table++) {
                 String sheetName = "Table A." + table;
                 Sheet sheet = Objects.requireNonNull(book.getSheet(sheetName), "Missing " + sheetName);
@@ -48,6 +50,12 @@ public final class WorkbookUtil {
             }
         }
         return List.copyOf(references);
+    }
+
+    public static String sha256() throws IOException {
+        try (var input = new ClassPathResource(REFERENCE_RESOURCE).getInputStream()) {
+            return DigestUtils.sha256Hex(input);
+        }
     }
 
     private static void add(List<PublishedReference> references, Set<String> keys, Row row, String id, String method,

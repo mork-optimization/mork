@@ -21,7 +21,7 @@ class CodexTaskRunnerTest {
                 new AutoLlmConfig.Codex(cli.toString(), null, null, outcome.equals("failure") ? "fail-fixture" : outcome.equals("success") ? null : "hang-fixture", null), null, null, null,
                 new AutoLlmConfig.Execution(1, 50L, 2000L, 5000L, 5000L, 5000L, 5000L, 5000L, "128m"));
         var runner = new CodexTaskRunner(new AutoLlmProcessRunner(), new MockEnvironment().withProperty("CODEX_HOME", home.toString()));
-        Runnable task = () -> runner.run(config, checkout, output, "fixture prompt", null, () -> {
+        Runnable task = () -> runner.run(config, checkout, output, "custom fixture prompt", null, () -> {
             if (!outcome.equals("cancel")) return false;
             try { return Files.readString(output.resolve("stdout.log")).contains("fixture.ready"); } catch (Exception e) { return false; }
         });
@@ -30,8 +30,27 @@ class CodexTaskRunnerTest {
         else assertThrows(IllegalStateException.class, task::run);
         var evidence = AutoLlmFileUtil.read(output.resolve("evidence.json"), CodexEvidenceUtil.Evidence.class);
         assertEquals("ARCHIVED", evidence.status()); assertEquals("COMPLETE", evidence.usage().status()); assertEquals(20L, evidence.usage().tokens().totalTokens());
-        assertTrue(Files.readString(output.resolve(evidence.conversations().getFirst().path())).contains("fixture prompt"));
+        String sourceInstructions;
+        try (var input = getClass().getResourceAsStream("/autollm/source-instructions.txt")) {
+            sourceInstructions = new String(java.util.Objects.requireNonNull(input).readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+        }
+        String expectedPrompt = "custom fixture prompt\n\n" + sourceInstructions;
+        assertEquals(expectedPrompt, Files.readString(output.resolve("prompt.txt")));
+        assertTrue(Files.readString(output.resolve(evidence.conversations().getFirst().path())).contains("custom fixture prompt"));
         var owner = AutoLlmFileUtil.read(output.resolve("owner.json"), java.util.Map.class);
+        var command = assertInstanceOf(java.util.List.class, owner.get("command"));
+        assertEquals(expectedPrompt, command.getLast());
         assertFalse(ProcessHandle.of(((Number) owner.get("pid")).longValue()).map(ProcessHandle::isAlive).orElse(false));
+        if (outcome.equals("success")) {
+            Path resumed = temp.resolve("resumed-attempt");
+            var result = runner.run(config, checkout, resumed, "custom continuation", evidence.threadId(), () -> false);
+            assertEquals(evidence.threadId(), result.threadId());
+            String resumedPrompt = "custom continuation\n\n" + sourceInstructions;
+            assertEquals(resumedPrompt, Files.readString(resumed.resolve("prompt.txt")));
+            var resumedOwner = AutoLlmFileUtil.read(resumed.resolve("owner.json"), java.util.Map.class);
+            var resumedCommand = assertInstanceOf(java.util.List.class, resumedOwner.get("command"));
+            assertEquals(evidence.threadId(), resumedCommand.get(resumedCommand.indexOf("resume") + 1));
+            assertEquals(resumedPrompt, resumedCommand.getLast());
+        }
     }
 }

@@ -1,8 +1,6 @@
 Analyze {{ProjectName}} and list all its algorithm components and the metaheuristics that can currently be built using the project and Mork. Propose and implement new components that autoconfig can combine to improve objective value, execution time, or both, relative to the supplied SOTA.
-Preserve existing sources, validators, objectives, tests, and build files. Copy any existing algorithm component you wish to change and suffix the copy with New. Every new algorithm component must end in New; utilities and supporting classes are exempt.
-You can extend the model (Instance, Solution and Move classes) if required, but any change must mantain backwards compatibility with existing components.
 
-Keep the actual emitted irace parameter declaration count at or below {{MaxParameters}}. Prefer constructive, reconstructive, improvement, shake, and new moves or neighborhoods over implementing new metaheuristics. Add metaheuristics not already used by the state of the art only when the parameter budget permits. You may add a BlacklistInventoryFilter to exclude combinations, including redundant compositions such as SequentialImprover and VND.
+Keep the actual emitted irace parameter declaration count at or below {{MaxParameters}}. Prefer constructive, reconstructive, improvement, shake, and new moves or neighborhoods over implementing new metaheuristics. Add metaheuristics not already used by the state of the art only when the parameter budget permits. You may add a BlacklistInventoryFilter to exclude whole component classes, including redundant composition wrappers such as SequentialImprover and VND.
 Preserve supplied seed configurations, including SOTA.
 
 Honor Mork's cooperative time limits. Add meaningful tests to any new component. The campaign controller will independently run tests and verification autoconfig and may return failures as repair feedback. Do not launch your own autoconfig or alter scoring, budgets, or comparison data.

@@ -2,25 +2,29 @@ package es.urjc.etsii.grafo.bmssc.experiment;
 
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
+import org.springframework.core.io.ClassPathResource;
 
+import java.io.BufferedReader;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
 public class ReimplementationResults extends ReferenceResultProvider {
 
-    Map<String, ReferenceResult> results;
+    private final Map<String, ReferenceResult> results = new HashMap<>();
 
     public ReimplementationResults() throws IOException {
-        this.results = new HashMap<>();
-        var lines = Files.readAllLines(Path.of("sotaTimes.tsv"));
-        for(var l: lines){
-            var parts = l.split("\t");
-            var result = new ReferenceResult();
-            result.setTimeInSeconds(parts[1]);
-            results.put(parts[0], result);
+        try (var reader = new BufferedReader(new InputStreamReader(
+                new ClassPathResource("sotaTimes.tsv").getInputStream(), StandardCharsets.UTF_8))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                var parts = line.split("\t");
+                var result = new ReferenceResult();
+                result.setTimeInSeconds(parts[1]);
+                results.put(parts[0], result);
+            }
         }
     }
 

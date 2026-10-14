@@ -2,6 +2,8 @@
 
 This Mork example implements the LMLS algorithm in Sun et al., *Learning-driven multi-start local search for the multiple row equal facility layout problem*, [doi:10.1016/j.ejor.2026.09.026](https://doi.org/10.1016/j.ejor.2026.09.026). The supplied paper, raw instances, and workbook remain unchanged. The executable prepares cases, solves them through Mork, exports atomic checkpoints, and independently validates assignments before comparing them with the published results.
 
+The published reference workbook is bundled from `src/main/resources/results_sota.xlsx` and loaded from the classpath. Reference loading works in the executable JAR, IntelliJ, and Maven tests regardless of the working directory. Preparation and reporting record its checksum as `classpath:results_sota.xlsx`.
+
 ## Build and quick validation
 
 Java 25 and Maven are required to build. The campaign runner additionally requires Python 3 on Linux or macOS; it uses only the standard library.

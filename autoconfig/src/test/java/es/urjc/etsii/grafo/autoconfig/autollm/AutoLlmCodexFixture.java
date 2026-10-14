@@ -4,6 +4,12 @@ import java.nio.file.*;
 import java.util.*;
 
 public class AutoLlmCodexFixture {
+    public static final Map<String, String> BASELINE_SOURCES = Map.of(
+            "src/main/java/ProjectExplorationFilter.java", "class ProjectExplorationFilter { boolean reject(int depth) { return false; } }\n",
+            "src/main/java/ProjectSolution.java", "class ProjectSolution {}\n");
+    public static final Map<String, String> MODIFIED_SOURCES = Map.of(
+            "src/main/java/ProjectExplorationFilter.java", "class ProjectExplorationFilter { boolean reject(int depth) { return depth > 2; } }\n",
+            "src/main/java/ProjectSolution.java", "class ProjectSolution { int state; }\n");
     public static void main(String[] args) throws Exception {
         if (args[0].equals("login")) { System.out.println("Authenticated fixture"); return; }
         if (Arrays.asList(args).contains("--version")) { System.out.println("fake-codex-test"); return; }
@@ -20,8 +26,13 @@ public class AutoLlmCodexFixture {
         System.out.println("{\"type\":\"fixture.ready\"}");
         if (Arrays.asList(args).contains("hang-fixture")) { System.out.flush(); Thread.sleep(60_000); }
         if (Arrays.asList(args).contains("fail-fixture")) System.exit(1);
-        Files.createDirectories(Path.of("src/main/java")); Files.writeString(Path.of("src/main/java/FixtureUtil.java"), "// Added by fake Codex\n");
-        if (Arrays.asList(args).contains("repair-fixture")) Files.writeString(Path.of("src/main/java/Original.java"), args.length > 2 && args[1].equals("resume") ? "// original\n" : "// forbidden edit\n");
+        Files.createDirectories(Path.of("src/main/java")); Files.writeString(Path.of("src/main/java/FixtureUtil.java"), "public final class FixtureUtil {}\n");
+        if (Arrays.asList(args).contains("repair-fixture") && !args[1].equals("resume")) {
+            Files.writeString(Path.of("src/main/java/FixtureUtil.java"), "public final class FixtureUtil { invalid }\n");
+        }
+        for (var entry : MODIFIED_SOURCES.entrySet()) {
+            if (Files.exists(Path.of(entry.getKey()))) Files.writeString(Path.of(entry.getKey()), entry.getValue());
+        }
         var manifest = new LinkedHashMap<String,Object>();
         for (String field : List.of("inventory", "metaheuristics", "components", "tests", "limitations")) manifest.put(field, List.of());
         manifest.put("blacklist", null);

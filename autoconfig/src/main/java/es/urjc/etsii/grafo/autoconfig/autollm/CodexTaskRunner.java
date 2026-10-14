@@ -27,6 +27,9 @@ public class CodexTaskRunner {
     public Result run(AutoLlmConfig config, Path checkout, Path output, String prompt, String threadId, BooleanSupplier cancelled) {
         try {
             Files.createDirectories(output);
+            try (var input = getClass().getResourceAsStream("/autollm/source-instructions.txt")) {
+                prompt += "\n\n" + new String(Objects.requireNonNull(input).readAllBytes(), java.nio.charset.StandardCharsets.UTF_8);
+            }
             Files.writeString(output.resolve("prompt.txt"), prompt);
             var properties = new LinkedHashMap<String, Object>();
             for (String field : List.of("inventory", "metaheuristics", "components", "tests", "limitations")) properties.put(field, Map.of("type", "array", "items", Map.of("type", "string")));

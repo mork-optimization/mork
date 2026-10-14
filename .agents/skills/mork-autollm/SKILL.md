@@ -17,6 +17,9 @@ Read the [AutoLLM guide](../../../docs/features/autollm.md) before configuring a
 - Resolve input paths carefully: application defaults may be relative to the application's working directory, while campaign input paths resolve against `project.repository`. Prefer absolute paths for input files and directories. Keep `project.artifact` relative to the clone.
 - Check the selected commit and working-tree changes. Trials clone the commit, so uncommitted code is excluded. Existing generated components in that commit are part of the baseline. Establish the intended baseline with the user when unclear; preserve the current checkout and existing proposals.
 
+Generation and repair may adjust the project's existing exploration filter to prune composition branches and meet the actual parameter limit while preserving every supplied seed, including SOTA. They may also add support in Instance, Solution, and Move classes, including necessary initialization, copy, and update wiring, while preserving existing APIs, scoring, feasibility, and behavior.
+Keep other existing sources preserved. Use new inventory filters, factories, parameter providers, and *Util classes where needed; use project run arguments for tree depth and derivation repetition. 
+
 ## Configure and validate
 
 Use the user's choices for trials, seed, prompt/model settings, pilot/repair limits, tuning budget, workers, and comparison repetitions/time limits. Keep unspecified operational settings from backend defaults. Ask only for missing inputs or consequential ambiguities; state the effective trial count and budgets before starting.
