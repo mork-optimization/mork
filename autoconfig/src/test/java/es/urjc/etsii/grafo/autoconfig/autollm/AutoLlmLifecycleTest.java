@@ -100,6 +100,22 @@ class AutoLlmLifecycleTest {
                 }
             }
             Path root = store.directory(campaign.id);
+            assertTrue(AutoLlmLifecycleTest.class.desiredAssertionStatus(), "Maven tests must enable assertions");
+            assertChildAssertions(root.resolve("baseline-preflight/check"), false);
+            assertChildAssertions(root.resolve("baseline-preflight/probe"), true);
+            for (var trial : campaign.trials) for (var stage : trial.attempts) {
+                Path directory = root.resolve(stage.directory);
+                switch (stage.stage) {
+                    case "PREPARATION" -> {
+                        if (stage.status.equals("SUCCEEDED")) {
+                            assertChildAssertions(directory.resolve("check"), false);
+                            assertChildAssertions(directory.resolve("probe"), true);
+                            assertChildAssertions(directory.resolve("pilot"), true);
+                        }
+                    }
+                    case "TUNING", "WINNER_EXPORT", "COMPARISON" -> assertChildAssertions(directory, false);
+                }
+            }
             assertTrue(Files.exists(root.resolve(second.mainDirectory).resolve("autoconfig-final-elites.json")));
             var rows = AutoLlmFileUtil.events(root.resolve(second.comparisonDirectory).resolve("execution/events.jsonl"));
             int results = 0; for (var row : rows) if ("evaluation-result".equals(row.get("kind"))) results++;
@@ -166,6 +182,10 @@ class AutoLlmLifecycleTest {
                 assertThrows(IllegalStateException.class, store::lock);
             }
         } finally { service.close(); }
+    }
+    private void assertChildAssertions(Path directory, boolean enabled) {
+        Map<String, Boolean> status = AutoLlmFileUtil.read(directory.resolve("execution/assertions.json"), new TypeReference<>() {});
+        assertEquals(Map.of("application", enabled, "moves", enabled, "solutions", enabled), status, directory.toString());
     }
     private CodexTaskRunner codex(AutoLlmProcessRunner runner) { return new CodexTaskRunner(runner, new MockEnvironment().withProperty("CODEX_HOME", temp.resolve("codex-home").toString())); }
     private void git(Path repo, String... args) throws Exception { var command = new ArrayList<>(List.of("git")); command.addAll(List.of(args)); var process = new ProcessBuilder(command).directory(repo.toFile()).redirectErrorStream(true).start(); String output = new String(process.getInputStream().readAllBytes()); assertEquals(0, process.waitFor(), output); }

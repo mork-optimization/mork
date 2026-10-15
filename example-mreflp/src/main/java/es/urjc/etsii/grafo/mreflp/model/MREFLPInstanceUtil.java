@@ -2,11 +2,14 @@ package es.urjc.etsii.grafo.mreflp.model;
 
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
+import org.apache.commons.codec.digest.DigestUtils;
 
 public final class MREFLPInstanceUtil {
     private MREFLPInstanceUtil() {}
@@ -51,19 +54,24 @@ public final class MREFLPInstanceUtil {
     }
 
     public static MREFLPInstance read(Path source, int capacity) throws IOException {
-        try (var reader = Files.newBufferedReader(source)) {
+        return read(source.getFileName().toString(), source.getParent().getFileName().toString(),
+                capacity, Files.readString(source));
+    }
+
+    public static MREFLPInstance read(String filename, String category, int capacity, String data) throws IOException {
+        try (var reader = new BufferedReader(new StringReader(data))) {
             int n = Integer.parseInt(nextLine(reader));
             if (n < 1) throw new IllegalArgumentException("Invalid facility count");
             String[] widths = nextLine(reader).split("\\s+");
             for (String width : widths) if (!width.equals("1")) throw new IllegalArgumentException("Non-unit width");
             int missing = n - widths.length;
-            boolean knownShortHeader = source.getFileName().toString().startsWith("QAP_sko") && missing == 5;
-            if (missing != 0 && !knownShortHeader) throw new IllegalArgumentException("Invalid unit-width header in " + source);
+            boolean knownShortHeader = filename.startsWith("QAP_sko") && missing == 5;
+            if (missing != 0 && !knownShortHeader) throw new IllegalArgumentException("Invalid unit-width header in " + filename);
             long[][] flows = new long[n][n];
             boolean upper = true, symmetric = true;
             for (int i = 0; i < n; i++) {
                 String[] row = nextLine(reader).split("\\s+");
-                if (row.length != n) throw new IllegalArgumentException("Invalid matrix row " + i + " in " + source);
+                if (row.length != n) throw new IllegalArgumentException("Invalid matrix row " + i + " in " + filename);
                 for (int j = 0; j < n; j++) {
                     flows[i][j] = Long.parseLong(row[j]);
                     if (i > j && flows[i][j] != 0) upper = false;
@@ -76,8 +84,8 @@ public final class MREFLPInstanceUtil {
             }
             if (!symmetric && !upper) throw new IllegalArgumentException("Unsupported asymmetric flow matrix");
             if (upper) for (int i = 0; i < n; i++) for (int j = i + 1; j < n; j++) flows[j][i] = flows[i][j];
-            return new MREFLPInstance(canonicalName(source.getFileName().toString()), source.getParent().getFileName().toString(),
-                    capacity, groupCount(n, capacity), flows, missing, sha256(source));
+            return new MREFLPInstance(canonicalName(filename), category,
+                    capacity, groupCount(n, capacity), flows, missing, DigestUtils.sha256Hex(data.getBytes(StandardCharsets.UTF_8)));
         }
     }
 

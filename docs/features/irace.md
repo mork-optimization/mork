@@ -24,6 +24,8 @@ java -jar your-application.jar --irace
 java -jar your-application.jar --autoconfig
 ```
 
+We recommend to run the tuning with Java assertions disabled: do not add `-ea` or `-enableassertions` to the JVM options in your launcher or IDE. You may want to use a separate short validation run with `-ea` when checking algorithm correctness. 
+
 To start only the follower process that exposes the execution API and waits for external commands, run:
 
 ```bash

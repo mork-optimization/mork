@@ -31,6 +31,8 @@ public final class BenchmarkPreparationUtil {
             }
             Collections.sort(sources);
             for (Path source : sources) {
+                String data = Files.readString(source);
+                String lineEnding = data.contains("\r\n") ? "\r\n" : "\n";
                 for (int r = 2; r <= 5; r++) {
                     var instance = MREFLPInstanceUtil.read(source, r);
                     if (!ids.add(instance.getId())) throw new IllegalArgumentException("Duplicate case " + instance.getId());
@@ -38,7 +40,7 @@ public final class BenchmarkPreparationUtil {
                     var benchmarkCase = new BenchmarkCase(instance.getId(), relative, category, r, instance.groups(), instance.n(), instance.missingWidths(), instance.sourceHash());
                     cases.add(benchmarkCase);
                     String filename = instance.getId() + ".case";
-                    AtomicFileUtil.write(instances.resolve("cases").resolve(filename), relative + "\n" + r + "\n");
+                    AtomicFileUtil.write(instances.resolve("cases").resolve(filename), relative + lineEnding + r + lineEnding + data);
                     index.add("cases/" + filename);
                     if (pilotIds.contains(instance.getId())) pilot.add("cases/" + filename);
                     if (r == 2 && instance.missingWidths() != 0) audit.append("- ").append(relative).append(": ").append(instance.missingWidths()).append(" missing unit-width entries; full matrix verified.\n");

@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.autollm;
 
+import es.urjc.etsii.grafo.solution.Move;
+import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ExecutionJournalUtil;
 import java.nio.file.*;
 import java.util.*;
@@ -10,6 +12,10 @@ public class AutoLlmChildFixture {
         var flags = new HashMap<String,String>();
         for (String arg : args) { int separator = arg.indexOf('='); if (separator > 0) flags.put(arg.substring(0, separator), arg.substring(separator + 1)); }
         Path directory = ExecutionJournalUtil.directory();
+        boolean assertions = false;
+        assert assertions = true;
+        ExecutionJournalUtil.write("assertions.json", Map.of("application", assertions,
+                "moves", Move.class.desiredAssertionStatus(), "solutions", Solution.class.desiredAssertionStatus()));
         ExecutionJournalUtil.write("readiness.json", Map.of("startedAtMillis", System.currentTimeMillis(), "pid", ProcessHandle.current().pid()));
         if (Arrays.asList(args).contains("--autollm-check")) {
             var training = Files.readAllLines(Path.of(flags.get("--instances.path.irace")));

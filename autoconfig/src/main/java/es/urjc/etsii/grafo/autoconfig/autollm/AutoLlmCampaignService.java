@@ -346,7 +346,8 @@ public class AutoLlmCampaignService {
         String artifactHash = AutoLlmFileUtil.hash(jar);
         if (t != null && t.preparedArtifact != null && !artifactHash.equals(AutoLlmFileUtil.read(jar.getParent().resolve("artifact.json"), Map.class).get("sha256"))) throw new IllegalStateException("Frozen artifact was modified");
         long seed = t == null ? c.config.seed() : mode.equals("--default") ? t.comparisonSeed : mode.equals("--autoconfig") && pilotMillis == 0 ? t.tuningSeed : t.pilotSeed;
-        var args = new ArrayList<>(List.of(Path.of(System.getProperty("java.home"), "bin/java").toString(), "-ea", "-Xmx" + c.config.execution().heap(),
+        boolean validation = mode.equals("--autollm-probe") || mode.equals("--autoconfig") && pilotMillis > 0;
+        var args = new ArrayList<>(List.of(Path.of(System.getProperty("java.home"), "bin/java").toString(), validation ? "-ea" : "-da", "-Xmx" + c.config.execution().heap(),
                 "-Dmork.execution.directory=" + output.resolve("execution"), "-Dmork.execution.phase-timeout=" + c.config.execution().phaseTimeoutMillis(), "-Dmork.execution.watchdog-grace=" + c.config.execution().watchdogGraceMillis(),
                 "-jar", jar.toString(), mode, "--server.address=127.0.0.1", "--server.port=0", "--event.webserver.stop-on-execution-end=true",
                 "--instances.path.irace=" + c.config.trainingPath(), "--instances.path.autollm-comparison=" + c.config.comparisonPath(), "--instances.path.default=" + c.config.trainingPath(), "--instances.preload=false",

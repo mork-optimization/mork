@@ -21,7 +21,7 @@ python3 scripts/campaign.py report --output runs/pilot-report runs/pilot
 
 The pilot runs one instance per category for each seed. Short pilot runs validate the workflow; they do not establish reproduction of the 600-second results. For a four-run smoke test add --cohorts normal. The runner labels pilots as pilot-normal / pilot-relaxed.
 
-Preparation produces 572 capacity-specific descriptors (143 sources × capacities 2–5), index files, case/reference JSON manifests, source hashes, and benchmark/audit.md. Each descriptor contains a module-relative raw source path and a capacity. Run the JAR from this module directory, or let the Python runner set its working directory.
+Preparation produces 572 capacity-specific descriptors (143 sources × capacities 2–5), index files, case/reference JSON manifests, source hashes, and benchmark/audit.md. Each case contains a source label, a capacity, and the complete raw instance contents. Cases remain readable after copying them to a campaign workspace or running the JAR from another directory; the source label preserves the original name/category without opening an external file. Preparation and reporting still operate on the module artifacts.
 
 ## Full campaign on external hardware
 
@@ -69,15 +69,15 @@ The implementation includes Algorithms 1–5 and Equations 8–16:
 - Direct relocation/swap evaluators and incremental caches, including post-move updates.
 - Reward, penalty, compensation, and a single literal smoothing pass without additional row normalization.
 
-| Parameter | Value |
-|---|---:|
-| Greediness epsilon | 0.6 |
-| Tabu non-improvement depth | 20 |
-| Uniform integer tabu tenure | 1–3 |
-| Reward alpha | 0.1 |
-| Penalty beta | 0.2 |
-| Compensation gamma | 0.3 |
-| Smoothing rho | 0.3 |
+| Parameter                   | Value |
+|-----------------------------|------:|
+| Greediness epsilon          |   0.6 |
+| Tabu non-improvement depth  |    20 |
+| Uniform integer tabu tenure |   1–3 |
+| Reward alpha                |   0.1 |
+| Penalty beta                |   0.2 |
+| Compensation gamma          |   0.3 |
+| Smoothing rho               |   0.3 |
 
 The six ablations are RANDOM (LMLS1), GREEDY (LMLS2), WITHOUT_TABU, WITHOUT_SWAP, DIRECT_ONE_MOVE (LMLS3), and DIRECT_SWAP (LMLS4). PaperExperiment runs one configured variant; AblationExperiment runs all seven. For a local ablation smoke test:
 

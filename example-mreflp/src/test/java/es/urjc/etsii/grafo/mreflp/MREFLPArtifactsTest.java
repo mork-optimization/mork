@@ -45,6 +45,26 @@ class MREFLPArtifactsTest {
         assertEquals(19, shortHeaders);
     }
 
+    @Test void copiedCasesCarryTheirDataAndPreserveRawSourceHashes() throws Exception {
+        var importer = new MREFLPInstanceImporter();
+        for (String entry : Files.readAllLines(Path.of("instances/all.index"))) {
+            Path original = Path.of("instances").resolve(entry);
+            Path copy = temporary.resolve(original.getFileName());
+            Files.copy(original, copy);
+            var header = Files.readAllLines(copy);
+            var expected = MREFLPInstanceUtil.read(Path.of(header.getFirst()), Integer.parseInt(header.get(1)));
+            var actual = importer.importInstance(copy.toString());
+            assertEquals(expected.getId(), actual.getId());
+            assertEquals(expected.category(), actual.category());
+            assertEquals(expected.sourceHash(), actual.sourceHash());
+            assertEquals(expected.missingWidths(), actual.missingWidths());
+            assertEquals(expected.groups(), actual.groups());
+            for (int u = 0; u < actual.n(); u++) {
+                for (int v = 0; v < actual.n(); v++) assertEquals(expected.flow(u, v), actual.flow(u, v));
+            }
+        }
+    }
+
     @Test void exactSmallGroupBoundsAndLargeBounds() {
         int[][] bounds = {{1,1,2,2,3,4,4,5,5,6,7,7,8,9,9,10},
                          {1,1,1,2,2,3,3,4,4,5,5,6,6,7,7,8},
@@ -140,8 +160,11 @@ class MREFLPArtifactsTest {
         assertEquals(572, index.size());
         assertEquals(4, Files.readAllLines(temporary.resolve("instances/pilot.index")).size());
         for (String entry : index) {
-            var descriptor = Files.readAllLines(temporary.resolve("instances").resolve(entry));
-            assertTrue(Files.isRegularFile(temporary.resolve(descriptor.getFirst())));
+            Path descriptor = temporary.resolve("instances").resolve(entry);
+            var instance = new MREFLPInstanceImporter().importInstance(descriptor.toString());
+            assertEquals(descriptor.getFileName().toString(), instance.getId() + ".case");
+            String source = Files.readAllLines(descriptor).getFirst();
+            assertEquals(MREFLPInstanceUtil.sha256(temporary.resolve(source)), instance.sourceHash());
         }
         assertEquals(hash, WorkbookUtil.sha256());
         var hashes = new JsonMapper().readValue(temporary.resolve("benchmark/source-hashes.json").toFile(), Map.class);
