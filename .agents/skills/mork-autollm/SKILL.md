@@ -30,6 +30,8 @@ Fetch `GET /api/autollm/defaults`, merge the selected settings, and save the com
 
 Submit the saved JSON to `POST /api/autollm/validate`. Inspect the returned `valid` field and `errors`, including when HTTP status is 200. Resolve configuration errors before submission. Full baseline/component verification happens inside the campaign.
 
+Before launching, measure and report the baseline's actual emitted irace parameter declaration count with a metadata-only search-space check such as `--autollm-check`, using the selected baseline, intended campaign configuration, run arguments, and seed files. Read `parameters` from `execution/check.json` and compare it with `maxParameters`; do not infer it from the number of components. If over budget, recommend pruning while preserving every supplied seed, and rebuild/recheck after any filter or search-space setting changes.
+
 When the user asks only to configure or prepare, stop with the saved configuration, validation outcome, and dashboard URL. A request to run/start authorizes the campaign's Codex generation and tuning; proceed within that scope without asking again for the same authorization.
 
 ## Start and inspect

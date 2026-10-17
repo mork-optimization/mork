@@ -141,6 +141,28 @@ class ExecutorTest {
     }
 
     @Test
+    void rejectsAlgorithmResultBetterThanOptimalDuringFinalValidation() {
+        executor.solverConfig.setRandomType(RandomType.DEFAULT);
+        var algorithm = new Algorithm<TestSolution, TestInstance>("below-optimum") {
+            @Override
+            public TestSolution algorithm(TestInstance instance) {
+                var solution = new TestSolution(instance);
+                solution.setScore(4.0);
+                solution.notifyUpdate();
+                return solution;
+            }
+        };
+        var work = new WorkUnit<>(java.util.UUID.randomUUID(), "exp", "inst1", algorithm, 0);
+
+        var error = assertThrows(AssertionError.class, () -> executor.doWork(work));
+
+        assertTrue(error.getMessage().contains("Solution has improved an optimal value: 5.0 (Test)"));
+        verify(validator).validate(any(TestSolution.class));
+        verify(ioManager, never()).exportSolution(any(), any());
+        assertTrue(resultStore.getResultsForExperiment("exp").isEmpty());
+    }
+
+    @Test
     public void testValidateTTB(){
         var solution = new TestSolution(new TestInstance("inst1"));
 
