@@ -1,0 +1,259 @@
+package es.urjc.etsii.grafo.autoconfig.screening;
+
+import es.urjc.etsii.grafo.autoconfig.autollm.*;
+import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
+import es.urjc.etsii.grafo.config.*;
+import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
+import es.urjc.etsii.grafo.io.*;
+import es.urjc.etsii.grafo.monitoring.MonitorModeState.Mode;
+import es.urjc.etsii.grafo.orchestrator.AbstractOrchestrator;
+import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
+import es.urjc.etsii.grafo.solution.*;
+import es.urjc.etsii.grafo.util.*;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.core.env.Environment;
+import java.io.*;
+import java.nio.channels.FileChannel;
+import java.nio.file.*;
+import java.util.*;
+import static es.urjc.etsii.grafo.autoconfig.screening.ScreeningData.*;
+import static es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.*;
+
+/** Explicit data preparation. Proposed indexes become usable only through the separate review operation. */
+public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends Instance> extends AbstractOrchestrator {
+    private final InstanceScreeningConfig settings;
+    private final InstanceConfiguration inputs;
+    private final InstanceManager<I> instances;
+    private final AlgorithmBuilderService algorithms;
+    private final SolutionBuilder<S,I> solutions;
+    private final Optional<SolutionValidator<S,I>> validator;
+    private final SolverConfig solver;
+    private final BlockConfig blocks;
+    private final AutoLlmProcessRunner processes;
+    private final AutoLlmConfig limits;
+    private final ExecutionLifecycleCoordinator lifecycle;
+    private final ApplicationArguments arguments;
+    private final Environment environment;
+    public InstanceScreeningOrchestrator(InstanceScreeningConfig settings, InstanceConfiguration inputs, InstanceManager<I> instances,
+            AlgorithmBuilderService algorithms, SolutionBuilder<S,I> solutions, Optional<SolutionValidator<S,I>> validator,
+            SolverConfig solver, BlockConfig blocks, AutoLlmProcessRunner processes, AutoLlmConfig limits,
+            ExecutionLifecycleCoordinator lifecycle, ApplicationArguments arguments, Environment environment) {
+        this.settings = settings; this.inputs = inputs; this.instances = instances; this.algorithms = algorithms;
+        this.solutions = solutions; this.validator = validator; this.solver = solver; this.blocks = blocks;
+        this.processes = processes; this.limits = limits; this.lifecycle = lifecycle; this.arguments = arguments; this.environment = environment;
+    }
+    @Override public List<String> getNames() { return List.of("instance-screening", "instance-screening-worker", "instance-screening-approve"); }
+    @Override public Mode getMode() { return Mode.UTILITY; }
+    @Override public void run(String... args) {
+        long start = System.nanoTime(); var outcome = SUCCEEDED;
+        try {
+            Context.Configurator.setSolverConfig(solver);
+            Context.Configurator.setBlockConfig(blocks);
+            if (arguments.containsOption("instance-screening-worker")) {
+                new ScreeningWorker<>(instances, algorithms, solutions, validator.orElseThrow(() ->
+                        new IllegalStateException("Screening requires a SolutionValidator")), solver).run(Path.of(settings.jobFile()));
+                return;
+            }
+            Path output = Path.of(settings.output()).toAbsolutePath().normalize();
+            Files.createDirectories(output);
+            try (var channel = FileChannel.open(output.resolve(".screening.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
+                 var lock = channel.tryLock()) {
+                if (lock == null) throw new IllegalStateException("Screening output is already in use");
+                String artifact = ScreeningFileUtil.artifactHash(instances.getUserImporterImplementation().getClass());
+                if (arguments.containsOption("instance-screening-approve")) {
+                    ScreeningFileUtil.approve(output, environment.getProperty("instance-screening.review-sha256"), artifact);
+                    System.out.println("APPROVED: " + output.resolve("train.index") + " and " + output.resolve("validation.index"));
+                } else prepare(output, artifact);
+            }
+        } catch (IOException e) { outcome = FAILED; throw new UncheckedIOException(e); }
+        catch (RuntimeException | Error e) { outcome = FAILED; throw e; }
+        finally { lifecycle.complete(System.nanoTime() - start, outcome); }
+    }
+    private void prepare(Path output, String artifact) throws IOException {
+        if (Files.exists(output.resolve("approved.json"))) throw new IllegalStateException("This selection is approved; use a new directory to rescreen");
+        if (validator.isEmpty()) throw new IllegalStateException("Screening requires a SolutionValidator");
+        if (settings.sotaFile() == null) throw new IllegalArgumentException("Provide --instance-screening.sota-file=<fixed SOTA JSON>");
+        String python = settings.python();
+        if (python.contains("/") || python.contains("\\")) python = Path.of(python).toAbsolutePath().normalize().toString();
+        var config = new InstanceScreeningConfig(Path.of(settings.sotaFile()).toAbsolutePath().normalize().toString(), output.toString(),
+                settings.thresholdMillis(), settings.candidateMultiplier(), settings.horizonMillis(), settings.confirmationRuns(),
+                settings.fastFraction(), python, settings.warmupRepetitions(), settings.warmupMillis(), null);
+        String sota = Files.readString(Path.of(config.sotaFile()));
+        algorithms.buildAlgorithmFromJson(sota);
+        double fraction = inputs.getPreliminarPercentage();
+        if (!Double.isFinite(fraction) || fraction <= 0 || fraction >= 1) throw new IllegalArgumentException("Training fraction must be between zero and one");
+        String inputPath = inputs.getForSelection();
+        if (inputPath == null || inputPath.isBlank()) inputPath = inputs.getPath("default");
+        inputPath = Path.of(inputPath).toAbsolutePath().normalize().toString();
+        if (Files.isDirectory(Path.of(inputPath)) && output.startsWith(Path.of(inputPath))) {
+            throw new IllegalArgumentException("Place screening output outside the input directory");
+        }
+        var paths = new LinkedHashMap<>(inputs.getPaths()); paths.put("instance-screening", inputPath); inputs.setPath(paths);
+        var source = new TreeSet<String>();
+        for (String path : instances.getInstanceSolveOrder("instance-screening", false)) source.add(IOUtil.absoluteLoadPath(path));
+        if (source.isEmpty()) throw new IllegalArgumentException("No instances to screen");
+        var all = new ArrayList<Input>();
+        for (String path : source) all.add(new Input(path, ScreeningFileUtil.inputHash(path)));
+        var host = ScreeningFileUtil.host();
+        String sotaHash = AutoLlmFileUtil.hash(Path.of(config.sotaFile()));
+        String objective = Context.getMainObjective().getName(); var mode = Context.getMainObjective().getFMode();
+        Math.addExact(solver.getSeed(), config.confirmationRuns());
+        Math.subtractExact(solver.getSeed(), 1000L + config.warmupRepetitions());
+        var runArguments = List.of(arguments.getSourceArgs());
+        String fingerprint = ScreeningFileUtil.digest(List.of(config, solver.getSeed(), solver.getRandomType(), fraction, objective, mode, host, all, sotaHash, artifact, runArguments));
+        var manifest = new Manifest(1, fingerprint, config, solver.getSeed(), solver.getRandomType().name(), fraction, objective, mode, host, all, sotaHash, artifact, runArguments);
+        Path manifestFile = output.resolve("manifest.json");
+        if (Files.exists(manifestFile)) {
+            Manifest previous = AutoLlmFileUtil.read(manifestFile, Manifest.class);
+            if (!previous.equals(manifest)) throw new IllegalStateException("Screening inputs, SOTA, executable, host or settings changed; use a new directory");
+        } else {
+            try (var files = Files.list(output)) {
+                if (files.anyMatch(path -> !path.getFileName().toString().equals(".screening.lock"))) {
+                    throw new IllegalStateException("Refusing to use a nonempty directory without a screening manifest");
+                }
+            }
+            AutoLlmFileUtil.write(manifestFile, manifest);
+        }
+        ScreeningFileUtil.writeText(output.resolve("sota.json"), sota);
+        processes.reconcile(output);
+        var preflight = processes.run(List.of(python, "-c", "import numpy,pandas,sklearn,yellowbrick,matplotlib,seaborn; print('Instance selector dependencies available')"),
+                output, output.resolve("python-check"), 30_000, 0, 0, () -> Thread.currentThread().isInterrupted(), false, 0);
+        if (preflight.exitCode() != 0) throw new IllegalStateException("Selector Python dependencies are unavailable; see " + output.resolve("python-check/stderr.log") + "; configure --instance-screening.python=<prepared interpreter>");
+        var decisions = new ArrayList<Decision>();
+        System.out.println("Screening " + all.size() + " instances with fixed SOTA; threshold=" + config.thresholdMillis() + " ms, horizon=" + config.horizonMillis() + " ms");
+        // The complete first pass precedes all confirmation work.
+        for (Input input : all) runJob(manifest, input, "initial", List.of(manifest.seed()), output);
+        for (Input input : all) {
+            Run initial = ScreeningFileUtil.readRun(output, manifest, input, manifest.seed());
+            var confirmation = new ArrayList<Run>();
+            if (ScreeningUtil.candidate(initial, config, mode)) {
+                var seeds = new ArrayList<Long>();
+                for (int i = 1; i <= config.confirmationRuns(); i++) seeds.add(manifest.seed() + i);
+                runJob(manifest, input, "confirmation", seeds, output);
+                for (long seed : seeds) confirmation.add(ScreeningFileUtil.readRun(output, manifest, input, seed));
+            }
+            Decision decision = ScreeningUtil.classify(initial, confirmation, config, mode);
+            decisions.add(decision);
+            System.out.println(decision.classification() + " " + input.path() + " (" + decision.fastHits() + "/" + config.confirmationRuns() + " fast common-target hits)");
+        }
+        writeProposal(output, manifest, decisions);
+    }
+    private List<String> workerCommand(Path output, Path jobFile) {
+        var command = ScreeningFileUtil.javaCommand(instances.getUserImporterImplementation().getClass());
+        command.add(2, "-Xmx" + limits.execution().heap());
+        command.add(2, "-Dmork.execution.directory=" + output.resolve("execution"));
+        for (String argument : arguments.getSourceArgs()) {
+            String key = argument.split("=", 2)[0].replace("-", "").replace("_", "").toLowerCase();
+            if (!argument.startsWith("--") || key.startsWith("instancescreening") || key.startsWith("server.")
+                    || key.startsWith("instances.") || key.startsWith("event.webserver.") || key.startsWith("serializers.")
+                    || Set.of("solver.metrics", "solver.parallelexecutor", "solver.nworkers", "solver.timestats", "solver.benchmark", "logging.level.root").contains(key)) continue;
+            command.add(argument);
+        }
+        command.addAll(List.of("--instance-screening-worker", "--instance-screening.job-file=" + jobFile,
+                "--server.address=127.0.0.1", "--server.port=0", "--event.webserver.stop-on-execution-end=true",
+                "--instances.preload=false", "--solver.parallel-executor=false", "--solver.n-workers=1", "--solver.metrics=true",
+                "--solver.time-stats=false", "--solver.benchmark=false", "--serializers.xlsx.enabled=false", "--logging.level.root=WARN"));
+        return command;
+    }
+    private void runJob(Manifest manifest, Input input, String phase, List<Long> seeds, Path output) {
+        var pending = new ArrayList<Long>();
+        for (long seed : seeds) if (ScreeningFileUtil.readRun(output, manifest, input, seed) == null) pending.add(seed);
+        if (pending.isEmpty()) return;
+        Path attempt = output.resolve("jobs").resolve(ScreeningFileUtil.digest(input.path())).resolve(phase + "-" + UUID.randomUUID());
+        Path jobFile = attempt.resolve("job.json");
+        AutoLlmFileUtil.write(jobFile, new Job(manifest, input, phase, pending, output.toString()));
+        String failure = null;
+        try {
+            long timeout = limits.execution().startupTimeoutMillis() + (pending.size() + manifest.settings().warmupRepetitions())
+                    * (2 * limits.execution().phaseTimeoutMillis() + manifest.settings().horizonMillis() + limits.execution().watchdogGraceMillis());
+            var result = processes.run(workerCommand(attempt, jobFile), attempt, attempt, timeout, 0,
+                    limits.execution().watchdogGraceMillis(), () -> Thread.currentThread().isInterrupted(), true, limits.execution().startupTimeoutMillis());
+            Path terminal = attempt.resolve("execution/terminal.json");
+            if (result.exitCode() != 0 || !Files.exists(terminal)
+                    || !"SUCCEEDED".equals(AutoLlmFileUtil.JSON.readTree(Files.readString(terminal)).path("outcome").asString())) {
+                failure = "Worker failed; inspect " + attempt;
+            }
+        } catch (java.util.concurrent.CancellationException e) { throw e; }
+        catch (RuntimeException | IOException e) { failure = e.toString() + "; logs: " + attempt; }
+        for (long seed : pending) if (ScreeningFileUtil.readRun(output, manifest, input, seed) == null) {
+            ScreeningFileUtil.writeRun(output, new Run(manifest.fingerprint(), input.path(), seed, false, null, 0, List.of(),
+                    failure == null ? "Worker omitted the expected run" : failure));
+        }
+    }
+    private void writeProposal(Path output, Manifest manifest, List<Decision> decisions) throws IOException {
+        var retained = new ArrayList<String>();
+        int trivial = 0, inconclusive = 0;
+        for (Decision decision : decisions) {
+            if (decision.classification().equals("TRIVIAL")) trivial++;
+            else retained.add(decision.instance());
+            if (decision.classification().equals("INCONCLUSIVE")) inconclusive++;
+        }
+        ScreeningFileUtil.index(output.resolve("proposed-retained.index"), retained);
+        var training = new ArrayList<String>(); var validation = new ArrayList<String>();
+        String splitFailure = null;
+        if (retained.size() < 2) splitFailure = "Fewer than two retained instances; cannot create nonempty disjoint training and validation sets";
+        else try {
+            Path selector = output.resolve("selector.py");
+            try (var resource = getClass().getResourceAsStream("/instance-selector/instance-selector.py")) {
+                if (resource == null) throw new IllegalStateException("Bundled instance selector is missing");
+                Files.copy(resource, selector, StandardCopyOption.REPLACE_EXISTING);
+            }
+            InstanceSelectionUtil.writeProperties(output.resolve("properties.csv"), retained, instances);
+            Path selection = output.resolve("selection");
+            var result = processes.run(List.of(manifest.settings().python(), selector.toString(), "--properties", output.resolve("properties.csv").toString(),
+                            "--output", selection.toString(), "--size", Double.toString(manifest.trainingFraction()), "--seed", Long.toString(Math.floorMod(manifest.seed(), Integer.MAX_VALUE))),
+                    output, output.resolve("selector-process"), limits.execution().buildTimeoutMillis(), 0, 0,
+                    () -> Thread.currentThread().isInterrupted(), false, 0);
+            if (result.exitCode() != 0) throw new IllegalStateException("Property-based selector failed; inspect selector-process logs");
+            var selected = new LinkedHashSet<String>();
+            for (String line : Files.readAllLines(selection.resolve("selected_instances.index"))) if (!line.isBlank()) selected.add(IOUtil.absoluteLoadPath(line));
+            if (selected.size() != Math.ceil(manifest.trainingFraction() * retained.size()) || !retained.containsAll(selected)) {
+                throw new IllegalStateException("Selector returned an unexpected training size or unknown instance");
+            }
+            for (String path : retained) { if (selected.contains(path)) training.add(path); else validation.add(path); }
+            if (training.isEmpty() || validation.isEmpty()) throw new IllegalStateException("Selector produced an empty split");
+        } catch (RuntimeException | IOException e) { splitFailure = e.toString(); training.clear(); validation.clear(); }
+        ScreeningFileUtil.index(output.resolve("proposed-train.index"), training);
+        ScreeningFileUtil.index(output.resolve("proposed-validation.index"), validation);
+        try (var writer = Files.newBufferedWriter(output.resolve("instances.csv"))) {
+            InstanceSelectionUtil.writeRow(writer, List.of("instance", "classification", "bestObserved", "firstPassTtbNanos", "confirmations", "fastHits", "failures", "commonTargetAttainments", "confirmationTtbMedianNanos", "confirmationTtbP95Nanos", "confirmationTtbMaxNanos", "reason"));
+            for (int i = 0; i < decisions.size(); i++) {
+                Decision d = decisions.get(i);
+                var runs = new ArrayList<Run>();
+                for (int j = 1; j <= d.confirmations(); j++) {
+                    runs.add(ScreeningFileUtil.readRun(output, manifest, manifest.inputs().get(i), manifest.seed() + j));
+                }
+                var ttb = ScreeningUtil.summarize(runs, d.bestObserved(), manifest.mode(), manifest.settings().horizonNanos());
+                InstanceSelectionUtil.writeRow(writer, Arrays.asList(d.instance(), d.classification(), d.bestObserved(), d.firstPassTtbNanos(),
+                        d.confirmations(), d.fastHits(), d.failures(), ttb.attained(), ttb.medianNanos(), ttb.p95Nanos(), ttb.maxNanos(), d.reason()));
+            }
+        }
+        String report = "# Instance screening: PENDING REVIEW\n\n"
+                + "Fixed SOTA; " + manifest.settings().horizonMillis() + " ms observation horizon; fast threshold " + manifest.settings().thresholdMillis() + " ms.\n\n"
+                + "| Input | Trivial/excluded | Retained (including inconclusive) | Inconclusive | Training | Validation |\n| ---: | ---: | ---: | ---: | ---: | ---: |\n"
+                + "| " + decisions.size() + " | " + trivial + " | " + retained.size() + " | " + inconclusive + " | " + training.size() + " | " + validation.size() + " |\n\n"
+                + "Exclude only when the first-pass TTB is at most " + manifest.settings().candidateMultiplier() + " times the fast threshold and strictly more than "
+                + manifest.settings().fastFraction() * 100 + "% of " + manifest.settings().confirmationRuns() + " fresh valid runs reach the common observed best before the threshold.\n\n"
+                + "All decisions, reasons and confirmation TTB summaries: [instances.csv](instances.csv). Summaries include only runs attaining the common target; the attainment count shows how many reached it. Raw objective curves and seeds: runs/. Failed or inconsistent evidence is retained as inconclusive.\n\n"
+                + "SOTA SHA-256: `" + manifest.sotaSha256() + "`. Executable SHA-256: `" + manifest.artifactSha256() + "`.\n\n"
+                + "Objective: " + manifest.objective() + " (" + manifest.mode() + "). Host: " + manifest.host() + ".\n\n"
+                + (splitFailure == null ? "The proposed indexes are disjoint; validation is the retained complement of the new training selection.\n\n" : "Split failure: " + splitFailure + ". No approved indexes can be published.\n\n")
+                + "This is an empirical criterion for this SOTA/host within this observation horizon; it is not an optimality or statistical-confidence claim.\n\n"
+                + "Show this report and the detailed lists to the user and obtain explicit agreement before approval or campaign configuration. Original instances and indexes are untouched.\n";
+        ScreeningFileUtil.writeText(output.resolve("report.md"), report);
+        var files = new LinkedHashMap<String,String>();
+        for (String file : List.of("manifest.json", "sota.json", "report.md", "instances.csv", "proposed-retained.index", "proposed-train.index", "proposed-validation.index")) {
+            files.put(file, AutoLlmFileUtil.hash(output.resolve(file)));
+        }
+        var runHashes = new TreeMap<String,String>();
+        try (var paths = Files.list(output.resolve("runs"))) {
+            for (Path file : paths.toList()) runHashes.put(file.getFileName().toString(), AutoLlmFileUtil.hash(file));
+        }
+        AutoLlmFileUtil.write(output.resolve("run-hashes.json"), runHashes);
+        files.put("run-hashes.json", AutoLlmFileUtil.hash(output.resolve("run-hashes.json")));
+        AutoLlmFileUtil.write(output.resolve("proposal.json"), new Proposal(manifest.fingerprint(), "PENDING_REVIEW", decisions, files, training.size(), validation.size(), splitFailure));
+        System.out.println(report);
+        System.out.println("Proposal SHA-256 for explicit user approval: " + AutoLlmFileUtil.hash(output.resolve("proposal.json")));
+        System.out.println("Report: " + output.resolve("report.md"));
+    }
+}
