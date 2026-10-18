@@ -37,6 +37,8 @@ export class DashboardStore {
   readonly lastUpdated = this.lastUpdatedState.asReadonly();
   private readonly selectedObjectiveState = signal<string | null>(null);
   readonly selectedObjective = this.selectedObjectiveState.asReadonly();
+  private readonly showReferenceState = signal(true);
+  readonly showReference = this.showReferenceState.asReadonly();
   private readonly selectedInstanceIdState = signal<string | null>(null);
   readonly selectedInstanceId = this.selectedInstanceIdState.asReadonly();
   private readonly instancePageState = signal<Page<InstanceSummary> | null>(null);
@@ -110,17 +112,17 @@ export class DashboardStore {
     const objective = this.selectedObjective();
     const mode = this.selectedObjectiveMode();
     return detail && objective && mode && detail.objective === objective
-      ? NormalChartUtil.instance(detail, mode)
+      ? NormalChartUtil.instance(detail, mode, this.showReference())
       : null;
   });
   private readonly selectedObjectiveMode = computed(
     () => this.status()?.objectives[this.selectedObjective() ?? ''] ?? null,
   );
   readonly distribution = computed(() =>
-    this.detail() ? NormalChartUtil.distribution(this.detail()!) : null,
+    this.detail() ? NormalChartUtil.distribution(this.detail()!, this.showReference()) : null,
   );
   readonly qualityRuntime = computed(() =>
-    this.detail() ? NormalChartUtil.qualityRuntime(this.detail()!) : null,
+    this.detail() ? NormalChartUtil.qualityRuntime(this.detail()!, this.showReference()) : null,
   );
   readonly lastEventId = computed(() => {
     this.transportState();
@@ -199,6 +201,9 @@ export class DashboardStore {
     this.delay = 500;
     this.events.retryNow();
     this.refreshNow();
+  }
+  setReferenceVisible(visible: boolean): void {
+    this.showReferenceState.set(visible);
   }
   selectObjective(name: string): void {
     if (!this.status()?.objectives[name] || this.selectedObjective() === name) return;

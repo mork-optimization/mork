@@ -1,6 +1,6 @@
 # Screening trivial instances
 
-Run screening as an explicit preparation step before tuning or final comparison. It uses a fixed SOTA and proposes a fresh training/validation split without changing the datasets or existing indexes. Review and explicitly approve the results before using the new indexes.
+The AutoLLM skill requires screening as a preparation step before tuning or final comparison, unless a matching approved selection already exists. It uses a fixed SOTA and proposes a fresh training/testing selection without changing the datasets or existing indexes. Review and explicitly approve the results before using the new indexes.
 
 ## Criterion
 
@@ -41,7 +41,7 @@ Each measurement worker is a fresh, sequential, assertions-disabled JVM. Five on
 
 The initial run uses the base seed. Confirmations use base+1 through base+30; warm-up seeds are separate. Resume the same command and output directory to reuse completed runs. Changed inputs, SOTA, executable, host or settings require a new directory. The fingerprint includes the actual input contents, including archive-entry payloads. A directory lock prevents simultaneous writers. Do not rebuild the executable between screening and approval.
 
-After filtering, the existing property-based selector chooses `ceil(15% × retained inputs)` for training. Final validation contains the retained complement, with no overlap. Small or constant-feature pools use a deterministic bounded-clustering fallback. Fewer than two retained inputs, or a failed selector, produces a report without an approvable split.
+After filtering, the existing property-based selector chooses `ceil(15% × retained inputs)` for training. Final testing contains **all retained inputs, including the training inputs**. Training is a subset of testing; overlap is intentional. Small or constant-feature pools use a deterministic bounded-clustering fallback. An empty retained pool or a failed selector produces a report without an approvable selection. A single retained input can belong to both sets.
 
 ## Review and approve
 
@@ -50,7 +50,7 @@ The preparation command prints the summary and writes:
 - `report.md` and `instances.csv`: criteria, host and SOTA identity, counts, every retained/excluded/inconclusive input, fast-hit counts and reasons. Median, p95 and maximum confirmation TTB summarize only runs attaining the common target; the attainment count identifies unreached targets separately.
 - `runs/`: per-run seeds, objectives, runtime and objective curves; `jobs/` retains worker logs and ownership/deadline evidence.
 - `manifest.json` and `proposal.json`: frozen provenance and hashes of the reviewed artifacts.
-- `proposed-retained.index`, `proposed-train.index`, `proposed-validation.index`: portable proposed selections. Original files and indexes remain untouched.
+- `proposed-retained.index`, `proposed-train.index`, `proposed-test.index`: portable proposed selections. Original files and indexes remain untouched.
 
 Show the user the summary and detailed lists, obtain explicit agreement, and use the proposal SHA-256 printed by preparation:
 
@@ -61,8 +61,8 @@ java -da -jar target/project.jar --instance-screening-approve \
   --event.webserver.stop-on-execution-end=true
 ```
 
-Approval verifies the reviewed hashes, original inputs, SOTA, executable and host, then publishes `retained.index`, `train.index`, `validation.index` and `approved.json`. An approval command is an explicit acceptance action; agents must not invoke it without the user's agreement. Changes after review invalidate that acceptance and require review again.
+Approval verifies the reviewed hashes, original inputs, SOTA, executable and host, checks that testing covers every retained input and includes training, then publishes `retained.index`, `train.index`, `test.index` and `approved.json`. An approval command is an explicit acceptance action; agents must not invoke it without the user's agreement. Changes after review invalidate that acceptance and require review again.
 
-After approval, configure AutoLLM `trainingPath` with `train.index` and `comparisonPath` with `validation.index`. Standalone AutoConfig uses `--instances.path.irace=/absolute/path/screening/run-01/train.index`; normal final experiments use their instance path setting with the approved validation index. Index entries are relative to their index files and preserve archive-entry names.
+After approval, configure AutoLLM `trainingPath` with `train.index` and `comparisonPath` with `test.index`. Standalone AutoConfig uses `--instances.path.irace=/absolute/path/screening/run-01/train.index`; normal final experiments use their instance path setting with the approved testing index. Index entries are relative to their index files and preserve archive-entry names.
 
 Freeze this selection across all campaign trials. Approving a selection does not authorize starting a campaign, and screening is never rerun in response to generated algorithm performance. Screening timings are host-specific; screen again when moving the experiment to different hardware.

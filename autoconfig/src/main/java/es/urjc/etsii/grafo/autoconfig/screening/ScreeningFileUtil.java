@@ -129,21 +129,22 @@ public final class ScreeningFileUtil {
         var manifest = AutoLlmFileUtil.read(output.resolve("manifest.json"), Manifest.class);
         verifyInputs(manifest, currentArtifact);
         if (!proposal.fingerprint().equals(manifest.fingerprint()) || proposal.splitFailure() != null
-                || proposal.trainingCount() == 0 || proposal.validationCount() == 0) {
-            throw new IllegalStateException("No complete nonempty training/validation split to approve");
+                || proposal.trainingCount() == 0 || proposal.testingCount() == 0) {
+            throw new IllegalStateException("No complete nonempty training/testing selection to approve");
         }
         for (var file : proposal.files().entrySet()) {
             if (!AutoLlmFileUtil.hash(AutoLlmFileUtil.inside(output, file.getKey())).equals(file.getValue())) {
                 throw new IllegalStateException("Reviewed screening artifact changed: " + file.getKey());
             }
         }
+        validateSelection(output, proposal);
         Map<String,String> runs = AutoLlmFileUtil.read(output.resolve("run-hashes.json"), new tools.jackson.core.type.TypeReference<>() {});
         for (var run : runs.entrySet()) {
             if (!AutoLlmFileUtil.hash(AutoLlmFileUtil.inside(output.resolve("runs"), run.getKey())).equals(run.getValue())) {
                 throw new IllegalStateException("Reviewed run evidence changed: " + run.getKey());
             }
         }
-        for (String name : List.of("retained", "train", "validation")) {
+        for (String name : List.of("retained", "train", "test")) {
             Path target = output.resolve(name + ".index");
             Path proposed = output.resolve("proposed-" + name + ".index");
             if (Files.exists(target) && !AutoLlmFileUtil.hash(target).equals(AutoLlmFileUtil.hash(proposed))) {
@@ -151,11 +152,23 @@ public final class ScreeningFileUtil {
             }
         }
         try {
-            for (String name : List.of("retained", "train", "validation")) {
+            for (String name : List.of("retained", "train", "test")) {
                 writeText(output.resolve(name + ".index"), Files.readString(output.resolve("proposed-" + name + ".index")));
             }
         } catch (IOException e) { throw new UncheckedIOException(e); }
         AutoLlmFileUtil.write(output.resolve("approved.json"), Map.of("state", "APPROVED", "approvedAt", Instant.now().toString(),
                 "proposalSha256", reviewSha256, "fingerprint", manifest.fingerprint(), "files", proposal.files()));
+    }
+    /** Final testing covers the entire retained pool, including all preliminary training instances. */
+    public static void validateSelection(Path output, Proposal proposal) {
+        try {
+            var retained = new HashSet<>(Files.readAllLines(output.resolve("proposed-retained.index")));
+            var training = new HashSet<>(Files.readAllLines(output.resolve("proposed-train.index")));
+            var testing = new HashSet<>(Files.readAllLines(output.resolve("proposed-test.index")));
+            if (retained.isEmpty() || training.isEmpty() || !testing.equals(retained) || !testing.containsAll(training)
+                    || training.size() != proposal.trainingCount() || testing.size() != proposal.testingCount()) {
+                throw new IllegalStateException("Testing must contain every retained instance, including all training instances, and selection counts must match");
+            }
+        } catch (IOException e) { throw new UncheckedIOException(e); }
     }
 }

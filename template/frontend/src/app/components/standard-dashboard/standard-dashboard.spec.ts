@@ -1,6 +1,8 @@
 import { TestbedHarnessEnvironment } from '@angular/cdk/testing/testbed';
 import { Component, input, provideZonelessChangeDetection } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
+import { By } from '@angular/platform-browser';
+import { MatCheckboxHarness } from '@angular/material/checkbox/testing';
 import { MatProgressBarHarness } from '@angular/material/progress-bar/testing';
 import { MatSelectHarness } from '@angular/material/select/testing';
 import { BehaviorSubject, Subject } from 'rxjs';
@@ -11,6 +13,7 @@ import { EventClient } from '../../service/event-client';
 import { ExperimentClient } from '../../service/experiment-client';
 import { DashboardChart } from '../dashboard-chart/dashboard-chart';
 import { StandardDashboard } from './standard-dashboard';
+import type Highcharts from 'highcharts/esm/highcharts';
 
 @Component({ selector: 'app-dashboard-chart', template: '' })
 class ChartStub {
@@ -118,5 +121,43 @@ describe('StandardDashboard with the real snapshot store', () => {
     expect(values[0]).toBeCloseTo(100 / 12);
     expect(values.slice(1)).toEqual([100, 100]);
     expect(fixture.nativeElement.textContent).toContain('Best score across repetitions');
+  });
+  it('toggles all reference lines and retains visibility when the objective changes', async () => {
+    const fixture = TestBed.createComponent(StandardDashboard);
+    fixture.detectChanges();
+    await settle(fixture);
+    const loader = TestbedHarnessEnvironment.loader(fixture);
+    let checkbox = await loader.getHarness(
+      MatCheckboxHarness.with({ selector: '.reference-toggle' }),
+    );
+    const axes = () =>
+      fixture.debugElement
+        .queryAll(By.directive(ChartStub))
+        .map(
+          (chart) =>
+            (chart.componentInstance as ChartStub).model().options.yAxis as Highcharts.YAxisOptions,
+        );
+    expect(await checkbox.isChecked()).toBe(true);
+    expect(await checkbox.getLabelText()).toContain('Cost: 4');
+    expect(axes()).toHaveLength(4);
+    for (const axis of axes()) expect(axis.plotLines?.[0].value).toBe(4);
+
+    await checkbox.uncheck();
+    for (const axis of axes()) expect(axis.plotLines).toEqual([]);
+
+    const select = await loader.getHarness(
+      MatSelectHarness.with({ selector: '.summary mat-select' }),
+    );
+    await select.open();
+    await select.clickOptions({ text: /Quality/ });
+    await settle(fixture);
+    checkbox = await loader.getHarness(MatCheckboxHarness.with({ selector: '.reference-toggle' }));
+    expect(await checkbox.isChecked()).toBe(false);
+    expect(await checkbox.getLabelText()).toContain('Quality: 6');
+    for (const axis of axes()) expect(axis.plotLines).toEqual([]);
+
+    await checkbox.check();
+    for (const axis of axes()) expect(axis.plotLines?.[0].value).toBe(6);
+    expect(fixture.nativeElement.textContent).toContain('Higher scores are better.');
   });
 });

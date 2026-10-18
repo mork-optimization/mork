@@ -21,6 +21,8 @@ public class BMSSCSolution extends Solution<BMSSCSolution, BMSSCInstance> {
     // Includes the point's own cluster; its distance to itself is zero.
     private final double[][] pointClusterDistance;
     private double cost;
+    // Allocated lazily by assertions; clones rebuild their own independent expectations.
+    private BMSSCSolutionValidator.CacheValidation cacheValidation;
 
     public BMSSCSolution(BMSSCInstance instance) {
         super(instance);
@@ -174,7 +176,8 @@ public class BMSSCSolution extends Solution<BMSSCSolution, BMSSCInstance> {
     }
 
     public boolean cachesValid() {
-        return BMSSCSolutionValidator.validateState(this, false).isValid();
+        if (cacheValidation == null) cacheValidation = new BMSSCSolutionValidator.CacheValidation(getInstance());
+        return BMSSCSolutionValidator.validateState(this, false, cacheValidation).isValid();
     }
 
     @Override

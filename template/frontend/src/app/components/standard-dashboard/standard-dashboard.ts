@@ -3,6 +3,7 @@ import { DatePipe, DecimalPipe } from '@angular/common';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatChipsModule } from '@angular/material/chips';
+import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatMenuModule } from '@angular/material/menu';
@@ -30,6 +31,7 @@ import { WorkState } from '../../model/normal-experiment';
     MatButtonModule,
     MatCardModule,
     MatChipsModule,
+    MatCheckboxModule,
     MatFormFieldModule,
     MatInputModule,
     MatMenuModule,

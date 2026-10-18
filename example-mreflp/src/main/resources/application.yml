@@ -1,5 +1,8 @@
 instances:
 
+  # Full pool for screening; train.index and test.index are generated after review.
+  for-selection: 'instances/all.index'
+
   # Loads all instances in RAM before starting each experiment.
   # Can be disabled for example in problems where instances are huge in order to save some RAM.
   # Warning: Disabling it reverts instance solve order to instance name (lexicographically)
@@ -7,8 +10,9 @@ instances:
 
   path:
     # Default instance path for all experiments, can be overridden.
-    default: 'instances/all.index'
+    default: 'instances/test.index'
     irace: 'instances/train.index'
+    autollm-comparison: 'instances/test.index'
 
 
 solver:
@@ -78,8 +82,10 @@ mreflp:
   # Algorithm variant for PaperExperiment; see LMLSVariant for available variants.
   variant: LMLS
 
-  # Time budget in seconds for each experiment execution.
-  time-limit-seconds: 600
+  # Default: each case's published normal-LMLS time to best from results_sota.xlsx.
+  # Reported zeros get 1 ms; missing references (N-15) get 1 second.
+  # Uncomment to use a uniform budget, e.g. for paper reproduction.
+  # time-limit-seconds: 600
 
   # Maximum number of restarts. Set 0 to run until the time budget expires.
   max-restarts: 0

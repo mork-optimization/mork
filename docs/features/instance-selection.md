@@ -1,5 +1,7 @@
 # Automatic instance selection
 
+To first exclude inputs that reliably reach a common observed best within a short time threshold, use [instance screening](instance-screening.md). Screening proposes a new training/testing selection and requires user approval before publishing the indexes.
+
 Since v0.18, Mork includes an automatic instance selector that can be used to decide which instances 
 to use for the preliminary experimentation without user intervention.
 
@@ -62,6 +64,24 @@ For example, to use a 20% preliminary set size, and output results to folder pre
 ```text
 java -jar MyProblem.jar --instance-selector --instances.preliminar-percentage=0.2 --instances.preliminar-output-path=preliminar-output
 ```
+## Training and testing sets
+
+For AutoLLM, first run [instance screening](instance-screening.md) on the full original input pool, unless a matching approved screening and selection already exists. Missing training/testing indexes trigger this preparation; do not bypass screening by selecting training directly from the raw pool. Keep existing approved sets when their provenance and input hashes still match and testing contains the entire retained pool, including training.
+
+Screening invokes Mork's property-based selector on the retained pool. To invoke the selector directly for a separate selection task:
+
+```bash
+java -da -jar target/project.jar --instance-selector \
+  --instances.for-selection=/absolute/path/retained.index \
+  --instances.preliminar-percentage=0.15 \
+  --instances.preliminar-output-path=/absolute/path/selection \
+  --event.webserver.stop-on-execution-end=true
+```
+
+Use `selection/selected_instances.index` as the preliminary training selection. Final `test.index` contains **every retained instance, including all training instances**. Do not subtract the preliminary instances from final testing. Compare canonical load tokens, preserving archive-entry names; file basenames alone do not identify an instance. When moving an index, rebase its relative paths against the destination folder.
+
+Record the original/retained/training/testing counts and the training/testing overlap. Configure AutoLLM `trainingPath` with `train.index` and `comparisonPath` with `test.index`. Standalone AutoConfig uses `instances.path.irace` for training; `instances.path.autollm-comparison` supplies AutoLLM's fallback testing input. Follow the [screening review and approval step](instance-screening.md#review-and-approve) before publishing or using the generated indexes, and keep both sets fixed across campaign trials.
+
 ## How it works
 
 ### Loading

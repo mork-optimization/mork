@@ -62,7 +62,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
                 String artifact = ScreeningFileUtil.artifactHash(instances.getUserImporterImplementation().getClass());
                 if (arguments.containsOption("instance-screening-approve")) {
                     ScreeningFileUtil.approve(output, environment.getProperty("instance-screening.review-sha256"), artifact);
-                    System.out.println("APPROVED: " + output.resolve("train.index") + " and " + output.resolve("validation.index"));
+                    System.out.println("APPROVED: " + output.resolve("train.index") + " and " + output.resolve("test.index"));
                 } else prepare(output, artifact);
             }
         } catch (IOException e) { outcome = FAILED; throw new UncheckedIOException(e); }
@@ -189,9 +189,9 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
             if (decision.classification().equals("INCONCLUSIVE")) inconclusive++;
         }
         ScreeningFileUtil.index(output.resolve("proposed-retained.index"), retained);
-        var training = new ArrayList<String>(); var validation = new ArrayList<String>();
+        var training = new ArrayList<String>(); var testing = new ArrayList<String>();
         String splitFailure = null;
-        if (retained.size() < 2) splitFailure = "Fewer than two retained instances; cannot create nonempty disjoint training and validation sets";
+        if (retained.isEmpty()) splitFailure = "No retained instances; cannot create nonempty training and testing sets";
         else try {
             Path selector = output.resolve("selector.py");
             try (var resource = getClass().getResourceAsStream("/instance-selector/instance-selector.py")) {
@@ -210,11 +210,12 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
             if (selected.size() != Math.ceil(manifest.trainingFraction() * retained.size()) || !retained.containsAll(selected)) {
                 throw new IllegalStateException("Selector returned an unexpected training size or unknown instance");
             }
-            for (String path : retained) { if (selected.contains(path)) training.add(path); else validation.add(path); }
-            if (training.isEmpty() || validation.isEmpty()) throw new IllegalStateException("Selector produced an empty split");
-        } catch (RuntimeException | IOException e) { splitFailure = e.toString(); training.clear(); validation.clear(); }
+            for (String path : retained) if (selected.contains(path)) training.add(path);
+            testing.addAll(retained);
+            if (training.isEmpty() || testing.isEmpty()) throw new IllegalStateException("Selector produced an empty split");
+        } catch (RuntimeException | IOException e) { splitFailure = e.toString(); training.clear(); testing.clear(); }
         ScreeningFileUtil.index(output.resolve("proposed-train.index"), training);
-        ScreeningFileUtil.index(output.resolve("proposed-validation.index"), validation);
+        ScreeningFileUtil.index(output.resolve("proposed-test.index"), testing);
         try (var writer = Files.newBufferedWriter(output.resolve("instances.csv"))) {
             InstanceSelectionUtil.writeRow(writer, List.of("instance", "classification", "bestObserved", "firstPassTtbNanos", "confirmations", "fastHits", "failures", "commonTargetAttainments", "confirmationTtbMedianNanos", "confirmationTtbP95Nanos", "confirmationTtbMaxNanos", "reason"));
             for (int i = 0; i < decisions.size(); i++) {
@@ -230,19 +231,19 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
         }
         String report = "# Instance screening: PENDING REVIEW\n\n"
                 + "Fixed SOTA; " + manifest.settings().horizonMillis() + " ms observation horizon; fast threshold " + manifest.settings().thresholdMillis() + " ms.\n\n"
-                + "| Input | Trivial/excluded | Retained (including inconclusive) | Inconclusive | Training | Validation |\n| ---: | ---: | ---: | ---: | ---: | ---: |\n"
-                + "| " + decisions.size() + " | " + trivial + " | " + retained.size() + " | " + inconclusive + " | " + training.size() + " | " + validation.size() + " |\n\n"
+                + "| Input | Trivial/excluded | Retained (including inconclusive) | Inconclusive | Training | Testing |\n| ---: | ---: | ---: | ---: | ---: | ---: |\n"
+                + "| " + decisions.size() + " | " + trivial + " | " + retained.size() + " | " + inconclusive + " | " + training.size() + " | " + testing.size() + " |\n\n"
                 + "Exclude only when the first-pass TTB is at most " + manifest.settings().candidateMultiplier() + " times the fast threshold and strictly more than "
                 + manifest.settings().fastFraction() * 100 + "% of " + manifest.settings().confirmationRuns() + " fresh valid runs reach the common observed best before the threshold.\n\n"
                 + "All decisions, reasons and confirmation TTB summaries: [instances.csv](instances.csv). Summaries include only runs attaining the common target; the attainment count shows how many reached it. Raw objective curves and seeds: runs/. Failed or inconsistent evidence is retained as inconclusive.\n\n"
                 + "SOTA SHA-256: `" + manifest.sotaSha256() + "`. Executable SHA-256: `" + manifest.artifactSha256() + "`.\n\n"
                 + "Objective: " + manifest.objective() + " (" + manifest.mode() + "). Host: " + manifest.host() + ".\n\n"
-                + (splitFailure == null ? "The proposed indexes are disjoint; validation is the retained complement of the new training selection.\n\n" : "Split failure: " + splitFailure + ". No approved indexes can be published.\n\n")
+                + (splitFailure == null ? "Testing contains every retained instance, including all selected training instances. The training/testing overlap is intentional.\n\n" : "Split failure: " + splitFailure + ". No approved indexes can be published.\n\n")
                 + "This is an empirical criterion for this SOTA/host within this observation horizon; it is not an optimality or statistical-confidence claim.\n\n"
                 + "Show this report and the detailed lists to the user and obtain explicit agreement before approval or campaign configuration. Original instances and indexes are untouched.\n";
         ScreeningFileUtil.writeText(output.resolve("report.md"), report);
         var files = new LinkedHashMap<String,String>();
-        for (String file : List.of("manifest.json", "sota.json", "report.md", "instances.csv", "proposed-retained.index", "proposed-train.index", "proposed-validation.index")) {
+        for (String file : List.of("manifest.json", "sota.json", "report.md", "instances.csv", "proposed-retained.index", "proposed-train.index", "proposed-test.index")) {
             files.put(file, AutoLlmFileUtil.hash(output.resolve(file)));
         }
         var runHashes = new TreeMap<String,String>();
@@ -251,7 +252,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
         }
         AutoLlmFileUtil.write(output.resolve("run-hashes.json"), runHashes);
         files.put("run-hashes.json", AutoLlmFileUtil.hash(output.resolve("run-hashes.json")));
-        AutoLlmFileUtil.write(output.resolve("proposal.json"), new Proposal(manifest.fingerprint(), "PENDING_REVIEW", decisions, files, training.size(), validation.size(), splitFailure));
+        AutoLlmFileUtil.write(output.resolve("proposal.json"), new Proposal(manifest.fingerprint(), "PENDING_REVIEW", decisions, files, training.size(), testing.size(), splitFailure));
         System.out.println(report);
         System.out.println("Proposal SHA-256 for explicit user approval: " + AutoLlmFileUtil.hash(output.resolve("proposal.json")));
         System.out.println("Report: " + output.resolve("report.md"));

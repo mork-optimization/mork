@@ -51,7 +51,7 @@ autollm:
   # Optional additional seed component specifications.
   initial-configurations-file: ./autollm/seeds.json
   training-path: ./instances/train.index
-  comparison-path: ./instances/comparison.index
+  comparison-path: ./instances/test.index
   codex:
     executable: codex
     # Optional: prompt-file, prompt, model, reasoning-effort.
@@ -80,6 +80,8 @@ autollm:
 ```
 
 Repository-relative paths resolve against `project.repository`; the artifact is relative to the trial clone. Instance inputs support the normal Mork directories, files, archives, and index manifests. Missing training/comparison settings fall back to the application's `instances.path.irace` and `instances.path.autollm-comparison` configuration. Training and comparison may overlap; the overlap is recorded.
+
+For campaigns prepared with the AutoLLM skill, run [trivial-instance screening](instance-screening.md) on the full original pool before selecting preliminary training inputs. Mork's instance selector chooses the preliminary subset from retained inputs; final testing uses the entire retained pool, including training. Reuse only matching approved screening evidence and indexes. Legacy or missing indexes trigger preparation and review before campaign creation.
 
 For a multi-module repository, configure the build argument array and JAR path explicitly, for example `["./mvnw", "-pl", "example-bmssc", "-am", "verify"]` and `example-bmssc/target/project.jar`. Build commands run in the clone. `run-arguments` supplies project-specific settings; it cannot override campaign-owned seeds, budgets, execution mode, workers, instance paths, or irace settings. A generated blacklist replaces the baseline inventory filter.
 

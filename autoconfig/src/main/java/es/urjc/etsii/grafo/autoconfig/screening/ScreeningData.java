@@ -19,5 +19,5 @@ public final class ScreeningData {
             int confirmations, int fastHits, int failures, String reason) {}
     public record Job(Manifest manifest, Input input, String phase, List<Long> seeds, String output) {}
     public record Proposal(String fingerprint, String state, List<Decision> instances, Map<String,String> files,
-            int trainingCount, int validationCount, String splitFailure) {}
+            int trainingCount, int testingCount, String splitFailure) {}
 }

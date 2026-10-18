@@ -5,6 +5,8 @@ import es.urjc.etsii.grafo.algorithms.SimpleAlgorithm;
 import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.mreflp.alg.*;
 import es.urjc.etsii.grafo.mreflp.create.MREFLPConstructive;
+import es.urjc.etsii.grafo.mreflp.experiments.MREFLPTimeLimit;
+import es.urjc.etsii.grafo.mreflp.experiments.ReferenceCatalog;
 import es.urjc.etsii.grafo.mreflp.improve.SwapDescent;
 import es.urjc.etsii.grafo.mreflp.io.*;
 import es.urjc.etsii.grafo.mreflp.model.*;
@@ -190,12 +192,14 @@ class MREFLPArtifactsTest {
         var s = solution(i, 0, 0, 1, 1);
         var problem = new MREFLPConfig();
         problem.setProtocol("normal");
+        problem.setTimeLimitSeconds(600.0);
         var solver = new SolverConfig();
         solver.setSeed(1234);
         solver.setRandomType(RandomType.DEFAULT);
         solver.getWarmup().setEnabled(true);
         solver.getWarmup().setMaxMillis(1000);
-        var exporter = new MREFLPResultExporter(new MREFLPResultConfig(), problem, solver);
+        var exporter = new MREFLPResultExporter(new MREFLPResultConfig(), problem, solver,
+                new MREFLPTimeLimit(problem, new ReferenceCatalog()));
         var paper = algorithm(LMLSVariant.LMLS, 0);
         var custom = new LMLS(LMLSVariant.LMLS, .8, 7, 2, .2, .3, .4, .5, 0);
         var generic = new SimpleAlgorithm<MREFLPSolution, MREFLPInstance>("generic",
@@ -221,6 +225,40 @@ class MREFLPArtifactsTest {
         } finally {
             if (oldHash == null) System.clearProperty("mreflp.artifact-hash");
             else System.setProperty("mreflp.artifact-hash", oldHash);
+        }
+    }
+
+    @Test void checkpointsRecordPublishedAndFrozenComparisonBudgets() throws Exception {
+        var instance = new MREFLPInstanceImporter().importInstance("instances/cases/A-10-10-r2.case");
+        int[] assignments = new int[instance.n()];
+        for (int p = 0; p < assignments.length; p++) assignments[p] = p / instance.capacity();
+        var solution = solution(instance, assignments);
+        var problem = new MREFLPConfig();
+        var solver = new SolverConfig();
+        solver.setRandomType(RandomType.DEFAULT);
+        var exporter = new MREFLPResultExporter(new MREFLPResultConfig(), problem, solver,
+                new MREFLPTimeLimit(problem, new ReferenceCatalog()));
+        var result = new WorkUnitResult<>(UUID.randomUUID(), true, "PaperExperiment", "case-path", instance.getId(),
+                algorithm(LMLSVariant.LMLS, 0), "0", solution, Map.<String, Double>of(), Map.<String, Object>of(),
+                1_000_000L, 500_000L, null);
+        var mapper = new JsonMapper();
+        String previous = System.getProperty("mork.execution.time-limits");
+        try {
+            System.clearProperty("mork.execution.time-limits");
+            exporter.export(temporary.toString(), "published.run.json", result);
+            var published = mapper.readValue(temporary.resolve("published.run.json").toFile(), RunRecord.class);
+            assertEquals(0.001, published.budgetSeconds());
+            assertFalse(ReproductionReportUtil.isPaperRun(published));
+
+            Path budgets = temporary.resolve("budgets.json");
+            Files.writeString(budgets, "{\"case-path\":250}");
+            System.setProperty("mork.execution.time-limits", budgets.toString());
+            exporter.export(temporary.toString(), "frozen.run.json", result);
+            var frozen = mapper.readValue(temporary.resolve("frozen.run.json").toFile(), RunRecord.class);
+            assertEquals(0.25, frozen.budgetSeconds());
+        } finally {
+            if (previous == null) System.clearProperty("mork.execution.time-limits");
+            else System.setProperty("mork.execution.time-limits", previous);
         }
     }
 

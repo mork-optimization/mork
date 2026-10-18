@@ -5,7 +5,9 @@ import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.io.serializers.SolutionSerializer;
 import es.urjc.etsii.grafo.mreflp.MREFLPConfig;
 import es.urjc.etsii.grafo.mreflp.alg.LMLS;
+import es.urjc.etsii.grafo.mreflp.experiments.MREFLPTimeLimit;
 import es.urjc.etsii.grafo.mreflp.model.*;
+import es.urjc.etsii.grafo.util.ExecutionJournalUtil;
 import tools.jackson.databind.json.JsonMapper;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -17,10 +19,12 @@ import java.util.Map;
 public class MREFLPResultExporter extends SolutionSerializer<MREFLPSolution, MREFLPInstance> {
     private final MREFLPConfig problem;
     private final SolverConfig solver;
-    public MREFLPResultExporter(MREFLPResultConfig config, MREFLPConfig problem, SolverConfig solver) {
+    private final MREFLPTimeLimit timeLimits;
+    public MREFLPResultExporter(MREFLPResultConfig config, MREFLPConfig problem, SolverConfig solver, MREFLPTimeLimit timeLimits) {
         super(config);
         this.problem = problem;
         this.solver = solver;
+        this.timeLimits = timeLimits;
     }
     @Override protected String getFilename(String experiment, String instance, String algorithm, String iteration) {
         if (!iteration.matches("\\d+")) return "summary.json";
@@ -28,8 +32,10 @@ public class MREFLPResultExporter extends SolutionSerializer<MREFLPSolution, MRE
     }
     private RunRecord record(WorkUnitResult<MREFLPSolution, MREFLPInstance> r) {
         new MREFLPSolutionValidator().validate(r.solution()).throwIfFail();
+        Long frozenBudget = ExecutionJournalUtil.timeLimit(r.instancePath());
+        long budgetMillis = frozenBudget != null ? frozenBudget : timeLimits.timeLimitInMillis(r.solution().getInstance(), r.algorithm());
         return new RunRecord(1, r.instanceId(), r.algorithm().getName(), problem.getProtocol(),
-                solver.getSeed() + Integer.parseInt(r.iteration()), problem.getTimeLimitSeconds(), problem.getMaxRestarts(),
+                solver.getSeed() + Integer.parseInt(r.iteration()), budgetMillis / 1000.0, problem.getMaxRestarts(),
                 r.algorithm() instanceof LMLS lmls ? lmls.parameters() : Map.of(),
                 solver.getRandomType().getJavaName(), r.solution().getInstance().sourceHash(),
                 System.getProperty("mreflp.artifact-hash", "unrecorded"), r.solution().cost(), r.executionTime(), r.timeToTarget(),

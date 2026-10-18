@@ -8,14 +8,16 @@ import org.springframework.context.annotation.Configuration;
 @ConfigurationProperties(prefix = "mreflp")
 public class MREFLPConfig {
     private LMLSVariant variant = LMLSVariant.LMLS;
-    private double timeLimitSeconds = 600;
+    private Double timeLimitSeconds;
     private int maxRestarts = 0;
     private String protocol = "pilot";
     public LMLSVariant getVariant() { return variant; }
     public void setVariant(LMLSVariant variant) { this.variant = variant; }
-    public double getTimeLimitSeconds() { return timeLimitSeconds; }
-    public void setTimeLimitSeconds(double seconds) {
-        if (!Double.isFinite(seconds) || seconds <= 0 || seconds > Long.MAX_VALUE / 1000.0) throw new IllegalArgumentException("Invalid time budget");
+    public Double getTimeLimitSeconds() { return timeLimitSeconds; }
+    public void setTimeLimitSeconds(Double seconds) {
+        if (seconds != null && (!Double.isFinite(seconds) || seconds <= 0 || seconds > Long.MAX_VALUE / 1000.0)) {
+            throw new IllegalArgumentException("mreflp.time-limit-seconds must be finite and positive and fit in milliseconds");
+        }
         timeLimitSeconds = seconds;
     }
     public int getMaxRestarts() { return maxRestarts; }

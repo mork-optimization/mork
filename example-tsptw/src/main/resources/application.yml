@@ -1,5 +1,8 @@
 instances:
 
+  # Full pool for screening; train.index and test.index are generated after review.
+  for-selection: 'instances/'
+
   # Loads all instances in RAM before starting each experiment.
   # Can be disabled for example in problems where instances are huge in order to save some RAM.
   # Warning: Disabling it reverts instance solve order to instance name (lexicographically)
@@ -7,8 +10,9 @@ instances:
 
   path:
     # Default instance path for all experiments, can be overridden.
-    default: 'instances/'
+    default: 'instances/test.index'
     irace: 'instances/train.index'
+    autollm-comparison: 'instances/test.index'
 
 
 solver:

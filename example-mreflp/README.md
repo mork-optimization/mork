@@ -4,6 +4,8 @@ This Mork example implements the LMLS algorithm in Sun et al., *Learning-driven 
 
 The published reference workbook is bundled from `src/main/resources/results_sota.xlsx` and loaded from the classpath. Reference loading works in the executable JAR, IntelliJ, and Maven tests regardless of the working directory. Preparation and reporting record its checksum as `classpath:results_sota.xlsx`.
 
+Default experiment and AutoLLM comparison budgets use each case's published normal-LMLS time to best from that workbook. Reported zeros receive a 1 ms minimum; missing timings (the four N-15 cases) receive 1 second. Both algorithms in a comparison receive the same instance budget. The uniform `time-limit-seconds: 600` setting is commented out in `application.yml`; set `--mreflp.time-limit-seconds=600` to restore it for paper reproduction. Checkpoints record the resolved budget, including frozen AutoLLM comparison overrides. AutoConfig and AutoLLM probes retain their separately configured AUC time horizon.
+
 ## Build and quick validation
 
 Java 25 and Maven are required to build. The campaign runner additionally requires Python 3 on Linux or macOS; it uses only the standard library.

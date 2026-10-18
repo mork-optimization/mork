@@ -8,10 +8,9 @@ export class ChartUtil {
     instance: InstanceAccumulator,
     objectiveName: string | null,
     objectiveMode: ObjectiveMode | null,
+    showReference = true,
   ): InstanceDashboardModel {
-    const referenceValue = objectiveName
-      ? (instance.started.refValues[objectiveName] ?? null)
-      : null;
+    const referenceValue = this.referenceValue(instance.started.refValues, objectiveName);
 
     return {
       key: instance.key,
@@ -19,12 +18,13 @@ export class ChartUtil {
       instanceName: instance.started.instanceName,
       selectedObjective: objectiveName,
       referenceValue,
-      scoreChart: this.buildScoreChart(instance, objectiveName, referenceValue),
+      scoreChart: this.buildScoreChart(instance, objectiveName, referenceValue, showReference),
       convergenceChart: this.buildConvergenceChart(
         instance,
         objectiveName,
         objectiveMode,
         referenceValue,
+        showReference,
       ),
       bestSolution: this.findBest(instance.solutions, objectiveName, objectiveMode),
     };
@@ -34,6 +34,7 @@ export class ChartUtil {
     instance: InstanceAccumulator,
     objectiveName: string | null,
     referenceValue: number | null,
+    showReference: boolean,
   ): ChartViewModel {
     const points = this.groupSuccessfulPoints(instance, objectiveName, false, null);
     return {
@@ -43,6 +44,7 @@ export class ChartUtil {
         referenceValue,
         points,
         'Raw score for every successful repetition.',
+        showReference,
       ),
     };
   }
@@ -52,6 +54,7 @@ export class ChartUtil {
     objectiveName: string | null,
     objectiveMode: ObjectiveMode | null,
     referenceValue: number | null,
+    showReference: boolean,
   ): ChartViewModel {
     const points = this.groupSuccessfulPoints(instance, objectiveName, true, objectiveMode);
     return {
@@ -61,6 +64,7 @@ export class ChartUtil {
         referenceValue,
         points,
         'Best score reached by each algorithm over completed repetitions.',
+        showReference,
       ),
     };
   }
@@ -120,25 +124,50 @@ export class ChartUtil {
     return series;
   }
 
+  static referenceValue(
+    references: Readonly<Record<string, number>>,
+    objectiveName: string | null,
+  ): number | null {
+    const value = objectiveName ? references[objectiveName] : undefined;
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
+  }
+
+  static scoreAxis(
+    objectiveName: string | null,
+    referenceValue: number | null,
+    showReference: boolean,
+  ): Highcharts.YAxisOptions {
+    const visibleReference = showReference ? referenceValue : null;
+    const plotLines: Highcharts.YAxisPlotLinesOptions[] = [];
+    if (visibleReference !== null) {
+      plotLines.push({
+        id: 'reference',
+        className: 'reference-line',
+        value: visibleReference,
+        color: '#d32f2f',
+        dashStyle: 'Dash',
+        width: 2,
+        zIndex: 4,
+        label: { text: `Reference: ${visibleReference}` },
+      });
+    }
+
+    return {
+      title: { text: objectiveName ?? 'Score' },
+      plotLines,
+      softMin: visibleReference ?? undefined,
+      softMax: visibleReference ?? undefined,
+    };
+  }
+
   private static chartOptions(
     title: string,
     objectiveName: string | null,
     referenceValue: number | null,
     series: Highcharts.SeriesOptionsType[],
     accessibilityDescription: string,
+    showReference: boolean,
   ): Highcharts.Options {
-    const plotLines: Highcharts.YAxisPlotLinesOptions[] = [];
-    if (referenceValue !== null) {
-      plotLines.push({
-        value: referenceValue,
-        color: '#00897b',
-        dashStyle: 'Dash',
-        width: 2,
-        zIndex: 4,
-        label: { text: `Reference: ${referenceValue}` },
-      });
-    }
-
     return {
       accessibility: { enabled: true, description: accessibilityDescription },
       boost: { enabled: true, useGPUTranslations: true, seriesThreshold: 25 },
@@ -155,10 +184,7 @@ export class ChartUtil {
         min: 1,
         title: { text: 'Repetition' },
       },
-      yAxis: {
-        plotLines,
-        title: { text: objectiveName ?? 'Score' },
-      },
+      yAxis: this.scoreAxis(objectiveName, referenceValue, showReference),
       tooltip: {
         headerFormat: '',
         pointFormat:

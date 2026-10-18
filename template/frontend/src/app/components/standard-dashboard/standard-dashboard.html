@@ -305,6 +305,26 @@
             </p>
           </app-monitor-panel>
           @if (store.charts(); as charts) {
+            @if (charts.referenceValue !== null) {
+              <mat-checkbox
+                class="reference-toggle"
+                [checked]="store.showReference()"
+                (change)="store.setReferenceVisible($event.checked)"
+              >
+                Show reference ({{ detail.objective }}: {{ charts.referenceValue }})
+              </mat-checkbox>
+              <p class="status-footnote">
+                The red dashed line marks the reference in all score charts.
+                {{
+                  store.status()?.objectives?.[detail.objective] === 'MAXIMIZE' ? 'Higher' : 'Lower'
+                }}
+                scores are better.
+              </p>
+            } @else {
+              <p class="status-footnote">
+                No reference value is available for {{ detail.objective }}.
+              </p>
+            }
             <div class="chart-grid">
               <app-monitor-panel panelId="normal-scores" title="Scores">
                 @if (

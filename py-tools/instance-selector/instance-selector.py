@@ -40,7 +40,11 @@ def load_df(path: str) -> DataFrame:
 
 
 def prepare_df(df: DataFrame) -> DataFrame:
-    cloned = df.drop(["id", "path"], axis=1)
+    cloned = df.drop(["id", "path"], axis=1).apply(pd.to_numeric, errors="coerce")
+    cloned = cloned.replace([np.inf, -np.inf], np.nan).fillna(0)
+    cloned = cloned.loc[:, cloned.nunique() > 1]
+    if cloned.empty:
+        return pd.DataFrame({"constant": np.zeros(len(df))})
     cloned = pd.DataFrame(preprocessing.scale(cloned), columns=cloned.columns)
     return cloned
 
@@ -56,6 +60,8 @@ def save_correlation(df: DataFrame, output_path: str):
 
 
 def save_pca(df: DataFrame, output_path: str, explained_pca_ratio=0.90) -> DataFrame:
+    if len(df) < 3 or np.allclose(df.to_numpy(), 0):
+        return df.to_numpy()
     pca = PCA().fit(df)
     line_data = np.cumsum(pca.explained_variance_ratio_)
     line_data = np.insert(line_data, 0, 0)
@@ -75,9 +81,12 @@ def save_pca(df: DataFrame, output_path: str, explained_pca_ratio=0.90) -> DataF
 
 def elbow_method(df: DataFrame, output_path: str, init_kmeans='k-means++', random_state=42, max_iter=1000,
                  max_n_cluster=15) -> (KMeans, int):
+    upper = min(max_n_cluster, len(df) - 1, len(np.unique(df, axis=0)))
+    if upper < 3:
+        return KMeans(n_clusters=1, random_state=random_state, max_iter=max_iter).fit(df), 1
     model = KMeans(init=init_kmeans, random_state=random_state, max_iter=max_iter)
 
-    visualizer = KElbowVisualizer(model, k=(2, max_n_cluster), timings=False)
+    visualizer = KElbowVisualizer(model, k=(2, upper + 1), timings=False)
     visualizer.fit(df)  # Fit the data to the visualizer
     visualizer.finalize()
     visualizer.ax.set_title("")
@@ -86,12 +95,14 @@ def elbow_method(df: DataFrame, output_path: str, init_kmeans='k-means++', rando
     visualizer.show(outpath=join(output_path, "kElbow.pdf"))
     plt.clf()
 
-    n_clusters = visualizer.elbow_value_
+    n_clusters = visualizer.elbow_value_ or 1
     kmeans = KMeans(n_clusters=n_clusters, init=init_kmeans, random_state=random_state, max_iter=max_iter).fit(df)
     return kmeans, n_clusters
 
 
 def save_silhouette(df: DataFrame, output_path: str, kmeans: KMeans):
+    if kmeans.n_clusters < 2 or kmeans.n_clusters >= len(df):
+        return
     visualizer = SilhouetteVisualizer(kmeans, colors='yellowbrick')
     visualizer.fit(df)
     visualizer.finalize()
@@ -192,6 +203,7 @@ def main():
     parser.add_argument('-s', '--size', required=False, default=0.15,
                         help="Relative size of preliminary set. 0.15 means that 15% of instances will be selected.")
     parser.add_argument('-vr', '--varianceratio', required=False, default=0.90, help="Explained variance ratio.")
+    parser.add_argument('--seed', type=int, default=42, help="Seed for deterministic property-based selection.")
 
     args = parser.parse_args()
 
@@ -199,6 +211,8 @@ def main():
     os.makedirs(args.output)
     print(f"Loading CSV {args.properties}")
     original_df = load_df(args.properties)
+    if original_df.empty or not 0 < float(args.size) < 1:
+        raise ValueError("Require a nonempty instance pool and a selection fraction between zero and one")
     print(f"Preparing data")
     filtered_df = prepare_df(original_df)
     print(f"Calculating correlation")
@@ -207,7 +221,7 @@ def main():
     pca_df = save_pca(filtered_df, args.output, args.varianceratio)
     print(f"Number of properties reduced from {len(original_df.columns)} to {pca_df.shape[1]}")
     print(f"Running kmeans with elbow method")
-    kmeans, n_clusters = elbow_method(pca_df, args.output)
+    kmeans, n_clusters = elbow_method(pca_df, args.output, random_state=args.seed)
     print(f"Classifying instances in {n_clusters} clusters")
     labels = kmeans.predict(pca_df)
     print(f"Generating silhouette diagram")

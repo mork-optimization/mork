@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.bmssc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import es.urjc.etsii.grafo.bmssc.model.BMSSCInstance;
 import es.urjc.etsii.grafo.bmssc.model.sol.*;
 import es.urjc.etsii.grafo.bmssc.util.BMSSCUtil;
 import org.junit.jupiter.api.AfterEach;
@@ -146,6 +147,31 @@ class BMSSCMoveTest {
         result = new BMSSCSolutionValidator().validate(solution);
         assertTrue(result.getFailCount() >= 5);
         assertTrue(result.getReasonFailed().contains("Cost"));
+    }
+
+    @Test
+    void validatorDetectsCorruptedDistanceAndPairCaches() throws Exception {
+        var solution = assigned(instance(6, 2), 0, 1, 0, 1, 0, 1);
+        Field distances = BMSSCSolution.class.getDeclaredField("pointClusterDistance");
+        distances.setAccessible(true);
+        ((double[][]) distances.get(solution))[0][1] = Double.NaN;
+        Field pairSums = BMSSCSolution.class.getDeclaredField("pairSums");
+        pairSums.setAccessible(true);
+        ((double[]) pairSums.get(solution))[0] += 1;
+
+        var result = new BMSSCSolutionValidator().validate(solution);
+        assertEquals(2, result.getFailCount());
+        assertTrue(result.getReasonFailed().contains("Distance cache for point 0, cluster 1"));
+        assertTrue(result.getReasonFailed().contains("Pair sum for cluster 0"));
+        assertFalse(solution.cachesValid());
+    }
+
+    @Test
+    void validatorDoesNotOverflowWhenCombiningEndpointDistanceTotals() {
+        var instance = new BMSSCInstance("large-distance", 2, 1, 1,
+                new double[][]{{0}, {Math.sqrt(Double.MAX_VALUE * 0.75)}});
+        var solution = assigned(instance, 0, 0);
+        assertFeasible(solution);
     }
 
     private void checkMove(BMSSCSolution solution, BMSSCMove move, int[] expected) {

@@ -5,7 +5,11 @@ import { InstanceDetail } from '../model/normal-experiment';
 import { ChartUtil } from './chart-util';
 
 export class NormalChartUtil {
-  static instance(detail: InstanceDetail, mode: ObjectiveMode): InstanceDashboardModel {
+  static instance(
+    detail: InstanceDetail,
+    mode: ObjectiveMode,
+    showReference = true,
+  ): InstanceDashboardModel {
     return ChartUtil.buildInstance(
       {
         key: detail.instance.id,
@@ -34,9 +38,10 @@ export class NormalChartUtil {
       },
       detail.objective,
       mode,
+      showReference,
     );
   }
-  static distribution(detail: InstanceDetail): ChartViewModel {
+  static distribution(detail: InstanceDetail, showReference = true): ChartViewModel {
     return {
       options: {
         chart: { type: 'boxplot', height: 320, animation: false },
@@ -46,7 +51,11 @@ export class NormalChartUtil {
         exporting: { enabled: true },
         accessibility: { enabled: true },
         xAxis: { categories: detail.algorithms.map((a) => a.name) },
-        yAxis: { title: { text: detail.objective } },
+        yAxis: ChartUtil.scoreAxis(
+          detail.objective,
+          ChartUtil.referenceValue(detail.instance.references, detail.objective),
+          showReference,
+        ),
         series: [
           {
             type: 'boxplot',
@@ -71,7 +80,7 @@ export class NormalChartUtil {
       },
     };
   }
-  static qualityRuntime(detail: InstanceDetail): ChartViewModel {
+  static qualityRuntime(detail: InstanceDetail, showReference = true): ChartViewModel {
     return {
       options: {
         chart: { type: 'scatter', height: 320, animation: false },
@@ -81,7 +90,11 @@ export class NormalChartUtil {
         exporting: { enabled: true },
         accessibility: { enabled: true },
         xAxis: { title: { text: 'Runtime (ms)' } },
-        yAxis: { title: { text: detail.objective } },
+        yAxis: ChartUtil.scoreAxis(
+          detail.objective,
+          ChartUtil.referenceValue(detail.instance.references, detail.objective),
+          showReference,
+        ),
         tooltip: {
           pointFormat:
             'Runtime: {point.x} ms<br/>Score: {point.y}<br/>Iteration: {point.custom.iteration}',

@@ -448,6 +448,16 @@ try {
       5,
       'all successful runtime samples render',
     );
+    await waitFor(`document.querySelectorAll('.reference-line').length === 4`);
+    assert.ok(
+      await evaluate(
+        `Array.from(document.querySelectorAll('.reference-line')).every(line => line.getAttribute('stroke') === '#d32f2f' && line.getBoundingClientRect().width > 1 && getComputedStyle(line).visibility !== 'hidden')`,
+      ),
+      'all four charts render the red reference outside the observed scores',
+    );
+    const referenceToggle = '.reference-toggle input[type=checkbox]';
+    await evaluate(`document.querySelector(${JSON.stringify(referenceToggle)}).click()`);
+    await waitFor(`document.querySelectorAll('.reference-line').length === 0`);
     await evaluate(`document.querySelector('.summary mat-select').click()`);
     await waitFor(`document.querySelectorAll('mat-option').length === 2`);
     await evaluate(
@@ -457,8 +467,26 @@ try {
       `document.querySelector('.summary mat-select').textContent.includes('Quality') && Array.from(document.querySelectorAll('.highcharts-axis-title')).some(el => el.textContent.includes('Quality'))`,
     );
     assert.ok(requests.some((url) => url.searchParams.get('objective') === 'Quality'));
+    await waitFor(
+      `document.querySelector('.reference-toggle').textContent.includes('Quality: 10')`,
+    );
+    assert.equal(
+      await evaluate(`document.querySelector(${JSON.stringify(referenceToggle)}).checked`),
+      false,
+      'reference visibility survives objective changes',
+    );
+    assert.equal(await evaluate(`document.querySelectorAll('.reference-line').length`), 0);
+    await evaluate(`document.querySelector(${JSON.stringify(referenceToggle)}).click()`);
+    await waitFor(`document.querySelectorAll('.reference-line').length === 4`);
+    assert.ok(
+      await evaluate(
+        `Array.from(document.querySelectorAll('.reference-line')).every(line => line.getBoundingClientRect().width > 1 && getComputedStyle(line).visibility !== 'hidden')`,
+      ),
+      'the maximization reference is visible above all observed scores',
+    );
     await clickText('.browser tbody button', 'Instance 11');
     await waitFor(`document.querySelector('.detail-title').textContent.includes('Instance 11')`);
+    await waitFor(`document.querySelectorAll('.reference-line').length === 4`);
     await clickText('[role=tab]', 'Results');
     await waitFor(`document.body.textContent.includes('Repetition result ledger')`);
     await evaluate(
