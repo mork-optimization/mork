@@ -17,7 +17,7 @@ public final class ScreeningData {
     public record RunEvidence(String sha256, Run run) {}
     public record Decision(String instance, String classification, Double bestObserved, Long firstPassTtbNanos,
             int confirmations, int fastHits, int failures, String reason) {}
-    public record Job(Manifest manifest, Input input, String phase, List<Long> seeds, String output) {}
+    public record Job(Manifest manifest, String output) {}
     public record Proposal(String fingerprint, String state, List<Decision> instances, Map<String,String> files,
             int trainingCount, int testingCount, String splitFailure) {}
 }

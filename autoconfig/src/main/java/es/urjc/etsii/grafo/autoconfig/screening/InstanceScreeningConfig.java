@@ -11,7 +11,6 @@ public record InstanceScreeningConfig(String sotaFile, String output, Double thr
         output = output == null ? "instance-screening" : output;
         thresholdMillis = thresholdMillis == null ? 10.0 : thresholdMillis;
         candidateMultiplier = candidateMultiplier == null ? 3.0 : candidateMultiplier;
-        horizonMillis = horizonMillis == null ? 10_000L : horizonMillis;
         confirmationRuns = confirmationRuns == null ? 30 : confirmationRuns;
         fastFraction = fastFraction == null ? 0.95 : fastFraction;
         python = python == null ? "python3" : python;
@@ -23,8 +22,9 @@ public record InstanceScreeningConfig(String sotaFile, String output, Double thr
         if (!Double.isFinite(candidateMultiplier) || candidateMultiplier < 1) {
             throw new IllegalArgumentException("instance-screening.candidate-multiplier must be finite and at least 1; got " + candidateMultiplier);
         }
-        if (horizonMillis <= 0 || horizonMillis > Long.MAX_VALUE / 1_000_000) {
-            throw new IllegalArgumentException("instance-screening.horizon-millis must be positive and fit in a long number of nanoseconds; got " + horizonMillis);
+        horizonMillis = horizonMillis == null ? Math.max(1_000L, (long) Math.ceil(thresholdMillis * candidateMultiplier)) : horizonMillis;
+        if (horizonMillis < 1_000 || horizonMillis > Long.MAX_VALUE / 1_000_000) {
+            throw new IllegalArgumentException("instance-screening.horizon-millis must be at least 1000 ms and fit in a long number of nanoseconds; got " + horizonMillis);
         }
         if (thresholdMillis * candidateMultiplier > horizonMillis) {
             throw new IllegalArgumentException("instance-screening.horizon-millis must cover the candidate window (threshold-millis * candidate-multiplier); got "

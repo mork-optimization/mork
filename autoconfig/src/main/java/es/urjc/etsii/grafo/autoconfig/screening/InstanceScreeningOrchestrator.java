@@ -51,7 +51,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
             Context.Configurator.setBlockConfig(blocks);
             if (arguments.containsOption("instance-screening-worker")) {
                 new ScreeningWorker<>(instances, algorithms, solutions, validator.orElseThrow(() ->
-                        new IllegalStateException("Screening requires a SolutionValidator")), solver).run(Path.of(settings.jobFile()));
+                        new IllegalStateException("Screening requires a SolutionValidator"))).run(Path.of(settings.jobFile()));
                 return;
             }
             Path output = Path.of(settings.output()).toAbsolutePath().normalize();
@@ -101,7 +101,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
         Math.subtractExact(solver.getSeed(), 1000L + config.warmupRepetitions());
         var runArguments = List.of(arguments.getSourceArgs());
         String fingerprint = ScreeningFileUtil.digest(List.of(config, solver.getSeed(), solver.getRandomType(), fraction, objective, mode, host, all, sotaHash, artifact, runArguments));
-        var manifest = new Manifest(1, fingerprint, config, solver.getSeed(), solver.getRandomType().name(), fraction, objective, mode, host, all, sotaHash, artifact, runArguments);
+        var manifest = new Manifest(2, fingerprint, config, solver.getSeed(), solver.getRandomType().name(), fraction, objective, mode, host, all, sotaHash, artifact, runArguments);
         Path manifestFile = output.resolve("manifest.json");
         if (Files.exists(manifestFile)) {
             Manifest previous = AutoLlmFileUtil.read(manifestFile, Manifest.class);
@@ -121,16 +121,14 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
         if (preflight.exitCode() != 0) throw new IllegalStateException("Selector Python dependencies are unavailable; see " + output.resolve("python-check/stderr.log") + "; configure --instance-screening.python=<prepared interpreter>");
         var decisions = new ArrayList<Decision>();
         System.out.println("Screening " + all.size() + " instances with fixed SOTA; threshold=" + config.thresholdMillis() + " ms, horizon=" + config.horizonMillis() + " ms");
-        // The complete first pass precedes all confirmation work.
-        for (Input input : all) runJob(manifest, input, "initial", List.of(manifest.seed()), output);
+        runJob(manifest, output);
         for (Input input : all) {
             Run initial = ScreeningFileUtil.readRun(output, manifest, input, manifest.seed());
             var confirmation = new ArrayList<Run>();
             if (ScreeningUtil.candidate(initial, config, mode)) {
-                var seeds = new ArrayList<Long>();
-                for (int i = 1; i <= config.confirmationRuns(); i++) seeds.add(manifest.seed() + i);
-                runJob(manifest, input, "confirmation", seeds, output);
-                for (long seed : seeds) confirmation.add(ScreeningFileUtil.readRun(output, manifest, input, seed));
+                for (int i = 1; i <= config.confirmationRuns(); i++) {
+                    confirmation.add(ScreeningFileUtil.readRun(output, manifest, input, manifest.seed() + i));
+                }
             }
             Decision decision = ScreeningUtil.classify(initial, confirmation, config, mode);
             decisions.add(decision);
@@ -155,30 +153,23 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
                 "--solver.time-stats=false", "--solver.benchmark=false", "--serializers.xlsx.enabled=false", "--logging.level.root=WARN"));
         return command;
     }
-    private void runJob(Manifest manifest, Input input, String phase, List<Long> seeds, Path output) {
-        var pending = new ArrayList<Long>();
-        for (long seed : seeds) if (ScreeningFileUtil.readRun(output, manifest, input, seed) == null) pending.add(seed);
-        if (pending.isEmpty()) return;
-        Path attempt = output.resolve("jobs").resolve(ScreeningFileUtil.digest(input.path())).resolve(phase + "-" + UUID.randomUUID());
+    private void runJob(Manifest manifest, Path output) {
+        Path attempt = output.resolve("jobs").resolve("screening-" + UUID.randomUUID());
         Path jobFile = attempt.resolve("job.json");
-        AutoLlmFileUtil.write(jobFile, new Job(manifest, input, phase, pending, output.toString()));
-        String failure = null;
+        AutoLlmFileUtil.write(jobFile, new Job(manifest, output.toString()));
         try {
-            long timeout = limits.execution().startupTimeoutMillis() + (pending.size() + manifest.settings().warmupRepetitions())
+            long maximumRuns = (long) manifest.inputs().size() * (manifest.settings().confirmationRuns() + 1)
+                    + manifest.settings().warmupRepetitions();
+            long timeout = limits.execution().startupTimeoutMillis() + maximumRuns
                     * (2 * limits.execution().phaseTimeoutMillis() + manifest.settings().horizonMillis() + limits.execution().watchdogGraceMillis());
             var result = processes.run(workerCommand(attempt, jobFile), attempt, attempt, timeout, 0,
                     limits.execution().watchdogGraceMillis(), () -> Thread.currentThread().isInterrupted(), true, limits.execution().startupTimeoutMillis());
             Path terminal = attempt.resolve("execution/terminal.json");
             if (result.exitCode() != 0 || !Files.exists(terminal)
                     || !"SUCCEEDED".equals(AutoLlmFileUtil.JSON.readTree(Files.readString(terminal)).path("outcome").asString())) {
-                failure = "Worker failed; inspect " + attempt;
+                throw new IllegalStateException("Screening worker failed; completed measurements are saved. Resume with the same command; inspect " + attempt);
             }
-        } catch (java.util.concurrent.CancellationException e) { throw e; }
-        catch (RuntimeException | IOException e) { failure = e.toString() + "; logs: " + attempt; }
-        for (long seed : pending) if (ScreeningFileUtil.readRun(output, manifest, input, seed) == null) {
-            ScreeningFileUtil.writeRun(output, new Run(manifest.fingerprint(), input.path(), seed, false, null, 0, List.of(),
-                    failure == null ? "Worker omitted the expected run" : failure));
-        }
+        } catch (IOException e) { throw new UncheckedIOException(e); }
     }
     private void writeProposal(Path output, Manifest manifest, List<Decision> decisions) throws IOException {
         var retained = new ArrayList<String>();
@@ -231,6 +222,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
         }
         String report = "# Instance screening: PENDING REVIEW\n\n"
                 + "Fixed SOTA; " + manifest.settings().horizonMillis() + " ms observation horizon; fast threshold " + manifest.settings().thresholdMillis() + " ms.\n\n"
+                + "One assertions-disabled worker JVM is reused across the initial pass and all confirmations, with a single warm-up sequence. Seeds, metrics and time limits reset before every run.\n\n"
                 + "| Input | Trivial/excluded | Retained (including inconclusive) | Inconclusive | Training | Testing |\n| ---: | ---: | ---: | ---: | ---: | ---: |\n"
                 + "| " + decisions.size() + " | " + trivial + " | " + retained.size() + " | " + inconclusive + " | " + training.size() + " | " + testing.size() + " |\n\n"
                 + "Exclude only when the first-pass TTB is at most " + manifest.settings().candidateMultiplier() + " times the fast threshold and strictly more than "

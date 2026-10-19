@@ -4,11 +4,11 @@ The AutoLLM skill requires screening as a preparation step before tuning or fina
 
 ## Criterion
 
-The defaults are a 10 ms fast threshold, a 10-second observation window and 30 confirmation runs. First run SOTA once on every input. Only inputs whose first-pass time to best is at most three times the threshold (30 ms) receive the additional 30 runs. Retain the others.
+The defaults are a 10 ms fast threshold and 30 confirmation runs. Both phases use the same observation window: the candidate margin (`threshold-millis * candidate-multiplier`), rounded up to whole milliseconds, with a minimum of one second. This gives a one-second default window. An explicit `horizon-millis` may select a longer window and must cover the candidate margin and be at least one second. First run SOTA once on every input. Only inputs whose first-pass time to best is at most three times the threshold (30 ms) receive the additional 30 runs. Retain the others.
 
 For each candidate, take the best objective observed across the initial and confirmation runs. Exclude the input only when strictly more than 95% of confirmation runs reach this **same observed best** before 10 ms: at least 29 of 30, excluding the initial run from that count. Equality uses the declared objective's comparison rules. A better result discovered late changes the common target and can prevent exclusion.
 
-All runs observe the full horizon, including instances that appear fast initially. TTB is the first attainment time in the recorded objective curve, not the last time the solution object was modified. Failures, incomplete runs, missing curves and inconsistent timing are retained as inconclusive and shown in the report. This is an empirical rule for the selected SOTA, host and observation window; it does not establish optimality or rule out improvements beyond ten seconds.
+All runs observe the full horizon, including instances that appear fast initially. TTB is the first attainment time in the recorded objective curve, not the last time the solution object was modified. Failures, missing curves and inconsistent timing are retained as inconclusive and shown in the report. This is an empirical rule for the selected SOTA, host and observation window; it does not establish optimality or rule out improvements beyond that window.
 
 ## Prepare
 
@@ -25,13 +25,13 @@ java -da -jar target/project.jar --instance-screening \
 
 `sota-file` contains one component JSON object, not a seed array. For these examples, use the previously identified frozen SOTA specification; do not substitute a generated proposal. Input selection defaults to `instances.path.default` when `instances.for-selection` is absent. Files, directories, indexes and archive entries use normal Mork load semantics. Keep output outside the input dataset directory.
 
-Each measurement worker is a fresh, sequential, assertions-disabled JVM. Five one-second warm-up runs precede each worker's measured runs. Loading, algorithm construction, validation and reporting are outside measured time. The SOTA has the same outer restart policy used by AutoLLM comparisons. Workers have the existing AutoLLM process watchdog and heap settings.
+One sequential, assertions-disabled worker JVM handles the complete initial pass and all subsequent confirmations. It performs five one-second warm-up runs once, before the first uncached measurement, and reuses the warmed JVM across instances and both phases. Every run builds a fresh algorithm and resets its random seed, metrics and time limit. Loading, algorithm construction, validation and reporting are outside measured time. The SOTA has the same outer restart policy used by AutoLLM comparisons. The worker has the existing AutoLLM process watchdog and heap settings. A process crash or watchdog termination stops preparation without publishing a partial selection; resume the same command to reuse completed measurements in a newly warmed worker.
 
 | Property | Default |
 | --- | ---: |
 | `instance-screening.threshold-millis` | 10 |
 | `instance-screening.candidate-multiplier` | 3 |
-| `instance-screening.horizon-millis` | 10000 |
+| `instance-screening.horizon-millis` | `max(1000, ceil(threshold-millis * candidate-multiplier))` |
 | `instance-screening.confirmation-runs` | 30 |
 | `instance-screening.fast-fraction` | 0.95 |
 | `instance-screening.warmup-repetitions` | 5 |
