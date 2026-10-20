@@ -43,10 +43,11 @@ public class CodexTaskRunner {
             if (config.codex().reasoningEffort() != null && !config.codex().reasoningEffort().isBlank()) args.addAll(List.of("-c", "model_reasoning_effort=\"" + config.codex().reasoningEffort() + "\""));
             args.add(prompt);
             CodexEvidenceUtil.begin(codexHome, checkout, output, threadId);
+            AutoLlmFileUtil.write(output.resolve("codex-launch.json"), Map.of("startedAt", java.time.Instant.now().toString()));
             AutoLlmProcessRunner.Result result;
             RuntimeException processFailure = null;
             try {
-                result = processes.run(args, checkout, output, config.execution().codexTimeoutMillis(), 0, config.execution().watchdogGraceMillis(), cancelled, false, 0);
+                result = processes.run(args, checkout, output, config.execution().codexTimeoutMillis(), 0, config.execution().watchdogGraceMillis(), cancelled, false, config.execution().startupTimeoutMillis());
             } catch (RuntimeException e) { processFailure = e; throw e; }
             finally {
                 try { archive(checkout, output, threadId); }
@@ -55,8 +56,8 @@ public class CodexTaskRunner {
             var events = CodexEvidenceUtil.cli(output.resolve("stdout.log"));
             String actualThread = events.threadId() == null ? threadId : events.threadId();
             if (actualThread != null) Files.writeString(output.resolve("thread-id.txt"), actualThread);
-            if (threadId != null && !threadId.equals(actualThread)) throw new IllegalStateException("Codex resumed a different conversation");
-            if (result.exitCode() != 0 || !events.completed() || actualThread == null || !Files.isRegularFile(output.resolve("manifest.json"))) throw new IllegalStateException("Codex task failed; inspect generation logs");
+            if (threadId != null && !threadId.equals(actualThread)) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INTEGRITY, "CONVERSATION_CHANGED", "Codex resumed a different conversation", output);
+            if (result.exitCode() != 0 || !events.completed() || actualThread == null || !Files.isRegularFile(output.resolve("manifest.json"))) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE, "CODEX_FAILED", "Codex task failed; inspect generation logs", output);
             var manifest = AutoLlmFileUtil.read(output.resolve("manifest.json"), Manifest.class);
             if (manifest.inventory() == null || manifest.metaheuristics() == null || manifest.components() == null || manifest.tests() == null || manifest.limitations() == null) throw new IllegalStateException("Incomplete Codex manifest");
             return new Result(actualThread, manifest);

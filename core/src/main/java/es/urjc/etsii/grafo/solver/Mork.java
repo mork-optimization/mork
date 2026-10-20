@@ -19,6 +19,7 @@ import org.springframework.context.annotation.FilterType;
 
 /**
  * This class is in charge of launching Mork.
+ * Startup failures propagate to the caller. An uncaught failure from a main method exits unsuccessfully.
  */
 @SpringBootApplication
 @ComponentScan(
@@ -38,8 +39,8 @@ public class Mork {
      * @param args     command line arguments, normally the parameter "String[] args" in the main method
      * @param objective Objective to optimize, assumes single objective
      */
-    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean start(String[] args, Objective<M,S,I> objective){
-        return Mork.start(null, args, false, objective);
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> void start(String[] args, Objective<M,S,I> objective){
+        Mork.start(null, args, false, objective);
     }
 
     /**
@@ -50,8 +51,8 @@ public class Mork {
      * @param objectives List of objectives to track
      */
     @SafeVarargs
-    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean start(String[] args, boolean multiobjective, Objective<M,S,I>... objectives){
-        return Mork.start(null, args, multiobjective, objectives);
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> void start(String[] args, boolean multiobjective, Objective<M,S,I>... objectives){
+        Mork.start(null, args, multiobjective, objectives);
     }
 
     /**
@@ -63,7 +64,7 @@ public class Mork {
      * @param objectives List of objectives to track
      */
     @SafeVarargs
-    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> boolean start(String pkgRoot, String[] args, boolean multiobjective, Objective<M, S, I>... objectives) {
+    public static <M extends Move<S,I>, S extends Solution<S,I>, I extends Instance> void start(String pkgRoot, String[] args, boolean multiobjective, Objective<M, S, I>... objectives) {
         configurePackageScanning(pkgRoot);
         configureDeserialization();
         Context.Configurator.setObjectives(multiobjective, objectives);
@@ -72,13 +73,12 @@ public class Mork {
         application.setLogStartupInfo(false);
         try {
             application.run(args);
-            return true;
         } catch (Exception e) {
             var rootCause = ExceptionUtil.getRootCause(e);
             log.error("%s: %s".formatted(rootCause.getClass().getSimpleName(), rootCause.getMessage()));
             log.info("Simplified stacktrace: {}", ExceptionUtil.filteredStacktrace(e));
             log.trace("Full stacktrace: ", e);
-            return false;
+            throw e;
         }
     }
 

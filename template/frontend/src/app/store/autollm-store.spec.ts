@@ -1,16 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { AutoLlmClient } from '../service/autollm-client';
-import { AutoLlmCampaign, AutoLlmConfig, AutoLlmLog } from '../model/autollm';
+import { AutoLlmCampaign, AutoLlmConfig, AutoLlmLog, ScreeningReview } from '../model/autollm';
 import { AutoLlmStore } from './autollm-store';
 
 describe('AutoLLM campaign lifecycle store', () => {
   const config = {} as AutoLlmConfig;
   const campaign = { id: 'campaign', status: 'RUNNING', config, trials: [{ number: 1, status: 'GENERATION' }, { number: 2, status: 'PENDING' }] } as AutoLlmCampaign;
-  let client: { defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; log: ReturnType<typeof vi.fn> };
+  let client: { screeningAction: ReturnType<typeof vi.fn>; screeningReview: ReturnType<typeof vi.fn>; screenings: ReturnType<typeof vi.fn>; summary: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; log: ReturnType<typeof vi.fn> };
   let store: AutoLlmStore;
   beforeEach(() => {
     vi.useFakeTimers();
-    client = { defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true }), action: vi.fn().mockResolvedValue(campaign), log: vi.fn().mockResolvedValue({ nextOffset: 0, lines: [] }) };
+    client = { screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true }), action: vi.fn().mockResolvedValue(campaign), log: vi.fn().mockResolvedValue({ cursor: 0, nextCursor: 0, text: '', more: false, reset: false }) };
     TestBed.configureTestingModule({ providers: [AutoLlmStore, { provide: AutoLlmClient, useValue: client }] });
     store = TestBed.inject(AutoLlmStore);
   });
@@ -54,7 +54,29 @@ describe('AutoLLM campaign lifecycle store', () => {
     client.log.mockImplementationOnce(() => new Promise<AutoLlmLog>(resolve => { resolveLog = resolve; }));
     const polling = vi.advanceTimersByTimeAsync(2000);
     await vi.waitFor(() => expect(client.log).toHaveBeenCalled());
-    store.selectLog('new.log'); resolveLog({ offset: 0, nextOffset: 1, lines: ['old response'] }); await polling;
-    expect(store.logLines()).toEqual([]);
+    store.selectLog('new.log'); resolveLog({ cursor: 0, nextCursor: 12, text: 'old response', more: false, reset: false }); await polling;
+    expect(store.logText()).toBe('');
+  });
+  it('assembles split activity events and resumes from their byte cursor', async () => {
+    const running = { ...campaign, trials: [{ ...campaign.trials[0], attempts: [{ number: 1, stage: 'GENERATION', status: 'RUNNING' }] }] } as AutoLlmCampaign;
+    client.list.mockResolvedValue({ active: running.id, campaigns: [running] });
+    client.activity.mockResolvedValueOnce({ text: '{"timestamp":"now","type":"item.completed","text":"hel', nextCursor: 53, more: false, reset: false })
+      .mockResolvedValue({ text: 'lo"}\n', nextCursor: 58, more: false, reset: false });
+    await store.start(); expect(store.activity()).toEqual([]);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(client.activity).toHaveBeenLastCalledWith(campaign.id, 1, 1, 53);
+    expect(store.activity()).toEqual([{ timestamp: 'now', type: 'item.completed', text: 'hello' }]);
+  });
+  it('never approves a review belonging to a different screening', async () => {
+    store.selectedScreening.set('second'); store.review.set({ jobId: 'first', proposalSha256: 'reviewed' } as ScreeningReview);
+    await store.screeningAction('approve'); expect(client.screeningAction).not.toHaveBeenCalled();
+    store.review.set({ jobId: 'second', proposalSha256: 'reviewed' } as ScreeningReview);
+    await store.screeningAction('approve'); expect(client.screeningAction).toHaveBeenCalledWith('second', 'approve', 'reviewed');
+  });
+  it('does not replace the selected review with a late response', async () => {
+    store.selectScreening('first'); let resolve!: (value: ScreeningReview) => void;
+    client.screeningReview.mockImplementation(() => new Promise<ScreeningReview>(done => { resolve = done; }));
+    const pending = store.reviewScreening(); store.selectScreening('second');
+    resolve({ proposalSha256: 'first-review' } as ScreeningReview); await pending; expect(store.review()).toBeNull();
   });
 });

@@ -29,7 +29,6 @@ import java.util.Optional;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
@@ -45,10 +44,10 @@ class ConcurrentMonitoringTest {
         var slowStarted = new CountDownLatch(1);
         var releaseSlow = new CountDownLatch(1);
         var fastPublished = new CountDownLatch(1);
-        var calls = new AtomicInteger();
+        var ordinal = new ThreadLocal<Integer>();
         var algorithm = new Algorithm<TestSolution, TestInstance>("algorithm") {
             @Override public TestSolution algorithm(TestInstance instance) {
-                if (calls.getAndIncrement() == 0) {
+                if (ordinal.get() == 0) {
                     slowStarted.countDown();
                     try { if (!releaseSlow.await(5, TimeUnit.SECONDS)) throw new IllegalStateException("Timed out"); }
                     catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new IllegalStateException(e); }
@@ -71,7 +70,13 @@ class ConcurrentMonitoringTest {
         doAnswer(invocation -> { if (invocation.getArgument(0) instanceof SolutionGeneratedEvent) fastPublished.countDown(); return null; }).when(publisher).publish(any());
         var io = (IOManager<TestSolution, TestInstance>) mock(IOManager.class);
         var executor = new ConcurrentExecutor<>(config, Optional.of(validator), Optional.empty(), io, manager, List.of(new es.urjc.etsii.grafo.exceptions.DefaultExceptionHandler<>(io)),
-                new ReferenceResultManager(List.of()), publisher, results, mock(ResultsSerializerListener.class), mock(TimeStatsService.class), state);
+                new ReferenceResultManager(List.of()), publisher, results, mock(ResultsSerializerListener.class), mock(TimeStatsService.class), state) {
+            @Override protected WorkUnitResult<TestSolution, TestInstance> doWork(WorkUnit<TestSolution, TestInstance> work) {
+                // Export order follows the work-unit index, independently of thread scheduling.
+                ordinal.set(work.i());
+                try { return super.doWork(work); } finally { ordinal.remove(); }
+            }
+        };
         executor.startup();
         try (var caller = Executors.newSingleThreadExecutor()) {
             var execution = caller.submit(() -> executor.executeExperiment(experiment, List.of("instance"), System.nanoTime()));

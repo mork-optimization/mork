@@ -63,6 +63,7 @@ public final class AutoconfigEncodingUtil {
         private Counter(Map<Class<?>, List<ComponentParameter>> parameters) { this.parameters = parameters; }
 
         private Counts total(List<TreeNode> roots) {
+            if (roots.isEmpty()) return Counts.ZERO;
             var result = Counts.DECLARATION; // ROOT selector
             for (var root : roots) result = result.add(node(root));
             return result;

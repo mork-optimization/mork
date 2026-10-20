@@ -4,6 +4,7 @@ import es.urjc.etsii.grafo.algorithms.Algorithm;
 import es.urjc.etsii.grafo.annotations.*;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderUtil;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmComponentFactory;
+import es.urjc.etsii.grafo.autoconfig.exception.ComponentDefinitionException;
 import es.urjc.etsii.grafo.autoconfig.inventory.AlgorithmInventoryService;
 import es.urjc.etsii.grafo.autoconfig.irace.IraceParameterSpace;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ComponentParameter;
@@ -46,7 +47,7 @@ public class AlgorithmCandidateGenerator {
      */
     protected Map<Class<?>, List<ComponentParameter>> analyzeParameters() {
         var inventory = this.inventoryService.getInventory();
-        var algClasses = inventory.componentsByType().get(Algorithm.class);
+        var algClasses = inventory.componentsByType().getOrDefault(Algorithm.class, List.of());
         var byType = inventory.componentsByType();
 
         Queue<Class<?>> queue = new ArrayDeque<>(algClasses);
@@ -103,9 +104,9 @@ public class AlgorithmCandidateGenerator {
         var params = new ArrayList<ComponentParameter>();
         for (var parameter : factory.getRequiredParameters()) {
             if (parameter.recursive()) {
-                var candidates = byType.get(parameter.getComponentType());
+                var candidates = ComponentDependencyUtil.candidates(byType, parameter.getComponentType());
                 if (candidates == null) {
-                    throw new IllegalArgumentException("Factory parameter %s references unknown component type %s"
+                    throw new ComponentDefinitionException(factory.produces(), "Factory parameter %s references unknown component type %s"
                             .formatted(parameter.getName(), parameter.getComponentType().getSimpleName()));
                 }
                 parameter = parameter.withValues(candidates.toArray());
@@ -133,7 +134,7 @@ public class AlgorithmCandidateGenerator {
         var type = p.getType();
         var name = p.getName();
         if (!isValidParamName(name)) {
-            throw new IllegalArgumentException(String.format("Invalid parameter name %s, must match ([a-zA-Z][a-zA-Z0-9]*)", name));
+            throw new ComponentDefinitionException(p, String.format("Invalid parameter name %s, must match ([a-zA-Z][a-zA-Z0-9]*)", name));
         }
         validateAnnotations(p);
         if (p.isAnnotationPresent(IntegerParam.class)) {
@@ -162,33 +163,32 @@ public class AlgorithmCandidateGenerator {
             if (isCombinationType(type)) {
                 var componentType = resolveCombinationComponentType(p);
                 validateCombinationParameter(p, annotation);
-                if (!types.containsKey(componentType)) {
-                    throw new IllegalArgumentException(String.format(
+                var candidates = ComponentDependencyUtil.candidates(types, componentType);
+                if (candidates == null) {
+                    throw new ComponentDefinitionException(p, String.format(
                             "Parameter %s is annotated with @ComponentParam, but collection element type %s is not a known algorithm component type",
                             describe(p), componentType.getSimpleName()));
                 }
-                var candidates = filterCandidates(p, componentType, types.get(componentType));
-                if (annotation.min() > candidates.size()) {
-                    throw new IllegalArgumentException("Invalid @ComponentParam bounds for %s: min %s cannot be satisfied by %s eligible components"
-                            .formatted(describe(p), annotation.min(), candidates.size()));
-                }
+                candidates = filterCandidates(p, componentType, candidates);
                 return ComponentParameter.combination(name, type, componentType, candidates, annotation.min(), annotation.max());
             }
             if (Collection.class.isAssignableFrom(type)) {
-                throw new IllegalArgumentException("@ComponentParam collections must use List<T>. Found %s in %s"
+                throw new ComponentDefinitionException(p, "@ComponentParam collections must use List<T>. Found %s in %s"
                         .formatted(type.getTypeName(), describe(p)));
             }
-            if (!types.containsKey(type)) {
-                throw new IllegalArgumentException(String.format(
+            var candidates = ComponentDependencyUtil.candidates(types, type);
+            if (candidates == null) {
+                throw new ComponentDefinitionException(p, String.format(
                         "Parameter %s is annotated with @ComponentParam, but type %s is not a known algorithm component type",
                         describe(p), type.getSimpleName()));
             }
-            return ComponentParameter.from(name, type, filterCandidates(p, type, types.get(type)));
+            return ComponentParameter.from(name, type, filterCandidates(p, type, candidates));
         }
 
         // Last option, not annotated but type is known
-        if (types.containsKey(type)) {
-            return ComponentParameter.from(name, type, types.get(type));
+        var candidates = ComponentDependencyUtil.candidates(types, type);
+        if (candidates != null) {
+            return ComponentParameter.from(name, type, candidates);
         }
         return null;
     }
@@ -202,7 +202,7 @@ public class AlgorithmCandidateGenerator {
         if (type.isArray()) {
             var componentType = type.getComponentType();
             if (componentType.isPrimitive() || componentType.isArray()) {
-                throw new IllegalArgumentException("@ComponentParam arrays must be one-dimensional reference arrays. Found %s in %s"
+                throw new ComponentDefinitionException(p, "@ComponentParam arrays must be one-dimensional reference arrays. Found %s in %s"
                         .formatted(type.getTypeName(), describe(p)));
             }
             return componentType;
@@ -210,7 +210,7 @@ public class AlgorithmCandidateGenerator {
 
         Type parameterizedType = p.getParameterizedType();
         if (!(parameterizedType instanceof ParameterizedType listType)) {
-            throw new IllegalArgumentException("@ComponentParam lists must declare an element type. Found raw List in %s"
+            throw new ComponentDefinitionException(p, "@ComponentParam lists must declare an element type. Found raw List in %s"
                     .formatted(describe(p)));
         }
         Type elementType = listType.getActualTypeArguments()[0];
@@ -220,17 +220,17 @@ public class AlgorithmCandidateGenerator {
         if (elementType instanceof ParameterizedType parameterizedElement && parameterizedElement.getRawType() instanceof Class<?> rawClass) {
             return rawClass;
         }
-        throw new IllegalArgumentException("@ComponentParam list element type must resolve to a concrete component class. Found %s in %s"
+        throw new ComponentDefinitionException(p, "@ComponentParam list element type must resolve to a concrete component class. Found %s in %s"
                 .formatted(elementType.getTypeName(), describe(p)));
     }
 
     private static void validateCombinationParameter(Parameter p, ComponentParam annotation) {
         if (annotation.min() < 0) {
-            throw new IllegalArgumentException("Invalid @ComponentParam range for %s: min must be non-negative"
+            throw new ComponentDefinitionException(p, "Invalid @ComponentParam range for %s: min must be non-negative"
                     .formatted(describe(p)));
         }
         if (annotation.min() > annotation.max()) {
-            throw new IllegalArgumentException("Invalid @ComponentParam range for %s: min %s > max %s"
+            throw new ComponentDefinitionException(p, "Invalid @ComponentParam range for %s: min %s > max %s"
                     .formatted(describe(p), annotation.min(), annotation.max()));
         }
     }
@@ -244,34 +244,34 @@ public class AlgorithmCandidateGenerator {
         nAnnotations += p.isAnnotationPresent(ProvidedParam.class) ? 1 : 0;
         nAnnotations += p.isAnnotationPresent(ComponentParam.class) ? 1 : 0;
         if (nAnnotations > 1) {
-            throw new IllegalArgumentException("Parameter %s has multiple autoconfig parameter annotations; use exactly one".formatted(describe(p)));
+            throw new ComponentDefinitionException(p, "Parameter %s has multiple autoconfig parameter annotations; use exactly one".formatted(describe(p)));
         }
     }
 
     private static void validateIntegerParameter(Parameter p, IntegerParam annotation) {
         if (annotation.min() > annotation.max()) {
-            throw new IllegalArgumentException("Invalid @IntegerParam range for %s: min %s > max %s".formatted(describe(p), annotation.min(), annotation.max()));
+            throw new ComponentDefinitionException(p, "Invalid @IntegerParam range for %s: min %s > max %s".formatted(describe(p), annotation.min(), annotation.max()));
         }
         if (!isIntegerType(p.getType())) {
-            throw new IllegalArgumentException("@IntegerParam can only be used on integer-compatible parameters. Found %s in %s".formatted(p.getType().getSimpleName(), describe(p)));
+            throw new ComponentDefinitionException(p, "@IntegerParam can only be used on integer-compatible parameters. Found %s in %s".formatted(p.getType().getSimpleName(), describe(p)));
         }
     }
 
     private static void validateRealParameter(Parameter p, RealParam annotation) {
         if (annotation.min() > annotation.max()) {
-            throw new IllegalArgumentException("Invalid @RealParam range for %s: min %s > max %s".formatted(describe(p), annotation.min(), annotation.max()));
+            throw new ComponentDefinitionException(p, "Invalid @RealParam range for %s: min %s > max %s".formatted(describe(p), annotation.min(), annotation.max()));
         }
         if (!Double.isFinite(annotation.min()) || !Double.isFinite(annotation.max())) {
-            throw new IllegalArgumentException("Invalid @RealParam range for %s: min and max must be finite".formatted(describe(p)));
+            throw new ComponentDefinitionException(p, "Invalid @RealParam range for %s: min and max must be finite".formatted(describe(p)));
         }
         if (!isRealType(p.getType())) {
-            throw new IllegalArgumentException("@RealParam can only be used on real-compatible parameters. Found %s in %s".formatted(p.getType().getSimpleName(), describe(p)));
+            throw new ComponentDefinitionException(p, "@RealParam can only be used on real-compatible parameters. Found %s in %s".formatted(p.getType().getSimpleName(), describe(p)));
         }
     }
 
     private static void validateStringValues(Parameter p, String[] values) {
         if (values.length == 0 && !p.getType().isEnum()) {
-            throw new IllegalArgumentException("Categorical and ordinal params must have at least one value. Found 0 values in %s".formatted(describe(p)));
+            throw new ComponentDefinitionException(p, "Categorical and ordinal params must have at least one value. Found 0 values in %s".formatted(describe(p)));
         }
     }
 
@@ -298,7 +298,7 @@ public class AlgorithmCandidateGenerator {
 
         for (var disallowedClass : disallowed) {
             if (!componentType.isAssignableFrom(disallowedClass)) {
-                throw new IllegalArgumentException(String.format(
+                throw new ComponentDefinitionException(p, String.format(
                         "Invalid @ComponentParam restriction in %s: disallowed class %s is not assignable to parameter type %s",
                         describe(p), disallowedClass.getSimpleName(), componentType.getSimpleName()));
             }
@@ -331,6 +331,7 @@ public class AlgorithmCandidateGenerator {
     }
 
     public IraceParameterSpace toIraceParameterSpace(List<TreeNode> nodes) {
+        if (nodes.isEmpty()) return new IraceParameterSpace(List.of(), List.of());
         var iraceParams = new ArrayList<String>();
         var forbidden = new ArrayList<String>();
         Class<?>[] initialDecisionValues = new Class<?>[nodes.size()];
@@ -436,7 +437,7 @@ public class AlgorithmCandidateGenerator {
     // Generate combinations using a recursive DFS approach, bounded by the maxDepth
     public List<TreeNode> buildTree(int maxDepth, int maxRepeat) {
         var list = new ArrayList<TreeNode>();
-        for (Class<?> startPoint : inventoryService.getInventory().componentsByType().get(Algorithm.class)) {
+        for (Class<?> startPoint : inventoryService.getInventory().componentsByType().getOrDefault(Algorithm.class, List.of())) {
             var treeContext = new TreeContext(maxDepth, maxRepeat);
             var node = recursiveBuildTree("ROOT", startPoint, treeContext);
 
@@ -470,11 +471,15 @@ public class AlgorithmCandidateGenerator {
                 if (p.combination()) {
                     int effectiveMax = Math.min(p.getMax(), children.size());
                     if (p.getMin() > effectiveMax) {
+                        log.debug("Pruning {}: parameter {} requires {} instances of {}, only {} viable choices remain",
+                                currentComponent.getSimpleName(), p.getName(), p.getMin(), p.getComponentType().getSimpleName(), children.size());
                         context.pop();
                         return null;
                     }
                     allCombinations.put(p.getName(), new CombinationTree(p.getMin(), effectiveMax, children));
                 } else if (children.isEmpty()) {
+                    log.debug("Pruning {}: parameter {} has no viable implementation of {}",
+                            currentComponent.getSimpleName(), p.getName(), p.getComponentType().getSimpleName());
                     // No valid config found exploring this part of the tree, even if the other params have values we cannot continue
                     context.pop();
                     return null;

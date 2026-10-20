@@ -2,6 +2,37 @@
 
 The AutoLLM skill requires screening as a preparation step before tuning or final comparison, unless a matching approved selection already exists. It uses a fixed SOTA and proposes a fresh training/testing selection without changing the datasets or existing indexes. Review and explicitly approve the results before using the new indexes.
 
+## Dashboard and durable jobs
+
+The AutoLLM dashboard can prepare datasets locally or over SSH before a campaign exists. Choose the execution host, committed project/build/artifact and fixed SOTA, then provide the full original pool and training fraction. The dashboard shows build, warmup, initial measurements, confirmations, selection and approval phases, including completed/total measurement counts and last synchronization. It provides the report, every instance decision and downloadable membership lists before the explicit approval button.
+
+For programmatic use, `POST /api/autollm/screenings` accepts:
+
+```json
+{
+  "config": { "project": { "repository": "/absolute/repository", "ref": "COMMIT", "buildCommand": ["./mvnw", "verify"], "artifact": "target/project.jar" }, "workspace": "/absolute/controller-workspace", "sotaFile": "/absolute/sota.json", "execution": { "target": "LOCAL", "workers": 32 } },
+  "settings": { "python": "/absolute/selector-venv/bin/python3" },
+  "inputPath": "/absolute/full-pool.index",
+  "trainingFraction": 0.15
+}
+```
+
+Creation saves a `DRAFT` and returns its ID. Save that ID before `POST /screenings/{id}/resume`. Inspect `GET /screenings` or `/screenings/{id}` after an uncertain response; reuse that job instead of submitting a duplicate. Job settings, mirrors, remote IDs and progress persist under the controller workspace. The same executor and workspace reservation are shared with campaigns. Persistent infrastructure faults pause in `NEEDS_ATTENTION`; resume reattaches saved jobs, and cancellation reconciles their termination and evidence before releasing the reservation.
+
+`GET /screenings/{id}/review` returns the completed report, full decisions, proposed counts, evidence paths and `proposalSha256`. After explicit agreement, send that hash in `POST /screenings/{id}/approve` as `{"proposalSha256":"THE_REVIEWED_HASH"}`. Wait for `APPROVED`, then use the mirror's published `proposal/train.index` and `proposal/test.index`. Approval verifies the existing provenance and evidence rules; it does not start a campaign. Standalone CLI preparation remains available below.
+
+The [operator helper](autollm.md#backend-discovery-and-operator-helper) wraps these APIs. Append the following to `python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace /absolute/controller-workspace`:
+
+```text
+screening create --config /absolute/campaign.json --settings /absolute/screening-settings.json --input /absolute/full-pool.index --training-fraction 0.15
+screening resume --id SAVED_ID
+watch --screening SAVED_ID
+screening review --id SAVED_ID
+screening approve --id SAVED_ID --proposal-sha256 THE_EXACT_REVIEWED_HASH
+```
+
+`--settings` accepts a JSON object such as `{"python":"/absolute/selector-venv/bin/python3"}` and may be omitted to use backend defaults. Creating a job saves a draft. Watching stops at `AWAITING_APPROVAL`; approval requires the explicitly supplied proposal SHA-256 and is a separate command after review. `screening get`, `list` and `cancel` inspect or manage the same saved jobs.
+
 ## Remote screening
 
 Choose local or remote workload execution before any measurements. Local preparation and approval continue to use the commands below. For SSH, use the same `autollm.project` and `autollm.execution` settings as the intended campaign, as described in [remote execution](autollm.md#remote-execution-over-ssh).
@@ -27,6 +58,17 @@ All runs observe the full horizon, including instances that appear fast initiall
 ## Prepare
 
 Build the chosen example with its autoconfig dependency. Prepare a Python interpreter containing the existing instance selector's dependencies from `py-tools/instance-selector/requirements.txt`; screening checks these before measurement and does not install packages. Run on the host intended for the subsequent campaign, without competing measurement jobs.
+
+For a fresh isolated interpreter, run this on the chosen execution host, substituting the checkout path:
+
+```bash
+python3 -m venv /absolute/selector-venv
+/absolute/selector-venv/bin/python3 -m pip install -r /absolute/mork/py-tools/instance-selector/requirements.txt
+/absolute/selector-venv/bin/python3 -c 'import numpy,pandas,sklearn,yellowbrick,matplotlib,seaborn'
+/absolute/selector-venv/bin/python3 -m pip freeze > /absolute/selector-requirements-frozen.txt
+```
+
+Setuptools is pinned because Yellowbrick imports distutils on Python 3.12. Complete setup and record the environment before timing measurements; setup is never performed by a measurement job.
 
 ```bash
 java -da -jar target/project.jar --instance-screening \

@@ -11,6 +11,20 @@ public final class AutoLlmFileUtil {
     public static final JsonMapper JSON = new JsonMapper();
     private static final TypeReference<Map<String, Object>> OBJECT_TYPE = new TypeReference<>() {};
     private AutoLlmFileUtil() {}
+    public static List<Path> ownedFiles(Path root, String filename) {
+        var result = new ArrayList<Path>(); if (!Files.isDirectory(root)) return result;
+        try {
+            Files.walkFileTree(root, new SimpleFileVisitor<>() {
+                @Override public FileVisitResult preVisitDirectory(Path directory, java.nio.file.attribute.BasicFileAttributes attributes) {
+                    return !directory.equals(root) && Set.of("source", ".git", ".transport", ".transfer", ".source-bundles").contains(directory.getFileName().toString()) ? FileVisitResult.SKIP_SUBTREE : FileVisitResult.CONTINUE;
+                }
+                @Override public FileVisitResult visitFile(Path path, java.nio.file.attribute.BasicFileAttributes attributes) {
+                    if (attributes.isRegularFile() && path.getFileName().toString().equals(filename)) result.add(path); return FileVisitResult.CONTINUE;
+                }
+            });
+        } catch (IOException e) { throw new UncheckedIOException(e); }
+        result.sort(Comparator.naturalOrder()); return result;
+    }
     public static void write(Path path, Object value) {
         try {
             Files.createDirectories(path.toAbsolutePath().getParent());
@@ -77,27 +91,53 @@ public final class AutoLlmFileUtil {
             return HexFormat.of().formatHex(digest.digest());
         } catch (java.security.NoSuchAlgorithmException e) { throw new IllegalStateException(e); }
     }
-    public record Dependencies(Map<String,String> sha256, Map<String,String> contentSha256) {}
+    public record Dependencies(int version, Map<String,String> sha256, Map<String,String> contentSha256, Map<String,String> buildMetadataSha256) {}
+    public static Set<String> dependencyDifferences(Path baseline, Path trial) {
+        var first = dependencyEntries(baseline); var second = dependencyEntries(trial);
+        var names = new TreeSet<>(first.keySet()); names.addAll(second.keySet());
+        names.removeIf(name -> Objects.equals(first.get(name), second.get(name))); return names;
+    }
+    private static Map<String,String> dependencyEntries(Path artifact) {
+        var hashes = new TreeMap<String,String>();
+        try (var zip = new java.util.zip.ZipFile(artifact.toFile())) {
+            var entries = zip.entries();
+            while (entries.hasMoreElements()) {
+                var entry = entries.nextElement();
+                if (!entry.getName().startsWith("BOOT-INF/lib/") || entry.isDirectory()) continue;
+                try (var input = new java.util.zip.ZipInputStream(zip.getInputStream(entry))) {
+                    for (var file = input.getNextEntry(); file != null; file = input.getNextEntry()) if (!file.isDirectory()) hashes.put(entry.getName() + "!/" + file.getName(), hash(input));
+                }
+            }
+        } catch (IOException e) { throw new UncheckedIOException(e); }
+        return hashes;
+    }
     /** Compare actual dependency contents, independently of ZIP timestamps and entry order. */
     public static Dependencies dependencyHashes(Path jar) {
-        var raw = new TreeMap<String,String>(); var contents = new TreeMap<String,String>();
+        var raw = new TreeMap<String,String>(); var contents = new TreeMap<String,String>(); var metadata = new TreeMap<String,String>();
         try (var zip = new java.util.zip.ZipFile(jar.toFile())) {
             var entries = zip.entries();
             while (entries.hasMoreElements()) {
                 var entry = entries.nextElement();
                 if (!entry.getName().startsWith("BOOT-INF/lib/") || entry.isDirectory()) continue;
+                if (raw.containsKey(entry.getName())) throw new IOException("Duplicate dependency: " + entry.getName());
                 try (var input = zip.getInputStream(entry)) { raw.put(entry.getName(), hash(input)); }
                 var files = new TreeMap<String,String>();
+                var names = new HashSet<String>();
                 try (var input = new java.util.zip.ZipInputStream(zip.getInputStream(entry))) {
                     for (var file = input.getNextEntry(); file != null; file = input.getNextEntry()) {
                         if (file.isDirectory()) continue;
-                        if (files.put(file.getName(), hash(input)) != null) throw new IOException("Duplicate dependency entry: " + file.getName());
+                        if (!names.add(file.getName())) throw new IOException("Duplicate dependency entry: " + file.getName());
+                        if (file.getName().equals("builddef.lst") && entry.getName().matches("BOOT-INF/lib/mork(?:-common)?-[^/]+\\.jar")) {
+                            metadata.put(entry.getName() + "!/builddef.lst", hash(input));
+                            continue;
+                        }
+                        files.put(file.getName(), hash(input));
                     }
                 }
                 contents.put(entry.getName(), hash(new ByteArrayInputStream(JSON.writeValueAsBytes(files))));
             }
         } catch (IOException e) { throw new UncheckedIOException(e); }
-        return new Dependencies(raw, contents);
+        return new Dependencies(2, raw, contents, metadata);
     }
     public static Map<String, String> sourceHashes(Path root) {
         var hashes = new TreeMap<String, String>();

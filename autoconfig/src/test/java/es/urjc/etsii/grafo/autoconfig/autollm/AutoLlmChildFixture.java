@@ -9,6 +9,7 @@ import java.util.*;
 /** Portable fake child protocol for lifecycle tests; actual irace is tested separately. */
 public class AutoLlmChildFixture {
     public static void main(String[] args) throws Exception {
+        if (Arrays.asList(args).contains("no-session")) { Thread.sleep(60_000); return; }
         var flags = new HashMap<String,String>();
         for (String arg : args) { int separator = arg.indexOf('='); if (separator > 0) flags.put(arg.substring(0, separator), arg.substring(separator + 1)); }
         Path directory = ExecutionJournalUtil.directory();
@@ -46,6 +47,8 @@ public class AutoLlmChildFixture {
             }
             ExecutionJournalUtil.finished("evaluation", Map.of("state", "SUCCEEDED", "preflight", false, "parameters", Map.of("ROOT", "Dummy")));
             Files.writeString(Path.of("autoconfig-final-elites.json"), "{\"elites\":[{\"configurationId\":\"1\",\"parameters\":{\"ROOT\":\"Dummy\"}}]}");
+        } else if (Arrays.asList(args).contains("stdin")) {
+            System.out.println("stdin-bytes=" + System.in.readAllBytes().length);
         } else if (Arrays.asList(args).contains("hang")) {
             ExecutionJournalUtil.phase("hung", "RUNNING", 20, Map.of());
             while (true) { ExecutionJournalUtil.append("worker-progress", Map.of("alive", true)); Thread.sleep(100); }

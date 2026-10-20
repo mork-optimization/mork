@@ -18,7 +18,7 @@ public final class AutoLlmExecutionService {
         return validate(config, true);
     }
     private static List<String> validate(AutoLlmConfig config, boolean requireRunner) {
-        var errors = new ArrayList<String>();
+        var errors = new ArrayList<>(AutoLlmConfigUtil.executionErrors(config));
         if (config.execution().workers() != -1 && config.execution().workers() < 1) errors.add("Workers must be -1 (automatic) or a positive integer");
         if (config.execution().target() == AutoLlmConfig.Target.SSH) {
             var ssh = config.execution().ssh();
@@ -38,24 +38,51 @@ public final class AutoLlmExecutionService {
         return errors;
     }
     public WorkloadProtocol.Host probe(AutoLlmConfig config, Path root) {
-        if (config.execution().target() == AutoLlmConfig.Target.LOCAL) return new WorkloadProtocol.Host(WorkloadProtocol.VERSION,
-                ScreeningFileUtil.host(), config.execution().workers(), ConcurrencyUtil.resolveWorkerCount(config.execution().workers(), Runtime.getRuntime().availableProcessors()), Runtime.getRuntime().maxMemory());
+        return probe(config, root, null);
+    }
+    public WorkloadProtocol.Host probe(AutoLlmConfig config, Path root, String selectorPython) {
+        var host = inspect(config, root, selectorPython); TargetPreflightUtil.requireReady(host, root); return host;
+    }
+    public WorkloadProtocol.Host inspect(AutoLlmConfig config, Path root) {
+        return inspect(config, root, null);
+    }
+    private WorkloadProtocol.Host inspect(AutoLlmConfig config, Path root, String selectorPython) {
+        if (config.execution().target() == AutoLlmConfig.Target.LOCAL) {
+            try { return TargetPreflightUtil.inspect(config, root, processes, selectorPython); } catch (IOException e) { throw new UncheckedIOException(e); }
+        }
         var errors = validate(config, !Files.exists(root.resolve(".transport/runner.json")));
         if (!errors.isEmpty()) throw new IllegalArgumentException(String.join("; ", errors));
         var transport = new SshTransport(config, root.resolve(".transport")); transport.bootstrap();
         Path saved = root.resolve("execution-target.json");
-        var host = AutoLlmFileUtil.JSON.readValue(transport.call(Files.exists(saved) ? "identity" : "probe", WorkloadPathUtil.remoteRoot(config, root), null, config), WorkloadProtocol.Host.class);
+        var host = AutoLlmFileUtil.JSON.readValue(transport.call(Files.exists(saved) ? "identity" : "probe", WorkloadPathUtil.remoteRoot(config, root), selectorPython, config), WorkloadProtocol.Host.class);
         if (host.version() != WorkloadProtocol.VERSION) throw new IllegalStateException("Remote runner protocol mismatch");
         if (Files.exists(saved)) {
             var previous = AutoLlmFileUtil.read(saved, WorkloadProtocol.Host.class);
             if (!previous.identity().equals(host.identity()) || previous.effectiveWorkers() != host.effectiveWorkers()) throw new ExecutionTargetException("Execution host or allocation changed; prepare a new campaign");
+            host = new WorkloadProtocol.Host(host.version(), host.identity(), host.requestedWorkers(), host.effectiveWorkers(), host.maxMemoryBytes(), host.totalMemoryBytes(), host.usableDiskBytes(), previous.prerequisites());
         }
-        AutoLlmFileUtil.write(saved, host); return host;
+        AutoLlmFileUtil.write(root.resolve("target-preflight.json"), host);
+        boolean ready = true; for (var check : host.prerequisites()) if (check.status().equals("FAILED")) ready = false;
+        if (ready) AutoLlmFileUtil.write(saved, host); return host;
     }
     public int workers(AutoLlmConfig config, Path root) {
         if (config.execution().target() == AutoLlmConfig.Target.LOCAL) return ConcurrencyUtil.resolveWorkerCount(config.execution().workers(), Runtime.getRuntime().availableProcessors());
         Path file = root.resolve("execution-target.json");
         return (Files.exists(file) ? AutoLlmFileUtil.read(file, WorkloadProtocol.Host.class) : probe(config, root)).effectiveWorkers();
+    }
+    public void cancelOutstanding(AutoLlmConfig config, Path directory, Consumer<Map<String,Object>> observer) {
+        for (Path descriptor : AutoLlmFileUtil.ownedFiles(directory, "remote-job.json")) {
+            if (Files.exists(descriptor.getParent().resolve("collection-completed.json"))) continue;
+            var job = AutoLlmFileUtil.read(descriptor, WorkloadProtocol.Job.class);
+            Path root = descriptor.getParent();
+            for (int i = 0; i < Path.of(job.output()).getNameCount(); i++) root = root.getParent();
+            if (root == null || !root.startsWith(directory) || !root.resolve(job.output()).normalize().equals(descriptor.getParent())) throw new ExecutionTargetException("Saved job output does not match its owned directory");
+            try { run(config, root, List.of("reattach"), root.resolve(job.cwd()), descriptor.getParent(), null, List.of(), job.timeoutMillis(), job.plannedMillis(), job.watchEvaluations(), job.startupMillis(), () -> true, observer); }
+            catch (RuntimeException e) {
+                if (Thread.currentThread().isInterrupted() || !Files.exists(descriptor.getParent().resolve("collection-completed.json"))) throw e;
+                // Completed or cancelled jobs are reconciled even when their workload failed.
+            }
+        }
     }
     public AutoLlmConfig stageInputs(AutoLlmConfig config, Path root) {
         if (config.execution().target() == AutoLlmConfig.Target.LOCAL) return config;
@@ -89,7 +116,7 @@ public final class AutoLlmExecutionService {
             Path statusFile = output.resolve("remote-status.json"), requestFile = output.resolve("remote-job.json");
             if (Files.exists(statusFile) && Files.exists(requestFile)) {
                 String state = AutoLlmFileUtil.JSON.readTree(Files.readString(statusFile)).path("status").asString();
-                if (Set.of("CANCELLED", "INTERRUPTED").contains(state)) {
+                if (Set.of("CANCELLED", "INTERRUPTED", "FAILED").contains(state) && Files.exists(output.resolve("collection-completed.json"))) {
                     var previous = AutoLlmFileUtil.read(requestFile, WorkloadProtocol.Job.class);
                     String key = AutoLlmFileUtil.hash(new ByteArrayInputStream(root.relativize(output).toString().replace('\\', '/').getBytes(java.nio.charset.StandardCharsets.UTF_8)));
                     Path generation = root.resolve(".transfer/generation-" + key + ".json");

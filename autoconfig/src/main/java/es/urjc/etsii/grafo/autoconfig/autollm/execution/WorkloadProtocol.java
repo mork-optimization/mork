@@ -6,13 +6,14 @@ import java.util.Map;
 
 /** Versioned, file-based protocol; workload arguments never pass through a shell. */
 public final class WorkloadProtocol {
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;
     private WorkloadProtocol() {}
     public record Job(int version, String id, String root, String inputSha256, List<String> layers, List<String> command, String cwd, String output,
                       List<String> collect, List<String> reset, Map<String,String> environment, Map<String,String> expectedHost,
                       long timeoutMillis, long plannedMillis, long graceMillis, boolean watchEvaluations, long startupMillis) {}
     public record State(String id, String status, AutoLlmProcessRunner.Result result, String failure, String archiveSha256) {}
-    public record Host(int version, Map<String,String> identity, int requestedWorkers, int effectiveWorkers, long maxMemoryBytes) {}
+    public record Host(int version, Map<String,String> identity, int requestedWorkers, int effectiveWorkers, long maxMemoryBytes,
+                       long totalMemoryBytes, long usableDiskBytes, List<TargetPreflightUtil.Prerequisite> prerequisites) {}
     public record Chunk(long offset, String base64) {}
     public record Poll(State state, Map<String,Chunk> chunks, Map<String,String> snapshots) {}
 }

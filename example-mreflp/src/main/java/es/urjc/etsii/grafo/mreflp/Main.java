@@ -21,8 +21,8 @@ public class Main {
             var inputs = new ArrayList<Path>();
             for (int i = 2; i < args.length; i++) inputs.add(Path.of(args[i]));
             System.out.println(ReproductionReportUtil.report(Path.of("."), Path.of(args[1]), inputs));
-        } else if (!Mork.start(args, COST)) {
-            System.exit(1);
+        } else {
+            Mork.start(args, COST);
         }
     }
 }

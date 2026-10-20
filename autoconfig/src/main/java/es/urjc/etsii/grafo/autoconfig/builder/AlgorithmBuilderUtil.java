@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.builder;
 
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
+import es.urjc.etsii.grafo.autoconfig.exception.ComponentDefinitionException;
 import es.urjc.etsii.grafo.annotations.ProvidedParam;
 import es.urjc.etsii.grafo.autoconfig.exception.AlgorithmParsingException;
 import es.urjc.etsii.grafo.autoconfig.fill.ParameterProvider;
@@ -182,7 +183,7 @@ public class AlgorithmBuilderUtil {
             }
             default -> {
                 log.debug("Found multiple constructors annotated with @AutoconfigConstructor for class {}: {}", clazz.getSimpleName(), autoconfigConstructors);
-                throw new IllegalArgumentException("Multiple constructors annotated with @AutoconfigConstructor found for class " + clazz.getSimpleName());
+                throw new ComponentDefinitionException(clazz, "Multiple constructors annotated with @AutoconfigConstructor found for class " + clazz.getSimpleName());
             }
         }
     }

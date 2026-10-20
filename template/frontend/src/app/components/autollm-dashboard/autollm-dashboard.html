@@ -39,10 +39,46 @@
           <details><summary>All settings, including time budgets and timeouts</summary><textarea rows="16" [value]="config | json" (change)="advanced($event)"></textarea></details>
         </fieldset>
         <p>Each trial starts from the same baseline. Both comparison algorithms restart within their time budget. Ablation is disabled.</p>
+        <p class="budget-summary">{{ config.trials }} trials · {{ config.tuning.evaluations | number }} tuning evaluations per trial at {{ (config.tuning.ignoreInitialMillis + config.tuning.intervalDurationMillis) / 1000 }} seconds · {{ config.comparison.repetitions }} paired comparison repetitions at {{ config.comparison.timeLimitMillis > 0 ? (config.comparison.timeLimitMillis / 1000) + ' seconds' : 'application time limits (resolved during baseline check)' }} · {{ config.preparation.pilotDurationMillis / 60000 }} minute pilot · {{ config.preparation.maxRepairs }} component repairs per trial.</p>
+        @if (store.summary()) { <details open><summary>Resolved budgets and workload estimate</summary><pre>{{ store.summary() | json }}</pre></details> }
+        <details><summary>Prepare a screened dataset</summary>
+          <div class="fields"><label>Full original input pool<input [value]="originalPool()" (input)="originalPool.set($any($event.target).value)" /></label>
+            <label>Training fraction<input type="number" min="0.01" max="0.99" step="0.01" [value]="trainingFraction()" (input)="trainingFraction.set(+$any($event.target).value)" /></label></div>
+          <p>Screening uses one sequential worker. Review the completed proposal before publishing training/testing indexes. Testing includes all retained instances, including training.</p>
+          <button mat-button [disabled]="!executionChoice() || !originalPool() || !!store.active() || !!store.activeScreening() || store.busy()" (click)="store.createScreening(originalPool(), trainingFraction())">Prepare dataset</button>
+        </details>
         <button mat-button [disabled]="!executionChoice() || !!store.active() || store.busy()" (click)="store.probeTarget()">Check execution host</button>
         @if (store.targetStatus()) { <pre>{{ store.targetStatus() | json }}</pre> }
-        <button mat-flat-button [disabled]="!executionChoice() || !!store.active() || store.busy()" (click)="store.createAndStart()">Create and start campaign</button>
+        <button mat-flat-button [disabled]="!executionChoice() || !!store.active() || !!store.activeScreening() || store.busy()" (click)="store.createAndStart()">Create and start campaign</button>
       </details>
+    </mat-card-content></mat-card>
+  }
+  @if (store.screenings().length) {
+    <mat-card><mat-card-content><h2>Dataset preparation</h2>
+      <label>Saved screening<select [value]="store.selectedScreening()" (change)="store.selectScreening($any($event.target).value)">@for (job of store.screenings(); track job.id) { <option [value]="job.id">{{ job.createdAt | date:'short' }} · {{ job.status }} · {{ job.id }}</option> }</select></label>
+      @if (store.screening(); as job) {
+        <p>{{ job.status }} · {{ job.progress?.phase || job.activity?.phase || 'Waiting to start' }}</p>
+        @if (job.progress; as progress) {
+          <p>Initial measurements: {{ progress.initialCompleted }}/{{ progress.initialTotal }} · Confirmations: {{ progress.confirmationsCompleted }}/{{ progress.confirmationsTotal }} · Last activity: {{ progress.updatedAt | date:'mediumTime' }}</p>
+          @if (progress.phase === 'INITIAL' && progress.initialTotal) { <mat-progress-bar mode="determinate" [value]="100 * progress.initialCompleted / progress.initialTotal" /> }
+          @if (progress.phase === 'CONFIRMATIONS' && progress.confirmationsTotal) { <mat-progress-bar mode="determinate" [value]="100 * progress.confirmationsCompleted / progress.confirmationsTotal" /> }
+        }
+        @if (job.problem; as problem) { <p class="error">{{ problem.category }} · {{ problem.message }}</p><p>{{ problem.recovery }}</p> }
+        @if (job.activity?.remote; as remote) { <p>Remote job {{ remote.jobId }} · {{ remote.status }} · Last sync: {{ remote.lastSynchronizedAt | date:'mediumTime' }}</p> }
+        <div class="actions">
+          @if (['DRAFT', 'INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION'].includes(job.status)) { <button mat-button [disabled]="!!store.active() || !!store.activeScreening() || store.busy()" (click)="store.screeningAction('resume')">Resume preparation</button> }
+          @if (store.activeScreening() === job.id || job.status === 'NEEDS_ATTENTION') { <button mat-button [disabled]="store.busy()" (click)="store.screeningAction('cancel')">Cancel preparation</button> }
+          @if (['AWAITING_APPROVAL', 'APPROVED'].includes(job.status)) { <button mat-button [disabled]="store.busy()" (click)="store.reviewScreening()">Review proposal</button> }
+          @if (job.status === 'APPROVED') { <button mat-button (click)="store.useSelection()">Use approved selection</button> }
+        </div>
+      }
+      @if (store.review(); as review) {
+        <pre class="screening-report">{{ review.report }}</pre>
+        <p>Reviewed proposal SHA-256: {{ review.proposalSha256 }}</p>
+        <div class="actions">@for (name of ['instances.csv', 'proposed-retained.index', 'proposed-train.index', 'proposed-test.index', 'manifest.json']; track name) { <a [href]="store.screeningArtifactUrl(review.artifactPrefix + '/' + name)">{{ name }}</a> }</div>
+        <details><summary>All instance decisions</summary><table><thead><tr><th>Instance</th><th>Decision</th><th>Fast confirmations</th><th>Reason</th></tr></thead><tbody>@for (decision of review.proposal.instances; track decision.instance) { <tr><td>{{ decision.instance }}</td><td>{{ decision.classification }}</td><td>{{ decision.fastHits }}/{{ decision.confirmations }}</td><td>{{ decision.reason }}</td></tr> }</tbody></table></details>
+        @if (store.screening()?.status === 'AWAITING_APPROVAL') { <button mat-flat-button [disabled]="store.busy() || !!store.active() || !!store.activeScreening() || !!review.proposal.splitFailure" (click)="store.screeningAction('approve')">Approve this reviewed selection</button> }
+      }
     </mat-card-content></mat-card>
   }
   <label>Saved campaign<select [value]="store.selectedId()" (change)="store.select($any($event.target).value)">
@@ -52,18 +88,20 @@
     <mat-card><mat-card-content>
       <div class="actions"><strong>{{ campaign.status }} · {{ store.completed() }}/{{ campaign.trials.length }} trials finished</strong>
         @if (store.active() === campaign.id) { <button mat-button [disabled]="campaign.remote?.status === 'CANCELLATION_PENDING'" (click)="store.action('cancel')">Cancel campaign</button> }
-        @if (['INTERRUPTED', 'CANCELLED'].includes(campaign.status) && !store.active()) { <button mat-flat-button [disabled]="store.busy()" (click)="store.action('resume')">Resume from checkpoints</button> }
+        @if (['INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION'].includes(campaign.status) && !store.active()) { <button mat-flat-button [disabled]="store.busy() || !!store.activeScreening()" (click)="store.action('resume')">Resume from checkpoints</button> }
+        @if (campaign.status === 'NEEDS_ATTENTION') { <button mat-button [disabled]="store.busy()" (click)="store.action('cancel')">Reconcile and cancel remote work</button> }
         @if (campaign.status === 'DRAFT' && !store.active()) { <button mat-flat-button (click)="store.action('start')">Start saved draft</button> }
         @if (campaign.status !== 'DRAFT' && !store.active()) { <button mat-button [disabled]="store.busy()" (click)="store.action('report')">Regenerate reports</button> }
       </div>
       <mat-progress-bar mode="determinate" [value]="100 * store.completed() / campaign.trials.length" />
       @if (campaign.executionHost; as host) { <p>Execution workers: {{ host.effectiveWorkers }} · Requested: {{ host.requestedWorkers === -1 ? 'Auto' : host.requestedWorkers }} · Host: {{ host.identity['hostname'] }}</p> }
-      @if (campaign.remote; as remote) { <p>Remote execution: {{ remote.host }} · {{ remote.status }} · Last sync: {{ remote.lastSynchronizedAt ? (remote.lastSynchronizedAt | date:'short') : 'Not synchronized' }}</p>@if (remote.failure) { <p class="error">{{ remote.failure }}</p> } }
+      @if (campaign.remote; as remote) { <p>Latest remote workload: {{ remote.host }} · {{ remote.stageDirectory }} · {{ remote.status }} · Last sync: {{ remote.lastSynchronizedAt ? (remote.lastSynchronizedAt | date:'short') : 'Not synchronized' }}</p>@if (remote.failure) { <p class="error">{{ remote.failure }}</p> } }
       @if (campaign.codexUsage; as usage) {
         <p class="codex-usage">Codex token usage · {{ usage.status }} · Input: {{ usage.tokens.inputTokens === null ? 'Unknown' : (usage.tokens.inputTokens | number) }} · Output: {{ usage.tokens.outputTokens === null ? 'Unknown' : (usage.tokens.outputTokens | number) }} · Total: {{ usage.tokens.totalTokens === null ? 'Unknown' : (usage.tokens.totalTokens | number) }}</p>
         <p>{{ usage.completeAttempts }}/{{ usage.attempts }} attempts have complete usage; {{ usage.partialAttempts }} partial, {{ usage.unavailableAttempts }} unavailable. Includes repairs and failed or interrupted attempts. @if (usage.status === 'PARTIAL') { Known totals may be incomplete. }</p>
       } @else { <p class="codex-usage">Codex token usage · UNAVAILABLE</p> }
       @if (campaign.failure) { <pre class="error">{{ campaign.failure }}</pre> }
+      @if (campaign.problem; as problem) { <p class="error">{{ problem.category }} · {{ problem.code }} · {{ problem.message }}</p><p>{{ problem.recovery }}</p> }
       @if (campaign.reportFailure) { <details><summary>Report export failed</summary><pre class="error">{{ campaign.reportFailure }}</pre></details> }
       <table><thead><tr><th>Trial</th><th>Stage / outcome</th><th>Tuning seed</th><th>Repairs</th><th>Inspect</th></tr></thead><tbody>
         @for (trial of campaign.trials; track trial.number) { <tr><td>{{ trial.number }}</td><td>{{ trial.status }}</td><td>{{ trial.tuningSeed }}</td><td>{{ trial.repairTurns }}</td><td><button mat-button (click)="store.selectTrial(trial.number)">Open trial</button></td></tr> }
@@ -71,12 +109,26 @@
     </mat-card-content></mat-card>
     @if (store.trial(); as trial) {
       <mat-card><mat-card-content><h2>Trial {{ trial.number }} · {{ trial.status }}</h2>
+        @if (store.progress(); as progress) { <p>{{ progress.substage || progress.status }} · {{ (progress.elapsedMillis || 0) / 1000 | number:'1.0-0' }} seconds · Infrastructure retries: {{ progress.infrastructureRetries || 0 }} · Component repairs: {{ trial.repairTurns }}</p> }
+        @if (store.generation(); as generation) {
+          <p>Generation: {{ generation.state }} · Session: {{ generation.threadId || 'Waiting for session event' }} · Last activity: {{ generation.lastActivityAt ? (generation.lastActivityAt | date:'mediumTime') : 'No events received' }}</p>
+          <p>Turns started: {{ generation.turns }} · Commands: {{ generation.commandsCompleted }} completed / {{ generation.commandsStarted }} started · Edit events: {{ generation.edits }} · Assistant messages: {{ generation.messages }}</p>
+          @if (generation.usage) { <p>Reported usage: {{ generation.usage | json }}</p> }
+          <p>These are observed CLI events. Component repair turns are counted separately; model iteration totals are unavailable.</p>
+        }
+        @if (store.conversationAttempt(); as attempt) {
+          <details open class="conversation"><summary>Conversation · {{ attempt.stage }} attempt {{ attempt.number }} · {{ attempt.status }}</summary>
+            <div class="activity-feed" aria-live="polite">@for (event of store.activity(); track $index) { <article><small>{{ event.timestamp | date:'mediumTime' }} · {{ event.type }}</small><pre>{{ event.text }}</pre></article> } @empty { <p>Waiting for conversation events. Raw stdout and stderr remain available below.</p> }</div>
+            <button mat-button (click)="store.selectLog(attempt.directory + '/stdout.log')">Raw stdout</button><button mat-button (click)="store.selectLog(attempt.directory + '/stderr.log')">Raw stderr</button>
+          </details>
+        }
         @if (trial.codexUsage; as usage) { <p>Trial token usage · {{ usage.status }} · Input: {{ usage.tokens.inputTokens === null ? 'Unknown' : (usage.tokens.inputTokens | number) }} · Output: {{ usage.tokens.outputTokens === null ? 'Unknown' : (usage.tokens.outputTokens | number) }}</p> }
         @if (store.tuning(); as tuning) { <p>{{ tuning.phase }} · {{ tuning.budget.used }}/{{ tuning.budget.maximum }} evaluations · {{ tuning.evaluations.succeeded }} succeeded · {{ tuning.evaluations.rejected }} rejected · {{ tuning.evaluations.failed }} failed</p><mat-progress-bar mode="determinate" [value]="100 * tuning.budget.used / tuning.budget.maximum" /> }
         @if (trial.failure) { <pre class="error">{{ trial.failure }}</pre> }
         @for (attempt of trial.attempts; track attempt.number) {
           <div class="attempt"><span>{{ attempt.stage }} · {{ attempt.status }} · {{ attempt.startedAt | date:'short' }}</span>
             <button mat-button (click)="store.selectLog(attempt.directory + (['PREPARATION'].includes(attempt.stage) ? '/build' : '') + '/stdout.log')">View log</button>
+            @if (['GENERATION', 'REPAIR'].includes(attempt.stage)) { <button mat-button (click)="store.watchGeneration(attempt.number)">View conversation</button> }
             @if (attempt.codexEvidence; as evidence) {
               <span>Conversation: {{ evidence.status }} · Usage: {{ evidence.usage.status }}</span>
               @for (conversation of evidence.conversations; track conversation.threadId) { <a [href]="store.artifactUrl(attempt.directory + '/' + conversation.path)">Download conversation {{ conversation.threadId }}</a> }
@@ -93,7 +145,7 @@
         }
       </mat-card-content></mat-card>
     }
-    @if (store.logPath()) { <mat-card><mat-card-content><h2>{{ store.logPath() }}</h2><pre class="logs">{{ store.logLines().join('\n') }}</pre></mat-card-content></mat-card> }
+    @if (store.logPath()) { <mat-card><mat-card-content><h2>{{ store.logPath() }}</h2><pre class="logs">{{ store.logText() }}</pre></mat-card-content></mat-card> }
     <mat-card><mat-card-content><div class="actions"><h2>Saved data and artifacts</h2><button mat-button (click)="store.refreshArtifacts()">Refresh artifacts</button></div>
       @for (artifact of store.artifacts(); track artifact.path) { <div class="artifact"><a [href]="store.artifactUrl(artifact.path)">{{ artifact.path }}</a><span>{{ artifact.size }} bytes</span>@if (artifact.path.endsWith('.log') || artifact.path.endsWith('.jsonl')) { <button mat-button (click)="store.selectLog(artifact.path)">View log</button> }</div> }
       <details><summary>Frozen campaign settings and versions</summary><pre>{{ campaign.config | json }}</pre><pre>{{ campaign.versions | json }}</pre></details>

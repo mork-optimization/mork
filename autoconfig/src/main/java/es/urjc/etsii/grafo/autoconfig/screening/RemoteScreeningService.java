@@ -16,17 +16,22 @@ public final class RemoteScreeningService {
                               long seed, String randomType, double trainingFraction, String originalPool) {}
     private final AutoLlmProcessRunner processes;
     private final AutoLlmExecutionService workloads;
-    public RemoteScreeningService(AutoLlmProcessRunner processes) { this.processes = processes; this.workloads = new AutoLlmExecutionService(processes); }
+    private final java.util.function.Consumer<Map<String,Object>> observer;
+    private final java.util.function.BooleanSupplier cancelled;
+    public RemoteScreeningService(AutoLlmProcessRunner processes, java.util.function.Consumer<Map<String,Object>> observer, java.util.function.BooleanSupplier cancelled) {
+        this.processes = processes; this.workloads = new AutoLlmExecutionService(processes); this.observer = observer; this.cancelled = cancelled;
+    }
 
     public void run(AutoLlmConfig config, InstanceScreeningConfig settings, InstanceConfiguration inputs, SolverConfig solver,
                     boolean approve, String reviewedHash, List<String> runArguments) throws IOException {
         Path output = Path.of(settings.output()).toAbsolutePath().normalize(); Files.createDirectories(output);
         String key = AutoLlmFileUtil.hash(new ByteArrayInputStream(output.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8))).substring(0, 24);
-        Path root = output.resolve("remote-" + key); Files.createDirectories(root);
+        Path root = output.resolve(config.execution().target().name().toLowerCase(Locale.ROOT) + "-" + key); Files.createDirectories(root);
         Path preparedFile = root.resolve("remote-screening.json");
         Path source = root.resolve("baseline/source"), artifact = source.resolve(config.project().artifact());
         Preparation preparation;
-        workloads.probe(config, root);
+        observer.accept(Map.of("phase", "PREFLIGHT", "mirror", root.toString()));
+        workloads.probe(config, root, settings.python());
         if (approve) {
             if (!Files.exists(preparedFile)) throw new IllegalStateException("Remote preparation has not completed");
             preparation = AutoLlmFileUtil.read(preparedFile, Preparation.class);
@@ -42,6 +47,7 @@ public final class RemoteScreeningService {
                 if (preparation.seed() != solver.getSeed() || !preparation.randomType().equals(solver.getRandomType().name()) || preparation.trainingFraction() != inputs.getPreliminarPercentage()) throw new IllegalStateException("Screening seeds or selection settings changed; choose a new output directory");
                 if (Files.exists(root.resolve("proposal/approved.json"))) throw new IllegalStateException("Selection is already approved; choose a new output directory to rescreen");
             } else {
+                observer.accept(Map.of("phase", "SOURCE", "mirror", root.toString()));
                 Path repository = Path.of(config.project().repository()).toAbsolutePath().normalize();
                 command(List.of("git", "rev-parse", "--verify", config.project().ref() + "^{commit}"), repository, root.resolve("ref"));
                 String commit = Files.readString(root.resolve("ref/stdout.log")).strip();
@@ -52,6 +58,7 @@ public final class RemoteScreeningService {
                 }
                 Files.createDirectories(root.resolve("control"));
                 Files.copy(Path.of(settings.sotaFile()), root.resolve("control/sota.json"), StandardCopyOption.REPLACE_EXISTING);
+                observer.accept(Map.of("phase", "INPUTS", "mirror", root.toString()));
                 var pool = new ArrayList<String>(); var original = new LinkedHashMap<String,Map<String,String>>();
                 String path = inputs.getForSelection() == null ? inputs.getPath("default") : inputs.getForSelection();
                 for (String token : InstancePathUtil.list(path)) {
@@ -64,8 +71,9 @@ public final class RemoteScreeningService {
                 }
                 Files.write(root.resolve("control/original.index"), pool); AutoLlmFileUtil.write(root.resolve("data/original-inputs.json"), original);
                 AutoLlmFileUtil.write(root.resolve("control/config.json"), config);
+                observer.accept(Map.of("phase", "BUILD", "mirror", root.toString()));
                 var result = workloads.run(config, root, config.project().buildCommand(), source, root.resolve("build"), source, List.of(artifact),
-                        config.execution().buildTimeoutMillis(), 0, false, 0, () -> Thread.currentThread().isInterrupted(), state -> {});
+                        config.execution().buildTimeoutMillis(), 0, false, 0, cancelled, state -> observer.accept(Map.of("phase", "BUILD", "remote", state, "mirror", root.toString())));
                 if (result.exitCode() != 0) throw new IllegalStateException("Remote screening baseline build failed; inspect " + root.resolve("build"));
                 preparation = new Preparation(commit, root.relativize(artifact).toString(), AutoLlmFileUtil.hash(artifact), AutoLlmFileUtil.hash(root.resolve("control/sota.json")), config, settings, runArguments,
                         solver.getSeed(), solver.getRandomType().name(), inputs.getPreliminarPercentage(), path);
@@ -106,10 +114,11 @@ public final class RemoteScreeningService {
         }
         AutoLlmFileUtil.write(operation, Map.of("directory", operationDirectory));
         Path jobOutput = root.resolve(operationDirectory);
+        observer.accept(Map.of("phase", approve ? "APPROVAL" : "SCREENING", "mirror", root.toString()));
         // Observation settings and proposal paths remain fixed across worker restarts.
         arguments.set(3, "-Dmork.execution.directory=" + jobOutput.resolve("execution"));
         var result = workloads.run(config, root, arguments, jobOutput, jobOutput, null, List.of(root.resolve("proposal")), config.execution().stageTimeoutMillis(),
-                0, false, 0, () -> Thread.currentThread().isInterrupted(), state -> {});
+                0, false, 0, cancelled, state -> observer.accept(Map.of("phase", approve ? "APPROVAL" : "SCREENING", "remote", state, "mirror", root.toString())));
         if (result.exitCode() != 0) throw new IllegalStateException("Remote screening operation failed; inspect " + jobOutput);
         System.out.println("Remote screening evidence: " + root.resolve("proposal"));
         if (!approve) {
@@ -118,7 +127,7 @@ public final class RemoteScreeningService {
         }
     }
     private void command(List<String> command, Path cwd, Path output) {
-        var result = processes.run(command, cwd, output, 300000, 0, 1000, () -> Thread.currentThread().isInterrupted(), false, 0);
+        var result = processes.run(command, cwd, output, 300000, 0, 1000, cancelled, false, 0);
         if (result.exitCode() != 0) throw new IllegalStateException("Source discovery failed; inspect " + output);
     }
 

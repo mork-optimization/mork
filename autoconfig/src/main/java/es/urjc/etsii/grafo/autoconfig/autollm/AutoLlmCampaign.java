@@ -8,12 +8,14 @@ import java.util.Map;
 
 /** Versioned JSON checkpoint. Mutations are serialized by the campaign service/store. */
 public class AutoLlmCampaign {
-    public int schemaVersion = 1;
+    public static final int SCHEMA_VERSION = 2;
+    public int schemaVersion = SCHEMA_VERSION;
     public String id;
     public AutoLlmConfig config;
     public String createdAt;
     public String status = "DRAFT";
     public String failure;
+    public AutoLlmFailureUtil.Failure problem;
     public String reportFailure;
     public String reportUpdatedAt;
     public String baselineCommit;
@@ -31,6 +33,8 @@ public class AutoLlmCampaign {
         public long comparisonSeed;
         public String status = "PENDING";
         public String failure;
+        public AutoLlmFailureUtil.Failure problem;
+        public int infrastructureRetries;
         public String threadId;
         public String blacklist;
         public String probeDirectory;
@@ -54,6 +58,8 @@ public class AutoLlmCampaign {
         public String startedAt;
         public String finishedAt;
         public String failure;
+        public AutoLlmFailureUtil.Failure problem;
+        public String substage;
         public CodexEvidenceUtil.Evidence codexEvidence;
     }
 }

@@ -16,6 +16,9 @@ public class AutoLlmFixture {
         if (args[0].equals("build")) { build(); return; }
         if (List.of(args).contains("--version")) { System.out.println("fixture-codex 1"); return; }
         String thread = args.length > 2 && args[1].equals("resume") ? args[2] : UUID.randomUUID().toString();
+        var json = new JsonMapper();
+        System.out.println(json.writeValueAsString(Map.of("type", "thread.started", "thread_id", thread)));
+        System.out.println("{\"type\":\"turn.started\"}"); System.out.flush();
         Path source = Path.of("src/main/java/es/urjc/etsii/grafo/autoconfigtests/components/FasterInvertedConstructiveNew.java");
         Files.createDirectories(source.getParent()); Files.writeString(source, """
                 package es.urjc.etsii.grafo.autoconfigtests.components;
@@ -26,7 +29,6 @@ public class AutoLlmFixture {
                 }
                 """);
         int output = List.of(args).indexOf("--output-last-message");
-        var json = new JsonMapper();
         Path session = Path.of(System.getenv("CODEX_HOME"), "sessions", "rollout-" + thread + ".jsonl");
         AutoLlmFileUtil.append(session, Map.of("type", "session_meta", "payload", Map.of("id", thread, "cwd", Path.of("").toAbsolutePath().toString(), "cli_version", "fixture-1")));
         AutoLlmFileUtil.append(session, Map.of("type", "turn_context", "payload", Map.of("model", "fixture-model")));
@@ -34,12 +36,14 @@ public class AutoLlmFixture {
         Path checkout = Path.of("").toAbsolutePath();
         Path helper = checkout.getParent().getParent().getParent().resolve("control/metadata-check-" + Integer.parseInt(checkout.getParent().getFileName().toString()) + ".py");
         if (Files.exists(helper)) {
-            var process = new ProcessBuilder("python3", helper.toString()).inheritIO().start();
+            System.out.println(json.writeValueAsString(Map.of("type", "item.started", "item", Map.of("type", "command_execution", "command", "metadata-check")))); System.out.flush();
+            Path log = checkout.resolve("helper.log");
+            var process = new ProcessBuilder("python3", helper.toString()).redirectErrorStream(true).redirectOutput(log.toFile()).start();
             if (!process.waitFor(120, java.util.concurrent.TimeUnit.SECONDS)) { process.destroyForcibly(); throw new IllegalStateException("Metadata helper timed out"); }
+            System.out.println(json.writeValueAsString(Map.of("type", "item.completed", "item", Map.of("type", "command_execution", "command", "metadata-check", "aggregated_output", Files.readString(log)))));
             if (process.exitValue() != 0) throw new IllegalStateException("Remote metadata helper failed");
         }
         Files.writeString(Path.of(args[output + 1]), json.writeValueAsString(Map.of("inventory", List.of("SimpleAlgorithm"), "metaheuristics", List.of("SimpleAlgorithm"), "components", List.of("FasterInvertedConstructiveNew"), "blacklist", "", "tests", List.of("fixture build"), "limitations", List.of("Deterministic fixture"))));
-        System.out.println(json.writeValueAsString(Map.of("type", "thread.started", "thread_id", thread)));
         System.out.println("{\"type\":\"turn.completed\"}");
     }
     private static void build() throws Exception {

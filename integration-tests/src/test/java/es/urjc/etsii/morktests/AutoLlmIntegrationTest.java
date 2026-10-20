@@ -45,29 +45,42 @@ class AutoLlmIntegrationTest {
             // The 32-worker fixture can oversubscribe a development host; allow its first objective before scoring.
             var settings = new AutoLlmConfig(new AutoLlmConfig.Project(repo.toString(), "HEAD", List.of(java, "-cp", cp, AutoLlmFixture.class.getName(), "build"), "target/project.jar", List.of("--whitelist=ACITestWhitelist", "--solver.benchmark=false")), workspace.toString(), 1, 1234L, 299,
                     "sota.json", null, "training.index", "training.index", new AutoLlmConfig.Codex(codex.toString(), null, null, null, null), new AutoLlmConfig.Preparation(30_000L, 0), new AutoLlmConfig.Tuning(300, remote ? 1000L : 50L, remote ? 100L : 50L, false), new AutoLlmConfig.Comparison(2, 50L), new AutoLlmConfig.Execution(remote ? 32 : 1, 5000L, 30_000L, 30_000L, 30_000L, 30_000L, 30_000L, 90_000L, "256m", remote ? AutoLlmConfig.Target.SSH : AutoLlmConfig.Target.LOCAL, ssh == null ? null : ssh.ssh));
-            if (remote) {
-                var input = new InstanceConfiguration(); input.setForSelection(repo.resolve("training.index").toString());
-                var solver = new SolverConfig(); solver.setSeed(1234L); solver.setRandomType(es.urjc.etsii.grafo.util.random.RandomType.DEFAULT);
-                var screening = new InstanceScreeningConfig(repo.resolve("sota.json").toString(), temp.resolve("screening").toString(), 0.000001, 3.0, 1000L, 1, 0.95, ssh.ssh.environment().get("MORK_SELECTOR_PYTHON"), 1, 1000L, null);
-                var service = new RemoteScreeningService(new AutoLlmProcessRunner());
-                var screeningConfig = new AutoLlmConfig(settings.project(), settings.workspace(), settings.trials(), settings.seed(), settings.maxParameters(), repo.resolve("sota.json").toString(), null,
-                        repo.resolve("training.index").toString(), repo.resolve("training.index").toString(), settings.codex(), settings.preparation(), settings.tuning(), settings.comparison(), settings.execution());
-                service.run(screeningConfig, screening, input, solver, false, null, List.of("fixture-screening"));
-                Path mirror; try (var files = Files.newDirectoryStream(temp.resolve("screening"), "remote-*")) { mirror = files.iterator().next(); }
-                assertFalse(Files.exists(mirror.resolve("proposal/approved.json")), "Preparation must not approve automatically");
-                String reviewed = AutoLlmFileUtil.hash(mirror.resolve("proposal/proposal.json"));
-                Path report = mirror.resolve("proposal/report.md"); byte[] originalReport = Files.readAllBytes(report);
-                Files.writeString(report, "changed after review");
-                assertThrows(IllegalStateException.class, () -> service.run(screeningConfig, screening, input, solver, true, reviewed, List.of("fixture-approval")));
-                assertFalse(Files.exists(mirror.resolve("proposal/approved.json"))); Files.write(report, originalReport);
-                service.run(screeningConfig, screening, input, solver, true, AutoLlmFileUtil.hash(mirror.resolve("proposal/proposal.json")), List.of("fixture-approval"));
-                settings = settings.withPaths(mirror.resolve("proposal/train.index").toString(), mirror.resolve("proposal/test.index").toString());
-            }
+            var capabilities = get(client, base + "/capabilities");
+            assertEquals(2, capabilities.path("apiVersion").asInt()); assertEquals(2, capabilities.path("checkpointVersion").asInt());
+            assertTrue(Files.exists(workspace.resolve("session.json")));
+            String python = remote ? ssh.ssh.environment().get("MORK_SELECTOR_PYTHON") : Path.of("../example-tsptw/venv/bin/python3").toAbsolutePath().normalize().toString();
+            var screening = new InstanceScreeningConfig(repo.resolve("sota.json").toString(), null, 0.000001, 3.0, 1000L, 1, 0.95, python, 1, 1000L, null);
+            var screeningRequest = new ScreeningJobService.Request(settings, screening, repo.resolve("training.index").toString(), 0.15);
+            String screeningId = request(client, base + "/screenings", AutoLlmFileUtil.JSON.writeValueAsString(screeningRequest)).path("id").asString();
+            assertEquals("DRAFT", get(client, base + "/screenings/" + screeningId).path("status").asString());
+            request(client, base + "/screenings/" + screeningId + "/resume", "{}");
+            tools.jackson.databind.JsonNode selection;
+            do { Thread.sleep(200); selection = get(client, base + "/screenings/" + screeningId); }
+            while (List.of("RUNNING", "WAITING_FOR_REMOTE", "CANCELLATION_PENDING").contains(selection.path("status").asString()) && System.currentTimeMillis() < deadline);
+            assertEquals("AWAITING_APPROVAL", selection.path("status").asString(), selection.toString());
+            assertEquals(1, selection.path("progress").path("initialTotal").asInt());
+            assertEquals(1, selection.path("progress").path("initialCompleted").asInt());
+            Path mirror = Path.of(selection.path("mirror").asString());
+            assertFalse(Files.exists(mirror.resolve("proposal/approved.json")), "Preparation must not approve automatically");
+            var review = get(client, base + "/screenings/" + screeningId + "/review");
+            assertEquals(1, review.path("proposal").path("trainingCount").asInt()); assertEquals(1, review.path("proposal").path("testingCount").asInt());
+            String approvalUrl = base + "/screenings/" + screeningId + "/approve";
+            var stale = client.send(HttpRequest.newBuilder(URI.create(approvalUrl)).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString("{\"proposalSha256\":\"stale\"}")).build(), HttpResponse.BodyHandlers.ofString());
+            assertEquals(400, stale.statusCode()); assertFalse(Files.exists(mirror.resolve("proposal/approved.json")));
+            request(client, approvalUrl, AutoLlmFileUtil.JSON.writeValueAsString(Map.of("proposalSha256", review.path("proposalSha256").asString())));
+            do { Thread.sleep(200); selection = get(client, base + "/screenings/" + screeningId); }
+            while (List.of("RUNNING", "WAITING_FOR_REMOTE", "CANCELLATION_PENDING").contains(selection.path("status").asString()) && System.currentTimeMillis() < deadline);
+            assertEquals("APPROVED", selection.path("status").asString(), selection.toString());
+            while (get(client, base + "/screenings").path("active").asString().equals(screeningId) && System.currentTimeMillis() < deadline) Thread.sleep(100);
+            settings = settings.withPaths(mirror.resolve("proposal/train.index").toString(), mirror.resolve("proposal/test.index").toString());
             var created = request(client, base + "/campaigns", AutoLlmFileUtil.JSON.writeValueAsString(settings));
             String id = created.path("id").stringValue();
             var metadata = request(client, base + "/campaigns/" + id + "/baseline-check", "{}"); assertTrue(metadata.path("withinLimit").asBoolean());
             var draft = AutoLlmFileUtil.read(workspace.resolve(id).resolve("campaign.json"), AutoLlmCampaign.class); assertEquals("DRAFT", draft.status);
             assertNotEquals("HEAD", draft.config.project().ref());
+            assertTrue(Files.exists(workspace.resolve(id).resolve("baseline-preflight/reproducibility/verified.json")));
+            var summary = get(client, base + "/campaigns/" + id + "/summary"); assertTrue(summary.path("comparisonLimitsResolved").asBoolean());
+            assertEquals(50, summary.path("comparisonLimitMillis").get(0).asInt());
             request(client, base + "/campaigns/" + id + "/start", "{}");
             AutoLlmCampaign campaign;
             do {
@@ -101,6 +114,10 @@ class AutoLlmIntegrationTest {
             assertEquals("COMPLETE", regenerated.path("codexUsage").path("status").stringValue());
             assertEquals(20, regenerated.path("codexUsage").path("tokens").path("totalTokens").longValue());
             var evidence = trial.attempts.getFirst().codexEvidence;
+            var progress = get(client, base + "/campaigns/" + id + "/trials/1/progress");
+            assertEquals("SUCCEEDED", progress.path("status").asString());
+            var activity = get(client, base + "/campaigns/" + id + "/trials/1/activity?attempt=1&cursor=0");
+            assertTrue(activity.path("text").asString().contains("thread.started")); assertTrue(activity.path("nextCursor").asLong() > 0);
             assertEquals("ARCHIVED", evidence.status()); assertEquals("fixture-model", evidence.conversations().getFirst().models().getFirst());
             String archive = trial.attempts.getFirst().directory + "/" + evidence.conversations().getFirst().path();
             var downloaded = client.send(HttpRequest.newBuilder(URI.create(base + "/campaigns/" + id + "/artifact?path=" + archive)).GET().build(), HttpResponse.BodyHandlers.ofString());
@@ -113,6 +130,10 @@ class AutoLlmIntegrationTest {
             }
         } finally { parent.destroy(); if (!parent.waitFor(5, TimeUnit.SECONDS)) parent.destroyForcibly(); new AutoLlmProcessRunner().reconcile(workspace); }
         }
+    }
+    private tools.jackson.databind.JsonNode get(HttpClient client, String url) throws Exception {
+        var response = client.send(HttpRequest.newBuilder(URI.create(url)).GET().build(), HttpResponse.BodyHandlers.ofString());
+        assertEquals(200, response.statusCode(), response.body()); return AutoLlmFileUtil.JSON.readTree(response.body());
     }
     private tools.jackson.databind.JsonNode request(HttpClient client, String url, String json) throws Exception {
         var response = client.send(HttpRequest.newBuilder(URI.create(url)).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build(), HttpResponse.BodyHandlers.ofString());

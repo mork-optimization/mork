@@ -109,13 +109,14 @@ class AlgorithmCandidateGeneratorValidationTest {
     }
 
     @Test
-    void collectionComponentParamRejectsInvalidOrUnsatisfiedBounds() throws NoSuchMethodException {
+    void collectionComponentParamRejectsInvalidBoundsButDefersAvailabilityToTreePruning() throws NoSuchMethodException {
         assertThrows(IllegalArgumentException.class,
                 () -> generator.toComponentParameter(improverTypes(), firstParameter(NegativeMinHolder.class)));
         assertThrows(IllegalArgumentException.class,
                 () -> generator.toComponentParameter(improverTypes(), firstParameter(ReversedBoundsHolder.class)));
-        assertThrows(IllegalArgumentException.class,
-                () -> generator.toComponentParameter(improverTypes(), firstParameter(UnsatisfiedMinHolder.class)));
+        var parameter = generator.toComponentParameter(improverTypes(), firstParameter(UnsatisfiedMinHolder.class));
+        assertEquals(2, parameter.getMin());
+        assertEquals(1, parameter.getValues().length);
     }
 
     @Test

@@ -23,17 +23,20 @@ public class AutoLlmProcessRunner {
             long begin = System.currentTimeMillis();
             boolean planned = false;
             try {
+                process.getOutputStream().close();
                 var start = process.info().startInstant().map(Instant::toString).orElse("");
                 if (start.isEmpty() && process.isAlive()) throw new IllegalStateException("Cannot establish child process identity");
                 AutoLlmFileUtil.write(output.resolve("owner.json"), Map.of("pid", process.pid(), "start", start, "command", command,
                         "executionTarget", Boolean.getBoolean("mork.execution.remote") ? "SSH" : "LOCAL"));
                 while (!process.waitFor(100, TimeUnit.MILLISECONDS)) {
+                    if (Files.exists(output.resolve("codex-launch.json"))) CodexProgressUtil.refresh(output);
                     if (cancelled.getAsBoolean() || Thread.currentThread().isInterrupted()) throw new CancellationException("Campaign cancelled");
                     long now = System.currentTimeMillis();
                     if (now - begin > timeoutMillis) throw new IllegalStateException("Stage exceeded its hard timeout");
                     if (watchEvaluations) checkDeadlines(output.resolve("execution/active.json"), now, graceMillis);
                     Path ready = output.resolve("execution/readiness.json");
-                    if (startupMillis > 0 && !Files.exists(ready) && now - begin > startupMillis) throw new IllegalStateException("Child did not become ready before startup timeout");
+                    if (startupMillis > 0 && !Files.exists(ready) && now - begin > startupMillis) throw AutoLlmFailureUtil.error(
+                            AutoLlmFailureUtil.Category.INFRASTRUCTURE, "STARTUP_TIMEOUT", "Child did not become ready before startup timeout", output);
                     if (plannedMillis > 0 && Files.exists(ready)) {
                         long readyAt = AutoLlmFileUtil.JSON.readTree(Files.readString(ready)).path("startedAtMillis").longValue();
                         if (!planned && now - readyAt >= plannedMillis) {
@@ -46,6 +49,7 @@ public class AutoLlmProcessRunner {
                         }
                     }
                 }
+                if (Files.exists(output.resolve("codex-launch.json"))) CodexProgressUtil.refresh(output);
                 AutoLlmFileUtil.unfinished(output, "FAILED", "Child exited with unfinished evaluations");
                 return new Result(process.exitValue(), planned, System.currentTimeMillis() - begin);
             } catch (RuntimeException | InterruptedException failure) {
@@ -65,7 +69,11 @@ public class AutoLlmProcessRunner {
     private void checkDeadlines(Path file, long now, long grace) throws IOException {
         if (!Files.exists(file)) return;
         for (var entry : AutoLlmFileUtil.JSON.readTree(Files.readString(file)).properties()) {
-            if (now > entry.getValue().path("deadline").longValue() + grace) throw new IllegalStateException("Hung evaluation " + entry.getKey() + " in phase " + entry.getValue().path("phase").stringValue());
+            if (now > entry.getValue().path("deadline").longValue() + grace) {
+                String phase = entry.getValue().path("phase").asString();
+                throw AutoLlmFailureUtil.error(phase.equals("RUNNING") ? AutoLlmFailureUtil.Category.COMPONENT : AutoLlmFailureUtil.Category.UNKNOWN,
+                        "EVALUATION_TIMEOUT", "Hung evaluation " + entry.getKey() + " in phase " + phase, file);
+            }
         }
     }
     public void reconcile(Path campaign) {

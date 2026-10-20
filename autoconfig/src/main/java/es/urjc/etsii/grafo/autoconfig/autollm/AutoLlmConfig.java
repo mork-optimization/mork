@@ -63,6 +63,8 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
         public Ssh {
             javaExecutable = javaExecutable == null ? "java" : javaExecutable;
             environment = environment == null ? Map.of() : Map.copyOf(environment);
+            configFile = configFile == null || configFile.isBlank() ? null : configFile;
+            runnerArtifact = runnerArtifact == null || runnerArtifact.isBlank() ? null : runnerArtifact;
         }
     }
     public AutoLlmConfig withPaths(String training, String comparison) {

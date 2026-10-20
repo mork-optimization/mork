@@ -34,8 +34,25 @@ class AutoLlmArtifactTest {
         reversed.put("META-INF/MANIFEST.MF", "Manifest-Version: 1.0\nChanged: true\n");
         assertNotEquals(baseline.contentSha256(), AutoLlmFileUtil.dependencyHashes(artifact("manifest.jar", reversed, 1_700_100_000_000L)).contentSha256());
     }
+    @Test void aspectJBuildPathsDoNotChangeSemanticFingerprintButOtherResourcesDo() throws Exception {
+        var entries = new LinkedHashMap<String,String>(); entries.put("library/Algorithm.class", "bytecode");
+        entries.put("builddef.lst", "/baseline/source -classpath /baseline/source/target/classes");
+        Path first = artifact("baseline.jar", entries, 1_700_000_000_000L, "mork-0.23-SNAPSHOT.jar");
+        entries.put("builddef.lst", "/trials/001/source -classpath /trials/001/source/target/classes");
+        Path trial = artifact("trial.jar", entries, 1_700_100_000_000L, "mork-0.23-SNAPSHOT.jar");
+        var baseline = AutoLlmFileUtil.dependencyHashes(first); var rebuilt = AutoLlmFileUtil.dependencyHashes(trial);
+        assertEquals(2, baseline.version()); assertEquals(baseline.contentSha256(), rebuilt.contentSha256());
+        assertNotEquals(baseline.sha256(), rebuilt.sha256()); assertNotEquals(baseline.buildMetadataSha256(), rebuilt.buildMetadataSha256());
+        entries.put("runtime.properties", "changed=true");
+        Path changed = artifact("changed-resource.jar", entries, 1_700_100_000_000L, "mork-0.23-SNAPSHOT.jar");
+        assertNotEquals(baseline.contentSha256(), AutoLlmFileUtil.dependencyHashes(changed).contentSha256());
+        assertTrue(AutoLlmFileUtil.dependencyDifferences(first, changed).contains("BOOT-INF/lib/mork-0.23-SNAPSHOT.jar!/runtime.properties"));
+    }
 
     private Path artifact(String name, Map<String,String> entries, long timestamp) throws Exception {
+        return artifact(name, entries, timestamp, "library.jar");
+    }
+    private Path artifact(String name, Map<String,String> entries, long timestamp, String dependency) throws Exception {
         var library = new ByteArrayOutputStream();
         try (var zip = new ZipOutputStream(library)) {
             for (var entry : entries.entrySet()) {
@@ -45,7 +62,7 @@ class AutoLlmArtifactTest {
         }
         Path path = temp.resolve(name);
         try (var zip = new ZipOutputStream(Files.newOutputStream(path))) {
-            zip.putNextEntry(new ZipEntry("BOOT-INF/lib/library.jar")); zip.write(library.toByteArray()); zip.closeEntry();
+            zip.putNextEntry(new ZipEntry("BOOT-INF/lib/" + dependency)); zip.write(library.toByteArray()); zip.closeEntry();
         }
         return path;
     }

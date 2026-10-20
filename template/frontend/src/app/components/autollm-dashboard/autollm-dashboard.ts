@@ -20,6 +20,8 @@ export class AutoLlmDashboard {
   readonly selectedInstance = signal('');
   readonly selectedObjective = signal('');
   readonly executionChoice = signal('');
+  readonly originalPool = signal('');
+  readonly trainingFraction = signal(0.15);
   readonly curves = computed(() => (this.store.comparison()?.['curves'] ?? []) as CurveRow[]);
   readonly instances = computed(() => [...new Set(this.curves().map(row => row.instance))]);
   readonly objectives = computed(() => [...new Set(this.curves().flatMap(row => Object.keys(row.curves)))]);

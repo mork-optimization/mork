@@ -50,6 +50,25 @@ class SshWorkloadTest {
         root = temp.resolve("local mirror").toAbsolutePath(); Files.createDirectories(root);
     }
     @AfterEach void stopSsh() { if (server != null) server.destroyForcibly(); }
+    @Test void collectsEarlySpringFailureWithItsOriginalClassification() throws Exception {
+        Path baseline = root.resolve("baseline.json");
+        AutoLlmFileUtil.write(baseline, List.of());
+        Path output = root.resolve("startup failure");
+        String remote = WorkloadPathUtil.remoteRoot(config, root);
+        var command = List.of(java, "-Dmork.execution.directory=" + remote + "/startup failure/execution",
+                "-cp", System.getProperty("java.class.path"), "mork.startupfixture.StartupFailureFixture",
+                "--advanced.scan-pkgs=mork.startupfixture", "--spring.main.web-application-type=none",
+                "--autollm.child.baseline-components-file=" + remote + "/baseline.json");
+        var work = new AutoLlmWorkloadExecutor.Workload(command, root, output, Map.of("baseline.json", baseline), List.of(), List.of(), 30000, 0, 100, true, 15000);
+        var result = new SshWorkloadExecutor(config, root, new SshTransport(config, temp.resolve("transport")), state -> {}).run(work, () -> false);
+        assertNotEquals(0, result.exitCode());
+        assertTrue(Files.exists(output.resolve("collection-completed.json")));
+        var failure = AutoLlmFileUtil.read(output.resolve("execution/failure.json"), AutoLlmFailureUtil.Failure.class);
+        assertEquals(AutoLlmFailureUtil.Category.COMPONENT, failure.category());
+        assertEquals("INVALID_COMPONENT_DEFINITION", failure.code());
+        assertFalse(Files.exists(output.resolve("execution/readiness.json")));
+        assertEquals("FAILED", AutoLlmFileUtil.JSON.readTree(Files.readString(output.resolve("execution/terminal.json"))).path("outcome").asString());
+    }
     @Test void reconnectsWithoutDuplicateSubmissionAndPreservesLiteralArguments() throws Exception {
         var submissions = new AtomicInteger(); var disconnected = new AtomicBoolean();
         SshTransport transport = new SshTransport(config, temp.resolve("transport")) {
@@ -120,7 +139,7 @@ class SshWorkloadTest {
         assertNotEquals(old, AutoLlmFileUtil.JSON.readTree(Files.readString(work.output().resolve("remote-job.json"))).path("id").asString());
     }
     @Test void anUnexpectedHostIsRejectedBeforeExecutingTheWorkload() {
-        AutoLlmFileUtil.write(root.resolve("execution-target.json"), new WorkloadProtocol.Host(1, Map.of("cpu", "different server"), 32, 32, 1));
+        AutoLlmFileUtil.write(root.resolve("execution-target.json"), new WorkloadProtocol.Host(WorkloadProtocol.VERSION, Map.of("cpu", "different server"), 32, 32, 1, 1, 1, List.of()));
         var executor = new SshWorkloadExecutor(config, root, new SshTransport(config, temp.resolve("transport")), state -> {});
         assertThrows(ExecutionTargetException.class, () -> executor.run(workload("success", "must not execute"), () -> false));
         assertFalse(Files.exists(root.resolve("output with spaces/literal.txt")));
@@ -131,9 +150,41 @@ class SshWorkloadTest {
         AutoLlmFileUtil.write(root.resolve("execution-target.json"), host);
         Files.delete(Path.of(config.execution().ssh().runnerArtifact()));
         var service = new AutoLlmExecutionService(new AutoLlmProcessRunner());
-        assertEquals(host, service.probe(config, root));
+        var reattached = service.probe(config, root);
+        assertEquals(host.identity(), reattached.identity()); assertEquals(host.effectiveWorkers(), reattached.effectiveWorkers());
+        assertTrue(reattached.usableDiskBytes() > 0);
         Path frozen = root.resolve(".transport/runner.jar"); Files.writeString(frozen, "changed frozen runner");
         assertThrows(IllegalStateException.class, () -> service.probe(config, root));
+    }
+    @Test void persistentDisconnectionLeavesOneSavedJobForDirectCancellation() throws Exception {
+        var submissions = new AtomicInteger();
+        var transport = new SshTransport(config, temp.resolve("transport")) {
+            @Override public byte[] call(String action, String remote, String id, Object input) {
+                if (action.equals("submit")) submissions.incrementAndGet();
+                if (action.equals("poll")) throw new ConnectionException("offline after submit");
+                return super.call(action, remote, id, input);
+            }
+        };
+        var failure = assertThrows(AutoLlmFailureUtil.StageException.class, () -> new SshWorkloadExecutor(config, root, transport, state -> {}).run(workload("wait", "saved"), () -> false));
+        assertEquals("REMOTE_UNREACHABLE", failure.failure().code()); assertEquals(1, submissions.get());
+        assertEquals(2, AutoLlmFileUtil.JSON.readTree(Files.readString(root.resolve("output with spaces/remote-status.json"))).path("connectionRetries").asInt());
+        Path descriptor = root.resolve("output with spaces/remote-job.json"); String checksum = AutoLlmFileUtil.hash(descriptor);
+        assertTrue(AutoLlmCampaignStore.hasUncollectedJobs(root));
+        new AutoLlmExecutionService(new AutoLlmProcessRunner()).cancelOutstanding(config, root, state -> {});
+        assertEquals(checksum, AutoLlmFileUtil.hash(descriptor)); assertFalse(AutoLlmCampaignStore.hasUncollectedJobs(root));
+        assertEquals("CANCELLED", AutoLlmFileUtil.read(descriptor.resolveSibling("remote-status.json"), Map.class).get("status"));
+    }
+    @Test void resultDownloadRetriesAreBoundedAndResumeCollectsSameCompletedJob() {
+        var downloads = new AtomicInteger();
+        var transport = new SshTransport(config, temp.resolve("transport")) {
+            @Override public void download(String remote, String id, Path target) { downloads.incrementAndGet(); throw new ConnectionException("result transfer unavailable"); }
+        };
+        var work = workload("success", "completed once");
+        var failure = assertThrows(AutoLlmFailureUtil.StageException.class, () -> new SshWorkloadExecutor(config, root, transport, state -> {}).run(work, () -> false));
+        assertEquals("REMOTE_UNREACHABLE", failure.failure().code()); assertEquals(3, downloads.get());
+        Path descriptor = work.output().resolve("remote-job.json"); String checksum = AutoLlmFileUtil.hash(descriptor);
+        assertEquals(0, new SshWorkloadExecutor(config, root, new SshTransport(config, temp.resolve("transport")), state -> {}).run(work, () -> false).exitCode());
+        assertEquals(checksum, AutoLlmFileUtil.hash(descriptor)); assertFalse(AutoLlmCampaignStore.hasUncollectedJobs(root));
     }
     private void awaitReady() throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);

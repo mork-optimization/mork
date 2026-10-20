@@ -22,6 +22,8 @@ final class ScreeningWorker<S extends Solution<S,I>, I extends Instance> {
     private final SolutionBuilder<S,I> solutions;
     private final SolutionValidator<S,I> validator;
     private boolean warmedUp;
+    private int initialCompleted, initialTotal, confirmationsCompleted, confirmationsTotal;
+    private String phase;
     ScreeningWorker(InstanceManager<I> instances, AlgorithmBuilderService algorithms, SolutionBuilder<S,I> solutions,
             SolutionValidator<S,I> validator) {
         this.instances = instances; this.algorithms = algorithms; this.solutions = solutions; this.validator = validator;
@@ -33,6 +35,7 @@ final class ScreeningWorker<S extends Solution<S,I>, I extends Instance> {
         screen(AutoLlmFileUtil.read(jobFile, Job.class));
     }
     void screen(Job job) throws IOException {
+        initialCompleted = 0; initialTotal = 0; confirmationsCompleted = 0; confirmationsTotal = 0;
         var config = job.manifest().settings();
         Path output = Path.of(job.output());
         String sota = Files.readString(output.resolve("sota.json"));
@@ -43,24 +46,32 @@ final class ScreeningWorker<S extends Solution<S,I>, I extends Instance> {
         Context.Configurator.setValidator(validator);
         Context.Configurator.enableValidation();
         Metrics.enableMetrics();
+        initialTotal = job.manifest().inputs().size(); phase = "INITIAL";
         // Finish the complete initial pass before starting any confirmations.
         int completed = 0;
         for (Input input : job.manifest().inputs()) {
             runSeeds(job, input, List.of(job.manifest().seed()), sota);
             System.out.println("Initial measurements: " + ++completed + "/" + job.manifest().inputs().size());
+            initialCompleted = completed; progress(job);
         }
         System.out.println("Initial pass complete; starting confirmations");
         var seeds = new ArrayList<Long>();
         for (int i = 1; i <= config.confirmationRuns(); i++) seeds.add(job.manifest().seed() + i);
+        for (Input input : job.manifest().inputs()) if (ScreeningUtil.candidate(ScreeningFileUtil.readRun(output, job.manifest(), input, job.manifest().seed()), config, job.manifest().mode())) confirmationsTotal += seeds.size();
+        phase = "CONFIRMATIONS"; progress(job);
         for (Input input : job.manifest().inputs()) {
             Run initial = ScreeningFileUtil.readRun(output, job.manifest(), input, job.manifest().seed());
             if (ScreeningUtil.candidate(initial, config, job.manifest().mode())) runSeeds(job, input, seeds, sota);
         }
+        phase = "MEASUREMENTS_COMPLETE"; progress(job);
     }
     private void runSeeds(Job job, Input input, List<Long> seeds, String sota) {
         Path output = Path.of(job.output());
         var pending = new ArrayList<Long>();
-        for (long seed : seeds) if (ScreeningFileUtil.readRun(output, job.manifest(), input, seed) == null) pending.add(seed);
+        for (long seed : seeds) {
+            if (ScreeningFileUtil.readRun(output, job.manifest(), input, seed) == null) pending.add(seed);
+            else if (seed != job.manifest().seed()) confirmationsCompleted++;
+        }
         if (pending.isEmpty()) return;
         if (!input.sha256().equals(ScreeningFileUtil.inputHash(input.path()))) {
             throw new IllegalStateException("Frozen input changed before worker execution: " + input.path());
@@ -72,22 +83,30 @@ final class ScreeningWorker<S extends Solution<S,I>, I extends Instance> {
         } catch (RuntimeException failure) {
             for (long seed : pending) ScreeningFileUtil.writeRun(output, new Run(job.manifest().fingerprint(),
                     input.path(), seed, false, null, 0, List.of(), "Loading failed: " + failure));
+            if (phase.equals("CONFIRMATIONS")) confirmationsCompleted += pending.size(); progress(job);
             return;
         } finally {
             ExecutionJournalUtil.finished("load", Map.of("state", "FINISHED"));
         }
         if (!warmedUp) {
+            String previous = phase; phase = "WARMUP"; progress(job);
             for (int i = 0; i < job.manifest().settings().warmupRepetitions(); i++) {
                 Run result = measure(job.manifest(), input, instance, sota, job.manifest().seed() - 1000 - i,
                         job.manifest().settings().warmupMillis());
                 if (!result.success()) throw new IllegalStateException("Warm-up failed: " + result.failure());
             }
             warmedUp = true;
+            phase = previous;
         }
         for (long seed : pending) {
             Run result = measure(job.manifest(), input, instance, sota, seed, job.manifest().settings().horizonMillis());
             ScreeningFileUtil.writeRun(output, result);
+            if (phase.equals("CONFIRMATIONS")) confirmationsCompleted++; progress(job);
         }
+    }
+    private void progress(Job job) {
+        ScreeningProgressUtil.update(Path.of(job.output()), phase, Map.of("initialCompleted", initialCompleted, "initialTotal", initialTotal,
+                "confirmationsCompleted", confirmationsCompleted, "confirmationsTotal", confirmationsTotal, "workers", 1));
     }
     @SuppressWarnings("unchecked")
     Run measure(Manifest manifest, Input input, I instance, String sota, long seed, long millis) {

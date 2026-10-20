@@ -122,14 +122,16 @@ public class AlgorithmInventoryService {
                 continue;
             }
             String componentName = type.getSimpleName();
-            if(!this.filterStrategy.include(type)){
+            boolean included = this.filterStrategy.include(type);
+            // Keep the type known even when the filter removes all its implementations.
+            classify(componentsByType, type, included);
+            if(!included){
                 log.debug("Ignoring component {} because it is excluded by filter {}", componentName, this.filterStrategy.getClass().getSimpleName());
                 continue;
             }
             checkComponentName(failedValidationSet, componentName);
             throwIfKnown(componentName, true, false);
             componentByName.put(componentName, type);
-            classify(componentsByType, type);
         }
         if(!failedValidationSet.isEmpty()){
             throw new IllegalArgumentException("Invalid component names detected: " + failedValidationSet);
@@ -141,10 +143,11 @@ public class AlgorithmInventoryService {
         return Modifier.isPublic(clazz.getModifiers());
     }
 
-    private static void classify(Map<Class<?>, Collection<Class<?>>> componentsByType, Class<?> initialType) {
+    private static void classify(Map<Class<?>, Collection<Class<?>>> componentsByType, Class<?> initialType, boolean included) {
         for (Class<?> type = initialType; type != null; type = type.getSuperclass()){
             if(!ReflectionUtil.isObjectClass(type)){
-                componentsByType.computeIfAbsent(type, a -> new HashSet<>()).add(initialType);
+                var candidates = componentsByType.computeIfAbsent(type, a -> new HashSet<>());
+                if (included) candidates.add(initialType);
             }
         }
     }

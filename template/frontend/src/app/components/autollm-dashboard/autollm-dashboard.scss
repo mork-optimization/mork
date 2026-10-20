@@ -16,3 +16,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height
 .attempt { padding: .5rem 0; }
 .artifact { padding: .25rem 0; }
 .artifact a { overflow-wrap: anywhere; }
+.activity-feed { max-height: 32rem; overflow: auto; padding: .75rem; background: var(--mat-sys-surface-container-low); }
+.activity-feed article { margin-bottom: 1rem; border-bottom: 1px solid var(--mat-sys-outline-variant); }
+.activity-feed pre, .screening-report { white-space: pre-wrap; overflow-wrap: anywhere; }
+.budget-summary { line-height: 1.6; }

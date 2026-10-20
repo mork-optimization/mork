@@ -30,7 +30,7 @@ public final class RemoteWorkloadMain {
             case "identify" -> print(Map.of("version", VERSION, "sha256", AutoLlmFileUtil.hash(Path.of(System.getProperty("java.class.path")))));
             case "identity" -> {
                 var config = AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), AutoLlmConfig.class);
-                print(new Host(VERSION, ScreeningFileUtil.host(), config.execution().workers(), ConcurrencyUtil.resolveWorkerCount(config.execution().workers(), Runtime.getRuntime().availableProcessors()), Runtime.getRuntime().maxMemory()));
+                print(TargetPreflightUtil.identity(config, root, List.of()));
             }
             case "has" -> {
                 Path file = WorkloadPathUtil.inside(root, id);
@@ -40,15 +40,7 @@ public final class RemoteWorkloadMain {
                 try (var channel = FileChannel.open(root.getParent().getParent().resolve("execution.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.tryLock()) {
                 if (lock == null) throw new IllegalStateException("Another remote workload owns this workspace; wait before preflight");
                 var config = AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), AutoLlmConfig.class);
-                var settings = config.execution();
-                var commands = new ArrayList<>(List.of(List.of("git", "--version"), List.of("Rscript", "-e", "stopifnot(requireNamespace('irace',quietly=TRUE),requireNamespace('httr',quietly=TRUE),requireNamespace('jsonlite',quietly=TRUE))"),
-                        List.of(settings.ssh().environment().getOrDefault("MORK_SELECTOR_PYTHON", "python3"), "-c", "import numpy,pandas,sklearn,yellowbrick,matplotlib,seaborn")));
-                if (Set.of("mvn", "gradle").contains(config.project().buildCommand().getFirst())) commands.add(List.of(config.project().buildCommand().getFirst(), "--version"));
-                for (var command : commands) {
-                    var result = new AutoLlmProcessRunner().run(command, root, root.resolve(".preflight/" + command.getFirst()), 30000, 0, 1000, () -> false, false, 0);
-                    if (result.exitCode() != 0) throw new IllegalStateException("Remote prerequisite failed: " + command.getFirst());
-                }
-                print(new Host(VERSION, ScreeningFileUtil.host(), settings.workers(), ConcurrencyUtil.resolveWorkerCount(settings.workers(), Runtime.getRuntime().availableProcessors()), Runtime.getRuntime().maxMemory()));
+                print(TargetPreflightUtil.inspect(config, root, new AutoLlmProcessRunner(), id.isEmpty() ? null : id));
                 }
             }
             case "put" -> {
@@ -140,12 +132,23 @@ public final class RemoteWorkloadMain {
                     for (var entry : job.environment().entrySet()) command.add(entry.getKey() + "=" + entry.getValue());
                 }
                 command.addAll(job.command());
+                String executable = job.command().getFirst();
+                if (executable.endsWith("/mvnw") || executable.endsWith("/gradlew")) {
+                    var wrapper = new ArrayList<>(command.subList(0, command.size() - job.command().size()));
+                    wrapper.add(executable); wrapper.add("--version");
+                    Path evidence = WorkloadPathUtil.inside(root, job.output()).resolve("wrapper-preflight");
+                    var version = new AutoLlmProcessRunner().run(wrapper, WorkloadPathUtil.inside(root, job.cwd()), evidence, job.timeoutMillis(), 0, job.graceMillis(), () -> Files.exists(directory.resolve("cancel")), false, 0);
+                    if (version.exitCode() != 0) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE, "BUILD_WRAPPER", "Committed build wrapper did not run; inspect its version diagnostics", evidence);
+                }
                 result = new AutoLlmProcessRunner().run(command, WorkloadPathUtil.inside(root, job.cwd()), WorkloadPathUtil.inside(root, job.output()),
                         job.timeoutMillis(), job.plannedMillis(), job.graceMillis(), () -> Files.exists(directory.resolve("cancel")), job.watchEvaluations(), job.startupMillis());
                 outcome = result.exitCode() == 0 || result.plannedDeadline() ? "SUCCEEDED" : "FAILED";
             } catch (CancellationException e) { outcome = "CANCELLED"; failure = e.toString(); }
             catch (ExecutionTargetException e) { outcome = "HOST_CHANGED"; failure = e.toString(); }
-            catch (Exception e) { failure = e.toString(); }
+            catch (Exception e) {
+                failure = e.toString();
+                if (e instanceof RuntimeException problem) AutoLlmFileUtil.write(WorkloadPathUtil.inside(root, job.output()).resolve("execution/failure.json"), AutoLlmFailureUtil.describe(problem, WorkloadPathUtil.inside(root, job.output())));
+            }
             var files = new TreeMap<String,Path>();
             WorkloadArchiveUtil.addTree(files, root, WorkloadPathUtil.inside(root, job.output()), false);
             for (String path : job.collect()) WorkloadArchiveUtil.addTree(files, root, WorkloadPathUtil.inside(root, path), false);
@@ -224,7 +227,11 @@ public final class RemoteWorkloadMain {
             }
             for (String name : List.of("execution/tuning-progress.json", "execution/tuning-status.json", "execution/probes.json", "execution/readiness.json")) {
                 Path file = output.resolve(name);
-                if (Files.isRegularFile(file) && Files.size(file) < 4_000_000) snapshots.put(name, Files.readString(file));
+                if (Files.isRegularFile(file) && Files.size(file) < 4_000_000) snapshots.put(root.relativize(file).toString(), Files.readString(file));
+            }
+            for (String collected : job.collect()) {
+                Path file = WorkloadPathUtil.inside(root, collected).resolve("screening-progress.json");
+                if (Files.isRegularFile(file) && Files.size(file) < 4_000_000) snapshots.put(root.relativize(file).toString(), Files.readString(file));
             }
         }
         print(new Poll(state, chunks, snapshots));

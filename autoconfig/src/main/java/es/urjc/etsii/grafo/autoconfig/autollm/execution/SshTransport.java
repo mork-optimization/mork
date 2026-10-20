@@ -38,6 +38,7 @@ public class SshTransport {
             }
             if (!AutoLlmFileUtil.hash(jar).equals(AutoLlmFileUtil.JSON.readTree(Files.readString(identityFile)).path("sha256").asString())) throw new IllegalStateException("Frozen remote runner changed");
         } catch (IOException e) { throw new UncheckedIOException(e); }
+        requireJava();
         String hash = AutoLlmFileUtil.hash(jar);
         String directory = config.execution().ssh().workspace().replaceAll("/+$", "") + "/.runner";
         runner = directory + "/" + hash + ".jar";
@@ -57,6 +58,19 @@ public class SshTransport {
         execute(command, jar, scratch.resolve(UUID.randomUUID() + ".bootstrap"));
         var identity = AutoLlmFileUtil.JSON.readTree(call("identify", config.execution().ssh().workspace(), null, Map.of()));
         if (identity.path("version").asInt() != WorkloadProtocol.VERSION || !hash.equals(identity.path("sha256").asString())) throw new IllegalStateException("Remote runner checksum or protocol mismatch");
+    }
+    private void requireJava() {
+        var command = new StringBuilder("exec env");
+        for (var entry : config.execution().ssh().environment().entrySet()) command.append(' ').append(WorkloadPathUtil.quote(entry.getKey() + "=" + entry.getValue()));
+        command.append(' ').append(WorkloadPathUtil.quote(config.execution().ssh().javaExecutable())).append(" -version");
+        Path output = scratch.resolve("java-version.log");
+        try {
+            execute(command.toString(), null, output);
+            String text = Files.readString(output) + Files.readString(output.resolveSibling(output.getFileName() + ".stderr"));
+            var version = java.util.regex.Pattern.compile("(?m)^(?:openjdk|java|GraalVM)\\s+(?:version\\s+)?\"?([0-9]+)").matcher(text);
+            if (!version.find() || Integer.parseInt(version.group(1)) < TargetPreflightUtil.minimumJavaFeature()) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE,
+                    "REMOTE_JAVA", "Configured remote Java must support Java " + TargetPreflightUtil.minimumJavaFeature() + "; inspect " + output + " and set javaExecutable/JAVA_HOME/PATH", output);
+        } catch (IOException e) { throw new UncheckedIOException(e); }
     }
     public byte[] call(String action, String root, String id, Object input) {
         try {

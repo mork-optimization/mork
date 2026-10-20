@@ -77,6 +77,8 @@ class ScreeningWorkerTest {
         assertEquals(1_000, measurements.getLast().millis());
         assertNotNull(ScreeningFileUtil.readRun(output, job.manifest(), job.manifest().inputs().getFirst(), 1236));
         assertNull(ScreeningFileUtil.readRun(output, job.manifest(), job.manifest().inputs().getLast(), 1235));
+        var progress = AutoLlmFileUtil.JSON.readTree(Files.readString(output.resolve("screening-progress.json")));
+        assertEquals("MEASUREMENTS_COMPLETE", progress.path("phase").asString()); assertEquals(2, progress.path("initialCompleted").asInt()); assertEquals(2, progress.path("confirmationsCompleted").asInt());
     }
 
     @Test void resumedConfirmationsWarmOnceAndPreserveCompletedEvidence() throws Exception {
@@ -93,6 +95,7 @@ class ScreeningWorkerTest {
         measurements.clear();
         worker.screen(job);
         assertTrue(measurements.isEmpty());
+        assertEquals(2, AutoLlmFileUtil.JSON.readTree(Files.readString(output.resolve("screening-progress.json"))).path("confirmationsTotal").asInt());
     }
 
     @Test void failedInputLoadingIsRecordedAndOtherInputsStillRun() throws Exception {

@@ -53,7 +53,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
                 Path output = Path.of(settings.output()).toAbsolutePath().normalize(); Files.createDirectories(output);
                 try (var channel = FileChannel.open(output.resolve(".screening.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.tryLock()) {
                     if (lock == null) throw new IllegalStateException("Screening output is already in use");
-                    new RemoteScreeningService(processes).run(limits, settings, inputs, solver, arguments.containsOption("instance-screening-approve"),
+                    new RemoteScreeningService(processes, update -> {}, () -> Thread.currentThread().isInterrupted()).run(limits, settings, inputs, solver, arguments.containsOption("instance-screening-approve"),
                             environment.getProperty("instance-screening.review-sha256"), List.of(arguments.getSourceArgs()));
                 }
                 return;
@@ -133,6 +133,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
         var decisions = new ArrayList<Decision>();
         System.out.println("Screening " + all.size() + " instances with fixed SOTA; threshold=" + config.thresholdMillis() + " ms, horizon=" + config.horizonMillis() + " ms");
         runJob(manifest, output);
+        ScreeningProgressUtil.update(output, "SELECTION", Map.of());
         for (Input input : all) {
             Run initial = ScreeningFileUtil.readRun(output, manifest, input, manifest.seed());
             var confirmation = new ArrayList<Run>();
@@ -259,6 +260,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
         AutoLlmFileUtil.write(output.resolve("run-hashes.json"), runHashes);
         files.put("run-hashes.json", AutoLlmFileUtil.hash(output.resolve("run-hashes.json")));
         AutoLlmFileUtil.write(output.resolve("proposal.json"), new Proposal(manifest.fingerprint(), "PENDING_REVIEW", decisions, files, training.size(), testing.size(), splitFailure));
+        ScreeningProgressUtil.update(output, "AWAITING_APPROVAL", Map.of("excluded", trivial, "retained", retained.size(), "inconclusive", inconclusive, "training", training.size(), "testing", testing.size()));
         System.out.println(report);
         System.out.println("Proposal SHA-256 for explicit user approval: " + AutoLlmFileUtil.hash(output.resolve("proposal.json")));
         System.out.println("Report: " + output.resolve("report.md"));

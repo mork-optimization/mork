@@ -16,16 +16,38 @@ public class AutoLlmCampaignStore {
     private record CachedHash(long size, long modified, String hash) {}
     public AutoLlmCampaignStore(AutoLlmConfig config) { this.root = Path.of(config.workspace()).toAbsolutePath().normalize(); }
     public Path root() { return root; }
+    public synchronized void requireReservation(String id) {
+        Path file = root.resolve("operation-reservation.json");
+        if (Files.exists(file)) {
+            String owner = (String) AutoLlmFileUtil.read(file, Map.class).get("id");
+            if (!id.equals(owner)) throw new IllegalStateException("Reconcile or cancel saved operation " + owner + " before starting another workload");
+        }
+    }
+    public synchronized void reserve(String id) { requireReservation(id); AutoLlmFileUtil.write(root.resolve("operation-reservation.json"), Map.of("id", id)); }
+    public synchronized void releaseReservation(String id, Path directory) {
+        requireReservation(id);
+        if (hasUncollectedJobs(directory)) return;
+        try { Files.deleteIfExists(root.resolve("operation-reservation.json")); } catch (IOException e) { throw new UncheckedIOException(e); }
+    }
+    public static boolean hasUncollectedJobs(Path directory) {
+        for (Path path : AutoLlmFileUtil.ownedFiles(directory, "remote-job.json")) if (!Files.exists(path.getParent().resolve("collection-completed.json"))) return true;
+        return false;
+    }
     public Path directory(String id) {
         if (!id.matches("[a-f0-9-]{36}")) throw new IllegalArgumentException("Invalid campaign id");
         return root.resolve(id);
     }
-    public synchronized void save(AutoLlmCampaign campaign) { AutoLlmFileUtil.write(directory(campaign.id).resolve("campaign.json"), campaign); }
+    public synchronized void save(AutoLlmCampaign campaign) {
+        AutoLlmFileUtil.write(directory(campaign.id).resolve("campaign.json"), campaign);
+        var state = new LinkedHashMap<String,Object>(); state.put("campaignId", campaign.id); state.put("status", campaign.status);
+        state.put("configurationPath", directory(campaign.id).resolve("control/config.json").toString()); state.put("remote", campaign.remote);
+        state.put("updatedAt", Instant.now().toString()); AutoLlmFileUtil.write(root.resolve("campaign-session.json"), state);
+    }
     public synchronized AutoLlmCampaign load(String id) {
         Path file = directory(id).resolve("campaign.json");
         if (!Files.exists(file)) throw new NoSuchElementException("Campaign does not exist: " + id);
         var campaign = AutoLlmFileUtil.read(file, AutoLlmCampaign.class);
-        if (campaign.schemaVersion != 1) throw new IllegalStateException("Unsupported campaign schema");
+        if (campaign.schemaVersion != AutoLlmCampaign.SCHEMA_VERSION) throw new IllegalStateException("Unsupported campaign schema " + campaign.schemaVersion + "; use a fresh workspace. Historical evidence remains available with the original controller.");
         return campaign;
     }
     public synchronized List<AutoLlmCampaign> list() {

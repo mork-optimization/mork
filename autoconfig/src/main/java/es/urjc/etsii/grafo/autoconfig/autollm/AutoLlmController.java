@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.autollm;
 
 import es.urjc.etsii.grafo.monitoring.MonitorModeState;
+import org.springframework.core.env.Environment;
 import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -17,9 +18,37 @@ public class AutoLlmController {
     private final AutoLlmCampaignService service;
     private final AutoLlmCampaignStore store;
     private final MonitorModeState mode;
+    private final Environment environment;
+    private final File artifact;
+    private final String artifactSha256;
     private final Map<Path, CachedComparison> comparisons = new java.util.concurrent.ConcurrentHashMap<>();
     private record CachedComparison(long size, long modified, Object value) {}
-    public AutoLlmController(AutoLlmCampaignService service, AutoLlmCampaignStore store, MonitorModeState mode) { this.service = service; this.store = store; this.mode = mode; }
+    public AutoLlmController(AutoLlmCampaignService service, AutoLlmCampaignStore store, MonitorModeState mode, Environment environment) {
+        this.service = service; this.store = store; this.mode = mode; this.environment = environment;
+        this.artifact = new org.springframework.boot.system.ApplicationHome().getSource();
+        this.artifactSha256 = artifact != null && artifact.isFile() ? AutoLlmFileUtil.hash(artifact.toPath()) : null;
+    }
+    @GetMapping("/capabilities") public Map<String,Object> capabilities() {
+        var result = new LinkedHashMap<String,Object>();
+        result.put("mode", mode.mode().name()); result.put("apiVersion", 2); result.put("checkpointVersion", AutoLlmCampaign.SCHEMA_VERSION);
+        result.put("runnerProtocol", es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol.VERSION);
+        result.put("minimumJavaFeature", es.urjc.etsii.grafo.autoconfig.autollm.execution.TargetPreflightUtil.minimumJavaFeature());
+        result.put("workspace", store.root().toString()); result.put("pid", ProcessHandle.current().pid());
+        result.put("processStartedAt", ProcessHandle.current().info().startInstant().map(java.time.Instant::toString).orElse(null));
+        result.put("workingDirectory", Path.of("").toAbsolutePath().toString());
+        result.put("artifact", artifact == null ? null : artifact.getAbsolutePath());
+        result.put("artifactSha256", artifactSha256);
+        result.put("baseUrl", "http://127.0.0.1:" + environment.getProperty("local.server.port", environment.getProperty("server.port", "8080")));
+        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES"));
+        return result;
+    }
+    @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
+    public void saveSession() { AutoLlmFileUtil.write(store.root().resolve("session.json"), capabilities()); }
+    @PostMapping("/effective-config") public Object effectiveConfig(@RequestBody AutoLlmConfig config) { return AutoLlmSummaryUtil.summarize(config, null, Map.of()); }
+    @GetMapping("/campaigns/{id}/summary") public Object summary(@PathVariable String id) {
+        var campaign = store.load(id); Path budgets = store.directory(id).resolve("control/comparison-time-limits.json");
+        return AutoLlmSummaryUtil.summarize(campaign.config, campaign.executionHost, Files.exists(budgets) ? AutoLlmFileUtil.read(budgets, new tools.jackson.core.type.TypeReference<>() {}) : Map.of());
+    }
     @GetMapping("/defaults") public AutoLlmConfig defaults() { return service.defaults(); }
     @PostMapping("/validate") public Map<String, Object> validate(@RequestBody AutoLlmConfig config) { var errors = service.validate(config); return Map.of("valid", errors.isEmpty(), "errors", errors); }
     @PostMapping("/targets/probe") public Object probe(@RequestBody AutoLlmConfig config) { requireMode(); return service.probeTarget(config); }
@@ -39,30 +68,46 @@ public class AutoLlmController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(file.getFileName().toString()).build().toString())
                 .body(new FileSystemResource(file));
     }
-    @GetMapping("/campaigns/{id}/log") public Map<String,Object> log(@PathVariable String id, @RequestParam(defaultValue = "campaign-events.jsonl") String path,
-            @RequestParam(defaultValue = "0") int offset, @RequestParam(defaultValue = "100") int limit) {
+    @GetMapping("/campaigns/{id}/log") public AutoLlmLogUtil.Page log(@PathVariable String id, @RequestParam(defaultValue = "campaign-events.jsonl") String path,
+            @RequestParam(defaultValue = "0") long cursor, @RequestParam(defaultValue = "65536") int maximumBytes) {
         Path file = store.artifact(id, path);
         if (!(path.endsWith(".log") || path.endsWith(".jsonl") || path.endsWith(".txt"))) throw new IllegalArgumentException("Select a text log");
-        if (offset < 0 || limit < 1 || limit > 500) throw new IllegalArgumentException("Invalid page");
-        var lines = new ArrayList<String>();
-        try (var input = Files.newBufferedReader(file)) {
-            for (int i = 0; i < offset; i++) if (input.readLine() == null) break;
-            String line; while (lines.size() < limit && (line = input.readLine()) != null) lines.add(line);
-            return Map.of("offset", offset, "nextOffset", offset + lines.size(), "lines", lines);
-        } catch (IOException e) { throw new UncheckedIOException(e); }
+        return AutoLlmLogUtil.read(file, cursor, maximumBytes);
     }
     @GetMapping("/campaigns/{id}/trials/{number}/progress") public Object progress(@PathVariable String id, @PathVariable int number) {
         var campaign = store.load(id);
         for (var trial : campaign.trials) if (trial.number == number) {
-            for (int i = trial.attempts.size() - 1; i >= 0; i--) {
-                Path directory = store.directory(id).resolve(trial.attempts.get(i).directory);
+            var progress = new LinkedHashMap<String,Object>(); progress.put("status", trial.status); progress.put("problem", trial.problem);
+            var jobRetries = new HashMap<String,Integer>();
+            for (Path file : AutoLlmFileUtil.ownedFiles(store.directory(id).resolve("trials/%03d".formatted(number)), "remote-status.json")) {
+                var remote = AutoLlmFileUtil.read(file, Map.class); Object retries = remote.get("connectionRetries");
+                if (remote.get("jobId") instanceof String job && retries instanceof Number count) jobRetries.merge(job, count.intValue(), Math::max);
+            }
+            int retries = trial.infrastructureRetries; for (int count : jobRetries.values()) retries += count;
+            progress.put("infrastructureRetries", retries); progress.put("repairTurns", trial.repairTurns);
+            if (!trial.attempts.isEmpty()) {
+                var attempt = trial.attempts.getLast(); Path directory = store.directory(id).resolve(attempt.directory);
+                progress.put("attempt", attempt); progress.put("substage", attempt.substage);
+                progress.put("elapsedMillis", java.time.Duration.between(java.time.Instant.parse(attempt.startedAt), attempt.finishedAt == null ? java.time.Instant.now() : java.time.Instant.parse(attempt.finishedAt)).toMillis());
+                Path remote = directory.resolve("remote-status.json");
+                if (attempt.substage != null) remote = directory.resolve(switch (attempt.substage) { case "BUILD" -> "build"; case "METADATA" -> "check"; case "PROBES" -> "probe"; case "PILOT" -> "pilot"; default -> ""; }).resolve("remote-status.json");
+                if (Files.exists(remote)) progress.put("remote", AutoLlmFileUtil.read(remote, Object.class));
+                if (List.of("GENERATION", "REPAIR").contains(attempt.stage)) progress.put("generation", CodexProgressUtil.refresh(directory));
                 for (String name : List.of("execution/tuning-progress.json", "pilot/execution/tuning-progress.json", "execution/tuning-status.json", "probe/execution/probes.json")) {
-                    if (Files.exists(directory.resolve(name))) return AutoLlmFileUtil.read(directory.resolve(name), Object.class);
+                    if (Files.exists(directory.resolve(name))) { progress.put("workload", AutoLlmFileUtil.read(directory.resolve(name), Object.class)); break; }
                 }
             }
-            return Map.of("status", trial.status);
+            return progress;
         }
         throw new NoSuchElementException("Trial unavailable");
+    }
+    @GetMapping("/campaigns/{id}/trials/{number}/activity") public AutoLlmLogUtil.Page activity(@PathVariable String id, @PathVariable int number,
+            @RequestParam int attempt, @RequestParam(defaultValue = "0") long cursor) {
+        for (var trial : store.load(id).trials) if (trial.number == number) for (var candidate : trial.attempts) if (candidate.number == attempt && List.of("GENERATION", "REPAIR").contains(candidate.stage)) {
+            Path directory = store.directory(id).resolve(candidate.directory); CodexProgressUtil.refresh(directory);
+            return AutoLlmLogUtil.read(directory.resolve("activity.jsonl"), cursor, 65536);
+        }
+        throw new NoSuchElementException("Generation attempt unavailable");
     }
     @GetMapping("/campaigns/{id}/trials/{number}/comparison") public Object comparison(@PathVariable String id, @PathVariable int number) {
         var campaign = store.load(id);

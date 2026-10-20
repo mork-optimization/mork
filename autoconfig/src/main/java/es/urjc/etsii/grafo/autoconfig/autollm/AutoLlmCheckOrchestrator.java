@@ -51,9 +51,13 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
             ExecutionJournalUtil.write("readiness.json", Map.of("startedAtMillis", System.currentTimeMillis(), "pid", ProcessHandle.current().pid(), "port", environment.getProperty("local.server.port", Integer.class, 0)));
             var config = AutoLlmFileUtil.read(Path.of(environment.getRequiredProperty("autollm.child.config-file")), AutoLlmConfig.class);
             for (String arg : args) if (arg.equals("--autollm-export")) { exportWinner(); return; }
+            String baselineFile = environment.getProperty("autollm.child.baseline-components-file");
+            if (space.roots().isEmpty()) throw AutoLlmFailureUtil.error(baselineFile == null ? AutoLlmFailureUtil.Category.UNKNOWN : AutoLlmFailureUtil.Category.COMPONENT,
+                    "EMPTY_SEARCH_SPACE", "No valid algorithm remains after dependency pruning and exploration limits", ExecutionJournalUtil.directory());
             var codec = new ComponentSpecJsonCodec();
             var seeds = codec.parseList(Files.readString(Path.of(irace.getInitialConfigurationsFile())));
-            InitialConfigurationUtil.toIraceTable(space, seeds);
+            try { InitialConfigurationUtil.toIraceTable(space, seeds); }
+            catch (IllegalArgumentException | IllegalStateException e) { throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "SEED_ENCODING", e.toString(), ExecutionJournalUtil.directory()); }
             var components = new TreeSet<String>();
             for (String pkg : environment.getProperty("advanced.scan-pkgs", "es.urjc.etsii").split(",")) {
                 for (var type : ReflectionUtil.findTypesByAnnotation(pkg, AlgorithmComponent.class)) {
@@ -61,10 +65,10 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
                 }
             }
             List<String> added = new ArrayList<>();
-            String baselineFile = environment.getProperty("autollm.child.baseline-components-file");
             if (baselineFile != null) {
                 var baseline = new HashSet<>(List.of(AutoLlmFileUtil.read(Path.of(baselineFile), String[].class)));
-                added = AutoLlmComponentUtil.validate(components, baseline, space.iraceParameters().size(), config.maxParameters());
+                try { added = AutoLlmComponentUtil.validate(components, baseline, space.iraceParameters().size(), config.maxParameters()); }
+                catch (IllegalStateException e) { throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "SEARCH_SPACE", e.toString(), ExecutionJournalUtil.directory()); }
             }
             var training = instances.getInstanceSolveOrder("irace", false);
             var comparison = instances.getInstanceSolveOrder("autollm-comparison", false);
@@ -85,7 +89,11 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
             ExecutionJournalUtil.write("check.json", new Check(space.iraceParameters().size(), added, training, comparison));
             for (String arg : args) if (arg.equals("--autollm-probe")) probe(seeds, added, training.getFirst(), codec);
         } catch (IOException e) { outcome = es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.FAILED; throw new UncheckedIOException(e); }
-        catch (RuntimeException | Error e) { outcome = es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.FAILED; throw e; }
+        catch (RuntimeException | Error e) {
+            outcome = es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.FAILED;
+            ExecutionJournalUtil.write("failure.json", AutoLlmFailureUtil.describe(e, ExecutionJournalUtil.directory()));
+            throw e;
+        }
         finally { lifecycle.complete(0, outcome); }
     }
     private void exportWinner() throws IOException {
@@ -120,13 +128,13 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
             outcomes.put(names.get(i), response.toIraceResultString());
             ExecutionJournalUtil.write("probes.json", Map.of("outcomes", outcomes, "skipped", skipped));
         }
-        for (int i = 0; i < seeds.size(); i++) if (outcomes.get("seed-" + i).startsWith("Inf")) throw new IllegalStateException("Supplied seed did not execute successfully: " + i);
+        for (int i = 0; i < seeds.size(); i++) if (outcomes.get("seed-" + i).startsWith("Inf")) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "SEED_PROBE", "Supplied seed did not execute successfully: " + i, ExecutionJournalUtil.directory());
         // Feasibility failures and invalid combinations are normal penalties during tuning.
         // An exception from a generated component is actionable repair feedback.
         for (var event : AutoLlmFileUtil.events(ExecutionJournalUtil.directory().resolve("events.jsonl"))) {
             if ("evaluation-result".equals(event.get("kind")) && added.contains(event.get("configurationId"))
                     && "CANDIDATE_EXCEPTION".equals(event.get("rejectionCode"))) {
-                throw new IllegalStateException("Generated component probe raised an exception: " + event.get("configurationId") + "; " + event.get("rejectionMessage"));
+                throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "COMPONENT_PROBE", "Generated component probe raised an exception: " + event.get("configurationId") + "; " + event.get("rejectionMessage"), ExecutionJournalUtil.directory());
             }
         }
     }
