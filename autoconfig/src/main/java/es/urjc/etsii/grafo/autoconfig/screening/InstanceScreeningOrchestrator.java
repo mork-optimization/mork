@@ -49,6 +49,15 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
         try {
             Context.Configurator.setSolverConfig(solver);
             Context.Configurator.setBlockConfig(blocks);
+            if (limits.execution().target() == AutoLlmConfig.Target.SSH && !arguments.containsOption("instance-screening-worker")) {
+                Path output = Path.of(settings.output()).toAbsolutePath().normalize(); Files.createDirectories(output);
+                try (var channel = FileChannel.open(output.resolve(".screening.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.tryLock()) {
+                    if (lock == null) throw new IllegalStateException("Screening output is already in use");
+                    new RemoteScreeningService(processes).run(limits, settings, inputs, solver, arguments.containsOption("instance-screening-approve"),
+                            environment.getProperty("instance-screening.review-sha256"), List.of(arguments.getSourceArgs()));
+                }
+                return;
+            }
             if (arguments.containsOption("instance-screening-worker")) {
                 new ScreeningWorker<>(instances, algorithms, solutions, validator.orElseThrow(() ->
                         new IllegalStateException("Screening requires a SolutionValidator"))).run(Path.of(settings.jobFile()));
@@ -100,7 +109,9 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
         Math.addExact(solver.getSeed(), config.confirmationRuns());
         Math.subtractExact(solver.getSeed(), 1000L + config.warmupRepetitions());
         var runArguments = List.of(arguments.getSourceArgs());
-        String fingerprint = ScreeningFileUtil.digest(List.of(config, solver.getSeed(), solver.getRandomType(), fraction, objective, mode, host, all, sotaHash, artifact, runArguments));
+        String sourceMetadata = environment.getProperty("instance-screening.provenance-file");
+        String sourceHash = sourceMetadata == null ? "" : AutoLlmFileUtil.hash(Path.of(sourceMetadata));
+        String fingerprint = ScreeningFileUtil.digest(List.of(config, solver.getSeed(), solver.getRandomType(), fraction, objective, mode, host, all, sotaHash, artifact, runArguments, sourceHash));
         var manifest = new Manifest(2, fingerprint, config, solver.getSeed(), solver.getRandomType().name(), fraction, objective, mode, host, all, sotaHash, artifact, runArguments);
         Path manifestFile = output.resolve("manifest.json");
         if (Files.exists(manifestFile)) {
@@ -234,10 +245,13 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
                 + "This is an empirical criterion for this SOTA/host within this observation horizon; it is not an optimality or statistical-confidence claim.\n\n"
                 + "Show this report and the detailed lists to the user and obtain explicit agreement before approval or campaign configuration. Original instances and indexes are untouched.\n";
         ScreeningFileUtil.writeText(output.resolve("report.md"), report);
+        String sourceMetadata = environment.getProperty("instance-screening.provenance-file");
+        if (sourceMetadata != null) Files.copy(Path.of(sourceMetadata), output.resolve("source-metadata.json"), StandardCopyOption.REPLACE_EXISTING);
         var files = new LinkedHashMap<String,String>();
         for (String file : List.of("manifest.json", "sota.json", "report.md", "instances.csv", "proposed-retained.index", "proposed-train.index", "proposed-test.index")) {
             files.put(file, AutoLlmFileUtil.hash(output.resolve(file)));
         }
+        if (sourceMetadata != null) files.put("source-metadata.json", AutoLlmFileUtil.hash(output.resolve("source-metadata.json")));
         var runHashes = new TreeMap<String,String>();
         try (var paths = Files.list(output.resolve("runs"))) {
             for (Path file : paths.toList()) runHashes.put(file.getFileName().toString(), AutoLlmFileUtil.hash(file));

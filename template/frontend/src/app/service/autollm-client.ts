@@ -18,8 +18,10 @@ export class AutoLlmClient {
   }
   defaults(): Promise<AutoLlmConfig> { return this.get('/defaults'); }
   validate(config: AutoLlmConfig): Promise<{ valid: boolean; errors: string[] }> { return this.post('/validate', config); }
+  probeTarget(config: AutoLlmConfig): Promise<Record<string, unknown>> { return this.post('/targets/probe', config); }
   list(): Promise<{ active: string; campaigns: AutoLlmCampaign[] }> { return this.get('/campaigns'); }
   create(config: AutoLlmConfig): Promise<AutoLlmCampaign> { return this.post('/campaigns', config); }
+  baselineCheck(id: string): Promise<{ parameters: number; maxParameters: number; withinLimit: boolean }> { return this.post(`/campaigns/${encodeURIComponent(id)}/baseline-check`); }
   action(id: string, action: 'start' | 'resume' | 'cancel' | 'report'): Promise<AutoLlmCampaign> { return this.post(`/campaigns/${encodeURIComponent(id)}/${action}`); }
   progress(id: string, trial: number): Promise<Record<string, unknown>> { return this.get(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/progress`); }
   comparison(id: string, trial: number): Promise<Record<string, unknown>> { return this.get(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/comparison`); }

@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.autoconfig.autollm;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import java.util.List;
+import java.util.Map;
 
 /** Immutable settings copied into every campaign manifest. Durations are expressed in milliseconds. */
 @ConfigurationProperties("autollm")
@@ -18,7 +19,7 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
         preparation = preparation == null ? new Preparation(null, null) : preparation;
         tuning = tuning == null ? new Tuning(null, null, null, null) : tuning;
         comparison = comparison == null ? new Comparison(null, null) : comparison;
-        execution = execution == null ? new Execution(null, null, null, null, null, null, null, null, null) : execution;
+        execution = execution == null ? new Execution(null, null, null, null, null, null, null, null, null, null, null) : execution;
     }
     public record Project(String repository, String ref, List<String> buildCommand, String artifact, List<String> runArguments) {
         public Project {
@@ -43,9 +44,11 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
         public Comparison { repetitions = repetitions == null ? 30 : repetitions; timeLimitMillis = timeLimitMillis == null ? 0L : timeLimitMillis; }
     }
     public record Execution(Integer workers, Long watchdogGraceMillis, Long codexTimeoutMillis, Long buildTimeoutMillis,
-                            Long startupTimeoutMillis, Long searchSpaceTimeoutMillis, Long phaseTimeoutMillis, Long stageTimeoutMillis, String heap) {
+                            Long startupTimeoutMillis, Long searchSpaceTimeoutMillis, Long phaseTimeoutMillis, Long stageTimeoutMillis, String heap,
+                            Target target, Ssh ssh) {
         public Execution {
-            workers = workers == null ? 1 : workers; watchdogGraceMillis = watchdogGraceMillis == null ? 30_000L : watchdogGraceMillis;
+            target = target == null ? Target.LOCAL : target;
+            workers = workers == null ? -1 : workers; watchdogGraceMillis = watchdogGraceMillis == null ? 30_000L : watchdogGraceMillis;
             codexTimeoutMillis = codexTimeoutMillis == null ? 3_600_000L : codexTimeoutMillis;
             buildTimeoutMillis = buildTimeoutMillis == null ? 1_800_000L : buildTimeoutMillis;
             startupTimeoutMillis = startupTimeoutMillis == null ? 300_000L : startupTimeoutMillis;
@@ -55,8 +58,19 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
             heap = heap == null ? "2g" : heap;
         }
     }
+    public enum Target { LOCAL, SSH }
+    public record Ssh(String host, String workspace, String javaExecutable, String runnerArtifact, Map<String,String> environment, String configFile) {
+        public Ssh {
+            javaExecutable = javaExecutable == null ? "java" : javaExecutable;
+            environment = environment == null ? Map.of() : Map.copyOf(environment);
+        }
+    }
     public AutoLlmConfig withPaths(String training, String comparison) {
         return new AutoLlmConfig(project, workspace, trials, seed, maxParameters, sotaFile, initialConfigurationsFile, training, comparison, codex, preparation, tuning, this.comparison, execution);
+    }
+    public AutoLlmConfig withRef(String ref) {
+        return new AutoLlmConfig(new Project(project.repository(), ref, project.buildCommand(), project.artifact(), project.runArguments()), workspace,
+                trials, seed, maxParameters, sotaFile, initialConfigurationsFile, trainingPath, comparisonPath, codex, preparation, tuning, this.comparison, execution);
     }
     public static AutoLlmConfig defaults() { return new AutoLlmConfig(null, null, null, null, null, null, null, null, null, null, null, null, null, null); }
 }

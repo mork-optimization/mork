@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.autollm;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.autoconfig.autollm.execution.AutoLlmExecutionService;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.io.Instance;
@@ -26,6 +27,8 @@ public class AutoLlmReportService<S extends Solution<S,I>, I extends Instance> {
             for (var row : AutoLlmFileUtil.events(root.resolve(trial.comparisonDirectory).resolve("execution/events.jsonl"))) {
                 if (!"evaluation-result".equals(row.get("kind")) || !Boolean.TRUE.equals(row.get("measured"))) continue;
                 var enriched = new LinkedHashMap<>(row);
+                String localInstance = AutoLlmExecutionService.localPath(campaign.config, root, (String) row.get("instance"));
+                enriched.put("remoteInstance", row.get("instance")); enriched.put("instance", localInstance);
                 enriched.put("campaignId", campaign.id); enriched.put("trial", trial.number); enriched.put("tuningSeed", trial.tuningSeed); enriched.put("trialStatus", trial.status);
                 portable.add(enriched);
                 if (!"SUCCEEDED".equals(row.get("state"))) continue;
@@ -35,7 +38,7 @@ public class AutoLlmReportService<S extends Solution<S,I>, I extends Instance> {
                 for (var entry : AutoLlmFileUtil.objectMap(row.get("objectives")).entrySet()) if (entry.getValue() instanceof Number value) objectives.put(entry.getKey(), value.doubleValue());
                 var properties = AutoLlmFileUtil.objectMap(row.get("properties"));
                 properties.put("AutoLLM trial", trial.number); properties.put("Tuning seed", trial.tuningSeed); properties.put("Comparison seed", row.get("seed")); properties.put("Algorithm role", row.get("algorithm"));
-                rows.add(new WorkUnitResult<>(UUID.fromString((String) row.get("id")), true, "autollm-campaign", (String) row.get("instance"), (String) row.get("instanceId"),
+                rows.add(new WorkUnitResult<>(UUID.fromString((String) row.get("id")), true, "autollm-campaign", localInstance, (String) row.get("instanceId"),
                         algorithm, (String) row.get("iteration"), null, objectives, properties, ((Number) row.get("executionTimeNanos")).longValue(), ((Number) row.get("timeToBestNanos")).longValue(), null));
             }
         }

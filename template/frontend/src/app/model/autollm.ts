@@ -7,7 +7,7 @@ export interface AutoLlmConfig {
   preparation: { pilotDurationMillis: number; maxRepairs: number };
   tuning: { evaluations: number; ignoreInitialMillis: number; intervalDurationMillis: number; logScaleArea: boolean };
   comparison: { repetitions: number; timeLimitMillis: number };
-  execution: { workers: number; watchdogGraceMillis: number; codexTimeoutMillis: number; buildTimeoutMillis: number; startupTimeoutMillis: number; searchSpaceTimeoutMillis: number; phaseTimeoutMillis: number; stageTimeoutMillis: number; heap: string };
+  execution: { workers: number; target?: 'LOCAL' | 'SSH'; ssh?: { host: string; workspace: string; javaExecutable: string; runnerArtifact: string | null; environment: Record<string, string>; configFile?: string | null } | null; watchdogGraceMillis: number; codexTimeoutMillis: number; buildTimeoutMillis: number; startupTimeoutMillis: number; searchSpaceTimeoutMillis: number; phaseTimeoutMillis: number; stageTimeoutMillis: number; heap: string };
 }
 export interface AutoLlmAttempt {
   number: number; stage: string; directory: string; status: string;
@@ -30,6 +30,8 @@ export interface AutoLlmCampaign {
   baselineCommit: string | null; prompt: string; versions: Record<string, string>; trials: AutoLlmTrial[];
   reportFailure?: string | null; reportUpdatedAt?: string | null;
   codexUsage?: CodexUsage | null;
+  executionHost?: { requestedWorkers: number; effectiveWorkers: number; identity: Record<string, string>; maxMemoryBytes: number } | null;
+  remote?: { host: string; jobId: string; status: string; updatedAt: string; lastSynchronizedAt?: string | null; failure: string | null } | null;
 }
 export interface AutoLlmArtifact { path: string; size: number; sha256: string }
 export interface AutoLlmLog { offset: number; nextOffset: number; lines: string[] }

@@ -31,6 +31,13 @@ public class AutoLlmFixture {
         AutoLlmFileUtil.append(session, Map.of("type", "session_meta", "payload", Map.of("id", thread, "cwd", Path.of("").toAbsolutePath().toString(), "cli_version", "fixture-1")));
         AutoLlmFileUtil.append(session, Map.of("type", "turn_context", "payload", Map.of("model", "fixture-model")));
         AutoLlmFileUtil.append(session, Map.of("type", "token_usage_record", "payload", Map.of("response_id", UUID.randomUUID().toString(), "usage", Map.of("input_tokens", 10, "cached_input_tokens", 2, "cache_write_input_tokens", 0, "output_tokens", 10, "reasoning_output_tokens", 4, "total_tokens", 20))));
+        Path checkout = Path.of("").toAbsolutePath();
+        Path helper = checkout.getParent().getParent().getParent().resolve("control/metadata-check-" + Integer.parseInt(checkout.getParent().getFileName().toString()) + ".py");
+        if (Files.exists(helper)) {
+            var process = new ProcessBuilder("python3", helper.toString()).inheritIO().start();
+            if (!process.waitFor(120, java.util.concurrent.TimeUnit.SECONDS)) { process.destroyForcibly(); throw new IllegalStateException("Metadata helper timed out"); }
+            if (process.exitValue() != 0) throw new IllegalStateException("Remote metadata helper failed");
+        }
         Files.writeString(Path.of(args[output + 1]), json.writeValueAsString(Map.of("inventory", List.of("SimpleAlgorithm"), "metaheuristics", List.of("SimpleAlgorithm"), "components", List.of("FasterInvertedConstructiveNew"), "blacklist", "", "tests", List.of("fixture build"), "limitations", List.of("Deterministic fixture"))));
         System.out.println(json.writeValueAsString(Map.of("type", "thread.started", "thread_id", thread)));
         System.out.println("{\"type\":\"turn.completed\"}");

@@ -2,6 +2,20 @@
 
 The AutoLLM skill requires screening as a preparation step before tuning or final comparison, unless a matching approved selection already exists. It uses a fixed SOTA and proposes a fresh training/testing selection without changing the datasets or existing indexes. Review and explicitly approve the results before using the new indexes.
 
+## Remote screening
+
+Choose local or remote workload execution before any measurements. Local preparation and approval continue to use the commands below. For SSH, use the same `autollm.project` and `autollm.execution` settings as the intended campaign, as described in [remote execution](autollm.md#remote-execution-over-ssh).
+
+Run the local application JAR with `--instance-screening`, the additional SSH configuration, an absolute local SOTA file, the full local input pool and an output directory outside that pool. Set `instance-screening.python` to the prepared **remote** Python interpreter. Use `--server.port=0` when the local dashboard already occupies its usual port.
+
+The controller clones the selected committed source locally, transfers Git/submodule snapshots and original archive containers, and builds/tests the baseline remotely. It freezes that executable, then runs the unchanged sequential screening/selection protocol on the server. Remote jobs retain their watchdogs and can be rejoined after connectivity loss. Resume the same command and output directory; do not duplicate a running job.
+
+The command prints the actual local mirror directory, under `<output>/remote-<identity>/proposal`, with the completed report, full lists, proposed indexes and reviewed proposal hash. Its sibling `remote-screening.json` identifies the source commit, frozen JAR, SOTA and execution settings. Preserve this directory, its data and build evidence together; relative published indexes work in the local mirror without editing the reviewed bytes.
+
+Review these completed artifacts locally. Only after explicit user agreement, rerun the local application with `--instance-screening-approve`, the **original output directory**, the same SSH configuration and `--instance-screening.review-sha256=<reviewed hash>`. Approval is delegated to the same server, which checks its host, exact executable and input hashes. The resulting `approved.json` and indexes are mirrored and verified locally.
+
+Set campaign training/comparison paths to the mirror's published `train.index` and `test.index`. The campaign adopts the exact tested baseline artifact, checks host and source identity, and freezes its own copies of the approved inputs. Moving to different hardware or changing the baseline/SOTA/inputs requires a new preparation and review. Locally measured screening evidence cannot qualify a remote campaign. Screening still uses one sequential JVM even when tuning requests 32 workers.
+
 ## Criterion
 
 The defaults are a 10 ms fast threshold and 30 confirmation runs. Both phases use the same observation window: the candidate margin (`threshold-millis * candidate-multiplier`), rounded up to whole milliseconds, with a minimum of one second. This gives a one-second default window. An explicit `horizon-millis` may select a longer window and must cover the candidate margin and be at least one second. First run SOTA once on every input. Only inputs whose first-pass time to best is at most three times the threshold (30 ms) receive the additional 30 runs. Retain the others.

@@ -6,11 +6,11 @@ import { AutoLlmStore } from './autollm-store';
 describe('AutoLLM campaign lifecycle store', () => {
   const config = {} as AutoLlmConfig;
   const campaign = { id: 'campaign', status: 'RUNNING', config, trials: [{ number: 1, status: 'GENERATION' }, { number: 2, status: 'PENDING' }] } as AutoLlmCampaign;
-  let client: { defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; log: ReturnType<typeof vi.fn> };
+  let client: { defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; log: ReturnType<typeof vi.fn> };
   let store: AutoLlmStore;
   beforeEach(() => {
     vi.useFakeTimers();
-    client = { defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), action: vi.fn().mockResolvedValue(campaign), log: vi.fn().mockResolvedValue({ nextOffset: 0, lines: [] }) };
+    client = { defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true }), action: vi.fn().mockResolvedValue(campaign), log: vi.fn().mockResolvedValue({ nextOffset: 0, lines: [] }) };
     TestBed.configureTestingModule({ providers: [AutoLlmStore, { provide: AutoLlmClient, useValue: client }] });
     store = TestBed.inject(AutoLlmStore);
   });
@@ -34,6 +34,19 @@ describe('AutoLLM campaign lifecycle store', () => {
     expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'start');
     await store.action('cancel'); expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'cancel');
     await store.action('resume'); expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'resume');
+  });
+  it('keeps an over-budget baseline as a draft and does not start it', async () => {
+    store.config.set(config); client.baselineCheck.mockResolvedValue({ parameters: 350, maxParameters: 299, withinLimit: false });
+    await store.createAndStart();
+    expect(store.selectedId()).toBe(campaign.id); expect(store.error()).toContain('350 parameters'); expect(client.action).not.toHaveBeenCalled();
+  });
+  it('keeps the preparation busy while a cancellation request completes', async () => {
+    store.config.set(config);
+    let finish!: (value: { parameters: number; maxParameters: number; withinLimit: boolean }) => void;
+    client.baselineCheck.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
+    const preparing = store.createAndStart(); await vi.waitFor(() => expect(client.baselineCheck).toHaveBeenCalled());
+    await store.action('cancel'); expect(store.busy()).toBe(true);
+    finish({ parameters: 350, maxParameters: 299, withinLimit: false }); await preparing; expect(store.busy()).toBe(false);
   });
   it('discards a log response when the selected log changes', async () => {
     await store.start(); store.selectLog('old.log');

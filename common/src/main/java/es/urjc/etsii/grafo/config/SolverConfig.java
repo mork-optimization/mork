@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.config;
 
+import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 import es.urjc.etsii.grafo.util.random.RandomType;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
@@ -197,14 +198,7 @@ public class SolverConfig {
      * @return a int.
      */
     public int getnWorkers() {
-        if (nWorkers < 1) {
-            return defaultWorkerCount(Runtime.getRuntime().availableProcessors());
-        }
-        return nWorkers;
-    }
-
-    static int defaultWorkerCount(int availableProcessors) {
-        return Math.max(1, availableProcessors / 2);
+        return ConcurrencyUtil.resolveWorkerCount(nWorkers, Runtime.getRuntime().availableProcessors());
     }
 
     /**

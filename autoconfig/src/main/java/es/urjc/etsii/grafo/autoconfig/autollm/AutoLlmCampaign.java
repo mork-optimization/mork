@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.autollm;
 
+import es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol;
+
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,9 @@ public class AutoLlmCampaign {
     public String reportFailure;
     public String reportUpdatedAt;
     public String baselineCommit;
+    public String approvedScreeningPath;
+    public WorkloadProtocol.Host executionHost;
+    public Map<String,Object> remote;
     public String prompt;
     public Map<String, String> versions = Map.of();
     public CodexEvidenceUtil.Summary codexUsage;

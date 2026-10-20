@@ -19,6 +19,7 @@ export class AutoLlmDashboard {
   readonly store = inject(AutoLlmStore);
   readonly selectedInstance = signal('');
   readonly selectedObjective = signal('');
+  readonly executionChoice = signal('');
   readonly curves = computed(() => (this.store.comparison()?.['curves'] ?? []) as CurveRow[]);
   readonly instances = computed(() => [...new Set(this.curves().map(row => row.instance))]);
   readonly objectives = computed(() => [...new Set(this.curves().flatMap(row => Object.keys(row.curves)))]);
@@ -33,12 +34,26 @@ export class AutoLlmDashboard {
       series: this.curves().filter(row => row.instance === instance).map(row => ({ type: 'line' as const, name: `${row.algorithm} · repetition ${Number(row.iteration) + 1}`, data: (row.curves[objective] ?? []).filter(point => Number.isFinite(point.value)).map(point => [point.instant / 1_000_000, point.value]) })) } };
   });
   constructor() { void this.store.start(); }
+  executionTarget(event: Event): void {
+    const value = (event.target as HTMLSelectElement).value as 'LOCAL' | 'SSH';
+    this.executionChoice.set(value);
+    this.store.config.update(config => config ? { ...config, execution: { ...config.execution, target: value,
+      ssh: config.execution.ssh ?? { host: '', workspace: '', javaExecutable: 'java', runnerArtifact: null, environment: {} } } } : config);
+    this.store.targetStatus.set(null);
+  }
+  workerMode(event: Event): void {
+    const automatic = (event.target as HTMLSelectElement).value === 'AUTO';
+    this.store.config.update(config => config ? { ...config, execution: { ...config.execution, workers: automatic ? -1 : 1 } } : config);
+  }
   update(path: string, event: Event, numeric = false): void {
     const current = this.store.config(); if (!current) return;
     const config = structuredClone(current);
     let target = config as unknown as Record<string, unknown>;
     const keys = path.split('.');
-    for (const key of keys.slice(0, -1)) target = target[key] as Record<string, unknown>;
+    for (const key of keys.slice(0, -1)) {
+      if (!target[key] || typeof target[key] !== 'object') target[key] = {};
+      target = target[key] as Record<string, unknown>;
+    }
     const text = (event.target as HTMLInputElement).value;
     target[keys[keys.length - 1]] = numeric ? Number(text) : text || null;
     this.store.config.set(config);
@@ -58,8 +73,12 @@ export class AutoLlmDashboard {
       for (const key of ['project', 'codex', 'preparation', 'tuning', 'comparison', 'execution'] as const) {
         if (parsed[key] != null && (typeof parsed[key] !== 'object' || Array.isArray(parsed[key]))) throw new Error(`${key} must be a JSON object`);
       }
+      const ssh = parsed.execution?.ssh;
+      if (ssh != null && (typeof ssh !== 'object' || Array.isArray(ssh))) throw new Error('execution.ssh must be a JSON object');
       this.store.config.set({ ...current, ...parsed, project: { ...current.project, ...parsed.project }, codex: { ...current.codex, ...parsed.codex },
-        preparation: { ...current.preparation, ...parsed.preparation }, tuning: { ...current.tuning, ...parsed.tuning }, comparison: { ...current.comparison, ...parsed.comparison }, execution: { ...current.execution, ...parsed.execution } });
+        preparation: { ...current.preparation, ...parsed.preparation }, tuning: { ...current.tuning, ...parsed.tuning }, comparison: { ...current.comparison, ...parsed.comparison },
+        execution: { ...current.execution, ...parsed.execution, ssh: ssh === null ? null : current.execution.ssh || ssh ? { host: '', workspace: '', javaExecutable: 'java', runnerArtifact: null, ...current.execution.ssh, ...ssh, environment: { ...current.execution.ssh?.environment, ...ssh?.environment } } : null } });
+      if (parsed.execution?.target) this.executionChoice.set(parsed.execution.target);
       this.store.error.set(null);
     } catch (error) { this.store.error.set((error as Error).message); }
   }

@@ -24,10 +24,12 @@ export class AutoLlmStore {
   readonly error = signal<string | null>(null);
   readonly connectionError = signal<string | null>(null);
   readonly busy = signal(false);
+  readonly targetStatus = signal<Record<string, unknown> | null>(null);
   private timer: ReturnType<typeof setTimeout> | null = null;
   private started = false;
   private destroyed = false;
   private logOffset = 0;
+  private operations = 0;
   constructor() { this.destroy.onDestroy(() => { this.destroyed = true; if (this.timer) clearTimeout(this.timer); }); }
   async start(): Promise<void> {
     if (this.started) return; this.started = true;
@@ -75,15 +77,21 @@ export class AutoLlmStore {
       const validation = await this.client.validate(config);
       if (!validation.valid) throw new Error(validation.errors.join('; '));
       const campaign = await this.client.create(config); this.campaigns.update(values => [campaign, ...values]); this.select(campaign.id);
+      const check = await this.client.baselineCheck(campaign.id);
+      if (!check.withinLimit) throw new Error(`Baseline emits ${check.parameters} parameters; limit is ${check.maxParameters}. Prune the search space while preserving every seed before starting this draft.`);
       await this.client.action(campaign.id, 'start'); this.active.set(campaign.id);
     });
+  }
+  async probeTarget(): Promise<void> {
+    const config = this.config(); if (!config) return;
+    await this.operate(async () => { this.targetStatus.set(await this.client.probeTarget(config)); });
   }
   async action(action: 'start' | 'resume' | 'cancel' | 'report'): Promise<void> {
     await this.operate(async () => { await this.client.action(this.selectedId(), action); if (action === 'start' || action === 'resume') this.active.set(this.selectedId()); });
   }
   private async operate(callback: () => Promise<void>): Promise<void> {
-    this.busy.set(true); this.error.set(null);
-    try { await callback(); } catch (e) { this.error.set(this.message(e)); } finally { this.busy.set(false); }
+    this.operations++; this.busy.set(true); this.error.set(null);
+    try { await callback(); } catch (e) { this.error.set(this.message(e)); } finally { this.operations--; this.busy.set(this.operations > 0); }
   }
   artifactUrl(path: string): string { return this.client.artifactUrl(this.selectedId(), path); }
   private message(error: unknown): string {

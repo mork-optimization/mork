@@ -47,7 +47,7 @@ public final class ScreeningFileUtil {
     }
     public static List<String> javaCommand(Class<?> applicationType) {
         var args = new ArrayList<>(List.of(Path.of(System.getProperty("java.home"), "bin/java").toString(), "-da"));
-        File source = new ApplicationHome(applicationType).getSource();
+        File source = applicationSource(applicationType);
         if (source != null && source.isFile()) {
             args.addAll(List.of("-jar", source.getAbsolutePath()));
         } else {
@@ -60,7 +60,7 @@ public final class ScreeningFileUtil {
         return args;
     }
     public static String artifactHash(Class<?> applicationType) {
-        File source = new ApplicationHome(applicationType).getSource();
+        File source = applicationSource(applicationType);
         if (source != null && source.isFile()) return AutoLlmFileUtil.hash(source.toPath());
         var hashes = new TreeMap<String,String>();
         for (String entry : System.getProperty("java.class.path").split(File.pathSeparator)) {
@@ -74,6 +74,17 @@ public final class ScreeningFileUtil {
     }
     public static Path runPath(Path output, String instance, long seed) {
         return output.resolve("runs").resolve(digest(List.of(instance, seed)) + ".json");
+    }
+    private static File applicationSource(Class<?> applicationType) {
+        // A thin executable JAR can load the importer from a dependency. Its code source
+        // then identifies that dependency, while the launcher still needs the application JAR.
+        String classpath = System.getProperty("java.class.path");
+        String launched = System.getProperty("sun.java.command", "");
+        try {
+            Path entry = Path.of(classpath);
+            if (Files.isRegularFile(entry) && (launched.equals(classpath) || launched.startsWith(classpath + " "))) return entry.toAbsolutePath().toFile();
+        } catch (InvalidPathException ignored) { /* A multi-entry classpath is not one executable JAR. */ }
+        return new ApplicationHome(applicationType).getSource();
     }
     public static Run readRun(Path output, Manifest manifest, Input input, long seed) {
         Path file = runPath(output, input.path(), seed);
@@ -116,6 +127,10 @@ public final class ScreeningFileUtil {
         if (!manifest.sotaSha256().equals(AutoLlmFileUtil.hash(Path.of(manifest.settings().sotaFile())))) {
             throw new IllegalStateException("SOTA changed since screening");
         }
+        for (String argument : manifest.runArguments()) if (argument.startsWith("--instance-screening.provenance-file=")) {
+            Path source = Path.of(argument.substring(argument.indexOf('=') + 1));
+            if (!AutoLlmFileUtil.hash(source).equals(AutoLlmFileUtil.hash(Path.of(manifest.settings().output()).resolve("source-metadata.json")))) throw new IllegalStateException("Screening source metadata changed");
+        }
         for (Input input : manifest.inputs()) if (!input.sha256().equals(inputHash(input.path()))) {
             throw new IllegalStateException("Screening input changed: " + input.path());
         }
@@ -132,18 +147,7 @@ public final class ScreeningFileUtil {
                 || proposal.trainingCount() == 0 || proposal.testingCount() == 0) {
             throw new IllegalStateException("No complete nonempty training/testing selection to approve");
         }
-        for (var file : proposal.files().entrySet()) {
-            if (!AutoLlmFileUtil.hash(AutoLlmFileUtil.inside(output, file.getKey())).equals(file.getValue())) {
-                throw new IllegalStateException("Reviewed screening artifact changed: " + file.getKey());
-            }
-        }
-        validateSelection(output, proposal);
-        Map<String,String> runs = AutoLlmFileUtil.read(output.resolve("run-hashes.json"), new tools.jackson.core.type.TypeReference<>() {});
-        for (var run : runs.entrySet()) {
-            if (!AutoLlmFileUtil.hash(AutoLlmFileUtil.inside(output.resolve("runs"), run.getKey())).equals(run.getValue())) {
-                throw new IllegalStateException("Reviewed run evidence changed: " + run.getKey());
-            }
-        }
+        verifyProposalArtifacts(output, proposal);
         for (String name : List.of("retained", "train", "test")) {
             Path target = output.resolve(name + ".index");
             Path proposed = output.resolve("proposed-" + name + ".index");
@@ -158,6 +162,21 @@ public final class ScreeningFileUtil {
         } catch (IOException e) { throw new UncheckedIOException(e); }
         AutoLlmFileUtil.write(output.resolve("approved.json"), Map.of("state", "APPROVED", "approvedAt", Instant.now().toString(),
                 "proposalSha256", reviewSha256, "fingerprint", manifest.fingerprint(), "files", proposal.files()));
+    }
+    /** Verify the exact local or mirrored evidence shown for review, without publishing indexes. */
+    public static void verifyProposalArtifacts(Path output, Proposal proposal) {
+        for (var file : proposal.files().entrySet()) {
+            if (!AutoLlmFileUtil.hash(AutoLlmFileUtil.inside(output, file.getKey())).equals(file.getValue())) {
+                throw new IllegalStateException("Reviewed screening artifact changed: " + file.getKey());
+            }
+        }
+        validateSelection(output, proposal);
+        Map<String,String> runs = AutoLlmFileUtil.read(output.resolve("run-hashes.json"), new tools.jackson.core.type.TypeReference<>() {});
+        for (var run : runs.entrySet()) {
+            if (!AutoLlmFileUtil.hash(AutoLlmFileUtil.inside(output.resolve("runs"), run.getKey())).equals(run.getValue())) {
+                throw new IllegalStateException("Reviewed run evidence changed: " + run.getKey());
+            }
+        }
     }
     /** Final testing covers the entire retained pool, including all preliminary training instances. */
     public static void validateSelection(Path output, Proposal proposal) {

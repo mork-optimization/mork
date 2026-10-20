@@ -13,6 +13,16 @@ spec.loader.exec_module(selector)
 
 
 class ScreenedSelectionTest(unittest.TestCase):
+    def test_selected_tokens_preserve_logical_paths_through_symlinks(self):
+        with tempfile.TemporaryDirectory() as directory:
+            real = Path(directory, "real")
+            real.mkdir()
+            alias = Path(directory, "alias")
+            alias.symlink_to(real, target_is_directory=True)
+            token = str(alias / "instances.zip") + "!nested/instance.txt"
+            self.assertEqual(selector.absolute_load_token(token), token)
+            self.assertEqual(selector.absolute_load_token(str(alias / "instance.txt")), str(alias / "instance.txt"))
+
     def select(self, count, properties):
         data = pd.DataFrame({"id": ["same-id"] * count,
                              "path": [f"/data/archive.zip!group-{i}/instance.txt" for i in range(count)],

@@ -68,7 +68,9 @@ autollm:
     # Zero uses the project's calculator; a positive value overrides it.
     time-limit-millis: 0
   execution:
-    workers: 1
+    # -1 uses Mork's max(1, availableProcessors / 2) on the execution host.
+    workers: -1
+    target: LOCAL
     watchdog-grace-millis: 30000
     codex-timeout-millis: 3600000
     build-timeout-millis: 1800000
@@ -96,6 +98,64 @@ The SOTA file contains one [component JSON specification](autoconfig.md), such a
 ```
 
 The optional additional-seed file contains an array of specifications. SOTA is always included and identical seeds are deduplicated. The baseline must be able to encode and actually execute the supplied seeds before generation starts. SOTA-based comparison limits are resolved once on the baseline, frozen, and shared by all trials and both comparison algorithms.
+
+## Remote execution over SSH
+
+The skill asks whether workloads should run locally or on a configured SSH server before preflight, builds or screening, unless the choice was already explicit. The controller, source analysis, Codex generation/repairs, authentication, transcripts, dashboard and report analysis stay local in both modes.
+
+In SSH mode, builds/tests, metadata checks, probes, screening/selection, pilot, R/irace, winner export and comparisons execute on one Unix/Linux server. R and the evaluation JVM communicate over remote loopback. A detached supervisor owns each workload and its deadlines; closing SSH does not stop it. Schedulers, multiple nodes and parallel trials are not supported.
+
+Build the attached runner with `./mvnw -pl autoconfig -am package`. The normal dependency JAR retains its purpose; `autoconfig/target/autoconfig-0.23-SNAPSHOT-remote-runner.jar` is the separate executable transferred to the server. Use a committed baseline containing the matching AutoLLM implementation. The server needs compatible Java/build tools, Git, R with `irace`, `httr` and `jsonlite`, and the selector's Python dependencies. Codex is required only locally. Preflight reports prerequisites without installing them.
+
+For example, an additional Spring configuration file for TSPTW can contain:
+
+```yaml
+autollm:
+  project:
+    repository: /local/path/to/mork
+    ref: THE_COMMITTED_BASELINE
+    build-command: ["./mvnw", "-pl", "example-tsptw", "-am", "verify"]
+    artifact: example-tsptw/target/tsptw-0.23-SNAPSHOT.jar
+  execution:
+    target: SSH
+    workers: 32
+    ssh:
+      host: experiment-server
+      workspace: /srv/mork/experiments
+      java-executable: java
+      runner-artifact: autoconfig/target/autoconfig-0.23-SNAPSHOT-remote-runner.jar
+      # Optional alternative to the normal ~/.ssh/config:
+      # config-file: /local/path/to/ssh-config
+      environment:
+        JAVA_HOME: /remote/path/to/jdk
+        PATH: /remote/path/to/jdk/bin:/remote/path/to/maven/bin:/usr/local/bin:/usr/bin:/bin
+        MORK_SELECTOR_PYTHON: /remote/path/to/selector-venv/bin/python3
+  tuning:
+    evaluations: 10000
+    ignore-initial-millis: 1000
+    interval-duration-millis: 9000
+  comparison:
+    repetitions: 30
+    time-limit-millis: 10000
+instance-screening:
+  python: /remote/path/to/selector-venv/bin/python3
+```
+
+The project repository, controller workspace, runner JAR and optional SSH config file are local. SSH workspace/Java/environment and screening Python settings refer to the server. Use normal SSH aliases or `user@host`; existing SSH configuration supplies keys, ports and jump hosts. Both preflight and workloads use the configured noninteractive environment. Private keys and Codex authentication are not transferred.
+
+Start the local example backend with `--autollm --spring.config.additional-location=/local/path/remote.yml`. `POST /api/autollm/targets/probe` accepts a complete configuration and returns host/runtime and effective workers. `/validate` performs static validation without connecting to SSH.
+
+Workers default to `-1`, resolving Mork's `max(1, Runtime.availableProcessors() / 2)` on the execution host, including its resource allocation. Auto on 32 visible processors uses 16 workers; explicit `32` uses 32. Pilot/main evaluations and comparisons use the effective count. Screening retains one sequential warmed worker. Workers share the evaluation JVM's configured heap. Requested/effective counts and host identity are saved as evidence.
+
+Complete [remote screening and approval](instance-screening.md#remote-screening), then configure the printed local mirror's published `train.index`/`test.index`. Remote campaigns require this approval and adopt the exact screened baseline JAR. Review remains local, while host/executable verification and approval execute remotely.
+
+Create and save a draft ID before calling `POST /api/autollm/campaigns/{id}/baseline-check`. This metadata-only preparation returns `parameters`, `maxParameters`, `withinLimit` and its evidence directory without running probes, pilot or tuning. Read `baseline-preflight/check/execution/check.json` and start that same draft after preparation and authorization. During generation/repair, Codex receives a local helper command for remote builds/tests and metadata checks. It uses a file queue inside the trial clone, requiring neither SSH credentials nor network access in Codex's sandbox; diagnostics are mirrored locally. The controller owns all pilots, tuning and comparisons.
+
+Transfers include content manifests, modes and Git/submodule bundles. Path mapping is explicit. Complete output is checksum-verified; live logs use cursors. Original remote journals are preserved and local reports resolve their instance paths through the mirror.
+
+`WAITING_FOR_REMOTE` retains the saved job for reconnection. `CANCELLATION_PENDING` means server termination has not yet been confirmed; the remote watchdog remains active. Resume reconciles saved jobs instead of duplicating them. Remote PIDs are never treated as local processes. Collected reports can be regenerated offline without retuning. Evidence is retained until explicitly cleaned up.
+
+SSH integration tests create an isolated loopback `sshd` with temporary keys and configuration. Set `MORK_TEST_SSHD` to override `/usr/sbin/sshd`; these fixtures do not use a real server or the user's SSH settings. The complete remote campaign fixture also needs the R packages above and the selector dependencies in `example-tsptw/venv`.
 
 ## Trial lifecycle
 

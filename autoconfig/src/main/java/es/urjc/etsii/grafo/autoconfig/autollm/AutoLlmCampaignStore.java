@@ -61,7 +61,8 @@ public class AutoLlmCampaignStore {
         return artifacts;
     }
     private boolean downloadable(String name) {
-        return !AutoLlmFileUtil.excluded(name) && !name.endsWith("owner.json") && !name.endsWith("readiness.json") && !name.endsWith("scenario.txt") && !name.endsWith("runner.R") && !name.endsWith(".lock") && !name.endsWith(".tmp");
+        return !name.startsWith(".transport/") && !name.startsWith(".transfer/") && !name.startsWith(".source-bundles/")
+                && !AutoLlmFileUtil.excluded(name) && !name.endsWith("owner.json") && !name.endsWith("readiness.json") && !name.endsWith("scenario.txt") && !name.endsWith("runner.R") && !name.endsWith(".lock") && !name.endsWith(".tmp");
     }
     public Path artifact(String id, String relative) {
         Path path = AutoLlmFileUtil.inside(directory(id), relative);

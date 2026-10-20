@@ -5,19 +5,14 @@ import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.util.Compression;
 import es.urjc.etsii.grafo.util.IOUtil;
+import es.urjc.etsii.grafo.util.InstancePathUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
 import me.tongfei.progressbar.ProgressBar;
-import org.apache.commons.io.input.BOMInputStream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
@@ -79,64 +74,13 @@ public class InstanceManager<I extends Instance> {
         return this.solveOrderByExperiment.computeIfAbsent(expName, s -> {
             String configuredPath = this.instanceConfiguration.getPath(expName);
             checkExists(configuredPath);
-            List<String> instancePaths = isIndexFile(configuredPath)?
-                    listIndexFile(configuredPath):
-                    listNormalFile(configuredPath);
+            List<String> instancePaths = InstancePathUtil.list(configuredPath);
 
             List<String> sortedInstances = preload?
                     validateAndSort(expName, instancePaths):
                     lexicSort(instancePaths);
             return sortedInstances;
         });
-    }
-
-    private List<String> listNormalFile(String instancePath) {
-        List<String> files = IOUtil.iterate(instancePath);
-        for (var iterator = files.iterator(); iterator.hasNext(); ) {
-            var f = iterator.next();
-            if (f.endsWith(INDEX_SUFFIX)) {
-                log.info("Ignoring index file: {}", f);
-                iterator.remove();
-            }
-        }
-        return files;
-    }
-
-    private List<String> listIndexFile(String instancePath) {
-        Path indexFile = Path.of(instancePath);
-        var parentPath = Optional.ofNullable(indexFile.getParent()).orElse(Path.of("."));
-        try (var in = BOMInputStream.builder().setInputStream(Files.newInputStream(indexFile)).get();
-             var reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8))) {
-            return reader.lines()
-                    .map(line -> line.startsWith("\uFEFF") ? line.substring(1) : line)
-                    .map(String::trim)
-                    .filter(p -> !p.startsWith("#"))
-                    .filter(p -> !p.isBlank())
-                    .map(path -> resolveIndexEntry(parentPath, path))
-                    .map(IOUtil::checkLoadPathExists)
-                    .toList();
-        } catch (IOException e){
-            throw new RuntimeException(e);
-        }
-    }
-
-    private static String resolveIndexEntry(Path parentPath, String instancePath) {
-        int index = instancePath.indexOf(Compression.SEP);
-        if (index < 0) {
-            return parentPath.resolve(Path.of(instancePath)).toAbsolutePath().toString();
-        }
-        String container = instancePath.substring(0, index);
-        String entry = instancePath.substring(index);
-        return parentPath.resolve(Path.of(container)).toAbsolutePath() + entry;
-    }
-
-    private boolean isIndexFile(String instancePath) {
-        var file = new File(instancePath);
-        boolean isIndex = file.isFile() && instancePath.endsWith(INDEX_SUFFIX);
-        if (!isIndex) {
-            log.debug("Not an index file: {}", instancePath);
-        }
-        return isIndex;
     }
 
     protected List<String> validateAndSort(String expName, List<String> instancePaths) {
@@ -216,7 +160,7 @@ public class InstanceManager<I extends Instance> {
         var canonicalRequestedPath = canonicalizeForAuthorization(requestedPath);
         var authorizedPath = authorizedLoadPaths.get(canonicalRequestedPath);
         if (authorizedPath == null) {
-            var relativeToConfiguredPath = resolveIndexEntry(configuredPathBase(expName), requestedPath);
+            var relativeToConfiguredPath = InstancePathUtil.resolve(configuredPathBase(expName), requestedPath);
             authorizedPath = authorizedLoadPaths.get(canonicalizeForAuthorization(relativeToConfiguredPath));
         }
         if (authorizedPath == null) {
@@ -228,9 +172,7 @@ public class InstanceManager<I extends Instance> {
     private Map<String, String> buildAuthorizedLoadPaths(String expName) {
         String configuredPath = this.instanceConfiguration.getPath(expName);
         checkExists(configuredPath);
-        List<String> instancePaths = isIndexFile(configuredPath)?
-                listIndexFile(configuredPath):
-                listNormalFile(configuredPath);
+        List<String> instancePaths = InstancePathUtil.list(configuredPath);
 
         Map<String, String> authorizedLoadPaths = new HashMap<>();
         for (String path : instancePaths) {

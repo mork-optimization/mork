@@ -13,6 +13,16 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class ScreeningFileUtilTest {
     @TempDir Path temp;
+    @Test void workerRetainsTheExecutableJarWhenTheImporterComesFromADependency() throws Exception {
+        Path jar = temp.resolve("application with spaces.jar"); Files.writeString(jar, "fixture");
+        String classpath = System.getProperty("java.class.path"), launched = System.getProperty("sun.java.command");
+        try {
+            System.setProperty("java.class.path", jar.toString()); System.setProperty("sun.java.command", jar + " --instance-screening");
+            var command = ScreeningFileUtil.javaCommand(getClass());
+            assertEquals(List.of("-da", "-jar", jar.toString()), command.subList(1, command.size()));
+            assertEquals(AutoLlmFileUtil.hash(jar), ScreeningFileUtil.artifactHash(getClass()));
+        } finally { System.setProperty("java.class.path", classpath); System.setProperty("sun.java.command", launched); }
+    }
     private String proposal() throws Exception {
         Path source = temp.resolve("source.txt"), second = temp.resolve("second.txt"), sota = temp.resolve("sota.json");
         Files.writeString(source, "input"); Files.writeString(second, "second input"); Files.writeString(sota, "{}");

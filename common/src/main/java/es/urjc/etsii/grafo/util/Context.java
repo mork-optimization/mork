@@ -263,6 +263,10 @@ public class Context {
         }
 
         public static void setSolverConfig(SolverConfig config){
+            int expected = Integer.getInteger("mork.execution.expected-workers", config.getnWorkers());
+            if (config.getnWorkers() != expected) throw new IllegalStateException("Worker allocation differs from execution preflight");
+            int processors = Runtime.getRuntime().availableProcessors();
+            if (Integer.getInteger("mork.execution.expected-processors", processors) != processors) throw new IllegalStateException("Processor allocation changed since execution preflight");
             get().solverConfig = config;
         }
 

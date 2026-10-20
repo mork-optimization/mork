@@ -172,10 +172,12 @@ def select_instances(original_df: DataFrame, filtered_df: DataFrame, kmeans: KMe
 
 
 def absolute_load_token(load_token: str) -> str:
+    # Keep the caller's logical container path, as Mork does. Resolving symlinks
+    # would turn /var into /private/var on macOS and invalidate pool membership.
     if "!" not in load_token:
-        return str(Path(load_token).resolve())
+        return os.path.abspath(load_token)
     archive_path, entry_path = load_token.split("!", maxsplit=1)
-    return str(Path(archive_path).resolve()) + "!" + entry_path
+    return os.path.abspath(archive_path) + "!" + entry_path
 
 
 def write_selected_manifest(original_df: DataFrame, chosen_rows: list[int], output_folder: str):

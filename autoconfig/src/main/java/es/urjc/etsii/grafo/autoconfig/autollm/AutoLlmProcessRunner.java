@@ -25,7 +25,8 @@ public class AutoLlmProcessRunner {
             try {
                 var start = process.info().startInstant().map(Instant::toString).orElse("");
                 if (start.isEmpty() && process.isAlive()) throw new IllegalStateException("Cannot establish child process identity");
-                AutoLlmFileUtil.write(output.resolve("owner.json"), Map.of("pid", process.pid(), "start", start, "command", command));
+                AutoLlmFileUtil.write(output.resolve("owner.json"), Map.of("pid", process.pid(), "start", start, "command", command,
+                        "executionTarget", Boolean.getBoolean("mork.execution.remote") ? "SSH" : "LOCAL"));
                 while (!process.waitFor(100, TimeUnit.MILLISECONDS)) {
                     if (cancelled.getAsBoolean() || Thread.currentThread().isInterrupted()) throw new CancellationException("Campaign cancelled");
                     long now = System.currentTimeMillis();
@@ -72,6 +73,7 @@ public class AutoLlmProcessRunner {
         try (var files = Files.walk(campaign)) {
             for (Path file : files.toList()) if (file.getFileName().toString().equals("owner.json") && !campaign.relativize(file).toString().replace('\\', '/').contains("/source/")) {
                 var record = AutoLlmFileUtil.JSON.readTree(Files.readString(file));
+                if ("SSH".equals(record.path("executionTarget").asString()) && !Boolean.getBoolean("mork.execution.remote")) continue;
                 ProcessHandle.of(record.path("pid").longValue()).ifPresent(process -> {
                     String start = record.path("start").stringValue();
                     if (process.isAlive() && !start.isBlank() && process.info().startInstant().map(Instant::toString).orElse("").equals(start)) stop(process);

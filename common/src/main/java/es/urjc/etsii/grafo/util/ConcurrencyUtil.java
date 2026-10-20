@@ -15,6 +15,11 @@ import java.util.function.Consumer;
  */
 public class ConcurrencyUtil {
 
+    /** Resolve Mork's automatic worker setting on the machine executing the workload. */
+    public static int resolveWorkerCount(int requested, int availableProcessors) {
+        return requested > 0 ? requested : Math.max(1, availableProcessors / 2);
+    }
+
     /**
      * Awaits termination for the given executor service.
      * Wraps InterruptedException in an unchecked RuntimeException

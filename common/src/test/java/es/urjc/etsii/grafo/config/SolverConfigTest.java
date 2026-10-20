@@ -8,9 +8,11 @@ class SolverConfigTest {
 
     @Test
     void defaultWorkerCountIsAtLeastOne() {
-        assertEquals(1, SolverConfig.defaultWorkerCount(1));
-        assertEquals(1, SolverConfig.defaultWorkerCount(2));
-        assertEquals(4, SolverConfig.defaultWorkerCount(8));
+        assertEquals(1, es.urjc.etsii.grafo.util.ConcurrencyUtil.resolveWorkerCount(-1, 1));
+        assertEquals(1, es.urjc.etsii.grafo.util.ConcurrencyUtil.resolveWorkerCount(-1, 2));
+        assertEquals(4, es.urjc.etsii.grafo.util.ConcurrencyUtil.resolveWorkerCount(-1, 8));
+        assertEquals(16, es.urjc.etsii.grafo.util.ConcurrencyUtil.resolveWorkerCount(-1, 32));
+        assertEquals(32, es.urjc.etsii.grafo.util.ConcurrencyUtil.resolveWorkerCount(32, 32));
     }
 
     @Test
