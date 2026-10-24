@@ -200,6 +200,16 @@ python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace /absolut
 
 `logs --campaign ID --path targets/SERVER/trials/.../stdout.log --follow` reads bounded byte cursors. `diagnose --campaign ID --output diagnostics.zip` exports status, failure evidence, an artifact index and bounded log tails without changing the experiment. The API's `/effective-config` and campaign `/summary` expose tuning/comparison horizons, resolved comparison limits, requested/effective workers and workload estimates. Estimates exclude generation, builds and repairs and do not guarantee wall time. Unspecified settings retain backend defaults; explicit user choices take precedence.
 
+`status --campaign ID --table` displays every trial, its latest published tuning budget, stage duration and last synchronization/activity timestamp. Progress reads run with bounded concurrency and a shared read deadline (`--timeout`, default ten seconds). A failed progress, screening or summary request produces an explicit partial result while healthy trials remain visible. Without `--table`, output remains JSON with `progressErrors`, section `errors` and a `partial` flag. Watch output also includes available budgets and isolates unavailable progress/activity endpoints.
+
+`campaign recovery --id ID` and `trial actions --campaign ID --number N` show current recovery eligibility, blocking reasons and effects. The dashboard uses the same backend rules. `trial resume --campaign ID --number N` resumes only that blocked/interrupted trial on its original server and saved checkpoints; `target requalify --campaign ID --id SERVER` runs qualification before resuming that server's blocked work. Requalification is unavailable while the server has an active workload or uncollected remote jobs. Resume existing work to reconcile those jobs first. A stopped campaign must be resumed explicitly before trial/server execution resumes.
+
+`trial fail --campaign ID --number N --reason "Sampling exhausted"` wraps the operator-failure API described above. The dashboard requires the reason beside the action and explains whether pending work can start or the server remains drained. Recovery commands recheck eligibility at execution time and retain audit events; the helper never automatically repeats an uncertain mutation response.
+
+Logs now start with `--tail 500` by default (`--lines` is an alias), capped at 256 KiB. An explicit `--cursor` reads one 64 KiB page. `--follow` starts at the selected tail, preserves UTF-8 boundaries and jumps to a fresh tail after rotation or a backlog larger than one page. The truncation notice includes a full-file download URL. `diagnose --campaign ID --trial N --output diagnostics.zip` limits the bundle to that trial's evidence and includes a failure summary. Defaults: 500 lines per log, 16 file attempts, 8 MiB uncompressed evidence payload, plus a bounded diagnostic manifest. Override with `--lines`, `--max-files`, `--max-bytes` and `--timeout`. The manifest records omissions and unavailable evidence; complete files remain downloadable separately.
+
+Diagnostics request `GET /campaigns/{id}/artifacts?trial=N&hashes=false` to scope the index on the server and avoid reading entire growing files just to compute checksums. Omit `trial` for a campaign-wide metadata index. Normal artifact listing retains checksums by default; `hashes=false` returns null checksums. Failure summaries are limited to 64 entries, with omissions recorded in the diagnostic manifest.
+
 The same helper exposes typed lifecycle actions; use its `campaign --help` or `screening --help` rather than assembling HTTP requests. For example, append these commands to `python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace /absolute/new-workspace`:
 
 ```text
@@ -280,6 +290,11 @@ All paths below are relative to `/api/autollm`; endpoints are registered when th
 | `GET /campaigns/{id}/trials/{number}/activity?attempt=N&cursor=0` | Readable generation events in bounded byte pages |
 | `GET /campaigns/{id}/artifacts`, `/artifact?path=...` | Evidence index and downloads |
 | `GET /campaigns/{id}/log?path=...&cursor=0&maximumBytes=65536` | UTF-8-safe byte cursor; returns `cursor`, `nextCursor`, `text`, `more`, `reset` |
+| `GET /campaigns/{id}/preview?path=...&lines=500` | Latest text lines; accepts 1–5,000 lines, capped at 256 KiB. Returns `text`, `lineCount`, `sizeBytes`, `truncated`, `byteLimited`, and a UTF-8-safe `nextCursor` for following. Full downloads remain on `/artifact`. |
+| `GET /campaigns/{id}/recovery` | Current campaign/trial/server recovery availability, blocking reasons and effects |
+| `POST /campaigns/{id}/trials/{number}/resume` | Resume only the selected blocked/interrupted trial on its original server |
+| `POST /campaigns/{id}/targets/{targetId}/requalify` | Requalify an idle, reconciled server before resuming its blocked work |
+| `GET /screenings/{id}/preview?path=...&lines=500` | Same bounded tail and UTF-8-safe follow cursor for screening files |
 | `GET/POST /screenings`, `GET /screenings/{id}` | Durable dataset preparation jobs; create returns a draft |
 | `POST /screenings/{id}/resume`, `/cancel`, `/approve` | Start/resume, reconcile cancellation, publish an explicitly reviewed selection |
 | `GET /screenings/{id}/review`, `/artifact?path=...`, `/log?path=...&cursor=0` | Completed proposal/report/hash, evidence and bounded logs |

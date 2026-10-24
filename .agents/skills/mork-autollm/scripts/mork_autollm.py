@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Dependency-free AutoLLM operator client. Mork owns experiment state and retries."""
 import argparse
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timezone
 import hashlib
 import json
 import math
@@ -18,13 +20,18 @@ import zipfile
 FEATURES = {"SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS"}
 
 
-def request(base, path, body=None, timeout=30, method=None):
+def request(base, path, body=None, timeout=30, method=None, maximum_bytes=None):
     req = Request(base.rstrip("/") + "/api/autollm" + path,
                   data=None if body is None else json.dumps(body).encode(),
                   headers={"Content-Type": "application/json"}, method=method)
     try:
         with urlopen(req, timeout=timeout) as response:
-            return json.load(response)
+            if maximum_bytes is None:
+                return json.load(response)
+            data = response.read(maximum_bytes + 1)
+            if len(data) > maximum_bytes:
+                raise RuntimeError(f"Response from {path} exceeds the {maximum_bytes}-byte diagnostic limit")
+            return json.loads(data)
     except HTTPError as error:
         message = error.read(16384).decode(errors="replace")
         try:
@@ -198,7 +205,7 @@ def lifecycle(args, base):
                       "trainingFraction": args.training_fraction})
         return request(base, root, body, timeout=args.timeout)
     path = root + "/" + quote(args.id, safe="")
-    if args.action in ("get", "review", "summary"):
+    if args.action in ("get", "review", "summary", "recovery"):
         return request(base, path if args.action == "get" else path + "/" + args.action, timeout=args.timeout)
     body = {"proposalSha256": args.proposal_sha256} if args.action == "approve" else {}
     return request(base, path + "/" + args.action, body, timeout=args.timeout)
@@ -217,6 +224,42 @@ def target(args, base):
     if args.action == "remove":
         return request(base, path, method="DELETE")
     return request(base, path + "/" + args.action, {})
+
+
+def trial(args, base):
+    root = f"/campaigns/{quote(args.campaign, safe='')}"
+    if args.action == "actions":
+        recovery = request(base, root + "/recovery", timeout=args.timeout)
+        actions = recovery["trials"].get(str(args.number))
+        if actions is None:
+            raise RuntimeError(f"Unknown trial {args.number}")
+        return actions
+    body = {"reason": args.reason.strip()} if args.action == "fail" else {}
+    return request(base, root + f"/trials/{args.number}/{args.action}", body, timeout=args.timeout)
+
+
+def read_progress(base, root, trials, timeout):
+    if not trials:
+        return {}, {}
+    deadline = time.monotonic() + timeout
+    def read(item):
+        number = item["number"]
+        try:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                raise RuntimeError("Progress read deadline expired before this request")
+            value = request(base, root + f"/trials/{number}/progress", timeout=remaining)
+            return str(number), value, None
+        except (RuntimeError, OSError, ValueError) as error:
+            return str(number), None, str(error)
+    progress, errors = {}, {}
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        for number, value, error in executor.map(read, trials):
+            if error is None:
+                progress[number] = value
+            else:
+                errors[number] = error
+    return progress, errors
 
 
 def watch_timeout(deadline):
@@ -258,10 +301,11 @@ def watch_snapshot(base, kind, identifier, deadline):
     if not selected:
         selected = next(([t] for t in reversed(trials) if t["status"] != "PENDING"), [])
     snapshot.update(poolRevision=saved.get("poolRevision"), targets=saved.get("targets", {}), trials=[])
+    progress_by_trial, progress_errors = read_progress(base, root, selected, watch_timeout(deadline))
     sources = []
     for trial in selected:
-        progress = request(base, root + f"/trials/{trial['number']}/progress", timeout=watch_timeout(deadline))
-        snapshot["trials"].append({"number": trial["number"], "targetId": trial.get("targetId"), "status": trial["status"], "progress": progress})
+        number = str(trial["number"])
+        snapshot["trials"].append({"number": trial["number"], "targetId": trial.get("targetId"), "status": trial["status"], "progress": progress_by_trial.get(number), "progressError": progress_errors.get(number)})
         generation = next((a for a in reversed(trial.get("attempts", [])) if a["stage"] in ("GENERATION", "REPAIR")), None)
         if generation:
             sources.append((trial["number"], generation["number"]))
@@ -315,6 +359,11 @@ def watch_line(snapshot):
                 description += f" remote={remote.get('status')} lastSync={remote.get('lastSynchronizedAt')}"
             if progress.get("problem"):
                 description += " problem=" + str(progress["problem"])
+            budget = (progress.get("workload") or {}).get("budget") or {}
+            if budget:
+                description += f" budget={budget.get('used', '?')}/{budget.get('maximum', '?')}"
+            if trial.get("progressError"):
+                description += " progressUnavailable=" + trial["progressError"]
             parts.append(description)
         progress = {}
         for identifier, target in snapshot.get("targets", {}).items():
@@ -337,6 +386,8 @@ def watch_line(snapshot):
     problem = snapshot.get("problem") or progress.get("problem")
     if problem:
         parts.append(f"problem={problem.get('category', '')}/{problem.get('code', '')}: {problem.get('message', '')}")
+    for source, error in snapshot.get("activityErrors", {}).items():
+        parts.append(f"activityUnavailable={source}: {error}")
     return " | ".join(parts)
 
 
@@ -364,7 +415,12 @@ def watch(args, base):
         snapshot, sources = watch_snapshot(base, kind, identifier, deadline)
         events, caught_up = [], True
         for source in dict.fromkeys([*(sources or []), *cursors]):
-            batch, complete = watch_activity(base, identifier, source, cursors, deadline)
+            try:
+                batch, complete = watch_activity(base, identifier, source, cursors, deadline)
+            except (RuntimeError, OSError, ValueError) as error:
+                snapshot.setdefault("activityErrors", {})[f"{source[0]}/{source[1]}"] = str(error)
+                caught_up = False
+                continue
             events.extend(batch)
             caught_up &= complete
             if complete and source not in (sources or []):
@@ -388,70 +444,182 @@ def watch(args, base):
 
 
 def status(args, base):
-    campaigns, screenings = request(base, "/campaigns"), request(base, "/screenings")
+    campaigns = request(base, "/campaigns", timeout=args.timeout)
     result = {"baseUrl": base, "workspace": str(Path(args.workspace).resolve()), "activeCampaign": campaigns["active"],
-              "activeScreening": screenings["active"], "screenings": screenings["jobs"]}
+              "checkedAt": datetime.now(timezone.utc).isoformat(), "errors": {}}
+    try:
+        screenings = request(base, "/screenings", timeout=args.timeout)
+        result.update(activeScreening=screenings["active"], screenings=screenings["jobs"])
+    except (RuntimeError, OSError, ValueError) as error:
+        result["errors"]["screenings"] = str(error)
     candidates = campaigns["campaigns"]
     selected = args.campaign or campaigns["active"] or (candidates[0]["id"] if candidates else None)
     if selected:
-        campaign = request(base, f"/campaigns/{selected}")
+        root = "/campaigns/" + quote(selected, safe="")
+        campaign = request(base, root, timeout=args.timeout)
         result["campaign"] = {key: campaign.get(key) for key in ("id", "status", "problem", "poolRevision", "targets")}
         result["campaign"]["trials"] = [{key: trial.get(key) for key in ("number", "targetId", "status", "repairTurns", "infrastructureRetries", "quotaRetryAt", "problem")} for trial in campaign["trials"]]
-        result["progress"] = {}
-        for trial in campaign["trials"]:
-            if trial["status"] not in ("SUCCEEDED", "FAILED", "PENDING"):
-                result["progress"][trial["number"]] = request(base, f"/campaigns/{selected}/trials/{trial['number']}/progress")
-        result["summary"] = request(base, f"/campaigns/{selected}/summary")
+        selected_trials = [trial for trial in campaign["trials"] if trial["status"] != "PENDING"]
+        result["progress"], result["progressErrors"] = read_progress(base, root, selected_trials, args.timeout)
+        try:
+            result["summary"] = request(base, root + "/summary", timeout=args.timeout)
+        except (RuntimeError, OSError, ValueError) as error:
+            result["errors"]["summary"] = str(error)
     if args.screening:
-        result["screening"] = request(base, f"/screenings/{args.screening}")
+        try:
+            result["screening"] = request(base, "/screenings/" + quote(args.screening, safe=""), timeout=args.timeout)
+        except (RuntimeError, OSError, ValueError) as error:
+            result["errors"]["screening"] = str(error)
+    result["partial"] = bool(result["errors"] or result.get("progressErrors"))
     return result
 
 
+def status_table(value):
+    campaign = value.get("campaign") or {}
+    lines = [f"Checked {value['checkedAt']} | {value['baseUrl']}",
+             f"Campaign {campaign.get('id', 'none')}: {campaign.get('status', 'none')}" + (" | PARTIAL STATUS" if value["partial"] else "")]
+    rows = [["TRIAL", "SERVER", "STATE / STAGE", "TUNING BUDGET", "ELAPSED", "LAST SYNC / ACTIVITY"]]
+    for trial in campaign.get("trials", []):
+        number = str(trial["number"])
+        progress = value.get("progress", {}).get(number) or {}
+        budget = (progress.get("workload") or {}).get("budget") or {}
+        used, maximum = budget.get("used"), budget.get("maximum")
+        budget_text = f"{used:,}/{maximum:,} ({100 * used / maximum:.1f}%)" if isinstance(used, (int, float)) and maximum else "—"
+        millis = progress.get("elapsedMillis")
+        elapsed = f"{int(millis // 3600000)}h {int(millis // 60000 % 60)}m" if isinstance(millis, (int, float)) else "—"
+        remote = progress.get("remote") or {}
+        generation = progress.get("generation") or {}
+        state = trial["status"]
+        if progress.get("substage"):
+            state += "/" + progress["substage"]
+        if number in value.get("progressErrors", {}):
+            state += " (unavailable)"
+        rows.append([number, trial.get("targetId") or "Unassigned", state, budget_text, elapsed,
+                     remote.get("lastSynchronizedAt") or generation.get("lastActivityAt") or "—"])
+    widths = [max(len(row[index]) for row in rows) for index in range(len(rows[0]))]
+    lines.extend("  ".join(cell.ljust(widths[index]) for index, cell in enumerate(row)) for row in rows)
+    for trial in campaign.get("trials", []):
+        number = str(trial["number"])
+        progress = value.get("progress", {}).get(number) or {}
+        problem = progress.get("problem") or trial.get("problem")
+        if problem:
+            lines.append(f"Trial {number}: {problem.get('category')}/{problem.get('code')}: {str(problem.get('message', ''))[:1000]}")
+        if trial.get("quotaRetryAt"):
+            lines.append(f"Trial {number}: quota retry after {trial['quotaRetryAt']}")
+    for key, error in value.get("progressErrors", {}).items():
+        lines.append(f"Trial {key} progress unavailable: {error[:1000]}")
+    for key, error in value["errors"].items():
+        lines.append(f"{key} unavailable: {error[:1000]}")
+    if value.get("screening"):
+        lines.append(f"Screening {value['screening'].get('id')}: {value['screening'].get('status')}")
+    lines.append("Tuning budgets are the latest published checkpoints; unavailable values are not zero.")
+    return "\n".join(lines)
+
+
 def logs(args, base):
-    cursor = args.cursor
-    root = f"/screenings/{args.screening}" if args.screening else f"/campaigns/{args.campaign}"
-    while True:
-        page = request(base, root + "/log?" + urlencode({"path": args.path, "cursor": cursor}))
-        if page["reset"]:
-            print("\n[Log restarted]\n", file=sys.stderr)
-        sys.stdout.write(page["text"])
-        sys.stdout.flush()
+    identifier = args.screening or args.campaign
+    root = f"/screenings/{quote(identifier, safe='')}" if args.screening else f"/campaigns/{quote(identifier, safe='')}"
+    def tail():
+        page = request(base, root + "/preview?" + urlencode({"path": args.path, "lines": args.lines}), timeout=args.timeout)
+        if page["truncated"]:
+            print(f"[Latest {page['lineCount']} lines; preview capped at 256 KiB. Full file: {base}/api/autollm{root}/artifact?{urlencode({'path': args.path})}]", file=sys.stderr)
+        return page
+    if args.cursor is None:
+        page = tail()
+    else:
+        page = request(base, root + "/log?" + urlencode({"path": args.path, "cursor": args.cursor, "maximumBytes": 65536}), timeout=args.timeout)
+        if page["more"]:
+            print("[One bounded page shown; use --follow for updates or download the full file]", file=sys.stderr)
+    sys.stdout.write(page["text"]); sys.stdout.flush()
+    cursor = page["nextCursor"]
+    while args.follow:
+        time.sleep(2)
+        page = request(base, root + "/log?" + urlencode({"path": args.path, "cursor": cursor, "maximumBytes": 65536}), timeout=args.timeout)
+        if page["reset"] or page["more"]:
+            print("\n[Log restarted or advanced beyond one page; showing the latest bounded tail]\n", file=sys.stderr)
+            page = tail()
+        sys.stdout.write(page["text"]); sys.stdout.flush()
         cursor = page["nextCursor"]
-        if not args.follow and not page["more"]:
-            return
-        if not page["more"]:
-            time.sleep(2)
 
 
 def diagnose(args, base):
-    prefix = f"/campaigns/{args.campaign}"
-    artifacts = request(base, prefix + "/artifacts")
-    output = Path(args.output).resolve()
-    output.parent.mkdir(parents=True, exist_ok=True)
+    prefix = "/campaigns/" + quote(args.campaign, safe="")
+    campaign = request(base, prefix, timeout=args.timeout, maximum_bytes=2_000_000)
+    chosen = None
+    if args.trial is not None:
+        chosen = next((trial for trial in campaign["trials"] if trial["number"] == args.trial), None)
+        if chosen is None:
+            raise RuntimeError(f"Unknown trial {args.trial}")
+    artifact_query = {"hashes": "false"}
+    if chosen:
+        artifact_query["trial"] = args.trial
+    artifacts = request(base, prefix + "/artifacts?" + urlencode(artifact_query), timeout=args.timeout, maximum_bytes=2_000_000)
+    if chosen:
+        directory = chosen.get("directory")
+        if not directory:
+            directory = f"targets/{chosen['targetId']}/trials/{args.trial:03d}" if chosen.get("targetId") else f"trials/{args.trial:03d}"
+        artifacts = [artifact for artifact in artifacts if artifact["path"].startswith(directory.rstrip("/") + "/")]
+        campaign = dict(campaign, trials=[chosen], targets={key: target for key, target in campaign.get("targets", {}).items() if key == chosen.get("targetId")})
+    failures, failure_count = [], 0
+    for item in campaign.get("trials", []):
+        problem = item.get("problem") or {}
+        if problem or item.get("failure"):
+            failure_count += 1
+            if len(failures) >= 64:
+                continue
+            failures.append({"trial": item["number"], "category": problem.get("category"), "code": problem.get("code"),
+                             "message": str(problem.get("message") or item.get("failure", ""))[:4000],
+                             "recovery": problem.get("recovery"), "evidence": problem.get("evidence", [])[:16]})
+    output = Path(args.output).resolve(); output.parent.mkdir(parents=True, exist_ok=True)
+    total, included, evidence, log_tails, omitted = 0, 0, 0, 0, 0
+    errors = {}
+    evidence_names = {"failure.json", "dependency-differences.json", "dependencies.json", "probes.json", "check.json", "remote-status.json", "remote-job.json", "codex-progress.json", "terminal.json"}
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
-        for name, path in (("capabilities.json", "/capabilities"), ("campaign.json", prefix), ("summary.json", prefix + "/summary")):
-            archive.writestr(name, json.dumps(request(base, path), indent=2))
-        evidence = 0
-        for artifact in artifacts:
+        def save(name, data):
+            nonlocal total
+            if len(data) > 2_000_000 or total + len(data) > args.maximum_bytes:
+                errors[name] = "Omitted: diagnostic byte limit reached"
+                return False
+            archive.writestr(name, data); total += len(data)
+            return True
+        def save_json(name, data):
+            return save(name, json.dumps(data, indent=2, ensure_ascii=False).encode())
+        save_json("campaign.json", campaign)
+        save_json("artifact-index.json", artifacts)
+        endpoints = [("capabilities.json", "/capabilities"), ("summary.json", prefix + "/summary")]
+        if chosen:
+            endpoints.append(("progress.json", prefix + f"/trials/{args.trial}/progress"))
+        for name, path in endpoints:
+            try:
+                save_json(name, request(base, path, timeout=args.timeout, maximum_bytes=2_000_000))
+            except (RuntimeError, OSError, ValueError) as error:
+                errors[name] = str(error)[:1000]
+        candidates = sorted(artifacts, key=lambda artifact: (Path(artifact["path"]).name != "failure.json", not artifact["path"].endswith("stderr.log"), artifact["path"]))
+        for artifact in candidates:
             path = artifact["path"]
-            if Path(path).name not in {"failure.json", "dependency-differences.json", "dependencies.json", "probes.json", "check.json", "remote-status.json", "remote-job.json", "codex-progress.json"} or artifact["size"] > 2_000_000 or "/source/" in path:
+            is_log = path.endswith((".log", ".jsonl", ".txt"))
+            is_evidence = Path(path).name in evidence_names
+            if "/source/" in path or path.startswith("control/") or not (is_log or is_evidence):
                 continue
-            archive.writestr("evidence/" + path, json.dumps(request(base, prefix + "/artifact?" + urlencode({"path": path})), indent=2))
-            evidence += 1
-            if evidence >= 64:
-                break
-        included = 0
-        for artifact in artifacts:
-            path = artifact["path"]
-            if "/source/" in path or path.startswith("control/") or not path.endswith((".log", ".jsonl")):
-                continue
-            page = request(base, prefix + "/log?" + urlencode({"path": path, "cursor": max(0, artifact["size"] - 262144), "maximumBytes": 262144}))
-            archive.writestr("logs/" + path + ".tail.txt", page["text"])
+            if included >= args.maximum_files or total >= args.maximum_bytes or is_evidence and artifact["size"] > 2_000_000:
+                omitted += 1; continue
+            # Both the number of attempts and the archive payload are bounded, including failed reads.
             included += 1
-            if included >= 64:
-                break
-        archive.writestr("artifact-index.json", json.dumps(artifacts, indent=2))
-    return {"diagnosticBundle": str(output), "logTails": included, "evidenceFiles": evidence, "note": "Bounded log tails; full evidence stays in the workspace."}
+            try:
+                if is_evidence:
+                    value = request(base, prefix + "/artifact?" + urlencode({"path": path}), timeout=args.timeout, maximum_bytes=2_000_000)
+                    if save_json("evidence/" + path, value): evidence += 1
+                else:
+                    page = request(base, prefix + "/preview?" + urlencode({"path": path, "lines": args.lines}), timeout=args.timeout, maximum_bytes=2_000_000)
+                    if save("logs/" + path + ".tail.txt", page["text"].encode()): log_tails += 1
+            except (RuntimeError, OSError, ValueError) as error:
+                errors[path] = str(error)[:1000]
+        summary = {"campaign": args.campaign, "trial": args.trial, "failureSummary": failures, "omittedFailureSummaries": failure_count - len(failures),
+                   "limits": {"linesPerLog": args.lines, "maximumFiles": args.maximum_files, "maximumPayloadBytes": args.maximum_bytes},
+                   "payloadBytes": total, "logTails": log_tails, "evidenceFiles": evidence, "omittedFiles": omitted, "errors": errors}
+        # The bounded manifest is retained even if the evidence payload exhausted its allowance.
+        archive.writestr("diagnostic-summary.json", json.dumps(summary, indent=2))
+    return {"diagnosticBundle": str(output), **summary, "note": "Bounded diagnostics; full files remain downloadable from the campaign artifact endpoint."}
 
 
 def positive_seconds(value):
@@ -459,6 +627,24 @@ def positive_seconds(value):
     if not math.isfinite(seconds) or seconds <= 0:
         raise argparse.ArgumentTypeError("Use a finite positive number of seconds")
     return seconds
+
+
+def bounded_integer(minimum, maximum):
+    def parse(value):
+        try:
+            number = int(value)
+        except ValueError as error:
+            raise argparse.ArgumentTypeError("Expected an integer") from error
+        if not minimum <= number <= maximum:
+            raise argparse.ArgumentTypeError(f"Expected a value between {minimum} and {maximum}")
+        return number
+    return parse
+
+
+def nonblank(value):
+    if not value.strip():
+        raise argparse.ArgumentTypeError("A nonblank reason is required")
+    return value.strip()
 
 
 def reviewed_sha256(value):
@@ -481,7 +667,7 @@ def lifecycle_commands(commands):
                 action.add_argument("--settings", help="JSON screening settings; omitted values use backend defaults")
                 action.add_argument("--input", required=True, help="Full original instance pool, relative to the configured repository")
                 action.add_argument("--training-fraction", type=float)
-        names = ("get", "baseline-check", "summary", "start", "resume", "cancel", "report") if kind == "campaign" else ("get", "review", "resume", "cancel", "approve")
+        names = ("get", "baseline-check", "summary", "recovery", "start", "resume", "cancel", "report") if kind == "campaign" else ("get", "review", "resume", "cancel", "approve")
         for name in names:
             action = actions.add_parser(name)
             action.add_argument("--id", required=True, help=f"Saved {kind} ID; mutating commands never select another operation")
@@ -508,26 +694,44 @@ def main(argv=None):
     state = commands.add_parser("status")
     state.add_argument("--campaign")
     state.add_argument("--screening")
+    state.add_argument("--table", action="store_true", help="Compact all-trial status, budgets and observation timestamps")
+    state.add_argument("--timeout", type=positive_seconds, default=10, help="Read deadline in seconds; unavailable sections remain explicitly unknown")
     tail = commands.add_parser("logs")
     owner = tail.add_mutually_exclusive_group(required=True)
     owner.add_argument("--campaign")
     owner.add_argument("--screening")
     tail.add_argument("--path", required=True)
-    tail.add_argument("--cursor", type=int, default=0)
+    tail.add_argument("--cursor", type=bounded_integer(0, 2**63 - 1), help="Read one bounded byte page instead of the default tail")
+    tail.add_argument("--tail", "--lines", dest="lines", type=bounded_integer(1, 5000), default=500, help="Latest lines, capped at 256 KiB (default: 500)")
     tail.add_argument("--follow", action="store_true")
+    tail.add_argument("--timeout", type=positive_seconds, default=10)
     bundle = commands.add_parser("diagnose")
     bundle.add_argument("--campaign", required=True)
     bundle.add_argument("--output", required=True)
+    bundle.add_argument("--trial", type=bounded_integer(1, 2**31 - 1), help="Include only this trial's evidence")
+    bundle.add_argument("--lines", type=bounded_integer(1, 5000), default=500)
+    bundle.add_argument("--max-files", dest="maximum_files", type=bounded_integer(1, 64), default=16)
+    bundle.add_argument("--max-bytes", dest="maximum_bytes", type=bounded_integer(1024, 64 * 1024 * 1024), default=8 * 1024 * 1024, help="Maximum uncompressed evidence payload; a bounded manifest is additional")
+    bundle.add_argument("--timeout", type=positive_seconds, default=10)
     lifecycle_commands(commands)
     servers = commands.add_parser("target", help="List, enroll, drain, recover, or remove campaign servers")
     actions = servers.add_subparsers(dest="action", required=True)
-    for name in ("list", "add", "drain", "resume", "remove"):
+    for name in ("list", "add", "drain", "resume", "requalify", "remove"):
         action = actions.add_parser(name)
         action.add_argument("--campaign", required=True)
         if name != "list":
             action.add_argument("--id", required=True)
         if name == "add":
             action.add_argument("--server", required=True, help="JSON file containing one complete server definition")
+    trials = commands.add_parser("trial", help="Inspect availability or recover an explicitly selected saved trial")
+    actions = trials.add_subparsers(dest="action", required=True)
+    for name in ("actions", "resume", "fail"):
+        action = actions.add_parser(name)
+        action.add_argument("--campaign", required=True)
+        action.add_argument("--number", required=True, type=bounded_integer(1, 2**31 - 1))
+        action.add_argument("--timeout", type=positive_seconds, default=30)
+        if name == "fail":
+            action.add_argument("--reason", required=True, type=nonblank)
     monitor = commands.add_parser("watch", help="Follow current progress and readable generation activity without changing work")
     owner = monitor.add_mutually_exclusive_group()
     owner.add_argument("--campaign")
@@ -543,9 +747,9 @@ def main(argv=None):
         base = base_url(args)
         capabilities(base, args.workspace)
         result = {"config": configuration, "status": status, "logs": logs, "diagnose": diagnose,
-                  "campaign": lifecycle, "screening": lifecycle, "watch": watch, "target": target}[args.command](args, base)
+                  "campaign": lifecycle, "screening": lifecycle, "watch": watch, "target": target, "trial": trial}[args.command](args, base)
     if result is not None:
-        print(json.dumps(result, indent=2, ensure_ascii=False))
+        print(status_table(result) if args.command == "status" and args.table else json.dumps(result, indent=2, ensure_ascii=False))
     return 2 if args.command == "campaign" and args.action == "validate" and not result["valid"] else 0
 
 

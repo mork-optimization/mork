@@ -99,12 +99,14 @@
     <mat-card><mat-card-content>
       <div class="actions"><strong>{{ campaign.status }} · {{ store.completed() }}/{{ campaign.trials.length }} trials finished</strong>
         @if (store.active() === campaign.id) { <button mat-button [disabled]="campaign.status === 'CANCELLATION_PENDING'" (click)="store.action('cancel')">Cancel campaign</button> }
-        @if (['INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION'].includes(campaign.status) && !store.active()) { <button mat-flat-button [disabled]="store.busy() || !!store.activeScreening()" (click)="store.action('resume')">Resume from checkpoints</button> }
+        @if (['INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION', 'WAITING_FOR_TARGETS'].includes(campaign.status) && !store.active()) { <button mat-flat-button [disabled]="store.busy() || !store.recovery()?.resumeCampaign?.allowed" [title]="store.recovery()?.resumeCampaign?.reason || store.recovery()?.resumeCampaign?.effect || ''" (click)="store.action('resume')">Resume from checkpoints</button> }
         @if (campaign.status === 'NEEDS_ATTENTION') { <button mat-button [disabled]="store.busy()" (click)="store.action('cancel')">Reconcile and cancel remote work</button> }
         @if (campaign.status === 'DRAFT' && !store.active()) { <button mat-flat-button (click)="store.action('start')">Start saved draft</button> }
         @if (campaign.status !== 'DRAFT' && !store.active()) { <button mat-button [disabled]="store.busy()" (click)="store.action('report')">Regenerate reports</button> }
       </div>
       <mat-progress-bar mode="determinate" [value]="100 * store.completed() / campaign.trials.length" />
+      @if (store.recoveryError()) { <p class="error">Recovery actions unavailable: {{ store.recoveryError() }}</p> }
+      @if (!store.active() && store.recovery(); as recovery) { <p>{{ recovery.resumeCampaign.reason || recovery.resumeCampaign.effect }}</p> }
       <h2>Servers · pool revision {{ campaign.poolRevision }}</h2>
       <p>Each server runs one trial at a time. SOTA and proposal measurements stay paired on that server; reports are grouped by server.</p>
       <div class="target-grid">
@@ -114,8 +116,11 @@
             @if (target.remote; as remote) { <p>{{ remote.status }} · Last sync {{ remote.lastSynchronizedAt | date:'mediumTime' }} @if (['BUSY', 'QUALIFYING'].includes(target.status) && store.targetStale(remote.lastSynchronizedAt)) { <strong class="error">Status is stale</strong> }</p> }
             @if (target.problem; as problem) { <p class="error">{{ problem.category }} · {{ problem.message }}</p><p>{{ problem.recovery }}</p> }
             @if (campaign.config.execution.target === 'SSH' && target.status !== 'REMOVED') {
+              @let recovery = store.recovery()?.targets?.[target.id];
               <button mat-button [disabled]="store.busy() || target.draining" (click)="store.targetAction(target.id, 'drain')">Drain</button>
-              <button mat-button [disabled]="store.busy() || store.active() !== campaign.id || !!target.assignedTrial" (click)="store.targetAction(target.id, 'resume')">Resume server</button>
+              <button mat-button [disabled]="store.busy() || !recovery?.resume?.allowed" [title]="recovery?.resume?.reason || recovery?.resume?.effect || ''" (click)="store.targetAction(target.id, 'resume')">Resume server</button>
+              <button mat-button [disabled]="store.busy() || !recovery?.requalify?.allowed" [title]="recovery?.requalify?.reason || recovery?.requalify?.effect || ''" (click)="store.targetAction(target.id, 'requalify')">Requalify server</button>
+              @if (recovery) { <p>{{ recovery.resume.reason || recovery.resume.effect }}</p>@if (recovery.requalify.allowed || recovery.requalify.reason !== recovery.resume.reason) { <p>{{ recovery.requalify.reason || recovery.requalify.effect }}</p> } }
               <button mat-button [disabled]="store.busy() || !!target.assignedTrial || target.status === 'QUALIFYING'" (click)="store.targetAction(target.id, 'remove')">Remove idle server</button>
             }
           </article>
@@ -147,6 +152,17 @@
     </mat-card-content></mat-card>
     @if (store.trial(); as trial) {
       <mat-card><mat-card-content><h2>Trial {{ trial.number }} · {{ trial.status }}</h2>
+        @if (['BLOCKED', 'INTERRUPTED'].includes(trial.status)) {
+          <fieldset class="trial-recovery"><legend>Recover trial {{ trial.number }}</legend>
+            @if (store.trialRecovery(); as recovery) {
+              <p>{{ recovery.resume.reason || recovery.resume.effect }}</p>
+              <button mat-button [disabled]="store.busy() || !recovery.resume.allowed" (click)="store.resumeTrial()">Resume existing work</button>
+              <p>{{ recovery.fail.reason || recovery.fail.effect }}</p>
+              <label>Reason for marking this trial failed<textarea rows="2" [value]="failureReason()" (input)="failureReason.set($any($event.target).value)"></textarea></label>
+              <button mat-button [disabled]="store.busy() || !recovery.fail.allowed || !failureReason().trim()" (click)="store.failTrial(failureReason())">Mark trial failed and continue</button>
+            } @else { <p>Recovery availability is loading or unavailable. {{ store.recoveryError() }}</p> }
+          </fieldset>
+        }
         @if (trial.quotaRetryAt) { <p>Waiting for Codex quota. Automatic retry after {{ trial.quotaRetryAt | date:'medium' }}.</p> }
         @if (store.progress(); as progress) { <p>{{ progress.substage || progress.status }} · {{ (progress.elapsedMillis || 0) / 1000 | number:'1.0-0' }} seconds · Infrastructure retries: {{ progress.infrastructureRetries || 0 }} · Component repairs: {{ trial.repairTurns }}</p> }
         @if (store.generation(); as generation) {
@@ -178,15 +194,39 @@
         @if (trial.winner) { <h3>First-ranked proposal: components and parameters</h3><p>Generated algorithm components end in New.</p><pre>{{ trial.winner | json }}</pre> }
         @if (store.comparison()) { <details open><summary>Comparison results</summary><pre>{{ comparisonSummary() | json }}</pre></details> }
         @if (instances().length) {
-          <div class="fields"><label>Convergence instance<select [value]="selectedInstance() || instances()[0]" (change)="selectedInstance.set($any($event.target).value)">@for (instance of instances(); track instance) { <option [value]="instance">{{ instance }}</option> }</select></label>
-            <label>Objective<select [value]="selectedObjective() || objectives()[0]" (change)="selectedObjective.set($any($event.target).value)">@for (objective of objectives(); track objective) { <option [value]="objective">{{ objective }}</option> }</select></label></div>
-          <app-dashboard-chart [model]="curveChart()" />
+          <div class="fields comparison-controls">
+            <label>Convergence instance<select [value]="activeInstance()" [title]="activeInstance()" (change)="selectedInstance.set($any($event.target).value)">@for (instance of instances(); track instance) { <option [value]="instance" [title]="instance">{{ instanceLabels().get(instance) }}</option> }</select></label>
+            <label>Objective<select [value]="activeObjective()" (change)="selectedObjective.set($any($event.target).value)">@for (objective of objectives(); track objective) { <option [value]="objective">{{ objective }}</option> }</select></label>
+            <label>Y-axis scale<select [value]="effectiveYAxisScale()" (change)="yAxisScale.set($any($event.target).value)"><option value="linear">Linear</option><option value="logarithmic" [disabled]="!canLogYAxis()">Logarithmic</option></select></label>
+            <label>Chart height<select [value]="chartHeight()" (change)="chartHeight.set(+$any($event.target).value)"><option value="520">Standard</option><option value="760">Tall</option><option value="1000">Extra tall</option></select></label>
+          </div>
+          <p class="chart-help">Drag a rectangle to zoom, Shift-drag to pan, or resize from the bottom-right corner. Click an algorithm in the legend to show or hide all its repetitions.</p>
+          @if (!canLogYAxis()) { <p class="chart-help">Logarithmic scale requires positive objective values; this selection uses a linear scale.</p> }
+          <app-dashboard-chart [model]="curveChart()" [resizable]="true" [style.height.px]="chartHeight()" aria-label="Comparison convergence chart" />
         }
       </mat-card-content></mat-card>
     }
-    @if (store.logPath()) { <mat-card><mat-card-content><h2>{{ store.logPath() }}</h2><pre class="logs">{{ store.logText() }}</pre></mat-card-content></mat-card> }
+    @if (store.logPath()) {
+      <mat-card class="log-preview"><mat-card-content>
+        <h2>{{ store.logPath() }}</h2>
+        <div class="actions">
+          <label>Last lines<select [value]="store.logLines()" (change)="store.setLogLines(+$any($event.target).value)"><option value="100">100</option><option value="500">500</option><option value="1000">1,000</option></select></label>
+          <label class="follow-log"><input type="checkbox" [checked]="store.logFollow()" (change)="store.logFollow.set($any($event.target).checked)" />Follow latest</label>
+          <button mat-button (click)="store.refreshLog()" [disabled]="store.logLoading()">Refresh preview</button>
+          <a mat-button [href]="store.artifactUrl(store.logPath())" download>Download full file</a>
+          <button mat-button (click)="store.selectLog('')">Close preview</button>
+        </div>
+        <p>Preview of up to the last {{ store.logLines() | number }} lines, limited to 256 KiB.</p>
+        @if (store.logLoading()) { <p role="status">Loading latest lines…</p> }
+        @if (store.logError()) { <p role="alert" class="error">{{ store.logError() }}</p> }
+        @if (store.logPreview(); as preview) {
+          <p>{{ preview.lineCount | number }} lines shown · {{ preview.sizeBytes | number }} bytes in the full file.@if (preview.truncated) { Earlier content is omitted. }@if (preview.byteLimited) { Preview shortened by the 256 KiB byte limit. }</p>
+          <pre class="logs">{{ preview.text }}</pre>
+        }
+      </mat-card-content></mat-card>
+    }
     <mat-card><mat-card-content><div class="actions"><h2>Saved data and artifacts</h2><button mat-button (click)="store.refreshArtifacts()">Refresh artifacts</button></div>
-      @for (artifact of store.artifacts(); track artifact.path) { <div class="artifact"><a [href]="store.artifactUrl(artifact.path)">{{ artifact.path }}</a><span>{{ artifact.size }} bytes</span>@if (artifact.path.endsWith('.log') || artifact.path.endsWith('.jsonl')) { <button mat-button (click)="store.selectLog(artifact.path)">View log</button> }</div> }
+      @for (artifact of store.artifacts(); track artifact.path) { <div class="artifact"><a [href]="store.artifactUrl(artifact.path)" download [title]="'Download full file: ' + artifact.path">{{ artifact.path }}</a><span>{{ artifact.size }} bytes</span>@if (canPreviewFile(artifact.path)) { <button mat-button (click)="store.selectLog(artifact.path)">Preview tail</button> }</div> }
       <details><summary>Frozen campaign settings and versions</summary><pre>{{ campaign.config | json }}</pre><pre>{{ campaign.versions | json }}</pre></details>
     </mat-card-content></mat-card>
   }

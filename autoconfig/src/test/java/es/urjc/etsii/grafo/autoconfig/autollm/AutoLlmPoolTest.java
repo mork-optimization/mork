@@ -154,6 +154,34 @@ class AutoLlmPoolTest {
             assertTrue(store.load(campaign.id).targets.get("b").problem.message().contains("Duplicate"));
         } finally { finish.countDown(); service.close(); }
     }
+    @ParameterizedTest @ValueSource(booleans = {false, true})
+    void resumesOnlyTheChosenTrialOrRequalifiesItsServerWhileOtherWorkContinues(boolean requalify) throws Exception {
+        setup(2, "a", "b"); var finish = new CountDownLatch(1); var resumed = new CountDownLatch(1);
+        var calls = new java.util.concurrent.atomic.AtomicInteger();
+        executions.put("a", (model, stop) -> {
+            var trial = model.trials.getFirst();
+            if (calls.getAndIncrement() == 0) { trial.status = "BLOCKED"; trial.failure = "original"; return; }
+            assertEquals(1, trial.number); assertEquals(101L, trial.tuningSeed);
+            resumed.countDown(); assertTrue(finish.await(10, TimeUnit.SECONDS)); trial.status = "SUCCEEDED";
+        });
+        executions.put("b", (model, stop) -> { assertTrue(finish.await(10, TimeUnit.SECONDS)); model.trials.getFirst().status = "SUCCEEDED"; });
+        try {
+            service.start(campaign.id, false);
+            await(() -> store.load(campaign.id).targets.get("a").status.equals("NEEDS_ATTENTION"));
+            assertTrue(service.recovery(campaign.id).trials().get(1).resume().allowed());
+            assertFalse(service.recovery(campaign.id).trials().get(2).resume().allowed());
+            if (requalify) service.requalifyTarget(campaign.id, "a"); else service.resumeTrial(campaign.id, 1);
+            assertTrue(resumed.await(10, TimeUnit.SECONDS));
+            assertFalse(service.recovery(campaign.id).trials().get(1).resume().allowed());
+            assertThrows(IllegalStateException.class, () -> service.resumeTrial(campaign.id, 1));
+            assertThrows(IllegalStateException.class, () -> service.requalifyTarget(campaign.id, "b"));
+            assertEquals("TUNING", store.load(campaign.id).trials.get(1).status);
+            assertEquals(2, calls.get());
+            finish.countDown(); await(() -> service.active() == null);
+            assertEquals("SUCCEEDED", store.load(campaign.id).status);
+            assertTrue(Files.readString(store.directory(campaign.id).resolve("campaign-events.jsonl")).contains(requalify ? "target-requalification-requested" : "trial-resumed-by-operator"));
+        } finally { finish.countDown(); service.close(); }
+    }
     @Test void failsAnInterruptedTrialBeforeResumingAStoppedCampaign() throws Exception {
         setup(2, "a");
         var trial = campaign.trials.getFirst(); trial.targetId = "a"; trial.directory = "targets/a/trials/001";

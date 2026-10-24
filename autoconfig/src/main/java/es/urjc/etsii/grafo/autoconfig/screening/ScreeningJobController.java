@@ -33,6 +33,9 @@ public class ScreeningJobController {
         if (!(path.endsWith(".log") || path.endsWith(".jsonl") || path.endsWith(".txt"))) throw new IllegalArgumentException("Select a text log");
         return AutoLlmLogUtil.read(service.artifact(id, path), cursor, 65536);
     }
+    @GetMapping("/{id}/preview") public AutoLlmLogUtil.Preview preview(@PathVariable String id, @RequestParam String path, @RequestParam(defaultValue = "500") int lines) {
+        return AutoLlmLogUtil.tail(service.artifact(id, path), lines);
+    }
     @ExceptionHandler(IllegalArgumentException.class) public ResponseEntity<?> invalid(IllegalArgumentException e) { return ResponseEntity.badRequest().body(Map.of("message", e.getMessage())); }
     @ExceptionHandler(IllegalStateException.class) public ResponseEntity<?> conflict(IllegalStateException e) { return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("message", e.getMessage())); }
     @ExceptionHandler(NoSuchElementException.class) public ResponseEntity<?> missing(NoSuchElementException e) { return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("message", e.getMessage())); }

@@ -48,7 +48,14 @@ export interface AutoLlmCampaign {
   remote?: { host: string; jobId: string; status: string; stageDirectory?: string; updatedAt: string; lastSynchronizedAt?: string | null; failure: string | null } | null;
 }
 export interface AutoLlmArtifact { path: string; size: number; sha256: string }
+export interface AutoLlmRecoveryAction { allowed: boolean; reason: string | null; effect: string }
+export interface AutoLlmRecovery {
+  resumeCampaign: AutoLlmRecoveryAction;
+  trials: Record<number, { resume: AutoLlmRecoveryAction; fail: AutoLlmRecoveryAction }>;
+  targets: Record<string, { resume: AutoLlmRecoveryAction; requalify: AutoLlmRecoveryAction }>;
+}
 export interface AutoLlmLog { cursor: number; nextCursor: number; text: string; more: boolean; reset: boolean }
+export interface AutoLlmLogPreview { text: string; lineCount: number; sizeBytes: number; truncated: boolean; byteLimited: boolean }
 export interface AutoLlmFailure { category: string; code: string; message: string; evidence: string[]; retryable: boolean; recovery: string }
 export interface CodexProgress { state: string; threadId: string | null; lastActivityAt: string | null; turns: number; commandsStarted: number; commandsCompleted: number; edits: number; messages: number; usage: unknown }
 export interface AutoLlmProgress {

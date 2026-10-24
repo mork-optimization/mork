@@ -1,16 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { AutoLlmClient } from '../service/autollm-client';
-import { AutoLlmCampaign, AutoLlmConfig, AutoLlmLog, ScreeningReview } from '../model/autollm';
+import { AutoLlmCampaign, AutoLlmConfig, AutoLlmLogPreview, ScreeningReview } from '../model/autollm';
 import { AutoLlmStore } from './autollm-store';
 
 describe('AutoLLM campaign lifecycle store', () => {
   const config = {} as AutoLlmConfig;
   const campaign = { id: 'campaign', status: 'RUNNING', config, trials: [{ number: 1, status: 'GENERATION' }, { number: 2, status: 'PENDING' }] } as AutoLlmCampaign;
-  let client: { screeningAction: ReturnType<typeof vi.fn>; screeningReview: ReturnType<typeof vi.fn>; screenings: ReturnType<typeof vi.fn>; summary: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; log: ReturnType<typeof vi.fn> };
+  let client: { recovery: ReturnType<typeof vi.fn>; resumeTrial: ReturnType<typeof vi.fn>; failTrial: ReturnType<typeof vi.fn>; targetAction: ReturnType<typeof vi.fn>; screeningAction: ReturnType<typeof vi.fn>; screeningReview: ReturnType<typeof vi.fn>; screenings: ReturnType<typeof vi.fn>; summary: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; preview: ReturnType<typeof vi.fn> };
   let store: AutoLlmStore;
   beforeEach(() => {
     vi.useFakeTimers();
-    client = { screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true }), action: vi.fn().mockResolvedValue(campaign), log: vi.fn().mockResolvedValue({ cursor: 0, nextCursor: 0, text: '', more: false, reset: false }) };
+    client = { recovery: vi.fn().mockResolvedValue({ trials: {}, targets: {}, resumeCampaign: { allowed: false, reason: 'Already running', effect: '' } }), resumeTrial: vi.fn().mockResolvedValue(campaign), failTrial: vi.fn().mockResolvedValue(campaign), targetAction: vi.fn().mockResolvedValue(campaign), screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true }), action: vi.fn().mockResolvedValue(campaign), preview: vi.fn().mockResolvedValue({ text: '', lineCount: 0, sizeBytes: 0, truncated: false, byteLimited: false }) };
     TestBed.configureTestingModule({ providers: [AutoLlmStore, { provide: AutoLlmClient, useValue: client }] });
     store = TestBed.inject(AutoLlmStore);
   });
@@ -57,14 +57,52 @@ describe('AutoLLM campaign lifecycle store', () => {
     await store.action('cancel'); expect(store.busy()).toBe(true);
     finish({ parameters: 350, maxParameters: 299, withinLimit: false }); await preparing; expect(store.busy()).toBe(false);
   });
-  it('discards a log response when the selected log changes', async () => {
-    await store.start(); store.selectLog('old.log');
-    let resolveLog!: (log: AutoLlmLog) => void;
-    client.log.mockImplementationOnce(() => new Promise<AutoLlmLog>(resolve => { resolveLog = resolve; }));
-    const polling = vi.advanceTimersByTimeAsync(2000);
-    await vi.waitFor(() => expect(client.log).toHaveBeenCalled());
-    store.selectLog('new.log'); resolveLog({ cursor: 0, nextCursor: 12, text: 'old response', more: false, reset: false }); await polling;
-    expect(store.logText()).toBe('');
+  it('loads the newest 500 lines immediately and replaces the preview on each poll', async () => {
+    await store.start();
+    client.preview.mockResolvedValueOnce({ text: 'recent\n', lineCount: 1, sizeBytes: 1000000, truncated: true, byteLimited: false });
+    store.selectLog('large.log');
+    await vi.waitFor(() => expect(store.logPreview()?.text).toBe('recent\n'));
+    expect(client.preview).toHaveBeenLastCalledWith(campaign.id, 'large.log', 500);
+    client.preview.mockResolvedValue({ text: 'newest\n', lineCount: 1, sizeBytes: 1000010, truncated: true, byteLimited: false });
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(store.logPreview()?.text).toBe('newest\n');
+    const unchanged = store.logPreview();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(store.logPreview()).toBe(unchanged);
+  });
+  it('discards an old response even when the same file is selected again', async () => {
+    await store.start();
+    let resolveLog!: (log: AutoLlmLogPreview) => void;
+    client.preview.mockImplementationOnce(() => new Promise<AutoLlmLogPreview>(resolve => { resolveLog = resolve; }));
+    store.selectLog('same.log'); store.selectLog('other.log'); store.selectLog('same.log');
+    await vi.waitFor(() => expect(store.logLoading()).toBe(false));
+    resolveLog({ text: 'old response', lineCount: 1, sizeBytes: 12, truncated: false, byteLimited: false });
+    await Promise.resolve();
+    expect(store.logPreview()?.text).toBe('');
+  });
+  it('refreshes with the chosen line limit and stops polling a paused or closed preview', async () => {
+    await store.start(); store.selectLog('large.log');
+    await vi.waitFor(() => expect(store.logLoading()).toBe(false));
+    store.setLogLines(100);
+    await vi.waitFor(() => expect(store.logLoading()).toBe(false));
+    expect(client.preview).toHaveBeenLastCalledWith(campaign.id, 'large.log', 100);
+    store.logFollow.set(false); client.preview.mockClear();
+    await vi.advanceTimersByTimeAsync(2000); expect(client.preview).not.toHaveBeenCalled();
+    await store.refreshLog(); expect(client.preview).toHaveBeenCalledTimes(1);
+    store.selectLog(''); store.logFollow.set(true);
+    await vi.advanceTimersByTimeAsync(2000); expect(client.preview).toHaveBeenCalledTimes(1);
+    expect(store.logPreview()).toBeNull();
+  });
+  it('shows preview errors separately and keeps campaign polling healthy', async () => {
+    await store.start();
+    client.preview.mockRejectedValue(new Error('Preview unavailable'));
+    store.selectLog('missing.log');
+    await vi.waitFor(() => expect(store.logError()).toBe('Preview unavailable'));
+    expect(store.logLoading()).toBe(false);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(store.connectionError()).toBeNull();
+    client.preview.mockResolvedValue({ text: 'recovered', lineCount: 1, sizeBytes: 9, truncated: false, byteLimited: false });
+    await store.refreshLog(); expect(store.logError()).toBeNull(); expect(store.logPreview()?.text).toBe('recovered');
   });
   it('assembles split activity events and resumes from their byte cursor', async () => {
     const running = { ...campaign, trials: [{ ...campaign.trials[0], attempts: [{ number: 1, stage: 'GENERATION', status: 'RUNNING' }] }] } as AutoLlmCampaign;
@@ -81,6 +119,24 @@ describe('AutoLLM campaign lifecycle store', () => {
     await store.screeningAction('approve'); expect(client.screeningAction).not.toHaveBeenCalled();
     store.review.set({ jobId: 'second', proposalSha256: 'reviewed' } as ScreeningReview);
     await store.screeningAction('approve'); expect(client.screeningAction).toHaveBeenCalledWith('second', 'approve', 'reviewed');
+  });
+  it('recovers only the selected trial, records its failure reason, and refreshes availability', async () => {
+    await store.start(); store.selectTrial(2);
+    await store.resumeTrial(); expect(client.resumeTrial).toHaveBeenCalledWith(campaign.id, 2);
+    await store.failTrial('   '); expect(client.failTrial).not.toHaveBeenCalled();
+    await store.failTrial(' Sampling exhausted ');
+    expect(client.failTrial).toHaveBeenCalledWith(campaign.id, 2, 'Sampling exhausted');
+    await store.targetAction('server-a', 'requalify');
+    expect(client.targetAction).toHaveBeenCalledWith(campaign.id, 'server-a', 'requalify');
+    expect(client.recovery).toHaveBeenCalledTimes(4);
+  });
+  it('isolates recovery endpoint failures and discards late availability from another campaign', async () => {
+    client.recovery.mockRejectedValueOnce(new Error('recovery offline'));
+    await store.start(); expect(store.recoveryError()).toBe('recovery offline'); expect(store.connectionError()).toBeNull();
+    let resolve!: (value: unknown) => void;
+    client.recovery.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    const pending = store.refreshRecovery(); store.select('another'); resolve({ trials: {}, targets: {} }); await pending;
+    expect(store.recovery()).toBeNull(); expect(store.recoveryError()).toBeNull();
   });
   it('does not replace the selected review with a late response', async () => {
     store.selectScreening('first'); let resolve!: (value: ScreeningReview) => void;

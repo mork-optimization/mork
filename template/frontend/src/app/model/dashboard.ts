@@ -26,6 +26,7 @@ export interface ErrorModel {
 }
 
 export interface ChartViewModel {
+  readonly viewKey?: string;
   readonly options: Highcharts.Options;
 }
 

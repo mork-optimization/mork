@@ -39,7 +39,7 @@ public class AutoLlmController {
         result.put("artifact", artifact == null ? null : artifact.getAbsolutePath());
         result.put("artifactSha256", artifactSha256);
         result.put("baseUrl", "http://127.0.0.1:" + environment.getProperty("local.server.port", environment.getProperty("server.port", "8080")));
-        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL"));
+        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL", "RECOVERY_ACTIONS", "FILE_TAIL_PREVIEWS"));
         return result;
     }
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
@@ -72,13 +72,24 @@ public class AutoLlmController {
     @PostMapping("/campaigns/{id}/resume") public AutoLlmCampaign resume(@PathVariable String id) { requireMode(); return service.start(id, true); }
     @PostMapping("/campaigns/{id}/cancel") public AutoLlmCampaign cancel(@PathVariable String id) { requireMode(); return service.cancel(id); }
     @PostMapping("/campaigns/{id}/trials/{number}/fail") public AutoLlmCampaign failTrial(@PathVariable String id, @PathVariable int number, @RequestBody Map<String,String> request) { requireMode(); return service.failTrial(id, number, request.get("reason")); }
+    @GetMapping("/campaigns/{id}/recovery") public AutoLlmRecoveryUtil.Recovery recovery(@PathVariable String id) { return service.recovery(id); }
+    @PostMapping("/campaigns/{id}/trials/{number}/resume") public AutoLlmCampaign resumeTrial(@PathVariable String id, @PathVariable int number) { requireMode(); return service.resumeTrial(id, number); }
     @PostMapping("/campaigns/{id}/report") public AutoLlmCampaign report(@PathVariable String id) { requireMode(); return service.report(id); }
     @GetMapping("/campaigns/{id}/targets") public Object targets(@PathVariable String id) { var c = store.load(id); return Map.of("poolRevision", c.poolRevision, "targets", c.targets); }
     @PutMapping("/campaigns/{id}/targets/{targetId}") public AutoLlmCampaign addTarget(@PathVariable String id, @PathVariable String targetId, @RequestBody AutoLlmConfig.Server server) { requireMode(); return service.addTarget(id, targetId, server); }
     @PostMapping("/campaigns/{id}/targets/{targetId}/drain") public AutoLlmCampaign drainTarget(@PathVariable String id, @PathVariable String targetId) { requireMode(); return service.drainTarget(id, targetId, false); }
     @PostMapping("/campaigns/{id}/targets/{targetId}/resume") public AutoLlmCampaign resumeTarget(@PathVariable String id, @PathVariable String targetId) { requireMode(); return service.resumeTarget(id, targetId); }
+    @PostMapping("/campaigns/{id}/targets/{targetId}/requalify") public AutoLlmCampaign requalifyTarget(@PathVariable String id, @PathVariable String targetId) { requireMode(); return service.requalifyTarget(id, targetId); }
     @DeleteMapping("/campaigns/{id}/targets/{targetId}") public AutoLlmCampaign removeTarget(@PathVariable String id, @PathVariable String targetId) { requireMode(); return service.drainTarget(id, targetId, true); }
-    @GetMapping("/campaigns/{id}/artifacts") public List<AutoLlmCampaignStore.Artifact> artifacts(@PathVariable String id) { store.load(id); return store.artifacts(id); }
+    @GetMapping("/campaigns/{id}/artifacts") public List<AutoLlmCampaignStore.Artifact> artifacts(@PathVariable String id,
+            @RequestParam(required = false) Integer trial, @RequestParam(defaultValue = "true") boolean hashes) {
+        var campaign = store.load(id);
+        if (trial == null) return store.artifacts(id, null, hashes);
+        for (var candidate : campaign.trials) if (candidate.number == trial) {
+            return candidate.directory == null ? List.of() : store.artifacts(id, candidate.directory, hashes);
+        }
+        throw new NoSuchElementException("Unknown trial " + trial);
+    }
     @GetMapping("/campaigns/{id}/artifact") public ResponseEntity<FileSystemResource> download(@PathVariable String id, @RequestParam String path) {
         Path file = store.artifact(id, path);
         return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM)
@@ -90,6 +101,10 @@ public class AutoLlmController {
         Path file = store.artifact(id, path);
         if (!(path.endsWith(".log") || path.endsWith(".jsonl") || path.endsWith(".txt"))) throw new IllegalArgumentException("Select a text log");
         return AutoLlmLogUtil.read(file, cursor, maximumBytes);
+    }
+    @GetMapping("/campaigns/{id}/preview") public AutoLlmLogUtil.Preview preview(@PathVariable String id, @RequestParam String path,
+            @RequestParam(defaultValue = "500") int lines) {
+        return AutoLlmLogUtil.tail(store.artifact(id, path), lines);
     }
     @GetMapping("/campaigns/{id}/trials/{number}/progress") public Object progress(@PathVariable String id, @PathVariable int number) {
         var campaign = store.load(id);

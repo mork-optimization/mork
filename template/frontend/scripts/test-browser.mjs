@@ -176,7 +176,36 @@ const requests = [],
   sockets = new Set();
 let server,
   head = 0,
-  unavailable = false;
+  unavailable = false,
+  autollmMode = false,
+  comparisonPoll = 0;
+const recoveryMutations = [];
+const comparisonPaths = [0, 1].map(index => `/home/ubuntu/mork-autollm/campaigns/comparison-fixture/data/comparison/0000000${index}/n250w200.00${index + 1}.txt`);
+const fixtureLogLines = Array.from({ length: 10000 }, (_, index) => `Log line ${index + 1}: experiment output`);
+const fixtureLog = fixtureLogLines.join('\n') + '\n';
+const comparisonConfig = {
+  project: { repository: '/fixture', ref: 'fixed', buildCommand: ['./mvnw', 'verify'], artifact: 'project.jar', runArguments: [] },
+  workspace: '/fixture/work', trials: 1, seed: 1234, maxParameters: 299, sotaFile: '/sota.json', initialConfigurationsFile: null, trainingPath: '/train.index', comparisonPath: '/test.index',
+  codex: { executable: 'codex', maxConcurrentSessions: 1 }, preparation: { pilotDurationMillis: 1000, maxRepairs: 1 },
+  tuning: { evaluations: 10000, ignoreInitialMillis: 10000, intervalDurationMillis: 50000, logScaleArea: true },
+  comparison: { repetitions: 30, timeLimitMillis: 10000 }, execution: { target: 'LOCAL', workers: 16, heap: '2g' },
+};
+const comparisonCampaign = {
+  id: 'comparison-fixture', status: 'RUNNING', createdAt: new Date().toISOString(), config: comparisonConfig, versions: {}, poolRevision: 1, targets: {},
+  trials: [{ number: 1, status: 'COMPARISON', tuningSeed: 1234, repairTurns: 0, attempts: [] }],
+};
+const comparisonCurves = [];
+for (const [instanceIndex, instance] of comparisonPaths.entries()) {
+  for (const [algorithmIndex, algorithm] of ['SOTA', 'IraceProposal'].entries()) {
+    for (let iteration = 0; iteration < 30; iteration++) {
+      const final = 865 + iteration * .03 + algorithmIndex * .07 + instanceIndex * 40;
+      comparisonCurves.push({ instance, instanceId: `instance-${instanceIndex}`, algorithm, iteration: String(iteration), curves: {
+        Cost: [{ instant: 0, value: 940 + iteration }, { instant: 20e6, value: 900 + iteration * .1 }, { instant: 100e6, value: 880 + iteration * .1 }, { instant: 600e6, value: final + 2 }, { instant: 1500e6, value: final + .1 }, { instant: 2200e6, value: final }],
+        Signed: [{ instant: 0, value: 0 }, { instant: 100e6, value: -1 - iteration }],
+      } });
+    }
+  }
+}
 const page = (items, query) => ({
   runId: status.runId,
   revision: status.revision,
@@ -211,7 +240,33 @@ if (!process.env.MORK_MONITOR_URL) {
     requests.push(url);
     let body;
     if (url.pathname === '/api/monitor/status')
-      body = { mode: 'STANDARD', eventLogId: 'browser-log' };
+      body = { mode: autollmMode ? 'AUTOLLM' : 'STANDARD', eventLogId: 'browser-log' };
+    else if (autollmMode && url.pathname.startsWith('/api/autollm/')) {
+      const path = url.pathname.slice('/api/autollm/'.length);
+      if (path === 'defaults') body = comparisonConfig;
+      else if (path === 'campaigns') body = { active: comparisonCampaign.id, campaigns: [comparisonCampaign] };
+      else if (path === 'screenings') body = { active: '', jobs: [] };
+      else if (path.endsWith('/recovery')) {
+        const action = allowed => ({ allowed, reason: allowed ? null : 'Work is already active', effect: 'Preserve saved evidence and checkpoints' });
+        body = { resumeCampaign: action(false), targets: {}, trials: Object.fromEntries(comparisonCampaign.trials.map(trial => [trial.number, { resume: action(trial.status === 'BLOCKED'), fail: action(trial.status === 'BLOCKED') }])) };
+      } else if (request.method === 'POST' && /\/trials\/2\/(fail|resume)$/.test(path)) {
+        let payload = ''; for await (const chunk of request) payload += chunk;
+        recoveryMutations.push({ path, body: JSON.parse(payload || '{}') });
+        comparisonCampaign.trials[1].status = path.endsWith('/fail') ? 'FAILED' : 'STARTING';
+        body = comparisonCampaign;
+      }
+      else if (path.endsWith('/progress')) body = { status: 'COMPARISON', infrastructureRetries: 0, repairTurns: 0 };
+      else if (path.endsWith('/comparison')) body = { counts: { SOTA: { SUCCEEDED: 60 }, IraceProposal: { SUCCEEDED: 60 } }, pollCount: ++comparisonPoll, curves: comparisonCurves };
+      else if (path.endsWith('/artifacts')) body = [{ path: 'attempt/stdout.log', size: Buffer.byteLength(fixtureLog), sha256: 'fixture' }];
+      else if (path.endsWith('/preview')) {
+        const lines = Number(url.searchParams.get('lines'));
+        body = { text: fixtureLogLines.slice(-lines).join('\n') + '\n', lineCount: lines, sizeBytes: Buffer.byteLength(fixtureLog), truncated: true, byteLimited: false };
+      } else if (path.endsWith('/artifact')) {
+        response.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Disposition': 'attachment; filename="stdout.log"' }).end(fixtureLog);
+        return;
+      }
+      else body = [];
+    }
     else if (url.pathname === '/lastevent') body = { eventLogId: 'browser-log', lastEventId: head };
     else if (url.pathname === '/events')
       body = {
@@ -586,6 +641,93 @@ try {
       'base64',
     ),
   );
+  if (server) {
+    autollmMode = true;
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false });
+    await send('Page.navigate', { url: address });
+    await waitFor(`document.querySelector('.comparison-controls') && document.querySelectorAll('.highcharts-series-group .highcharts-graph').length === 60`);
+    const controls = `document.querySelectorAll('.comparison-controls select')`;
+    assert.deepEqual(await evaluate(`Array.from(${controls}[0].options).map(option => option.textContent.trim())`), ['00000000/n250w200.001.txt', '00000001/n250w200.002.txt']);
+    assert.equal(await evaluate(`${controls}[0].options[1].value`), comparisonPaths[1]);
+    assert.equal(await evaluate(`${controls}[0].options[1].title`), comparisonPaths[1]);
+    assert.deepEqual(await evaluate(`Array.from(document.querySelectorAll('.highcharts-legend-item text')).map(el => el.textContent)`), ['SOTA', 'IraceProposal']);
+    assert.equal(await evaluate(`Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-graph')).every(el => !el.getAttribute('stroke-dasharray') || el.getAttribute('stroke-dasharray') === 'none')`), true, 'all repetitions use solid lines');
+    assert.equal(await evaluate(`Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-series.highcharts-line-series')).every(el => Number(el.getAttribute('opacity')) > 0 && Number(el.getAttribute('opacity')) < 1)`), true, 'repetition strokes are translucent');
+    assert.equal(await evaluate(`new Set(Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-graph')).map(el => el.getAttribute('stroke'))).size`), 12, 'blue and orange/red shade families');
+
+    await evaluate(`document.querySelector('.highcharts-legend-item').dispatchEvent(new MouseEvent('click', {bubbles: true}))`);
+    await waitFor(`Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-series.highcharts-line-series')).filter(el => getComputedStyle(el).visibility !== 'hidden').length === 30`);
+    await evaluate(`document.querySelector('.highcharts-legend-item').dispatchEvent(new MouseEvent('click', {bubbles: true}))`);
+    await waitFor(`Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-series.highcharts-line-series')).filter(el => getComputedStyle(el).visibility !== 'hidden').length === 60`);
+
+    const chartHeight = await evaluate(`document.querySelector('.highcharts-root').getBoundingClientRect().height`);
+    await evaluate(`${controls}[3].value='760'; ${controls}[3].dispatchEvent(new Event('change', {bubbles:true}))`);
+    await waitFor(`document.querySelector('.highcharts-root').getBoundingClientRect().height > ${chartHeight + 200}`);
+    await evaluate(`document.querySelector('app-dashboard-chart').style.height='900px'`);
+    await waitFor(`document.querySelector('.highcharts-root').getBoundingClientRect().height > 880`);
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('app-dashboard-chart')).resize`), 'vertical');
+
+    await evaluate(`document.querySelector('app-dashboard-chart').scrollIntoView({block:'start'})`);
+    const plot = await evaluate(`(()=>{const r=document.querySelector('.highcharts-plot-background').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}})()`);
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: plot.x + plot.width * .2, y: plot.y + plot.height * .2 });
+    await send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', buttons: 1, clickCount: 1, x: plot.x + plot.width * .2, y: plot.y + plot.height * .2 });
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', buttons: 1, x: plot.x + plot.width * .8, y: plot.y + plot.height * .8 });
+    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', buttons: 0, clickCount: 1, x: plot.x + plot.width * .8, y: plot.y + plot.height * .8 });
+    await waitFor(`document.querySelector('.highcharts-reset-zoom')`);
+    const pollAtZoom = comparisonPoll;
+    await waitFor(`JSON.parse(Array.from(document.querySelectorAll('details')).find(el => el.querySelector('summary')?.textContent === 'Comparison results').querySelector('pre').textContent).pollCount > ${pollAtZoom}`);
+    assert.equal(await evaluate(`!!document.querySelector('.highcharts-reset-zoom')`), true, 'polling preserves the zoom');
+    await evaluate(`${controls}[0].value=${JSON.stringify(comparisonPaths[1])}; ${controls}[0].dispatchEvent(new Event('change', {bubbles:true}))`);
+    await waitFor(`!document.querySelector('.highcharts-reset-zoom')`);
+    await evaluate(`${controls}[2].value='logarithmic'; ${controls}[2].dispatchEvent(new Event('change', {bubbles:true}))`);
+    await waitFor(`${controls}[2].value === 'logarithmic' && document.querySelectorAll('.highcharts-series-group .highcharts-graph').length === 60`);
+    await evaluate(`${controls}[1].value='Signed'; ${controls}[1].dispatchEvent(new Event('change', {bubbles:true}))`);
+    await waitFor(`${controls}[2].value === 'linear' && ${controls}[2].options[1].disabled`);
+    await evaluate(`${controls}[1].value='Cost'; ${controls}[1].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[0].value=${JSON.stringify(comparisonPaths[0])}; ${controls}[0].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[2].value='linear'; ${controls}[2].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[3].value='520'; ${controls}[3].dispatchEvent(new Event('change', {bubbles:true}))`);
+    await waitFor(`document.querySelector('.highcharts-root').getBoundingClientRect().height < 530`);
+    await evaluate(`document.querySelector('.comparison-controls').scrollIntoView({block:'start'})`);
+    await writeFile(join(artifacts, 'autollm-comparison.png'), Buffer.from((await send('Page.captureScreenshot')).data, 'base64'));
+
+    await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
+    await waitFor(`Math.abs(document.querySelector('highcharts-chart').clientWidth - document.querySelector('.highcharts-root').getBoundingClientRect().width) < 2`);
+    assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1'), true, 'comparison controls fit a mobile viewport');
+    await writeFile(join(artifacts, 'autollm-mobile.png'), Buffer.from((await send('Page.captureScreenshot')).data, 'base64'));
+
+    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false });
+    await clickText('button', 'Refresh artifacts');
+    await waitFor(`document.querySelector('.artifact button')`);
+    await clickText('.artifact button', 'Preview tail');
+    await waitFor(`document.querySelector('.logs')?.textContent.includes('Log line 10000:')`);
+    assert.equal(await evaluate(`document.querySelector('.logs').textContent.split('\\n').filter(Boolean).length`), 500);
+    assert.equal(await evaluate(`document.querySelector('.logs').textContent.startsWith('Log line 9501:')`), true);
+    await evaluate(`const limit=document.querySelector('.log-preview select'); limit.value='100'; limit.dispatchEvent(new Event('change',{bubbles:true}))`);
+    await waitFor(`document.querySelector('.logs')?.textContent.startsWith('Log line 9901:')`);
+    assert.equal(await evaluate(`document.querySelector('.logs').textContent.split('\\n').filter(Boolean).length`), 100);
+    const downloadUrl = await evaluate(`document.querySelector('.log-preview a[download]').href`);
+    const fullLog = await fetch(downloadUrl);
+    assert.match(fullLog.headers.get('content-disposition'), /attachment/);
+    assert.equal(await fullLog.text(), fixtureLog, 'download contains the full 10,000-line log');
+    await evaluate(`document.querySelector('.log-preview').scrollIntoView({block:'start'})`);
+    await writeFile(join(artifacts, 'autollm-log-preview.png'), Buffer.from((await send('Page.captureScreenshot')).data, 'base64'));
+    await clickText('.log-preview button', 'Close preview');
+    await waitFor(`!document.querySelector('.log-preview')`);
+
+    comparisonCampaign.trials.push({ number: 2, status: 'BLOCKED', tuningSeed: 5678, repairTurns: 0, attempts: [] });
+    await waitFor(`Array.from(document.querySelectorAll('tr')).some(row=>row.cells[0]?.textContent==='2')`);
+    await evaluate(`Array.from(document.querySelectorAll('tr')).find(row=>row.cells[0]?.textContent==='2').querySelector('button').click()`);
+    await waitFor(`document.querySelector('.trial-recovery')`);
+    assert.equal(await evaluate(`document.querySelectorAll('.trial-recovery button')[1].disabled`), true, 'ending a trial requires an operator reason');
+    await evaluate(`const reason=document.querySelector('.trial-recovery textarea');reason.value='Sampling exhausted';reason.dispatchEvent(new Event('input',{bubbles:true}))`);
+    await waitFor(`!document.querySelectorAll('.trial-recovery button')[1].disabled`);
+    await clickText('.trial-recovery button', 'Mark trial failed and continue');
+    await waitFor(`!document.querySelector('.trial-recovery')`);
+    assert.deepEqual(recoveryMutations[0], { path: 'campaigns/comparison-fixture/trials/2/fail', body: { reason: 'Sampling exhausted' } });
+    comparisonCampaign.trials[1].status = 'BLOCKED';
+    await waitFor(`document.querySelector('.trial-recovery')`);
+    await clickText('.trial-recovery button', 'Resume existing work');
+    await waitFor(`!document.querySelector('.trial-recovery')`);
+    assert.equal(recoveryMutations[1].path, 'campaigns/comparison-fixture/trials/2/resume');
+  }
   assert.deepEqual(errors, [], 'browser runtime errors');
   console.log(
     JSON.stringify({
@@ -594,6 +736,7 @@ try {
       charts: 4,
       progressBars: 3,
       mobile: true,
+      autollmComparison: Boolean(server),
       artifacts,
     }),
   );

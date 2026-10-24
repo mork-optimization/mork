@@ -1,5 +1,5 @@
 import { JsonPipe, DatePipe, DecimalPipe } from '@angular/common';
-import { ChangeDetectionStrategy, Component, computed, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, computed, effect, inject, signal } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
@@ -7,7 +7,9 @@ import { AutoLlmStore } from '../../store/autollm-store';
 import { AutoLlmConfig, AutoLlmServer } from '../../model/autollm';
 import { DashboardChart } from '../dashboard-chart/dashboard-chart';
 import { ChartViewModel } from '../../model/dashboard';
-type CurveRow = { instance: string; instanceId: string; algorithm: string; iteration: string; curves: Record<string, { instant: number; value: number }[]> };
+import { ComparisonChartUtil, ComparisonCurveRow, ComparisonYAxisScale } from '../../util/comparison-chart-util';
+import { InstanceLabelUtil } from '../../util/instance-label-util';
+import { FilePreviewUtil } from '../../util/file-preview-util';
 
 @Component({
   selector: 'app-autollm-dashboard',
@@ -16,27 +18,35 @@ type CurveRow = { instance: string; instanceId: string; algorithm: string; itera
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AutoLlmDashboard {
+  readonly canPreviewFile = FilePreviewUtil.canPreview;
   readonly store = inject(AutoLlmStore);
   readonly selectedInstance = signal('');
+  readonly failureReason = signal('');
   readonly selectedObjective = signal('');
+  readonly yAxisScale = signal<ComparisonYAxisScale>('linear');
+  readonly chartHeight = signal(520);
   readonly executionChoice = signal('');
   readonly newTarget = signal('{"id":"server-2","host":"user@host","workspace":"/home/user/autollm","javaExecutable":"java","environment":{}}');
   readonly originalPool = signal('');
   readonly trainingFraction = signal(0.15);
-  readonly curves = computed(() => (this.store.comparison()?.['curves'] ?? []) as CurveRow[]);
+  readonly curves = computed(() => (this.store.comparison()?.['curves'] ?? []) as ComparisonCurveRow[]);
   readonly instances = computed(() => [...new Set(this.curves().map(row => row.instance))]);
   readonly objectives = computed(() => [...new Set(this.curves().flatMap(row => Object.keys(row.curves)))]);
+  readonly instanceLabels = computed(() => InstanceLabelUtil.relativeLabels(this.instances()));
+  readonly activeInstance = computed(() => this.instances().includes(this.selectedInstance()) ? this.selectedInstance() : this.instances()[0]);
+  readonly activeObjective = computed(() => this.objectives().includes(this.selectedObjective()) ? this.selectedObjective() : this.objectives()[0]);
+  readonly selectedCurves = computed(() => this.curves().filter(row => row.instance === this.activeInstance()));
+  readonly canLogYAxis = computed(() => ComparisonChartUtil.canUseLogarithmicScale(this.selectedCurves(), this.activeObjective()));
+  readonly effectiveYAxisScale = computed(() => this.yAxisScale() === 'logarithmic' && this.canLogYAxis() ? 'logarithmic' : 'linear');
   readonly comparisonSummary = computed(() => {
     const { curves, ...summary } = this.store.comparison() ?? {};
     return summary;
   });
-  readonly curveChart = computed<ChartViewModel>(() => {
-    const instance = this.instances().includes(this.selectedInstance()) ? this.selectedInstance() : this.instances()[0];
-    const objective = this.objectives().includes(this.selectedObjective()) ? this.selectedObjective() : this.objectives()[0];
-    return { options: { chart: { type: 'line', height: 360 }, title: { text: objective ?? 'Comparison convergence' }, xAxis: { title: { text: 'Time (milliseconds)' } }, yAxis: { title: { text: 'Objective value' } },
-      series: this.curves().filter(row => row.instance === instance).map(row => ({ type: 'line' as const, name: `${row.algorithm} · repetition ${Number(row.iteration) + 1}`, data: (row.curves[objective] ?? []).filter(point => Number.isFinite(point.value)).map(point => [point.instant / 1_000_000, point.value]) })) } };
-  });
-  constructor() { void this.store.start(); }
+  readonly curveChart = computed<ChartViewModel>(() => ComparisonChartUtil.build(this.selectedCurves(), this.activeObjective(), this.effectiveYAxisScale()));
+  constructor() {
+    effect(() => { this.store.selectedId(); this.store.selectedTrial(); this.failureReason.set(''); });
+    void this.store.start();
+  }
   executionTarget(event: Event): void {
     const value = (event.target as HTMLSelectElement).value as 'LOCAL' | 'SSH';
     this.executionChoice.set(value);

@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import tempfile
 import time
 import unittest
+import zipfile
 from unittest.mock import patch
 
 spec = importlib.util.spec_from_file_location("mork_autollm", Path(__file__).with_name("mork_autollm.py"))
@@ -57,7 +58,7 @@ class OperatorClientTest(unittest.TestCase):
 
     def test_status_reads_saved_work_without_mutation(self):
         campaign = {"id": "saved", "status": "NEEDS_ATTENTION", "trials": [{"number": 1, "status": "BLOCKED", "repairTurns": 0}]}
-        args = SimpleNamespace(workspace="/work", campaign=None, screening=None)
+        args = SimpleNamespace(workspace="/work", campaign=None, screening=None, timeout=10)
         with patch.object(client, "request", side_effect=[{"active": "", "campaigns": [campaign]}, {"active": "", "jobs": []}, campaign, {"status": "BLOCKED"}, {}]) as request:
             result = client.status(args, "http://localhost")
         self.assertEqual(result["campaign"]["status"], "NEEDS_ATTENTION")
@@ -81,14 +82,95 @@ class OperatorClientTest(unittest.TestCase):
                 self.assertTrue(launch.call_args.kwargs["start_new_session"])
                 self.assertEqual(launch.call_args.kwargs["stdin"], client.subprocess.DEVNULL)
 
-    def test_cursor_logs_continue_until_caught_up(self):
-        args = SimpleNamespace(cursor=0, screening=None, campaign="saved", path="stdout.log", follow=False)
+    def test_explicit_cursor_reads_one_bounded_page_without_draining_the_file(self):
+        args = SimpleNamespace(cursor=0, screening=None, campaign="saved", path="stdout.log", follow=False, lines=500, timeout=10)
         pages = [{"text": "α", "nextCursor": 2, "more": True, "reset": False}, {"text": "β\n", "nextCursor": 5, "more": False, "reset": False}]
         output = io.StringIO()
-        with patch.object(client, "request", side_effect=pages) as request, contextlib.redirect_stdout(output):
+        with patch.object(client, "request", side_effect=pages) as request, contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
             client.logs(args, "http://localhost")
-        self.assertEqual(output.getvalue(), "αβ\n")
-        self.assertIn("cursor=2", request.call_args_list[-1].args[1])
+        self.assertEqual(output.getvalue(), "α")
+        request.assert_called_once()
+        self.assertIn("maximumBytes=65536", request.call_args.args[1])
+
+    def test_status_keeps_healthy_trials_when_another_progress_endpoint_fails(self):
+        self.root = "/work"
+        saved = {"id": "saved", "status": "RUNNING", "targets": {}, "trials": [
+            {"number": 1, "targetId": "a", "status": "TUNING"}, {"number": 2, "targetId": "b", "status": "TUNING"}, {"number": 3, "status": "PENDING"}]}
+        def response(base, path, **kwargs):
+            if path == "/campaigns": return {"active": "saved", "campaigns": [saved]}
+            if path == "/screenings": raise RuntimeError("screenings offline")
+            if path == "/campaigns/saved": return saved
+            if path.endswith("/1/progress"): raise RuntimeError("worker unavailable")
+            if path.endswith("/2/progress"): return {"elapsedMillis": 3600000, "workload": {"budget": {"used": 2500, "maximum": 10000}}, "remote": {"lastSynchronizedAt": "now"}}
+            if path.endswith("/summary"): raise RuntimeError("summary unavailable")
+            self.fail(path)
+        output = io.StringIO()
+        with patch.object(client, "capabilities"), patch.object(client, "request", side_effect=response), contextlib.redirect_stdout(output):
+            self.assertEqual(client.main(["--workspace", self.root, "status", "--table", "--campaign", "saved"]), 0)
+        text = output.getvalue()
+        for expected in ["PARTIAL STATUS", "2,500/10,000 (25.0%)", "1h 0m", "PENDING", "worker unavailable", "summary unavailable"]:
+            self.assertIn(expected, text)
+
+    def test_trial_recovery_and_requalification_send_only_explicit_saved_ids(self):
+        self.root = "/work"
+        _, _, request = self.cli(["trial", "actions", "--campaign", "saved", "--number", "9"], [{"trials": {"9": {"fail": {"allowed": True}}}}])
+        self.assertEqual(request.call_args.args[1], "/campaigns/saved/recovery")
+        _, _, request = self.cli(["trial", "fail", "--campaign", "saved", "--number", "9", "--reason", " Sampling exhausted "], [{}])
+        request.assert_called_once_with("http://localhost", "/campaigns/saved/trials/9/fail", {"reason": "Sampling exhausted"}, timeout=30)
+        _, _, request = self.cli(["trial", "resume", "--campaign", "saved", "--number", "3"], [{}])
+        self.assertEqual(request.call_args.args[1:], ("/campaigns/saved/trials/3/resume", {}))
+        _, _, request = self.cli(["target", "requalify", "--campaign", "saved", "--id", "a"], [{}])
+        self.assertEqual(request.call_args.args[1:], ("/campaigns/saved/targets/a/requalify", {}))
+
+    def test_default_logs_use_only_a_tail_and_follow_resumes_at_the_utf8_cursor(self):
+        self.root = "/work"
+        page = {"text": "recent α", "nextCursor": 123, "truncated": True, "lineCount": 1}
+        _, output, request = self.cli(["logs", "--campaign", "saved", "--path", "stdout.log", "--tail", "100"], [page])
+        self.assertEqual(output, "recent α")
+        self.assertIn("/preview?", request.call_args.args[1]); self.assertIn("lines=100", request.call_args.args[1])
+        args = SimpleNamespace(cursor=None, screening=None, campaign="saved", path="stdout.log", follow=True, lines=500, timeout=10)
+        output = io.StringIO()
+        with patch.object(client, "request", side_effect=[page, {"text": "€", "nextCursor": 126, "reset": False, "more": False}]) as request, patch.object(client.time, "sleep", side_effect=[None, KeyboardInterrupt]), contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(KeyboardInterrupt): client.logs(args, "http://localhost")
+        self.assertEqual(output.getvalue(), "recent α€")
+        self.assertIn("cursor=123", request.call_args.args[1])
+
+    def test_follow_skips_backlogs_and_restarts_with_a_bounded_tail(self):
+        args = SimpleNamespace(cursor=None, screening="screen", campaign=None, path="stdout.log", follow=True, lines=100, timeout=10)
+        pages = [{"text": "old\n", "nextCursor": 10, "truncated": False},
+                 {"text": "stale backlog", "nextCursor": 50, "reset": False, "more": True},
+                 {"text": "latest\n", "nextCursor": 1000000, "truncated": True, "lineCount": 100}]
+        output = io.StringIO()
+        with patch.object(client, "request", side_effect=pages) as request, patch.object(client.time, "sleep", side_effect=[None, KeyboardInterrupt]), contextlib.redirect_stdout(output), contextlib.redirect_stderr(io.StringIO()):
+            with self.assertRaises(KeyboardInterrupt): client.logs(args, "http://localhost")
+        self.assertEqual(output.getvalue(), "old\nlatest\n")
+        self.assertIn("/screenings/screen/preview?", request.call_args.args[1])
+
+    def test_trial_diagnostics_filter_evidence_and_enforce_file_and_payload_limits(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            root = Path(self.root); directory = "targets/a/trials/009"
+            saved = {"id": "saved", "trials": [{"number": 9, "directory": directory, "targetId": "a", "problem": {"code": "SAMPLING", "message": "No valid sample"}}, {"number": 10}], "targets": {"a": {}, "b": {}}}
+            artifacts = [{"path": directory + name, "size": 100} for name in ["/stdout.log", "/stderr.log", "/failure.json"]] + [{"path": "targets/b/trials/010/stdout.log", "size": 100}]
+            def response(base, path, **kwargs):
+                if path == "/campaigns/saved": return saved
+                if path.partition('?')[0].endswith("/artifacts"):
+                    self.assertIn("hashes=false", path); self.assertIn("trial=9", path)
+                    return artifacts
+                if path == "/capabilities" or path.endswith("/summary"): return {}
+                if path.endswith("/progress"): raise RuntimeError("progress unavailable")
+                if "/artifact?" in path: return {"code": "SAMPLING"}
+                if "/preview?" in path: return {"text": "x" * 5000}
+                self.fail(path)
+            with patch.object(client, "capabilities"), patch.object(client, "request", side_effect=response) as request, contextlib.redirect_stdout(io.StringIO()):
+                client.main(["--workspace", self.root, "diagnose", "--campaign", "saved", "--trial", "9", "--output", str(root / "diag.zip"), "--max-files", "2", "--max-bytes", "4096"])
+            with zipfile.ZipFile(root / "diag.zip") as archive:
+                summary = json.loads(archive.read("diagnostic-summary.json"))
+                self.assertEqual(summary["trial"], 9); self.assertLessEqual(summary["payloadBytes"], 4096)
+                self.assertEqual(summary["failureSummary"][0]["code"], "SAMPLING")
+                self.assertIn("progress.json", summary["errors"])
+                self.assertFalse(any("trials/010" in name for name in archive.namelist()))
+                self.assertEqual(len(json.loads(archive.read("campaign.json"))["trials"]), 1)
+            self.assertLessEqual(sum("/preview?" in call.args[1] or "/artifact?" in call.args[1] for call in request.call_args_list), 2)
 
     def cli(self, argv, responses):
         output = io.StringIO()
@@ -170,7 +252,11 @@ class OperatorClientTest(unittest.TestCase):
         for argv in (["campaign", "start"], ["screening", "approve", "--id", "selection"],
                      ["screening", "approve", "--id", "selection", "--proposal-sha256", "latest"],
                      ["watch", "--timeout", "nan"], ["watch", "--interval", "0"],
-                     ["watch", "--campaign", "one", "--screening", "two"]):
+                     ["watch", "--campaign", "one", "--screening", "two"],
+                     ["trial", "fail", "--campaign", "saved", "--number", "9"],
+                     ["trial", "fail", "--campaign", "saved", "--number", "9", "--reason", " "],
+                     ["logs", "--campaign", "saved", "--path", "stdout.log", "--tail", "0"],
+                     ["diagnose", "--campaign", "saved", "--output", "diag.zip", "--max-files", "100000"]):
             with self.subTest(argv=argv), patch.object(client, "request") as request, contextlib.redirect_stderr(io.StringIO()):
                 with self.assertRaises(SystemExit) as error:
                     client.main(argv)
@@ -182,6 +268,32 @@ class OperatorClientTest(unittest.TestCase):
             with self.assertRaisesRegex(RuntimeError, "may have accepted"):
                 client.request("http://localhost", "/campaigns/saved/start", {})
         send.assert_called_once()
+
+    def test_bounded_diagnostic_http_reads_reject_oversized_responses(self):
+        with patch.object(client, "urlopen") as open_url:
+            response = open_url.return_value.__enter__.return_value
+            response.read.return_value = b"x" * 101
+            with self.assertRaisesRegex(RuntimeError, "diagnostic limit"):
+                client.request("http://localhost", "/campaigns/saved/artifact", maximum_bytes=100)
+            response.read.assert_called_once_with(101)
+
+    def test_watch_keeps_other_workers_when_an_activity_endpoint_is_unavailable(self):
+        self.root = "/work"
+        saved = {"status": "RUNNING", "trials": [
+            {"number": 1, "targetId": "a", "status": "GENERATION", "attempts": [{"number": 1, "stage": "GENERATION"}]},
+            {"number": 2, "targetId": "b", "status": "GENERATION", "attempts": [{"number": 1, "stage": "GENERATION"}]}]}
+        def response(base, path, **kwargs):
+            if path == "/campaigns/saved": return saved
+            if path.endswith("/progress"): return {"status": "GENERATION"}
+            if "/1/activity?" in path: raise RuntimeError("activity offline")
+            if "/2/activity?" in path: return {"text": '{"type":"message","text":"healthy worker"}\n', "nextCursor": 50, "more": False, "reset": False}
+            self.fail(path)
+        output = io.StringIO()
+        with patch.object(client, "capabilities"), patch.object(client, "request", side_effect=response), contextlib.redirect_stdout(output):
+            client.main(["--workspace", self.root, "watch", "--campaign", "saved", "--once", "--json"])
+        values = [json.loads(line) for line in output.getvalue().splitlines()]
+        self.assertIn("1/1", values[0]["activityErrors"])
+        self.assertTrue(any(value.get("event", {}).get("text") == "healthy worker" for value in values))
 
     def test_watch_prefers_active_work_and_pins_it(self):
         args = SimpleNamespace(campaign=None, screening=None, workspace="/missing")

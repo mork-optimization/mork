@@ -63,19 +63,21 @@ public class AutoLlmCampaignStore {
         AutoLlmFileUtil.append(directory(id).resolve("campaign-events.jsonl"), Map.of("timestamp", Instant.now().toString(), "kind", kind, "detail", detail));
     }
     public record Artifact(String path, long size, String sha256) {}
-    public List<Artifact> artifacts(String id) {
+    public List<Artifact> artifacts(String id, String relativeDirectory, boolean includeHashes) {
         Path base = directory(id);
+        Path search = relativeDirectory == null ? base : AutoLlmFileUtil.inside(base, relativeDirectory);
         var artifacts = new ArrayList<Artifact>();
-        try (var paths = Files.walk(base)) {
+        if (!Files.isDirectory(search)) return artifacts;
+        try (var paths = Files.walk(search)) {
             for (Path path : paths.toList()) {
                 String name = base.relativize(path).toString().replace('\\', '/');
                 if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) && downloadable(name)) {
                     long size = Files.size(path), modified = Files.getLastModifiedTime(path).toMillis();
                     var cached = hashes.get(path);
-                    if (cached == null || cached.size != size || cached.modified != modified) {
+                    if (includeHashes && (cached == null || cached.size != size || cached.modified != modified)) {
                         cached = new CachedHash(size, modified, AutoLlmFileUtil.hash(path)); hashes.put(path, cached);
                     }
-                    artifacts.add(new Artifact(name, size, cached.hash));
+                    artifacts.add(new Artifact(name, size, includeHashes ? cached.hash : null));
                 }
             }
         } catch (IOException e) { throw new UncheckedIOException(e); }

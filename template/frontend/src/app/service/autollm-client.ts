@@ -3,7 +3,7 @@ import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../../environments/environment';
-import { AutoLlmArtifact, AutoLlmCampaign, AutoLlmConfig, AutoLlmLog, AutoLlmProgress, AutoLlmServer, ScreeningJob, ScreeningReview } from '../model/autollm';
+import { AutoLlmArtifact, AutoLlmCampaign, AutoLlmConfig, AutoLlmLog, AutoLlmLogPreview, AutoLlmProgress, AutoLlmRecovery, AutoLlmServer, ScreeningJob, ScreeningReview } from '../model/autollm';
 
 @Injectable({ providedIn: 'root' })
 export class AutoLlmClient {
@@ -26,16 +26,19 @@ export class AutoLlmClient {
   addTarget(id: string, server: AutoLlmServer): Promise<AutoLlmCampaign> {
     return firstValueFrom(this.http.put<AutoLlmCampaign>(`${this.base}/campaigns/${encodeURIComponent(id)}/targets/${encodeURIComponent(server.id)}`, server).pipe(takeUntilDestroyed(this.destroy)));
   }
-  targetAction(id: string, target: string, action: 'drain' | 'resume' | 'remove'): Promise<AutoLlmCampaign> {
+  targetAction(id: string, target: string, action: 'drain' | 'resume' | 'requalify' | 'remove'): Promise<AutoLlmCampaign> {
     const path = `/campaigns/${encodeURIComponent(id)}/targets/${encodeURIComponent(target)}`;
     return action === 'remove' ? firstValueFrom(this.http.delete<AutoLlmCampaign>(this.base + path).pipe(takeUntilDestroyed(this.destroy))) : this.post(`${path}/${action}`);
   }
   progress(id: string, trial: number): Promise<AutoLlmProgress> { return this.get(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/progress`); }
+  recovery(id: string): Promise<AutoLlmRecovery> { return this.get(`/campaigns/${encodeURIComponent(id)}/recovery`); }
+  resumeTrial(id: string, trial: number): Promise<AutoLlmCampaign> { return this.post(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/resume`); }
+  failTrial(id: string, trial: number, reason: string): Promise<AutoLlmCampaign> { return this.post(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/fail`, { reason }); }
   summary(id: string): Promise<Record<string, unknown>> { return this.get(`/campaigns/${encodeURIComponent(id)}/summary`); }
   activity(id: string, trial: number, attempt: number, cursor: number): Promise<AutoLlmLog> { return this.get(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/activity`, { attempt, cursor }); }
   comparison(id: string, trial: number): Promise<Record<string, unknown>> { return this.get(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/comparison`); }
   artifacts(id: string): Promise<AutoLlmArtifact[]> { return this.get(`/campaigns/${encodeURIComponent(id)}/artifacts`); }
-  log(id: string, path: string, cursor: number): Promise<AutoLlmLog> { return this.get(`/campaigns/${encodeURIComponent(id)}/log`, { path, cursor, maximumBytes: 65536 }); }
+  preview(id: string, path: string, lines: number): Promise<AutoLlmLogPreview> { return this.get(`/campaigns/${encodeURIComponent(id)}/preview`, { path, lines }); }
   artifactUrl(id: string, path: string): string { return `${this.base}/campaigns/${encodeURIComponent(id)}/artifact?${new URLSearchParams({ path })}`; }
   screenings(): Promise<{ active: string; jobs: ScreeningJob[] }> { return this.get('/screenings'); }
   createScreening(config: AutoLlmConfig, inputPath: string, trainingFraction: number): Promise<ScreeningJob> {

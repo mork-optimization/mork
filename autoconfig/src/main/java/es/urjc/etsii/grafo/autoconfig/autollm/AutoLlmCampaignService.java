@@ -466,12 +466,52 @@ public class AutoLlmCampaignService {
     public AutoLlmCampaign resumeTarget(String id, String targetId) {
         return invoke(() -> {
             if (!id.equals(active)) throw new IllegalStateException("Resume the stopped campaign explicitly before recovering a target");
-            var target = requireTarget(current, targetId);
-            if (target.status.equals("REMOVED")) throw new IllegalStateException("Removed target IDs cannot be reused");
-            if (jobs.containsKey(targetId)) return AutoLlmPoolUtil.copy(current, AutoLlmCampaign.class);
-            target.draining = false; target.problem = null; target.status = target.baselineReady ? "READY" : "REGISTERED"; target.revision = ++current.poolRevision;
-            store.event(id, "target-resumed", Map.of("targetId", targetId, "revision", current.poolRevision));
-            for (var trial : current.trials) if (targetId.equals(trial.targetId) && Set.of("BLOCKED", "INTERRUPTED").contains(trial.status)) { trial.status = "PENDING"; trial.infrastructureRetries = 0; }
+            requireTarget(current, targetId);
+            recoveryInternal(current).targets().get(targetId).resume().requireAllowed();
+            return resumeTargetInternal(id, targetId, false);
+        });
+    }
+    public AutoLlmCampaign requalifyTarget(String id, String targetId) {
+        return invoke(() -> {
+            if (!id.equals(active)) throw new IllegalStateException("Resume the stopped campaign explicitly before recovering a target");
+            requireTarget(current, targetId);
+            recoveryInternal(current).targets().get(targetId).requalify().requireAllowed();
+            return resumeTargetInternal(id, targetId, true);
+        });
+    }
+    private AutoLlmCampaign resumeTargetInternal(String id, String targetId, boolean requalify) {
+        var target = requireTarget(current, targetId);
+        if (requalify) target.baselineReady = false;
+        target.draining = false; target.problem = null; target.status = target.baselineReady ? "READY" : "REGISTERED"; target.revision = ++current.poolRevision;
+        store.event(id, requalify ? "target-requalification-requested" : "target-resumed", Map.of("targetId", targetId, "revision", current.poolRevision));
+        for (var trial : current.trials) if (targetId.equals(trial.targetId) && Set.of("BLOCKED", "INTERRUPTED").contains(trial.status)) { trial.status = "PENDING"; trial.infrastructureRetries = 0; }
+        save(); dispatch(); return AutoLlmPoolUtil.copy(current, AutoLlmCampaign.class);
+    }
+    public AutoLlmRecoveryUtil.Recovery recovery(String id) {
+        return invoke(() -> recoveryInternal(id.equals(active) ? current : store.load(id)));
+    }
+    private AutoLlmRecoveryUtil.Recovery recoveryInternal(AutoLlmCampaign campaign) {
+        var busy = new HashSet<String>(); var uncollected = new HashSet<String>();
+        for (var entry : campaign.targets.entrySet()) {
+            if (campaign == current && jobs.containsKey(entry.getKey())) busy.add(entry.getKey());
+            if (!busy.contains(entry.getKey()) && AutoLlmCampaignStore.hasUncollectedJobs(store.directory(campaign.id).resolve(entry.getValue().directory))) uncollected.add(entry.getKey());
+        }
+        String blocked = closing || campaign == current && (cancelled || checkingBaseline) ? "Controller is shutting down, cancelling, or checking the baseline" : null;
+        try { store.requireReservation(campaign.id); } catch (IllegalStateException e) { blocked = e.getMessage(); }
+        return AutoLlmRecoveryUtil.describe(campaign, active, busy, uncollected, blocked);
+    }
+    public AutoLlmCampaign resumeTrial(String id, int number) {
+        return invoke(() -> {
+            if (!id.equals(active)) throw new IllegalStateException("Resume the stopped campaign first");
+            var actions = recoveryInternal(current).trials().get(number);
+            if (actions == null) throw new NoSuchElementException("Unknown trial " + number);
+            actions.resume().requireAllowed();
+            AutoLlmCampaign.Trial trial = null;
+            for (var candidate : current.trials) if (candidate.number == number) { trial = candidate; break; }
+            var target = requireTarget(current, trial.targetId);
+            trial.status = "PENDING"; trial.infrastructureRetries = 0;
+            target.draining = false; target.problem = null; target.status = "READY"; target.revision = ++current.poolRevision;
+            store.event(id, "trial-resumed-by-operator", Map.of("trial", number, "targetId", trial.targetId));
             save(); dispatch(); return AutoLlmPoolUtil.copy(current, AutoLlmCampaign.class);
         });
     }
@@ -489,12 +529,8 @@ public class AutoLlmCampaignService {
         for (var candidate : c.trials) if (candidate.number == number) { trial = candidate; break; }
         if (trial == null) throw new NoSuchElementException("Unknown trial " + number);
         if (trial.status.equals("FAILED")) return AutoLlmPoolUtil.copy(c, AutoLlmCampaign.class);
-        if (c == current && !c.status.equals("RUNNING")) throw new IllegalStateException("The active campaign must be running to fail a trial");
-        if (!Set.of("BLOCKED", "INTERRUPTED").contains(trial.status)) throw new IllegalStateException("Only a blocked or interrupted trial can be failed by the operator");
+        recoveryInternal(c).trials().get(number).fail().requireAllowed();
         var target = requireTarget(c, trial.targetId);
-        if (!target.baselineReady || target.status.equals("REMOVED")) throw new IllegalStateException("The trial's target must remain qualified");
-        if (jobs.containsKey(trial.targetId) || AutoLlmCampaignStore.hasUncollectedJobs(store.directory(c.id).resolve(target.directory)))
-            throw new IllegalStateException("Reconcile the target's jobs and collect their evidence before failing the trial");
         trial.status = "FAILED";
         target.assignedTrial = null; target.problem = null; target.status = target.draining ? "DRAINING" : "READY";
         store.event(c.id, "trial-failed-by-operator", Map.of("trial", number, "targetId", trial.targetId, "reason", reason.strip()));

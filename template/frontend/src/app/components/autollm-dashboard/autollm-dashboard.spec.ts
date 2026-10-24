@@ -7,13 +7,13 @@ import { AutoLlmDashboard } from './autollm-dashboard';
 import { AutoLlmActivity, AutoLlmCampaign, AutoLlmConfig, AutoLlmTrial, CodexProgress, ScreeningJob, ScreeningReview } from '../../model/autollm';
 
 @Component({ selector: 'app-dashboard-chart', template: '' })
-class ChartStub { readonly model = input.required<ChartViewModel>(); }
+class ChartStub { readonly model = input.required<ChartViewModel>(); readonly resizable = input(false); }
 
 describe('AutoLLM dashboard', () => {
   beforeEach(async () => {
     const trial = { number: 1, status: 'SUCCEEDED', tuningSeed: 1234, repairTurns: 1, attempts: [], winner: { $component: 'SimpleAlgorithm', constructive: { $component: 'ConstructiveNew' } } };
     const campaign = { id: 'campaign', status: 'SUCCEEDED', createdAt: '2026-10-07T00:00:00Z', trials: [trial], config: { execution: { target: 'LOCAL' } }, versions: {}, poolRevision: 1, targets: {} };
-    const store = { targets: signal([]), activeTrials: signal([]), activeProgress: signal({}), screenings: signal([]), activeScreening: signal(''), selectedScreening: signal(''), screening: signal(null), review: signal(null), summary: signal(null), progress: signal(null), generation: signal(null), conversationAttempt: signal(null), activity: signal([]), config: signal(null), targetStatus: signal(null), error: signal(null), connectionError: signal(null), active: signal(''), busy: signal(false), selectedId: signal(campaign.id), selectedTrial: signal(1), campaigns: signal([campaign]), campaign: signal(campaign), trial: signal(trial), completed: signal(1), tuning: signal(null), logPath: signal(''), logText: signal(''), artifacts: signal([]), comparison: signal({ counts: { SOTA: { SUCCEEDED: 1 } }, curves: [{ instance: 'instance.txt', instanceId: 'instance', algorithm: 'SOTA', iteration: '0', curves: { Cost: [{ instant: 0, value: 10 }, { instant: 10000000, value: 8 }] } }] }), start: vi.fn().mockResolvedValue(undefined) };
+    const store = { targets: signal([]), activeTrials: signal([]), activeProgress: signal({}), screenings: signal([]), activeScreening: signal(''), selectedScreening: signal(''), screening: signal(null), review: signal(null), summary: signal(null), progress: signal(null), generation: signal(null), conversationAttempt: signal(null), activity: signal([]), config: signal(null), targetStatus: signal(null), recovery: signal(null), recoveryError: signal(null), trialRecovery: signal(null), error: signal(null), connectionError: signal(null), active: signal(''), busy: signal(false), selectedId: signal(campaign.id), selectedTrial: signal(1), campaigns: signal([campaign]), campaign: signal(campaign), trial: signal(trial), completed: signal(1), tuning: signal(null), logPath: signal(''), logLines: signal(500), logFollow: signal(true), logPreview: signal(null), logLoading: signal(false), logError: signal(null), artifacts: signal([]), comparison: signal({ counts: { SOTA: { SUCCEEDED: 1 } }, curves: [{ instance: 'instance.txt', instanceId: 'instance', algorithm: 'SOTA', iteration: '0', curves: { Cost: [{ instant: 0, value: 10 }, { instant: 10000000, value: 8 }] } }] }), start: vi.fn().mockResolvedValue(undefined) };
     await TestBed.configureTestingModule({ imports: [AutoLlmDashboard], providers: [provideZonelessChangeDetection(), { provide: AutoLlmStore, useValue: store }] })
       .overrideComponent(AutoLlmDashboard, { remove: { imports: [DashboardChart] }, add: { imports: [ChartStub] } }).compileComponents();
   });
@@ -64,9 +64,70 @@ describe('AutoLLM dashboard', () => {
     const fixture = TestBed.createComponent(AutoLlmDashboard);
     expect(fixture.componentInstance.curveChart().options.series).toEqual([expect.objectContaining({ name: 'SOTA · repetition 1', data: [[0, 10], [10, 8]] })]);
   });
+  it('shows relative instance labels and retains full paths when switching the chart', async () => {
+    const store = TestBed.inject(AutoLlmStore);
+    const paths = ['/remote/campaign/data/00000000/one.txt', '/remote/campaign/data/00000001/two.txt'];
+    store.comparison.set({ curves: paths.map((instance, index) => ({ instance, instanceId: instance, algorithm: 'SOTA', iteration: '0', curves: { Cost: [{ instant: 0, value: index + 10 }] } })) });
+    const fixture = TestBed.createComponent(AutoLlmDashboard); fixture.detectChanges(); await fixture.whenStable();
+    const select = fixture.nativeElement.querySelector('.comparison-controls select') as HTMLSelectElement;
+    expect([...select.options].map(option => option.textContent?.trim())).toEqual(['00000000/one.txt', '00000001/two.txt']);
+    expect(select.options[1].value).toBe(paths[1]); expect(select.options[1].title).toBe(paths[1]);
+    select.value = paths[1]; select.dispatchEvent(new Event('change')); fixture.detectChanges();
+    expect(fixture.componentInstance.activeInstance()).toBe(paths[1]);
+    expect(fixture.componentInstance.curveChart().options.series![0]).toEqual(expect.objectContaining({ data: [[0, 11]] }));
+    expect(select.title).toBe(paths[1]);
+  });
   it('shows unavailable usage for older campaigns', async () => {
     const fixture = TestBed.createComponent(AutoLlmDashboard); fixture.detectChanges(); await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('Codex token usage · UNAVAILABLE');
+  });
+  it('uses backend recovery eligibility and requires a recorded reason to end a trial', async () => {
+    const store = TestBed.inject(AutoLlmStore);
+    (store.trial as WritableSignal<AutoLlmTrial | null>).set({ ...store.trial()!, status: 'BLOCKED' });
+    const recovery = { resume: { allowed: false, reason: 'Requalify the assigned server first', effect: '' }, fail: { allowed: true, reason: null, effect: 'Preserves evidence and releases the server' } };
+    (store.trialRecovery as WritableSignal<unknown>).set(recovery);
+    store.failTrial = vi.fn(); store.resumeTrial = vi.fn();
+    const fixture = TestBed.createComponent(AutoLlmDashboard); fixture.detectChanges(); await fixture.whenStable();
+    const panel = fixture.nativeElement.querySelector('.trial-recovery') as HTMLElement;
+    const buttons = panel.querySelectorAll('button');
+    expect(panel.textContent).toContain('Requalify the assigned server first');
+    expect(buttons[0].disabled).toBe(true); expect(buttons[1].disabled).toBe(true);
+    const reason = panel.querySelector('textarea')!; reason.value = 'Sampler failed'; reason.dispatchEvent(new Event('input')); fixture.detectChanges();
+    expect(buttons[1].disabled).toBe(false); buttons[1].click();
+    expect(store.failTrial).toHaveBeenCalledWith('Sampler failed'); expect(store.resumeTrial).not.toHaveBeenCalled();
+  });
+  it('shows server requalification eligibility and scopes the action to that server', async () => {
+    const store = TestBed.inject(AutoLlmStore);
+    (store.campaign as WritableSignal<AutoLlmCampaign | null>).update(c => c ? { ...c, config: { ...c.config, execution: { ...c.config.execution, target: 'SSH' } } } : c);
+    (store.targets as WritableSignal<unknown>).set([{ id: 'worker-a', status: 'NEEDS_ATTENTION', definition: { host: 'user@worker-a' } }]);
+    const allowed = { allowed: true, reason: null, effect: 'Run qualification before resuming blocked work' };
+    store.recovery.set({ resumeCampaign: allowed, trials: {}, targets: { 'worker-a': { resume: allowed, requalify: allowed } } });
+    store.targetAction = vi.fn();
+    const fixture = TestBed.createComponent(AutoLlmDashboard); fixture.detectChanges(); await fixture.whenStable();
+    const button = [...fixture.nativeElement.querySelectorAll('.target-card button')].find((element: unknown) => (element as HTMLButtonElement).textContent?.includes('Requalify server')) as HTMLButtonElement;
+    expect(button.disabled).toBe(false); button.click();
+    expect(store.targetAction).toHaveBeenCalledWith('worker-a', 'requalify');
+    store.recovery.set({ resumeCampaign: allowed, trials: {}, targets: { 'worker-a': { resume: allowed, requalify: { ...allowed, allowed: false, reason: 'Reconcile remote jobs first' } } } });
+    fixture.detectChanges(); expect(button.disabled).toBe(true);
+    expect(fixture.nativeElement.textContent).toContain('Reconcile remote jobs first');
+  });
+  it('offers a bounded tail preview and downloads the full file directly', async () => {
+    const store = TestBed.inject(AutoLlmStore);
+    store.logPath.set('attempt/stdout.log');
+    store.logPreview.set({ text: 'latest line\n', lineCount: 1, sizeBytes: 1000000, truncated: true, byteLimited: true });
+    store.setLogLines = vi.fn(); store.selectLog = vi.fn();
+    store.artifactUrl = path => '/artifact?path=' + path;
+    const fixture = TestBed.createComponent(AutoLlmDashboard); fixture.detectChanges(); await fixture.whenStable();
+    const preview = fixture.nativeElement.querySelector('.log-preview') as HTMLElement;
+    expect(preview.querySelector('pre')?.textContent).toBe('latest line\n');
+    expect(preview.textContent).toContain('last 500 lines');
+    expect(preview.textContent).toContain('256 KiB byte limit');
+    const download = preview.querySelector('a') as HTMLAnchorElement;
+    expect(download.textContent).toContain('Download full file');
+    expect(download.getAttribute('href')).toBe('/artifact?path=attempt/stdout.log');
+    expect(download.hasAttribute('download')).toBe(true);
+    const select = preview.querySelector('select')!; select.value = '100'; select.dispatchEvent(new Event('change'));
+    expect(store.setLogLines).toHaveBeenCalledWith(100);
   });
   it('shows partial known totals, unknown fields, and conversation downloads', async () => {
     const store = TestBed.inject(AutoLlmStore);
