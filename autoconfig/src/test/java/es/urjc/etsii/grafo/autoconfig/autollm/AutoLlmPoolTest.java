@@ -3,6 +3,8 @@ package es.urjc.etsii.grafo.autoconfig.autollm;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.*;
@@ -95,6 +97,53 @@ class AutoLlmPoolTest {
             assertThrows(IllegalArgumentException.class, () -> service.addTarget(campaign.id, "b", server("a")));
         } finally { finish.countDown(); service.close(); }
     }
+    @ParameterizedTest @ValueSource(booleans = {false, true})
+    void operatorCanFailAReconciledBlockedTrialAndReleaseItsTarget(boolean drained) throws Exception {
+        setup(3, "a", "b"); var finish = new CountDownLatch(1); var nextTrial = new CountDownLatch(1);
+        var problem = new AutoLlmFailureUtil.Failure(AutoLlmFailureUtil.Category.UNKNOWN, "IRACE_SAMPLING_FAILED",
+                "IRACE exhausted model sampling", List.of("runner.R.stderr.log"), false, "Inspect the sampler");
+        executions.put("a", (model, stop) -> {
+            var trial = model.trials.getFirst();
+            if (trial.number == 1) { trial.status = "BLOCKED"; trial.problem = problem; trial.failure = "Original R failure"; return; }
+            nextTrial.countDown(); assertTrue(finish.await(10, TimeUnit.SECONDS)); trial.status = "SUCCEEDED";
+        });
+        executions.put("b", (model, stop) -> { assertTrue(finish.await(10, TimeUnit.SECONDS)); model.trials.getFirst().status = "SUCCEEDED"; });
+        try {
+            service.start(campaign.id, false);
+            await(() -> store.load(campaign.id).targets.get("a").status.equals("NEEDS_ATTENTION"));
+            assertThrows(IllegalArgumentException.class, () -> service.failTrial(campaign.id, 1, " "));
+            assertThrows(IllegalStateException.class, () -> service.failTrial(campaign.id, 2, "Running trial"));
+            Path evidence = store.directory(campaign.id).resolve("targets/a/trials/001/error.log");
+            Files.createDirectories(evidence.getParent()); Files.writeString(evidence, "Original evidence");
+            Path remote = evidence.getParent().resolve("remote-job.json"); Files.writeString(remote, "{}");
+            assertThrows(IllegalStateException.class, () -> service.failTrial(campaign.id, 1, "Sampling exhausted"));
+            assertEquals("BLOCKED", store.load(campaign.id).trials.getFirst().status);
+            Files.delete(remote);
+            if (drained) service.drainTarget(campaign.id, "a", false);
+            service.failTrial(campaign.id, 1, "Sampling exhausted");
+            if (drained) {
+                var waiting = store.load(campaign.id);
+                assertTrue(waiting.targets.get("a").draining); assertEquals("DRAINING", waiting.targets.get("a").status);
+                assertEquals("PENDING", waiting.trials.get(2).status);
+                service.resumeTarget(campaign.id, "a");
+            }
+            assertTrue(nextTrial.await(10, TimeUnit.SECONDS));
+            service.failTrial(campaign.id, 1, "Repeated request");
+            var saved = store.load(campaign.id); var failed = saved.trials.getFirst();
+            assertEquals("FAILED", failed.status); assertEquals(problem, failed.problem); assertEquals("Original R failure", failed.failure);
+            assertEquals(101L, failed.tuningSeed); assertEquals(0, failed.repairTurns);
+            assertEquals("Original evidence", Files.readString(evidence));
+            assertEquals("a", saved.trials.get(2).targetId); assertEquals(3, saved.targets.get("a").assignedTrial);
+            String events = Files.readString(store.directory(campaign.id).resolve("campaign-events.jsonl"));
+            int dispositionEvents = 0;
+            for (String line : events.split("\n")) if (line.contains("trial-failed-by-operator")) dispositionEvents++;
+            assertEquals(1, dispositionEvents);
+            assertTrue(events.contains("Sampling exhausted"));
+            finish.countDown(); await(() -> service.active() == null);
+            assertEquals("COMPLETED_WITH_FAILURES", store.load(campaign.id).status);
+            assertEquals("FAILED", service.failTrial(campaign.id, 1, "Repeated after completion").trials.getFirst().status);
+        } finally { finish.countDown(); service.close(); }
+    }
     @Test void duplicateResolvedEndpointCannotStartASecondWorkload() throws Exception {
         setup(1, "a"); var entered = new CountDownLatch(1); var finish = new CountDownLatch(1);
         campaign.targets.get("a").endpoint = "127.0.0.1:22"; store.save(campaign); endpoints.put("b", "127.0.0.1:22");
@@ -104,6 +153,27 @@ class AutoLlmPoolTest {
             await(() -> store.load(campaign.id).targets.get("b").status.equals("NEEDS_ATTENTION"));
             assertTrue(store.load(campaign.id).targets.get("b").problem.message().contains("Duplicate"));
         } finally { finish.countDown(); service.close(); }
+    }
+    @Test void failsAnInterruptedTrialBeforeResumingAStoppedCampaign() throws Exception {
+        setup(2, "a");
+        var trial = campaign.trials.getFirst(); trial.targetId = "a"; trial.directory = "targets/a/trials/001";
+        trial.status = "INTERRUPTED"; trial.failure = "Saved R failure";
+        campaign.status = "INTERRUPTED"; campaign.targets.get("a").draining = true; store.save(campaign);
+        executions.put("a", (model, stop) -> { assertEquals(2, model.trials.getFirst().number); model.trials.getFirst().status = "SUCCEEDED"; });
+        try {
+            try (var lock = store.lock()) {
+                assertThrows(IllegalStateException.class, () -> service.failTrial(campaign.id, 1, "Sampling exhausted"));
+            }
+            var failed = service.failTrial(campaign.id, 1, "Sampling exhausted");
+            assertEquals("INTERRUPTED", failed.status); assertEquals("FAILED", failed.trials.getFirst().status);
+            assertEquals("Saved R failure", failed.trials.getFirst().failure); assertTrue(failed.targets.get("a").draining);
+            assertNull(service.active());
+            service.start(campaign.id, true); await(() -> store.load(campaign.id).status.equals("WAITING_FOR_TARGETS"));
+            service.resumeTarget(campaign.id, "a"); await(() -> service.active() == null);
+            var result = store.load(campaign.id);
+            assertEquals("FAILED", result.trials.getFirst().status); assertEquals("SUCCEEDED", result.trials.get(1).status);
+            assertEquals("COMPLETED_WITH_FAILURES", result.status);
+        } finally { service.close(); }
     }
     @Test void cancellationReachesAllActiveTargetsBeforeReleasingOwnership() throws Exception {
         setup(2, "a", "b"); var entered = new CountDownLatch(2); var stopped = new CountDownLatch(2);

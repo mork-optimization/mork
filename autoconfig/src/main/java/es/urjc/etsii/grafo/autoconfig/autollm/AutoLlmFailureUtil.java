@@ -13,7 +13,7 @@ import java.util.regex.Pattern;
 /** Positive attribution is required before asking an LLM to repair a candidate. */
 public final class AutoLlmFailureUtil {
     public static final int MAX_RETRIES = 2;
-    public enum Category { COMPONENT, TRANSIENT_INFRASTRUCTURE, INFRASTRUCTURE, INTEGRITY, UNKNOWN }
+    public enum Category { COMPONENT, TRANSIENT_INFRASTRUCTURE, INFRASTRUCTURE, INTEGRITY, QUOTA, UNKNOWN }
     public record Failure(Category category, String code, String message, List<String> evidence, boolean retryable, String recovery) {}
     public static final class StageException extends IllegalStateException {
         private final Failure failure;
@@ -35,6 +35,9 @@ public final class AutoLlmFailureUtil {
         var visited = Collections.newSetFromMap(new IdentityHashMap<Throwable, Boolean>());
         for (Throwable cause = error; cause != null && visited.add(cause); cause = cause.getCause()) {
             if (cause instanceof StageException typed) return typed.failure();
+            if (cause instanceof CodexQuotaUtil.QuotaLimitException quota) return new Failure(Category.QUOTA, "CODEX_USAGE_LIMIT",
+                    quota.getMessage(), evidence == null ? List.of() : List.of(evidence.toString()), false,
+                    "Waiting until " + quota.retryAt() + " before resuming the same Codex session.");
             causes.add(cause);
         }
         Category category = Category.UNKNOWN;

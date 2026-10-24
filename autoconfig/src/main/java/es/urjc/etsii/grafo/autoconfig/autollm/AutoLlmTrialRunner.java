@@ -75,6 +75,12 @@ public final class AutoLlmTrialRunner {
                 try { runTrial(c, t); break; }
                 catch (RuntimeException e) {
                     if (e instanceof CancellationException) throw e;
+                    if (e instanceof CodexQuotaUtil.QuotaLimitException quota) {
+                        t.quotaRetryAt = quota.retryAt().toString(); t.problem = AutoLlmFailureUtil.describe(e, executionRoot.resolve("trials/%03d".formatted(t.number)));
+                        t.status = "WAITING_FOR_QUOTA"; c.problem = null; c.failure = null; publish(c);
+                        event("codex-quota-wait", Map.of("trial", t.number, "retryAt", t.quotaRetryAt, "failure", t.problem));
+                        continue;
+                    }
                     var problem = AutoLlmFailureUtil.describe(e, executionRoot.resolve("trials/%03d".formatted(t.number)));
                     if (!problem.retryable() || t.infrastructureRetries >= AutoLlmFailureUtil.MAX_RETRIES) throw e;
                     t.infrastructureRetries++; t.problem = problem; c.problem = null; c.failure = null; publish(c);
@@ -97,7 +103,7 @@ public final class AutoLlmTrialRunner {
     private void recoverTurn(AutoLlmCampaign c, AutoLlmCampaign.Trial trial) {
         if (trial.attempts.isEmpty()) return;
         var attempt = trial.attempts.getLast();
-        if (!List.of("GENERATION", "REPAIR").contains(attempt.stage) || !List.of("RUNNING", "INTERRUPTED", "FAILED").contains(attempt.status)) return;
+        if (!List.of("GENERATION", "REPAIR").contains(attempt.stage) || !List.of("RUNNING", "INTERRUPTED", "FAILED", "QUOTA_LIMIT").contains(attempt.status)) return;
         Path root = executionRoot;
         try {
             attempt.codexEvidence = codex.archive(root.resolve("trials/%03d/source".formatted(trial.number)), root.resolve(attempt.directory), trial.threadId);
@@ -241,7 +247,10 @@ public final class AutoLlmTrialRunner {
         }
     }
     private void finish(AutoLlmCampaign c, AutoLlmCampaign.Attempt a, RuntimeException failure) {
-        a.status = failure == null ? "SUCCEEDED" : failure instanceof CancellationException || AutoLlmCampaignStore.hasUncollectedJobs(executionRoot.resolve(a.directory)) ? "INTERRUPTED" : "FAILED";
+        if (failure == null) a.status = "SUCCEEDED";
+        else if (failure instanceof CodexQuotaUtil.QuotaLimitException) a.status = "QUOTA_LIMIT";
+        else if (failure instanceof CancellationException || AutoLlmCampaignStore.hasUncollectedJobs(executionRoot.resolve(a.directory))) a.status = "INTERRUPTED";
+        else a.status = "FAILED";
         a.finishedAt = Instant.now().toString(); a.failure = failure == null ? null : ExceptionUtil.stacktrace(failure);
         a.problem = failure == null || failure instanceof CancellationException ? null : AutoLlmFailureUtil.describe(failure, executionRoot.resolve(a.directory));
         var event = new LinkedHashMap<String,Object>(); event.put("directory", a.directory); event.put("status", a.status); event.put("problem", a.problem); event.put("failure", a.failure);
@@ -254,6 +263,7 @@ public final class AutoLlmTrialRunner {
         }
     }
     private void runTrial(AutoLlmCampaign c, AutoLlmCampaign.Trial t) {
+        awaitQuota(c, t);
         Path root = executionRoot; Path source = root.resolve("trials/%03d/source".formatted(t.number));
         AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(root.resolve("control/frozen-hashes.json"), new TypeReference<>() {}));
         cloneProject(c, c.baselineCommit, source, root.resolve("trials/%03d/clone".formatted(t.number)));
@@ -268,7 +278,7 @@ public final class AutoLlmTrialRunner {
                 catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Queued generation interrupted"); }
                 if (cancelled()) { sessions.release(); throw new CancellationException(); }
                 var a = attempt(c, t, t.threadId == null || continuation && t.generationDirectory == null ? "GENERATION" : "REPAIR"); Path dir = root.resolve(a.directory);
-                boolean chargeRepair = t.threadId != null && !continuation;
+                t.repairPending |= t.threadId != null && !continuation;
                 t.resumeTurn = false; publish(c);
                 try {
                     String prompt = c.prompt + "\nBuild/test command: " + c.config.project().buildCommand() + "\nFrozen seed descriptions: " + c.config.initialConfigurationsFile() + "\nTraining inputs: " + c.config.trainingPath();
@@ -280,11 +290,12 @@ public final class AutoLlmTrialRunner {
                     }
                     try {
                         metadataLock.lockInterruptibly();
-                        try { if (chargeRepair) t.repairTurns++; t.threadId = result.threadId(); t.blacklist = result.manifest().blacklist(); t.generationDirectory = a.directory; t.nextStep = "VERIFY"; t.failure = null; t.problem = null; finish(c, a, null); }
+                        try { if (t.repairPending) t.repairTurns++; t.repairPending = false; t.threadId = result.threadId(); t.blacklist = result.manifest().blacklist(); t.generationDirectory = a.directory; t.nextStep = "VERIFY"; t.failure = null; t.problem = null; finish(c, a, null); }
                         finally { metadataLock.unlock(); }
                     } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Generation interrupted while awaiting a metadata check"); }
                 } catch (RuntimeException e) {
                     if (c.problem != null && e instanceof CancellationException && !cancelled()) e = new AutoLlmFailureUtil.StageException(c.problem, e);
+                    if (e instanceof CodexQuotaUtil.QuotaLimitException quota) t.quotaRetryAt = quota.retryAt().toString();
                     t.failure = ExceptionUtil.stacktrace(e); finish(c, a, e);
                     if (a.codexEvidence != null && a.codexEvidence.threadId() != null) t.threadId = a.codexEvidence.threadId();
                     t.resumeTurn = e instanceof CancellationException && t.threadId != null; publish(c);
@@ -353,6 +364,20 @@ public final class AutoLlmTrialRunner {
         var a = attempt(c, t, "COMPARISON"); t.comparisonDirectory = a.directory; publish(c);
         try { child(c, t, jar, root.resolve(a.directory), "--default", 0, c.config.execution().stageTimeoutMillis(), List.of("--autollm.child.comparison-enabled=true", "--autollm.child.winner-file=" + root.resolve(t.winnerDirectory).resolve("execution/winner.json"), "--solver.experiments=autollm-comparison", "--solver.repetitions=" + c.config.comparison().repetitions())); finish(c, a, null); }
         catch (RuntimeException e) { finish(c, a, e); throw e; }
+    }
+    private void awaitQuota(AutoLlmCampaign campaign, AutoLlmCampaign.Trial trial) {
+        if (trial.quotaRetryAt == null) return;
+        trial.status = "WAITING_FOR_QUOTA"; publish(campaign);
+        long reset = Instant.parse(trial.quotaRetryAt).toEpochMilli();
+        while (true) {
+            if (cancelled()) throw new CancellationException("Quota wait cancelled");
+            long remaining = reset - System.currentTimeMillis();
+            if (remaining <= 0) break;
+            try { Thread.sleep(Math.min(1000, remaining)); }
+            catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Quota wait interrupted"); }
+        }
+        trial.quotaRetryAt = null; trial.problem = null; trial.failure = null; publish(campaign);
+        event("codex-quota-resumed", Map.of("trial", trial.number));
     }
     private void runCommand(AutoLlmCampaign c, List<String> command, Path cwd, Path dir, long timeout, boolean local) {
         AutoLlmProcessRunner.Result result;

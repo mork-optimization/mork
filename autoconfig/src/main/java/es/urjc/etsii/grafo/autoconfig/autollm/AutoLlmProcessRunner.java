@@ -25,7 +25,8 @@ public class AutoLlmProcessRunner {
             try {
                 process.getOutputStream().close();
                 var start = process.info().startInstant().map(Instant::toString).orElse("");
-                if (start.isEmpty() && process.isAlive()) throw new IllegalStateException("Cannot establish child process identity");
+                // A fast child can lose its OS metadata before the process reaper reports its exit.
+                if (start.isEmpty() && !process.waitFor(100, TimeUnit.MILLISECONDS)) throw new IllegalStateException("Cannot establish child process identity");
                 AutoLlmFileUtil.write(output.resolve("owner.json"), Map.of("pid", process.pid(), "start", start, "command", command,
                         "executionTarget", Boolean.getBoolean("mork.execution.remote") ? "SSH" : "LOCAL"));
                 while (!process.waitFor(100, TimeUnit.MILLISECONDS)) {

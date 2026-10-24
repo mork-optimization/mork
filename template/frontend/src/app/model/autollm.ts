@@ -35,6 +35,7 @@ export interface AutoLlmTrial {
   repairTurns: number; winner: unknown | null; attempts: AutoLlmAttempt[];
   codexUsage?: CodexUsage | null;
   problem?: AutoLlmFailure | null; infrastructureRetries?: number;
+  quotaRetryAt?: string | null;
 }
 export interface AutoLlmCampaign {
   id: string; config: AutoLlmConfig; createdAt: string; status: string; failure: string | null;
@@ -53,6 +54,7 @@ export interface CodexProgress { state: string; threadId: string | null; lastAct
 export interface AutoLlmProgress {
   status: string; attempt?: AutoLlmAttempt; substage?: string | null; elapsedMillis?: number;
   problem?: AutoLlmFailure | null; repairTurns?: number; infrastructureRetries?: number;
+  quotaRetryAt?: string | null;
   generation?: CodexProgress; workload?: Record<string, unknown>; remote?: AutoLlmCampaign['remote'];
 }
 export interface AutoLlmActivity { timestamp: string; type: string; text: string }

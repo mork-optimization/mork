@@ -39,7 +39,7 @@ public class AutoLlmController {
         result.put("artifact", artifact == null ? null : artifact.getAbsolutePath());
         result.put("artifactSha256", artifactSha256);
         result.put("baseUrl", "http://127.0.0.1:" + environment.getProperty("local.server.port", environment.getProperty("server.port", "8080")));
-        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS"));
+        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL"));
         return result;
     }
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
@@ -71,6 +71,7 @@ public class AutoLlmController {
     @PostMapping("/campaigns/{id}/start") public AutoLlmCampaign start(@PathVariable String id) { requireMode(); return service.start(id, false); }
     @PostMapping("/campaigns/{id}/resume") public AutoLlmCampaign resume(@PathVariable String id) { requireMode(); return service.start(id, true); }
     @PostMapping("/campaigns/{id}/cancel") public AutoLlmCampaign cancel(@PathVariable String id) { requireMode(); return service.cancel(id); }
+    @PostMapping("/campaigns/{id}/trials/{number}/fail") public AutoLlmCampaign failTrial(@PathVariable String id, @PathVariable int number, @RequestBody Map<String,String> request) { requireMode(); return service.failTrial(id, number, request.get("reason")); }
     @PostMapping("/campaigns/{id}/report") public AutoLlmCampaign report(@PathVariable String id) { requireMode(); return service.report(id); }
     @GetMapping("/campaigns/{id}/targets") public Object targets(@PathVariable String id) { var c = store.load(id); return Map.of("poolRevision", c.poolRevision, "targets", c.targets); }
     @PutMapping("/campaigns/{id}/targets/{targetId}") public AutoLlmCampaign addTarget(@PathVariable String id, @PathVariable String targetId, @RequestBody AutoLlmConfig.Server server) { requireMode(); return service.addTarget(id, targetId, server); }
@@ -101,6 +102,7 @@ public class AutoLlmController {
             }
             int retries = trial.infrastructureRetries; for (int count : jobRetries.values()) retries += count;
             progress.put("infrastructureRetries", retries); progress.put("repairTurns", trial.repairTurns);
+            progress.put("quotaRetryAt", trial.quotaRetryAt);
             if (!trial.attempts.isEmpty()) {
                 var attempt = trial.attempts.getLast(); Path directory = store.directory(id).resolve(attempt.directory);
                 progress.put("attempt", attempt); progress.put("substage", attempt.substage);

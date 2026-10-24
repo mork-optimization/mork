@@ -61,6 +61,8 @@ public class AutoLlmCampaign {
         public String generationDirectory;
         public String nextStep = "GENERATE";
         public boolean resumeTurn;
+        public String quotaRetryAt;
+        public boolean repairPending;
         public String winnerDirectory;
         public int repairTurns;
         public String preparedArtifact;

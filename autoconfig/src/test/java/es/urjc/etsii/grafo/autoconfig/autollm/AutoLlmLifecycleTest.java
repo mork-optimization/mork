@@ -9,6 +9,7 @@ import org.springframework.mock.env.MockEnvironment;
 import tools.jackson.core.type.TypeReference;
 import java.nio.file.*;
 import java.io.File;
+import java.time.Instant;
 import java.util.*;
 import java.util.function.BooleanSupplier;
 import java.util.jar.*;
@@ -49,7 +50,7 @@ class AutoLlmLifecycleTest {
         assertFalse(ProcessHandle.of(((Number) owner.get("pid")).longValue()).map(ProcessHandle::isAlive).orElse(false));
         for (var event : AutoLlmFileUtil.events(directory.resolve("execution/events.jsonl"))) if ("evaluation-result".equals(event.get("kind"))) assertEquals("INTERRUPTED", event.get("state"));
     }
-    @ParameterizedTest @ValueSource(strings = {"component", "archive", "baseline", "framework", "transient", "persistent"})
+    @ParameterizedTest @ValueSource(strings = {"component", "archive", "baseline", "framework", "transient", "persistent", "quota-generation", "quota-repair", "quota-repeat"})
     void twoTrialsRetainIndependentDataAndContinueAfterFailure(String mode) throws Exception {
         boolean archiveFailure = mode.equals("archive");
         Path repo = temp.resolve("baseline"); Files.createDirectories(repo.resolve("src/main/java")); Files.writeString(repo.resolve("src/main/java/Original.java"), "// original\n");
@@ -64,7 +65,7 @@ class AutoLlmLifecycleTest {
         if (mode.equals("baseline")) buildCommand.add("--fail-replay");
         if (mode.equals("framework")) buildCommand.add("--fail-once-trial");
         var settings = new AutoLlmConfig(new AutoLlmConfig.Project(repo.toString(), "HEAD", buildCommand, "target/project.jar", null), temp.resolve("campaigns").toString(), 2, 1234L, 299,
-                "sota.json", null, "train.index", "comparison.index", new AutoLlmConfig.Codex(cli.toString(), null, null, archiveFailure ? "missing-archive-fixture" : mode.equals("framework") ? null : "repair-fixture", null, null), new AutoLlmConfig.Preparation(5000L, 1),
+                "sota.json", null, "train.index", "comparison.index", new AutoLlmConfig.Codex(cli.toString(), null, null, mode.startsWith("quota-") ? mode + "-fixture" : archiveFailure ? "missing-archive-fixture" : mode.equals("framework") ? null : "repair-fixture", null, null), new AutoLlmConfig.Preparation(5000L, 1),
                 new AutoLlmConfig.Tuning(100, 2L, 20L, false), new AutoLlmConfig.Comparison(2, 20L), new AutoLlmConfig.Execution(2, 50L, 5000L, 5000L, 5000L, 5000L, 5000L, 10000L, "128m", null, null));
         var failures = new java.util.concurrent.atomic.AtomicInteger(mode.equals("transient") ? 2 : mode.equals("persistent") ? 3 : 0);
         var generations = new java.util.concurrent.atomic.AtomicInteger();
@@ -80,13 +81,53 @@ class AutoLlmLifecycleTest {
             }
         };
         var store = new AutoLlmCampaignStore(settings); var instances = new InstanceConfiguration(); instances.setPath(Map.of("default", input.toString()));
-        var service = new AutoLlmCampaignService(settings, store, runner, codex(runner), mock(AutoLlmReportService.class), instances);
+        var quotaReleasedSlot = new java.util.concurrent.atomic.AtomicBoolean();
+        var generator = new CodexTaskRunner(runner, new MockEnvironment().withProperty("CODEX_HOME", temp.resolve("codex-home").toString())) {
+            @Override public Result run(AutoLlmConfig config, Path checkout, Path output, String prompt, String thread, BooleanSupplier cancel) {
+                try { return super.run(config, checkout, output, prompt, thread, cancel); }
+                catch (CodexQuotaUtil.QuotaLimitException quota) {
+                    // Keep integration tests immediate; reset-time parsing is exercised separately.
+                    throw new CodexQuotaUtil.QuotaLimitException(quota.getMessage(), Instant.EPOCH);
+                }
+            }
+        };
+        var service = new AutoLlmCampaignService(settings, store, runner, generator, mock(AutoLlmReportService.class), instances) {
+            @Override protected AutoLlmTrialRunner runner(AutoLlmCampaign model, Path root, AutoLlmTrialRunner.Listener listener, BooleanSupplier stop, java.util.concurrent.Semaphore permits) {
+                return new AutoLlmTrialRunner(model, root, runner, generator, new AutoLlmTrialRunner.Listener() {
+                    public void state(AutoLlmCampaign snapshot) {
+                        if (!snapshot.trials.isEmpty() && snapshot.trials.getFirst().status.equals("WAITING_FOR_QUOTA")) {
+                            assertEquals(0, snapshot.trials.getFirst().infrastructureRetries);
+                            assertEquals(0, snapshot.trials.getFirst().repairTurns);
+                            assertEquals(1, permits.availablePermits()); quotaReleasedSlot.set(true);
+                        }
+                        listener.state(snapshot);
+                    }
+                    public void event(String kind, Object detail) { listener.event(kind, detail); }
+                }, stop, permits);
+            }
+        };
         try {
             var created = service.create(settings); service.start(created.id, false);
             long deadline = System.currentTimeMillis() + 45000;
             while (service.active() != null && System.currentTimeMillis() < deadline) Thread.sleep(50);
             assertNull(service.active(), "Campaign must terminate within the test budget");
             var campaign = store.load(created.id);
+            if (mode.startsWith("quota-")) {
+                assertEquals("COMPLETED_WITH_FAILURES", campaign.status, campaign.failure);
+                var first = campaign.trials.getFirst();
+                assertEquals("FAILED", first.status); assertEquals("SUCCEEDED", campaign.trials.get(1).status);
+                assertEquals(0, first.infrastructureRetries); assertEquals(mode.equals("quota-repair") ? 1 : 0, first.repairTurns);
+                assertNull(first.quotaRetryAt); assertFalse(first.repairPending); assertTrue(quotaReleasedSlot.get());
+                int limited = 0;
+                for (var attempt : first.attempts) if (List.of("GENERATION", "REPAIR").contains(attempt.stage)) {
+                    assertEquals(first.threadId, attempt.codexEvidence.threadId());
+                    if (attempt.status.equals("QUOTA_LIMIT")) limited++;
+                }
+                assertEquals(mode.equals("quota-repeat") ? 4 : 1, limited);
+                String events = Files.readString(store.directory(campaign.id).resolve("campaign-events.jsonl"));
+                assertTrue(events.contains("codex-quota-wait")); assertTrue(events.contains("codex-quota-resumed"));
+                return;
+            }
             if (mode.equals("framework")) {
                 assertEquals("NEEDS_ATTENTION", campaign.status, campaign.failure); assertEquals("BLOCKED", campaign.trials.getFirst().status);
                 assertEquals(1, generations.get()); assertEquals(0, campaign.trials.getFirst().repairTurns);

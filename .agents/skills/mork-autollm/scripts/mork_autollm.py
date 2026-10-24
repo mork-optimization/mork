@@ -308,6 +308,8 @@ def watch_line(snapshot):
                                 f" edits={generation.get('edits', 0)} messages={generation.get('messages', 0)}"
                                 f" lastActivity={generation.get('lastActivityAt')}")
             description += f" repairs={progress.get('repairTurns', 0)} infraRetries={progress.get('infrastructureRetries', 0)}"
+            if progress.get("quotaRetryAt"):
+                description += f" quotaRetryAt={progress['quotaRetryAt']}"
             remote = progress.get("remote") or {}
             if remote:
                 description += f" remote={remote.get('status')} lastSync={remote.get('lastSynchronizedAt')}"
@@ -394,7 +396,7 @@ def status(args, base):
     if selected:
         campaign = request(base, f"/campaigns/{selected}")
         result["campaign"] = {key: campaign.get(key) for key in ("id", "status", "problem", "poolRevision", "targets")}
-        result["campaign"]["trials"] = [{key: trial.get(key) for key in ("number", "targetId", "status", "repairTurns", "infrastructureRetries", "problem")} for trial in campaign["trials"]]
+        result["campaign"]["trials"] = [{key: trial.get(key) for key in ("number", "targetId", "status", "repairTurns", "infrastructureRetries", "quotaRetryAt", "problem")} for trial in campaign["trials"]]
         result["progress"] = {}
         for trial in campaign["trials"]:
             if trial["status"] not in ("SUCCEEDED", "FAILED", "PENDING"):

@@ -147,6 +147,7 @@
     </mat-card-content></mat-card>
     @if (store.trial(); as trial) {
       <mat-card><mat-card-content><h2>Trial {{ trial.number }} · {{ trial.status }}</h2>
+        @if (trial.quotaRetryAt) { <p>Waiting for Codex quota. Automatic retry after {{ trial.quotaRetryAt | date:'medium' }}.</p> }
         @if (store.progress(); as progress) { <p>{{ progress.substage || progress.status }} · {{ (progress.elapsedMillis || 0) / 1000 | number:'1.0-0' }} seconds · Infrastructure retries: {{ progress.infrastructureRetries || 0 }} · Component repairs: {{ trial.repairTurns }}</p> }
         @if (store.generation(); as generation) {
           <p>Generation: {{ generation.state }} · Session: {{ generation.threadId || 'Waiting for session event' }} · Last activity: {{ generation.lastActivityAt ? (generation.lastActivityAt | date:'mediumTime') : 'No events received' }}</p>

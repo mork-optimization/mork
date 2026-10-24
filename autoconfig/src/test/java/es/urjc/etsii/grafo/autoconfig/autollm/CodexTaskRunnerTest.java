@@ -7,10 +7,11 @@ import org.springframework.mock.env.MockEnvironment;
 import java.nio.file.*;
 import java.util.concurrent.CancellationException;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 class CodexTaskRunnerTest {
     @TempDir Path temp;
-    @ParameterizedTest @ValueSource(strings = {"success", "failure", "timeout", "cancel"})
+    @ParameterizedTest @ValueSource(strings = {"success", "failure", "timeout", "cancel", "quota", "quota-archive"})
     void archivesAndAccountsAfterEveryProcessOutcome(String outcome) throws Exception {
         Path home = temp.resolve("codex-home"), checkout = temp.resolve("checkout"), output = temp.resolve("attempt");
         Files.createDirectories(checkout);
@@ -18,15 +19,25 @@ class CodexTaskRunnerTest {
         Files.writeString(cli, "#!/bin/sh\nexport CODEX_HOME='" + home + "'\nexec '" + Path.of(System.getProperty("java.home"), "bin/java") + "' -cp '" + System.getProperty("java.class.path").replace("'", "'\\''") + "' " + AutoLlmCodexFixture.class.getName() + " \"$@\"\n");
         assertTrue(cli.toFile().setExecutable(true));
         var config = new AutoLlmConfig(null, null, null, null, null, null, null, null, null,
-                new AutoLlmConfig.Codex(cli.toString(), null, null, outcome.equals("failure") ? "fail-fixture" : outcome.equals("success") ? null : "hang-fixture", null, null), null, null, null,
+                new AutoLlmConfig.Codex(cli.toString(), null, null, outcome.startsWith("quota") ? "quota-fixture" : outcome.equals("failure") ? "fail-fixture" : outcome.equals("success") ? null : "hang-fixture", null, null), null, null, null,
                 new AutoLlmConfig.Execution(1, 50L, 2000L, 5000L, 5000L, 5000L, 5000L, 5000L, "128m", null, null));
-        var runner = new CodexTaskRunner(new AutoLlmProcessRunner(), new MockEnvironment().withProperty("CODEX_HOME", home.toString()));
+        var runner = spy(new CodexTaskRunner(new AutoLlmProcessRunner(), new MockEnvironment().withProperty("CODEX_HOME", home.toString())));
         Runnable task = () -> runner.run(config, checkout, output, "custom fixture prompt", null, () -> {
             if (!outcome.equals("cancel")) return false;
             try { return Files.readString(output.resolve("stdout.log")).contains("fixture.ready"); } catch (Exception e) { return false; }
         });
+        if (outcome.equals("quota-archive")) {
+            doThrow(new CodexEvidenceUtil.ArchiveException("fixture archive failed", null)).when(runner).archive(any(), any(), any());
+            assertThrows(CodexEvidenceUtil.ArchiveException.class, task::run);
+            return;
+        }
         if (outcome.equals("success")) assertDoesNotThrow(task::run);
         else if (outcome.equals("cancel")) assertThrows(CancellationException.class, task::run);
+        else if (outcome.equals("quota")) {
+            var quota = assertThrows(CodexQuotaUtil.QuotaLimitException.class, task::run);
+            assertTrue(quota.retryAt().isAfter(java.time.Instant.now().plusSeconds(3000)));
+            assertEquals(AutoLlmFailureUtil.Category.QUOTA, AutoLlmFailureUtil.describe(quota, output).category());
+        }
         else assertThrows(IllegalStateException.class, task::run);
         var evidence = AutoLlmFileUtil.read(output.resolve("evidence.json"), CodexEvidenceUtil.Evidence.class);
         assertEquals("ARCHIVED", evidence.status()); assertEquals("COMPLETE", evidence.usage().status()); assertEquals(20L, evidence.usage().tokens().totalTokens());

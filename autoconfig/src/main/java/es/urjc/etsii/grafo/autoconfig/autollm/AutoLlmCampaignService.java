@@ -475,6 +475,33 @@ public class AutoLlmCampaignService {
             save(); dispatch(); return AutoLlmPoolUtil.copy(current, AutoLlmCampaign.class);
         });
     }
+    public AutoLlmCampaign failTrial(String id, int number, String reason) {
+        if (reason == null || reason.isBlank()) throw new IllegalArgumentException("A reason is required to fail a trial");
+        return invoke(() -> {
+            if (id.equals(active)) return failTrial(current, number, reason);
+            if (active != null) throw new IllegalStateException("Another campaign is active");
+            store.requireReservation(id);
+            try (var lock = store.lock()) { return failTrial(store.load(id), number, reason); }
+        });
+    }
+    private AutoLlmCampaign failTrial(AutoLlmCampaign c, int number, String reason) {
+        AutoLlmCampaign.Trial trial = null;
+        for (var candidate : c.trials) if (candidate.number == number) { trial = candidate; break; }
+        if (trial == null) throw new NoSuchElementException("Unknown trial " + number);
+        if (trial.status.equals("FAILED")) return AutoLlmPoolUtil.copy(c, AutoLlmCampaign.class);
+        if (c == current && !c.status.equals("RUNNING")) throw new IllegalStateException("The active campaign must be running to fail a trial");
+        if (!Set.of("BLOCKED", "INTERRUPTED").contains(trial.status)) throw new IllegalStateException("Only a blocked or interrupted trial can be failed by the operator");
+        var target = requireTarget(c, trial.targetId);
+        if (!target.baselineReady || target.status.equals("REMOVED")) throw new IllegalStateException("The trial's target must remain qualified");
+        if (jobs.containsKey(trial.targetId) || AutoLlmCampaignStore.hasUncollectedJobs(store.directory(c.id).resolve(target.directory)))
+            throw new IllegalStateException("Reconcile the target's jobs and collect their evidence before failing the trial");
+        trial.status = "FAILED";
+        target.assignedTrial = null; target.problem = null; target.status = target.draining ? "DRAINING" : "READY";
+        store.event(c.id, "trial-failed-by-operator", Map.of("trial", number, "targetId", trial.targetId, "reason", reason.strip()));
+        if (c == current) { save(); reportAsync(false); dispatch(); }
+        else store.save(c);
+        return AutoLlmPoolUtil.copy(c, AutoLlmCampaign.class);
+    }
     public AutoLlmCampaign cancel(String id) {
         return invoke(() -> {
             if (!id.equals(active)) acquire(store.load(id));
