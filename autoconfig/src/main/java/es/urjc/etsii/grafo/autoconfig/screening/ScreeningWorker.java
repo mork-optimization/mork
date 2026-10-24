@@ -67,10 +67,18 @@ final class ScreeningWorker<S extends Solution<S,I>, I extends Instance> {
     }
     private void runSeeds(Job job, Input input, List<Long> seeds, String sota) {
         Path output = Path.of(job.output());
+        boolean confirming = phase.equals("CONFIRMATIONS");
+        Run initial = confirming ? ScreeningFileUtil.readRun(output, job.manifest(), input, job.manifest().seed()) : null;
+        var confirmations = new ArrayList<Run>();
         var pending = new ArrayList<Long>();
         for (long seed : seeds) {
-            if (ScreeningFileUtil.readRun(output, job.manifest(), input, seed) == null) pending.add(seed);
-            else if (seed != job.manifest().seed()) confirmationsCompleted++;
+            Run cached = ScreeningFileUtil.readRun(output, job.manifest(), input, seed);
+            if (cached == null) pending.add(seed);
+            else if (confirming) { confirmations.add(cached); confirmationsCompleted++; }
+        }
+        if (confirming && ScreeningUtil.classify(initial, confirmations, job.manifest().settings(), job.manifest().mode()).classification().equals("RETAINED")) {
+            confirmationsTotal -= pending.size(); progress(job);
+            return;
         }
         if (pending.isEmpty()) return;
         if (!input.sha256().equals(ScreeningFileUtil.inputHash(input.path()))) {
@@ -98,10 +106,20 @@ final class ScreeningWorker<S extends Solution<S,I>, I extends Instance> {
             warmedUp = true;
             phase = previous;
         }
+        int remaining = pending.size();
         for (long seed : pending) {
             Run result = measure(job.manifest(), input, instance, sota, seed, job.manifest().settings().horizonMillis());
             ScreeningFileUtil.writeRun(output, result);
-            if (phase.equals("CONFIRMATIONS")) confirmationsCompleted++; progress(job);
+            remaining--;
+            if (confirming) {
+                confirmationsCompleted++;
+                confirmations.add(result);
+                if (ScreeningUtil.classify(initial, confirmations, job.manifest().settings(), job.manifest().mode()).classification().equals("RETAINED")) {
+                    confirmationsTotal -= remaining; progress(job);
+                    break;
+                }
+            }
+            progress(job);
         }
     }
     private void progress(Job job) {

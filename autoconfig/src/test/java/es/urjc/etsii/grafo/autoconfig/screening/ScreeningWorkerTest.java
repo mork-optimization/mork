@@ -58,13 +58,113 @@ class ScreeningWorkerTest {
             long seed = call.getArgument(4), millis = call.getArgument(5);
             measurements.add(new Measurement(input.path(), seed, millis));
             return result(input, seed);
-        }).when(worker).measure(eq(manifest), any(Input.class), any(TestInstance.class), eq("{}"), anyLong(), anyLong());
+        }).when(worker).measure(any(Manifest.class), any(Input.class), any(TestInstance.class), eq("{}"), anyLong(), anyLong());
     }
 
     private Run result(Input input, long seed) {
         long ttb = input.equals(job.manifest().inputs().getFirst()) ? 1_000_000 : 40_000_000;
         return new Run(job.manifest().fingerprint(), input.path(), seed, true, 10.0,
                 job.manifest().settings().horizonNanos(), List.of(new TimeValue(ttb, 10)), null);
+    }
+
+    private void useThirtyConfirmations() {
+        var previous = job.manifest();
+        var settings = new InstanceScreeningConfig(previous.settings().sotaFile(), output.toString(), null, null, null,
+                30, null, null, null, null, null);
+        job = new Job(new Manifest(previous.version(), previous.fingerprint(), settings, previous.seed(), previous.randomType(),
+                previous.trainingFraction(), previous.objective(), previous.mode(), previous.host(), previous.inputs(),
+                previous.sotaSha256(), previous.artifactSha256(), previous.runArguments(), previous.reusePolicy()), output.toString());
+    }
+
+    private Run confirmation(Input input, long seed, double objective, long ttb) {
+        return new Run(job.manifest().fingerprint(), input.path(), seed, true, objective,
+                job.manifest().settings().horizonNanos(), List.of(new TimeValue(ttb, objective)), null);
+    }
+
+    @Test void twoMissesSkipRemainingConfirmationsAndContinueWithTheNextCandidate() throws Exception {
+        useThirtyConfirmations();
+        doAnswer(call -> {
+            Input input = call.getArgument(1);
+            long seed = call.getArgument(4);
+            measurements.add(new Measurement(input.path(), seed, call.getArgument(5)));
+            long ttb = seed > 1234 && input.equals(job.manifest().inputs().getFirst()) ? 20_000_000 : 1_000_000;
+            return confirmation(input, seed, 10, ttb);
+        }).when(worker).measure(any(Manifest.class), any(Input.class), any(TestInstance.class), eq("{}"), anyLong(), anyLong());
+        worker.screen(job);
+        Input first = job.manifest().inputs().getFirst(), second = job.manifest().inputs().getLast();
+        var stopped = ScreeningFileUtil.readConfirmations(output, job.manifest(), first);
+        assertEquals(2, stopped.size());
+        assertNull(ScreeningFileUtil.readRun(output, job.manifest(), first, 1237));
+        assertEquals("RETAINED", ScreeningUtil.classify(result(first, 1234), stopped, job.manifest().settings(), FMode.MINIMIZE).classification());
+        assertEquals(30, ScreeningFileUtil.readConfirmations(output, job.manifest(), second).size());
+        assertNotNull(ScreeningFileUtil.readRun(output, job.manifest(), second, 1264));
+        var progress = AutoLlmFileUtil.JSON.readTree(Files.readString(output.resolve("screening-progress.json")));
+        assertEquals(32, progress.path("confirmationsCompleted").asInt());
+        assertEquals(32, progress.path("confirmationsTotal").asInt());
+        for (Measurement measurement : measurements) assertEquals(1_000, measurement.millis());
+    }
+
+    @Test void oneMissStillRunsAllConfirmationsAndCanExcludeTheInstance() throws Exception {
+        useThirtyConfirmations();
+        Input input = job.manifest().inputs().getFirst();
+        ScreeningFileUtil.writeRun(output, confirmation(input, 1235, 10, 20_000_000));
+        worker.screen(job);
+        var runs = ScreeningFileUtil.readConfirmations(output, job.manifest(), input);
+        assertEquals(30, runs.size());
+        assertEquals("TRIVIAL", ScreeningUtil.classify(result(input, 1234), runs, job.manifest().settings(), FMode.MINIMIZE).classification());
+    }
+
+    @Test void aBetterTargetMakesEarlierFastRunsMissAndStopsNewMeasurements() throws Exception {
+        useThirtyConfirmations();
+        Input input = job.manifest().inputs().getFirst();
+        doReturn(confirmation(input, 1236, 9, 20_000_000)).when(worker)
+                .measure(any(Manifest.class), eq(input), any(TestInstance.class), eq("{}"), eq(1236L), anyLong());
+        worker.screen(job);
+        var runs = ScreeningFileUtil.readConfirmations(output, job.manifest(), input);
+        assertEquals(2, runs.size());
+        assertEquals(10, runs.getFirst().objective());
+        assertEquals(9, runs.getLast().objective());
+        assertNull(ScreeningFileUtil.readRun(output, job.manifest(), input, 1237));
+    }
+
+    @Test void sequence30Then30Then29StopsBeforeTheFourthConfirmation() throws Exception {
+        useThirtyConfirmations();
+        Input input = job.manifest().inputs().getFirst();
+        ScreeningFileUtil.writeRun(output, confirmation(input, 1234, 30, 1_000_000));
+        ScreeningFileUtil.writeRun(output, confirmation(input, 1235, 30, 1_000_000));
+        ScreeningFileUtil.writeRun(output, confirmation(input, 1236, 30, 1_000_000));
+        doReturn(confirmation(input, 1237, 29, 1_000_000)).when(worker)
+                .measure(any(Manifest.class), eq(input), any(TestInstance.class), eq("{}"), eq(1237L), anyLong());
+        worker.screen(job);
+        var runs = ScreeningFileUtil.readConfirmations(output, job.manifest(), input);
+        assertEquals(3, runs.size());
+        assertEquals(List.of(30.0, 30.0, 29.0), List.of(runs.get(0).objective(), runs.get(1).objective(), runs.get(2).objective()));
+        assertNull(ScreeningFileUtil.readRun(output, job.manifest(), input, 1238));
+        var decision = ScreeningUtil.classify(confirmation(input, 1234, 30, 1_000_000), runs, job.manifest().settings(), FMode.MINIMIZE);
+        assertEquals("RETAINED", decision.classification());
+        assertEquals(1, decision.fastHits());
+    }
+
+    @Test void resumedEarlyRetentionUsesAllCachedSeedsWithoutLoadingOrWarmup() throws Exception {
+        useThirtyConfirmations();
+        for (Input input : job.manifest().inputs()) ScreeningFileUtil.writeRun(output, result(input, 1234));
+        Input input = job.manifest().inputs().getFirst();
+        ScreeningFileUtil.writeRun(output, confirmation(input, 1235, 10, 1_000_000));
+        ScreeningFileUtil.writeRun(output, confirmation(input, 1237, 9, 20_000_000));
+        String cached = AutoLlmFileUtil.hash(ScreeningFileUtil.runPath(output, input.path(), 1237));
+        worker.screen(job);
+        assertTrue(measurements.isEmpty());
+        verifyNoInteractions(instances);
+        assertNull(ScreeningFileUtil.readRun(output, job.manifest(), input, 1236));
+        assertEquals(cached, AutoLlmFileUtil.hash(ScreeningFileUtil.runPath(output, input.path(), 1237)));
+        var runs = ScreeningFileUtil.readConfirmations(output, job.manifest(), input);
+        assertEquals(List.of(1235L, 1237L), List.of(runs.getFirst().seed(), runs.getLast().seed()));
+        assertEquals("RETAINED", ScreeningUtil.classify(result(input, 1234), runs, job.manifest().settings(), FMode.MINIMIZE).classification());
+        var progress = AutoLlmFileUtil.JSON.readTree(Files.readString(output.resolve("screening-progress.json")));
+        assertEquals(2, progress.path("confirmationsCompleted").asInt());
+        assertEquals(2, progress.path("confirmationsTotal").asInt());
+        worker.screen(job);
+        assertTrue(measurements.isEmpty());
     }
 
     @Test void oneWorkerWarmsOnceAndCompletesAllInitialInputsBeforeConfirmations() throws Exception {

@@ -136,15 +136,11 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
         ScreeningProgressUtil.update(output, "SELECTION", Map.of());
         for (Input input : all) {
             Run initial = ScreeningFileUtil.readRun(output, manifest, input, manifest.seed());
-            var confirmation = new ArrayList<Run>();
-            if (ScreeningUtil.candidate(initial, config, mode)) {
-                for (int i = 1; i <= config.confirmationRuns(); i++) {
-                    confirmation.add(ScreeningFileUtil.readRun(output, manifest, input, manifest.seed() + i));
-                }
-            }
+            var confirmation = ScreeningUtil.candidate(initial, config, mode)
+                    ? ScreeningFileUtil.readConfirmations(output, manifest, input) : List.<Run>of();
             Decision decision = ScreeningUtil.classify(initial, confirmation, config, mode);
             decisions.add(decision);
-            System.out.println(decision.classification() + " " + input.path() + " (" + decision.fastHits() + "/" + config.confirmationRuns() + " fast common-target hits)");
+            System.out.println(decision.classification() + " " + input.path() + " (" + decision.fastHits() + "/" + decision.confirmations() + " completed confirmations are fast common-target hits; limit " + config.confirmationRuns() + ")");
         }
         writeProposal(output, manifest, decisions);
     }
@@ -223,10 +219,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
             InstanceSelectionUtil.writeRow(writer, List.of("instance", "classification", "bestObserved", "firstPassTtbNanos", "confirmations", "fastHits", "failures", "commonTargetAttainments", "confirmationTtbMedianNanos", "confirmationTtbP95Nanos", "confirmationTtbMaxNanos", "reason"));
             for (int i = 0; i < decisions.size(); i++) {
                 Decision d = decisions.get(i);
-                var runs = new ArrayList<Run>();
-                for (int j = 1; j <= d.confirmations(); j++) {
-                    runs.add(ScreeningFileUtil.readRun(output, manifest, manifest.inputs().get(i), manifest.seed() + j));
-                }
+                var runs = ScreeningFileUtil.readConfirmations(output, manifest, manifest.inputs().get(i));
                 var ttb = ScreeningUtil.summarize(runs, d.bestObserved(), manifest.mode(), manifest.settings().horizonNanos());
                 InstanceSelectionUtil.writeRow(writer, Arrays.asList(d.instance(), d.classification(), d.bestObserved(), d.firstPassTtbNanos(),
                         d.confirmations(), d.fastHits(), d.failures(), ttb.attained(), ttb.medianNanos(), ttb.p95Nanos(), ttb.maxNanos(), d.reason()));
@@ -239,6 +232,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
                 + "| " + decisions.size() + " | " + trivial + " | " + retained.size() + " | " + inconclusive + " | " + training.size() + " | " + testing.size() + " |\n\n"
                 + "Exclude only when the first-pass TTB is at most " + manifest.settings().candidateMultiplier() + " times the fast threshold and strictly more than "
                 + manifest.settings().fastFraction() * 100 + "% of " + manifest.settings().confirmationRuns() + " fresh valid runs reach the common observed best before the threshold.\n\n"
+                + "Confirmations stop early and retain the instance when even all remaining runs reaching the current common target before the threshold cannot meet that fraction. The common target and completed fast hits are recomputed after every run. Counts and timing summaries include only completed confirmations; early stopping is recorded in the decision reason.\n\n"
                 + "All decisions, reasons and confirmation TTB summaries: [instances.csv](instances.csv). Summaries include only runs attaining the common target; the attainment count shows how many reached it. Raw objective curves and seeds: runs/. Failed or inconsistent evidence is retained as inconclusive.\n\n"
                 + "SOTA SHA-256: `" + manifest.sotaSha256() + "`. Executable SHA-256: `" + manifest.artifactSha256() + "`.\n\n"
                 + "Reuse scope: QUALIFIED_SERVER_POOL. This proposal permits the same frozen selection on qualified execution servers. Measurements and exclusion timing remain evidence from the screening host only.\n\n"

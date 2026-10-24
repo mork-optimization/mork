@@ -98,6 +98,15 @@ public final class ScreeningFileUtil {
         return run;
     }
     public static void writeRun(Path output, Run run) { AutoLlmFileUtil.write(runPath(output, run.instance(), run.seed()), new RunEvidence(digest(run), run)); }
+    /** Read all completed confirmations, including nonconsecutive cached seeds after recovery. */
+    public static List<Run> readConfirmations(Path output, Manifest manifest, Input input) {
+        var runs = new ArrayList<Run>();
+        for (int i = 1; i <= manifest.settings().confirmationRuns(); i++) {
+            Run run = readRun(output, manifest, input, manifest.seed() + i);
+            if (run != null) runs.add(run);
+        }
+        return runs;
+    }
     public static void writeText(Path path, String value) {
         try {
             Files.createDirectories(path.toAbsolutePath().getParent());

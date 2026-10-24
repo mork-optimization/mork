@@ -22,11 +22,13 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 
-import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.mockito.Mockito.*;
 
@@ -214,17 +216,21 @@ class SimulatedAnnealingUnitAlgorithmTest {
         verify(mockitoCoolDownControl, times(1)).coolDown(any(TestSolution.class), any(Neighborhood.class), anyDouble(), anyInt());
     }
 
-    @Test
-    void checkStopByMaxTime() {
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void checkStopByMaxTime(boolean expiredBeforeStart) {
+        var timeUp = new AtomicBoolean(expiredBeforeStart);
         CoolDownControl coolDownControl = new ExponentialCoolDown<>(0.99);
         AcceptanceCriteria acceptanceCriteria = new MetropolisAcceptanceCriteria<>(objective);
-        TerminationCriteria terminationCriteria = (solution, neighborhood, currentTemperature, iteration) -> iteration == Integer.MAX_VALUE;
+        TerminationCriteria terminationCriteria = (solution, neighborhood, currentTemperature, iteration) -> false;
         InitialTemperatureCalculator initialTemperatureCalculator = (ignored1, ignored2) -> Integer.MAX_VALUE;
-        RandomizableNeighborhood randomizableNeighborhood = new TestNeighborhood(testSolution, 0.5, 0.5);
-        int maxTime = 10;
-        TimeUnit timeUnit = TimeUnit.MILLISECONDS;
-        TimeControl.setMaxExecutionTime(maxTime, timeUnit);
-        TimeControl.start();
+        var randomizableNeighborhood = spy(new TestNeighborhood(testSolution, -0.5));
+        doAnswer(invocation -> {
+            Assertions.assertFalse(timeUp.get(), "Must not request another move after the deadline expires");
+            timeUp.set(true);
+            return invocation.callRealMethod();
+        }).when(randomizableNeighborhood).getRandomMove(any(TestSolution.class));
+
         SimulatedAnnealing sa = new SimulatedAnnealingBuilder<>()
                 .withCoolDownCustom(coolDownControl)
                 .withAcceptanceCriteriaCustom(acceptanceCriteria)
@@ -234,21 +240,14 @@ class SimulatedAnnealingUnitAlgorithmTest {
                 .withObjective(objective)
                 .withNeighborhood(randomizableNeighborhood)
                 .build();
-        SimpleAlgorithm simpleAlgorithm = new SimpleAlgorithm<>("Test", constructive, sa);
-        simpleAlgorithm.setBuilder(new SolutionBuilder<TestSolution, TestInstance>() {
-            @Override
-            public TestSolution initializeSolution(TestInstance instance) {
-                return new TestSolution(instance);
-            }
-        });
-        long startTime = System.nanoTime();
-        simpleAlgorithm.algorithm(testInstance);
-        long endTime = System.nanoTime();
-        long ellapsed = (endTime - startTime) / 1_000_000;
-        TimeControl.remove();
-        // TODO: SimpleAlgorithm no comprueba el tiempo, ni tampoco sa
-        Assertions.assertTrue(ellapsed < 20, "Does not stop after 10 millis");
-        Assertions.assertTrue(ellapsed > 5, "Stops in less than 5 millis");
+        try (var timeControl = mockStatic(TimeControl.class)) {
+            timeControl.when(TimeControl::isTimeUp).thenAnswer(invocation -> timeUp.get());
+
+            var result = (TestSolution) sa.improve(testSolution);
+
+            Assertions.assertEquals(expiredBeforeStart ? 0.0 : -0.5, result.getScore());
+            verify(randomizableNeighborhood, times(expiredBeforeStart ? 0 : 1)).getRandomMove(any(TestSolution.class));
+        }
     }
 
 }

@@ -52,22 +52,32 @@ public final class ScreeningUtil {
         if (initialTtb > config.candidateNanos()) return new Decision(initial.instance(), "RETAINED", initial.objective(),
                 initialTtb, 0, 0, 0, "Initial TTB exceeds the candidate boundary");
         double target = initial.objective();
-        for (Run run : confirmations) if (run.success() && run.objective() != null && Double.isFinite(run.objective())) {
+        for (Run run : confirmations) if (run != null && run.success() && run.objective() != null && Double.isFinite(run.objective())) {
             target = mode.best(target, run.objective());
         }
         int hits = 0, failures = 0;
         var seeds = new java.util.HashSet<Long>();
         for (Run run : confirmations) {
-            if (!run.instance().equals(initial.instance()) || !run.fingerprint().equals(initial.fingerprint())
+            if (run == null || !run.instance().equals(initial.instance()) || !run.fingerprint().equals(initial.fingerprint())
                     || run.seed() == initial.seed() || !seeds.add(run.seed())) { failures++; continue; }
             Long ownTtb = run.objective() == null ? null : firstAttainment(run, run.objective(), mode, config.horizonNanos());
             if (ownTtb == null) { failures++; continue; }
             Long targetTtb = firstAttainment(run, target, mode, config.horizonNanos());
             if (targetTtb != null && targetTtb < config.thresholdNanos()) hits++;
         }
-        if (confirmations.size() != config.confirmationRuns() || failures != 0) {
+        if (confirmations.size() > config.confirmationRuns() || failures != 0) {
             return new Decision(initial.instance(), "INCONCLUSIVE", target, initialTtb, confirmations.size(), hits, failures,
                     "Confirmation runs are incomplete or contain invalid evidence");
+        }
+        if (confirmations.size() < config.confirmationRuns()) {
+            // The common target can only improve, so completed misses cannot become fast hits.
+            int maximumHits = hits + config.confirmationRuns() - confirmations.size();
+            if ((double) maximumHits / config.confirmationRuns() <= config.fastFraction()) {
+                return new Decision(initial.instance(), "RETAINED", target, initialTtb, confirmations.size(), hits, 0,
+                        "Confirmations stopped early: even all remaining fast hits cannot exceed the required fraction");
+            }
+            return new Decision(initial.instance(), "INCONCLUSIVE", target, initialTtb, confirmations.size(), hits, 0,
+                    "Confirmation runs are incomplete");
         }
         boolean trivial = (double) hits / config.confirmationRuns() > config.fastFraction();
         return new Decision(initial.instance(), trivial ? "TRIVIAL" : "RETAINED", target, initialTtb,
