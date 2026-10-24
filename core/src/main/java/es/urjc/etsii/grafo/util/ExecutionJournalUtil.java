@@ -76,6 +76,8 @@ public final class ExecutionJournalUtil {
         if (!enabled() || System.getProperty("mork.execution.campaign") == null) return result;
         var properties = new LinkedHashMap<>(result.solutionProperties());
         properties.put("AutoLLM campaign", System.getProperty("mork.execution.campaign"));
+        properties.put("Execution target", System.getProperty("mork.execution.target"));
+        properties.put("Pool revision", System.getProperty("mork.execution.pool-revision"));
         properties.put("AutoLLM trial", System.getProperty("mork.execution.trial"));
         properties.put("Tuning seed", System.getProperty("mork.execution.tuning-seed"));
         properties.put("Algorithm role", result.algorithm().getName());

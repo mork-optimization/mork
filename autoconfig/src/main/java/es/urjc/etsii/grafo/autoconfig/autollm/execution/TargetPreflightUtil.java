@@ -29,8 +29,8 @@ public final class TargetPreflightUtil {
         commands.put("java", List.of(Path.of(System.getProperty("java.home"), "bin/java").toString(), "-version"));
         commands.put("git", List.of("git", "--version"));
         commands.put("r-packages", List.of("Rscript", "-e", "for(p in c('irace','httr','jsonlite')) {if(!requireNamespace(p,quietly=TRUE)) stop(paste('Missing R package',p));cat(p,as.character(packageVersion(p)),'\\n')}"));
-        String python = selectorPython != null ? selectorPython : config.execution().target() == AutoLlmConfig.Target.SSH ? config.execution().ssh().environment().getOrDefault("MORK_SELECTOR_PYTHON", "python3") : System.getenv().getOrDefault("MORK_SELECTOR_PYTHON", "python3");
-        commands.put("selector-python", List.of(python, "-c", "import sys,numpy,pandas,sklearn,yellowbrick,matplotlib,seaborn; print(sys.executable); print(sys.version)"));
+        String python = selectorPython != null && !selectorPython.isBlank() ? selectorPython : config.execution().target() == AutoLlmConfig.Target.SSH ? config.execution().ssh().onlyServer().environment().getOrDefault("MORK_SELECTOR_PYTHON", "python3") : System.getenv().getOrDefault("MORK_SELECTOR_PYTHON", "python3");
+        if (selectorPython != null) commands.put("selector-python", List.of(python, "-c", "import sys,numpy,pandas,sklearn,yellowbrick,matplotlib,seaborn; print(sys.executable); print(sys.version)"));
         String build = config.project().buildCommand().getFirst();
         if (!build.contains("/")) commands.put("build-tool", List.of(build, "--version"));
         var checks = new ArrayList<Prerequisite>();

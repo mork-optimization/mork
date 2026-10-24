@@ -4,7 +4,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { AutoLlmStore } from '../../store/autollm-store';
-import { AutoLlmConfig } from '../../model/autollm';
+import { AutoLlmConfig, AutoLlmServer } from '../../model/autollm';
 import { DashboardChart } from '../dashboard-chart/dashboard-chart';
 import { ChartViewModel } from '../../model/dashboard';
 type CurveRow = { instance: string; instanceId: string; algorithm: string; iteration: string; curves: Record<string, { instant: number; value: number }[]> };
@@ -20,6 +20,7 @@ export class AutoLlmDashboard {
   readonly selectedInstance = signal('');
   readonly selectedObjective = signal('');
   readonly executionChoice = signal('');
+  readonly newTarget = signal('{"id":"server-2","host":"user@host","workspace":"/home/user/autollm","javaExecutable":"java","environment":{}}');
   readonly originalPool = signal('');
   readonly trainingFraction = signal(0.15);
   readonly curves = computed(() => (this.store.comparison()?.['curves'] ?? []) as CurveRow[]);
@@ -40,8 +41,25 @@ export class AutoLlmDashboard {
     const value = (event.target as HTMLSelectElement).value as 'LOCAL' | 'SSH';
     this.executionChoice.set(value);
     this.store.config.update(config => config ? { ...config, execution: { ...config.execution, target: value,
-      ssh: config.execution.ssh ?? { host: '', workspace: '', javaExecutable: 'java', runnerArtifact: null, environment: {} } } } : config);
+      ssh: config.execution.ssh ?? { screeningServerId: 'server-1', runnerArtifact: null, servers: [{ id: 'server-1', host: '', workspace: '', javaExecutable: 'java', environment: {} }] } } } : config);
     this.store.targetStatus.set(null);
+  }
+  addServer(): void {
+    this.store.config.update(config => {
+      if (!config?.execution.ssh) return config;
+      const servers = [...config.execution.ssh.servers, { id: `server-${config.execution.ssh.servers.length + 1}`, host: '', workspace: '', javaExecutable: 'java', environment: {} }];
+      return { ...config, execution: { ...config.execution, ssh: { ...config.execution.ssh, servers } } };
+    });
+  }
+  removeServer(index: number): void {
+    this.store.config.update(config => config?.execution.ssh ? { ...config, execution: { ...config.execution, ssh: { ...config.execution.ssh, servers: config.execution.ssh.servers.filter((_, i) => i !== index) } } } : config);
+  }
+  enrollTarget(): void {
+    try {
+      const server = JSON.parse(this.newTarget()) as AutoLlmServer;
+      if (!server?.id || !server.host || !server.workspace) throw new Error('Provide server id, host, and workspace');
+      void this.store.addTarget(server);
+    } catch (error) { this.store.error.set((error as Error).message); }
   }
   workerMode(event: Event): void {
     const automatic = (event.target as HTMLSelectElement).value === 'AUTO';
@@ -57,7 +75,7 @@ export class AutoLlmDashboard {
       target = target[key] as Record<string, unknown>;
     }
     const text = (event.target as HTMLInputElement).value;
-    target[keys[keys.length - 1]] = numeric ? Number(text) : text || null;
+    target[keys[keys.length - 1]] = numeric ? (text ? Number(text) : null) : text || null;
     this.store.config.set(config);
   }
   buildCommand(event: Event): void {
@@ -79,7 +97,7 @@ export class AutoLlmDashboard {
       if (ssh != null && (typeof ssh !== 'object' || Array.isArray(ssh))) throw new Error('execution.ssh must be a JSON object');
       this.store.config.set({ ...current, ...parsed, project: { ...current.project, ...parsed.project }, codex: { ...current.codex, ...parsed.codex },
         preparation: { ...current.preparation, ...parsed.preparation }, tuning: { ...current.tuning, ...parsed.tuning }, comparison: { ...current.comparison, ...parsed.comparison },
-        execution: { ...current.execution, ...parsed.execution, ssh: ssh === null ? null : current.execution.ssh || ssh ? { host: '', workspace: '', javaExecutable: 'java', runnerArtifact: null, ...current.execution.ssh, ...ssh, environment: { ...current.execution.ssh?.environment, ...ssh?.environment } } : null } });
+        execution: { ...current.execution, ...parsed.execution, ssh: ssh === null ? null : current.execution.ssh || ssh ? { screeningServerId: '', runnerArtifact: null, servers: [], ...current.execution.ssh, ...ssh } : null } });
       if (parsed.execution?.target) this.executionChoice.set(parsed.execution.target);
       this.store.error.set(null);
     } catch (error) { this.store.error.set((error as Error).message); }

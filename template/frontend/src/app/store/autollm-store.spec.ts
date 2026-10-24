@@ -24,6 +24,15 @@ describe('AutoLLM campaign lifecycle store', () => {
     expect(store.selectedTrial()).toBe(2); expect(client.progress).toHaveBeenLastCalledWith(campaign.id, 2);
     const requests = client.list.mock.calls.length; TestBed.resetTestingModule(); await vi.advanceTimersByTimeAsync(10000); expect(client.list).toHaveBeenCalledTimes(requests);
   });
+  it('keeps healthy progress while another active trial is unavailable', async () => {
+    const parallel = { ...campaign, trials: [{ number: 1, status: 'GENERATION' }, { number: 2, status: 'TUNING' }] } as AutoLlmCampaign;
+    client.list.mockResolvedValue({ active: campaign.id, campaigns: [parallel] });
+    client.progress.mockImplementation((_id: string, trial: number) => trial === 2 ? Promise.reject(new Error('unavailable')) : Promise.resolve({ status: 'GENERATION' }));
+    await store.start();
+    expect(store.activeProgress()[1]).toEqual({ progress: { status: 'GENERATION' }, stale: false });
+    expect(store.activeProgress()[2].stale).toBe(true);
+    expect(store.connectionError()).toBeNull();
+  });
   it('validates before creating and never starts an invalid configuration', async () => {
     store.config.set(config); client.validate.mockResolvedValue({ valid: false, errors: ['Missing SOTA'] });
     await store.createAndStart();

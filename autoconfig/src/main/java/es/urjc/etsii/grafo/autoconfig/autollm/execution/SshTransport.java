@@ -40,14 +40,14 @@ public class SshTransport {
         } catch (IOException e) { throw new UncheckedIOException(e); }
         requireJava();
         String hash = AutoLlmFileUtil.hash(jar);
-        String directory = config.execution().ssh().workspace().replaceAll("/+$", "") + "/.runner";
+        String directory = config.execution().ssh().onlyServer().workspace().replaceAll("/+$", "") + "/.runner";
         runner = directory + "/" + hash + ".jar";
         try {
             Path exists = Files.createTempFile(scratchDirectory(), "runner-", ".check");
             execute("if test -f " + WorkloadPathUtil.quote(runner) + "; then printf 1; fi", null, exists);
             if (Files.readString(exists).equals("1")) {
                 try {
-                    var identity = AutoLlmFileUtil.JSON.readTree(call("identify", config.execution().ssh().workspace(), null, Map.of()));
+                    var identity = AutoLlmFileUtil.JSON.readTree(call("identify", config.execution().ssh().onlyServer().workspace(), null, Map.of()));
                     if (identity.path("version").asInt() == WorkloadProtocol.VERSION && hash.equals(identity.path("sha256").asString())) return;
                 } catch (IllegalStateException ignored) { /* Replace an incomplete or incompatible cached runner. */ }
             }
@@ -56,13 +56,13 @@ public class SshTransport {
         String command = "umask 077; mkdir -p -- " + WorkloadPathUtil.quote(directory)
                 + " && cat > " + WorkloadPathUtil.quote(temporary) + " && mv -- " + WorkloadPathUtil.quote(temporary) + " " + WorkloadPathUtil.quote(runner);
         execute(command, jar, scratch.resolve(UUID.randomUUID() + ".bootstrap"));
-        var identity = AutoLlmFileUtil.JSON.readTree(call("identify", config.execution().ssh().workspace(), null, Map.of()));
+        var identity = AutoLlmFileUtil.JSON.readTree(call("identify", config.execution().ssh().onlyServer().workspace(), null, Map.of()));
         if (identity.path("version").asInt() != WorkloadProtocol.VERSION || !hash.equals(identity.path("sha256").asString())) throw new IllegalStateException("Remote runner checksum or protocol mismatch");
     }
     private void requireJava() {
         var command = new StringBuilder("exec env");
-        for (var entry : config.execution().ssh().environment().entrySet()) command.append(' ').append(WorkloadPathUtil.quote(entry.getKey() + "=" + entry.getValue()));
-        command.append(' ').append(WorkloadPathUtil.quote(config.execution().ssh().javaExecutable())).append(" -version");
+        for (var entry : config.execution().ssh().onlyServer().environment().entrySet()) command.append(' ').append(WorkloadPathUtil.quote(entry.getKey() + "=" + entry.getValue()));
+        command.append(' ').append(WorkloadPathUtil.quote(config.execution().ssh().onlyServer().javaExecutable())).append(" -version");
         Path output = scratch.resolve("java-version.log");
         try {
             execute(command.toString(), null, output);
@@ -77,7 +77,7 @@ public class SshTransport {
             Path data = Files.createTempFile(scratchDirectory(), "request-", ".json");
             Files.write(data, AutoLlmFileUtil.JSON.writeValueAsBytes(input));
             Path response = Files.createTempFile(scratchDirectory(), "response-", ".json");
-            try { execute(command(action, root, id), data, response); return Files.readAllBytes(response); }
+            try { execute(command(action, root, id), data, response, 60_000); return Files.readAllBytes(response); }
             finally { Files.deleteIfExists(data); Files.deleteIfExists(response); Files.deleteIfExists(response.resolveSibling(response.getFileName() + ".stderr")); }
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
@@ -95,26 +95,29 @@ public class SshTransport {
     private String command(String action, String root, String id) {
         if (runner == null) throw new IllegalStateException("Remote runner has not been staged");
         var arguments = new ArrayList<String>(); arguments.add("env");
-        for (var entry : config.execution().ssh().environment().entrySet()) arguments.add(entry.getKey() + "=" + entry.getValue());
-        arguments.addAll(List.of(config.execution().ssh().javaExecutable(), "-Xmx" + config.execution().heap(), "-jar", runner, action, root));
+        for (var entry : config.execution().ssh().onlyServer().environment().entrySet()) arguments.add(entry.getKey() + "=" + entry.getValue());
+        arguments.addAll(List.of(config.execution().ssh().onlyServer().javaExecutable(), "-Xmx" + config.execution().heap(), "-jar", runner, action, root));
         if (id != null) arguments.add(id);
         var result = new StringBuilder("exec");
         for (String argument : arguments) result.append(' ').append(WorkloadPathUtil.quote(argument));
         return result.toString();
     }
     private void execute(String remoteCommand, Path input, Path output) {
+        execute(remoteCommand, input, output, config.execution().phaseTimeoutMillis());
+    }
+    private void execute(String remoteCommand, Path input, Path output, long timeoutMillis) {
         try {
             Files.createDirectories(output.getParent());
             Path errors = output.resolveSibling(output.getFileName() + ".stderr");
-            var arguments = new ArrayList<>(List.of("ssh", "-oBatchMode=yes", "-oConnectTimeout=10"));
-            if (config.execution().ssh().configFile() != null) arguments.addAll(List.of("-F", config.execution().ssh().configFile()));
-            arguments.addAll(List.of("--", config.execution().ssh().host(), remoteCommand));
+            var arguments = new ArrayList<>(List.of("ssh", "-oBatchMode=yes", "-oConnectTimeout=10", "-oServerAliveInterval=15", "-oServerAliveCountMax=2"));
+            if (config.execution().ssh().onlyServer().configFile() != null) arguments.addAll(List.of("-F", config.execution().ssh().onlyServer().configFile()));
+            arguments.addAll(List.of("--", config.execution().ssh().onlyServer().host(), remoteCommand));
             var builder = new ProcessBuilder(arguments)
                     .redirectOutput(output.toFile()).redirectError(errors.toFile());
             builder.redirectInput(input == null ? ProcessBuilder.Redirect.from(new File("/dev/null")) : ProcessBuilder.Redirect.from(input.toFile()));
             var process = builder.start();
             try {
-                if (!process.waitFor(config.execution().phaseTimeoutMillis(), TimeUnit.MILLISECONDS)) {
+                if (!process.waitFor(timeoutMillis, TimeUnit.MILLISECONDS)) {
                     process.destroyForcibly(); throw new ConnectionException("SSH transport timed out; remote job status is unknown");
                 }
                 if (process.exitValue() != 0) {

@@ -18,7 +18,7 @@ import java.util.concurrent.*;
 public class ScreeningJobService {
     public record Request(AutoLlmConfig config, InstanceScreeningConfig settings, String inputPath, Double trainingFraction) {}
     public static class Job {
-        public int version = 2;
+        public int version = 3;
         public String id, createdAt, status = "DRAFT", mirror, reviewedHash;
         public Request request;
         public Map<String,Object> activity;
@@ -44,7 +44,7 @@ public class ScreeningJobService {
     public Job load(String id) {
         Path file = directory(id).resolve("job.json"); if (!Files.exists(file)) throw new NoSuchElementException("Screening job unavailable");
         Job job = AutoLlmFileUtil.read(file, Job.class);
-        if (job.version != 2) throw new IllegalStateException("Use a fresh screening workspace");
+        if (job.version != 3) throw new IllegalStateException("Use a fresh screening workspace");
         if (job.mirror != null && Files.exists(Path.of(job.mirror).resolve("proposal/screening-progress.json"))) job.progress = AutoLlmFileUtil.read(Path.of(job.mirror).resolve("proposal/screening-progress.json"), Object.class);
         return job;
     }

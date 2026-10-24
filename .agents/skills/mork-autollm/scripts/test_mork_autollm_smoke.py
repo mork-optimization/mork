@@ -36,7 +36,7 @@ class PackagedBackendTest(unittest.TestCase):
                 backend = json.loads(run("backend", "--jar", str(jar), "--cwd", str(cwd), "--port", "0", "--timeout", "90"))
                 again = json.loads(run("backend", "--jar", str(jar), "--cwd", str(cwd), "--port", "0"))
                 self.assertEqual(again["pid"], backend["pid"])
-                self.assertEqual(backend["apiVersion"], 2)
+                self.assertEqual(backend["apiVersion"], 3)
                 sota, instance = workspace / "sota.json", workspace / "fixture.txt"
                 sota.write_text('{"$component":"DraftOnlyFixture"}')
                 instance.write_text("draft input; no workload consumes this fixture\n")

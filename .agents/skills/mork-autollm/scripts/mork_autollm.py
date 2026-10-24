@@ -15,13 +15,13 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 import zipfile
 
-FEATURES = {"SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES"}
+FEATURES = {"SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS"}
 
 
-def request(base, path, body=None, timeout=30):
+def request(base, path, body=None, timeout=30, method=None):
     req = Request(base.rstrip("/") + "/api/autollm" + path,
                   data=None if body is None else json.dumps(body).encode(),
-                  headers={"Content-Type": "application/json"})
+                  headers={"Content-Type": "application/json"}, method=method)
     try:
         with urlopen(req, timeout=timeout) as response:
             return json.load(response)
@@ -34,7 +34,7 @@ def request(base, path, body=None, timeout=30):
         raise RuntimeError(f"HTTP {error.code}: {message}") from error
     except OSError as error:
         message = f"Request to {path} failed: {error}"
-        if body is not None:
+        if body is not None or method in ("PUT", "POST", "DELETE"):
             message += ". The backend may have accepted it; inspect saved work before retrying."
         raise RuntimeError(message) from error
 
@@ -78,7 +78,7 @@ def capabilities(base, workspace=None, jar=None, cwd=None):
 
 
 def check_capabilities(info, workspace=None, jar=None, cwd=None):
-    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 2 or info.get("checkpointVersion") != 2 or info.get("runnerProtocol") != 2 or not FEATURES.issubset(info.get("features", [])):
+    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 3 or info.get("checkpointVersion") != 3 or info.get("runnerProtocol") != 3 or not FEATURES.issubset(info.get("features", [])):
         raise RuntimeError("Backend lacks required AutoLLM capabilities; use the matching rebuilt executable")
     if workspace and Path(info["workspace"]).resolve() != Path(workspace).resolve():
         raise RuntimeError("Backend workspace does not match")
@@ -204,6 +204,21 @@ def lifecycle(args, base):
     return request(base, path + "/" + args.action, body, timeout=args.timeout)
 
 
+def target(args, base):
+    root = f"/campaigns/{quote(args.campaign, safe='')}/targets"
+    if args.action == "list":
+        return request(base, root)
+    path = root + "/" + quote(args.id, safe="")
+    if args.action == "add":
+        server = read_object(args.server)
+        if server.get("id") != args.id:
+            raise RuntimeError("Server definition ID differs from --id")
+        return request(base, path, server, method="PUT")
+    if args.action == "remove":
+        return request(base, path, method="DELETE")
+    return request(base, path + "/" + args.action, {})
+
+
 def watch_timeout(deadline):
     return max(0.1, min(30, deadline - time.monotonic()))
 
@@ -239,16 +254,18 @@ def watch_snapshot(base, kind, identifier, deadline):
         snapshot.update(activity=saved.get("activity"), progress=saved.get("progress"))
         return snapshot, None
     trials = saved.get("trials", [])
-    trial = next((t for t in trials if t["status"] not in ("PENDING", "SUCCEEDED", "FAILED")), None)
-    if trial is None:
-        trial = next((t for t in reversed(trials) if t["status"] != "PENDING"), None)
-    if trial is None:
-        return snapshot, None
-    progress = request(base, root + f"/trials/{trial['number']}/progress", timeout=watch_timeout(deadline))
-    snapshot.update(trial=trial["number"], trialStatus=trial["status"], progress=progress)
-    generation = next((a for a in reversed(trial.get("attempts", [])) if a["stage"] in ("GENERATION", "REPAIR")), None)
-    source = (trial["number"], generation["number"]) if generation else None
-    return snapshot, source
+    selected = [t for t in trials if t["status"] not in ("PENDING", "SUCCEEDED", "FAILED")]
+    if not selected:
+        selected = next(([t] for t in reversed(trials) if t["status"] != "PENDING"), [])
+    snapshot.update(poolRevision=saved.get("poolRevision"), targets=saved.get("targets", {}), trials=[])
+    sources = []
+    for trial in selected:
+        progress = request(base, root + f"/trials/{trial['number']}/progress", timeout=watch_timeout(deadline))
+        snapshot["trials"].append({"number": trial["number"], "targetId": trial.get("targetId"), "status": trial["status"], "progress": progress})
+        generation = next((a for a in reversed(trial.get("attempts", [])) if a["stage"] in ("GENERATION", "REPAIR")), None)
+        if generation:
+            sources.append((trial["number"], generation["number"]))
+    return snapshot, sources
 
 
 def watch_activity(base, identifier, source, cursors, deadline):
@@ -278,22 +295,31 @@ def watch_line(snapshot):
     activity = snapshot.get("activity") or {}
     parts = [f"{snapshot['kind']} {snapshot['id']}: {snapshot['status']}"]
     if snapshot["kind"] == "campaign":
-        attempt = progress.get("attempt") or {}
-        if "trial" in snapshot:
-            parts.append(f"trial={snapshot['trial']} {snapshot['trialStatus']}")
-        if attempt:
-            parts.append("/".join(filter(None, (attempt.get("stage"), progress.get("substage")))))
-        if progress.get("elapsedMillis") is not None:
-            parts.append(f"elapsed={progress['elapsedMillis'] / 1000:.0f}s")
-        generation = progress.get("generation") or {}
-        if generation:
-            parts.append(f"{generation.get('state', '')} turns={generation.get('turns', 0)} "
-                         f"commands={generation.get('commandsCompleted', 0)}/{generation.get('commandsStarted', 0)} "
-                         f"edits={generation.get('edits', 0)} messages={generation.get('messages', 0)}")
-            if generation.get("lastActivityAt"):
-                parts.append("lastActivity=" + generation["lastActivityAt"])
-        if progress:
-            parts.append(f"repairs={progress.get('repairTurns', 0)} infraRetries={progress.get('infrastructureRetries', 0)}")
+        for trial in snapshot.get("trials", []):
+            progress = trial.get("progress") or {}
+            attempt = progress.get("attempt") or {}
+            description = f"trial={trial['number']} target={trial.get('targetId')} {trial['status']}"
+            if attempt:
+                description += " " + "/".join(filter(None, (attempt.get("stage"), progress.get("substage"))))
+            generation = progress.get("generation") or {}
+            if generation:
+                description += (f" {generation.get('state', '')} turns={generation.get('turns', 0)}"
+                                f" commands={generation.get('commandsCompleted', 0)}/{generation.get('commandsStarted', 0)}"
+                                f" edits={generation.get('edits', 0)} messages={generation.get('messages', 0)}"
+                                f" lastActivity={generation.get('lastActivityAt')}")
+            description += f" repairs={progress.get('repairTurns', 0)} infraRetries={progress.get('infrastructureRetries', 0)}"
+            remote = progress.get("remote") or {}
+            if remote:
+                description += f" remote={remote.get('status')} lastSync={remote.get('lastSynchronizedAt')}"
+            if progress.get("problem"):
+                description += " problem=" + str(progress["problem"])
+            parts.append(description)
+        progress = {}
+        for identifier, target in snapshot.get("targets", {}).items():
+            parts.append(f"server={identifier}:{target.get('status')} trial={target.get('assignedTrial')}")
+            if target.get("problem"):
+                parts.append(str(target["problem"]))
+
     else:
         phase = activity.get("phase")
         if phase == "SCREENING" or not phase:
@@ -333,8 +359,14 @@ def watch(args, base):
     stopped = {"DRAFT", "NEEDS_ATTENTION", "INTERRUPTED", "CANCELLED", "FAILED", "SUCCEEDED",
                "COMPLETED_WITH_FAILURES", "AWAITING_APPROVAL", "APPROVED"}
     while True:
-        snapshot, source = watch_snapshot(base, kind, identifier, deadline)
-        events, caught_up = watch_activity(base, identifier, source, cursors, deadline) if source else ([], True)
+        snapshot, sources = watch_snapshot(base, kind, identifier, deadline)
+        events, caught_up = [], True
+        for source in dict.fromkeys([*(sources or []), *cursors]):
+            batch, complete = watch_activity(base, identifier, source, cursors, deadline)
+            events.extend(batch)
+            caught_up &= complete
+            if complete and source not in (sources or []):
+                del cursors[source]
         snapshot["activityCaughtUp"] = caught_up
         watch_output(args, snapshot)
         for event in events:
@@ -361,11 +393,12 @@ def status(args, base):
     selected = args.campaign or campaigns["active"] or (candidates[0]["id"] if candidates else None)
     if selected:
         campaign = request(base, f"/campaigns/{selected}")
-        result["campaign"] = {key: campaign.get(key) for key in ("id", "status", "problem", "executionHost", "remote")}
-        result["campaign"]["trials"] = [{key: trial.get(key) for key in ("number", "status", "repairTurns", "infrastructureRetries", "problem")} for trial in campaign["trials"]]
-        current = next((trial for trial in campaign["trials"] if trial["status"] not in ("SUCCEEDED", "FAILED", "PENDING")), None)
-        if current:
-            result["progress"] = request(base, f"/campaigns/{selected}/trials/{current['number']}/progress")
+        result["campaign"] = {key: campaign.get(key) for key in ("id", "status", "problem", "poolRevision", "targets")}
+        result["campaign"]["trials"] = [{key: trial.get(key) for key in ("number", "targetId", "status", "repairTurns", "infrastructureRetries", "problem")} for trial in campaign["trials"]]
+        result["progress"] = {}
+        for trial in campaign["trials"]:
+            if trial["status"] not in ("SUCCEEDED", "FAILED", "PENDING"):
+                result["progress"][trial["number"]] = request(base, f"/campaigns/{selected}/trials/{trial['number']}/progress")
         result["summary"] = request(base, f"/campaigns/{selected}/summary")
     if args.screening:
         result["screening"] = request(base, f"/screenings/{args.screening}")
@@ -484,6 +517,15 @@ def main(argv=None):
     bundle.add_argument("--campaign", required=True)
     bundle.add_argument("--output", required=True)
     lifecycle_commands(commands)
+    servers = commands.add_parser("target", help="List, enroll, drain, recover, or remove campaign servers")
+    actions = servers.add_subparsers(dest="action", required=True)
+    for name in ("list", "add", "drain", "resume", "remove"):
+        action = actions.add_parser(name)
+        action.add_argument("--campaign", required=True)
+        if name != "list":
+            action.add_argument("--id", required=True)
+        if name == "add":
+            action.add_argument("--server", required=True, help="JSON file containing one complete server definition")
     monitor = commands.add_parser("watch", help="Follow current progress and readable generation activity without changing work")
     owner = monitor.add_mutually_exclusive_group()
     owner.add_argument("--campaign")
@@ -499,7 +541,7 @@ def main(argv=None):
         base = base_url(args)
         capabilities(base, args.workspace)
         result = {"config": configuration, "status": status, "logs": logs, "diagnose": diagnose,
-                  "campaign": lifecycle, "screening": lifecycle, "watch": watch}[args.command](args, base)
+                  "campaign": lifecycle, "screening": lifecycle, "watch": watch, "target": target}[args.command](args, base)
     if result is not None:
         print(json.dumps(result, indent=2, ensure_ascii=False))
     return 2 if args.command == "campaign" and args.action == "validate" and not result["valid"] else 0

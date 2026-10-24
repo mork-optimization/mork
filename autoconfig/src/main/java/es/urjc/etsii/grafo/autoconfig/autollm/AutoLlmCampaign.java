@@ -8,7 +8,7 @@ import java.util.Map;
 
 /** Versioned JSON checkpoint. Mutations are serialized by the campaign service/store. */
 public class AutoLlmCampaign {
-    public static final int SCHEMA_VERSION = 2;
+    public static final int SCHEMA_VERSION = 3;
     public int schemaVersion = SCHEMA_VERSION;
     public String id;
     public AutoLlmConfig config;
@@ -25,9 +25,29 @@ public class AutoLlmCampaign {
     public String prompt;
     public Map<String, String> versions = Map.of();
     public CodexEvidenceUtil.Summary codexUsage;
+    public long poolRevision;
+    public Map<String, TargetState> targets = new java.util.LinkedHashMap<>();
     public List<Trial> trials = new ArrayList<>();
+    public static class TargetState {
+        public AutoLlmConfig.Server definition;
+        public String status = "REGISTERED";
+        public String directory;
+        public String endpoint;
+        public long revision;
+        public boolean draining;
+        public boolean baselineReady;
+        public Integer assignedTrial;
+        public AutoLlmConfig resolvedConfig;
+        public WorkloadProtocol.Host host;
+        public Map<String, Object> remote;
+        public Map<String, String> versions = Map.of();
+        public AutoLlmFailureUtil.Failure problem;
+    }
     public static class Trial {
         public int number;
+        public String targetId;
+        public String directory;
+        public long targetRevision;
         public long pilotSeed;
         public long tuningSeed;
         public long comparisonSeed;

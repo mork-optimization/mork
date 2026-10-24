@@ -1,0 +1,57 @@
+package es.urjc.etsii.grafo.autoconfig.autollm;
+
+import java.nio.file.Path;
+import java.util.*;
+
+/** Snapshot and path operations shared by the coordinator, runners, and reporting. */
+public final class AutoLlmPoolUtil {
+    private AutoLlmPoolUtil() {}
+    public static <T> T copy(T value, Class<T> type) {
+        return AutoLlmFileUtil.JSON.readValue(AutoLlmFileUtil.JSON.writeValueAsBytes(value), type);
+    }
+    public static AutoLlmCampaign.Trial trialPaths(AutoLlmCampaign.Trial source, String prefix, boolean global) {
+        var trial = copy(source, AutoLlmCampaign.Trial.class);
+        trial.preparedArtifact = path(trial.preparedArtifact, prefix, global);
+        trial.mainDirectory = path(trial.mainDirectory, prefix, global);
+        trial.winnerDirectory = path(trial.winnerDirectory, prefix, global);
+        trial.comparisonDirectory = path(trial.comparisonDirectory, prefix, global);
+        trial.probeDirectory = path(trial.probeDirectory, prefix, global);
+        trial.generationDirectory = path(trial.generationDirectory, prefix, global);
+        for (var attempt : trial.attempts) attempt.directory = path(attempt.directory, prefix, global);
+        trial.directory = global ? prefix + "/trials/%03d".formatted(trial.number) : "trials/%03d".formatted(trial.number);
+        return trial;
+    }
+    private static String path(String value, String prefix, boolean global) {
+        if (value == null) return null;
+        if (global) return prefix + "/" + value;
+        if (!value.startsWith(prefix + "/")) throw new IllegalStateException("Trial evidence does not belong to its assigned target");
+        return value.substring(prefix.length() + 1);
+    }
+    public static Map<String, Object> remote(Map<String, Object> value, String prefix) {
+        if (value == null) return null;
+        var result = new LinkedHashMap<>(value);
+        if (result.get("stageDirectory") instanceof String directory) result.put("stageDirectory", prefix + "/" + directory);
+        return result;
+    }
+    public static String localInstance(AutoLlmCampaign campaign, Path root, AutoLlmCampaign.Trial trial, String path) {
+        var target = campaign.targets.get(trial.targetId);
+        if (target == null) throw new IllegalStateException("Trial target unavailable");
+        Path executionRoot = root.resolve(target.directory);
+        return es.urjc.etsii.grafo.autoconfig.autollm.execution.AutoLlmExecutionService.localPath(target.resolvedConfig, executionRoot, path);
+    }
+    public static Map<String, Object> identity(String campaignId, String targetId) {
+        return Map.of("campaignId", campaignId, "targetId", targetId);
+    }
+    public static List<String> inputIdentities(String index) {
+        var result = new ArrayList<String>();
+        for (String input : es.urjc.etsii.grafo.util.InstancePathUtil.list(index)) {
+            try (var stream = es.urjc.etsii.grafo.util.IOUtil.getInputStream(input)) {
+                result.add(AutoLlmFileUtil.hash(stream));
+            } catch (java.io.IOException e) { throw new java.io.UncheckedIOException(e); }
+        }
+        return result;
+    }
+    public static void requireId(String id) {
+        if (id == null || !id.matches("[A-Za-z0-9][A-Za-z0-9_-]{0,63}")) throw new IllegalArgumentException("Target ID must contain 1–64 letters, numbers, underscores or hyphens");
+    }
+}

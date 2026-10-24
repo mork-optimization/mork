@@ -30,7 +30,7 @@ public class AutoLlmController {
     }
     @GetMapping("/capabilities") public Map<String,Object> capabilities() {
         var result = new LinkedHashMap<String,Object>();
-        result.put("mode", mode.mode().name()); result.put("apiVersion", 2); result.put("checkpointVersion", AutoLlmCampaign.SCHEMA_VERSION);
+        result.put("mode", mode.mode().name()); result.put("apiVersion", 3); result.put("checkpointVersion", AutoLlmCampaign.SCHEMA_VERSION);
         result.put("runnerProtocol", es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol.VERSION);
         result.put("minimumJavaFeature", es.urjc.etsii.grafo.autoconfig.autollm.execution.TargetPreflightUtil.minimumJavaFeature());
         result.put("workspace", store.root().toString()); result.put("pid", ProcessHandle.current().pid());
@@ -39,15 +39,26 @@ public class AutoLlmController {
         result.put("artifact", artifact == null ? null : artifact.getAbsolutePath());
         result.put("artifactSha256", artifactSha256);
         result.put("baseUrl", "http://127.0.0.1:" + environment.getProperty("local.server.port", environment.getProperty("server.port", "8080")));
-        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES"));
+        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS"));
         return result;
     }
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
     public void saveSession() { AutoLlmFileUtil.write(store.root().resolve("session.json"), capabilities()); }
-    @PostMapping("/effective-config") public Object effectiveConfig(@RequestBody AutoLlmConfig config) { return AutoLlmSummaryUtil.summarize(config, null, Map.of()); }
+    @PostMapping("/effective-config") public Object effectiveConfig(@RequestBody AutoLlmConfig config) { return AutoLlmSummaryUtil.summarize(config, null, Map.of(), config.trials()); }
     @GetMapping("/campaigns/{id}/summary") public Object summary(@PathVariable String id) {
-        var campaign = store.load(id); Path budgets = store.directory(id).resolve("control/comparison-time-limits.json");
-        return AutoLlmSummaryUtil.summarize(campaign.config, campaign.executionHost, Files.exists(budgets) ? AutoLlmFileUtil.read(budgets, new tools.jackson.core.type.TypeReference<>() {}) : Map.of());
+        var campaign = store.load(id); var result = new LinkedHashMap<String,Object>();
+        result.put("poolRevision", campaign.poolRevision); result.put("maxConcurrentSessions", campaign.config.codex().maxConcurrentSessions());
+        var targets = new LinkedHashMap<String,Object>(); Map<String,Long> sharedBudgets = Map.of();
+        for (var entry : campaign.targets.entrySet()) {
+            var target = entry.getValue(); Path budgets = store.directory(id).resolve(target.directory).resolve("control/comparison-time-limits.json");
+            Map<String,Long> limits = Files.exists(budgets) ? AutoLlmFileUtil.read(budgets, new tools.jackson.core.type.TypeReference<>() {}) : Map.of();
+            if (!limits.isEmpty()) sharedBudgets = limits;
+            int assigned = 0; for (var trial : campaign.trials) if (entry.getKey().equals(trial.targetId)) assigned++;
+            targets.put(entry.getKey(), AutoLlmSummaryUtil.summarize(target.resolvedConfig == null ? campaign.config : target.resolvedConfig, target.host,
+                    limits, assigned));
+        }
+        result.put("campaign", AutoLlmSummaryUtil.summarize(campaign.config, null, sharedBudgets, campaign.config.trials()));
+        result.put("targets", targets); return result;
     }
     @GetMapping("/defaults") public AutoLlmConfig defaults() { return service.defaults(); }
     @PostMapping("/validate") public Map<String, Object> validate(@RequestBody AutoLlmConfig config) { var errors = service.validate(config); return Map.of("valid", errors.isEmpty(), "errors", errors); }
@@ -61,6 +72,11 @@ public class AutoLlmController {
     @PostMapping("/campaigns/{id}/resume") public AutoLlmCampaign resume(@PathVariable String id) { requireMode(); return service.start(id, true); }
     @PostMapping("/campaigns/{id}/cancel") public AutoLlmCampaign cancel(@PathVariable String id) { requireMode(); return service.cancel(id); }
     @PostMapping("/campaigns/{id}/report") public AutoLlmCampaign report(@PathVariable String id) { requireMode(); return service.report(id); }
+    @GetMapping("/campaigns/{id}/targets") public Object targets(@PathVariable String id) { var c = store.load(id); return Map.of("poolRevision", c.poolRevision, "targets", c.targets); }
+    @PutMapping("/campaigns/{id}/targets/{targetId}") public AutoLlmCampaign addTarget(@PathVariable String id, @PathVariable String targetId, @RequestBody AutoLlmConfig.Server server) { requireMode(); return service.addTarget(id, targetId, server); }
+    @PostMapping("/campaigns/{id}/targets/{targetId}/drain") public AutoLlmCampaign drainTarget(@PathVariable String id, @PathVariable String targetId) { requireMode(); return service.drainTarget(id, targetId, false); }
+    @PostMapping("/campaigns/{id}/targets/{targetId}/resume") public AutoLlmCampaign resumeTarget(@PathVariable String id, @PathVariable String targetId) { requireMode(); return service.resumeTarget(id, targetId); }
+    @DeleteMapping("/campaigns/{id}/targets/{targetId}") public AutoLlmCampaign removeTarget(@PathVariable String id, @PathVariable String targetId) { requireMode(); return service.drainTarget(id, targetId, true); }
     @GetMapping("/campaigns/{id}/artifacts") public List<AutoLlmCampaignStore.Artifact> artifacts(@PathVariable String id) { store.load(id); return store.artifacts(id); }
     @GetMapping("/campaigns/{id}/artifact") public ResponseEntity<FileSystemResource> download(@PathVariable String id, @RequestParam String path) {
         Path file = store.artifact(id, path);
@@ -77,9 +93,9 @@ public class AutoLlmController {
     @GetMapping("/campaigns/{id}/trials/{number}/progress") public Object progress(@PathVariable String id, @PathVariable int number) {
         var campaign = store.load(id);
         for (var trial : campaign.trials) if (trial.number == number) {
-            var progress = new LinkedHashMap<String,Object>(); progress.put("status", trial.status); progress.put("problem", trial.problem);
+            var progress = new LinkedHashMap<String,Object>(); progress.put("targetId", trial.targetId); progress.put("poolRevision", trial.targetRevision); progress.put("status", trial.status); progress.put("problem", trial.problem);
             var jobRetries = new HashMap<String,Integer>();
-            for (Path file : AutoLlmFileUtil.ownedFiles(store.directory(id).resolve("trials/%03d".formatted(number)), "remote-status.json")) {
+            for (Path file : AutoLlmFileUtil.ownedFiles(store.directory(id).resolve(trial.directory == null ? "unassigned" : trial.directory), "remote-status.json")) {
                 var remote = AutoLlmFileUtil.read(file, Map.class); Object retries = remote.get("connectionRetries");
                 if (remote.get("jobId") instanceof String job && retries instanceof Number count) jobRetries.merge(job, count.intValue(), Math::max);
             }

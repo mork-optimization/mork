@@ -112,7 +112,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
         String sourceMetadata = environment.getProperty("instance-screening.provenance-file");
         String sourceHash = sourceMetadata == null ? "" : AutoLlmFileUtil.hash(Path.of(sourceMetadata));
         String fingerprint = ScreeningFileUtil.digest(List.of(config, solver.getSeed(), solver.getRandomType(), fraction, objective, mode, host, all, sotaHash, artifact, runArguments, sourceHash));
-        var manifest = new Manifest(2, fingerprint, config, solver.getSeed(), solver.getRandomType().name(), fraction, objective, mode, host, all, sotaHash, artifact, runArguments);
+        var manifest = new Manifest(3, fingerprint, config, solver.getSeed(), solver.getRandomType().name(), fraction, objective, mode, host, all, sotaHash, artifact, runArguments, "QUALIFIED_SERVER_POOL");
         Path manifestFile = output.resolve("manifest.json");
         if (Files.exists(manifestFile)) {
             Manifest previous = AutoLlmFileUtil.read(manifestFile, Manifest.class);
@@ -241,6 +241,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
                 + manifest.settings().fastFraction() * 100 + "% of " + manifest.settings().confirmationRuns() + " fresh valid runs reach the common observed best before the threshold.\n\n"
                 + "All decisions, reasons and confirmation TTB summaries: [instances.csv](instances.csv). Summaries include only runs attaining the common target; the attainment count shows how many reached it. Raw objective curves and seeds: runs/. Failed or inconsistent evidence is retained as inconclusive.\n\n"
                 + "SOTA SHA-256: `" + manifest.sotaSha256() + "`. Executable SHA-256: `" + manifest.artifactSha256() + "`.\n\n"
+                + "Reuse scope: QUALIFIED_SERVER_POOL. This proposal permits the same frozen selection on qualified execution servers. Measurements and exclusion timing remain evidence from the screening host only.\n\n"
                 + "Objective: " + manifest.objective() + " (" + manifest.mode() + "). Host: " + manifest.host() + ".\n\n"
                 + (splitFailure == null ? "Testing contains every retained instance, including all selected training instances. The training/testing overlap is intentional.\n\n" : "Split failure: " + splitFailure + ". No approved indexes can be published.\n\n")
                 + "This is an empirical criterion for this SOTA/host within this observation horizon; it is not an optimality or statistical-confidence claim.\n\n"

@@ -46,7 +46,7 @@ class ScreeningWorkerTest {
         var config = new InstanceScreeningConfig(sota.toString(), output.toString(), null, null, null,
                 2, null, null, null, null, null);
         var manifest = new Manifest(2, "fingerprint", config, 1234, "Xoroshiro128PlusPlus", .15,
-                "Cost", FMode.MINIMIZE, Map.of(), inputs, AutoLlmFileUtil.hash(sota), "jar", List.of());
+                "Cost", FMode.MINIMIZE, Map.of(), inputs, AutoLlmFileUtil.hash(sota), "jar", List.of(), "QUALIFIED_SERVER_POOL");
         job = new Job(manifest, output.toString());
         instances = mock(InstanceManager.class);
         when(instances.getInstance(anyString())).thenAnswer(call -> new TestInstance(call.getArgument(0)));

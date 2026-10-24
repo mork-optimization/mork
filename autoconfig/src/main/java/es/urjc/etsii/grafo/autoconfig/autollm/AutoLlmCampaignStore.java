@@ -40,7 +40,7 @@ public class AutoLlmCampaignStore {
     public synchronized void save(AutoLlmCampaign campaign) {
         AutoLlmFileUtil.write(directory(campaign.id).resolve("campaign.json"), campaign);
         var state = new LinkedHashMap<String,Object>(); state.put("campaignId", campaign.id); state.put("status", campaign.status);
-        state.put("configurationPath", directory(campaign.id).resolve("control/config.json").toString()); state.put("remote", campaign.remote);
+        state.put("configurationPath", directory(campaign.id).resolve("control/config.json").toString()); state.put("targets", campaign.targets);
         state.put("updatedAt", Instant.now().toString()); AutoLlmFileUtil.write(root.resolve("campaign-session.json"), state);
     }
     public synchronized AutoLlmCampaign load(String id) {
@@ -83,7 +83,7 @@ public class AutoLlmCampaignStore {
         return artifacts;
     }
     private boolean downloadable(String name) {
-        return !name.startsWith(".transport/") && !name.startsWith(".transfer/") && !name.startsWith(".source-bundles/")
+        return !name.matches("(?:.*/)?\\.(?:transport|transfer|source-bundles)/.*")
                 && !AutoLlmFileUtil.excluded(name) && !name.endsWith("owner.json") && !name.endsWith("readiness.json") && !name.endsWith("scenario.txt") && !name.endsWith("runner.R") && !name.endsWith(".lock") && !name.endsWith(".tmp");
     }
     public Path artifact(String id, String relative) {

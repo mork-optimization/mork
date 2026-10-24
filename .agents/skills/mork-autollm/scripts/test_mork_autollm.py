@@ -34,7 +34,7 @@ class OperatorClientTest(unittest.TestCase):
         with patch.object(client, "request", return_value={"mode": "AUTOLLM", "apiVersion": 1}):
             with self.assertRaisesRegex(RuntimeError, "capabilities"):
                 client.capabilities("http://localhost")
-        info = {"mode": "AUTOLLM", "apiVersion": 2, "checkpointVersion": 2, "runnerProtocol": 2, "workspace": "/other", "features": list(client.FEATURES)}
+        info = {"mode": "AUTOLLM", "apiVersion": 3, "checkpointVersion": 3, "runnerProtocol": 3, "workspace": "/other", "features": list(client.FEATURES)}
         with patch.object(client, "request", return_value=info):
             with self.assertRaisesRegex(RuntimeError, "workspace"):
                 client.capabilities("http://localhost", "/requested")
@@ -45,7 +45,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"frozen executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url="http://localhost")
-            info = {"mode": "AUTOLLM", "apiVersion": 2, "checkpointVersion": 2, "runnerProtocol": 2, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            info = {"mode": "AUTOLLM", "apiVersion": 3, "checkpointVersion": 3, "runnerProtocol": 3, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             with patch.object(client, "request", return_value=info), patch.object(client.subprocess, "Popen") as launch:
                 self.assertEqual(client.backend(args), info)
                 launch.assert_not_called()
@@ -69,7 +69,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url=None, java="java", port=0, timeout=10)
-            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 2, "checkpointVersion": 2, "runnerProtocol": 2, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 3, "checkpointVersion": 3, "runnerProtocol": 3, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             launching = dict(ready, mode="STARTING")
             with patch.object(client, "request", side_effect=[RuntimeError("offline"), launching, ready]), patch.object(client.socket, "socket") as socket, patch.object(client.subprocess, "Popen") as launch, patch.object(client.time, "sleep"):
                 socket.return_value.__enter__.return_value.getsockname.return_value = ("127.0.0.1", 18081)
@@ -232,8 +232,8 @@ class OperatorClientTest(unittest.TestCase):
             {"number": 1, "stage": "GENERATION"}, {"number": 2, "stage": "REPAIR"}, {"number": 3, "stage": "PREPARATION"}]}]}
         with patch.object(client, "request", side_effect=[campaign, {"substage": "BUILD"}]):
             snapshot, source = client.watch_snapshot("http://localhost", "campaign", "saved", time.monotonic() + 10)
-        self.assertEqual(source, (1, 2))
-        self.assertEqual(snapshot["progress"]["substage"], "BUILD")
+        self.assertEqual(source, [(1, 2)])
+        self.assertEqual(snapshot["trials"][0]["progress"]["substage"], "BUILD")
 
     def test_watch_reports_infrastructure_failure_and_stops_without_actions(self):
         self.root = "/work"
@@ -247,7 +247,7 @@ class OperatorClientTest(unittest.TestCase):
         values = [json.loads(line) for line in output.splitlines()]
         self.assertEqual(code, 0)
         self.assertEqual(values[0]["status"], "NEEDS_ATTENTION")
-        self.assertEqual(values[0]["progress"]["repairTurns"], 0)
+        self.assertEqual(values[0]["trials"][0]["progress"]["repairTurns"], 0)
         self.assertEqual(values[1]["event"], event)
         self.assertEqual(values[-1]["reason"], "status")
         self.assertTrue(all(len(call.args) == 2 for call in request.call_args_list))
@@ -276,12 +276,32 @@ class OperatorClientTest(unittest.TestCase):
         request.assert_called_once()
 
     def test_readable_watch_uses_observed_counters_and_separate_retry_counts(self):
-        snapshot = {"kind": "campaign", "id": "saved", "status": "RUNNING", "trial": 1, "trialStatus": "GENERATION", "progress": {
+        snapshot = {"kind": "campaign", "id": "saved", "status": "RUNNING", "trials": [{"number": 1, "targetId": "a", "status": "GENERATION", "progress": {
             "generation": {"state": "ACTIVE", "turns": 2, "commandsStarted": 3, "commandsCompleted": 2, "edits": 1,
-                           "messages": 4, "lastActivityAt": "2026-10-21T12:00:00Z"}, "repairTurns": 0, "infrastructureRetries": 2}}
+                           "messages": 4, "lastActivityAt": "2026-10-21T12:00:00Z"}, "repairTurns": 0, "infrastructureRetries": 2}}]}
         line = client.watch_line(snapshot)
         for expected in ("turns=2", "commands=2/3", "edits=1", "messages=4", "repairs=0 infraRetries=2", "lastActivity=2026-10-21"):
             self.assertIn(expected, line)
+
+    def test_target_mutations_use_explicit_ids_and_http_methods(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            server = Path(self.root) / "server.json"
+            server.write_text('{"id":"b","host":"second","workspace":"/work"}')
+            _, _, request = self.cli(["target", "add", "--campaign", "saved", "--id", "b", "--server", str(server)], [{}])
+            self.assertEqual(request.call_args.args[1], "/campaigns/saved/targets/b")
+            self.assertEqual(request.call_args.kwargs["method"], "PUT")
+            _, _, request = self.cli(["target", "remove", "--campaign", "saved", "--id", "b"], [{}])
+            self.assertEqual(request.call_args.kwargs["method"], "DELETE")
+
+    def test_watch_reads_all_active_trials_and_keeps_activity_cursors_separate(self):
+        saved = {"status":"RUNNING", "poolRevision":2, "targets":{"a":{"status":"BUSY"},"b":{"status":"BUSY"}}, "trials":[
+            {"number":1,"targetId":"a","status":"GENERATION","attempts":[{"number":1,"stage":"GENERATION"}]},
+            {"number":2,"targetId":"b","status":"TUNING","attempts":[{"number":1,"stage":"GENERATION"}]}]}
+        with patch.object(client, "request", side_effect=[saved, {"status":"GENERATION"}, {"status":"TUNING"}]):
+            snapshot, sources = client.watch_snapshot("http://localhost", "campaign", "saved", time.monotonic()+10)
+        self.assertEqual([t["targetId"] for t in snapshot["trials"]], ["a","b"])
+        self.assertEqual(sources, [(1,1),(2,1)])
+        self.assertIn("server=b:BUSY", client.watch_line(snapshot))
 
 
 if __name__ == "__main__":

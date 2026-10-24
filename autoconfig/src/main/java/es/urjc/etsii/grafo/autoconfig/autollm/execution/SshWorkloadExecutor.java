@@ -48,11 +48,11 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                 var command = new ArrayList<String>();
                 for (String argument : work.command()) command.add(WorkloadPathUtil.argument(argument, root, remote));
                 if (work.command().getFirst().equals(Path.of(System.getProperty("java.home"), "bin/java").toString()) || work.command().getFirst().equals("java")) {
-                    command.set(0, config.execution().ssh().javaExecutable()); command.add(1, "-Dmork.execution.remote=true");
+                    command.set(0, config.execution().ssh().onlyServer().javaExecutable()); command.add(1, "-Dmork.execution.remote=true");
                 }
                 var reset = new ArrayList<>(work.reset()); reset.add(name);
                 job = new Job(VERSION, id, remote, AutoLlmFileUtil.hash(archive), layers, command, root.relativize(work.cwd()).toString(), name, work.collect(), reset,
-                        config.execution().ssh().environment(), Files.exists(root.resolve("execution-target.json")) ? AutoLlmFileUtil.read(root.resolve("execution-target.json"), Host.class).identity() : Map.of(),
+                        config.execution().ssh().onlyServer().environment(), Files.exists(root.resolve("execution-target.json")) ? AutoLlmFileUtil.read(root.resolve("execution-target.json"), Host.class).identity() : Map.of(),
                         work.timeoutMillis(), work.plannedMillis(), work.graceMillis(), work.watchEvaluations(), work.startupMillis());
                 AutoLlmFileUtil.write(descriptor, job); // durable identity before any uncertain remote submission
             }
@@ -138,7 +138,7 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
     }
     private void publish(Path output, Job job, String state, String failure) {
         var values = new LinkedHashMap<String,Object>();
-        values.put("jobId", job.id()); values.put("host", config.execution().ssh().host()); values.put("status", state);
+        values.put("jobId", job.id()); values.put("host", config.execution().ssh().onlyServer().host()); values.put("status", state);
         values.put("stageDirectory", job.output());
         values.put("connectionRetries", connectionRetries);
         values.put("remoteRoot", WorkloadPathUtil.remoteRoot(config, root)); values.put("requestedWorkers", config.execution().workers());

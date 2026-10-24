@@ -29,7 +29,7 @@ class ScreeningFileUtilTest {
         var config = new InstanceScreeningConfig(sota.toString(), temp.toString(), null, null, null, null, null, null, null, null, null);
         var manifest = new Manifest(1, "fingerprint", config, 1234, "Xoroshiro128PlusPlus", .15, "Cost", FMode.MINIMIZE,
                 ScreeningFileUtil.host(), List.of(new Input(source.toString(), ScreeningFileUtil.inputHash(source.toString())),
-                        new Input(second.toString(), ScreeningFileUtil.inputHash(second.toString()))), AutoLlmFileUtil.hash(sota), "jar", List.of());
+                        new Input(second.toString(), ScreeningFileUtil.inputHash(second.toString()))), AutoLlmFileUtil.hash(sota), "jar", List.of(), "QUALIFIED_SERVER_POOL");
         AutoLlmFileUtil.write(temp.resolve("manifest.json"), manifest);
         var hashes = new LinkedHashMap<String,String>();
         for (String name : List.of("retained", "train", "test")) {

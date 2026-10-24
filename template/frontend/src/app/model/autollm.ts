@@ -1,13 +1,22 @@
+export interface AutoLlmServer {
+  id: string; host: string; workspace: string; javaExecutable: string; environment: Record<string, string>;
+  configFile?: string | null; workers?: number | null; heap?: string | null;
+}
+export interface AutoLlmTarget {
+  definition: AutoLlmServer; status: string; directory: string; revision: number; draining: boolean;
+  assignedTrial: number | null; baselineReady: boolean; problem?: AutoLlmFailure | null;
+  host?: AutoLlmCampaign['executionHost']; remote?: AutoLlmCampaign['remote'];
+}
 export interface AutoLlmConfig {
   project: { repository: string; ref: string; buildCommand: string[]; artifact: string; runArguments: string[] };
   workspace: string; trials: number; seed: number; maxParameters: number;
   sotaFile: string | null; initialConfigurationsFile: string | null;
   trainingPath: string | null; comparisonPath: string | null;
-  codex: { executable: string; promptFile: string | null; prompt: string | null; model: string | null; reasoningEffort: string | null };
+  codex: { executable: string; promptFile: string | null; prompt: string | null; model: string | null; reasoningEffort: string | null; maxConcurrentSessions: number };
   preparation: { pilotDurationMillis: number; maxRepairs: number };
   tuning: { evaluations: number; ignoreInitialMillis: number; intervalDurationMillis: number; logScaleArea: boolean };
   comparison: { repetitions: number; timeLimitMillis: number };
-  execution: { workers: number; target?: 'LOCAL' | 'SSH'; ssh?: { host: string; workspace: string; javaExecutable: string; runnerArtifact: string | null; environment: Record<string, string>; configFile?: string | null } | null; watchdogGraceMillis: number; codexTimeoutMillis: number; buildTimeoutMillis: number; startupTimeoutMillis: number; searchSpaceTimeoutMillis: number; phaseTimeoutMillis: number; stageTimeoutMillis: number; heap: string };
+  execution: { workers: number; target?: 'LOCAL' | 'SSH'; ssh?: { screeningServerId: string; runnerArtifact: string | null; servers: AutoLlmServer[] } | null; watchdogGraceMillis: number; codexTimeoutMillis: number; buildTimeoutMillis: number; startupTimeoutMillis: number; searchSpaceTimeoutMillis: number; phaseTimeoutMillis: number; stageTimeoutMillis: number; heap: string };
 }
 export interface AutoLlmAttempt {
   number: number; stage: string; directory: string; status: string;
@@ -21,7 +30,7 @@ export interface CodexUsage {
   attempts: number; completeAttempts: number; partialAttempts: number; unavailableAttempts: number;
 }
 export interface AutoLlmTrial {
-  number: number; pilotSeed: number; tuningSeed: number; comparisonSeed: number;
+  number: number; targetId?: string | null; targetRevision?: number; directory?: string | null; pilotSeed: number; tuningSeed: number; comparisonSeed: number;
   status: string; failure: string | null; threadId: string | null;
   repairTurns: number; winner: unknown | null; attempts: AutoLlmAttempt[];
   codexUsage?: CodexUsage | null;
@@ -30,6 +39,7 @@ export interface AutoLlmTrial {
 export interface AutoLlmCampaign {
   id: string; config: AutoLlmConfig; createdAt: string; status: string; failure: string | null;
   baselineCommit: string | null; prompt: string; versions: Record<string, string>; trials: AutoLlmTrial[];
+  poolRevision: number; targets: Record<string, AutoLlmTarget>;
   reportFailure?: string | null; reportUpdatedAt?: string | null;
   codexUsage?: CodexUsage | null;
   problem?: AutoLlmFailure | null;

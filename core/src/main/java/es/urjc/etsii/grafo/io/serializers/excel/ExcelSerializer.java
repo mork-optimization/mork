@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -103,6 +104,16 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     private final ExcelConfig config;
 
     private final InstanceManager<I> instanceManager;
+    private final ThreadLocal<List<String>> cachedReportInputs = new ThreadLocal<>();
+
+    /** Explicit input scope for offline reports, without mutating the application's instance configuration. */
+    public void serializeCachedResults(String name, List<WorkUnitResult<S, I>> results, List<String> inputs, Path output) {
+        try { java.nio.file.Files.createDirectories(output.toAbsolutePath().getParent()); }
+        catch (IOException e) { throw new java.io.UncheckedIOException(e); }
+        cachedReportInputs.set(List.copyOf(inputs));
+        try { serializeResults(name, results, output); }
+        finally { cachedReportInputs.remove(); }
+    }
 
     /**
      * Create an Excel serializer
@@ -290,7 +301,9 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         header[0] = "Instance name";
         System.arraycopy(keys, 0, header, 1, keys.length);
         properties.add(header);
-        instanceManager.getInstanceSolveOrder(expName).stream().map(instanceManager::getInstance).forEach(instance -> {
+        var inputs = cachedReportInputs.get();
+        for (String path : inputs == null ? instanceManager.getInstanceSolveOrder(expName) : inputs) {
+            var instance = instanceManager.getInstance(path);
             Object[] row = new Object[keys.length+1];
             row[0] = instance.getId();
             for (int i = 0; i < keys.length; i++) {
@@ -299,7 +312,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
                 row[i+1] = value;
             }
             properties.add(row);
-        });
+        }
         return properties.toArray(new Object[0][]);
     }
 

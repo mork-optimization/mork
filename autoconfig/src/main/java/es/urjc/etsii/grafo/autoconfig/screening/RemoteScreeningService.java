@@ -24,6 +24,7 @@ public final class RemoteScreeningService {
 
     public void run(AutoLlmConfig config, InstanceScreeningConfig settings, InstanceConfiguration inputs, SolverConfig solver,
                     boolean approve, String reviewedHash, List<String> runArguments) throws IOException {
+        if (config.execution().target() == AutoLlmConfig.Target.SSH) config = config.forServer(config.execution().ssh().screeningServer());
         Path output = Path.of(settings.output()).toAbsolutePath().normalize(); Files.createDirectories(output);
         String key = AutoLlmFileUtil.hash(new ByteArrayInputStream(output.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8))).substring(0, 24);
         Path root = output.resolve(config.execution().target().name().toLowerCase(Locale.ROOT) + "-" + key); Files.createDirectories(root);
@@ -31,7 +32,7 @@ public final class RemoteScreeningService {
         Path source = root.resolve("baseline/source"), artifact = source.resolve(config.project().artifact());
         Preparation preparation;
         observer.accept(Map.of("phase", "PREFLIGHT", "mirror", root.toString()));
-        workloads.probe(config, root, settings.python());
+        workloads.probe(config, root, settings.python() == null ? "" : settings.python());
         if (approve) {
             if (!Files.exists(preparedFile)) throw new IllegalStateException("Remote preparation has not completed");
             preparation = AutoLlmFileUtil.read(preparedFile, Preparation.class);
@@ -143,6 +144,7 @@ public final class RemoteScreeningService {
         var preparation = AutoLlmFileUtil.read(root.resolve("remote-screening.json"), Preparation.class);
         var manifest = AutoLlmFileUtil.read(proposal.resolve("manifest.json"), ScreeningData.Manifest.class);
         if (!AutoLlmFileUtil.hash(root.resolve("remote-screening.json")).equals(AutoLlmFileUtil.hash(proposal.resolve("source-metadata.json")))) throw new IllegalStateException("Approved source metadata changed");
+        if (manifest.version() != 3 || !"QUALIFIED_SERVER_POOL".equals(manifest.reusePolicy())) throw new IllegalStateException("Dataset approval does not authorize qualified server-pool reuse");
         if (!preparation.artifactSha256().equals(manifest.artifactSha256()) || !preparation.sotaSha256().equals(manifest.sotaSha256())) throw new IllegalStateException("Approved executable or SOTA identity changed");
         if (!manifest.fingerprint().equals(approved.get("fingerprint"))) throw new IllegalStateException("Approved fingerprint changed");
         for (var input : manifest.inputs()) {

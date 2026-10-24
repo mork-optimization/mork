@@ -6,7 +6,7 @@ import java.util.Map;
 
 /** Versioned, file-based protocol; workload arguments never pass through a shell. */
 public final class WorkloadProtocol {
-    public static final int VERSION = 2;
+    public static final int VERSION = 3;
     private WorkloadProtocol() {}
     public record Job(int version, String id, String root, String inputSha256, List<String> layers, List<String> command, String cwd, String output,
                       List<String> collect, List<String> reset, Map<String,String> environment, Map<String,String> expectedHost,

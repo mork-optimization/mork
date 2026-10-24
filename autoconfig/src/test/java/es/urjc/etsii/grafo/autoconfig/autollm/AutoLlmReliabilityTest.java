@@ -81,9 +81,9 @@ class AutoLlmReliabilityTest {
         store.releaseReservation(first, temp.resolve(first)); assertDoesNotThrow(() -> store.requireReservation(second));
     }
     @Test void springOptionalBlankSshPathsMatchAbsentJsonSettings() {
-        var environment = new MockEnvironment().withProperty("autollm.execution.target", "SSH").withProperty("autollm.execution.ssh.host", "server")
-                .withProperty("autollm.execution.ssh.workspace", "/remote").withProperty("autollm.execution.ssh.config-file", "").withProperty("autollm.execution.ssh.runner-artifact", "");
+        var environment = new MockEnvironment().withProperty("autollm.execution.target", "SSH").withProperty("autollm.execution.ssh.servers[0].id", "server").withProperty("autollm.execution.ssh.servers[0].host", "server")
+                .withProperty("autollm.execution.ssh.servers[0].workspace", "/remote").withProperty("autollm.execution.ssh.servers[0].config-file", "").withProperty("autollm.execution.ssh.runner-artifact", "");
         var config = Binder.get(environment).bind("autollm", Bindable.of(AutoLlmConfig.class)).get();
-        assertNull(config.execution().ssh().configFile()); assertNull(config.execution().ssh().runnerArtifact());
+        assertNull(config.execution().ssh().screeningServer().configFile()); assertNull(config.execution().ssh().runnerArtifact());
     }
 }

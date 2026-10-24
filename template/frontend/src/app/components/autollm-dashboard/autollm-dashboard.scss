@@ -20,3 +20,7 @@ pre { white-space: pre-wrap; overflow-wrap: anywhere; overflow: auto; max-height
 .activity-feed article { margin-bottom: 1rem; border-bottom: 1px solid var(--mat-sys-outline-variant); }
 .activity-feed pre, .screening-report { white-space: pre-wrap; overflow-wrap: anywhere; }
 .budget-summary { line-height: 1.6; }
+
+.target-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; margin-block: 1rem; }
+.target-card, .server-definition { border: 1px solid #7775; padding: 1rem; border-radius: .5rem; }
+.active-trial { border-bottom: 1px solid #7775; padding-block: .5rem; }

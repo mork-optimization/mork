@@ -46,7 +46,7 @@ class SshWorkloadTest {
         var defaults = AutoLlmConfig.defaults();
         config = new AutoLlmConfig(defaults.project(), defaults.workspace(), 1, 1234L, 299, null, null, null, null, defaults.codex(), defaults.preparation(), defaults.tuning(), defaults.comparison(),
                 new AutoLlmConfig.Execution(32, 100L, 30000L, 30000L, 5000L, 5000L, 30000L, 30000L, "128m", AutoLlmConfig.Target.SSH,
-                        new AutoLlmConfig.Ssh("mork-fixture", temp.resolve("remote workspace").toString(), java, runner.toString(), Map.of(), ssh.toString())));
+                        new AutoLlmConfig.Ssh("fixture", runner.toString(), List.of(new AutoLlmConfig.Server("fixture", "mork-fixture", temp.resolve("remote workspace").toString(), java, Map.of(), ssh.toString(), null, null)))));
         root = temp.resolve("local mirror").toAbsolutePath(); Files.createDirectories(root);
     }
     @AfterEach void stopSsh() { if (server != null) server.destroyForcibly(); }

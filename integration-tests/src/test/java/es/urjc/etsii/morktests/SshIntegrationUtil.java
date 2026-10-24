@@ -35,8 +35,8 @@ final class SshIntegrationUtil implements AutoCloseable {
         try (var jar = new JarOutputStream(Files.newOutputStream(runner), manifest)) { /* Fixture dependencies stay on the loopback host. */ }
         Path python = Path.of("../example-tsptw/venv/bin/python3").toAbsolutePath().normalize();
         assumeTrue(Files.isExecutable(python), "Prepare the instance-selector Python environment for SSH integration");
-        ssh = new AutoLlmConfig.Ssh("mork-integration", directory.resolve("workloads").toString(), Path.of(System.getProperty("java.home"), "bin/java").toString(), runner.toString(),
-                Map.of("PATH", System.getenv("PATH"), "MORK_SELECTOR_PYTHON", python.toString(), "MPLCONFIGDIR", directory.resolve("matplotlib").toString()), client.toString());
+        ssh = new AutoLlmConfig.Ssh("server", runner.toString(), List.of(new AutoLlmConfig.Server("server", "mork-integration", directory.resolve("workloads").toString(), Path.of(System.getProperty("java.home"), "bin/java").toString(),
+                Map.of("PATH", System.getenv("PATH"), "MORK_SELECTOR_PYTHON", python.toString(), "MPLCONFIGDIR", directory.resolve("matplotlib").toString()), client.toString(), null, null)));
     }
     private static void run(List<String> command) throws Exception {
         var process = new ProcessBuilder(command).redirectErrorStream(true).start(); String output = new String(process.getInputStream().readAllBytes());

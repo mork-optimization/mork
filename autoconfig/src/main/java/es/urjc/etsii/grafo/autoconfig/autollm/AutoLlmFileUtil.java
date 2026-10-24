@@ -18,6 +18,10 @@ public final class AutoLlmFileUtil {
                 @Override public FileVisitResult preVisitDirectory(Path directory, java.nio.file.attribute.BasicFileAttributes attributes) {
                     return !directory.equals(root) && Set.of("source", ".git", ".transport", ".transfer", ".source-bundles").contains(directory.getFileName().toString()) ? FileVisitResult.SKIP_SUBTREE : FileVisitResult.CONTINUE;
                 }
+                @Override public FileVisitResult visitFileFailed(Path path, IOException error) throws IOException {
+                    if (error instanceof NoSuchFileException) return FileVisitResult.CONTINUE;
+                    throw error;
+                }
                 @Override public FileVisitResult visitFile(Path path, java.nio.file.attribute.BasicFileAttributes attributes) {
                     if (attributes.isRegularFile() && path.getFileName().toString().equals(filename)) result.add(path); return FileVisitResult.CONTINUE;
                 }

@@ -286,7 +286,7 @@ public final class CodexEvidenceUtil {
                 attempts.add(Map.of("attempt", attempt.number, "stage", attempt.stage, "status", attempt.status, "directory", attempt.directory, "usage", usage.summary()));
             }
             trial.codexUsage = aggregate(entries.values(), tc, tp, tu);
-            AutoLlmFileUtil.write(root.resolve("trials/%03d/llm-usage.json".formatted(trial.number)), Map.of("trial", trial.number, "summary", trial.codexUsage, "attempts", attempts));
+            AutoLlmFileUtil.write(root.resolve(trial.directory == null ? "trials/%03d".formatted(trial.number) : trial.directory).resolve("llm-usage.json"), Map.of("trial", trial.number, "summary", trial.codexUsage, "attempts", attempts));
             trials.add(Map.of("trial", trial.number, "status", trial.status, "summary", trial.codexUsage, "attempts", attempts));
             complete += tc; partial += tp; unavailable += tu;
         }

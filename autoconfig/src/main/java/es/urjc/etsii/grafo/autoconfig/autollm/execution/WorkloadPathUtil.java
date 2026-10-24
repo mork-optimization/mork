@@ -6,7 +6,20 @@ import java.nio.file.Path;
 public final class WorkloadPathUtil {
     private WorkloadPathUtil() {}
     public static String remoteRoot(AutoLlmConfig config, Path root) {
-        return Path.of(config.execution().ssh().workspace(), "campaigns", root.getFileName().toString()).normalize().toString();
+        Path context = root.resolve("execution-context.json");
+        if (java.nio.file.Files.exists(context)) {
+            var identity = es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmFileUtil.read(context, java.util.Map.class);
+            return Path.of(config.execution().ssh().onlyServer().workspace(), "campaigns", (String) identity.get("campaignId"), "targets", (String) identity.get("targetId")).normalize().toString();
+        }
+        return Path.of(config.execution().ssh().onlyServer().workspace(), "campaigns", root.getFileName().toString()).normalize().toString();
+    }
+    /** Both v3 screening roots and target roots share the server workspace's measurement lock. */
+    public static Path workspace(Path root) {
+        Path campaigns = root.getParent();
+        if (campaigns != null && campaigns.getFileName().toString().equals("targets")) campaigns = campaigns.getParent().getParent();
+        if (campaigns == null || !campaigns.getFileName().toString().equals("campaigns") || campaigns.getParent() == null)
+            throw new IllegalArgumentException("Invalid remote workload namespace: " + root);
+        return campaigns.getParent();
     }
     public static String translate(String token, String from, String to) {
         int split = token.indexOf('!');

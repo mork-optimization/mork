@@ -1,6 +1,6 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { AutoLlmClient } from '../service/autollm-client';
-import { AutoLlmActivity, AutoLlmArtifact, AutoLlmCampaign, AutoLlmConfig, AutoLlmProgress, ScreeningJob, ScreeningReview } from '../model/autollm';
+import { AutoLlmActivity, AutoLlmArtifact, AutoLlmCampaign, AutoLlmConfig, AutoLlmProgress, AutoLlmServer, ScreeningJob, ScreeningReview } from '../model/autollm';
 import { AutoconfigStatus } from '../model/autoconfig';
 
 @Injectable({ providedIn: 'root' })
@@ -16,6 +16,10 @@ export class AutoLlmStore {
   readonly trial = computed(() => this.campaign()?.trials.find(t => t.number === this.selectedTrial()) ?? null);
   readonly completed = computed(() => this.campaign()?.trials.filter(t => ['SUCCEEDED', 'FAILED'].includes(t.status)).length ?? 0);
   readonly progress = signal<AutoLlmProgress | null>(null);
+  readonly activeProgress = signal<Record<number, { progress?: AutoLlmProgress; stale: boolean }>>({});
+  readonly targets = computed(() => Object.entries(this.campaign()?.targets ?? {}).map(([id, target]) => ({ id, ...target })));
+  readonly activeTrials = computed(() => this.campaign()?.trials.filter(trial => !['PENDING', 'SUCCEEDED', 'FAILED'].includes(trial.status)) ?? []);
+  readonly now = signal(Date.now());
   readonly tuning = computed(() => this.progress()?.workload?.['budget'] ? this.progress()!.workload as unknown as AutoconfigStatus : null);
   readonly generation = computed(() => this.progress()?.generation ?? null);
   readonly generationAttempt = signal<number | null>(null);
@@ -63,9 +67,20 @@ export class AutoLlmStore {
       this.screenings.set(screenings.jobs); this.activeScreening.set(screenings.active);
       if (!this.selectedScreening()) this.selectedScreening.set(screenings.active || screenings.jobs[0]?.id || '');
       if (!this.selectedId()) this.selectedId.set(data.active || data.campaigns[0]?.id || '');
+      this.now.set(Date.now());
+      const campaignId = this.selectedId(), activeTrials = this.activeTrials();
+      const updates = await Promise.allSettled(activeTrials.map(trial => this.client.progress(campaignId, trial.number)));
+      if (this.selectedId() === campaignId && !this.destroyed) {
+        const next: Record<number, { progress?: AutoLlmProgress; stale: boolean }> = {};
+        updates.forEach((update, index) => {
+          const number = activeTrials[index].number;
+          next[number] = update.status === 'fulfilled' ? { progress: update.value, stale: false } : { progress: this.activeProgress()[number]?.progress, stale: true };
+        });
+        this.activeProgress.set(next);
+      }
       if (this.trial()) {
         const id = this.selectedId(), trial = this.selectedTrial();
-        const [progress, comparison] = await Promise.all([this.client.progress(id, trial), this.client.comparison(id, trial)]);
+        const [progress, comparison] = await Promise.all([this.activeProgress()[trial]?.progress ?? this.client.progress(id, trial), this.client.comparison(id, trial)]);
         if (this.selectedId() === id && this.selectedTrial() === trial && !this.destroyed) {
           this.progress.set(progress); this.comparison.set(comparison);
         }
@@ -145,6 +160,15 @@ export class AutoLlmStore {
   async action(action: 'start' | 'resume' | 'cancel' | 'report'): Promise<void> {
     await this.operate(async () => { await this.client.action(this.selectedId(), action); if (action === 'start' || action === 'resume') this.active.set(this.selectedId()); });
   }
+  async addTarget(server: AutoLlmServer): Promise<void> {
+    const id = this.selectedId();
+    await this.operate(async () => { const c = await this.client.addTarget(id, server); this.campaigns.update(values => values.map(value => value.id === id ? c : value)); });
+  }
+  async targetAction(target: string, action: 'drain' | 'resume' | 'remove'): Promise<void> {
+    const id = this.selectedId();
+    await this.operate(async () => { const c = await this.client.targetAction(id, target, action); this.campaigns.update(values => values.map(value => value.id === id ? c : value)); });
+  }
+  targetStale(lastSync: string | null | undefined): boolean { return !lastSync || this.now() - Date.parse(lastSync) > 30000; }
   private async operate(callback: () => Promise<void>): Promise<void> {
     this.operations++; this.busy.set(true); this.error.set(null);
     try { await callback(); } catch (e) { this.error.set(this.message(e)); } finally { this.operations--; this.busy.set(this.operations > 0); }

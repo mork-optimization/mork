@@ -7,12 +7,22 @@
       <details [open]="!store.campaign()"><summary>Configure a campaign</summary>
         <fieldset [disabled]="!!store.active() || store.busy()">
           <div class="fields">
-            <label>Where should the actual workloads run?<select [value]="executionChoice()" (change)="executionTarget($event)"><option value="" disabled>Select execution location</option><option value="LOCAL">Locally on this computer</option><option value="SSH">Configure a remote server over SSH</option></select></label>
+            <label>Where should the actual workloads run?<select [value]="executionChoice()" (change)="executionTarget($event)"><option value="" disabled>Select execution location</option><option value="LOCAL">Locally on this computer</option><option value="SSH">Configure SSH servers</option></select></label>
             @if (config.execution.target === 'SSH') {
-              <label>SSH host or alias<input [value]="config.execution.ssh?.host ?? ''" (change)="update('execution.ssh.host', $event)" /></label>
-              <label>Remote workspace<input [value]="config.execution.ssh?.workspace ?? ''" (change)="update('execution.ssh.workspace', $event)" /></label>
-              <label>Remote Java executable<input [value]="config.execution.ssh?.javaExecutable ?? 'java'" (change)="update('execution.ssh.javaExecutable', $event)" /></label>
+              <label>Screening server<select [value]="config.execution.ssh?.screeningServerId" (change)="update('execution.ssh.screeningServerId', $event)">@for (server of config.execution.ssh?.servers ?? []; track $index) { <option [value]="server.id">{{ server.id }}</option> }</select></label>
               <label>Local remote-runner JAR<input [value]="config.execution.ssh?.runnerArtifact ?? ''" (change)="update('execution.ssh.runnerArtifact', $event)" /></label>
+              @for (server of config.execution.ssh?.servers ?? []; track $index; let i = $index) {
+                <fieldset class="server-definition"><legend>Server {{ i + 1 }}</legend>
+                  <label>ID<input [value]="server.id" (change)="update('execution.ssh.servers.' + i + '.id', $event)" /></label>
+                  <label>SSH host or alias<input [value]="server.host" (change)="update('execution.ssh.servers.' + i + '.host', $event)" /></label>
+                  <label>Remote workspace<input [value]="server.workspace" (change)="update('execution.ssh.servers.' + i + '.workspace', $event)" /></label>
+                  <label>Java executable<input [value]="server.javaExecutable" (change)="update('execution.ssh.servers.' + i + '.javaExecutable', $event)" /></label>
+                  <label>Workers override (blank inherits)<input type="number" [value]="server.workers ?? ''" (change)="update('execution.ssh.servers.' + i + '.workers', $event, true)" /></label>
+                  <label>Heap override (blank inherits)<input [value]="server.heap ?? ''" (change)="update('execution.ssh.servers.' + i + '.heap', $event)" /></label>
+                  <button mat-button (click)="removeServer(i)">Remove from configuration</button>
+                </fieldset>
+              }
+              <button mat-button (click)="addServer()">Add server</button>
             }
             <label>Baseline repository<input [value]="config.project.repository" (change)="update('project.repository', $event)" /></label>
             <label>Git ref<input [value]="config.project.ref" (change)="update('project.ref', $event)" /></label>
@@ -32,6 +42,7 @@
             <label>Pilot duration (milliseconds)<input type="number" min="1" [value]="config.preparation.pilotDurationMillis" (change)="update('preparation.pilotDurationMillis', $event, true)" /></label>
             <label>Repair turns<input type="number" min="0" [value]="config.preparation.maxRepairs" (change)="update('preparation.maxRepairs', $event, true)" /></label>
             <label>Codex model (optional)<input [value]="config.codex.model ?? ''" (change)="update('codex.model', $event)" /></label>
+            <label>Concurrent Codex sessions<input type="number" min="1" [value]="config.codex.maxConcurrentSessions" (change)="update('codex.maxConcurrentSessions', $event, true)" /></label>
             <label>Reasoning effort (optional)<input [value]="config.codex.reasoningEffort ?? ''" (change)="update('codex.reasoningEffort', $event)" /></label>
             <label>Custom prompt file (optional)<input [value]="config.codex.promptFile ?? ''" (change)="update('codex.promptFile', $event)" /></label>
           </div>
@@ -44,7 +55,7 @@
         <details><summary>Prepare a screened dataset</summary>
           <div class="fields"><label>Full original input pool<input [value]="originalPool()" (input)="originalPool.set($any($event.target).value)" /></label>
             <label>Training fraction<input type="number" min="0.01" max="0.99" step="0.01" [value]="trainingFraction()" (input)="trainingFraction.set(+$any($event.target).value)" /></label></div>
-          <p>Screening uses one sequential worker. Review the completed proposal before publishing training/testing indexes. Testing includes all retained instances, including training.</p>
+          <p>Screening uses one sequential worker. Review the completed proposal before publishing training/testing indexes. Testing includes all retained instances, including training. Approval permits reuse by qualified servers; measurement provenance remains tied to the screening server.</p>
           <button mat-button [disabled]="!executionChoice() || !originalPool() || !!store.active() || !!store.activeScreening() || store.busy()" (click)="store.createScreening(originalPool(), trainingFraction())">Prepare dataset</button>
         </details>
         <button mat-button [disabled]="!executionChoice() || !!store.active() || store.busy()" (click)="store.probeTarget()">Check execution host</button>
@@ -87,15 +98,42 @@
   @if (store.campaign(); as campaign) {
     <mat-card><mat-card-content>
       <div class="actions"><strong>{{ campaign.status }} · {{ store.completed() }}/{{ campaign.trials.length }} trials finished</strong>
-        @if (store.active() === campaign.id) { <button mat-button [disabled]="campaign.remote?.status === 'CANCELLATION_PENDING'" (click)="store.action('cancel')">Cancel campaign</button> }
+        @if (store.active() === campaign.id) { <button mat-button [disabled]="campaign.status === 'CANCELLATION_PENDING'" (click)="store.action('cancel')">Cancel campaign</button> }
         @if (['INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION'].includes(campaign.status) && !store.active()) { <button mat-flat-button [disabled]="store.busy() || !!store.activeScreening()" (click)="store.action('resume')">Resume from checkpoints</button> }
         @if (campaign.status === 'NEEDS_ATTENTION') { <button mat-button [disabled]="store.busy()" (click)="store.action('cancel')">Reconcile and cancel remote work</button> }
         @if (campaign.status === 'DRAFT' && !store.active()) { <button mat-flat-button (click)="store.action('start')">Start saved draft</button> }
         @if (campaign.status !== 'DRAFT' && !store.active()) { <button mat-button [disabled]="store.busy()" (click)="store.action('report')">Regenerate reports</button> }
       </div>
       <mat-progress-bar mode="determinate" [value]="100 * store.completed() / campaign.trials.length" />
-      @if (campaign.executionHost; as host) { <p>Execution workers: {{ host.effectiveWorkers }} · Requested: {{ host.requestedWorkers === -1 ? 'Auto' : host.requestedWorkers }} · Host: {{ host.identity['hostname'] }}</p> }
-      @if (campaign.remote; as remote) { <p>Latest remote workload: {{ remote.host }} · {{ remote.stageDirectory }} · {{ remote.status }} · Last sync: {{ remote.lastSynchronizedAt ? (remote.lastSynchronizedAt | date:'short') : 'Not synchronized' }}</p>@if (remote.failure) { <p class="error">{{ remote.failure }}</p> } }
+      <h2>Servers · pool revision {{ campaign.poolRevision }}</h2>
+      <p>Each server runs one trial at a time. SOTA and proposal measurements stay paired on that server; reports are grouped by server.</p>
+      <div class="target-grid">
+        @for (target of store.targets(); track target.id) {
+          <article class="target-card"><h3>{{ target.id }} · {{ target.status }}</h3>
+            <p>{{ target.definition.host || 'Local' }} · Trial {{ target.assignedTrial ?? '—' }} · Workers {{ target.host?.effectiveWorkers ?? 'Pending qualification' }}</p>
+            @if (target.remote; as remote) { <p>{{ remote.status }} · Last sync {{ remote.lastSynchronizedAt | date:'mediumTime' }} @if (['BUSY', 'QUALIFYING'].includes(target.status) && store.targetStale(remote.lastSynchronizedAt)) { <strong class="error">Status is stale</strong> }</p> }
+            @if (target.problem; as problem) { <p class="error">{{ problem.category }} · {{ problem.message }}</p><p>{{ problem.recovery }}</p> }
+            @if (campaign.config.execution.target === 'SSH' && target.status !== 'REMOVED') {
+              <button mat-button [disabled]="store.busy() || target.draining" (click)="store.targetAction(target.id, 'drain')">Drain</button>
+              <button mat-button [disabled]="store.busy() || store.active() !== campaign.id || !!target.assignedTrial" (click)="store.targetAction(target.id, 'resume')">Resume server</button>
+              <button mat-button [disabled]="store.busy() || !!target.assignedTrial || target.status === 'QUALIFYING'" (click)="store.targetAction(target.id, 'remove')">Remove idle server</button>
+            }
+          </article>
+        }
+      </div>
+      @if (campaign.config.execution.target === 'SSH' && !['SUCCEEDED', 'COMPLETED_WITH_FAILURES'].includes(campaign.status)) {
+        <details><summary>Add a server to this campaign</summary><p>New servers qualify automatically while the campaign is active. Existing trial assignments stay on their original server.</p>
+          <label>Server definition (JSON)<textarea rows="5" [value]="newTarget()" (input)="newTarget.set($any($event.target).value)"></textarea></label>
+          <button mat-button [disabled]="store.busy()" (click)="enrollTarget()">Register server</button>
+        </details>
+      }
+      @for (trial of store.activeTrials(); track trial.number) {
+        <p class="active-trial">Trial {{ trial.number }} · {{ trial.targetId }} · {{ store.activeProgress()[trial.number]?.progress?.substage || trial.status }}
+          @if (store.activeProgress()[trial.number]?.stale) { <strong class="error">Progress unavailable; showing last update</strong> }
+          @if (store.activeProgress()[trial.number]?.progress?.generation; as generation) { · {{ generation.state }} · {{ generation.commandsCompleted }}/{{ generation.commandsStarted }} commands }
+          <button mat-button (click)="store.selectTrial(trial.number)">Inspect</button>
+        </p>
+      }
       @if (campaign.codexUsage; as usage) {
         <p class="codex-usage">Codex token usage · {{ usage.status }} · Input: {{ usage.tokens.inputTokens === null ? 'Unknown' : (usage.tokens.inputTokens | number) }} · Output: {{ usage.tokens.outputTokens === null ? 'Unknown' : (usage.tokens.outputTokens | number) }} · Total: {{ usage.tokens.totalTokens === null ? 'Unknown' : (usage.tokens.totalTokens | number) }}</p>
         <p>{{ usage.completeAttempts }}/{{ usage.attempts }} attempts have complete usage; {{ usage.partialAttempts }} partial, {{ usage.unavailableAttempts }} unavailable. Includes repairs and failed or interrupted attempts. @if (usage.status === 'PARTIAL') { Known totals may be incomplete. }</p>
@@ -103,8 +141,8 @@
       @if (campaign.failure) { <pre class="error">{{ campaign.failure }}</pre> }
       @if (campaign.problem; as problem) { <p class="error">{{ problem.category }} · {{ problem.code }} · {{ problem.message }}</p><p>{{ problem.recovery }}</p> }
       @if (campaign.reportFailure) { <details><summary>Report export failed</summary><pre class="error">{{ campaign.reportFailure }}</pre></details> }
-      <table><thead><tr><th>Trial</th><th>Stage / outcome</th><th>Tuning seed</th><th>Repairs</th><th>Inspect</th></tr></thead><tbody>
-        @for (trial of campaign.trials; track trial.number) { <tr><td>{{ trial.number }}</td><td>{{ trial.status }}</td><td>{{ trial.tuningSeed }}</td><td>{{ trial.repairTurns }}</td><td><button mat-button (click)="store.selectTrial(trial.number)">Open trial</button></td></tr> }
+      <table><thead><tr><th>Trial</th><th>Server</th><th>Stage / outcome</th><th>Tuning seed</th><th>Repairs</th><th>Inspect</th></tr></thead><tbody>
+        @for (trial of campaign.trials; track trial.number) { <tr><td>{{ trial.number }}</td><td>{{ trial.targetId || 'Unassigned' }}</td><td>{{ trial.status }}</td><td>{{ trial.tuningSeed }}</td><td>{{ trial.repairTurns }}</td><td><button mat-button (click)="store.selectTrial(trial.number)">Open trial</button></td></tr> }
       </tbody></table>
     </mat-card-content></mat-card>
     @if (store.trial(); as trial) {

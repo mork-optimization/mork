@@ -54,6 +54,7 @@ autollm:
   comparison-path: ./instances/test.index
   codex:
     executable: codex
+    max-concurrent-sessions: 1
     # Optional: prompt-file, prompt, model, reasoning-effort.
   preparation:
     pilot-duration-millis: 600000
@@ -101,11 +102,13 @@ The optional additional-seed file contains an array of specifications. SOTA is a
 
 ## Remote execution over SSH
 
-The skill asks whether workloads should run locally or on a configured SSH server before preflight, builds or screening, unless the choice was already explicit. The controller, source analysis, Codex generation/repairs, authentication, transcripts, dashboard and report analysis stay local in both modes.
+For external VM provisioning, worker dependencies, and reusable images, see [preparing OpenStack workers](autollm-openstack.md). VM creation and provisioning stay outside Mork; the backend consumes ready SSH targets.
 
-In SSH mode, builds/tests, metadata checks, probes, screening/selection, pilot, R/irace, winner export and comparisons execute on one Unix/Linux server. R and the evaluation JVM communicate over remote loopback. A detached supervisor owns each workload and its deadlines; closing SSH does not stop it. Schedulers, multiple nodes and parallel trials are not supported.
+The skill asks whether workloads should run locally or on a pool of configured SSH servers before preflight, builds or screening, unless the choice was already explicit. The controller, source analysis, Codex generation/repairs, authentication, transcripts, dashboard and report analysis stay local in both modes.
 
-Build the attached runner with `./mvnw -pl autoconfig -am package`. The normal dependency JAR retains its purpose; `autoconfig/target/autoconfig-0.23-SNAPSHOT-remote-runner.jar` is the separate executable transferred to the server. Use a committed baseline containing the matching AutoLLM implementation. The server needs compatible Java/build tools, Git, R with `irace`, `httr` and `jsonlite`, and the selector's Python dependencies. Codex is required only locally. Preflight reports prerequisites without installing them.
+In SSH mode, builds/tests, metadata checks, probes, screening/selection, pilot, R/irace, winner export and comparisons execute on the trial’s assigned Unix/Linux server. Screening and selection run once on the selected screening server. R and the evaluation JVM communicate over remote loopback. A detached supervisor owns each workload and its deadlines; closing SSH does not stop it. The coordinator dispatches one complete trial per server and runs independent trials concurrently. It never splits an irace race across servers. Generation and repairs share a local semaphore, defaulting to one Codex session; increase `codex.max-concurrent-sessions` explicitly when desired.
+
+Build the attached runner with `./mvnw -pl autoconfig -am package`. The normal dependency JAR retains its purpose; `autoconfig/target/autoconfig-0.23-SNAPSHOT-remote-runner.jar` is the separate executable transferred to the server. Use a committed baseline containing the matching AutoLLM implementation. Every execution server needs compatible Java/build tools, Git and R with `irace`, `httr` and `jsonlite`. Only the screening server needs the selector’s Python dependencies. Codex is required only locally. Preflight reports prerequisites without installing them.
 
 For example, an additional Spring configuration file for TSPTW can contain:
 
@@ -120,38 +123,34 @@ autollm:
     target: SSH
     workers: 32
     ssh:
-      host: experiment-server
-      workspace: /srv/mork/experiments
-      java-executable: java
-      runner-artifact: autoconfig/target/autoconfig-0.23-SNAPSHOT-remote-runner.jar
-      # Optional alternative to the normal ~/.ssh/config:
-      # config-file: /local/path/to/ssh-config
-      environment:
-        JAVA_HOME: /remote/path/to/jdk
-        PATH: /remote/path/to/jdk/bin:/remote/path/to/maven/bin:/usr/local/bin:/usr/bin:/bin
-        MORK_SELECTOR_PYTHON: /remote/path/to/selector-venv/bin/python3
-  tuning:
-    evaluations: 10000
-    ignore-initial-millis: 1000
-    interval-duration-millis: 9000
-  comparison:
-    repetitions: 30
-    time-limit-millis: 10000
-instance-screening:
-  python: /remote/path/to/selector-venv/bin/python3
+      screening-server-id: server-a
+      runner-artifact: /local/path/to/autoconfig/target/autoconfig-0.23-SNAPSHOT-remote-runner.jar
+      servers:
+        - id: server-a
+          host: experiment-server-a
+          workspace: /srv/mork/experiments
+          java-executable: java
+          environment: {PATH: /opt/jdk/bin:/usr/local/bin:/usr/bin:/bin, MORK_SELECTOR_PYTHON: /srv/selector/bin/python3}
+        - id: server-b
+          host: experiment-server-b
+          workspace: /srv/mork/experiments
+          java-executable: java
+          workers: 16
+          heap: 4g
+          environment: {PATH: /opt/jdk/bin:/usr/local/bin:/usr/bin:/bin}
 ```
 
 The project repository, controller workspace, runner JAR and optional SSH config file are local. SSH workspace/Java/environment and screening Python settings refer to the server. Use normal SSH aliases or `user@host`; existing SSH configuration supplies keys, ports and jump hosts. Both preflight and workloads use the configured noninteractive environment. Private keys and Codex authentication are not transferred.
 
 Start the local example backend with `--autollm --spring.config.additional-location=/local/path/remote.yml`. `POST /api/autollm/targets/probe` accepts a complete configuration and returns host/runtime and effective workers. `/validate` performs static validation without connecting to SSH.
 
-Target diagnostics include resolved executable paths, versions/output, individual prerequisite failures, physical memory and usable disk space. Java, Git, R packages and the selector are checked in the workload's noninteractive environment. Committed Maven/Gradle wrappers are checked after their source snapshot is staged. Prepare an isolated selector environment from `py-tools/instance-selector/requirements.txt` before measurements; its pinned setuptools dependency supplies the distutils compatibility needed by Yellowbrick on Python 3.12. Omit absent optional YAML settings; blank `ssh.configFile` and `ssh.runnerArtifact` are normalized to absent values too.
+Target diagnostics include resolved executable paths, versions/output, individual prerequisite failures, physical memory and usable disk space. Java, Git, R packages and the selector are checked in the workload's noninteractive environment. Committed Maven/Gradle wrappers are checked after their source snapshot is staged. Prepare an isolated selector environment from `py-tools/instance-selector/requirements.txt` before measurements; its pinned setuptools dependency supplies the distutils compatibility needed by Yellowbrick on Python 3.12. Omit absent optional YAML settings; blank server `configFile` and pool `runnerArtifact` are normalized to absent values too.
 
 Workers default to `-1`, resolving Mork's `max(1, Runtime.availableProcessors() / 2)` on the execution host, including its resource allocation. Auto on 32 visible processors uses 16 workers; explicit `32` uses 32. Pilot/main evaluations and comparisons use the effective count. Screening retains one sequential warmed worker. Workers share the evaluation JVM's configured heap. Requested/effective counts and host identity are saved as evidence.
 
 Complete [remote screening and approval](instance-screening.md#remote-screening), then configure the printed local mirror's published `train.index`/`test.index`. Remote campaigns require this approval and adopt the exact screened baseline JAR. Review remains local, while host/executable verification and approval execute remotely.
 
-Create and save a draft ID before calling `POST /api/autollm/campaigns/{id}/baseline-check`. This metadata-only preparation returns `parameters`, `maxParameters`, `withinLimit` and its evidence directory without running probes, pilot or tuning. Read `baseline-preflight/check/execution/check.json` and start that same draft after preparation and authorization. During generation/repair, Codex receives a local helper command for remote builds/tests and metadata checks. It uses a file queue inside the trial clone, requiring neither SSH credentials nor network access in Codex's sandbox; diagnostics are mirrored locally. The controller owns all pilots, tuning and comparisons.
+Create and save a draft ID before calling `POST /api/autollm/campaigns/{id}/baseline-check`. This metadata-only preparation returns `parameters`, `maxParameters`, `withinLimit` and a `targets` map containing each server’s parameter count, failure, and evidence directory without running probes, pilot or tuning. Read `targets/<id>/baseline-preflight/check/execution/check.json` and start that same draft after preparation and authorization. During generation/repair, Codex receives a local helper command for remote builds/tests and metadata checks. It uses a file queue inside the trial clone, requiring neither SSH credentials nor network access in Codex's sandbox; diagnostics are mirrored locally. The controller owns all pilots, tuning and comparisons.
 
 Baseline preparation also rebuilds the unchanged commit in `baseline-replay/source` and independently checks its dependency fingerprints and metadata before the first generation. Metadata request IDs and results are retained outside editable source in `metadata-requests`; the clone-local mailbox can be recreated without repeating accepted requests. Helper waits are bounded. A helper failure classified as infrastructure pauses the controller rather than asking Codex to repair the framework.
 
@@ -161,9 +160,29 @@ Transfers include content manifests, modes and Git/submodule bundles. Path mappi
 
 Connection/status/collection retries are bounded to two automatic retries. Persistent faults enter `NEEDS_ATTENTION`, leaving detached workloads under their remote watchdogs. An unresolved remote job reserves its local workspace until its result or cancellation is collected. Resume or cancel that saved operation before starting conflicting work. An idle cancellation request reconciles only saved remote jobs, without launching generation or a fresh experiment. Laptop sleep does not stop a remote workload; local Codex and progression to later stages require the controller to return.
 
+### Pool scheduling and changes
+
+Stable trial seeds are allocated before dispatch. A ready server takes the next unassigned trial, and every stage of that trial remains on its assigned server. Each server independently verifies the pinned commit, screened baseline artifact, rebuilt dependency contents, search-space metadata, frozen input hashes and seed probes before accepting work. Resolved duplicate SSH endpoints are rejected. Per-server worker and heap settings inherit the campaign defaults when absent. SSH control calls use a 60-second deadline and keepalives; artifact transfers retain their longer budget.
+
+The reviewed manifest explicitly records `QUALIFIED_SERVER_POOL` reuse. Screening timings and exclusions remain measurements from the original screening host; qualifying another server does not claim that its timings match. The same training/testing indexes are frozen for the pool, with both SOTA and proposal evaluated together on the trial’s assigned host.
+
+Add servers with the dashboard or the helper after a campaign starts:
+
+```text
+target list --campaign SAVED_ID
+target add --campaign SAVED_ID --id server-c --server /absolute/server-c.json
+target drain --campaign SAVED_ID --id server-a
+target resume --campaign SAVED_ID --id server-a
+target remove --campaign SAVED_ID --id server-a
+```
+
+The server JSON uses the fields in one `execution.ssh.servers` entry. IDs and definitions are immutable; repeating an identical PUT is idempotent. New servers qualify and take pending work automatically while the campaign is active. Draining stops new assignments and lets the current trial finish. Removal requires an idle, reconciled server without an unfinished pinned trial. A removed ID cannot be reused. A pool with pending work and only drained servers remains `WAITING_FOR_TARGETS` so servers can be added or resumed.
+
+Failures quarantine the affected server and preserve its trial assignment and job descriptors; healthy servers continue. Transient retries are bounded and consume no component repairs. Resume reconnects the original server/job; it never migrates a partially executed trial. Global canonical-input integrity failures stop dispatch and cancel outstanding work. Cancel fans out to every assigned target and retains the workspace reservation until all remote jobs are reconciled. Controller shutdown interrupts local work while detached remote jobs retain their saved identities for explicit resume. The dashboard labels stale remote status and unavailable per-trial progress.
+
 ## Backend discovery and operator helper
 
-Checkpoint and runner protocol version 2 use a fresh workspace. There is no migration or recovery adapter for version 1 campaigns; inspect those artifacts with the original controller. `GET /api/autollm/capabilities` identifies the mode, API/checkpoint/runner versions, supported features, executable checksum, working directory, PID and workspace. Verify these before reusing a backend.
+API, checkpoint and runner protocol version 3 require a fresh workspace. There is no migration or recovery adapter for older campaigns; inspect those artifacts with the original controller. `GET /api/autollm/capabilities` identifies the mode, API/checkpoint/runner versions, supported features, executable checksum, working directory, PID and workspace. Verify these before reusing a backend.
 
 The skill includes a dependency-free Python helper:
 
@@ -177,7 +196,7 @@ python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace /absolut
 
 `backend` reuses only a matching executable and workspace, otherwise starts a detached owned process with stdin closed and redirected logs. `--port 0` selects a free port without replacing unrelated backends. The backend maintains `session.json`, `campaign-session.json` and `screening-session.json`; the launcher retains `backend-launch.json`. Configuration merging preserves explicit values and omits optional nulls. Add `--spring` with a `.yml`/`.yaml` output to write JSON-compatible Spring YAML.
 
-`logs --campaign ID --path trials/.../stdout.log --follow` reads bounded byte cursors. `diagnose --campaign ID --output diagnostics.zip` exports status, failure evidence, an artifact index and bounded log tails without changing the experiment. The API's `/effective-config` and campaign `/summary` expose tuning/comparison horizons, resolved comparison limits, requested/effective workers and workload estimates. Estimates exclude generation, builds and repairs and do not guarantee wall time. Unspecified settings retain backend defaults; explicit user choices take precedence.
+`logs --campaign ID --path targets/SERVER/trials/.../stdout.log --follow` reads bounded byte cursors. `diagnose --campaign ID --output diagnostics.zip` exports status, failure evidence, an artifact index and bounded log tails without changing the experiment. The API's `/effective-config` and campaign `/summary` expose tuning/comparison horizons, resolved comparison limits, requested/effective workers and workload estimates. Estimates exclude generation, builds and repairs and do not guarantee wall time. Unspecified settings retain backend defaults; explicit user choices take precedence.
 
 The same helper exposes typed lifecycle actions; use its `campaign --help` or `screening --help` rather than assembling HTTP requests. For example, append these commands to `python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace /absolute/new-workspace`:
 
@@ -193,7 +212,7 @@ watch --campaign SAVED_ID
 
 Configuration commands accept plain JSON and the JSON-compatible Spring YAML produced by `config --spring`. Validation prints its errors and exits with status 2 when invalid. `create` returns a saved draft without starting it. Lifecycle mutations require an explicit saved `--id`; `resume`, `cancel` and `report` use the same campaign. `probe` defaults to a 120-second HTTP timeout and `baseline-check` to 3600 seconds, both adjustable with `--timeout`. The helper never automatically repeats a mutation after a lost response; inspect saved work before retrying.
 
-`watch` selects an active campaign or screening job, or the latest backend-maintained session when idle. Explicit `--campaign ID` or `--screening ID` pins the selection. It shows the active stage, elapsed time, observable generation counters, separate repair/retry counts, remote state and structured failures. Readable activity follows the selected trial's latest generation/repair attempt through preparation, with independent byte cursors and partial-line buffering. Each poll reads at most four activity pages; `activityCaughtUp` indicates whether that batch reached the end. Use transcripts or logs for complete history.
+`watch` selects an active campaign or screening job, or the latest backend-maintained session when idle. Explicit `--campaign ID` or `--screening ID` pins the selection. It shows all active trials, their server assignments, generation counters, separate repair/retry counts, target state and structured failures. Readable activity follows each active trial’s latest generation/repair attempt through preparation, with independent byte cursors and partial-line buffering. Each poll reads at most four activity pages per tracked attempt; `activityCaughtUp` indicates whether that batch reached the end. Use transcripts or logs for complete history.
 
 Watching changes no campaign state. It stops on completion, a draft, interruption, an approval request or `NEEDS_ATTENTION`; `WAITING_FOR_REMOTE` and `CANCELLATION_PENDING` keep polling. Defaults are a two-second interval and a five-minute watch limit. `--once` reads one bounded batch; `--json` emits newline-delimited status/activity records with a final `watch-ended` reason. A watch timeout or Ctrl-C leaves workloads running.
 
@@ -226,15 +245,15 @@ Cancel stops owned processes and confirms remote evidence collection. Resume pre
 
 ## Saved evidence
 
-Each UUID directory contains `campaign.json`, append-only campaign events, frozen control files and instance manifests, baseline metadata, and independent `trials/001`, `trials/002`, etc. Trial directories retain source, a frozen source ZIP and hashes, Codex prompts/events/usage/manifest/session ID, build logs, seed/component probes, pilot and main evaluation journals, all encountered configurations, elite history, final elites, irace R data, winner specifications, and comparison output.
+Each UUID directory contains `campaign.json`, append-only campaign events, frozen control files and instance manifests, a revisioned target pool and immutable trial assignments. `targets/<id>/` contains isolated controls, transfers, metadata, baseline evidence, and independent `trials/001`, `trials/002`, etc. Trial directories retain source, a frozen source ZIP and hashes, Codex prompts/events/usage/manifest/session ID, build logs, seed/component probes, pilot and main evaluation journals, all encountered configurations, elite history, final elites, irace R data, winner specifications, and comparison output.
 
 Each generation or repair attempt also retains `conversations/<thread-id>.jsonl`: an immutable, byte-for-byte snapshot of the native Codex transcript, including previous turns and locally persisted child conversations linked to that thread. These contain the messages, tool activity, and reasoning exposed by Codex's local storage. AutoLLM reads `CODEX_HOME` (default `~/.codex`) and supports native JSONL sessions under `sessions` and `archived_sessions`. It verifies the exact thread ID and trial directory; unrelated conversations and authentication files are excluded. A required archive failure pauses as an integrity problem without requesting a repair. Archival runs after success, failure, timeout, cancellation, and recovery of an interrupted attempt.
 
 Each attempt saves `evidence-before.json`, `evidence.json`, and `usage.json`. Usage preserves reported input, cached input, cache-write input, output, reasoning output, and total tokens, plus resolved models, CLI version, and the counter source. Per-response native records are preferred and response IDs are deduplicated; older cumulative native counters use validated deltas from the pre-attempt checkpoint. CLI-reported usage is supplemental because resumed turns may report cumulative totals. Missing fields remain `null`; usage is marked `COMPLETE`, `PARTIAL`, or `UNAVAILABLE` and does not block tuning. Cached input is part of input and reasoning output is part of output, so these fields must not be added again to total tokens.
 
-`trials/<number>/llm-usage.json` and `reports/llm-usage.json` summarize all generation and repair attempts, including failed and interrupted attempts. Partial totals include only known counts and may underestimate usage. The dashboard and campaign API expose these summaries and transcript downloads. Report regeneration uses saved artifacts. Historical campaigns require their original controller; missing historical usage is not reconstructed. No cost or pricing statistics are collected.
+`targets/<id>/trials/<number>/llm-usage.json` and `reports/llm-usage.json` summarize all generation and repair attempts, including failed and interrupted attempts. Partial totals include only known counts and may underestimate usage. The dashboard and campaign API expose these summaries and transcript downloads. Report regeneration uses saved artifacts. Historical campaigns require their original controller; missing historical usage is not reconstructed. No cost or pricing statistics are collected.
 
-Comparison records preserve objective values, runtime, time-to-best, curves, seeds, instance paths, repetitions, and failure/interruption outcomes. Each comparison retains its normal workbook; `reports/campaign.xlsx` pools successful cached result rows without loading generated classes into the parent. `reports/comparison-rows.json` also retains partial and failed trial data. Workbook gaps use the existing best-reference calculation. Artifact listings include SHA-256 checksums.
+Comparison records preserve objective values, runtime, time-to-best, curves, seeds, instance paths, repetitions, and failure/interruption outcomes. Each comparison retains its normal workbook; `reports/targets/<id>/campaign.xlsx` groups successful cached result rows by execution server without loading generated classes into the parent. `reports/comparison-rows.json` also retains partial and failed trial data. Workbooks never pool servers into a single ranking. Rows retain target ID, pool revision and execution-host provenance; failed and incomplete rows stay in the portable JSON evidence. Workbook gaps use the existing best-reference calculation. Artifact listings include SHA-256 checksums.
 
 This experiment measures the combined Codex-and-tuning procedure. Component selection reports which components the winner uses; it does not establish each component's individual contribution. Every independent trial's data remains available for later analysis.
 
@@ -249,6 +268,8 @@ All paths below are relative to `/api/autollm`; endpoints are registered when th
 | `GET/POST /campaigns`, `GET /campaigns/{id}` | List, save a draft, inspect checkpoints |
 | `POST /campaigns/{id}/baseline-check` | Baseline build/reproducibility/metadata checks without tuning |
 | `POST /campaigns/{id}/start`, `/resume`, `/cancel`, `/report` | Lifecycle actions; reporting uses cached results |
+| `GET /campaigns/{id}/targets`, `PUT/DELETE /campaigns/{id}/targets/{targetId}` | Inspect pool, register an immutable server, remove an idle reconciled server |
+| `POST /campaigns/{id}/targets/{targetId}/drain`, `/resume` | Stop new assignments or recover a server while the campaign is active |
 | `GET /campaigns/{id}/summary` | Effective budgets and estimates, including frozen comparison limits |
 | `GET /campaigns/{id}/trials/{number}/progress`, `/comparison` | Active attempt, failure, generation and nested workload progress; saved comparison data |
 | `GET /campaigns/{id}/trials/{number}/activity?attempt=N&cursor=0` | Readable generation events in bounded byte pages |

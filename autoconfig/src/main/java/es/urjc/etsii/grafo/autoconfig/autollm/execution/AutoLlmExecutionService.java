@@ -21,14 +21,22 @@ public final class AutoLlmExecutionService {
         var errors = new ArrayList<>(AutoLlmConfigUtil.executionErrors(config));
         if (config.execution().workers() != -1 && config.execution().workers() < 1) errors.add("Workers must be -1 (automatic) or a positive integer");
         if (config.execution().target() == AutoLlmConfig.Target.SSH) {
-            var ssh = config.execution().ssh();
-            if (ssh == null) errors.add("SSH execution requires execution.ssh settings");
+            var pool = config.execution().ssh();
+            if (pool == null || pool.servers().isEmpty()) errors.add("SSH execution requires at least one server");
             else {
-                if (ssh.host() == null || !ssh.host().matches("[A-Za-z0-9_][A-Za-z0-9_.@:\\[\\]-]*")) errors.add("SSH host must be an alias or user@host");
-                if (ssh.workspace() == null || !ssh.workspace().startsWith("/") || ssh.workspace().equals("/")) errors.add("SSH workspace must be an absolute dedicated directory");
-                if (ssh.javaExecutable().isBlank()) errors.add("Remote Java executable is required");
-                if (ssh.configFile() != null && !Files.isRegularFile(Path.of(ssh.configFile()))) errors.add("SSH configFile does not exist locally");
-                for (var entry : ssh.environment().entrySet()) if (!entry.getKey().matches("[A-Za-z_][A-Za-z0-9_]*")) errors.add("Invalid remote environment key: " + entry.getKey());
+                var ids = new HashSet<String>();
+                for (var ssh : pool.servers()) {
+                    try { AutoLlmPoolUtil.requireId(ssh.id()); } catch (IllegalArgumentException e) { errors.add(e.getMessage()); }
+                    if (!ids.add(ssh.id())) errors.add("Duplicate target ID: " + ssh.id());
+                    if (ssh.host() == null || !ssh.host().matches("[A-Za-z0-9_][A-Za-z0-9_.@:\\[\\]-]*")) errors.add("SSH host must be an alias or user@host");
+                    if (ssh.workspace() == null || !ssh.workspace().startsWith("/") || ssh.workspace().equals("/")) errors.add("SSH workspace must be an absolute dedicated directory");
+                    if (ssh.javaExecutable().isBlank()) errors.add("Remote Java executable is required");
+                    if (ssh.configFile() != null && !Files.isRegularFile(Path.of(ssh.configFile()))) errors.add("SSH configFile does not exist locally");
+                    if (ssh.workers() != null && ssh.workers() != -1 && ssh.workers() < 1) errors.add("Target workers must be -1 or positive");
+                    if (ssh.heap() != null && !ssh.heap().matches("[1-9][0-9]*[kKmMgG]")) errors.add("Invalid target heap");
+                    for (var entry : ssh.environment().entrySet()) if (!entry.getKey().matches("[A-Za-z_][A-Za-z0-9_]*")) errors.add("Invalid remote environment key: " + entry.getKey());
+                }
+                if (!ids.contains(pool.screeningServerId())) errors.add("Screening server must name a configured server");
                 if (requireRunner) {
                     try { if (!Files.isRegularFile(SshTransport.runnerArtifact(config))) errors.add("Remote runner artifact does not exist"); }
                     catch (IllegalArgumentException e) { errors.add(e.getMessage()); }
@@ -46,7 +54,7 @@ public final class AutoLlmExecutionService {
     public WorkloadProtocol.Host inspect(AutoLlmConfig config, Path root) {
         return inspect(config, root, null);
     }
-    private WorkloadProtocol.Host inspect(AutoLlmConfig config, Path root, String selectorPython) {
+    public WorkloadProtocol.Host inspect(AutoLlmConfig config, Path root, String selectorPython) {
         if (config.execution().target() == AutoLlmConfig.Target.LOCAL) {
             try { return TargetPreflightUtil.inspect(config, root, processes, selectorPython); } catch (IOException e) { throw new UncheckedIOException(e); }
         }

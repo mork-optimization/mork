@@ -15,7 +15,7 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
         trials = trials == null ? 10 : trials;
         seed = seed == null ? 1234L : seed;
         maxParameters = maxParameters == null ? 299 : maxParameters;
-        codex = codex == null ? new Codex(null, null, null, null, null) : codex;
+        codex = codex == null ? new Codex(null, null, null, null, null, null) : codex;
         preparation = preparation == null ? new Preparation(null, null) : preparation;
         tuning = tuning == null ? new Tuning(null, null, null, null) : tuning;
         comparison = comparison == null ? new Comparison(null, null) : comparison;
@@ -30,8 +30,8 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
             runArguments = runArguments == null ? List.of() : List.copyOf(runArguments);
         }
     }
-    public record Codex(String executable, String promptFile, String prompt, String model, String reasoningEffort) {
-        public Codex { executable = executable == null ? "codex" : executable; }
+    public record Codex(String executable, String promptFile, String prompt, String model, String reasoningEffort, Integer maxConcurrentSessions) {
+        public Codex { executable = executable == null ? "codex" : executable; maxConcurrentSessions = maxConcurrentSessions == null ? 1 : maxConcurrentSessions; }
     }
     public record Preparation(Long pilotDurationMillis, Integer maxRepairs) {
         public Preparation { pilotDurationMillis = pilotDurationMillis == null ? 600_000L : pilotDurationMillis; maxRepairs = maxRepairs == null ? 3 : maxRepairs; }
@@ -59,13 +59,36 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
         }
     }
     public enum Target { LOCAL, SSH }
-    public record Ssh(String host, String workspace, String javaExecutable, String runnerArtifact, Map<String,String> environment, String configFile) {
+    public record Ssh(String screeningServerId, String runnerArtifact, List<Server> servers) {
         public Ssh {
+            servers = servers == null ? List.of() : List.copyOf(servers);
+            screeningServerId = screeningServerId == null && !servers.isEmpty() ? servers.getFirst().id() : screeningServerId;
+            runnerArtifact = runnerArtifact == null || runnerArtifact.isBlank() ? null : runnerArtifact;
+        }
+        public Server onlyServer() {
+            if (servers.size() != 1) throw new IllegalStateException("Resolve a server before executing a workload");
+            return servers.getFirst();
+        }
+        public Server screeningServer() {
+            for (var server : servers) if (server.id().equals(screeningServerId)) return server;
+            throw new IllegalArgumentException("Screening server must name a configured server");
+        }
+    }
+    public record Server(String id, String host, String workspace, String javaExecutable, Map<String,String> environment, String configFile, Integer workers, String heap) {
+        public Server {
             javaExecutable = javaExecutable == null ? "java" : javaExecutable;
             environment = environment == null ? Map.of() : Map.copyOf(environment);
             configFile = configFile == null || configFile.isBlank() ? null : configFile;
-            runnerArtifact = runnerArtifact == null || runnerArtifact.isBlank() ? null : runnerArtifact;
+            heap = heap == null || heap.isBlank() ? null : heap;
         }
+    }
+    /** Resolve an immutable execution configuration for exactly one enrolled server. */
+    public AutoLlmConfig forServer(Server server) {
+        var e = execution;
+        var resolved = new Execution(server.workers() == null ? e.workers() : server.workers(), e.watchdogGraceMillis(), e.codexTimeoutMillis(), e.buildTimeoutMillis(),
+                e.startupTimeoutMillis(), e.searchSpaceTimeoutMillis(), e.phaseTimeoutMillis(), e.stageTimeoutMillis(), server.heap() == null ? e.heap() : server.heap(),
+                Target.SSH, new Ssh(server.id(), e.ssh().runnerArtifact(), List.of(server)));
+        return new AutoLlmConfig(project, workspace, trials, seed, maxParameters, sotaFile, initialConfigurationsFile, trainingPath, comparisonPath, codex, preparation, tuning, comparison, resolved);
     }
     public AutoLlmConfig withPaths(String training, String comparison) {
         return new AutoLlmConfig(project, workspace, trials, seed, maxParameters, sotaFile, initialConfigurationsFile, training, comparison, codex, preparation, tuning, this.comparison, execution);

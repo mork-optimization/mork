@@ -11,7 +11,7 @@ public final class ScreeningData {
     public record Input(String path, String sha256) {}
     public record Manifest(int version, String fingerprint, InstanceScreeningConfig settings, long seed, String randomType,
             double trainingFraction, String objective, FMode mode, Map<String,String> host,
-            List<Input> inputs, String sotaSha256, String artifactSha256, List<String> runArguments) {}
+            List<Input> inputs, String sotaSha256, String artifactSha256, List<String> runArguments, String reusePolicy) {}
     public record Run(String fingerprint, String instance, long seed, boolean success, Double objective,
             long runtimeNanos, List<TimeValue> curve, String failure) {}
     public record RunEvidence(String sha256, Run run) {}

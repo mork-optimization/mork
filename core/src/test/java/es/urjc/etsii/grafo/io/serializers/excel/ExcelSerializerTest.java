@@ -233,6 +233,25 @@ public class ExcelSerializerTest {
     }
 
     @Test
+    void cachedReportsUseTheirOwnInputsAndRestoreNormalInstanceScope(@TempDir Path temp) throws IOException {
+        var original = new TestInstance("original"); original.setProperty("scope", "default");
+        var target = new TestInstance("target"); target.setProperty("scope", "campaign");
+        @SuppressWarnings("unchecked") var manager = (InstanceManager<TestInstance>) org.mockito.Mockito.mock(InstanceManager.class);
+        org.mockito.Mockito.when(manager.getInstanceSolveOrder("normal")).thenReturn(List.of("original"));
+        org.mockito.Mockito.when(manager.getInstance("original")).thenReturn(original);
+        org.mockito.Mockito.when(manager.getInstance("target")).thenReturn(target);
+        var excel = initExcel(Optional.empty(), temp, List.of(), manager);
+        excel.serializeCachedResults("cached", List.of(), List.of("target"), temp.resolve("target/cached.xlsx"));
+        excel.serializeResults("normal", List.of(), temp.resolve("normal.xlsx"));
+        try (var cached = new XSSFWorkbook(Files.newInputStream(temp.resolve("target/cached.xlsx")));
+             var normal = new XSSFWorkbook(Files.newInputStream(temp.resolve("normal.xlsx")))) {
+            Assertions.assertEquals("target", cached.getSheet(ExcelSerializer.INSTANCE_SHEET).getRow(1).getCell(0).getStringCellValue());
+            Assertions.assertEquals("original", normal.getSheet(ExcelSerializer.INSTANCE_SHEET).getRow(1).getCell(0).getStringCellValue());
+        }
+        org.mockito.Mockito.verify(manager, org.mockito.Mockito.never()).getInstanceSolveOrder("cached");
+    }
+
+    @Test
     void writeExcelWithCustomProperties(@TempDir Path temp) throws IOException {
         var instance = new TestInstance("writeCustomPropsTest");
         var excel = initExcel(Optional.empty(), temp, referencesGenerator(10.10, 10.10), TestHelperFactory.simpleInstanceManager(instance));

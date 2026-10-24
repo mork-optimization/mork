@@ -18,7 +18,7 @@ class CodexTaskRunnerTest {
         Files.writeString(cli, "#!/bin/sh\nexport CODEX_HOME='" + home + "'\nexec '" + Path.of(System.getProperty("java.home"), "bin/java") + "' -cp '" + System.getProperty("java.class.path").replace("'", "'\\''") + "' " + AutoLlmCodexFixture.class.getName() + " \"$@\"\n");
         assertTrue(cli.toFile().setExecutable(true));
         var config = new AutoLlmConfig(null, null, null, null, null, null, null, null, null,
-                new AutoLlmConfig.Codex(cli.toString(), null, null, outcome.equals("failure") ? "fail-fixture" : outcome.equals("success") ? null : "hang-fixture", null), null, null, null,
+                new AutoLlmConfig.Codex(cli.toString(), null, null, outcome.equals("failure") ? "fail-fixture" : outcome.equals("success") ? null : "hang-fixture", null, null), null, null, null,
                 new AutoLlmConfig.Execution(1, 50L, 2000L, 5000L, 5000L, 5000L, 5000L, 5000L, "128m", null, null));
         var runner = new CodexTaskRunner(new AutoLlmProcessRunner(), new MockEnvironment().withProperty("CODEX_HOME", home.toString()));
         Runnable task = () -> runner.run(config, checkout, output, "custom fixture prompt", null, () -> {

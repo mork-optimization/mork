@@ -37,7 +37,7 @@ public final class RemoteWorkloadMain {
                 print(Map.of("sha256", Files.isRegularFile(file) ? AutoLlmFileUtil.hash(file) : ""));
             }
             case "probe" -> {
-                try (var channel = FileChannel.open(root.getParent().getParent().resolve("execution.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.tryLock()) {
+                try (var channel = FileChannel.open(WorkloadPathUtil.workspace(root).resolve("execution.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.tryLock()) {
                 if (lock == null) throw new IllegalStateException("Another remote workload owns this workspace; wait before preflight");
                 var config = AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), AutoLlmConfig.class);
                 print(TargetPreflightUtil.inspect(config, root, new AutoLlmProcessRunner(), id.isEmpty() ? null : id));
@@ -112,7 +112,7 @@ public final class RemoteWorkloadMain {
             AutoLlmFileUtil.write(directory.resolve("started.json"), Map.of("pid", ProcessHandle.current().pid(), "start", ProcessHandle.current().info().startInstant().orElseThrow().toString()));
             Job job = AutoLlmFileUtil.read(directory.resolve("job.json"), Job.class);
             AutoLlmProcessRunner.Result result = null; String failure = null; String outcome = "FAILED";
-            try (var workspace = FileChannel.open(root.getParent().getParent().resolve("execution.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var ownership = workspace.tryLock()) {
+            try (var workspace = FileChannel.open(WorkloadPathUtil.workspace(root).resolve("execution.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var ownership = workspace.tryLock()) {
                 if (ownership == null) throw new IllegalStateException("Another remote measurement owns this workspace");
                 if (!job.expectedHost().isEmpty() && !job.expectedHost().equals(ScreeningFileUtil.host())) throw new ExecutionTargetException("Execution host or allocation changed; prepare and review a new dataset");
                 if (!job.inputSha256().equals(AutoLlmFileUtil.hash(directory.resolve("input.zip")))) throw new IllegalStateException("Frozen job input changed");
