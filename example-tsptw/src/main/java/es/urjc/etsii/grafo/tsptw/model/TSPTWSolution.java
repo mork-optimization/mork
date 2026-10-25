@@ -107,6 +107,10 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         return this._tourcost;
     }
 
+    public List<Integer> getTour() {
+        return List.copyOf(permutation);
+    }
+
     public boolean better_than(TSPTWSolution other) {
         return _constraint_violations < other._constraint_violations ||
                 (_constraint_violations == other._constraint_violations && cost() < other.cost());
