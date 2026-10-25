@@ -97,7 +97,7 @@ public class AutoLlmCampaignService {
     private AutoLlmCampaignStore.ExecutionLock ownership;
     private Semaphore sessions;
     private boolean checkingBaseline;
-    private long reportSequence;
+    private volatile long reportSequence;
     private final Set<String> reportedAttempts = new HashSet<>();
 
     private <T> T invoke(Callable<T> operation) {
@@ -377,6 +377,7 @@ public class AutoLlmCampaignService {
     private void reportAsync(boolean releaseAfter) {
         var snapshot = AutoLlmPoolUtil.copy(current, AutoLlmCampaign.class); long sequence = ++reportSequence;
         reporting.execute(() -> {
+            if (sequence != reportSequence) return;
             buildReport(snapshot);
             enqueue(() -> {
                 if (current == null || !current.id.equals(snapshot.id)) return;

@@ -6,7 +6,7 @@ import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
-import java.io.*;
+import java.io.File;
 import java.nio.file.*;
 import java.util.*;
 
@@ -21,8 +21,6 @@ public class AutoLlmController {
     private final Environment environment;
     private final File artifact;
     private final String artifactSha256;
-    private final Map<Path, CachedComparison> comparisons = new java.util.concurrent.ConcurrentHashMap<>();
-    private record CachedComparison(long size, long modified, Object value) {}
     public AutoLlmController(AutoLlmCampaignService service, AutoLlmCampaignStore store, MonitorModeState mode, Environment environment) {
         this.service = service; this.store = store; this.mode = mode; this.environment = environment;
         this.artifact = new org.springframework.boot.system.ApplicationHome().getSource();
@@ -142,49 +140,45 @@ public class AutoLlmController {
         }
         throw new NoSuchElementException("Generation attempt unavailable");
     }
-    @GetMapping("/campaigns/{id}/trials/{number}/comparison") public Object comparison(@PathVariable String id, @PathVariable int number) {
+    // Serialize large journal reads to limit concurrent comparison allocations.
+    @GetMapping("/campaigns/{id}/trials/{number}/comparison") public synchronized Object comparison(@PathVariable String id, @PathVariable int number) {
         var campaign = store.load(id);
         for (var trial : campaign.trials) if (trial.number == number) {
             if (trial.comparisonDirectory == null) return Map.of("status", "NOT_STARTED");
             Path file = store.directory(id).resolve(trial.comparisonDirectory).resolve("execution/events.jsonl");
             if (!Files.exists(file)) return Map.of("status", trial.status);
-            try {
-                long size = Files.size(file), modified = Files.getLastModifiedTime(file).toMillis();
-                var cached = comparisons.get(file); if (cached != null && cached.size == size && cached.modified == modified) return cached.value;
-                var scores = new TreeMap<String, Map<String, es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator>>();
-                var counts = new TreeMap<String, Map<String, Integer>>();
-                var curves = new ArrayList<Map<String,Object>>();
-                var timing = new TreeMap<String, es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator>();
-                var timeToBest = new TreeMap<String, es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator>();
-                for (var event : AutoLlmFileUtil.events(file)) {
-                    if (!"evaluation-result".equals(event.get("kind")) || !Boolean.TRUE.equals(event.get("measured"))) continue;
-                    String algorithm = (String) event.get("algorithm");
-                    counts.computeIfAbsent(algorithm, _ -> new TreeMap<>()).merge((String) event.get("state"), 1, Integer::sum);
-                    if ("SUCCEEDED".equals(event.get("state"))) {
-                        timing.computeIfAbsent(algorithm, _ -> new es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator()).add(((Number) event.get("executionTimeNanos")).doubleValue() / 1_000_000);
-                        timeToBest.computeIfAbsent(algorithm, _ -> new es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator()).add(((Number) event.get("timeToBestNanos")).doubleValue() / 1_000_000);
-                        curves.add(Map.of("instance", event.get("instance"), "instanceId", event.get("instanceId"), "algorithm", algorithm, "iteration", event.get("iteration"), "curves", event.get("curves")));
-                    }
-                    if ("SUCCEEDED".equals(event.get("state"))) for (var entry : AutoLlmFileUtil.objectMap(event.get("objectives")).entrySet()) {
-                        if (entry.getValue() instanceof Number value) scores.computeIfAbsent(algorithm, _ -> new TreeMap<>()).computeIfAbsent(entry.getKey(), _ -> new es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator()).add(value.doubleValue());
-                    }
+            var scores = new TreeMap<String, Map<String, es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator>>();
+            var counts = new TreeMap<String, Map<String, Integer>>();
+            var curves = new ArrayList<Map<String,Object>>();
+            var timing = new TreeMap<String, es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator>();
+            var timeToBest = new TreeMap<String, es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator>();
+            AutoLlmFileUtil.forEachEvent(file, event -> {
+                if (!"evaluation-result".equals(event.get("kind")) || !Boolean.TRUE.equals(event.get("measured"))) return;
+                String algorithm = (String) event.get("algorithm");
+                counts.computeIfAbsent(algorithm, _ -> new TreeMap<>()).merge((String) event.get("state"), 1, Integer::sum);
+                if ("SUCCEEDED".equals(event.get("state"))) {
+                    timing.computeIfAbsent(algorithm, _ -> new es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator()).add(((Number) event.get("executionTimeNanos")).doubleValue() / 1_000_000);
+                    timeToBest.computeIfAbsent(algorithm, _ -> new es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator()).add(((Number) event.get("timeToBestNanos")).doubleValue() / 1_000_000);
+                    curves.add(Map.of("instance", event.get("instance"), "instanceId", event.get("instanceId"), "algorithm", algorithm, "iteration", event.get("iteration"), "curves", event.get("curves")));
                 }
-                var summary = new TreeMap<String, Object>();
-                for (var entry : scores.entrySet()) {
-                    var objectives = new TreeMap<String, Object>();
-                    for (var objective : entry.getValue().entrySet()) {
-                        var definition = es.urjc.etsii.grafo.util.Context.getObjectivesW().get(objective.getKey());
-                        var direction = definition == null ? es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE : definition.getFMode();
-                        objectives.put(objective.getKey(), objective.getValue().summary(direction, null));
-                    }
-                    summary.put(entry.getKey(), objectives);
+                if ("SUCCEEDED".equals(event.get("state"))) for (var entry : AutoLlmFileUtil.objectMap(event.get("objectives")).entrySet()) {
+                    if (entry.getValue() instanceof Number value) scores.computeIfAbsent(algorithm, _ -> new TreeMap<>()).computeIfAbsent(entry.getKey(), _ -> new es.urjc.etsii.grafo.util.StatisticsUtil.Accumulator()).add(value.doubleValue());
                 }
-                var executionTimes = new TreeMap<String,Object>(); var bestTimes = new TreeMap<String,Object>();
-                for (var entry : timing.entrySet()) executionTimes.put(entry.getKey(), entry.getValue().summary(es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE, null));
-                for (var entry : timeToBest.entrySet()) bestTimes.put(entry.getKey(), entry.getValue().summary(es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE, null));
-                Object value = Map.of("counts", counts, "objectives", summary, "executionTimeMillis", executionTimes, "timeToBestMillis", bestTimes, "curves", curves);
-                comparisons.put(file, new CachedComparison(size, modified, value)); return value;
-            } catch (IOException e) { throw new UncheckedIOException(e); }
+            });
+            var summary = new TreeMap<String, Object>();
+            for (var entry : scores.entrySet()) {
+                var objectives = new TreeMap<String, Object>();
+                for (var objective : entry.getValue().entrySet()) {
+                    var definition = es.urjc.etsii.grafo.util.Context.getObjectivesW().get(objective.getKey());
+                    var direction = definition == null ? es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE : definition.getFMode();
+                    objectives.put(objective.getKey(), objective.getValue().summary(direction, null));
+                }
+                summary.put(entry.getKey(), objectives);
+            }
+            var executionTimes = new TreeMap<String,Object>(); var bestTimes = new TreeMap<String,Object>();
+            for (var entry : timing.entrySet()) executionTimes.put(entry.getKey(), entry.getValue().summary(es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE, null));
+            for (var entry : timeToBest.entrySet()) bestTimes.put(entry.getKey(), entry.getValue().summary(es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE, null));
+            return Map.of("counts", counts, "objectives", summary, "executionTimeMillis", executionTimes, "timeToBestMillis", bestTimes, "curves", curves);
         }
         throw new NoSuchElementException("Trial unavailable");
     }

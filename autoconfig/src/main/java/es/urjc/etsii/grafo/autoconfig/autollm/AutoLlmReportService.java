@@ -6,7 +6,9 @@ import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelSerializer;
 import es.urjc.etsii.grafo.solution.Solution;
 import org.springframework.stereotype.Service;
-import java.nio.file.Path;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.*;
 import java.util.*;
 
 /** Pooled export uses cached values and reporting-only algorithm names, never generated classes. */
@@ -16,13 +18,17 @@ public class AutoLlmReportService<S extends Solution<S,I>, I extends Instance> {
     public AutoLlmReportService(ExcelSerializer<S,I> excel) { this.excel = excel; }
     public void report(AutoLlmCampaign campaign, Path root) {
         var grouped = new LinkedHashMap<String, List<WorkUnitResult<S,I>>>();
-        var portable = new ArrayList<Map<String, Object>>();
+        long[] measuredRows = {0};
         var counts = new TreeMap<String, Integer>();
+        Path portable = root.resolve("reports/comparison-rows.json"), temporary = portable.resolveSibling("comparison-rows.json.tmp");
+        try {
+        Files.createDirectories(portable.getParent());
+        try (var writer = AutoLlmFileUtil.JSON.writerWithDefaultPrettyPrinter().writeValuesAsArray(temporary)) {
         for (var trial : campaign.trials) {
             counts.merge(trial.status, 1, Integer::sum);
             if (trial.comparisonDirectory == null) continue;
-            for (var row : AutoLlmFileUtil.events(root.resolve(trial.comparisonDirectory).resolve("execution/events.jsonl"))) {
-                if (!"evaluation-result".equals(row.get("kind")) || !Boolean.TRUE.equals(row.get("measured"))) continue;
+            AutoLlmFileUtil.forEachEvent(root.resolve(trial.comparisonDirectory).resolve("execution/events.jsonl"), row -> {
+                if (!"evaluation-result".equals(row.get("kind")) || !Boolean.TRUE.equals(row.get("measured"))) return;
                 var enriched = new LinkedHashMap<>(row);
                 String localInstance = AutoLlmPoolUtil.localInstance(campaign, root, trial, (String) row.get("instance"));
                 enriched.put("remoteInstance", row.get("instance")); enriched.put("instance", localInstance);
@@ -30,8 +36,8 @@ public class AutoLlmReportService<S extends Solution<S,I>, I extends Instance> {
                 enriched.put("targetId", trial.targetId); enriched.put("poolRevision", trial.targetRevision);
                 var target = campaign.targets.get(trial.targetId);
                 enriched.put("executionHost", target.host);
-                portable.add(enriched);
-                if (!"SUCCEEDED".equals(row.get("state"))) continue;
+                writer.write(enriched); measuredRows[0]++;
+                if (!"SUCCEEDED".equals(row.get("state"))) return;
                 String name = "T%02d-%s".formatted(trial.number, row.get("algorithm"));
                 var algorithm = new Algorithm<S,I>(name) { @Override public S algorithm(I instance) { throw new UnsupportedOperationException("Reporting name only"); } };
                 var objectives = new LinkedHashMap<String, Double>();
@@ -41,10 +47,13 @@ public class AutoLlmReportService<S extends Solution<S,I>, I extends Instance> {
                 properties.put("AutoLLM trial", trial.number); properties.put("Tuning seed", trial.tuningSeed); properties.put("Comparison seed", row.get("seed")); properties.put("Algorithm role", row.get("algorithm"));
                 grouped.computeIfAbsent(trial.targetId, _ -> new ArrayList<>()).add(new WorkUnitResult<>(UUID.fromString((String) row.get("id")), true, "autollm-campaign", localInstance, (String) row.get("instanceId"),
                         algorithm, (String) row.get("iteration"), null, objectives, properties, ((Number) row.get("executionTimeNanos")).longValue(), ((Number) row.get("timeToBestNanos")).longValue(), null));
-            }
+            });
         }
-        AutoLlmFileUtil.write(root.resolve("reports/comparison-rows.json"), portable);
-        AutoLlmFileUtil.write(root.resolve("reports/summary.json"), Map.of("campaignId", campaign.id, "status", campaign.status, "trials", counts, "measuredRows", portable.size(), "poolRevision", campaign.poolRevision, "targets", campaign.targets));
+        }
+        try { Files.move(temporary, portable, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
+        catch (AtomicMoveNotSupportedException e) { Files.move(temporary, portable, StandardCopyOption.REPLACE_EXISTING); }
+        } catch (IOException e) { throw new UncheckedIOException(e); }
+        AutoLlmFileUtil.write(root.resolve("reports/summary.json"), Map.of("campaignId", campaign.id, "status", campaign.status, "trials", counts, "measuredRows", measuredRows[0], "poolRevision", campaign.poolRevision, "targets", campaign.targets));
         for (var entry : grouped.entrySet()) {
             var target = campaign.targets.get(entry.getKey());
             String name = "autollm-" + campaign.id + "-" + entry.getKey();

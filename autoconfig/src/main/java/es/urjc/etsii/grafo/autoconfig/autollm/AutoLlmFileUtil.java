@@ -33,7 +33,7 @@ public final class AutoLlmFileUtil {
         try {
             Files.createDirectories(path.toAbsolutePath().getParent());
             Path temp = path.resolveSibling(path.getFileName() + ".tmp");
-            Files.writeString(temp, JSON.writerWithDefaultPrettyPrinter().writeValueAsString(value));
+            JSON.writerWithDefaultPrettyPrinter().writeValue(temp, value);
             try { Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
             catch (AtomicMoveNotSupportedException e) { Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING); }
         } catch (IOException e) { throw new UncheckedIOException(e); }
@@ -179,15 +179,23 @@ public final class AutoLlmFileUtil {
     }
     public static List<Map<String, Object>> events(Path file) {
         var result = new ArrayList<Map<String, Object>>();
-        if (!Files.exists(file)) return result;
-        try {
-            var lines = Files.readAllLines(file);
-            for (int i = 0; i < lines.size(); i++) {
-                if (lines.get(i).isBlank()) continue;
-                try { result.add(parseObject(lines.get(i))); }
-                catch (RuntimeException e) { if (i != lines.size() - 1) throw e; }
+        forEachEvent(file, result::add);
+        return result;
+    }
+    /** Keep only a single journal row and its lookahead in memory; ignore an incomplete final write. */
+    public static void forEachEvent(Path file, java.util.function.Consumer<Map<String, Object>> consumer) {
+        if (!Files.exists(file)) return;
+        try (var reader = Files.newBufferedReader(file)) {
+            for (String line = reader.readLine(); line != null;) {
+                String next = reader.readLine();
+                if (!line.isBlank()) {
+                    Map<String,Object> event;
+                    try { event = parseObject(line); }
+                    catch (RuntimeException e) { if (next != null) throw e; line = next; continue; }
+                    consumer.accept(event);
+                }
+                line = next;
             }
         } catch (IOException e) { throw new UncheckedIOException(e); }
-        return result;
     }
 }
