@@ -1,0 +1,5 @@
+{"id":"waiting_0","validPermutation":true,"feasible":true,"cost":4,"violations":0,"infeasibility":0,"makespan":8,"arrivals":[0,5,6,7,8],"validatorFailures":[]}
+{"id":"waiting_1","validPermutation":true,"feasible":true,"cost":4,"violations":0,"infeasibility":0,"makespan":7,"arrivals":[0,1,5,6,7],"validatorFailures":[]}
+{"id":"waiting_2","validPermutation":false,"feasible":false}
+{"id":"waiting_3","validPermutation":false,"feasible":false}
+{"id":"waiting_4","validPermutation":false,"feasible":false}

@@ -1,0 +1,55 @@
+{
+  "createdUtc": "2026-10-26T13:58:18.244767+00:00",
+  "instance": "n80w200.001.txt",
+  "instanceHash": "bf358aba5651be024e29f136b53a4a02feaacf38f35e5700a46ff88f1bcc0432",
+  "instanceArchive": "example-tsptw/instances/GendreauDumasExtended.zip",
+  "instanceEntry": "n80w200.001.txt",
+  "javaJar": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/java-original.jar",
+  "javaJarHash": "11a248e168a35992acb93c9e951190ccc399ff189182626398a443fb32abde40",
+  "archivedJavaJar": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-25-n80w200.001-100x10s/artifacts/java-original.jar",
+  "repetitions": 10,
+  "firstSeed": 1234,
+  "budgetSeconds": 30,
+  "baselineBudgetSeconds": 10,
+  "metricsEnabled": false,
+  "warmupRuns": 5,
+  "warmupSeconds": 1,
+  "warmupSeeds": [
+    1244,
+    1245,
+    1246,
+    1247,
+    1248
+  ],
+  "baselineWarmupSeeds": [
+    1334,
+    1335,
+    1336,
+    1337,
+    1338
+  ],
+  "jvmFlags": [
+    "-Xms256m",
+    "-Xmx1g"
+  ],
+  "baselineToursAvailable": false,
+  "baselineCostSource": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-25-n80w200.001-100x10s/java/invocation.log",
+  "javaConcurrency": 1,
+  "independentPythonValidatedTours": 10,
+  "actualInvocation": [
+    "java",
+    "-Xms256m",
+    "-Xmx1g",
+    "-jar",
+    "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/java-original.jar",
+    "repair-comparison-java",
+    "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/n80w200.001.txt",
+    "10",
+    "30",
+    "1234",
+    "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/java-30s.jsonl"
+  ],
+  "arithmetic": "double",
+  "permutationStorage": "ArrayList<Integer>",
+  "repairClassification": "corrected"
+}

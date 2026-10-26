@@ -1,0 +1,117 @@
+{
+  "complete": true,
+  "c-original": {
+    "runs": 100,
+    "best": 490.0,
+    "mean": 490.45,
+    "median": 490.0,
+    "sampleStdDev": 0.8333333333333334,
+    "worst": 492.0,
+    "targetHits": 77,
+    "meanWallSeconds": 10.170704598789161,
+    "meanCpuSeconds": 10.0001633
+  },
+  "c-fixed": {
+    "runs": 100,
+    "best": 490.0,
+    "mean": 490.72,
+    "median": 490.0,
+    "sampleStdDev": 0.9436657514740325,
+    "worst": 492.0,
+    "targetHits": 62,
+    "meanWallSeconds": 10.171389514220063,
+    "meanCpuSeconds": 10.00007871
+  },
+  "java": {
+    "runs": 100,
+    "best": 490.0,
+    "mean": 491.5,
+    "median": 492.0,
+    "sampleStdDev": 0.8703882797784892,
+    "worst": 492.0,
+    "targetHits": 25,
+    "meanWallSeconds": 10.00001802961,
+    "meanCpuSeconds": 9.85359884
+  },
+  "java-c-bug": {
+    "runs": 100,
+    "best": 490.0,
+    "mean": 491.52,
+    "median": 492.0,
+    "sampleStdDev": 0.8584693919818557,
+    "worst": 492.0,
+    "targetHits": 24,
+    "meanWallSeconds": 10.00001832041,
+    "meanCpuSeconds": 9.97499919
+  },
+  "java-long": {
+    "runs": 100,
+    "best": 490,
+    "mean": 491.48,
+    "median": 492.0,
+    "sampleStdDev": 0.8816880045536161,
+    "worst": 492,
+    "targetHits": 26,
+    "meanWallSeconds": 10.000016864180001,
+    "meanCpuSeconds": 9.86004112
+  },
+  "java-arrays": {
+    "runs": 100,
+    "best": 490.0,
+    "mean": 491.5,
+    "median": 492.0,
+    "sampleStdDev": 0.8703882797784892,
+    "worst": 492.0,
+    "targetHits": 25,
+    "meanWallSeconds": 10.00001378248,
+    "meanCpuSeconds": 9.98274922
+  },
+  "pairedCComparison": {
+    "pairs": 100,
+    "candidateWins": 16,
+    "ties": 54,
+    "candidateLosses": 30,
+    "meanCandidateMinusBaseline": 0.27,
+    "bootstrap95PercentInterval": [
+      0.02,
+      0.51
+    ],
+    "twoSidedSignTestP": 0.054076031858869555
+  },
+  "pairedJavaComparison": {
+    "pairs": 100,
+    "candidateWins": 22,
+    "ties": 55,
+    "candidateLosses": 23,
+    "meanCandidateMinusBaseline": 0.02,
+    "bootstrap95PercentInterval": [
+      -0.24,
+      0.28
+    ],
+    "twoSidedSignTestP": 1.0
+  },
+  "pairedLongComparison": {
+    "pairs": 100,
+    "candidateWins": 1,
+    "ties": 99,
+    "candidateLosses": 0,
+    "meanCandidateMinusBaseline": -0.02,
+    "bootstrap95PercentInterval": [
+      -0.06,
+      0.0
+    ],
+    "twoSidedSignTestP": 1.0
+  },
+  "pairedArrayComparison": {
+    "pairs": 100,
+    "candidateWins": 0,
+    "ties": 100,
+    "candidateLosses": 0,
+    "meanCandidateMinusBaseline": 0.0,
+    "bootstrap95PercentInterval": [
+      0.0,
+      0.0
+    ],
+    "twoSidedSignTestP": 1.0
+  }
+}

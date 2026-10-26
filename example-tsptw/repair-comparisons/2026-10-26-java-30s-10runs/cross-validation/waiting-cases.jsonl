@@ -1,0 +1,5 @@
+{"id": "waiting_0", "tour": [0, 1, 2, 3, 0]}
+{"id": "waiting_1", "tour": [0, 2, 1, 3, 0]}
+{"id": "waiting_2", "tour": [0, 1, 1, 3, 0]}
+{"id": "waiting_3", "tour": [0, 1, 2, 0]}
+{"id": "waiting_4", "tour": [0, 1, 2, 9, 0]}

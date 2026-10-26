@@ -28,9 +28,25 @@ public final class TSPTWUtil {
         return copy;
     }
 
-    public static <T> void reinsert(List<T> values, int from, int to) {
-        var value = values.remove(from);
-        values.add(to, value);
+    public static void reinsert(int[] values, int from, int to) {
+        int value = values[from];
+        if (from < to) {
+            System.arraycopy(values, from + 1, values, from, to - from);
+        } else if (from > to) {
+            System.arraycopy(values, to, values, to + 1, from - to);
+        }
+        values[to] = value;
+    }
+
+    public static boolean isPermutation(int[] values, int length) {
+        if (length < 0 || length > values.length) return false;
+        boolean[] seen = new boolean[length];
+        for (int i = 0; i < length; i++) {
+            int value = values[i];
+            if (value < 0 || value >= length || seen[value]) return false;
+            seen[value] = true;
+        }
+        return true;
     }
 
     public static List<Integer> shuffledPositions(TSPTWSolution solution, boolean violated) {

@@ -1,0 +1,28 @@
+{
+  "runs": 100,
+  "baselineBudgetSeconds": 10,
+  "candidateBudgetSeconds": 30.0,
+  "baselineMean": 491.5,
+  "candidateMean": 491.02,
+  "baselineTargetHits": 25,
+  "candidateTargetHits": 48,
+  "candidateBest": 490.0,
+  "candidateWorst": 492.0,
+  "wins": 25,
+  "ties": 75,
+  "losses": 0,
+  "meanCandidateMinusBaseline": -0.48,
+  "bootstrap95PercentInterval": [
+    -0.65,
+    -0.32
+  ],
+  "twoSidedSignTestP": 5.960464477539063e-08,
+  "meanWallSeconds": 30.00009807287,
+  "meanCpuSeconds": 28.77590142,
+  "minCpuSeconds": 24.256478,
+  "maxCpuSeconds": 29.782225,
+  "improvedAfter10Seconds": 25,
+  "independentlyValidatedTours": 100,
+  "elapsedSeconds": 756.7455736669945,
+  "parallelWorkers": 4
+}

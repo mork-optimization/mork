@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.io;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
-import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestInstanceImporter;
 import es.urjc.etsii.grafo.util.IOUtil;
@@ -9,6 +8,11 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.context.properties.bind.Bindable;
+import org.springframework.boot.context.properties.bind.Binder;
+import org.springframework.boot.context.properties.source.MapConfigurationPropertySource;
 
 import java.io.File;
 import java.io.IOException;
@@ -70,14 +74,10 @@ class InstanceManagerTest {
     }
 
     private InstanceManager<TestInstance> buildManager(boolean preload, String instancePath, InstanceImporter<TestInstance> instanceImporter){
-        return buildManager(preload, instancePath, instanceImporter, new SolverConfig());
-    }
-
-    private InstanceManager<TestInstance> buildManager(boolean preload, String instancePath, InstanceImporter<TestInstance> instanceImporter, SolverConfig solverConfig){
         InstanceConfiguration config = new InstanceConfiguration();
         config.setPreload(preload);
         config.setPath(Map.of(TEST_EXPERIMENT, instancePath));
-        return new InstanceManager<>(config, solverConfig, instanceImporter);
+        return new InstanceManager<>(config, instanceImporter);
     }
 
     @Test
@@ -246,55 +246,54 @@ class InstanceManagerTest {
     }
 
     @Test
-    void warmupUsesExplicitInstancePath(){
-        var solverConfig = new SolverConfig();
-        solverConfig.getWarmup().setInstancePath(instance2File.getAbsolutePath());
-
-        var manager = buildManager(false, instancePath, instanceImporter, solverConfig);
-        var selected = manager.getWarmupInstancePath(TEST_EXPERIMENT, List.of(instance1File.getAbsolutePath(), instance3File.getAbsolutePath()));
+    void referenceUsesExplicitInstancePathFromConfigurationMap(){
+        var properties = new MapConfigurationPropertySource(Map.of(
+                "instances.path.default", instancePath,
+                "instances.path.reference", "  " + instance2File.getAbsolutePath() + "  "));
+        var config = new Binder(properties).bind("instances", Bindable.of(InstanceConfiguration.class)).get();
+        var manager = new InstanceManager<>(config, instanceImporter);
+        var selected = manager.getReferenceInstancePath(TEST_EXPERIMENT);
 
         assertEquals(instance2File.getAbsolutePath(), selected);
         verifyNoInteractions(instanceImporter);
     }
 
-    @Test
-    void warmupAutoSelectsFastestLoadedInstance(){
-        var manager = buildManager(true, instancePath);
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void referenceAutoSelectsFastestLoadedInstanceRegardlessOfPreloading(boolean preload){
+        var manager = buildManager(preload, instancePath);
         manager.getInstanceSolveOrder(TEST_EXPERIMENT);
 
         manager.getInstance(instance1File.getAbsolutePath()).setProperty(Instance.LOAD_TIME_NANOS, 30L);
         manager.getInstance(instance2File.getAbsolutePath()).setProperty(Instance.LOAD_TIME_NANOS, 10L);
         manager.getInstance(instance3File.getAbsolutePath()).setProperty(Instance.LOAD_TIME_NANOS, 20L);
 
-        var selected = manager.getWarmupInstancePath(TEST_EXPERIMENT, List.of(
-                instance1File.getAbsolutePath(),
-                instance2File.getAbsolutePath(),
-                instance3File.getAbsolutePath()
-        ));
+        clearInvocations(instanceImporter);
+        var selected = manager.getReferenceInstancePath(TEST_EXPERIMENT);
 
         assertEquals(instance2File.getAbsolutePath(), selected);
+        verifyNoInteractions(instanceImporter);
     }
 
     @Test
-    void warmupAutoFallsBackToSmallestFileWhenLoadedTimesAreUnavailable() throws IOException {
-        Files.writeString(instance1File.toPath(), "1234");
-        Files.writeString(instance2File.toPath(), "123456");
-        Files.writeString(instance3File.toPath(), "1");
-
-        var manager = buildManager(true, instancePath);
-        var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
+    void referenceRetainsLoadTimesAfterInstanceCacheIsCleared() {
+        var manager = buildManager(false, instancePath);
+        manager.getInstance(instance1File.getAbsolutePath()).setProperty(Instance.LOAD_TIME_NANOS, 30L);
+        manager.getInstance(instance2File.getAbsolutePath()).setProperty(Instance.LOAD_TIME_NANOS, 10L);
+        manager.getInstance(instance3File.getAbsolutePath()).setProperty(Instance.LOAD_TIME_NANOS, 20L);
+        assertEquals(instance2File.getAbsolutePath(), manager.getReferenceInstancePath(TEST_EXPERIMENT));
         clearInvocations(instanceImporter);
         manager.purgeCache();
 
-        var selected = manager.getWarmupInstancePath(TEST_EXPERIMENT, instances);
+        var selected = manager.getReferenceInstancePath(TEST_EXPERIMENT);
 
-        assertEquals(instance3File.getAbsolutePath(), selected);
+        assertEquals(instance2File.getAbsolutePath(), selected);
         verifyNoInteractions(instanceImporter);
     }
 
     @SuppressWarnings("unchecked")
     @Test
-    void warmupAutoSelectionUsesCachedLoadTimesForRelativizedSolveOrderPaths() throws IOException {
+    void referenceUsesCachedLoadTimesForRelativizedSolveOrderPaths() throws IOException {
         Path targetDirectory = Path.of("target");
         Files.createDirectories(targetDirectory);
         Path relativeFolder = Files.createTempDirectory(targetDirectory, "warmup-cache");
@@ -315,28 +314,96 @@ class InstanceManagerTest {
         when(importer.importInstance(fastPath)).thenReturn(fastInstance);
 
         var manager = buildManager(true, relativeFolder.toString(), importer);
-        var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
+        manager.getInstanceSolveOrder(TEST_EXPERIMENT);
         manager.getInstance(slowPath).setProperty(Instance.LOAD_TIME_NANOS, 30L);
         manager.getInstance(fastPath).setProperty(Instance.LOAD_TIME_NANOS, 10L);
         clearInvocations(importer);
 
-        var selected = manager.getWarmupInstancePath(TEST_EXPERIMENT, instances);
+        var selected = manager.getReferenceInstancePath(TEST_EXPERIMENT);
 
         assertEquals(fastInstance.getPath(), selected);
         verifyNoInteractions(importer);
     }
 
     @Test
-    void warmupAutoSelectsSmallestFileIfPreloadDisabled() throws IOException {
-        Files.writeString(instance1File.toPath(), "1234");
-        Files.writeString(instance2File.toPath(), "123456");
+    void referenceMeasuresUnknownLoadTimesInsteadOfUsingFileSize() throws IOException {
+        Files.writeString(instance1File.toPath(), "123456789");
+        Files.writeString(instance2File.toPath(), "1234");
         Files.writeString(instance3File.toPath(), "1");
 
         var manager = buildManager(false, instancePath);
-        var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
-        var selected = manager.getWarmupInstancePath(TEST_EXPERIMENT, instances);
+        manager.getInstance(instance1File.getAbsolutePath()).setProperty(Instance.LOAD_TIME_NANOS, 0L);
+        var selected = manager.getReferenceInstancePath(TEST_EXPERIMENT);
 
-        assertEquals(instance3File.getAbsolutePath(), selected);
+        assertEquals(instance1File.getAbsolutePath(), selected);
+        verify(instanceImporter).importInstance(instance1File.getAbsolutePath());
+        verify(instanceImporter).importInstance(instance2File.getAbsolutePath());
+        verify(instanceImporter).importInstance(instance3File.getAbsolutePath());
+        verifyNoMoreInteractions(instanceImporter);
+    }
+
+    @Test
+    void referenceBreaksEqualLoadTimesByPathRatherThanSolveOrder() {
+        var manager = buildManager(true, instancePath);
+        var instances = manager.getInstanceSolveOrder(TEST_EXPERIMENT);
+        assertEquals(instance3File.getAbsolutePath(), instances.getFirst());
+        for (String path : instances) manager.getInstance(path).setProperty(Instance.LOAD_TIME_NANOS, 10L);
+
+        assertEquals(instance1File.getAbsolutePath(), manager.getReferenceInstancePath(TEST_EXPERIMENT));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   "})
+    void blankReferenceUsesAutomaticSelectionWithoutFallingBackToDefault(String reference) {
+        var config = new InstanceConfiguration();
+        config.setPreload(false);
+        config.setPath(Map.of("default", instancePath, "reference", reference));
+        var manager = new InstanceManager<>(config, instanceImporter);
+        manager.getInstance(instance1File.getAbsolutePath()).setProperty(Instance.LOAD_TIME_NANOS, 0L);
+
+        assertEquals(instance1File.getAbsolutePath(), manager.getReferenceInstancePath(TEST_EXPERIMENT));
+    }
+
+    @Test
+    void referenceRejectsAnExplicitInstanceOutsideTheConfiguredIndex() {
+        var config = new InstanceConfiguration();
+        config.setPath(Map.of(TEST_EXPERIMENT, indexFile.getAbsolutePath(), "reference", instance2File.getAbsolutePath()));
+        var manager = new InstanceManager<>(config, instanceImporter);
+
+        Assertions.assertThrows(IllegalArgumentException.class, () -> manager.getReferenceInstancePath(TEST_EXPERIMENT));
+        verifyNoInteractions(instanceImporter);
+    }
+
+    @Test
+    void referenceResolvesExplicitPathsRelativeToTheConfiguredIndex() {
+        var config = new InstanceConfiguration();
+        config.setPath(Map.of(TEST_EXPERIMENT, indexFile.getAbsolutePath(), "reference", instance3File.getName()));
+        var manager = new InstanceManager<>(config, instanceImporter);
+
+        assertEquals(instance3File.getAbsolutePath(), manager.getReferenceInstancePath(TEST_EXPERIMENT));
+        verifyNoInteractions(instanceImporter);
+    }
+
+    @Test
+    void referenceResolvesExplicitArchiveEntriesRelativeToTheConfiguredIndex() throws IOException {
+        Path archive = Path.of(instancePath).resolve("data.zip");
+        Files.copy(Path.of("src/test/resources/instzip/data1.zip"), archive);
+        String entry = IOUtil.entryPath(IOUtil.iterate(archive.toString()).getFirst());
+        Files.writeString(indexFile.toPath(), "data.zip!" + entry);
+        var config = new InstanceConfiguration();
+        config.setPath(Map.of(TEST_EXPERIMENT, indexFile.getAbsolutePath(), "reference", "data.zip!" + entry));
+        var manager = new InstanceManager<>(config, instanceImporter);
+
+        assertEquals(archive + "!" + entry, manager.getReferenceInstancePath(TEST_EXPERIMENT));
+        verifyNoInteractions(instanceImporter);
+    }
+
+    @Test
+    void referenceRejectsAnEmptyCandidateSet() throws IOException {
+        Files.writeString(indexFile.toPath(), "");
+        var manager = buildManager(false, indexFile.getAbsolutePath());
+
+        Assertions.assertThrows(IllegalArgumentException.class, () -> manager.getReferenceInstancePath(TEST_EXPERIMENT));
         verifyNoInteractions(instanceImporter);
     }
 

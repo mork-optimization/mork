@@ -37,7 +37,7 @@ public class AutoLlmCampaignService {
         if (c.trials() < 1 || c.trials() > 10000) errors.add("Trials must be between 1 and 10000");
         if (c.maxParameters() < 1 || c.maxParameters() >= 300) errors.add("Parameter cap must be between 1 and 299");
         if (c.preparation().maxRepairs() < 0 || c.preparation().maxRepairs() > 100) errors.add("Repair limit must be between 0 and 100");
-        if (c.preparation().pilotDurationMillis() <= 0 || c.tuning().evaluations() <= 0 || c.comparison().repetitions() <= 0) errors.add("Budgets and repetitions must be positive");
+        if (c.preparation().probeDurationMillis() <= 0 || c.preparation().pilotDurationMillis() <= 0 || c.tuning().evaluations() <= 0 || c.comparison().repetitions() <= 0) errors.add("Budgets and repetitions must be positive");
         if (c.tuning().ignoreInitialMillis() < 0 || c.tuning().intervalDurationMillis() <= 0 || c.comparison().timeLimitMillis() < 0) errors.add("Invalid algorithm time horizon");
         if (c.codex().maxConcurrentSessions() < 1) errors.add("Concurrent Codex sessions must be positive");
         errors.addAll(AutoLlmExecutionService.validate(c));

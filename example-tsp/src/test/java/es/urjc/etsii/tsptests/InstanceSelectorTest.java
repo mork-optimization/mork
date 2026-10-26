@@ -3,7 +3,6 @@ package es.urjc.etsii.tsptests;
 import es.urjc.etsii.grafo.tsp.model.TSPInstance;
 import es.urjc.etsii.grafo.tsp.model.TSPInstanceImporter;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
-import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.events.MorkEventPublisher;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.orchestrator.InstanceProperties;
@@ -51,7 +50,7 @@ class InstanceSelectorTest {
         config.setPath(Map.of("default", instancePath));
         config.setPreliminarOutputPath(tmpFolderF.getAbsolutePath());
 
-        var instanceManager = new InstanceManager<>(config, solverConfigForTest(), new TSPInstanceImporter());
+        var instanceManager = new InstanceManager<>(config, new TSPInstanceImporter());
         var eventPublisher = Mockito.mock(MorkEventPublisher.class);
         var lifecycleCoordinator = Mockito.mock(ExecutionLifecycleCoordinator.class);
         var selector = new InstanceSelector<>(instanceManager, config, eventPublisher, lifecycleCoordinator); // The Python part is not actually tested!
@@ -59,12 +58,6 @@ class InstanceSelectorTest {
 
         verifyCSV(nInstances);
         verifyPrelimPath(tmpFolderF, nInstancesToPick);
-    }
-
-    private static SolverConfig solverConfigForTest() {
-        var solverConfig = new SolverConfig();
-        solverConfig.getWarmup().setEnabled(false);
-        return solverConfig;
     }
 
     private void verifyCSV(long nInstances) throws IOException {

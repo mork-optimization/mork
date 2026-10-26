@@ -11,6 +11,7 @@ import java.util.Map;
 @Configuration
 @ConfigurationProperties(prefix = "instances")
 public class InstanceConfiguration {
+    /** Experiment input sources, plus the optional shared {@code reference} instance override. */
     private Map<String, String> path;
 
     private String forSelection;

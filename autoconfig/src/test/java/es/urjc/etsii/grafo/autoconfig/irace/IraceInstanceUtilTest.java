@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.irace;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
-import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.io.InstanceImporter;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.testutil.TestInstance;
@@ -83,7 +82,7 @@ class IraceInstanceUtilTest {
                 ? Map.of("default", source.toString())
                 : Map.of("default", "missing", "irace", source.toString()));
         var importer = (InstanceImporter<TestInstance>) mock(InstanceImporter.class);
-        var manager = new InstanceManager<>(config, new SolverConfig(), importer);
+        var manager = new InstanceManager<>(config, importer);
         Path manifest = temp.resolve("autoconfig-instances.txt");
 
         IraceInstanceUtil.write(manifest, manager.getInstanceSolveOrder("irace", false));

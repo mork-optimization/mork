@@ -1,0 +1,6 @@
+# Initialization Time 0.000436
+# Trial Iteration     Cost  Cviols     Time
+      1         1   497.00       0       0.0
+      1         2   492.00       0       0.0
+      1        21   490.00       0       0.4
+      1       545   490.00       0      10.0

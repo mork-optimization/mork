@@ -87,7 +87,11 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
             ExecutionJournalUtil.write("components.json", components);
             ExecutionJournalUtil.write("search-space.json", space.snapshot());
             ExecutionJournalUtil.write("check.json", new Check(space.iraceParameters().size(), added, training, comparison));
-            for (String arg : args) if (arg.equals("--autollm-probe")) probe(seeds, added, training.getFirst(), codec);
+            for (String arg : args) if (arg.equals("--autollm-probe")) {
+                String reference = instances.getReferenceInstancePath("irace");
+                ExecutionJournalUtil.write("probe-instance.json", Map.of("instance", reference));
+                probe(seeds, added, reference);
+            }
         } catch (IOException e) { outcome = es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.FAILED; throw new UncheckedIOException(e); }
         catch (RuntimeException | Error e) {
             outcome = es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.FAILED;
@@ -104,7 +108,7 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
         ExecutionJournalUtil.write("winner.json", AutoLlmFileUtil.JSON.readTree(json));
         ExecutionJournalUtil.write("winner-parameters.json", elite);
     }
-    private void probe(List<ComponentSpec> seeds, List<String> added, String instance, ComponentSpecJsonCodec codec) {
+    private void probe(List<ComponentSpec> seeds, List<String> added, String instance) {
         state.prepareCoordinator(AutoconfigRunState.RunMode.AUTOCONFIG, IraceCostMetricUtil.describe(AutoconfigRunState.RunMode.AUTOCONFIG, solver, irace));
         var specs = new ArrayList<>(seeds);
         var names = new ArrayList<String>();
@@ -115,6 +119,7 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
             catch (IllegalArgumentException e) { skipped.put(component, e.getMessage()); }
         }
         var outcomes = new LinkedHashMap<String, String>();
+        var requests = new ArrayList<IraceExecuteConfig>(specs.size());
         for (int i = 0; i < specs.size(); i++) {
             String[] table = InitialConfigurationUtil.toIraceTable(space, List.of(specs.get(i))).split("\n");
             String[] headers = table[0].split("\t"); String[] cells = table[1].split("\t");
@@ -124,10 +129,12 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
                 if (value.startsWith("\"")) value = value.substring(1, value.length() - 1).replace("\\\"", "\"");
                 parameters.put(headers[j], value);
             }
-            var response = evaluator.preflightBatch(List.of(IraceExecuteConfig.of(names.get(i), 1, instance, (int) solver.getSeed(), parameters))).getFirst();
-            outcomes.put(names.get(i), response.toIraceResultString());
-            ExecutionJournalUtil.write("probes.json", Map.of("outcomes", outcomes, "skipped", skipped));
+            requests.add(IraceExecuteConfig.of(names.get(i), 1, instance, (int) solver.getSeed(), parameters));
         }
+        ExecutionJournalUtil.write("probes.json", Map.of("outcomes", outcomes, "skipped", skipped));
+        var responses = evaluator.preflightBatch(requests);
+        for (int i = 0; i < responses.size(); i++) outcomes.put(names.get(i), responses.get(i).toIraceResultString());
+        ExecutionJournalUtil.write("probes.json", Map.of("outcomes", outcomes, "skipped", skipped));
         for (int i = 0; i < seeds.size(); i++) if (outcomes.get("seed-" + i).startsWith("Inf")) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "SEED_PROBE", "Supplied seed did not execute successfully: " + i, ExecutionJournalUtil.directory());
         // Feasibility failures and invalid combinations are normal penalties during tuning.
         // An exception from a generated component is actionable repair feedback.

@@ -34,7 +34,7 @@ class TSPTWSolutionTest {
             assertSame(instance, solution.getInstance());
         }
         copy.swap(1);
-        assertEquals(List.of(0, 1, 2, 3, 0), original.permutation);
+        assertArrayEquals(new int[]{0, 1, 2, 3, 0}, original.permutation);
         assertEquals(0, original.constraint_violations());
         assertTrue(copy.constraint_violations() > 0);
     }
@@ -45,7 +45,7 @@ class TSPTWSolutionTest {
         var best = original.localsearch_insertion(false);
         assertEquals(136, original.cost());
         assertEquals(113, best.cost());
-        assertEquals(List.of(0, 1, 2, 5, 3, 4, 0), best.permutation);
+        assertArrayEquals(new int[]{0, 1, 2, 5, 3, 4, 0}, best.permutation);
         assertTrue(validator.validate(best).isValid());
     }
 
@@ -98,9 +98,9 @@ class TSPTWSolutionTest {
                 s -> s._makespan[2]++, s -> s._constraint_violations++,
                 s -> s._infeasibility++, s -> s.nodes_available++,
                 s -> s.node_assigned[2] = false,
-                s -> s.permutation.set(2, 1), s -> s.permutation.set(2, -1),
-                s -> s.permutation.set(2, s.n), s -> s.permutation.removeLast(),
-                s -> s.permutation.set(0, 1), s -> s.permutation.set(s.n, 1))) {
+                s -> s.permutation[2] = 1, s -> s.permutation[2] = -1,
+                s -> s.permutation[2] = s.n, s -> s.permutationSize--,
+                s -> s.permutation[0] = 1, s -> s.permutation[s.n] = 1)) {
             var copy = original.clone_solution();
             corrupt.accept(copy);
             assertFalse(validator.validate(copy).isValid());

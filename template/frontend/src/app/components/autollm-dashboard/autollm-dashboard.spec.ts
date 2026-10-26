@@ -21,7 +21,7 @@ describe('AutoLLM dashboard', () => {
   function configuration(): AutoLlmConfig {
     return { project: { repository: '/repo', ref: 'HEAD', buildCommand: ['mvn', 'verify'], artifact: 'target/project.jar', runArguments: [] },
       workspace: '/work', trials: 1, seed: 1234, maxParameters: 299, sotaFile: '/sota.json', initialConfigurationsFile: null, trainingPath: '/train.index', comparisonPath: '/test.index',
-      codex: { executable: 'codex', promptFile: null, prompt: null, model: null, reasoningEffort: null, maxConcurrentSessions: 1 }, preparation: { pilotDurationMillis: 1000, maxRepairs: 1 },
+      codex: { executable: 'codex', promptFile: null, prompt: null, model: null, reasoningEffort: null, maxConcurrentSessions: 1 }, preparation: { probeDurationMillis: 1000, pilotDurationMillis: 1000, maxRepairs: 1 },
       tuning: { evaluations: 100, ignoreInitialMillis: 1000, intervalDurationMillis: 9000, logScaleArea: true }, comparison: { repetitions: 30, timeLimitMillis: 10000 },
       execution: { target: 'LOCAL', ssh: null, workers: -1, watchdogGraceMillis: 1000, codexTimeoutMillis: 10000, buildTimeoutMillis: 10000, startupTimeoutMillis: 10000, searchSpaceTimeoutMillis: 10000, phaseTimeoutMillis: 10000, stageTimeoutMillis: 10000, heap: '2g' } };
   }

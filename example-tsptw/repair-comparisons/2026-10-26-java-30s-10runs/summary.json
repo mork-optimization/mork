@@ -1,0 +1,99 @@
+{
+  "instance": "n80w200.001.txt",
+  "runs": 10,
+  "firstSeed": 1234,
+  "lastSeed": 1243,
+  "metricsEnabled": false,
+  "baselineMean": 491.8,
+  "candidateMean": 491.0,
+  "baselineTargetHits": 1,
+  "candidateTargetHits": 5,
+  "wins": 4,
+  "ties": 6,
+  "losses": 0,
+  "meanCandidateMinusBaseline": -0.8,
+  "meanWallSeconds": 30.0000673749,
+  "meanCpuSeconds": 29.1778877,
+  "rows": [
+    {
+      "seed": 1234,
+      "cost10s": 492.0,
+      "cost30s": 492.0,
+      "timeToBest30s": 0.0092745,
+      "wallSeconds30s": 30.0001095,
+      "cpuSeconds30s": 29.265024
+    },
+    {
+      "seed": 1235,
+      "cost10s": 490.0,
+      "cost30s": 490.0,
+      "timeToBest30s": 1.710647041,
+      "wallSeconds30s": 30.000064041,
+      "cpuSeconds30s": 29.912461
+    },
+    {
+      "seed": 1236,
+      "cost10s": 492.0,
+      "cost30s": 490.0,
+      "timeToBest30s": 24.338791708,
+      "wallSeconds30s": 30.000023125,
+      "cpuSeconds30s": 29.718661
+    },
+    {
+      "seed": 1237,
+      "cost10s": 492.0,
+      "cost30s": 490.0,
+      "timeToBest30s": 13.664268542,
+      "wallSeconds30s": 30.00010675,
+      "cpuSeconds30s": 29.835357
+    },
+    {
+      "seed": 1238,
+      "cost10s": 492.0,
+      "cost30s": 490.0,
+      "timeToBest30s": 14.658255791,
+      "wallSeconds30s": 30.000018583,
+      "cpuSeconds30s": 29.855247
+    },
+    {
+      "seed": 1239,
+      "cost10s": 492.0,
+      "cost30s": 492.0,
+      "timeToBest30s": 0.04383925,
+      "wallSeconds30s": 30.000021083,
+      "cpuSeconds30s": 29.58862
+    },
+    {
+      "seed": 1240,
+      "cost10s": 492.0,
+      "cost30s": 492.0,
+      "timeToBest30s": 0.053433709,
+      "wallSeconds30s": 30.000018209,
+      "cpuSeconds30s": 29.882997
+    },
+    {
+      "seed": 1241,
+      "cost10s": 492.0,
+      "cost30s": 492.0,
+      "timeToBest30s": 0.080768167,
+      "wallSeconds30s": 30.000102542,
+      "cpuSeconds30s": 28.944341
+    },
+    {
+      "seed": 1242,
+      "cost10s": 492.0,
+      "cost30s": 490.0,
+      "timeToBest30s": 21.283714875,
+      "wallSeconds30s": 30.000022541,
+      "cpuSeconds30s": 29.6913
+    },
+    {
+      "seed": 1243,
+      "cost10s": 492.0,
+      "cost30s": 492.0,
+      "timeToBest30s": 0.205024333,
+      "wallSeconds30s": 30.000187375,
+      "cpuSeconds30s": 25.084869
+    }
+  ]
+}

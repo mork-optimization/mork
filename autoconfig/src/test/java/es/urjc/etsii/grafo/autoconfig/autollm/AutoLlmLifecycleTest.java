@@ -65,7 +65,7 @@ class AutoLlmLifecycleTest {
         if (mode.equals("baseline")) buildCommand.add("--fail-replay");
         if (mode.equals("framework")) buildCommand.add("--fail-once-trial");
         var settings = new AutoLlmConfig(new AutoLlmConfig.Project(repo.toString(), "HEAD", buildCommand, "target/project.jar", null), temp.resolve("campaigns").toString(), 2, 1234L, 299,
-                "sota.json", null, "train.index", "comparison.index", new AutoLlmConfig.Codex(cli.toString(), null, null, mode.startsWith("quota-") ? mode + "-fixture" : archiveFailure ? "missing-archive-fixture" : mode.equals("framework") ? null : "repair-fixture", null, null), new AutoLlmConfig.Preparation(5000L, 1),
+                "sota.json", null, "train.index", "comparison.index", new AutoLlmConfig.Codex(cli.toString(), null, null, mode.startsWith("quota-") ? mode + "-fixture" : archiveFailure ? "missing-archive-fixture" : mode.equals("framework") ? null : "repair-fixture", null, null), new AutoLlmConfig.Preparation(5000L, 5000L, 1),
                 new AutoLlmConfig.Tuning(100, 2L, 20L, false), new AutoLlmConfig.Comparison(2, 20L), new AutoLlmConfig.Execution(2, 50L, 5000L, 5000L, 5000L, 5000L, 5000L, 10000L, "128m", null, null));
         var failures = new java.util.concurrent.atomic.AtomicInteger(mode.equals("transient") ? 2 : mode.equals("persistent") ? 3 : 0);
         var generations = new java.util.concurrent.atomic.AtomicInteger();

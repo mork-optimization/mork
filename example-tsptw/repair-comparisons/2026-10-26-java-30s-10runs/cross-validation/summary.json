@@ -1,0 +1,18 @@
+{
+  "replacementTours": 60,
+  "toursPerOrigin": 10,
+  "crossLanguageChecks": 160,
+  "allTourEvaluations": 360,
+  "controlCases": 115,
+  "totalEvaluations": 1050,
+  "mismatches": 0,
+  "original600ToursAvailable": false,
+  "evaluators": [
+    "c-original",
+    "c-fixed",
+    "java",
+    "java-c-bug",
+    "java-long",
+    "java-arrays"
+  ]
+}

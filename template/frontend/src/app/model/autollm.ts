@@ -13,7 +13,7 @@ export interface AutoLlmConfig {
   sotaFile: string | null; initialConfigurationsFile: string | null;
   trainingPath: string | null; comparisonPath: string | null;
   codex: { executable: string; promptFile: string | null; prompt: string | null; model: string | null; reasoningEffort: string | null; maxConcurrentSessions: number };
-  preparation: { pilotDurationMillis: number; maxRepairs: number };
+  preparation: { probeDurationMillis: number; pilotDurationMillis: number; maxRepairs: number };
   tuning: { evaluations: number; ignoreInitialMillis: number; intervalDurationMillis: number; logScaleArea: boolean };
   comparison: { repetitions: number; timeLimitMillis: number };
   execution: { workers: number; target?: 'LOCAL' | 'SSH'; ssh?: { screeningServerId: string; runnerArtifact: string | null; servers: AutoLlmServer[] } | null; watchdogGraceMillis: number; codexTimeoutMillis: number; buildTimeoutMillis: number; startupTimeoutMillis: number; searchSpaceTimeoutMillis: number; phaseTimeoutMillis: number; stageTimeoutMillis: number; heap: string };

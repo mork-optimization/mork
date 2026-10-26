@@ -1,0 +1,8 @@
+implementation,budgetSeconds,clock,runs,meanCost,targetHits,execution
+Original C,10,CPU,100,490.45,77,historical
+Fixed C,10,CPU,100,490.72,62,historical
+Original Java,10,wall,100,491.5,25,historical
+Java with C repair mistake,10,wall,100,491.52,24,historical
+Java with long arithmetic,10,wall,100,491.48,26,historical
+Java with arrays and reusable buffers,10,wall,100,491.5,25,historical
+"Original Java, 30 seconds",30,wall,100,491.02,48,four parallel JVMs

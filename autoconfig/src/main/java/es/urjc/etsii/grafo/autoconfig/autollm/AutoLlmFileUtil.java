@@ -33,7 +33,9 @@ public final class AutoLlmFileUtil {
         try {
             Files.createDirectories(path.toAbsolutePath().getParent());
             Path temp = path.resolveSibling(path.getFileName() + ".tmp");
-            JSON.writerWithDefaultPrettyPrinter().writeValue(temp, value);
+            try (var output = Files.newOutputStream(temp)) {
+                JSON.writerWithDefaultPrettyPrinter().writeValue(output, value);
+            }
             try { Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
             catch (AtomicMoveNotSupportedException e) { Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING); }
         } catch (IOException e) { throw new UncheckedIOException(e); }

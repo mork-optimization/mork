@@ -5,10 +5,28 @@ import es.urjc.etsii.grafo.io.InstanceManager;
 import java.io.*;
 import java.nio.file.*;
 import java.util.*;
+import java.util.function.ToLongFunction;
 
-/** Shared property export for the ordinary selector and runtime-screened pools. */
+/** Shared reference-instance selection and property export. */
 public final class InstanceSelectionUtil {
     private InstanceSelectionUtil() {}
+
+    /** Choose the fastest-loading candidate, breaking ties by absolute load path. */
+    public static String selectFastestLoadingInstance(List<String> paths, ToLongFunction<String> loadTimeNanos) {
+        if (paths.isEmpty()) throw new IllegalArgumentException("Cannot select a reference instance from empty inputs");
+        String selected = null;
+        long fastest = Long.MAX_VALUE;
+        for (String path : paths) {
+            long nanos = loadTimeNanos.applyAsLong(path);
+            if (selected == null || nanos < fastest || nanos == fastest
+                    && IOUtil.absoluteLoadPath(path).compareTo(IOUtil.absoluteLoadPath(selected)) < 0) {
+                selected = path;
+                fastest = nanos;
+            }
+        }
+        return selected;
+    }
+
     public static <I extends Instance> void writeProperties(Path target, List<String> paths, InstanceManager<I> manager) {
         var rows = new ArrayList<Map<String,Object>>();
         var keys = new TreeSet<String>();

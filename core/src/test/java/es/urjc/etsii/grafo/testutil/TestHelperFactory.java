@@ -6,7 +6,6 @@ import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
-import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.io.InstanceImporter;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.metrics.MetricsStorage;
@@ -100,7 +99,7 @@ public class TestHelperFactory {
             }
         };
 
-        return new InstanceManager<>(instanceConfiguration, new SolverConfig(), importer) {
+        return new InstanceManager<>(instanceConfiguration, importer) {
             @Override
             public synchronized List<String> getInstanceSolveOrder(String expName) {
                 return List.copyOf(instances.keySet());

@@ -186,7 +186,7 @@ const fixtureLog = fixtureLogLines.join('\n') + '\n';
 const comparisonConfig = {
   project: { repository: '/fixture', ref: 'fixed', buildCommand: ['./mvnw', 'verify'], artifact: 'project.jar', runArguments: [] },
   workspace: '/fixture/work', trials: 1, seed: 1234, maxParameters: 299, sotaFile: '/sota.json', initialConfigurationsFile: null, trainingPath: '/train.index', comparisonPath: '/test.index',
-  codex: { executable: 'codex', maxConcurrentSessions: 1 }, preparation: { pilotDurationMillis: 1000, maxRepairs: 1 },
+  codex: { executable: 'codex', maxConcurrentSessions: 1 }, preparation: { probeDurationMillis: 1000, pilotDurationMillis: 1000, maxRepairs: 1 },
   tuning: { evaluations: 10000, ignoreInitialMillis: 10000, intervalDurationMillis: 50000, logScaleArea: true },
   comparison: { repetitions: 30, timeLimitMillis: 10000 }, execution: { target: 'LOCAL', workers: 16, heap: '2g' },
 };

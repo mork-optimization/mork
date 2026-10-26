@@ -1,0 +1,25 @@
+{
+  "independentlyValidatedTours": 100,
+  "nativeEvaluations": 200,
+  "mismatches": 0,
+  "engines": {
+    "c-original": {
+      "evaluatedTours": 100,
+      "command": [
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/cross-validation/build/c-original/cross-check",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/n80w200.001.txt",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/native-validation/tours.txt"
+      ],
+      "executableHash": "63b3a8cf70e51d41c27be27b4947debd8dec4d41dc75a0def4b08ce390ddef45"
+    },
+    "c-fixed": {
+      "evaluatedTours": 100,
+      "command": [
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/cross-validation/build/c-fixed/cross-check",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/n80w200.001.txt",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/native-validation/tours.txt"
+      ],
+      "executableHash": "edd9e0708e86100f39ee4e7f2ea6f8b1ba6ec080ef13f4e9a807f108b8665292"
+    }
+  }
+}

@@ -1,0 +1,5 @@
+{"id": "deadline-equality_0", "tour": [0, 1, 2, 3, 0]}
+{"id": "deadline-equality_1", "tour": [0, 2, 1, 3, 0]}
+{"id": "deadline-equality_2", "tour": [0, 1, 1, 3, 0]}
+{"id": "deadline-equality_3", "tour": [0, 1, 2, 0]}
+{"id": "deadline-equality_4", "tour": [0, 1, 2, 9, 0]}

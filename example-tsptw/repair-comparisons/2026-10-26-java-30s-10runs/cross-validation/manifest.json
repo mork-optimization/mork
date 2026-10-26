@@ -1,0 +1,72 @@
+{
+  "createdUtc": "2026-10-26T14:08:30.621194+00:00",
+  "archivedJavaJars": {
+    "java": {
+      "path": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-25-n80w200.001-100x10s/artifacts/java-original.jar",
+      "sha256": "11a248e168a35992acb93c9e951190ccc399ff189182626398a443fb32abde40"
+    },
+    "java-c-bug": {
+      "path": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-25-n80w200.001-100x10s/artifacts/java-c-bug.jar",
+      "sha256": "3c91a80c74125c9168f00287b427e139c791782bfb129990767dadc6ab08fd6f"
+    },
+    "java-arrays": {
+      "path": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-25-n80w200.001-100x10s/artifacts/java-arrays.jar",
+      "sha256": "f62de61239dfebe78b2221f819bd3237e58ea773b43542bc75a62f9e68796d49"
+    },
+    "java-long": {
+      "path": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-25-java-long/java-long.jar",
+      "sha256": "4e508329bfb1892866e68d7362e307a95f18e5b3f75bce74881c7630bf5c4c51"
+    }
+  },
+  "nativeSourceHashes": {
+    "build/c-fixed/Random.cc": "9dee028db340d1f15e1448236c53a49403ff6a3b848484e46e11077c9762fb99",
+    "build/c-fixed/Random.h": "7b1f18e57fed840cd3f43995c83e26d338d47a86886b8d46ca91c552cca8f1ba",
+    "build/c-fixed/Timer.cc": "77b0d2bac48046a3170607d8f1ed9062e63ed0752f337b4dab6818843294b6a7",
+    "build/c-fixed/Timer.h": "35418d914624a9d910b0a255f75c2f6e94bd190af474e65156826856facf0fe4",
+    "build/c-fixed/aco.cpp": "a8883827b112fea90968b8c44c8ec7db162ac19488f689a236bb4dc1e9740315",
+    "build/c-fixed/ant.cpp": "81953afd7e0c9de12b2050ef5fc77abb7b1d59a8956ae9299f1b3cb298a9d454",
+    "build/c-fixed/ant.h": "37ea115aebf3c3a9297bffdac99bc98b97e5f5f2c7a0f954a18e2da637fb45cf",
+    "build/c-fixed/beam_element.cpp": "62d720183de3942f4fde078291e7cb5d20e5b95a955418f6b8b9edcac4e9dd45",
+    "build/c-fixed/beam_element.h": "2e35dc4464348e59c3ca0dc047aa2a491dffc487913809578bb135174184ad1a",
+    "build/c-fixed/check_solution.cpp": "3e496e563180ad80af5116b741acf8bd97272f30088f1318729dff1b33dc549e",
+    "build/c-fixed/common.h": "10b938674086c4a333385ca4477caa42884d5d97543a43d81f6b3586bfb2ad7e",
+    "build/c-fixed/firstimprov.cpp": "8f0c91293dd53116bb784edfc83a0512cfdb554beb88b8a51fb21d7bd2949815",
+    "build/c-fixed/gvns.cpp": "f910327337952cb7a82fcc014d3aace702a98ecfda0b926747154de0d34c392b",
+    "build/c-fixed/gvns.h": "963536a8a5cfb2d4a8467540dd7a2b5e4ce881aab858e9ce133a417aa105848b",
+    "build/c-fixed/localsearch.cpp": "ecf4f6967b120a0858e31293c225f5a6dc55b9a7ee5267e65fdc8e9e94e74276",
+    "build/c-fixed/tsptw_solution.cpp": "57c0057845cb95132afb6b775fb6e1e69d8f9f71ae70edd1e25a084bf8d8c2be",
+    "build/c-fixed/tsptw_solution.h": "b40ea852bed78d92155d6b3036bdf4b26b498499858648e23af89f6995ec9adb",
+    "build/c-original/Random.cc": "9dee028db340d1f15e1448236c53a49403ff6a3b848484e46e11077c9762fb99",
+    "build/c-original/Random.h": "7b1f18e57fed840cd3f43995c83e26d338d47a86886b8d46ca91c552cca8f1ba",
+    "build/c-original/Timer.cc": "77b0d2bac48046a3170607d8f1ed9062e63ed0752f337b4dab6818843294b6a7",
+    "build/c-original/Timer.h": "35418d914624a9d910b0a255f75c2f6e94bd190af474e65156826856facf0fe4",
+    "build/c-original/aco.cpp": "a8883827b112fea90968b8c44c8ec7db162ac19488f689a236bb4dc1e9740315",
+    "build/c-original/ant.cpp": "81953afd7e0c9de12b2050ef5fc77abb7b1d59a8956ae9299f1b3cb298a9d454",
+    "build/c-original/ant.h": "37ea115aebf3c3a9297bffdac99bc98b97e5f5f2c7a0f954a18e2da637fb45cf",
+    "build/c-original/beam_element.cpp": "62d720183de3942f4fde078291e7cb5d20e5b95a955418f6b8b9edcac4e9dd45",
+    "build/c-original/beam_element.h": "2e35dc4464348e59c3ca0dc047aa2a491dffc487913809578bb135174184ad1a",
+    "build/c-original/check_solution.cpp": "3e496e563180ad80af5116b741acf8bd97272f30088f1318729dff1b33dc549e",
+    "build/c-original/common.h": "10b938674086c4a333385ca4477caa42884d5d97543a43d81f6b3586bfb2ad7e",
+    "build/c-original/firstimprov.cpp": "8f0c91293dd53116bb784edfc83a0512cfdb554beb88b8a51fb21d7bd2949815",
+    "build/c-original/gvns.cpp": "f910327337952cb7a82fcc014d3aace702a98ecfda0b926747154de0d34c392b",
+    "build/c-original/gvns.h": "963536a8a5cfb2d4a8467540dd7a2b5e4ce881aab858e9ce133a417aa105848b",
+    "build/c-original/localsearch.cpp": "ecf4f6967b120a0858e31293c225f5a6dc55b9a7ee5267e65fdc8e9e94e74276",
+    "build/c-original/tsptw_solution.cpp": "79605ed55df81d9f812f6ecff341f6c334d64bb865582e36a833f113c9200f03",
+    "build/c-original/tsptw_solution.h": "b40ea852bed78d92155d6b3036bdf4b26b498499858648e23af89f6995ec9adb"
+  },
+  "probeSourceHashes": {
+    "CrossCheck.java": "fb7ae052d87d7fe49edbe5f86b6235f8c2adb3f0807548025adce409472046ee",
+    "cross_check.cpp": "1daa41b6426e4b294a07549123d49e99a9fdefb79520f91b980acdeffbb1470c",
+    "cross_validate_tours.py": "01693fe14f57178fea1f48414f237ab8275294d1654074b2728f5751582bd0ff"
+  },
+  "repetitions": 10,
+  "seeds": [
+    1234,
+    1243
+  ],
+  "javaOriginalBudgetSeconds": 30,
+  "otherSolverBudgetsSeconds": 10,
+  "generationConcurrentArms": 5,
+  "generationStartedAfterJava30sFinished": true,
+  "originalTourRecordsAvailable": false
+}

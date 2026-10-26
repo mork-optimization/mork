@@ -1,0 +1,166 @@
+{
+  "createdUtc": "2026-10-26T15:36:00.996836+00:00",
+  "instance": "n80w200.001.txt",
+  "instanceHash": "bf358aba5651be024e29f136b53a4a02feaacf38f35e5700a46ff88f1bcc0432",
+  "javaJarHash": "11a248e168a35992acb93c9e951190ccc399ff189182626398a443fb32abde40",
+  "archivedJavaJar": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/java-original.jar",
+  "baselineLog": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/java-10s-original-invocation.log",
+  "repetitions": 100,
+  "workers": [
+    {
+      "worker": 1,
+      "directory": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/worker-1",
+      "firstSeed": 1234,
+      "repetitions": 25,
+      "budgetSeconds": 30,
+      "warmupSeeds": [
+        1259,
+        1260,
+        1261,
+        1262,
+        1263
+      ],
+      "command": [
+        "java",
+        "-Xms256m",
+        "-Xmx1g",
+        "-jar",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/java-original.jar",
+        "repair-comparison-java",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/n80w200.001.txt",
+        "25",
+        "30",
+        "1234",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/worker-1/runs.jsonl"
+      ]
+    },
+    {
+      "worker": 2,
+      "directory": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/worker-2",
+      "firstSeed": 1259,
+      "repetitions": 25,
+      "budgetSeconds": 30,
+      "warmupSeeds": [
+        1284,
+        1285,
+        1286,
+        1287,
+        1288
+      ],
+      "command": [
+        "java",
+        "-Xms256m",
+        "-Xmx1g",
+        "-jar",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/java-original.jar",
+        "repair-comparison-java",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/n80w200.001.txt",
+        "25",
+        "30",
+        "1259",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/worker-2/runs.jsonl"
+      ]
+    },
+    {
+      "worker": 3,
+      "directory": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/worker-3",
+      "firstSeed": 1284,
+      "repetitions": 25,
+      "budgetSeconds": 30,
+      "warmupSeeds": [
+        1309,
+        1310,
+        1311,
+        1312,
+        1313
+      ],
+      "command": [
+        "java",
+        "-Xms256m",
+        "-Xmx1g",
+        "-jar",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/java-original.jar",
+        "repair-comparison-java",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/n80w200.001.txt",
+        "25",
+        "30",
+        "1284",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/worker-3/runs.jsonl"
+      ]
+    },
+    {
+      "worker": 4,
+      "directory": "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/worker-4",
+      "firstSeed": 1309,
+      "repetitions": 25,
+      "budgetSeconds": 30,
+      "warmupSeeds": [
+        1334,
+        1335,
+        1336,
+        1337,
+        1338
+      ],
+      "command": [
+        "java",
+        "-Xms256m",
+        "-Xmx1g",
+        "-jar",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/java-original.jar",
+        "repair-comparison-java",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/n80w200.001.txt",
+        "25",
+        "30",
+        "1309",
+        "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/worker-4/runs.jsonl"
+      ]
+    }
+  ],
+  "maxConcurrentSearches": 4,
+  "cpuAffinityPinned": false,
+  "budgetSeconds": 30,
+  "budgetClock": "wall",
+  "metricsEnabled": false,
+  "arithmetic": "double",
+  "repairClassification": "corrected",
+  "permutationStorage": "ArrayList<Integer>",
+  "warmupRunsPerWorker": 5,
+  "warmupSeconds": 1,
+  "baselineWarmupSeeds": [
+    1334,
+    1335,
+    1336,
+    1337,
+    1338
+  ],
+  "baselineToursAvailable": false,
+  "javaVersion": "java version \"25.0.1\" 2025-10-21 LTS\nJava(TM) SE Runtime Environment Oracle GraalVM 25.0.1+8.1 (build 25.0.1+8-LTS-jvmci-b01)\nJava HotSpot(TM) 64-Bit Server VM Oracle GraalVM 25.0.1+8.1 (build 25.0.1+8-LTS-jvmci-b01, mixed mode, sharing)\n",
+  "hostPlatform": "macOS-27.0.1-arm64-arm-64bit",
+  "logicalCpuCount": 10,
+  "nativeValidation": {
+    "independentlyValidatedTours": 100,
+    "nativeEvaluations": 200,
+    "mismatches": 0,
+    "engines": {
+      "c-original": {
+        "evaluatedTours": 100,
+        "command": [
+          "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/cross-validation/build/c-original/cross-check",
+          "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/n80w200.001.txt",
+          "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/native-validation/tours.txt"
+        ],
+        "executableHash": "63b3a8cf70e51d41c27be27b4947debd8dec4d41dc75a0def4b08ce390ddef45"
+      },
+      "c-fixed": {
+        "evaluatedTours": 100,
+        "command": [
+          "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/cross-validation/build/c-fixed/cross-check",
+          "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/n80w200.001.txt",
+          "/Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-100runs-4workers/native-validation/tours.txt"
+        ],
+        "executableHash": "edd9e0708e86100f39ee4e7f2ea6f8b1ba6ec080ef13f4e9a807f108b8665292"
+      }
+    }
+  },
+  "baselineOriginalConcurrentArms": 3
+}

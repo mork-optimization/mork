@@ -1,0 +1,5 @@
+{"id":"deadline-equality_0","validPermutation":true,"feasible":true,"cost":4.0,"violations":0,"infeasibility":0.0,"makespan":4.0,"arrivals":[0.0,1.0,2.0,3.0,4.0],"validatorFailures":[]}
+{"id":"deadline-equality_1","validPermutation":true,"feasible":false,"cost":4.0,"violations":1,"infeasibility":1.0,"makespan":4.0,"arrivals":[0.0,1.0,2.0,3.0,4.0],"validatorFailures":["Tour violates 1 time windows"]}
+{"id":"deadline-equality_2","validPermutation":false,"feasible":false}
+{"id":"deadline-equality_3","validPermutation":false,"feasible":false}
+{"id":"deadline-equality_4","validPermutation":false,"feasible":false}

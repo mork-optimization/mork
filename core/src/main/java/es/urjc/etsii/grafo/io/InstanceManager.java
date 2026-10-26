@@ -1,11 +1,11 @@
 package es.urjc.etsii.grafo.io;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
-import es.urjc.etsii.grafo.config.SolverConfig;
 import es.urjc.etsii.grafo.executors.Executor;
 import es.urjc.etsii.grafo.util.Compression;
 import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.InstancePathUtil;
+import es.urjc.etsii.grafo.util.InstanceSelectionUtil;
 import es.urjc.etsii.grafo.util.StringUtil;
 import me.tongfei.progressbar.ProgressBar;
 import org.slf4j.Logger;
@@ -36,7 +36,7 @@ public class InstanceManager<I extends Instance> {
     protected final InstanceImporter<I> instanceImporter;
 
     protected final InstanceCache<I> cache;
-    protected final WarmupInstanceSelector<I> warmupSelector;
+    private final Map<String, Long> loadTimesNanos = new HashMap<>();
     protected final Map<String, List<String>> solveOrderByExperiment;
     protected final Map<String, Map<String, String>> authorizedLoadPathsByExperiment;
 
@@ -45,15 +45,13 @@ public class InstanceManager<I extends Instance> {
      * Build instance manager
      *
      * @param instanceConfiguration instance configuration
-     * @param solverConfig          solver configuration
      * @param instanceImporter      instance importer
      */
     @Autowired
-    public InstanceManager(InstanceConfiguration instanceConfiguration, SolverConfig solverConfig, InstanceImporter<I> instanceImporter) {
+    public InstanceManager(InstanceConfiguration instanceConfiguration, InstanceImporter<I> instanceImporter) {
         this.instanceConfiguration = instanceConfiguration;
         this.instanceImporter = instanceImporter;
         this.cache = new InstanceCache<>();
-        this.warmupSelector = new WarmupInstanceSelector<>(solverConfig, instanceConfiguration, this.cache);
         this.solveOrderByExperiment = new HashMap<>();
         this.authorizedLoadPathsByExperiment = new HashMap<>();
     }
@@ -101,14 +99,36 @@ public class InstanceManager<I extends Instance> {
     }
 
     /**
-     * Select the instance path that should be used for JVM warm-up.
+     * Select the shared reference instance for JVM warm-up and AutoLLM probes.
+     * An explicit reference must belong to the experiment's configured inputs.
+     * Otherwise, import candidates with unknown load times and choose the fastest to load.
      *
      * @param expName       experiment name
-     * @param instancePaths solve order load paths for the experiment
-     * @return warm-up instance load paths
+     * @return reference instance load path
      */
-    public String getWarmupInstancePath(String expName, List<String> instancePaths) {
-        return this.warmupSelector.select(expName, instancePaths);
+    public synchronized String getReferenceInstancePath(String expName) {
+        // Unlike experiment paths, an absent reference must not fall back to "default".
+        String reference = this.instanceConfiguration.getPaths().get("reference");
+        if (reference != null && !reference.isBlank()) {
+            return requireConfiguredInstancePath(expName, reference.trim());
+        }
+        String selected = InstanceSelectionUtil.selectFastestLoadingInstance(
+                getInstanceSolveOrder(expName, false), this::loadTimeNanos);
+        log.info("Selected reference instance for {}: {}", expName, selected);
+        return selected;
+    }
+
+    private long loadTimeNanos(String path) {
+        String key = InstanceCache.canonicalize(path);
+        I instance = this.cache.get(path);
+        if (instance == null) {
+            Long recorded = this.loadTimesNanos.get(key);
+            if (recorded != null) return recorded;
+            instance = getInstance(path);
+        }
+        long nanos = ((Number) instance.getProperty(Instance.LOAD_TIME_NANOS)).longValue();
+        this.loadTimesNanos.put(key, nanos);
+        return nanos;
     }
 
     private static void logInstances(List<String> sortedInstances) {
@@ -240,11 +260,12 @@ public class InstanceManager<I extends Instance> {
         instance.setPath(IOUtil.relativizePath(path));
 
         this.cache.put(path, instance);
+        this.loadTimesNanos.put(InstanceCache.canonicalize(path), endLoad - startLoad);
         return instance;
     }
 
     /**
-     * Purge instance cache
+     * Purge cached instances, retaining their measured loading times.
      */
     public synchronized void purgeCache() {
         this.cache.clear();

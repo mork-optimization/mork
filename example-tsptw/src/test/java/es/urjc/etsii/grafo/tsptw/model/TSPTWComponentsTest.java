@@ -45,7 +45,7 @@ class TSPTWComponentsTest {
         assertTrue(solution.isLateAt(2));
         assertEquals(List.of(2), TSPTWUtil.shuffledPositions(solution, true));
         new TSPTWBackwardViolated().repair(solution);
-        assertEquals(List.of(0, 1, 2, 3, 0), solution.permutation);
+        assertArrayEquals(new int[]{0, 1, 2, 3, 0}, solution.permutation);
         assertEquals(0, solution.constraint_violations());
         assertConsistent(solution);
     }
@@ -115,7 +115,7 @@ class TSPTWComponentsTest {
         });
         Context.Configurator.setRandom(rng);
         new TSPTWUnrestrictedInsertShake().shake(solution, 8);
-        assertEquals(List.of(0, 2, 3, 1, 4, 5, 0), solution.permutation);
+        assertArrayEquals(new int[]{0, 2, 3, 1, 4, 5, 0}, solution.permutation);
         assertConsistent(solution);
     }
 
@@ -212,7 +212,7 @@ class TSPTWComponentsTest {
             int[] permutation = new int[n - 1];
             for (int i = 0; i < n - 1; i++) permutation[i] = customers.get(i);
             var broad = tour(new TSPTWInstance("broad", n, distances, starts, ends), permutation);
-            for (int i = 1; i <= n; i++) ends[broad.permutation.get(i)] = (int) broad._makespan[i] + random.nextInt(50);
+            for (int i = 1; i <= n; i++) ends[broad.permutation[i]] = (int) broad._makespan[i] + random.nextInt(50);
             var instance = new TSPTWInstance("case" + test, n, distances, starts, ends);
             var initial = tour(instance, permutation);
             assertConsistent(initial);

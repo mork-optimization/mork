@@ -22,7 +22,7 @@ public class TSPTWSolutionValidator extends SolutionValidator<TSPTWSolution, TSP
         var instance = solution.getInstance();
         var tour = solution.permutation;
         int n = instance.n();
-        if (tour.size() != n + 1 || tour.getFirst() != 0 || tour.getLast() != 0) {
+        if (solution.permutationSize != n + 1 || tour[0] != 0 || tour[n] != 0) {
             return ValidationResult.fail("Tour must visit every customer and start and finish at the depot");
         }
 
@@ -35,7 +35,7 @@ public class TSPTWSolutionValidator extends SolutionValidator<TSPTWSolution, TSP
         int violations = 0;
         int previous = 0;
         for (int i = 1; i <= n; i++) {
-            int node = tour.get(i);
+            int node = tour[i];
             if (node < 0 || node >= n || (i < n && visited[node])) {
                 return ValidationResult.fail("Invalid or repeated customer at tour position " + i);
             }

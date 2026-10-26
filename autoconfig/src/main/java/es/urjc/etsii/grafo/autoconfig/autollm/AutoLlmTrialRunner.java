@@ -170,7 +170,7 @@ public final class AutoLlmTrialRunner {
             for (var entry : comparisonInputs.entrySet()) frozenBudgets.put(entry.getValue().get("path"), localBudgets.get(entry.getKey()));
             AutoLlmFileUtil.write(root.resolve("control/comparison-time-limits.json"), frozenBudgets);
             AutoLlmFileUtil.write(root.resolve("control/config.json"), c.config);
-            if (!metadataOnly) child(c, null, jar, preflight.resolve("probe"), "--autollm-probe", 0, c.config.execution().startupTimeoutMillis() + c.config.execution().phaseTimeoutMillis(), List.of());
+            if (!metadataOnly) child(c, null, jar, preflight.resolve("probe"), "--autollm-probe", 0, c.config.execution().startupTimeoutMillis() + c.config.preparation().probeDurationMillis(), List.of());
             var trainSet = new HashSet<>(check.training()); trainSet.retainAll(check.comparison());
             AutoLlmFileUtil.write(root.resolve("baseline/instance-overlap.json"), trainSet);
             Files.copy(preflight.resolve("check/execution/components.json"), root.resolve("baseline/components.json"), StandardCopyOption.REPLACE_EXISTING);
@@ -319,14 +319,12 @@ public final class AutoLlmTrialRunner {
                 verifyDependencies(root.resolve("baseline/source").resolve(c.config.project().artifact()), jar, dir);
                 substage(c, a, "METADATA");
                 child(c, t, jar, dir.resolve("check"), "--autollm-check", 0, c.config.execution().searchSpaceTimeoutMillis(), List.of());
-                long begin = System.currentTimeMillis();
                 substage(c, a, "PROBES");
-                child(c, t, jar, dir.resolve("probe"), "--autollm-probe", 0, c.config.preparation().pilotDurationMillis() + c.config.execution().startupTimeoutMillis(), List.of());
+                child(c, t, jar, dir.resolve("probe"), "--autollm-probe", 0, c.config.preparation().probeDurationMillis() + c.config.execution().startupTimeoutMillis(), List.of());
                 t.probeDirectory = a.directory + "/probe"; publish(c);
-                long remaining = c.config.preparation().pilotDurationMillis() - (System.currentTimeMillis() - begin);
-                if (remaining <= 0) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE, "PILOT_WINDOW", "Pilot budget exhausted by probes; increase the verification window", dir);
                 substage(c, a, "PILOT");
-                var pilot = child(c, t, jar, dir.resolve("pilot"), "--autoconfig", remaining, c.config.execution().startupTimeoutMillis() + remaining + c.config.execution().phaseTimeoutMillis() + c.config.execution().watchdogGraceMillis(), List.of());
+                long pilotMillis = c.config.preparation().pilotDurationMillis();
+                child(c, t, jar, dir.resolve("pilot"), "--autoconfig", pilotMillis, c.config.execution().startupTimeoutMillis() + pilotMillis + c.config.execution().phaseTimeoutMillis() + c.config.execution().watchdogGraceMillis(), List.of());
                 boolean observed = false;
                 for (var event : AutoLlmFileUtil.events(dir.resolve("pilot/execution/events.jsonl"))) if ("evaluation-result".equals(event.get("kind")) && "SUCCEEDED".equals(event.get("state"))) observed = true;
                 if (!observed) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.UNKNOWN, "EMPTY_PILOT", "Verification autoconfig produced no successful evaluations", dir);

@@ -16,7 +16,7 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
         seed = seed == null ? 1234L : seed;
         maxParameters = maxParameters == null ? 299 : maxParameters;
         codex = codex == null ? new Codex(null, null, null, null, null, null) : codex;
-        preparation = preparation == null ? new Preparation(null, null) : preparation;
+        preparation = preparation == null ? new Preparation(null, null, null) : preparation;
         tuning = tuning == null ? new Tuning(null, null, null, null) : tuning;
         comparison = comparison == null ? new Comparison(null, null) : comparison;
         execution = execution == null ? new Execution(null, null, null, null, null, null, null, null, null, null, null) : execution;
@@ -33,8 +33,12 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
     public record Codex(String executable, String promptFile, String prompt, String model, String reasoningEffort, Integer maxConcurrentSessions) {
         public Codex { executable = executable == null ? "codex" : executable; maxConcurrentSessions = maxConcurrentSessions == null ? 1 : maxConcurrentSessions; }
     }
-    public record Preparation(Long pilotDurationMillis, Integer maxRepairs) {
-        public Preparation { pilotDurationMillis = pilotDurationMillis == null ? 600_000L : pilotDurationMillis; maxRepairs = maxRepairs == null ? 3 : maxRepairs; }
+    public record Preparation(Long probeDurationMillis, Long pilotDurationMillis, Integer maxRepairs) {
+        public Preparation {
+            probeDurationMillis = probeDurationMillis == null ? 600_000L : probeDurationMillis;
+            pilotDurationMillis = pilotDurationMillis == null ? 600_000L : pilotDurationMillis;
+            maxRepairs = maxRepairs == null ? 3 : maxRepairs;
+        }
     }
     public record Tuning(Integer evaluations, Long ignoreInitialMillis, Long intervalDurationMillis, Boolean logScaleArea) {
         public Tuning { evaluations = evaluations == null ? 10_000 : evaluations; ignoreInitialMillis = ignoreInitialMillis == null ? 10_000L : ignoreInitialMillis;

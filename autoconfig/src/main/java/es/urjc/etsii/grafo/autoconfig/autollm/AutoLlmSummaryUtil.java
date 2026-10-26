@@ -12,7 +12,8 @@ public final class AutoLlmSummaryUtil {
         double comparison = 0; for (long limit : comparisonLimits.values()) comparison += limit;
         comparison *= 2.0 * config.comparison().repetitions() * trials;
         result.put("trials", trials); result.put("componentRepairsPerTrial", config.preparation().maxRepairs());
-        result.put("infrastructureRetries", AutoLlmFailureUtil.MAX_RETRIES); result.put("pilotMillisPerTrial", config.preparation().pilotDurationMillis());
+        result.put("infrastructureRetries", AutoLlmFailureUtil.MAX_RETRIES);
+        result.put("probeMillisPerTrial", config.preparation().probeDurationMillis()); result.put("pilotMillisPerTrial", config.preparation().pilotDurationMillis());
         result.put("tuningEvaluationsPerTrial", config.tuning().evaluations()); result.put("tuningMillisPerEvaluation", evaluationMillis);
         result.put("comparisonRepetitions", config.comparison().repetitions()); result.put("comparisonTimeLimitMillis", config.comparison().timeLimitMillis());
         result.put("comparisonTimePolicy", config.comparison().timeLimitMillis() > 0 ? "EXPLICIT" : "APPLICATION_CALCULATOR");

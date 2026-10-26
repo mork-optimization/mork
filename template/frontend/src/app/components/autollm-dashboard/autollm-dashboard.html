@@ -39,6 +39,7 @@
             @if (config.execution.workers > 0) { <label>Worker count<input type="number" min="1" [value]="config.execution.workers" (change)="update('execution.workers', $event, true)" /></label> }
             <label>Main evaluations<input type="number" min="1" [value]="config.tuning.evaluations" (change)="update('tuning.evaluations', $event, true)" /></label>
             <label>Comparison repetitions<input type="number" min="1" [value]="config.comparison.repetitions" (change)="update('comparison.repetitions', $event, true)" /></label>
+            <label>Probe duration (milliseconds)<input type="number" min="1" [value]="config.preparation.probeDurationMillis" (change)="update('preparation.probeDurationMillis', $event, true)" /></label>
             <label>Pilot duration (milliseconds)<input type="number" min="1" [value]="config.preparation.pilotDurationMillis" (change)="update('preparation.pilotDurationMillis', $event, true)" /></label>
             <label>Repair turns<input type="number" min="0" [value]="config.preparation.maxRepairs" (change)="update('preparation.maxRepairs', $event, true)" /></label>
             <label>Codex model (optional)<input [value]="config.codex.model ?? ''" (change)="update('codex.model', $event)" /></label>
@@ -50,7 +51,7 @@
           <details><summary>All settings, including time budgets and timeouts</summary><textarea rows="16" [value]="config | json" (change)="advanced($event)"></textarea></details>
         </fieldset>
         <p>Each trial starts from the same baseline. Both comparison algorithms restart within their time budget. Ablation is disabled.</p>
-        <p class="budget-summary">{{ config.trials }} trials · {{ config.tuning.evaluations | number }} tuning evaluations per trial at {{ (config.tuning.ignoreInitialMillis + config.tuning.intervalDurationMillis) / 1000 }} seconds · {{ config.comparison.repetitions }} paired comparison repetitions at {{ config.comparison.timeLimitMillis > 0 ? (config.comparison.timeLimitMillis / 1000) + ' seconds' : 'application time limits (resolved during baseline check)' }} · {{ config.preparation.pilotDurationMillis / 60000 }} minute pilot · {{ config.preparation.maxRepairs }} component repairs per trial.</p>
+        <p class="budget-summary">{{ config.trials }} trials · {{ config.tuning.evaluations | number }} tuning evaluations per trial at {{ (config.tuning.ignoreInitialMillis + config.tuning.intervalDurationMillis) / 1000 }} seconds · {{ config.comparison.repetitions }} paired comparison repetitions at {{ config.comparison.timeLimitMillis > 0 ? (config.comparison.timeLimitMillis / 1000) + ' seconds' : 'application time limits (resolved during baseline check)' }} · {{ config.preparation.probeDurationMillis / 60000 }} minute probe budget · {{ config.preparation.pilotDurationMillis / 60000 }} minute pilot · {{ config.preparation.maxRepairs }} component repairs per trial.</p>
         @if (store.summary()) { <details open><summary>Resolved budgets and workload estimate</summary><pre>{{ store.summary() | json }}</pre></details> }
         <details><summary>Prepare a screened dataset</summary>
           <div class="fields"><label>Full original input pool<input [value]="originalPool()" (input)="originalPool.set($any($event.target).value)" /></label>

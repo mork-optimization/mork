@@ -1,0 +1,85 @@
+--- original/tsptw_solution.cpp
++++ fixed/tsptw_solution.cpp
+@@ -1401,7 +1401,7 @@
+     feas.clear();
+ 
+     for (int i = 1; i < n; i++) {
+-        if (_makespan[i] <= window_end[i]) feas.push_back(i);
++        if (_makespan[i] <= window_end[permutation[i]]) feas.push_back(i);
+     }
+     std::random_shuffle(feas.begin(), feas.end(), rng);
+ }
+@@ -1412,7 +1412,7 @@
+     infeas.clear();
+ 
+     for (int i = 1; i < n; i++) {
+-        if (_makespan[i] > window_end[i]) infeas.push_back(i);
++        if (_makespan[i] > window_end[permutation[i]]) infeas.push_back(i);
+     }
+     std::random_shuffle(infeas.begin(), infeas.end(), rng);
+ }
+@@ -1424,12 +1424,14 @@
+     infeas.reserve(n - 1);
+     compute_infeas_set(infeas, rng);
+     
++    if (infeas.empty()) return false;
++
+     Solution sol;
+     // Backward movements of violated customers.
+     do {
+         int  i = infeas.back();
+         infeas.pop_back();
+-        assert (_makespan[i] > window_end[i]);
++        assert (_makespan[i] > window_end[permutation[i]]);
+         sol = *this;
+         bool moved = false;
+         for (int d = i - 1; d > 0; d--) {
+@@ -1459,12 +1461,14 @@
+     vector<int> feas;
+     compute_feas_set(feas, rng);
+     
++    if (feas.empty()) return false;
++
+     Solution sol;
+     // Forward movements of non-violated customers.
+     do {
+         int i = feas.back();
+         feas.pop_back();
+-        assert (_makespan[i] <= window_end[i]);
++        assert (_makespan[i] <= window_end[permutation[i]]);
+         sol = *this;
+         bool moved = false;
+         for (int d = i; d < n - 1; d++) {
+@@ -1493,12 +1497,14 @@
+     vector<int> infeas;
+     compute_infeas_set(infeas, rng);
+     
++    if (infeas.empty()) return false;
++
+     Solution sol;
+     // Forward movements of violated customers.
+     do {
+         int i = infeas.back();
+         infeas.pop_back();
+-        assert (_makespan[i] > window_end[i]);
++        assert (_makespan[i] > window_end[permutation[i]]);
+         sol = *this;
+         bool moved = false;
+         for (int d = i; d < n - 1; d++) {
+@@ -1528,13 +1534,15 @@
+     vector<int> feas;
+     compute_feas_set(feas, rng);
+     
++    if (feas.empty()) return false;
++
+     Solution sol;
+ 
+     // Backward movements of non-violated customers.
+     do {
+         int i = feas.back();
+         feas.pop_back();
+-        assert (_makespan[i] <= window_end[i]);
++        assert (_makespan[i] <= window_end[permutation[i]]);
+         sol = *this;
+         bool moved = false;
+         for (int d = i - 1; d > 0; d--) {

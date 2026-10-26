@@ -1,0 +1,25 @@
+# GVNS gvns_tsptw
+#
+# /Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/cross-validation/build/c-fixed/gvns_tsptw -i /Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/n80w200.001.txt -t 10 -r 1 -s 1242 -T /Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/cross-validation/c-fixed/1242.trace
+#
+# Problem: TSPTW (minimise tourcost) [integer values]
+# instance : /Users/rmartinsanta/IdeaProjects/mork/example-tsptw/repair-comparisons/2026-10-26-java-30s-10runs/n80w200.001.txt
+# n. customers + depot: 81
+# distances   : [0, 57]
+# window_start: [0, 578]
+# window_end  : [92, 823]
+# n tw infeasible : 1416 (21.5821%)
+# symmetric : true
+#
+# number trials : 1
+# number iterations : 2147483647
+# time limit : 10
+# seed : 1242
+# level max : 8
+# itermax : 2147483647
+#
+
+# begin try 1
+490.00	10.0	653.00	490.00	0	               0	 61 67 7 31 39 15 4 48 37 54 22 10 60 74 73 24 46 32 29 23 76 6 47 78 63 18 62 11 51 12 75 77 30 27 2 58 5 16 25 71 45 26 55 9 65 49 14 34 72 50 68 1 43 36 42 70 3 28 21 59 53 35 44 33 20 79 52 13 56 38 8 64 40 41 57 69 19 17 66 80
+#end try 1 (Evaluations = 375909750, Iterations = 517, Time = 10.000001000)
+# statistics	(490,0)	(490.000000,0.000000)	(nan,nan)	10.000001	nan

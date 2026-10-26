@@ -169,7 +169,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
 
         if (solverConfig.getWarmup().isEnabled()) {
             runState.phase(NormalExperimentRunState.Phase.WARMING_UP, experiment.name());
-            var warmupInstancePath = instanceManager.getWarmupInstancePath(experiment.name(), instancePaths);
+            var warmupInstancePath = instanceManager.getReferenceInstancePath(experiment.name());
             executor.warmup(experiment, warmupInstancePath);
         }
         runState.phase(NormalExperimentRunState.Phase.RUNNING, experiment.name());

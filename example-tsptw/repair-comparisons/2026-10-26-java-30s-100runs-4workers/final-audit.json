@@ -1,0 +1,18 @@
+{
+  "runs": 100,
+  "workers": 4,
+  "runsPerWorker": 25,
+  "uniqueSeeds": 100,
+  "matchedBaselineSeeds": 100,
+  "executableHashMatches": true,
+  "instanceHashMatches": true,
+  "archivedJavaValidatedTours": 100,
+  "independentPythonValidatedTours": 100,
+  "nativeEvaluations": 200,
+  "nativeMismatches": 0,
+  "sourceHashes": {
+    "validate_time_budget_tours.py": "dd45a5aad465605692420c2ac2a3255ef97e68ed4fd730917e958f0ebc52bff5",
+    "cross_validate_tours.py": "01693fe14f57178fea1f48414f237ab8275294d1654074b2728f5751582bd0ff",
+    "compare_time_budgets.py": "ff7b61adcd9289cbf7062bc05b215dcd86a8f023b30c79f18a61d8b1b75b4004"
+  }
+}

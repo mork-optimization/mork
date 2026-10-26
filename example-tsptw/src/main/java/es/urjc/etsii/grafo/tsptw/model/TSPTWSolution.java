@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.tsptw.model;
 
 import es.urjc.etsii.grafo.aop.TimeStats;
 import es.urjc.etsii.grafo.solution.Solution;
+import es.urjc.etsii.grafo.util.ArrayUtil;
 import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
 import es.urjc.etsii.grafo.util.TimeControl;
@@ -18,15 +19,16 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
     private static Logger log = LoggerFactory.getLogger(TSPTWSolution.class);
 
-    List<Integer> permutation;
+    final int[] permutation;
+    int permutationSize;
     // TODO remove n and instance properties, keeping them for translation of c++
-    int n;
-    double[][] distance;
-    int[] window_start;
-    int[] window_end;
+    final int n;
+    final double[][] distance;
+    final int[] window_start;
+    final int[] window_end;
     // END instance properties
 
-    boolean[] node_assigned;
+    final boolean[] node_assigned;
     int nodes_available;
     static int evaluations = 0;
     int _constraint_violations;
@@ -34,7 +36,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
     int _lower_bound;
     int _lower_bound_constraint_violations;
 
-    double[] _makespan;
+    final double[] _makespan;
     double _tourcost;
 
     public TSPTWSolution(TSPTWInstance instance) {
@@ -45,7 +47,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         this.window_end = instance.getWindowEnd();
         this.window_start = instance.getWindowStart();
 
-        this.permutation = new ArrayList<>(instance.n() + 1);
+        this.permutation = new int[instance.n() + 1];
         this.node_assigned = new boolean[instance.n()];
         this.nodes_available = n;
         this._constraint_violations = 0;
@@ -55,30 +57,37 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         this._makespan = new double[instance.n() + 1];
         this._tourcost = 0;
 
-        this.permutation.add(0);
+        this.permutationSize = 1;
         node_assigned[0] = true;
         nodes_available--;
     }
 
     public TSPTWSolution(TSPTWSolution solution) {
         super(solution);
-        this.copy_from(solution);
-    }
-
-    public void copy_from(TSPTWSolution solution) {
         this.n = solution.n;
         this.distance = solution.distance;
         this.window_start = solution.window_start;
         this.window_end = solution.window_end;
+        this.permutation = new int[n + 1];
+        this.node_assigned = new boolean[n];
+        this._makespan = new double[n + 1];
+        this.copy_from(solution);
+    }
 
+    public void copy_from(TSPTWSolution solution) {
+        if (getInstance() != solution.getInstance()) {
+            throw new IllegalArgumentException("Cannot copy tours between different instances");
+        }
+        if (this == solution) return;
         this.nodes_available = solution.nodes_available;
-        this.permutation = new ArrayList<>(solution.permutation);
-        this.node_assigned = solution.node_assigned.clone();
+        this.permutationSize = solution.permutationSize;
+        System.arraycopy(solution.permutation, 0, this.permutation, 0, permutation.length);
+        System.arraycopy(solution.node_assigned, 0, this.node_assigned, 0, node_assigned.length);
         this._constraint_violations = solution._constraint_violations;
         this._infeasibility = solution._infeasibility;
         this._lower_bound = solution._lower_bound;
         this._lower_bound_constraint_violations = solution._lower_bound_constraint_violations;
-        this._makespan = solution._makespan.clone();
+        System.arraycopy(solution._makespan, 0, this._makespan, 0, _makespan.length);
         this._tourcost = solution._tourcost;
 
         this.notifyUpdate(solution.getLastModifiedTime());
@@ -100,15 +109,15 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
     @Override
     public String toString() {
-        return "%s -> %s".formatted(this._tourcost, this.permutation);
+        return "%s -> %s".formatted(this._tourcost, Arrays.toString(getTour()));
     }
 
     public double cost() {
         return this._tourcost;
     }
 
-    public List<Integer> getTour() {
-        return List.copyOf(permutation);
+    public int[] getTour() {
+        return Arrays.copyOf(permutation, permutationSize);
     }
 
     public boolean better_than(TSPTWSolution other) {
@@ -125,8 +134,8 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         assert (node != current);
         assert (!node_assigned[node]);
 
-        permutation.add(node);
-        int j = permutation.size() - 1;
+        permutation[permutationSize++] = node;
+        int j = permutationSize - 1;
 
         _makespan[j] = max(_makespan[j - 1] + distance[current][node],
                 window_start[node]);
@@ -151,7 +160,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             }
             add(current, node);
             // This is the last node, so connect it to the depot.
-            permutation.add(0);
+            permutation[permutationSize++] = 0;
             _makespan[n] = _makespan[n - 1] + distance[node][0];
             _tourcost += distance[node][0];
             if (_makespan[n] > window_end[0]) {
@@ -163,7 +172,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
     }
 
     public void add(int[] p) {
-        int last = permutation.get(permutation.size() - 1);
+        int last = permutation[permutationSize - 1];
         int k = 0;
 
         while (nodes_available > 0) {
@@ -186,12 +195,11 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         int cviolsUnsure = 0;
         double infeas = 0;
 
-        assert permutation.size() - 1 == n : "Invalid: (permutation.size() == %s) != (n == %s)".formatted(permutation.size() - 1, n);
-
-        assert is_a_permutation(permutation): "Invalid: not a permutation!";
+        assert permutationSize - 1 == n : "Invalid tour length: " + permutationSize;
+        assert TSPTWUtil.isPermutation(permutation, permutationSize - 1): "Invalid: not a permutation!";
 
         for (int i = 1; i < n; i++) {
-            int node = permutation.get(i);
+            int node = permutation[i];
 
             cost += distance[prev][node];
             mkspan = max(mkspan + distance[prev][node], window_start[node]);
@@ -230,22 +238,13 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         return true;
     }
 
-    // Helper methods
-    public boolean is_a_permutation(List<Integer> permutation) {
-        Set<Integer> set = HashSet.newHashSet(permutation.size());
-        for (int i = 0; i < permutation.size() - 1; i++) {
-            set.add(permutation.get(i));
-        }
-        return set.size() == permutation.size() -1; // -1 because depot appears twice, ignore last element
-    }
-
     public void swap(int k) {
         assert k < n - 1;
         assert k > 0;
 
-        int a = permutation.get(k - 1);
-        int b = permutation.get(k);
-        int c = permutation.get(k + 1);
+        int a = permutation[k - 1];
+        int b = permutation[k];
+        int c = permutation[k + 1];
 
         do_swap(k);
 
@@ -273,7 +272,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         double mkspan = _makespan[k + 1];
         int i, current, prev = b;
         for (i = k + 2; i < n + 1; i++, prev = current) {
-            current = permutation.get(i);
+            current = permutation[i];
             mkspan += distance[prev][current];
 
             if (_makespan[i] > window_start[current]) {
@@ -307,17 +306,17 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         int last_m = (first_m[0] == n + 1) ? k + 2 : n + 1;
         int j, prev, current;
         for (j = min(first_m[0], k); j < last_m; j++) {
-            _makespan[j] = max(_makespan[j - 1] + distance[p.get(j - 1)][p.get(j)], window_start[p.get(j)]);
-            if (_makespan[j] > window_end[p.get(j)]) {
+            _makespan[j] = max(_makespan[j - 1] + distance[p[j - 1]][p[j]], window_start[p[j]]);
+            if (_makespan[j] > window_end[p[j]]) {
                 first_m[0] = j;
                 return false;
             }
         }
 
-        prev = p.get(last_m - 1);
+        prev = p[last_m - 1];
         double mkspan = _makespan[last_m - 1];
         for (j = last_m; j < n + 1; j++, prev = current) {
-            current = p.get(j);
+            current = p[j];
             mkspan += distance[prev][current];
 
             if (_makespan[j] <= window_start[current]) {
@@ -346,10 +345,10 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
     }
 
     public double delta_swap(int k) {
-        int a = permutation.get(k - 1);
-        int b = permutation.get(k);
-        int c = permutation.get(k + 1);
-        int d = permutation.get(k + 2);
+        int a = permutation[k - 1];
+        int b = permutation[k];
+        int c = permutation[k + 1];
+        int d = permutation[k + 2];
 
         double delta = (distance[a][c] + distance[c][b] + distance[b][d])
                 - (distance[a][b] + distance[b][c] + distance[c][d]);
@@ -363,9 +362,9 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         double gain = delta_swap(k);
         _tourcost += gain;
 
-        int b = permutation.get(k);
-        permutation.set(k, permutation.get(k + 1));
-        permutation.set(k + 1, b);
+        int b = permutation[k];
+        permutation[k] = permutation[k + 1];
+        permutation[k + 1] = b;
 
         return gain;
     }
@@ -388,7 +387,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
     }
 
     public boolean infeasible_move(int initial, int end) {
-        return getInstance().isTimeWindowInfeasible(permutation.get(end), permutation.get(initial));
+        return getInstance().isTimeWindowInfeasible(permutation[end], permutation[initial]);
     }
 
     public TSPTWSolution localsearch_insertion(boolean first_improvement) {
@@ -444,11 +443,11 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         int low = min(from, to);
         int high = max(from, to);
         double mkspan = _makespan[low - 1];
-        int pred_ci = permutation.get(low - 1);
+        int pred_ci = permutation[low - 1];
         int i, ci;
 
         if (from < to) {
-            ci = permutation.get(low + 1);
+            ci = permutation[low + 1];
             mkspan += distance[pred_ci][ci];
             if (mkspan < window_start[ci]) {
                 mkspan = window_start[ci];
@@ -460,7 +459,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             for (i = low + 2, pred_ci = ci;
                  i <= high;
                  i++, pred_ci = ci) {
-                ci = permutation.get(i);
+                ci = permutation[i];
                 mkspan += distance[pred_ci][ci];
                 if (mkspan < window_start[ci]) {
                     mkspan = window_start[ci];
@@ -470,8 +469,8 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                 makespan[i - 1] = mkspan;
             }
 
-            pred_ci = permutation.get(high);
-            ci = permutation.get(from);
+            pred_ci = permutation[high];
+            ci = permutation[from];
             mkspan += distance[pred_ci][ci];
             if (mkspan < window_start[ci]) {
                 mkspan = window_start[ci];
@@ -479,10 +478,10 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                 return false;
             }
             makespan[high] = mkspan;
-            pred_ci = permutation.get(low);
+            pred_ci = permutation[low];
 
         } else {
-            ci = permutation.get(from);
+            ci = permutation[from];
             mkspan += distance[pred_ci][ci];
             if (mkspan < window_start[ci]) {
                 mkspan = window_start[ci];
@@ -494,7 +493,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             for (i = low, pred_ci = ci;
                  i < high;
                  i++, pred_ci = ci) {
-                ci = permutation.get(i);
+                ci = permutation[i];
                 mkspan += distance[pred_ci][ci];
                 if (mkspan < window_start[ci]) {
                     mkspan = window_start[ci];
@@ -503,12 +502,12 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                 }
                 makespan[i + 1] = mkspan;
             }
-            pred_ci = permutation.get(high - 1);
+            pred_ci = permutation[high - 1];
         }
 
         for (i = high + 1; i < n + 1; i++) {
             pred_ci = ci;
-            ci = permutation.get(i);
+            ci = permutation[i];
             mkspan += distance[pred_ci][ci];
             if (mkspan < window_start[ci]) {
                 mkspan = window_start[ci];
@@ -526,8 +525,8 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         v.clear();
 
         for (int i = 1; i < n - 1; i++) {
-            int ci = permutation.get(i);
-            int cj = permutation.get(i + 1);
+            int ci = permutation[i];
+            int cj = permutation[i + 1];
             if (getInstance().isTimeWindowInfeasible(cj, ci)) continue;
             v.add(i);
         }
@@ -543,19 +542,19 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
         for (int k = 0; k < rand_nodes.size() && !TimeControl.isTimeUp(); k++) {
             int i = rand_nodes.get(k);
-            int ci = permutation.get(i);
-            double delta1 = distance[permutation.get(i - 1)][ci]
-                    + distance[ci][permutation.get(i + 1)]
-                    - distance[permutation.get(i - 1)][permutation.get(i + 1)];
+            int ci = permutation[i];
+            double delta1 = distance[permutation[i - 1]][ci]
+                    + distance[ci][permutation[i + 1]]
+                    - distance[permutation[i - 1]][permutation[i + 1]];
 
             // This is in fact swapping backwards i + 1
             for (int d = i - 1; d > 0; d--) {
-                int cj = permutation.get(d);
+                int cj = permutation[d];
                 if (TimeControl.isTimeUp()) return false;
                 if (getInstance().isTimeWindowInfeasible(ci, cj)) break;
-                double delta2 = distance[permutation.get(d - 1)][ci]
+                double delta2 = distance[permutation[d - 1]][ci]
                         + distance[ci][cj]
-                        - distance[permutation.get(d - 1)][cj];
+                        - distance[permutation[d - 1]][cj];
 
                 if (delta2 >= delta1) continue;
                 if (!insertion_is_feasible(i, d)) continue;
@@ -568,12 +567,12 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
             // Swapping forward i
             for (int d = i + 2; d < n; d++) {
-                int cj = permutation.get(d);
+                int cj = permutation[d];
                 if (TimeControl.isTimeUp()) return false;
                 if (getInstance().isTimeWindowInfeasible(cj, ci)) break;
-                double delta2 = distance[ci][permutation.get(d + 1)]
+                double delta2 = distance[ci][permutation[d + 1]]
                         + distance[cj][ci]
-                        - distance[cj][permutation.get(d + 1)];
+                        - distance[cj][permutation[d + 1]];
 
                 if (delta2 >= delta1) continue;
                 if (!insertion_is_feasible(i, d)) continue;
@@ -589,7 +588,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
     /** Arrival caches are indexed by position; deadlines are indexed by customer. */
     public boolean isLateAt(int position) {
-        return _makespan[position] > window_end[permutation.get(position)];
+        return _makespan[position] > window_end[permutation[position]];
     }
 
     public double infeasibility() {
@@ -599,8 +598,8 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
     public int two_opt_is_infeasible(int h1, int h3) {
         double[] makespan = this._makespan.clone();
         double mkspan = this._makespan[h1];
-        int pred_ci = permutation.get(h1);
-        int ci = permutation.get(h3);
+        int pred_ci = permutation[h1];
+        int ci = permutation[h3];
         mkspan += distance[pred_ci][ci];
         if (mkspan < window_start[ci]) {
             mkspan = window_start[ci];
@@ -610,9 +609,9 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         makespan[h1 + 1] = mkspan;
         int i = h3 - 1;
         int j = h1 + 2;
-        pred_ci = permutation.get(h3);
+        pred_ci = permutation[h3];
         while (i >= h1 + 1) {
-            ci = permutation.get(i);
+            ci = permutation[i];
             mkspan += distance[pred_ci][ci];
             if (mkspan < window_start[ci]) {
                 mkspan = window_start[ci];
@@ -624,8 +623,8 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             i--;
             j++;
         }
-        for (i = h3 + 1, pred_ci = permutation.get(h1 + 1); i < n + 1; i++, pred_ci = ci) {
-            ci = permutation.get(i);
+        for (i = h3 + 1, pred_ci = permutation[h1 + 1]; i < n + 1; i++, pred_ci = ci) {
+            ci = permutation[i];
             mkspan += distance[pred_ci][ci];
             if (makespan[i] <= window_start[ci]) {
                 if (mkspan <= window_start[ci]) {
@@ -649,7 +648,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
     }
 
     public void two_opt_move(int h1, int h3) {
-        Collections.reverse(permutation.subList(h1 + 1, h3 + 1));
+        ArrayUtil.reverse(permutation, h1 + 1, h3);
     }
 
     @TimeStats
@@ -664,16 +663,16 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
 
         while (!rand_nodes.isEmpty() && !TimeControl.isTimeUp()) {
             int pos_c1 = rand_nodes.remove(rand_nodes.size() - 1);
-            int c1 = permutation.get(pos_c1);
-            int s1 = permutation.get(pos_c1 + 1);
+            int c1 = permutation[pos_c1];
+            int s1 = permutation[pos_c1 + 1];
             double radius = distance[c1][s1];
 
             for (int h = pos_c1 + 2; h < n; h++) {
                 if (TimeControl.isTimeUp()) return false;
                 int pos_c2 = h;
-                int c2 = permutation.get(pos_c2);
+                int c2 = permutation[pos_c2];
                 if (getInstance().isTimeWindowInfeasible(c2, s1)) break;
-                int s2 = permutation.get(h + 1);
+                int s2 = permutation[h + 1];
                 double gain = distance[c1][c2] + distance[s1][s2] - radius - distance[c2][s2];
                 if (gain >= 0) continue;
 
@@ -705,7 +704,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
     public void full_eval() {
         TSPTWSolution tmp = new TSPTWSolution(this.getInstance());
         int[] customers = new int[n - 1];
-        for (int i = 1; i < n; i++) customers[i - 1] = permutation.get(i);
+        for (int i = 1; i < n; i++) customers[i - 1] = permutation[i];
         tmp.add(customers);
         this.copy_from(tmp);
     }

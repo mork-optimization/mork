@@ -1,0 +1,5 @@
+waiting_0 0 1 2 3 0
+waiting_1 0 2 1 3 0
+waiting_2 0 1 1 3 0
+waiting_3 0 1 2 0
+waiting_4 0 1 2 9 0

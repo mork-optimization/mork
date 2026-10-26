@@ -42,7 +42,7 @@ solver:
   benchmark: false
 
   # JVM warm-up before measured experiment executions.
-  # If enabled and instance-path is empty, Mork automatically selects a small/fast instance.
+  # Uses instances.path.reference, or the fastest-loading configured instance.
   warmup:
     enabled: true
     repetitions: 5

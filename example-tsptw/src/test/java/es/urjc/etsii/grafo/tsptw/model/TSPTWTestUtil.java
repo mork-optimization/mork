@@ -67,16 +67,16 @@ public final class TSPTWTestUtil {
     public static void assertConsistent(TSPTWSolution solution) {
         var instance = solution.getInstance();
         int n = instance.n();
-        assertEquals(n + 1, solution.permutation.size());
-        assertEquals(0, solution.permutation.getFirst());
-        assertEquals(0, solution.permutation.getLast());
+        assertEquals(n + 1, solution.permutationSize);
+        assertEquals(0, solution.permutation[0]);
+        assertEquals(0, solution.permutation[solution.permutationSize - 1]);
         boolean[] seen = new boolean[n];
         seen[0] = true;
         double cost = 0, time = 0, lateness = 0;
         int violations = 0;
         for (int i = 1; i <= n; i++) {
-            int previous = solution.permutation.get(i - 1);
-            int customer = solution.permutation.get(i);
+            int previous = solution.permutation[i - 1];
+            int customer = solution.permutation[i];
             if (i < n) {
                 assertFalse(seen[customer]);
                 seen[customer] = true;

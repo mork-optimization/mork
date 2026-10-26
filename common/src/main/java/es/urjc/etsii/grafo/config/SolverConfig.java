@@ -401,11 +401,6 @@ public class SolverConfig {
         private boolean enabled = false;
 
         /**
-         * Instance path to use for warm-up. If empty, Mork will select one automatically.
-         */
-        private String instancePath = "";
-
-        /**
          * Number of times each algorithm should run on the warm-up instance.
          */
         private int repetitions = 5;
@@ -421,18 +416,6 @@ public class SolverConfig {
 
         public void setEnabled(boolean enabled) {
             this.enabled = enabled;
-        }
-
-        public String getInstancePath() {
-            return instancePath;
-        }
-
-        public void setInstancePath(String instancePath) {
-            this.instancePath = instancePath == null ? "" : instancePath;
-        }
-
-        public boolean hasInstancePath() {
-            return instancePath != null && !instancePath.isBlank();
         }
 
         public int getRepetitions() {

@@ -1,0 +1,5 @@
+{"id":"depot-return_0","validPermutation":true,"feasible":false,"cost":4,"violations":1,"infeasibility":1,"makespan":4,"arrivals":[0,1,2,3,4],"validatorFailures":["Tour violates 1 time windows"]}
+{"id":"depot-return_1","validPermutation":true,"feasible":false,"cost":4,"violations":1,"infeasibility":1,"makespan":4,"arrivals":[0,1,2,3,4],"validatorFailures":["Tour violates 1 time windows"]}
+{"id":"depot-return_2","validPermutation":false,"feasible":false}
+{"id":"depot-return_3","validPermutation":false,"feasible":false}
+{"id":"depot-return_4","validPermutation":false,"feasible":false}
