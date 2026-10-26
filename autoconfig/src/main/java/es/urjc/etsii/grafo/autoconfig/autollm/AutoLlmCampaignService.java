@@ -4,7 +4,6 @@ import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
 import es.urjc.etsii.grafo.autoconfig.autollm.execution.*;
 import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpecJsonCodec;
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
-import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.ExceptionUtil;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Service;
@@ -159,27 +158,15 @@ public class AutoLlmCampaignService {
                 c.approvedScreeningPath = Path.of(c.config.trainingPath()).getParent().getParent().toString();
             }
             c.config = c.config.withRef(commit);
-            String train = freezeInputs(root, "training", c.config.trainingPath());
-            String test = freezeInputs(root, "comparison", c.config.comparisonPath());
+            String train = AutoLlmInputUtil.snapshot(root, "training", es.urjc.etsii.grafo.util.InstancePathUtil.list(c.config.trainingPath()));
+            String test = AutoLlmInputUtil.snapshot(root, "comparison", es.urjc.etsii.grafo.util.InstancePathUtil.list(c.config.comparisonPath()));
             c.config = c.config.withPaths(train, test); c.baselineCommit = commit;
             var hashes = new TreeMap<String,String>();
             for (String name : List.of("sota.json", "seeds.json")) hashes.put("control/" + name, AutoLlmFileUtil.hash(root.resolve("control/" + name)));
-            try (var paths = Files.walk(root.resolve("data"))) {
-                for (var path : paths.toList()) if (Files.isRegularFile(path)) hashes.put(root.relativize(path).toString(), AutoLlmFileUtil.hash(path));
-            }
+            for (String name : List.of("training", "comparison")) AutoLlmInputUtil.addHashes(hashes, root, name);
             AutoLlmFileUtil.write(root.resolve("control/canonical-hashes.json"), hashes);
             AutoLlmFileUtil.write(root.resolve("control/config.json"), c.config); store.save(c);
         } catch (IOException e) { throw new UncheckedIOException(e); }
-    }
-    private String freezeInputs(Path root, String name, String input) throws IOException {
-        var paths = new ArrayList<String>(); int i = 0;
-        for (String token : es.urjc.etsii.grafo.util.InstancePathUtil.list(input)) {
-            String base = token.substring(token.lastIndexOf('!') + 1); base = Path.of(base).getFileName().toString();
-            Path copy = root.resolve("data/" + name + "/%08d/".formatted(i++) + base); Files.createDirectories(copy.getParent());
-            try (var stream = IOUtil.getInputStream(token)) { Files.copy(stream, copy, StandardCopyOption.REPLACE_EXISTING); }
-            paths.add(copy.toString());
-        }
-        Path index = root.resolve("data/" + name + ".index"); Files.write(index, paths); return index.toString();
     }
     private void verifyCanonical(AutoLlmCampaign c) {
         Path root = store.directory(c.id);

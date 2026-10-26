@@ -53,26 +53,7 @@ public final class WorkloadArchiveUtil {
     public static void unpack(Path archive, Path root) throws IOException {
         Files.createDirectories(root);
         try (var zip = new ZipFile(archive.toFile())) {
-            var descriptor = zip.getEntry(MANIFEST);
-            if (descriptor == null) throw new IOException("Transfer manifest missing");
-            Map<String,Entry> manifest;
-            try (var input = zip.getInputStream(descriptor)) { manifest = AutoLlmFileUtil.JSON.readValue(input.readAllBytes(), new TypeReference<>() {}); }
-            var seen = new HashSet<String>();
-            var entries = zip.entries();
-            while (entries.hasMoreElements()) {
-                var entry = entries.nextElement();
-                if (entry.getName().equals(MANIFEST)) continue;
-                Entry expected = manifest.get(entry.getName());
-                if (expected == null || !seen.add(entry.getName())) throw new IOException("Unexpected or duplicate transfer entry");
-                WorkloadPathUtil.inside(root, entry.getName());
-                if (expected.link() == null) try (var input = zip.getInputStream(entry)) {
-                    if (!expected.sha256().equals(AutoLlmFileUtil.hash(input))) throw new IOException("Transfer checksum failed: " + entry.getName());
-                } else {
-                    Path path = WorkloadPathUtil.inside(root, entry.getName());
-                    if (Path.of(expected.link()).isAbsolute() || !path.getParent().resolve(expected.link()).normalize().startsWith(root)) throw new IOException("Transfer symlink escapes workspace");
-                }
-            }
-            if (!seen.equals(manifest.keySet())) throw new IOException("Incomplete transfer archive");
+            var manifest = verifiedEntries(zip, root);
             for (var item : manifest.entrySet()) {
                 Path target = WorkloadPathUtil.inside(root, item.getKey());
                 Files.createDirectories(target.getParent());
@@ -89,6 +70,35 @@ public final class WorkloadArchiveUtil {
                 Files.deleteIfExists(target); Files.createSymbolicLink(target, Path.of(item.getValue().link()));
             }
         }
+    }
+
+    /** Verify every member without expanding the archive. */
+    public static Map<String,Entry> verify(Path archive, Path root) throws IOException {
+        try (var zip = new ZipFile(archive.toFile())) { return Map.copyOf(verifiedEntries(zip, root)); }
+    }
+
+    private static Map<String,Entry> verifiedEntries(ZipFile zip, Path root) throws IOException {
+        var descriptor = zip.getEntry(MANIFEST);
+        if (descriptor == null) throw new IOException("Transfer manifest missing");
+        Map<String,Entry> manifest;
+        try (var input = zip.getInputStream(descriptor)) { manifest = AutoLlmFileUtil.JSON.readValue(input.readAllBytes(), new TypeReference<>() {}); }
+        var seen = new HashSet<String>();
+        var entries = zip.entries();
+        while (entries.hasMoreElements()) {
+            var entry = entries.nextElement();
+            if (entry.getName().equals(MANIFEST)) continue;
+            Entry expected = manifest.get(entry.getName());
+            if (expected == null || !seen.add(entry.getName())) throw new IOException("Unexpected or duplicate transfer entry");
+            WorkloadPathUtil.inside(root, entry.getName());
+            if (expected.link() == null) try (var input = zip.getInputStream(entry)) {
+                if (!expected.sha256().equals(AutoLlmFileUtil.hash(input))) throw new IOException("Transfer checksum failed: " + entry.getName());
+            } else {
+                Path path = WorkloadPathUtil.inside(root, entry.getName());
+                if (Path.of(expected.link()).isAbsolute() || !path.getParent().resolve(expected.link()).normalize().startsWith(root)) throw new IOException("Transfer symlink escapes workspace");
+            }
+        }
+        if (!seen.equals(manifest.keySet())) throw new IOException("Incomplete transfer archive");
+        return manifest;
     }
     public static void deleteTree(Path path) throws IOException {
         if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return;

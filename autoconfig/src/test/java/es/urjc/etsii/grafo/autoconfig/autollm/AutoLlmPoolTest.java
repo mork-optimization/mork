@@ -219,9 +219,10 @@ class AutoLlmPoolTest {
             assertFalse(Files.exists(temp.resolve("operation-reservation.json")));
         } finally { service.close(); }
     }
-    @Test void canonicalIntegrityFailureStopsDispatchAcrossThePool() throws Exception {
-        setup(2, "a"); Path frozen = store.directory(campaign.id).resolve("control/sota.json");
-        AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/canonical-hashes.json"), Map.of("control/sota.json", AutoLlmFileUtil.hash(frozen)));
+    @ParameterizedTest @ValueSource(booleans = {false, true})
+    void canonicalIntegrityFailureStopsDispatchAcrossThePool(boolean sharedInput) throws Exception {
+        setup(2, "a"); Path frozen = sharedInput ? temp.resolve("input.txt") : store.directory(campaign.id).resolve("control/sota.json");
+        AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/canonical-hashes.json"), Map.of(sharedInput ? frozen.toString() : "control/sota.json", AutoLlmFileUtil.hash(frozen)));
         var entered = new CountDownLatch(1);
         executions.put("a", (model, stop) -> {
             entered.countDown();

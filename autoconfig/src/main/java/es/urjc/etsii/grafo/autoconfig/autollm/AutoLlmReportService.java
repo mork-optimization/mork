@@ -27,10 +27,11 @@ public class AutoLlmReportService<S extends Solution<S,I>, I extends Instance> {
         for (var trial : campaign.trials) {
             counts.merge(trial.status, 1, Integer::sum);
             if (trial.comparisonDirectory == null) continue;
+            var localInstances = AutoLlmPoolUtil.localInstances(campaign, root, trial);
             AutoLlmFileUtil.forEachEvent(root.resolve(trial.comparisonDirectory).resolve("execution/events.jsonl"), row -> {
                 if (!"evaluation-result".equals(row.get("kind")) || !Boolean.TRUE.equals(row.get("measured"))) return;
                 var enriched = new LinkedHashMap<>(row);
-                String localInstance = AutoLlmPoolUtil.localInstance(campaign, root, trial, (String) row.get("instance"));
+                String localInstance = localInstances.apply((String) row.get("instance"));
                 enriched.put("remoteInstance", row.get("instance")); enriched.put("instance", localInstance);
                 enriched.put("campaignId", campaign.id); enriched.put("trial", trial.number); enriched.put("tuningSeed", trial.tuningSeed); enriched.put("trialStatus", trial.status);
                 enriched.put("targetId", trial.targetId); enriched.put("poolRevision", trial.targetRevision);

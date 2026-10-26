@@ -1,7 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.autollm;
 
 import es.urjc.etsii.grafo.autoconfig.autollm.execution.*;
-import es.urjc.etsii.grafo.util.IOUtil;
 import es.urjc.etsii.grafo.util.ExceptionUtil;
 import tools.jackson.core.type.TypeReference;
 import java.io.*;
@@ -161,10 +160,11 @@ public final class AutoLlmTrialRunner {
             child(c, null, jar, preflight.resolve("check"), "--autollm-check", 0, c.config.execution().searchSpaceTimeoutMillis(), List.of());
             var check = AutoLlmExecutionService.check(c.config, root, preflight.resolve("check/execution/check.json"));
             if (check.parameters() > c.config.maxParameters() && !metadataOnly) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE, "BASELINE_SEARCH_SPACE", "Baseline exceeds the configured parameter limit; prune while preserving all seeds before starting", preflight.resolve("check"));
-            c.config = c.config.withPaths(snapshotInputs(root, "training", check.training()), snapshotInputs(root, "comparison", check.comparison()));
+            c.config = c.config.withPaths(AutoLlmInputUtil.snapshot(root, "training", check.training()), AutoLlmInputUtil.snapshot(root, "comparison", check.comparison()));
             Map<String,Long> originalBudgets = AutoLlmFileUtil.read(preflight.resolve("check/execution/comparison-time-limits.json"), new TypeReference<>() {});
             var localBudgets = new LinkedHashMap<String,Long>();
-            for (var budget : originalBudgets.entrySet()) localBudgets.put(AutoLlmExecutionService.localPath(c.config, root, budget.getKey()), budget.getValue());
+            var localPaths = AutoLlmExecutionService.localPaths(c.config, root);
+            for (var budget : originalBudgets.entrySet()) localBudgets.put(localPaths.apply(budget.getKey()), budget.getValue());
             var frozenBudgets = new LinkedHashMap<String,Long>();
             Map<String,Map<String,String>> comparisonInputs = AutoLlmFileUtil.read(root.resolve("data/comparison-manifest.json"), new TypeReference<>() {});
             for (var entry : comparisonInputs.entrySet()) frozenBudgets.put(entry.getValue().get("path"), localBudgets.get(entry.getKey()));
@@ -190,31 +190,16 @@ public final class AutoLlmTrialRunner {
             versions.put("irace", Files.readString(preflight.resolve("r-packages/stdout.log"))); c.versions = versions;
             var controls = new TreeMap<String,String>();
             for (String file : List.of("sota.json", "seeds.json", "comparison-time-limits.json")) controls.put("control/" + file, AutoLlmFileUtil.hash(root.resolve("control/" + file)));
-            for (String name : List.of("training", "comparison")) {
-                controls.put("data/" + name + ".index", AutoLlmFileUtil.hash(root.resolve("data/" + name + ".index")));
-                Map<String,Map<String,String>> manifest = AutoLlmFileUtil.read(root.resolve("data/" + name + "-manifest.json"), new TypeReference<>() {});
-                for (var input : manifest.values()) {
-                    controls.put(root.relativize(Path.of(input.get("path"))).toString(), input.get("sha256"));
-                }
-            }
+            for (String name : List.of("training", "comparison")) AutoLlmInputUtil.addHashes(controls, root, name);
             AutoLlmFileUtil.write(root.resolve("control/frozen-hashes.json"), controls);
             AutoLlmFileUtil.write(root.resolve("control/config.json"), c.config); if (!metadataOnly) c.baselineCommit = commit; publish(c);
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
-    private String snapshotInputs(Path root, String name, List<String> source) throws IOException {
-        var index = new ArrayList<String>(); var hashes = new LinkedHashMap<String, Map<String, String>>();
-        Path directory = root.resolve("data/" + name); Files.createDirectories(directory);
-        for (int i = 0; i < source.size(); i++) {
-            String original = source.get(i); String basename = original.substring(original.lastIndexOf('!') + 1); basename = Path.of(basename).getFileName().toString();
-            Path copy = directory.resolve("%08d".formatted(i)).resolve(basename); Files.createDirectories(copy.getParent());
-            if (original.contains("!") || !Path.of(original).toAbsolutePath().normalize().equals(copy.toAbsolutePath().normalize())) {
-                try (var input = IOUtil.getInputStream(original)) { Files.copy(input, copy, StandardCopyOption.REPLACE_EXISTING); }
-            }
-            index.add(copy.toString()); hashes.put(original, Map.of("path", copy.toString(), "sha256", AutoLlmFileUtil.hash(copy)));
-        }
-        Path file = root.resolve("data/" + name + ".index"); Files.write(file, index); AutoLlmFileUtil.write(root.resolve("data/" + name + "-manifest.json"), hashes); return file.toString();
-    }
     private void cloneProject(AutoLlmCampaign c, String commit, Path destination, Path output) {
+        if (!Files.exists(destination.resolve(".git"))) {
+            try { DirectoryArchiveUtil.restore(destination); }
+            catch (IOException e) { throw new UncheckedIOException(e); }
+        }
         if (Files.exists(output.resolve("clone-completed.json"))) return;
         if (!Files.exists(destination.resolve(".git"))) runCommand(c, List.of("git", "clone", "--no-hardlinks", "--no-checkout", c.config.project().repository(), destination.toString()), Path.of(c.config.project().repository()), output, c.config.execution().buildTimeoutMillis(), true);
         runCommand(c, List.of("git", "checkout", "--detach", commit), destination, output.resolve("checkout"), 30_000, true);
@@ -391,7 +376,7 @@ public final class AutoLlmTrialRunner {
         }
         if (result.exitCode() != 0) {
             String message = "Command failed (" + result.exitCode() + "): " + command + "; logs: " + dir;
-            if (command.equals(c.config.project().buildCommand())) throw AutoLlmFailureUtil.buildFailure(cwd, executionRoot.resolve("baseline/source"), dir, message, path -> AutoLlmExecutionService.localPath(c.config, executionRoot, path));
+            if (command.equals(c.config.project().buildCommand())) throw AutoLlmFailureUtil.buildFailure(cwd, executionRoot.resolve("baseline/source"), dir, message, AutoLlmExecutionService.localPaths(c.config, executionRoot));
             throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE, "PREREQUISITE_FAILED", message, dir);
         }
     }

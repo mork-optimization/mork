@@ -52,6 +52,7 @@ public final class RemoteScreeningService {
                 Path repository = Path.of(config.project().repository()).toAbsolutePath().normalize();
                 command(List.of("git", "rev-parse", "--verify", config.project().ref() + "^{commit}"), repository, root.resolve("ref"));
                 String commit = Files.readString(root.resolve("ref/stdout.log")).strip();
+                if (!Files.exists(source.resolve(".git"))) DirectoryArchiveUtil.restore(source);
                 if (!Files.exists(source.resolve(".git"))) {
                     command(List.of("git", "clone", "--no-hardlinks", "--no-checkout", repository.toString(), source.toString()), repository, root.resolve("clone"));
                     command(List.of("git", "checkout", "--detach", commit), source, root.resolve("checkout"));
@@ -68,7 +69,7 @@ public final class RemoteScreeningService {
                     if (!Files.exists(copy)) Files.copy(container, copy);
                     String suffix = token.contains("!") ? token.substring(token.indexOf('!')) : "";
                     String staged = copy + suffix; pool.add(staged);
-                    original.put(token, Map.of("path", staged, "sha256", ScreeningFileUtil.inputHash(token)));
+                    original.put(token, Map.of("path", staged, "sha256", AutoLlmFileUtil.inputHash(token)));
                 }
                 Files.write(root.resolve("control/original.index"), pool); AutoLlmFileUtil.write(root.resolve("data/original-inputs.json"), original);
                 AutoLlmFileUtil.write(root.resolve("control/config.json"), config);
@@ -84,7 +85,7 @@ public final class RemoteScreeningService {
         if (!preparation.sotaSha256().equals(AutoLlmFileUtil.hash(Path.of(preparation.settings().sotaFile())))) throw new IllegalStateException("Original SOTA changed since remote preparation");
         Map<String,Map<String,String>> original = AutoLlmFileUtil.read(root.resolve("data/original-inputs.json"), new TypeReference<>() {});
         if (!new HashSet<>(InstancePathUtil.list(preparation.originalPool())).equals(original.keySet())) throw new IllegalStateException("Original pool membership changed since remote preparation");
-        for (var entry : original.entrySet()) if (!entry.getValue().get("sha256").equals(ScreeningFileUtil.inputHash(entry.getKey()))) throw new IllegalStateException("Original input changed since remote preparation: " + entry.getKey());
+        for (var entry : original.entrySet()) if (!entry.getValue().get("sha256").equals(AutoLlmFileUtil.inputHash(entry.getKey()))) throw new IllegalStateException("Original input changed since remote preparation: " + entry.getKey());
         var arguments = new ArrayList<>(List.of(Path.of(System.getProperty("java.home"), "bin/java").toString(), "-da", "-Xmx" + config.execution().heap(),
                 "-Dmork.execution.directory=" + root.resolve((approve ? "approval" : "screening") + "/execution"), "-jar", artifact.toString(),
                 approve ? "--instance-screening-approve" : "--instance-screening", "--instance-screening.output=" + root.resolve("proposal"),
@@ -147,9 +148,10 @@ public final class RemoteScreeningService {
         if (manifest.version() != 3 || !"QUALIFIED_SERVER_POOL".equals(manifest.reusePolicy())) throw new IllegalStateException("Dataset approval does not authorize qualified server-pool reuse");
         if (!preparation.artifactSha256().equals(manifest.artifactSha256()) || !preparation.sotaSha256().equals(manifest.sotaSha256())) throw new IllegalStateException("Approved executable or SOTA identity changed");
         if (!manifest.fingerprint().equals(approved.get("fingerprint"))) throw new IllegalStateException("Approved fingerprint changed");
+        var localPaths = AutoLlmExecutionService.localPaths(preparation.config(), root);
         for (var input : manifest.inputs()) {
-            String local = AutoLlmExecutionService.localPath(preparation.config(), root, input.path());
-            if (!input.sha256().equals(ScreeningFileUtil.inputHash(local))) throw new IllegalStateException("Approved input payload changed: " + local);
+            String local = localPaths.apply(input.path());
+            if (!input.sha256().equals(AutoLlmFileUtil.inputHash(local))) throw new IllegalStateException("Approved input payload changed: " + local);
         }
         for (String name : List.of("train", "test", "retained")) if (!AutoLlmFileUtil.hash(proposal.resolve(name + ".index")).equals(AutoLlmFileUtil.hash(proposal.resolve("proposed-" + name + ".index")))) throw new IllegalStateException("Published index changed: " + name);
         return preparation;

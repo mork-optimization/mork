@@ -4,6 +4,8 @@ package es.urjc.etsii.grafo.util;
 import org.apache.commons.io.FilenameUtils;
 
 import java.io.File;
+import java.io.Closeable;
+import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
@@ -294,6 +296,20 @@ public class IOUtil {
         }
 
         return archiver.getEntryInputStream(archivePath, entryPath);
+    }
+
+    /**
+     * Close the containing archive when its returned member stream is closed.
+     * @param input archive member stream
+     * @param owner containing archive
+     * @return stream that closes both resources
+     */
+    public static InputStream closeWithOwner(InputStream input, Closeable owner) {
+        return new FilterInputStream(input) {
+            @Override public void close() throws IOException {
+                try (owner; input) { /* Close the member first, preserving both failures if needed. */ }
+            }
+        };
     }
 
     /**

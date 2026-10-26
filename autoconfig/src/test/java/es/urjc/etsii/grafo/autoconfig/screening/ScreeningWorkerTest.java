@@ -41,7 +41,7 @@ class ScreeningWorkerTest {
         for (String name : List.of("fast", "slow")) {
             Path path = output.resolve(name);
             Files.writeString(path, name);
-            inputs.add(new Input(path.toString(), ScreeningFileUtil.inputHash(path.toString())));
+            inputs.add(new Input(path.toString(), AutoLlmFileUtil.inputHash(path.toString())));
         }
         var config = new InstanceScreeningConfig(sota.toString(), output.toString(), null, null, null,
                 2, null, null, null, null, null);

@@ -1,7 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.screening;
 
 import es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmFileUtil;
-import es.urjc.etsii.grafo.util.IOUtil;
+import es.urjc.etsii.grafo.autoconfig.autollm.execution.DirectoryArchiveUtil;
 import org.springframework.boot.system.ApplicationHome;
 import java.io.*;
 import java.net.InetAddress;
@@ -15,10 +15,6 @@ public final class ScreeningFileUtil {
     private ScreeningFileUtil() {}
     public static String digest(Object value) {
         try { return AutoLlmFileUtil.hash(new ByteArrayInputStream(AutoLlmFileUtil.JSON.writeValueAsBytes(value))); }
-        catch (IOException e) { throw new UncheckedIOException(e); }
-    }
-    public static String inputHash(String token) {
-        try (var input = IOUtil.getInputStream(token)) { return AutoLlmFileUtil.hash(input); }
         catch (IOException e) { throw new UncheckedIOException(e); }
     }
     public static Map<String,String> host() {
@@ -88,8 +84,12 @@ public final class ScreeningFileUtil {
     }
     public static Run readRun(Path output, Manifest manifest, Input input, long seed) {
         Path file = runPath(output, input.path(), seed);
-        if (!Files.exists(file)) return null;
-        RunEvidence evidence = AutoLlmFileUtil.read(file, RunEvidence.class);
+        RunEvidence evidence;
+        try {
+            byte[] bytes = DirectoryArchiveUtil.read(file.getParent(), file.getFileName().toString());
+            if (bytes == null) return null;
+            evidence = AutoLlmFileUtil.JSON.readValue(bytes, RunEvidence.class);
+        } catch (IOException e) { throw new UncheckedIOException(e); }
         Run run = evidence.run();
         if (run == null || !digest(run).equals(evidence.sha256())) throw new IllegalStateException("Cached screening evidence checksum failed: " + file);
         if (!run.fingerprint().equals(manifest.fingerprint()) || !run.instance().equals(input.path()) || run.seed() != seed) {
@@ -140,7 +140,7 @@ public final class ScreeningFileUtil {
             Path source = Path.of(argument.substring(argument.indexOf('=') + 1));
             if (!AutoLlmFileUtil.hash(source).equals(AutoLlmFileUtil.hash(Path.of(manifest.settings().output()).resolve("source-metadata.json")))) throw new IllegalStateException("Screening source metadata changed");
         }
-        for (Input input : manifest.inputs()) if (!input.sha256().equals(inputHash(input.path()))) {
+        for (Input input : manifest.inputs()) if (!input.sha256().equals(AutoLlmFileUtil.inputHash(input.path()))) {
             throw new IllegalStateException("Screening input changed: " + input.path());
         }
     }
@@ -181,8 +181,11 @@ public final class ScreeningFileUtil {
         }
         validateSelection(output, proposal);
         Map<String,String> runs = AutoLlmFileUtil.read(output.resolve("run-hashes.json"), new tools.jackson.core.type.TypeReference<>() {});
+        Map<String,String> actual;
+        try { actual = DirectoryArchiveUtil.hashes(output.resolve("runs")); }
+        catch (IOException e) { throw new UncheckedIOException(e); }
         for (var run : runs.entrySet()) {
-            if (!AutoLlmFileUtil.hash(AutoLlmFileUtil.inside(output.resolve("runs"), run.getKey())).equals(run.getValue())) {
+            if (!run.getValue().equals(actual.get(run.getKey()))) {
                 throw new IllegalStateException("Reviewed run evidence changed: " + run.getKey());
             }
         }

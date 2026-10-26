@@ -1,7 +1,11 @@
 package es.urjc.etsii.grafo.autoconfig.autollm.execution;
 
 import es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmFileUtil;
+import es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmCheckOrchestrator;
+import es.urjc.etsii.grafo.util.InstancePathUtil;
 import java.nio.file.*;
+import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public final class RemoteWorkloadFixture {
@@ -10,6 +14,18 @@ public final class RemoteWorkloadFixture {
         Path output = Path.of(args[1]); Files.createDirectories(output.resolve("execution"));
         AutoLlmFileUtil.write(output.resolve("execution/readiness.json"), Map.of("startedAtMillis", System.currentTimeMillis()));
         Files.writeString(output.resolve("literal.txt"), args.length > 2 ? args[2] : "literal");
+        if (args[0].equals("solutions")) {
+            Files.createDirectories(output.resolve("solutions"));
+            Files.writeString(output.resolve("solutions/first.json"), "{\"cost\":1}");
+            Files.writeString(output.resolve("solutions/second.json"), "{\"cost\":2}");
+        }
+        if (args[0].equals("inputs")) {
+            var tokens = InstancePathUtil.list(args[2]);
+            var hashes = new LinkedHashMap<String,String>();
+            for (String token : tokens) hashes.put(token, AutoLlmFileUtil.inputHash(token));
+            AutoLlmFileUtil.write(output.resolve("input-hashes.json"), hashes);
+            AutoLlmFileUtil.write(output.resolve("check.json"), new AutoLlmCheckOrchestrator.Check(1, List.of(), tokens, tokens));
+        }
         if (args[0].equals("hang")) {
             AutoLlmFileUtil.write(output.resolve("execution/active.json"), Map.of("hung", Map.of("deadline", System.currentTimeMillis() + 100, "phase", "RUNNING")));
             while (true) Thread.sleep(100);

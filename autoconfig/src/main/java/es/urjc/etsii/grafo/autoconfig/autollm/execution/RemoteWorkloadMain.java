@@ -150,6 +150,7 @@ public final class RemoteWorkloadMain {
                 if (e instanceof RuntimeException problem) AutoLlmFileUtil.write(WorkloadPathUtil.inside(root, job.output()).resolve("execution/failure.json"), AutoLlmFailureUtil.describe(problem, WorkloadPathUtil.inside(root, job.output())));
             }
             var files = new TreeMap<String,Path>();
+            DirectoryArchiveUtil.archive(WorkloadPathUtil.inside(root, job.output()).resolve("solutions"));
             WorkloadArchiveUtil.addTree(files, root, WorkloadPathUtil.inside(root, job.output()), false);
             for (String path : job.collect()) WorkloadArchiveUtil.addTree(files, root, WorkloadPathUtil.inside(root, path), false);
             if (!job.reset().isEmpty()) try (var paths = Files.walk(WorkloadPathUtil.inside(root, job.cwd()))) {

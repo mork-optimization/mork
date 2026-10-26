@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.autoconfig.autollm;
 
 import tools.jackson.core.type.TypeReference;
 import tools.jackson.databind.json.JsonMapper;
+import es.urjc.etsii.grafo.util.IOUtil;
+import es.urjc.etsii.grafo.util.InstancePathUtil;
 import java.io.*;
 import java.nio.file.*;
 import java.security.MessageDigest;
@@ -89,6 +91,10 @@ public final class AutoLlmFileUtil {
             return hash(input);
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
+    public static String inputHash(String token) {
+        try (var input = IOUtil.getInputStream(token)) { return hash(input); }
+        catch (IOException e) { throw new UncheckedIOException(e); }
+    }
     public static String hash(InputStream input) throws IOException {
         try {
             var digest = MessageDigest.getInstance("SHA-256");
@@ -161,8 +167,9 @@ public final class AutoLlmFileUtil {
     }
     public static void verifySources(Path root, Map<String, String> original) {
         for (var entry : original.entrySet()) {
-            Path path = root.resolve(entry.getKey());
-            if (!Files.isRegularFile(path) || !entry.getValue().equals(hash(path))) throw new IllegalStateException("Preserved baseline file changed: " + entry.getKey());
+            try {
+                if (!entry.getValue().equals(inputHash(InstancePathUtil.resolve(root, entry.getKey())))) throw new IllegalStateException("Preserved baseline file changed: " + entry.getKey());
+            } catch (UncheckedIOException e) { throw new IllegalStateException("Preserved baseline file missing or unreadable: " + entry.getKey(), e); }
         }
     }
     public static void archiveSources(Path root, Path archive, Map<String,String> hashes) {

@@ -2,6 +2,7 @@ package es.urjc.etsii.grafo.autoconfig.autollm;
 
 import java.nio.file.Path;
 import java.util.*;
+import java.util.function.UnaryOperator;
 
 /** Snapshot and path operations shared by the coordinator, runners, and reporting. */
 public final class AutoLlmPoolUtil {
@@ -33,11 +34,11 @@ public final class AutoLlmPoolUtil {
         if (result.get("stageDirectory") instanceof String directory) result.put("stageDirectory", prefix + "/" + directory);
         return result;
     }
-    public static String localInstance(AutoLlmCampaign campaign, Path root, AutoLlmCampaign.Trial trial, String path) {
+    public static UnaryOperator<String> localInstances(AutoLlmCampaign campaign, Path root, AutoLlmCampaign.Trial trial) {
         var target = campaign.targets.get(trial.targetId);
         if (target == null) throw new IllegalStateException("Trial target unavailable");
         Path executionRoot = root.resolve(target.directory);
-        return es.urjc.etsii.grafo.autoconfig.autollm.execution.AutoLlmExecutionService.localPath(target.resolvedConfig, executionRoot, path);
+        return es.urjc.etsii.grafo.autoconfig.autollm.execution.AutoLlmExecutionService.localPaths(target.resolvedConfig, executionRoot);
     }
     public static Map<String, Object> identity(String campaignId, String targetId) {
         return Map.of("campaignId", campaignId, "targetId", targetId);

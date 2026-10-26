@@ -26,12 +26,14 @@ public class Compression {
             var builder = new SevenZFile.Builder();
             builder.setPath(path);
             var sevenZFile = builder.get();
-            for (var e : sevenZFile.getEntries()) {
-                if (e.getName().equals(entryName)) {
-                    return sevenZFile.getInputStream(e);
+            try {
+                for (var e : sevenZFile.getEntries()) {
+                    if (e.getName().equals(entryName)) return IOUtil.closeWithOwner(sevenZFile.getInputStream(e), sevenZFile);
                 }
+                throw new IOException("Entry not found: %s, path: %s".formatted(entryName, path));
+            } catch (IOException | RuntimeException | Error e) {
+                try (sevenZFile) { throw e; }
             }
-            throw new IllegalArgumentException("Entry not found: %s, path: %s".formatted(entryName, path));
         }
 
         @Override
@@ -59,8 +61,13 @@ public class Compression {
             var builder = new ZipFile.Builder();
             builder.setPath(path);
             var zipFile = builder.get();
-            var entry = zipFile.getEntry(entryName);
-            return zipFile.getInputStream(entry);
+            try {
+                var entry = zipFile.getEntry(entryName);
+                if (entry == null) throw new IOException("Entry not found: %s, path: %s".formatted(entryName, path));
+                return IOUtil.closeWithOwner(zipFile.getInputStream(entry), zipFile);
+            } catch (IOException | RuntimeException | Error e) {
+                try (zipFile) { throw e; }
+            }
         }
 
         @Override

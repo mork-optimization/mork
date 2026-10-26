@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.screening;
 
 import es.urjc.etsii.grafo.autoconfig.autollm.*;
+import es.urjc.etsii.grafo.autoconfig.autollm.execution.DirectoryArchiveUtil;
 import es.urjc.etsii.grafo.autoconfig.builder.AlgorithmBuilderService;
 import es.urjc.etsii.grafo.config.*;
 import es.urjc.etsii.grafo.create.builder.SolutionBuilder;
@@ -102,7 +103,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
         for (String path : instances.getInstanceSolveOrder("instance-screening", false)) source.add(IOUtil.absoluteLoadPath(path));
         if (source.isEmpty()) throw new IllegalArgumentException("No instances to screen");
         var all = new ArrayList<Input>();
-        for (String path : source) all.add(new Input(path, ScreeningFileUtil.inputHash(path)));
+        for (String path : source) all.add(new Input(path, AutoLlmFileUtil.inputHash(path)));
         var host = ScreeningFileUtil.host();
         String sotaHash = AutoLlmFileUtil.hash(Path.of(config.sotaFile()));
         String objective = Context.getMainObjective().getName(); var mode = Context.getMainObjective().getFMode();
@@ -248,10 +249,7 @@ public class InstanceScreeningOrchestrator<S extends Solution<S,I>, I extends In
             files.put(file, AutoLlmFileUtil.hash(output.resolve(file)));
         }
         if (sourceMetadata != null) files.put("source-metadata.json", AutoLlmFileUtil.hash(output.resolve("source-metadata.json")));
-        var runHashes = new TreeMap<String,String>();
-        try (var paths = Files.list(output.resolve("runs"))) {
-            for (Path file : paths.toList()) runHashes.put(file.getFileName().toString(), AutoLlmFileUtil.hash(file));
-        }
+        var runHashes = DirectoryArchiveUtil.hashes(output.resolve("runs"));
         AutoLlmFileUtil.write(output.resolve("run-hashes.json"), runHashes);
         files.put("run-hashes.json", AutoLlmFileUtil.hash(output.resolve("run-hashes.json")));
         AutoLlmFileUtil.write(output.resolve("proposal.json"), new Proposal(manifest.fingerprint(), "PENDING_REVIEW", decisions, files, training.size(), testing.size(), splitFailure));

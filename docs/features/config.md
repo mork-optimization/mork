@@ -64,6 +64,9 @@ instances:
     # Default instance path for all experiments, can be overridden.
     default: 'instances'
 
+    # Shared instance for JVM warm-up and AutoLLM probes. Empty selects the fastest to load.
+    reference: ''
+
     # Override default instance path only for the experiment declared in file PreliminarExperiment.java
     # If an experiment does not have a specific path the default will be used. Example:
     # PreliminarExperiment: './instances/preliminar'
@@ -96,10 +99,9 @@ solver:
   benchmark: true
 
   # JVM warm-up before measured experiment executions.
-  # If enabled and instance-path is empty, Mork automatically selects a small/fast instance.
+  # Uses instances.path.reference, or the fastest-loading configured instance.
   warmup:
     enabled: false
-    instance-path: ''
     repetitions: 5
     # Optional warm-up time limit in milliseconds. Set 0 to use normal time control behavior.
     max-millis: 0

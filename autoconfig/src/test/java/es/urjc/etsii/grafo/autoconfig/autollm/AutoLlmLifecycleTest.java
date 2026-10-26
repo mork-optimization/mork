@@ -112,6 +112,14 @@ class AutoLlmLifecycleTest {
             while (service.active() != null && System.currentTimeMillis() < deadline) Thread.sleep(50);
             assertNull(service.active(), "Campaign must terminate within the test budget");
             var campaign = store.load(created.id);
+            Path campaignRoot = store.directory(created.id);
+            assertEquals(List.of(input.toString()), Files.readAllLines(campaignRoot.resolve("data/training.index")));
+            assertFalse(Files.exists(campaignRoot.resolve("data/training")));
+            Path workerIndex = campaignRoot.resolve("targets/local/data/training.index");
+            if (Files.exists(workerIndex)) {
+                assertEquals(List.of(input.toString()), Files.readAllLines(workerIndex));
+                assertFalse(Files.exists(campaignRoot.resolve("targets/local/data/training")));
+            }
             if (mode.startsWith("quota-")) {
                 assertEquals("COMPLETED_WITH_FAILURES", campaign.status, campaign.failure);
                 var first = campaign.trials.getFirst();

@@ -135,22 +135,30 @@ However, if the instances are huge, you do not need to solve the instances in an
 !!! tip
     As a general rule, do not use automatic parallelization if instances are huge. The reason for this is that multiple threads can be solving different instances, and therefore Mork will be forced to keep multiple instances in memory at the same time, which can produce out-of-memory errors.
 
-## JVM warm-up instance
+## Shared reference instance for warm-up and probes
 
 Short experiments can be affected by the JVM switching from interpreted execution to compiled code while measured runs are already in progress. To reduce this effect, Mork can run each algorithm on a warm-up instance before publishing normal experiment events or exporting measured solutions.
 
 Enable it with:
 
 ```yml
+instances:
+  path:
+    # Optional single instance from the experiment's configured inputs.
+    reference: ''
+
 solver:
   warmup:
     enabled: true
-    instance-path: ''
     repetitions: 5
     max-millis: 0
 ```
 
-If `solver.warmup.instance-path` is empty, Mork selects the warm-up instance automatically. With `instances.preload=true`, it uses the instance with the smallest load time measured during validation. If those validation load times are no longer available from cache, or if preload is disabled, it falls back to the smallest instance file size. You can set `solver.warmup.instance-path` to force a specific fast instance instead.
+`instances.path.reference` is shared by JVM warm-up and AutoLLM seed/component probes. Set it to a single instance load path, such as `instances/data.zip!small.csv`, to select that instance explicitly. Relative paths can also be resolved against the experiment's configured input directory or index-file directory. The override must belong to that experiment's configured inputs; for AutoLLM probes, it must belong to the approved training set. An invalid override fails instead of silently selecting another instance.
+
+When `reference` is absent or blank, Mork selects the configured instance with the lowest measured loading time. It reuses `loadTimeInNanos` from already-loaded instances and imports candidates whose loading times are unknown, even when `instances.preload=false`. Timings remain available after cached instance objects are reclaimed or purged. Equal loading times are resolved by absolute load path. Selection uses measured import time, including for entries inside a shared archive; it does not use archive file size or algorithm execution time. With lazy loading, the automatic scan imports candidates once without retaining them through strong references. Configure an explicit reference to avoid this scan.
+
+The previous `solver.warmup.instance-path` setting has been removed; migrate it to `instances.path.reference`. Warm-up enablement, repetitions and time limits remain under `solver.warmup`.
 
 See [Warm-up limits](time-limits.md#warm-up-limits) for overriding each warm-up execution's budget with
 `solver.warmup.max-millis`.

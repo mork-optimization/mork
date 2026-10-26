@@ -4,13 +4,19 @@ import org.apache.commons.io.IOUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import java.io.ByteArrayInputStream;
+import java.io.Closeable;
 import java.io.IOException;
+import java.lang.management.ManagementFactory;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Path;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class IOUtilTest {
 
@@ -160,9 +166,10 @@ public class IOUtilTest {
         var entries = IOUtil.iterate("src/test/resources/instances.zip");
         assertEntries(entries);
         for(var e: entries){
-            var in = IOUtil.getInputStream(e);
-            var content = IOUtils.toString(in, StandardCharsets.UTF_8);
-            assertContent(e, content);
+            try (var in = IOUtil.getInputStream(e)) {
+                var content = IOUtils.toString(in, StandardCharsets.UTF_8);
+                assertContent(e, content);
+            }
         }
     }
 
@@ -172,9 +179,10 @@ public class IOUtilTest {
         var entries = IOUtil.iterate("src/test/resources/instances.7z");
         assertEntries(entries);
         for(var e: entries){
-            var in = IOUtil.getInputStream(e);
-            var content = IOUtils.toString(in, StandardCharsets.UTF_8);
-            assertContent(e, content);
+            try (var in = IOUtil.getInputStream(e)) {
+                var content = IOUtils.toString(in, StandardCharsets.UTF_8);
+                assertContent(e, content);
+            }
         }
     }
 
@@ -183,9 +191,10 @@ public class IOUtilTest {
         var entries = IOUtil.iterate("src/test/resources/instances.tar.gz");
         assertEntries(entries);
         for(var e: entries){
-            var in = IOUtil.getInputStream(e);
-            var content = IOUtils.toString(in, StandardCharsets.UTF_8);
-            assertContent(e, content);
+            try (var in = IOUtil.getInputStream(e)) {
+                var content = IOUtils.toString(in, StandardCharsets.UTF_8);
+                assertContent(e, content);
+            }
         }
     }
 
@@ -194,10 +203,42 @@ public class IOUtilTest {
         var entries = IOUtil.iterate("src/test/resources/instances.tar");
         assertEntries(entries);
         for(var e: entries){
-            var in = IOUtil.getInputStream(e);
-            var content = IOUtils.toString(in, StandardCharsets.UTF_8);
-            assertContent(e, content);
+            try (var in = IOUtil.getInputStream(e)) {
+                var content = IOUtils.toString(in, StandardCharsets.UTF_8);
+                assertContent(e, content);
+            }
         }
+    }
+
+    @Test void closesArchiveEvenWhenTheMemberFailsToClose() {
+        var memberFailure = new IOException("member failed");
+        var archiveFailure = new IOException("archive failed");
+        var closed = new AtomicBoolean();
+        var member = new ByteArrayInputStream(new byte[0]) {
+            @Override public void close() throws IOException { throw memberFailure; }
+        };
+        Closeable owner = () -> { closed.set(true); throw archiveFailure; };
+        var input = IOUtil.closeWithOwner(member, owner);
+        var error = Assertions.assertThrows(IOException.class, input::close);
+        Assertions.assertSame(memberFailure, error);
+        Assertions.assertTrue(closed.get());
+        Assertions.assertArrayEquals(new Throwable[]{archiveFailure}, error.getSuppressed());
+    }
+
+    @ParameterizedTest @ValueSource(strings = {"zip", "7z"})
+    void repeatedMemberReadsAndMissingEntriesDoNotLeakFileDescriptors(String extension) throws IOException {
+        var operatingSystem = ManagementFactory.getOperatingSystemMXBean();
+        org.junit.jupiter.api.Assumptions.assumeTrue(operatingSystem instanceof com.sun.management.UnixOperatingSystemMXBean);
+        var unix = (com.sun.management.UnixOperatingSystemMXBean) operatingSystem;
+        String container = "src/test/resources/instances." + extension;
+        String token = container + "!instances/hello-world.txt";
+        try (var input = IOUtil.getInputStream(token)) { input.readAllBytes(); }
+        long before = unix.getOpenFileDescriptorCount();
+        for (int i = 0; i < 100; i++) {
+            try (var input = IOUtil.getInputStream(token)) { assertContent(token, IOUtils.toString(input, StandardCharsets.UTF_8)); }
+            Assertions.assertThrows(IOException.class, () -> IOUtil.getInputStream(container + "!missing.txt"));
+        }
+        Assertions.assertTrue(unix.getOpenFileDescriptorCount() <= before + 5, "Archive file descriptors accumulated");
     }
 
 }

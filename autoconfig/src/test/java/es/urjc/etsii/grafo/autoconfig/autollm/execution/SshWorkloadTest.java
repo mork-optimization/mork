@@ -11,6 +11,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.*;
 import java.util.jar.*;
+import java.util.zip.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -87,6 +88,55 @@ class SshWorkloadTest {
         // A second controller invocation reuses the same completed job and byte-identical evidence.
         assertEquals(0, new SshWorkloadExecutor(config, root, transport, state -> {}).run(workload("success", literal), () -> false).exitCode());
         assertEquals(2, submissions.get()); // the second controller validates the same payload, without relaunching it
+    }
+    @Test void transfersSolutionsAsOneArchiveAndReusesItOnRecollection() throws Exception {
+        var work = workload("solutions", "archived solutions");
+        var executor = new SshWorkloadExecutor(config, root, new SshTransport(config, temp.resolve("transport")), state -> {});
+        assertEquals(0, executor.run(work, () -> false).exitCode());
+        Path archive = work.output().resolve("solutions.zip");
+        assertEquals(2, WorkloadArchiveUtil.verify(archive, work.output().resolve("solutions")).size());
+        assertFalse(Files.exists(work.output().resolve("solutions")));
+        Path remote = Path.of(WorkloadPathUtil.remoteRoot(config, root), "output with spaces");
+        assertTrue(Files.exists(remote.resolve("solutions.zip")));
+        assertFalse(Files.exists(remote.resolve("solutions")));
+        assertTrue(Files.exists(work.output().resolve("execution/terminal.json")));
+        String checksum = AutoLlmFileUtil.hash(archive);
+        assertEquals(0, executor.run(work, () -> false).exitCode());
+        assertEquals(checksum, AutoLlmFileUtil.hash(archive));
+    }
+    @Test void referencesOriginalInputsLocallyAndTransfersArchiveContainersWithoutExtraction() throws Exception {
+        Path original = temp.resolve("original dataset.zip"), loose = temp.resolve("loose input.txt");
+        try (var zip = new ZipOutputStream(Files.newOutputStream(original))) {
+            zip.putNextEntry(new ZipEntry("nested/input.txt")); zip.write("archive input".getBytes()); zip.closeEntry();
+        }
+        Files.writeString(loose, "loose input");
+        var tokens = List.of(original + "!nested/input.txt", loose.toString());
+        String index = AutoLlmInputUtil.snapshot(root, "training", tokens);
+        var service = new AutoLlmExecutionService(new AutoLlmProcessRunner());
+        config = service.stageInputs(config.withPaths(index, index), root);
+        Path output = root.resolve("input operation");
+        AutoLlmFileUtil.write(root.resolve("control/comparison-time-limits.json"), Map.of(tokens.getFirst(), 123L, tokens.getLast(), 456L));
+        var command = List.of(java, "-cp", System.getProperty("java.class.path"), RemoteWorkloadFixture.class.getName(), "inputs", output.toString(), config.trainingPath());
+        assertEquals(0, service.run(config, root, command, root, output, null, List.of(), 30000, 0, true, 5000, () -> false, state -> {}).exitCode());
+        var check = AutoLlmExecutionService.check(config, root, output.resolve("check.json"));
+        assertEquals(tokens, check.training());
+        Map<String,String> hashes = AutoLlmFileUtil.read(output.resolve("input-hashes.json"), new tools.jackson.core.type.TypeReference<>() {});
+        Path remote = Path.of(WorkloadPathUtil.remoteRoot(config, root));
+        assertEquals(2, hashes.size());
+        var localPaths = AutoLlmExecutionService.localPaths(config, root);
+        for (var entry : hashes.entrySet()) {
+            assertTrue(entry.getKey().startsWith(remote + "/data/inputs/"));
+            String local = localPaths.apply(entry.getKey());
+            assertEquals(AutoLlmFileUtil.inputHash(local), entry.getValue());
+        }
+        assertTrue(hashes.keySet().iterator().next().contains("original dataset.zip!nested/input.txt"));
+        assertFalse(Files.exists(root.resolve("data/inputs")));
+        try (var files = Files.walk(remote.resolve("data/inputs"))) { assertEquals(2, files.filter(Files::isRegularFile).count()); }
+        Map<String,Long> limits = AutoLlmFileUtil.read(remote.resolve("control/comparison-time-limits.json"), new tools.jackson.core.type.TypeReference<>() {});
+        assertEquals(123L, limits.get(hashes.keySet().iterator().next()));
+        assertEquals(0, service.run(config, root, command, root, output, null, List.of(), 30000, 0, true, 5000, () -> false, state -> {}).exitCode());
+        Files.writeString(loose, "changed");
+        assertThrows(IllegalStateException.class, () -> service.run(config, root, command, root, root.resolve("changed input operation"), null, List.of(), 30000, 0, true, 5000, () -> false, state -> {}));
     }
     @Test void serverWatchdogStopsAHungEvaluation() {
         var executor = new SshWorkloadExecutor(config, root, new SshTransport(config, temp.resolve("transport")), state -> {});

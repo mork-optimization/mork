@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.autoconfig.screening;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmFileUtil;
+import es.urjc.etsii.grafo.autoconfig.autollm.execution.DirectoryArchiveUtil;
+import es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadArchiveUtil;
 import es.urjc.etsii.grafo.util.IOUtil;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
@@ -28,8 +30,8 @@ class ScreeningFileUtilTest {
         Files.writeString(source, "input"); Files.writeString(second, "second input"); Files.writeString(sota, "{}");
         var config = new InstanceScreeningConfig(sota.toString(), temp.toString(), null, null, null, null, null, null, null, null, null);
         var manifest = new Manifest(1, "fingerprint", config, 1234, "Xoroshiro128PlusPlus", .15, "Cost", FMode.MINIMIZE,
-                ScreeningFileUtil.host(), List.of(new Input(source.toString(), ScreeningFileUtil.inputHash(source.toString())),
-                        new Input(second.toString(), ScreeningFileUtil.inputHash(second.toString()))), AutoLlmFileUtil.hash(sota), "jar", List.of(), "QUALIFIED_SERVER_POOL");
+                ScreeningFileUtil.host(), List.of(new Input(source.toString(), AutoLlmFileUtil.inputHash(source.toString())),
+                        new Input(second.toString(), AutoLlmFileUtil.inputHash(second.toString()))), AutoLlmFileUtil.hash(sota), "jar", List.of(), "QUALIFIED_SERVER_POOL");
         AutoLlmFileUtil.write(temp.resolve("manifest.json"), manifest);
         var hashes = new LinkedHashMap<String,String>();
         for (String name : List.of("retained", "train", "test")) {
@@ -114,5 +116,37 @@ class ScreeningFileUtilTest {
         assertThrows(IllegalStateException.class, () -> ScreeningFileUtil.readRun(temp, manifest, input, 1234));
         ScreeningFileUtil.writeRun(temp, new Run("other", input.path(), 1234, false, null, 0, List.of(), "different"));
         assertThrows(IllegalStateException.class, () -> ScreeningFileUtil.readRun(temp, manifest, input, 1234));
+    }
+
+    @Test void archivedEvidencePreservesReviewHashesAndRejectsChangedPayloads() throws Exception {
+        String sha = proposal();
+        Proposal proposal = AutoLlmFileUtil.read(temp.resolve("proposal.json"), Proposal.class);
+        DirectoryArchiveUtil.archive(temp.resolve("runs"));
+        assertFalse(Files.exists(temp.resolve("runs")));
+        ScreeningFileUtil.verifyProposalArtifacts(temp, proposal);
+        ScreeningFileUtil.approve(temp, sha, "jar");
+        assertEquals(sha, AutoLlmFileUtil.hash(temp.resolve("proposal.json")));
+        Path changed = temp.resolve("changed.json"); Files.writeString(changed, "different evidence");
+        // A self-consistent archive must still match the original reviewed hashes.
+        WorkloadArchiveUtil.pack(temp.resolve("runs.zip"), Map.of("run.json", changed));
+        assertThrows(IllegalStateException.class, () -> ScreeningFileUtil.verifyProposalArtifacts(temp, proposal));
+    }
+
+    @Test void cachedRunsCanBeReadFromArchiveAlongsideNewConfirmations() throws Exception {
+        proposal(); Manifest manifest = AutoLlmFileUtil.read(temp.resolve("manifest.json"), Manifest.class);
+        Input input = manifest.inputs().getFirst();
+        Run first = new Run(manifest.fingerprint(), input.path(), 1234, false, null, 0, List.of(), "interrupted");
+        ScreeningFileUtil.writeRun(temp, first);
+        DirectoryArchiveUtil.archive(temp.resolve("runs"));
+        assertEquals(first, ScreeningFileUtil.readRun(temp, manifest, input, 1234));
+        assertNull(ScreeningFileUtil.readRun(temp, manifest, input, 999));
+        Run second = new Run(manifest.fingerprint(), input.path(), 1235, false, null, 0, List.of(), "new");
+        ScreeningFileUtil.writeRun(temp, second);
+        assertEquals(first, ScreeningFileUtil.readRun(temp, manifest, input, 1234));
+        assertEquals(second, ScreeningFileUtil.readRun(temp, manifest, input, 1235));
+        var hashes = DirectoryArchiveUtil.hashes(temp.resolve("runs"));
+        assertEquals(3, hashes.size());
+        assertEquals(AutoLlmFileUtil.hash(ScreeningFileUtil.runPath(temp, input.path(), 1235)),
+                hashes.get(ScreeningFileUtil.runPath(temp, input.path(), 1235).getFileName().toString()));
     }
 }

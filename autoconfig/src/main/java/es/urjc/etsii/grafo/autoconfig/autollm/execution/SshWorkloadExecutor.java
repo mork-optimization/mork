@@ -110,7 +110,9 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                     if (state.archiveSha256() != null) {
                         Path archive = work.output().resolve("remote-result.zip"); transport.download(remote, job.id(), archive);
                         if (!state.archiveSha256().equals(AutoLlmFileUtil.hash(archive))) throw new IllegalStateException("Remote result checksum mismatch");
-                        WorkloadArchiveUtil.unpack(archive, root); Files.delete(archive);
+                        WorkloadArchiveUtil.unpack(archive, root);
+                        DirectoryArchiveUtil.archive(work.output().resolve("solutions"));
+                        Files.delete(archive);
                         AutoLlmFileUtil.write(work.output().resolve("collection-completed.json"), Map.of("jobId", job.id(), "archiveSha256", state.archiveSha256()));
                         publish(work.output(), job, state.status(), state.failure());
                         if (state.status().equals("CANCELLED")) throw new CancellationException("Remote cancellation confirmed");

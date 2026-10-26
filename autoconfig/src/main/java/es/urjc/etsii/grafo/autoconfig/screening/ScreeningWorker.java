@@ -81,7 +81,7 @@ final class ScreeningWorker<S extends Solution<S,I>, I extends Instance> {
             return;
         }
         if (pending.isEmpty()) return;
-        if (!input.sha256().equals(ScreeningFileUtil.inputHash(input.path()))) {
+        if (!input.sha256().equals(AutoLlmFileUtil.inputHash(input.path()))) {
             throw new IllegalStateException("Frozen input changed before worker execution: " + input.path());
         }
         I instance;

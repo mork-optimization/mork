@@ -100,13 +100,13 @@ public final class AutoLlmExecutionService {
             for (String input : List.of(config.trainingPath(), config.comparisonPath())) {
                 var index = new ArrayList<String>();
                 for (String token : InstancePathUtil.list(input)) {
-                    String hash;
-                    try (var stream = IOUtil.getInputStream(token)) { hash = AutoLlmFileUtil.hash(stream); }
-                    String name = Path.of(token.substring(token.lastIndexOf('!') + 1)).getFileName().toString();
-                    Path payload = root.resolve("data/staged/" + hash + "/" + name); Files.createDirectories(payload.getParent());
-                    if (!Files.exists(payload)) try (var stream = IOUtil.getInputStream(token)) { Files.copy(stream, payload); }
-                    if (!hash.equals(AutoLlmFileUtil.hash(payload))) throw new IllegalStateException("Staged input changed: " + token);
-                    index.add(payload.toString()); manifest.put(token, Map.of("path", payload.toString(), "sha256", hash));
+                    Path container = Path.of(IOUtil.containerPath(token));
+                    // Keep distinct source paths distinct, even when their names and contents coincide.
+                    String key = AutoLlmFileUtil.hash(new ByteArrayInputStream(container.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8)));
+                    Path payload = root.resolve("data/inputs/" + key + "/" + container.getFileName());
+                    String suffix = token.contains("!") ? token.substring(token.indexOf('!')) : "";
+                    index.add(token);
+                    manifest.put(token, Map.of("path", payload + suffix, "sha256", AutoLlmFileUtil.inputHash(token)));
                 }
                 Path file = root.resolve("control/staged-" + paths.size() + ".index"); Files.createDirectories(file.getParent()); Files.write(file, index); paths.add(file.toString());
             }
@@ -138,6 +138,14 @@ public final class AutoLlmExecutionService {
             var files = new TreeMap<String,Path>(); var reset = new ArrayList<String>();
             if (!Files.exists(output.resolve("remote-job.json"))) {
                 for (String directory : List.of("control", "data")) WorkloadArchiveUtil.addTree(files, root, root.resolve(directory), false);
+                for (var input : stagedInputs(root).entrySet()) {
+                    if (!input.getValue().get("sha256").equals(AutoLlmFileUtil.inputHash(input.getKey()))) throw new IllegalStateException("Staged input changed: " + input.getKey());
+                    Path payload = Path.of(IOUtil.containerPath(input.getValue().get("path")));
+                    String relative = root.relativize(payload).toString();
+                    WorkloadPathUtil.inside(root, relative);
+                    // ZIP members retain their original container. No extracted local staging copies are needed.
+                    files.put(relative, Path.of(IOUtil.containerPath(input.getKey())));
+                }
                 // Every stage receives only its declared JAR/winner/elites inputs, not conversations or unrelated local files.
                 for (String argument : command) {
                     int equals = argument.indexOf('='); String value = equals < 0 ? argument : argument.substring(equals + 1);
@@ -178,6 +186,8 @@ public final class AutoLlmExecutionService {
     }
     private static void materialize(AutoLlmConfig config, Path root, Map<String,Path> files) throws IOException {
         String remote = WorkloadPathUtil.remoteRoot(config, root);
+        var staged = new HashMap<String,String>();
+        for (var input : stagedInputs(root).entrySet()) staged.put(input.getKey(), input.getValue().get("path"));
         var entries = new ArrayList<>(files.entrySet());
         for (var entry : entries) {
             String name = entry.getKey(); Path target = root.resolve(".transfer/materialized/" + name);
@@ -190,25 +200,38 @@ public final class AutoLlmExecutionService {
                 var tokens = new ArrayList<String>();
                 for (String line : Files.readAllLines(entry.getValue())) {
                     if (line.isBlank() || line.startsWith("#")) continue;
-                    tokens.add(remotePath(InstancePathUtil.resolve(entry.getValue().getParent(), line), root, remote));
+                    String token = InstancePathUtil.resolve(entry.getValue().getParent(), line);
+                    tokens.add(remotePath(staged.getOrDefault(token, token), root, remote));
                 }
                 Files.createDirectories(target.getParent()); Files.write(target, tokens); files.put(name, target);
             } else if (name.equals("control/comparison-time-limits.json")) {
                 Map<String,Long> values = AutoLlmFileUtil.read(entry.getValue(), new TypeReference<>() {});
-                var mapped = new LinkedHashMap<String,Long>(); for (var value : values.entrySet()) mapped.put(remotePath(value.getKey(), root, remote), value.getValue());
+                var mapped = new LinkedHashMap<String,Long>(); for (var value : values.entrySet()) mapped.put(remotePath(staged.getOrDefault(value.getKey(), value.getKey()), root, remote), value.getValue());
                 AutoLlmFileUtil.write(target, mapped); files.put(name, target);
             }
         }
     }
     private static String remotePath(String value, Path root, String remote) { return value == null ? null : WorkloadPathUtil.translate(value, root.toString(), remote); }
-    public static String localPath(AutoLlmConfig config, Path root, String path) {
-        return config.execution().target() == AutoLlmConfig.Target.LOCAL ? path : WorkloadPathUtil.translate(path, WorkloadPathUtil.remoteRoot(config, root), root.toString());
+    private static Map<String,Map<String,String>> stagedInputs(Path root) {
+        Path file = root.resolve("data/staged-inputs.json");
+        return Files.exists(file) ? AutoLlmFileUtil.read(file, new TypeReference<>() {}) : Map.of();
+    }
+    public static UnaryOperator<String> localPaths(AutoLlmConfig config, Path root) {
+        if (config.execution().target() == AutoLlmConfig.Target.LOCAL) return UnaryOperator.identity();
+        String remote = WorkloadPathUtil.remoteRoot(config, root);
+        var originals = new HashMap<String,String>();
+        for (var input : stagedInputs(root).entrySet()) originals.put(input.getValue().get("path"), input.getKey());
+        return path -> {
+            String local = WorkloadPathUtil.translate(path, remote, root.toString());
+            return originals.getOrDefault(local, local);
+        };
     }
     public static AutoLlmCheckOrchestrator.Check check(AutoLlmConfig config, Path root, Path file) {
         var check = AutoLlmFileUtil.read(file, AutoLlmCheckOrchestrator.Check.class);
+        var paths = localPaths(config, root);
         var training = new ArrayList<String>(); var comparison = new ArrayList<String>();
-        for (String path : check.training()) training.add(localPath(config, root, path));
-        for (String path : check.comparison()) comparison.add(localPath(config, root, path));
+        for (String path : check.training()) training.add(paths.apply(path));
+        for (String path : check.comparison()) comparison.add(paths.apply(path));
         return new AutoLlmCheckOrchestrator.Check(check.parameters(), check.added(), training, comparison);
     }
 }
