@@ -160,10 +160,13 @@ class SshWorkloadTest {
         config = service.stageInputs(config.withPaths(index, index), root);
         Path output = root.resolve("input operation");
         AutoLlmFileUtil.write(root.resolve("control/comparison-time-limits.json"), Map.of(tokens.getFirst(), 123L, tokens.getLast(), 456L));
-        var command = List.of(java, "-cp", System.getProperty("java.class.path"), RemoteWorkloadFixture.class.getName(), "inputs", output.toString(), config.trainingPath());
+        AutoLlmFileUtil.write(root.resolve("control/config.json"), config);
+        var command = List.of(java, "-cp", System.getProperty("java.class.path"), RemoteWorkloadFixture.class.getName(), "inputs", output.toString(), config.trainingPath(), tokens.getFirst(), root.resolve("control/config.json").toString());
         assertEquals(0, service.run(config, root, command, root, output, null, List.of(), 30000, 0, true, 5000, () -> false, state -> {}).exitCode());
         var check = AutoLlmExecutionService.check(config, root, output.resolve("check.json"));
         assertEquals(tokens, check.training());
+        String chosen = AutoLlmFileUtil.JSON.readTree(Files.readString(output.resolve("reference.json"))).path("instance").asString();
+        assertEquals(tokens.getFirst(), AutoLlmExecutionService.localPaths(config, root).apply(chosen));
         Map<String,String> hashes = AutoLlmFileUtil.read(output.resolve("input-hashes.json"), new tools.jackson.core.type.TypeReference<>() {});
         Path remote = Path.of(WorkloadPathUtil.remoteRoot(config, root));
         assertEquals(2, hashes.size());
@@ -238,17 +241,38 @@ class SshWorkloadTest {
         assertThrows(ExecutionTargetException.class, () -> executor.run(workload("success", "must not execute"), () -> false));
         assertFalse(Files.exists(root.resolve("output with spaces/literal.txt")));
     }
+    @Test void explicitQualificationRefreshesPrerequisitesButIdentityChecksReuseThem() throws Exception {
+        Path bin = temp.resolve("bin"), fail = temp.resolve("r-failed"), count = temp.resolve("r-checks"); Files.createDirectories(bin);
+        Path r = bin.resolve("Rscript");
+        Files.writeString(r, "#!/bin/sh\nprintf x >> '" + count + "'\nif test -f '" + fail + "'; then exit 1; fi\necho 'irace fixture'\n"); assertTrue(r.toFile().setExecutable(true));
+        Path python = bin.resolve("python3"); Files.writeString(python, "#!/bin/sh\necho selector-fixture\n"); assertTrue(python.toFile().setExecutable(true));
+        var server = config.execution().ssh().onlyServer();
+        config = config.forServer(new AutoLlmConfig.Server(server.id(), server.host(), server.workspace(), server.javaExecutable(), Map.of("PATH", bin + ":" + System.getenv("PATH")), server.configFile(), null, null));
+        var service = new AutoLlmExecutionService(new AutoLlmProcessRunner());
+        var qualified = service.probe(config, root, "");
+        assertEquals("x", Files.readString(count));
+        assertEquals("PASSED", qualified.prerequisites().get(3).status());
+        assertEquals("selector-python", qualified.prerequisites().get(3).name());
+        Files.writeString(fail, "dependency removed");
+        service.identity(config, root); assertEquals("x", Files.readString(count));
+        var failure = assertThrows(AutoLlmFailureUtil.StageException.class, () -> service.probe(config, root, ""));
+        assertEquals("PREREQUISITE_FAILED", failure.failure().code()); assertEquals("xx", Files.readString(count));
+        var failed = AutoLlmFileUtil.read(root.resolve("target-preflight.json"), WorkloadProtocol.Host.class);
+        assertEquals("r-packages", failed.prerequisites().get(2).name());
+        assertEquals("FAILED", failed.prerequisites().get(2).status());
+        Files.delete(fail); service.probe(config, root, ""); assertEquals("xxx", Files.readString(count));
+    }
     @Test void resumeUsesTheVerifiedRunnerAfterLocalBuildOutputDisappears() throws Exception {
         var transport = new SshTransport(config, root.resolve(".transport")); transport.bootstrap();
         var host = AutoLlmFileUtil.JSON.readValue(transport.call("identity", WorkloadPathUtil.remoteRoot(config, root), null, config), WorkloadProtocol.Host.class);
         AutoLlmFileUtil.write(root.resolve("execution-target.json"), host);
         Files.delete(Path.of(config.execution().ssh().runnerArtifact()));
         var service = new AutoLlmExecutionService(new AutoLlmProcessRunner());
-        var reattached = service.probe(config, root);
+        var reattached = service.identity(config, root);
         assertEquals(host.identity(), reattached.identity()); assertEquals(host.effectiveWorkers(), reattached.effectiveWorkers());
         assertTrue(reattached.usableDiskBytes() > 0);
         Path frozen = root.resolve(".transport/runner.jar"); Files.writeString(frozen, "changed frozen runner");
-        assertThrows(IllegalStateException.class, () -> service.probe(config, root));
+        assertThrows(IllegalStateException.class, () -> service.identity(config, root));
     }
     @Test void persistentDisconnectionLeavesOneSavedJobForDirectCancellation() throws Exception {
         var submissions = new AtomicInteger();

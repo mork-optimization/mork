@@ -77,7 +77,7 @@ public class SshTransport {
             Path data = Files.createTempFile(scratchDirectory(), "request-", ".json");
             Files.write(data, AutoLlmFileUtil.JSON.writeValueAsBytes(input));
             Path response = Files.createTempFile(scratchDirectory(), "response-", ".json");
-            try { execute(command(action, root, id), data, response, 60_000); return Files.readAllBytes(response); }
+            try { execute(command(action, root, id), data, response, action.equals("probe") ? TargetPreflightUtil.timeoutMillis(config, id) : 60_000); return Files.readAllBytes(response); }
             finally { Files.deleteIfExists(data); Files.deleteIfExists(response); Files.deleteIfExists(response.resolveSibling(response.getFileName() + ".stderr")); }
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }

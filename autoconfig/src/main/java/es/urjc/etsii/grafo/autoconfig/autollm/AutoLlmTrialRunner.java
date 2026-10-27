@@ -70,7 +70,7 @@ public final class AutoLlmTrialRunner {
         c.problem = null;
         try {
             reconcile();
-            if (c.config.execution().target() == AutoLlmConfig.Target.SSH) workloads.probe(c.config, executionRoot);
+            if (c.config.execution().target() == AutoLlmConfig.Target.SSH) workloads.identity(c.config, executionRoot);
             if (t.problem != null && t.problem.code().equals("ArchiveException")) throw new AutoLlmFailureUtil.StageException(t.problem, null);
             while (true) {
                 try { runTrial(c, t); break; }
@@ -200,6 +200,7 @@ public final class AutoLlmTrialRunner {
             versions.put("irace", Files.readString(preflight.resolve("r-packages/stdout.log"))); c.versions = versions;
             var controls = new TreeMap<String,String>();
             for (String file : List.of("sota.json", "seeds.json", "comparison-time-limits.json")) controls.put("control/" + file, AutoLlmFileUtil.hash(root.resolve("control/" + file)));
+            AutoLlmInputUtil.addSettingsHashes(controls, root);
             for (String name : List.of("training", "comparison")) AutoLlmInputUtil.addHashes(controls, root, name);
             AutoLlmFileUtil.write(root.resolve("control/frozen-hashes.json"), controls);
             AutoLlmFileUtil.write(root.resolve("control/config.json"), c.config); if (!metadataOnly) c.baselineCommit = commit; publish(c);

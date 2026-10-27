@@ -18,8 +18,10 @@ import java.net.UnknownHostException;
 public class AutoLlmConfiguration {
     @Bean
     @Order(Integer.MIN_VALUE)
-    ApplicationRunner workerEvidence(es.urjc.etsii.grafo.config.SolverConfig solver) {
+    ApplicationRunner workerEvidence(es.urjc.etsii.grafo.config.SolverConfig solver, es.urjc.etsii.grafo.config.InstanceConfiguration instances, org.springframework.core.env.Environment environment) {
         return _ -> {
+            String config = environment.getProperty("autollm.child.config-file");
+            if (config != null) AutoLlmInputUtil.configureReference(instances, java.nio.file.Path.of(config));
             if (ExecutionJournalUtil.enabled()) ExecutionJournalUtil.write("workers.json",
                     java.util.Map.of("effectiveWorkers", solver.getnWorkers(), "availableProcessors", Runtime.getRuntime().availableProcessors()));
         };

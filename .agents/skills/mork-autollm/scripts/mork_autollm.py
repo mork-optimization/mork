@@ -17,7 +17,7 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 import zipfile
 
-FEATURES = {"SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS"}
+FEATURES = {"SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "ASYNC_TARGET_PREFLIGHT"}
 
 
 def request(base, path, body=None, timeout=30, method=None, maximum_bytes=None):
@@ -191,14 +191,34 @@ def read_configuration(args):
     return clean(value)
 
 
+def wait_target_probe(base, probe, deadline):
+    while probe["status"] == "RUNNING":
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            return probe
+        try:
+            probe = request(base, "/targets/probes/" + quote(probe["id"], safe=""), timeout=min(10, remaining))
+        except (RuntimeError, OSError, ValueError) as error:
+            return {**probe, "readError": str(error)}
+        if probe["status"] == "RUNNING":
+            time.sleep(min(0.25, max(0, deadline - time.monotonic())))
+    return probe
+
+
 def lifecycle(args, base):
     root = "/campaigns" if args.command == "campaign" else "/screenings"
     if args.action == "list":
         return request(base, root)
+    if args.action == "probe-status":
+        return request(base, "/targets/probes/" + quote(args.id, safe=""), timeout=args.timeout)
     if args.action in ("validate", "probe", "create"):
         config = read_configuration(args)
         if args.command == "campaign":
             path = {"validate": "/validate", "probe": "/targets/probe", "create": root}[args.action]
+            if args.action == "probe":
+                deadline = time.monotonic() + args.timeout
+                probe = request(base, path, config, timeout=min(30, args.timeout))
+                return wait_target_probe(base, probe, deadline)
             return request(base, path, config, timeout=args.timeout)
         settings = read_object(args.settings) if args.settings else {}
         body = clean({"config": config, "settings": settings, "inputPath": args.input,
@@ -669,7 +689,7 @@ def lifecycle_commands(commands):
                 action.add_argument("--settings", help="JSON screening settings; omitted values use backend defaults")
                 action.add_argument("--input", required=True, help="Full original instance pool, relative to the configured repository")
                 action.add_argument("--training-fraction", type=float)
-        names = ("get", "baseline-check", "summary", "recovery", "start", "resume", "cancel", "report") if kind == "campaign" else ("get", "review", "resume", "cancel", "approve")
+        names = ("get", "probe-status", "baseline-check", "summary", "recovery", "start", "resume", "cancel", "report") if kind == "campaign" else ("get", "review", "resume", "cancel", "approve")
         for name in names:
             action = actions.add_parser(name)
             action.add_argument("--id", required=True, help=f"Saved {kind} ID; mutating commands never select another operation")

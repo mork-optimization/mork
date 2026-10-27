@@ -23,9 +23,11 @@ public class AutoLlmCampaignService {
     private final CodexTaskRunner codex;
     private final AutoLlmReportService<?,?> reports;
     private final InstanceConfiguration instances;
+    private final AutoLlmTargetProbeService targetProbes;
     public AutoLlmCampaignService(AutoLlmConfig defaults, AutoLlmCampaignStore store, AutoLlmProcessRunner processes,
             CodexTaskRunner codex, AutoLlmReportService<?,?> reports, InstanceConfiguration instances) {
         this.defaults = defaults; this.store = store; this.processes = processes; this.codex = codex; this.reports = reports; this.instances = instances;
+        this.targetProbes = new AutoLlmTargetProbeService(store, processes);
     }
     public AutoLlmConfig defaults() {
         return defaults.withPaths(defaults.trainingPath() == null ? instances.getPath("irace") : defaults.trainingPath(),
@@ -60,6 +62,12 @@ public class AutoLlmCampaignService {
             var seeds = new LinkedHashSet<ComponentSpec>(); seeds.add(sota);
             if (requested.initialConfigurationsFile() != null && !requested.initialConfigurationsFile().isBlank()) seeds.addAll(codec.parseList(Files.readString(resolve(repo, requested.initialConfigurationsFile()))));
             Files.createDirectories(directory.resolve("control"));
+            var instancePaths = new LinkedHashMap<String,String>();
+            String reference = instances.getPaths() == null ? null : instances.getPaths().get("reference");
+            if (reference != null && !reference.isBlank()) instancePaths.put("reference", es.urjc.etsii.grafo.util.InstancePathUtil.resolve(repo, reference.trim()));
+            if (!instancePaths.isEmpty()) AutoLlmFileUtil.write(directory.resolve("control/instance-paths.json"), instancePaths);
+            var aliases = AutoLlmInputUtil.aliases(resolve(repo, requested.trainingPath()), resolve(repo, requested.comparisonPath()));
+            if (!aliases.isEmpty()) AutoLlmFileUtil.write(directory.resolve("control/input-aliases.json"), aliases);
             Files.copy(resolve(repo, requested.sotaFile()), directory.resolve("control/sota.json"), StandardCopyOption.REPLACE_EXISTING);
             var seedJson = new ArrayList<Object>(); for (var seed : seeds) seedJson.add(codec.toJsonTree(seed));
             AutoLlmFileUtil.write(directory.resolve("control/seeds.json"), seedJson);
@@ -163,6 +171,7 @@ public class AutoLlmCampaignService {
             c.config = c.config.withPaths(train, test); c.baselineCommit = commit;
             var hashes = new TreeMap<String,String>();
             for (String name : List.of("sota.json", "seeds.json")) hashes.put("control/" + name, AutoLlmFileUtil.hash(root.resolve("control/" + name)));
+            AutoLlmInputUtil.addSettingsHashes(hashes, root);
             for (String name : List.of("training", "comparison")) AutoLlmInputUtil.addHashes(hashes, root, name);
             AutoLlmFileUtil.write(root.resolve("control/canonical-hashes.json"), hashes);
             AutoLlmFileUtil.write(root.resolve("control/config.json"), c.config); store.save(c);
@@ -217,6 +226,7 @@ public class AutoLlmCampaignService {
             try {
                 Files.createDirectories(root.resolve("control"));
                 for (String file : List.of("sota.json", "seeds.json")) Files.copy(store.directory(c.id).resolve("control/" + file), root.resolve("control/" + file), StandardCopyOption.REPLACE_EXISTING);
+                AutoLlmInputUtil.copySettings(store.directory(c.id), root);
             } catch (IOException e) { throw new UncheckedIOException(e); }
             var cfg = model.config;
             model.config = new AutoLlmConfig(cfg.project(), cfg.workspace(), cfg.trials(), cfg.seed(), cfg.maxParameters(), root.resolve("control/sota.json").toString(), root.resolve("control/seeds.json").toString(), cfg.trainingPath(), cfg.comparisonPath(), cfg.codex(), cfg.preparation(), cfg.tuning(), cfg.comparison(), cfg.execution());
@@ -445,15 +455,8 @@ public class AutoLlmCampaignService {
     }
 
     private static String read(Path path) { try { return Files.readString(path); } catch (IOException e) { throw new UncheckedIOException(e); } }
-    public Object probeTarget(AutoLlmConfig config) {
-        var result = new LinkedHashMap<String,Object>(); var workloads = new AutoLlmExecutionService(processes);
-        if (config.execution().target() == AutoLlmConfig.Target.LOCAL) return workloads.inspect(config, store.root().resolve("target-preflight-" + UUID.randomUUID()));
-        for (var server : config.execution().ssh().servers()) {
-            try { result.put(server.id(), workloads.inspect(config.forServer(server), store.root().resolve("target-preflight-" + UUID.randomUUID()), server.id().equals(config.execution().ssh().screeningServerId()) ? "" : null)); }
-            catch (RuntimeException e) { result.put(server.id(), Map.of("status", "FAILED", "message", e.toString())); }
-        }
-        return result;
-    }
+    public AutoLlmTargetProbeService.Probe probeTarget(AutoLlmConfig config) { return targetProbes.start(config); }
+    public AutoLlmTargetProbeService.Probe targetProbe(String id) { return targetProbes.load(id); }
     public AutoLlmCampaign addTarget(String id, String targetId, AutoLlmConfig.Server server) {
         return invoke(() -> {
             if (!targetId.equals(server.id())) throw new IllegalArgumentException("Target ID and definition differ");
@@ -623,5 +626,6 @@ public class AutoLlmCampaignService {
             if (workers.awaitTermination(5, TimeUnit.SECONDS) && reporting.awaitTermination(5, TimeUnit.SECONDS)) relinquish.run();
             else Thread.ofVirtual().name("autollm-shutdown").start(relinquish);
         } catch (InterruptedException e) { Thread.currentThread().interrupt(); Thread.ofVirtual().name("autollm-shutdown").start(relinquish); }
+        targetProbes.close();
     }
 }

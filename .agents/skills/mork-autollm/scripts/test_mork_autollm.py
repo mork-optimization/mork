@@ -229,9 +229,37 @@ class OperatorClientTest(unittest.TestCase):
     def test_probe_uses_complete_config_and_its_own_deadline(self):
         with tempfile.TemporaryDirectory() as self.root:
             path = self.configuration_file(Path(self.root))
-            _, _, request = self.cli(["campaign", "probe", "--config", path, "--timeout", "180"], [{"effectiveWorkers": 32}])
+            _, _, request = self.cli(["campaign", "probe", "--config", path, "--timeout", "180"], [{"id": "probe", "status": "SUCCEEDED", "targets": {"a": {"effectiveWorkers": 32}}}])
         self.assertEqual(request.call_args.args[1], "/targets/probe")
-        self.assertEqual(request.call_args.kwargs["timeout"], 180)
+        self.assertEqual(request.call_args.kwargs["timeout"], 30)
+
+    def test_probe_polls_saved_results_without_repeating_the_request(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            path = self.configuration_file(Path(self.root))
+            _, output, request = self.cli(["campaign", "probe", "--config", path], [
+                {"id": "probe", "status": "RUNNING", "targets": {}},
+                {"id": "probe", "status": "SUCCEEDED", "targets": {}}])
+        self.assertEqual(request.call_args_list[0].args[1], "/targets/probe")
+        self.assertEqual(request.call_args_list[1].args, ("http://localhost", "/targets/probes/probe"))
+        self.assertEqual(request.call_count, 2)
+
+    def test_failed_probe_read_preserves_the_saved_id_and_does_not_replay_creation(self):
+        pending = {"id": "saved-probe", "status": "RUNNING", "targets": {}}
+        with patch.object(client.time, "monotonic", return_value=1), patch.object(client, "request", side_effect=RuntimeError("offline")) as request:
+            result = client.wait_target_probe("http://localhost", pending, 10)
+        self.assertEqual(result["id"], "saved-probe")
+        self.assertEqual(result["status"], "RUNNING")
+        self.assertEqual(result["readError"], "offline")
+        request.assert_called_once_with("http://localhost", "/targets/probes/saved-probe", timeout=9)
+
+    def test_probe_deadline_keeps_the_saved_id_for_later_inspection(self):
+        pending = {"id": "saved-probe", "status": "RUNNING", "targets": {}}
+        with patch.object(client.time, "monotonic", return_value=10), patch.object(client, "request") as request:
+            self.assertEqual(client.wait_target_probe("http://localhost", pending, 9), pending)
+            request.assert_not_called()
+        self.root = "/work"
+        _, _, request = self.cli(["campaign", "probe-status", "--id", "saved-probe"], [pending])
+        self.assertEqual(request.call_args.args, ("http://localhost", "/targets/probes/saved-probe"))
 
     def test_screening_create_has_full_input_pool_and_does_not_approve(self):
         with tempfile.TemporaryDirectory() as self.root:

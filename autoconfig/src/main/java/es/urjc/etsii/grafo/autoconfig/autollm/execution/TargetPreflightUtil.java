@@ -23,8 +23,9 @@ public final class TargetPreflightUtil {
                 ConcurrencyUtil.resolveWorkerCount(config.execution().workers(), Runtime.getRuntime().availableProcessors()), Runtime.getRuntime().maxMemory(),
                 memory, Files.getFileStore(root).getUsableSpace(), checks);
     }
-    public static WorkloadProtocol.Host inspect(AutoLlmConfig config, Path root, AutoLlmProcessRunner processes, String selectorPython) throws IOException {
-        Files.createDirectories(root);
+    private static final long CHECK_TIMEOUT_MILLIS = 30_000;
+    private static final long CHECK_GRACE_MILLIS = 1_000;
+    private static LinkedHashMap<String,List<String>> commands(AutoLlmConfig config, String selectorPython) {
         var commands = new LinkedHashMap<String,List<String>>();
         commands.put("java", List.of(Path.of(System.getProperty("java.home"), "bin/java").toString(), "-version"));
         commands.put("git", List.of("git", "--version"));
@@ -33,11 +34,21 @@ public final class TargetPreflightUtil {
         if (selectorPython != null) commands.put("selector-python", List.of(python, "-c", "import sys,numpy,pandas,sklearn,yellowbrick,matplotlib,seaborn; print(sys.executable); print(sys.version)"));
         String build = config.project().buildCommand().getFirst();
         if (!build.contains("/")) commands.put("build-tool", List.of(build, "--version"));
+        return commands;
+    }
+    /** Include every sequential child deadline and room for host inspection and SSH dispatch. */
+    public static long timeoutMillis(AutoLlmConfig config, String selectorPython) {
+        return commands(config, selectorPython).size() * (CHECK_TIMEOUT_MILLIS + CHECK_GRACE_MILLIS) + 30_000;
+    }
+    public static WorkloadProtocol.Host inspect(AutoLlmConfig config, Path root, AutoLlmProcessRunner processes, String selectorPython) throws IOException {
+        Files.createDirectories(root);
+        var commands = commands(config, selectorPython);
+        String build = config.project().buildCommand().getFirst();
         var checks = new ArrayList<Prerequisite>();
         for (var entry : commands.entrySet()) {
             Path output = root.resolve(".preflight/" + entry.getKey());
             try {
-                var result = processes.run(entry.getValue(), root, output, 30000, 0, 1000, () -> Thread.currentThread().isInterrupted(), false, 0);
+                var result = processes.run(entry.getValue(), root, output, CHECK_TIMEOUT_MILLIS, 0, CHECK_GRACE_MILLIS, () -> Thread.currentThread().isInterrupted(), false, 0);
                 String log = AutoLlmFailureUtil.tail(output.resolve("stdout.log"), 4000) + AutoLlmFailureUtil.tail(output.resolve("stderr.log"), 4000);
                 checks.add(new Prerequisite(entry.getKey(), executable(entry.getValue().getFirst()), result.exitCode() == 0 ? "PASSED" : "FAILED", log,
                         result.exitCode() == 0 ? null : "Prepare this dependency in the configured noninteractive environment, then rerun preflight. Evidence: " + output));

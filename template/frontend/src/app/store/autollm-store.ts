@@ -69,9 +69,15 @@ export class AutoLlmStore {
     if (this.destroyed) return;
     try {
       if (!this.config()) this.config.set(await this.client.defaults());
-      const [campaignResult, screeningResult] = await Promise.allSettled([this.client.list(), this.client.screenings()]);
+      const probe = this.targetStatus();
+      const [campaignResult, screeningResult, probeResult] = await Promise.allSettled([
+        this.client.list(), this.client.screenings(),
+        probe?.['status'] === 'RUNNING' && typeof probe['id'] === 'string' ? this.client.targetProbe(probe['id']) : Promise.resolve(null)
+      ]);
       if (this.destroyed) return;
       this.connectionError.set(null);
+      if (probeResult.status === 'fulfilled' && probeResult.value && this.targetStatus()?.['id'] === probe?.['id']) this.targetStatus.set(probeResult.value);
+      if (probeResult.status === 'rejected' && this.targetStatus()?.['id'] === probe?.['id']) this.targetStatus.update(previous => ({ ...previous, readError: this.message(probeResult.reason) }));
       if (campaignResult.status === 'fulfilled') {
         const data = campaignResult.value;
         this.campaigns.set(data.campaigns); this.active.set(data.active);

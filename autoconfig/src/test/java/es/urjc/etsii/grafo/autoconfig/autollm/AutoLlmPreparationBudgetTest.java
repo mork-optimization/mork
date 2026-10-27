@@ -121,6 +121,8 @@ class AutoLlmPreparationBudgetTest {
                 }
             }
         };
+        AutoLlmFileUtil.write(root.resolve("control/instance-paths.json"), java.util.Map.of());
+        AutoLlmFileUtil.write(root.resolve("control/input-aliases.json"), java.util.Map.of());
         var listener = new AutoLlmTrialRunner.Listener() {
             public void state(AutoLlmExecutionContext.Snapshot snapshot) {}
             public void event(String kind, Object detail) {}

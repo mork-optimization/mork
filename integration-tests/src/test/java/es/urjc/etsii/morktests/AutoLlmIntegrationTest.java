@@ -58,6 +58,12 @@ class AutoLlmIntegrationTest {
             var capabilities = get(client, base + "/capabilities");
             assertEquals(4, capabilities.path("apiVersion").asInt()); assertEquals(4, capabilities.path("checkpointVersion").asInt());
             assertTrue(Files.exists(workspace.resolve("session.json")));
+            var probe = request(client, base + "/targets/probe", AutoLlmFileUtil.JSON.writeValueAsString(settings));
+            assertEquals("RUNNING", probe.path("status").asString()); String probeId = probe.path("id").asString();
+            do { Thread.sleep(100); probe = get(client, base + "/targets/probes/" + probeId); }
+            while (probe.path("status").asString().equals("RUNNING") && System.currentTimeMillis() < deadline);
+            assertEquals("SUCCEEDED", probe.path("status").asString(), probe.toString());
+            assertTrue(Files.exists(workspace.resolve("target-probes/" + probeId + "/probe.json")));
             String python = remote ? ssh.ssh.screeningServer().environment().get("MORK_SELECTOR_PYTHON") : Path.of("../example-tsptw/venv/bin/python3").toAbsolutePath().normalize().toString();
             var screening = new InstanceScreeningConfig(repo.resolve("sota.json").toString(), null, 0.000001, 3.0, 1000L, 1, 0.95, python, 1, 1000L, null);
             var screeningRequest = new ScreeningJobService.Request(settings, screening, repo.resolve("training.index").toString(), 0.15);
@@ -83,6 +89,13 @@ class AutoLlmIntegrationTest {
             assertEquals("APPROVED", selection.path("status").asString(), selection.toString());
             while (get(client, base + "/screenings").path("active").asString().equals(screeningId) && System.currentTimeMillis() < deadline) Thread.sleep(100);
             settings = settings.withPaths(mirror.resolve("proposal/train.index").toString(), mirror.resolve("proposal/test.index").toString());
+            String reference = es.urjc.etsii.grafo.util.InstancePathUtil.list(settings.trainingPath()).getFirst();
+            Map<String,Map<String,String>> originalInputs = AutoLlmFileUtil.read(mirror.resolve("data/original-inputs.json"), new tools.jackson.core.type.TypeReference<>() {});
+            String originalReference = null;
+            for (var input : originalInputs.entrySet()) if (input.getValue().get("path").equals(reference)) originalReference = input.getKey();
+            assertNotNull(originalReference);
+            var arguments = new ArrayList<>(settings.project().runArguments()); arguments.add("--instances.path.reference=" + originalReference);
+            settings = new AutoLlmConfig(new AutoLlmConfig.Project(settings.project().repository(), settings.project().ref(), settings.project().buildCommand(), settings.project().artifact(), arguments), settings.workspace(), settings.trials(), settings.seed(), settings.maxParameters(), settings.sotaFile(), settings.initialConfigurationsFile(), settings.trainingPath(), settings.comparisonPath(), settings.codex(), settings.preparation(), settings.tuning(), settings.comparison(), settings.execution());
             String targetId = remote ? "server" : "local";
             var created = request(client, base + "/campaigns", AutoLlmFileUtil.JSON.writeValueAsString(settings));
             String id = created.path("id").stringValue();
@@ -109,6 +122,9 @@ class AutoLlmIntegrationTest {
             var trial = campaign.trials.getFirst(); targetId = trial.targetId; Path root = workspace.resolve(id);
             assertEquals("SUCCEEDED", trial.status, trial.failure);
             assertTrue(Files.exists(root.resolve(trial.artifact())));
+            Path targetRoot = root.resolve(campaign.targets.get(trial.targetId).directory);
+            String probeReference = AutoLlmFileUtil.JSON.readTree(read(root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.PREPARATION)).resolve("probe/execution/probe-instance.json"))).path("instance").asString();
+            assertEquals(reference, es.urjc.etsii.grafo.autoconfig.autollm.execution.AutoLlmExecutionService.localPaths(campaign.targets.get(trial.targetId).resolvedConfig, targetRoot).apply(probeReference));
             try (var zip = new java.util.zip.ZipFile(root.resolve("targets/" + targetId + "/trials/001/frozen/source.zip").toFile())) {
                 assertNotNull(zip.getEntry("src/main/java/es/urjc/etsii/grafo/autoconfigtests/components/FasterInvertedConstructiveNew.java"));
             }

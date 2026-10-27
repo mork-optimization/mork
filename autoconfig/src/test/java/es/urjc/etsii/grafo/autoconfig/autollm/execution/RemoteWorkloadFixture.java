@@ -21,6 +21,14 @@ public final class RemoteWorkloadFixture {
         }
         if (args[0].equals("inputs")) {
             var tokens = InstancePathUtil.list(args[2]);
+            if (args.length > 4) {
+                var instances = new es.urjc.etsii.grafo.config.InstanceConfiguration();
+                instances.setPath(Map.of("reference", args[3]));
+                es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmInputUtil.configureReference(instances, Path.of(args[4]));
+                String reference = instances.getPaths().get("reference");
+                if (!tokens.contains(reference)) throw new IllegalStateException("Reference was not mapped to a configured input");
+                AutoLlmFileUtil.write(output.resolve("reference.json"), Map.of("instance", reference));
+            }
             var hashes = new LinkedHashMap<String,String>();
             for (String token : tokens) hashes.put(token, AutoLlmFileUtil.inputHash(token));
             AutoLlmFileUtil.write(output.resolve("input-hashes.json"), hashes);

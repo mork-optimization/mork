@@ -14,7 +14,7 @@ public final class AutoLlmConfigUtil {
         if (Path.of(config.project().artifact()).isAbsolute() || config.project().artifact().contains("..")) errors.add("Artifact must be a relative project path");
         for (String argument : config.project().runArguments()) {
             String key = argument.split("=", 2)[0].replace("-", "").replace("_", "").toLowerCase(Locale.ROOT);
-            if (!argument.startsWith("--") || !argument.contains("=") || key.startsWith("autollm") || key.startsWith("server.") || key.startsWith("instances.") || key.startsWith("irace.") || key.startsWith("event.webserver.")
+            if (!argument.startsWith("--") || !argument.contains("=") || key.startsWith("autollm") || key.startsWith("server.") || (key.startsWith("instances.") && !key.equals("instances.path.reference")) || key.startsWith("irace.") || key.startsWith("event.webserver.")
                     || List.of("solver.seed", "solver.autorestart", "solver.experimentsperparameter", "solver.minimumnumberofexperiments", "solver.ignoreinitialmillis", "solver.intervaldurationmillis", "solver.logscalearea", "solver.parallelexecutor", "solver.nworkers", "solver.metrics", "solver.experiments", "solver.repetitions").contains(key)) errors.add("Run argument overrides campaign-owned setting: " + argument);
         }
         return errors;

@@ -32,6 +32,8 @@ class AutoLlmPoolTest {
         for (String id : ids) { var t = new AutoLlmCampaign.TargetState(); t.definition = server(id); t.directory = "targets/" + id; t.revision = ++campaign.poolRevision; t.baselineReady = true; t.resolvedConfig = config.forServer(t.definition); campaign.targets.put(id, t); }
         for (int i = 1; i <= trials; i++) { var trial = new AutoLlmCampaign.Trial(); trial.number = i; trial.tuningSeed = 100L + i; campaign.trials.add(trial); }
         AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/canonical-hashes.json"), Map.of());
+        AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/instance-paths.json"), Map.of());
+        AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/input-aliases.json"), Map.of());
         AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/sota.json"), Map.of());
         AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/seeds.json"), List.of()); store.save(campaign);
         service = new AutoLlmCampaignService(config, store, new AutoLlmProcessRunner(), mock(CodexTaskRunner.class), mock(AutoLlmReportService.class), new InstanceConfiguration()) {

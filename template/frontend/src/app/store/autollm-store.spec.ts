@@ -6,15 +6,29 @@ import { AutoLlmStore } from './autollm-store';
 describe('AutoLLM campaign lifecycle store', () => {
   const config = {} as AutoLlmConfig;
   const campaign = { id: 'campaign', status: 'RUNNING', config, trials: [{ number: 1, status: 'GENERATION' }, { number: 2, status: 'PENDING' }] } as AutoLlmCampaign;
-  let client: { recovery: ReturnType<typeof vi.fn>; resumeTrial: ReturnType<typeof vi.fn>; failTrial: ReturnType<typeof vi.fn>; targetAction: ReturnType<typeof vi.fn>; screeningAction: ReturnType<typeof vi.fn>; screeningReview: ReturnType<typeof vi.fn>; screenings: ReturnType<typeof vi.fn>; summary: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; preview: ReturnType<typeof vi.fn> };
+  let client: { probeTarget: ReturnType<typeof vi.fn>; targetProbe: ReturnType<typeof vi.fn>; recovery: ReturnType<typeof vi.fn>; resumeTrial: ReturnType<typeof vi.fn>; failTrial: ReturnType<typeof vi.fn>; targetAction: ReturnType<typeof vi.fn>; screeningAction: ReturnType<typeof vi.fn>; screeningReview: ReturnType<typeof vi.fn>; screenings: ReturnType<typeof vi.fn>; summary: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; preview: ReturnType<typeof vi.fn> };
   let store: AutoLlmStore;
   beforeEach(() => {
     vi.useFakeTimers();
-    client = { recovery: vi.fn().mockResolvedValue({ trials: {}, targets: {}, resumeCampaign: { allowed: false, reason: 'Already running', effect: '' } }), resumeTrial: vi.fn().mockResolvedValue(campaign), failTrial: vi.fn().mockResolvedValue(campaign), targetAction: vi.fn().mockResolvedValue(campaign), screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true, ready: true, qualifiedTargets: ['a'], failedTargets: [] }), action: vi.fn().mockResolvedValue(campaign), preview: vi.fn().mockResolvedValue({ text: '', lineCount: 0, sizeBytes: 0, truncated: false, byteLimited: false }) };
+    client = { probeTarget: vi.fn().mockResolvedValue({ id: 'probe', status: 'RUNNING', targets: {} }), targetProbe: vi.fn().mockResolvedValue({ id: 'probe', status: 'SUCCEEDED', targets: { local: { status: 'SUCCEEDED' } } }), recovery: vi.fn().mockResolvedValue({ trials: {}, targets: {}, resumeCampaign: { allowed: false, reason: 'Already running', effect: '' } }), resumeTrial: vi.fn().mockResolvedValue(campaign), failTrial: vi.fn().mockResolvedValue(campaign), targetAction: vi.fn().mockResolvedValue(campaign), screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true, ready: true, qualifiedTargets: ['a'], failedTargets: [] }), action: vi.fn().mockResolvedValue(campaign), preview: vi.fn().mockResolvedValue({ text: '', lineCount: 0, sizeBytes: 0, truncated: false, byteLimited: false }) };
     TestBed.configureTestingModule({ providers: [AutoLlmStore, { provide: AutoLlmClient, useValue: client }] });
     store = TestBed.inject(AutoLlmStore);
   });
   afterEach(() => { TestBed.resetTestingModule(); vi.useRealTimers(); });
+  it('shows the saved preflight id immediately and polls its results independently', async () => {
+    store.config.set(config); await store.probeTarget();
+    expect(store.targetStatus()?.['id']).toBe('probe'); expect(store.targetStatus()?.['status']).toBe('RUNNING');
+    await store.start();
+    expect(client.probeTarget).toHaveBeenCalledTimes(1); expect(client.targetProbe).toHaveBeenCalledWith('probe');
+    expect(store.targetStatus()?.['status']).toBe('SUCCEEDED'); expect(store.activeProgress()[1].stale).toBe(false);
+  });
+  it('retains the saved probe and healthy campaign progress after a failed preflight read', async () => {
+    store.config.set(config); await store.probeTarget(); client.targetProbe.mockRejectedValue(new Error('offline'));
+    await store.start();
+    expect(store.targetStatus()?.['id']).toBe('probe'); expect(store.targetStatus()?.['status']).toBe('RUNNING');
+    expect(store.activeProgress()[1].stale).toBe(false); expect(store.targetStatus()?.['readError']).toBe('offline');
+    await vi.advanceTimersByTimeAsync(2000); expect(client.probeTarget).toHaveBeenCalledTimes(1);
+  });
   it('restores an active campaign after a temporary disconnection and preserves trial selection', async () => {
     client.list.mockRejectedValueOnce(new Error('offline'));
     await store.start(); expect(store.connectionError()).toBe('offline');

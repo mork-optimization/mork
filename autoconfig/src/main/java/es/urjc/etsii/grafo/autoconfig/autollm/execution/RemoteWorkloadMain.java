@@ -40,7 +40,7 @@ public final class RemoteWorkloadMain {
                 try (var channel = FileChannel.open(WorkloadPathUtil.workspace(root).resolve("execution.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.tryLock()) {
                 if (lock == null) throw new IllegalStateException("Another remote workload owns this workspace; wait before preflight");
                 var config = AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), AutoLlmConfig.class);
-                print(TargetPreflightUtil.inspect(config, root, new AutoLlmProcessRunner(), id.isEmpty() ? null : id));
+                print(TargetPreflightUtil.inspect(config, root, new AutoLlmProcessRunner(), args.length > 2 ? id : null));
                 }
             }
             case "put" -> {

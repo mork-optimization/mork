@@ -98,4 +98,53 @@ class AutoLlmInputTest {
         Files.writeString(root.resolve("data/staged-inputs.json"), "{}");
         assertThrows(IllegalStateException.class, () -> AutoLlmFileUtil.verifySources(root, frozen));
     }
+    @Test void referenceUsesFrozenParentIdentityAndKeepsArchiveMembership() throws Exception {
+        Path root = temp.resolve("campaign"), configFile = root.resolve("control/config.json");
+        var config = AutoLlmConfig.defaults(); AutoLlmFileUtil.write(configFile, config);
+        String original = archive("input") + "!nested/instance one.txt";
+        String remote = "/worker/data/inputs/original instances.zip!nested/instance one.txt";
+        AutoLlmFileUtil.write(root.resolve("control/instance-paths.json"), Map.of("reference", original));
+        AutoLlmFileUtil.write(root.resolve("data/staged-inputs.json"), Map.of(original, Map.of("path", remote, "sha256", "fixture")));
+        var instances = new es.urjc.etsii.grafo.config.InstanceConfiguration();
+        instances.setPath(Map.of("default", "train.index", "reference", "different reference"));
+        AutoLlmInputUtil.configureReference(instances, configFile);
+        assertEquals(remote, instances.getPaths().get("reference")); assertEquals("train.index", instances.getPath("default"));
+    }
+    @Test void referenceFromApplicationOrExplicitRunArgumentUsesTheSameInputMap() {
+        Path root = temp.resolve("campaign"), configFile = root.resolve("control/config.json");
+        var defaults = AutoLlmConfig.defaults();
+        String reference = temp.resolve("chosen.txt").toString();
+        var config = new AutoLlmConfig(new AutoLlmConfig.Project(temp.toString(), "HEAD", List.of("./mvnw"), "target/app.jar", List.of("--instances.path.reference=" + reference)), defaults.workspace(), null, null, null, null, null, null, null, null, null, null, null, null);
+        AutoLlmFileUtil.write(configFile, config);
+        AutoLlmFileUtil.write(root.resolve("control/instance-paths.json"), Map.of("reference", "parent.txt"));
+        AutoLlmFileUtil.write(root.resolve("data/staged-inputs.json"), Map.of(reference, Map.of("path", "/worker/chosen.txt", "sha256", "fixture")));
+        var instances = new es.urjc.etsii.grafo.config.InstanceConfiguration(); instances.setPath(Map.of("reference", reference));
+        AutoLlmInputUtil.configureReference(instances, configFile); assertEquals("/worker/chosen.txt", instances.getPaths().get("reference"));
+        for (String error : AutoLlmConfigUtil.projectErrors(config)) assertFalse(error.contains("overrides"));
+    }
+    @Test void localReferenceRetainsTheOriginalInputAndAbsentReferenceKeepsAutomaticSelection() {
+        Path root = temp.resolve("campaign"), file = root.resolve("control/config.json");
+        AutoLlmFileUtil.write(file, AutoLlmConfig.defaults());
+        var instances = new es.urjc.etsii.grafo.config.InstanceConfiguration(); instances.setPath(Map.of("default", "train.index"));
+        AutoLlmInputUtil.configureReference(instances, file); assertFalse(instances.getPaths().containsKey("reference"));
+        String original = temp.resolve("loose.txt").toString(); instances.setPath(Map.of("reference", original));
+        AutoLlmInputUtil.configureReference(instances, file); assertEquals(original, instances.getPaths().get("reference"));
+    }
+
+    @Test void originalReferenceResolvesThroughApprovedScreeningCopiesBeforeSshStaging() throws Exception {
+        Path screening = temp.resolve("screening"), proposal = screening.resolve("proposal");
+        Path original = temp.resolve("original.txt"), owned = screening.resolve("data/original/owned.txt");
+        Files.createDirectories(owned.getParent()); Files.writeString(owned, "input");
+        Files.createDirectories(proposal); Files.writeString(proposal.resolve("train.index"), "../data/original/owned.txt\n");
+        Files.writeString(proposal.resolve("approved.json"), "{}");
+        AutoLlmFileUtil.write(screening.resolve("data/original-inputs.json"), Map.of(original.toString(), Map.of("path", owned.toString(), "sha256", "fixture")));
+        var aliases = AutoLlmInputUtil.aliases(proposal.resolve("train.index"), proposal.resolve("train.index"));
+        assertEquals(Map.of(original.toString(), owned.toString()), aliases);
+        Path root = temp.resolve("campaign"), file = root.resolve("control/config.json");
+        AutoLlmFileUtil.write(file, AutoLlmConfig.defaults()); AutoLlmFileUtil.write(root.resolve("control/input-aliases.json"), aliases);
+        AutoLlmFileUtil.write(root.resolve("data/staged-inputs.json"), Map.of(owned.toString(), Map.of("path", "/worker/owned.txt", "sha256", "fixture")));
+        var instances = new es.urjc.etsii.grafo.config.InstanceConfiguration(); instances.setPath(Map.of("reference", original.toString()));
+        AutoLlmInputUtil.configureReference(instances, file); assertEquals("/worker/owned.txt", instances.getPaths().get("reference"));
+    }
+
 }

@@ -55,6 +55,15 @@ public final class AutoLlmExecutionService {
         return inspect(config, root, null);
     }
     public WorkloadProtocol.Host inspect(AutoLlmConfig config, Path root, String selectorPython) {
+        return inspect(config, root, selectorPython, true);
+    }
+    /** Resume checks identity without silently refreshing or discarding qualification evidence. */
+    public WorkloadProtocol.Host identity(AutoLlmConfig config, Path root) {
+        var host = inspect(config, root, null, !Files.exists(root.resolve("execution-target.json")));
+        TargetPreflightUtil.requireReady(host, root);
+        return host;
+    }
+    private WorkloadProtocol.Host inspect(AutoLlmConfig config, Path root, String selectorPython, boolean qualification) {
         if (config.execution().target() == AutoLlmConfig.Target.LOCAL) {
             try { return TargetPreflightUtil.inspect(config, root, processes, selectorPython); } catch (IOException e) { throw new UncheckedIOException(e); }
         }
@@ -62,12 +71,12 @@ public final class AutoLlmExecutionService {
         if (!errors.isEmpty()) throw new IllegalArgumentException(String.join("; ", errors));
         var transport = new SshTransport(config, root.resolve(".transport")); transport.bootstrap();
         Path saved = root.resolve("execution-target.json");
-        var host = AutoLlmFileUtil.JSON.readValue(transport.call(Files.exists(saved) ? "identity" : "probe", WorkloadPathUtil.remoteRoot(config, root), selectorPython, config), WorkloadProtocol.Host.class);
+        var host = AutoLlmFileUtil.JSON.readValue(transport.call(qualification ? "probe" : "identity", WorkloadPathUtil.remoteRoot(config, root), selectorPython, config), WorkloadProtocol.Host.class);
         if (host.version() != WorkloadProtocol.VERSION) throw new IllegalStateException("Remote runner protocol mismatch");
         if (Files.exists(saved)) {
             var previous = AutoLlmFileUtil.read(saved, WorkloadProtocol.Host.class);
             if (!previous.identity().equals(host.identity()) || previous.effectiveWorkers() != host.effectiveWorkers()) throw new ExecutionTargetException("Execution host or allocation changed; prepare a new campaign");
-            host = new WorkloadProtocol.Host(host.version(), host.identity(), host.requestedWorkers(), host.effectiveWorkers(), host.maxMemoryBytes(), host.totalMemoryBytes(), host.usableDiskBytes(), previous.prerequisites());
+            if (!qualification) host = new WorkloadProtocol.Host(host.version(), host.identity(), host.requestedWorkers(), host.effectiveWorkers(), host.maxMemoryBytes(), host.totalMemoryBytes(), host.usableDiskBytes(), previous.prerequisites());
         }
         AutoLlmFileUtil.write(root.resolve("target-preflight.json"), host);
         boolean ready = true; for (var check : host.prerequisites()) if (check.status().equals("FAILED")) ready = false;
@@ -196,6 +205,11 @@ public final class AutoLlmExecutionService {
                         remotePath(config.sotaFile(), root, remote), remotePath(config.initialConfigurationsFile(), root, remote), remotePath(config.trainingPath(), root, remote),
                         remotePath(config.comparisonPath(), root, remote), config.codex(), config.preparation(), config.tuning(), config.comparison(), config.execution()));
                 files.put(name, target);
+            } else if (name.equals("data/staged-inputs.json")) {
+                Map<String,Map<String,String>> manifest = AutoLlmFileUtil.read(entry.getValue(), new TypeReference<>() {});
+                var mapped = new LinkedHashMap<String,Map<String,String>>();
+                for (var input : manifest.entrySet()) mapped.put(input.getKey(), Map.of("path", remotePath(input.getValue().get("path"), root, remote), "sha256", input.getValue().get("sha256")));
+                AutoLlmFileUtil.write(target, mapped); files.put(name, target);
             } else if (name.endsWith(".index")) {
                 var tokens = new ArrayList<String>();
                 for (String line : Files.readAllLines(entry.getValue())) {
