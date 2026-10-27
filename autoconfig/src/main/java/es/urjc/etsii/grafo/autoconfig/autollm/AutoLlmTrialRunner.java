@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.autollm;
 
 import es.urjc.etsii.grafo.autoconfig.autollm.execution.*;
+import static es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmCampaign.Stage.*;
 import es.urjc.etsii.grafo.util.ExceptionUtil;
 import tools.jackson.core.type.TypeReference;
 import java.io.*;
@@ -13,10 +14,10 @@ import java.util.concurrent.locks.ReentrantLock;
 /** Owns one target's execution model. Only immutable snapshots cross into the coordinator. */
 public final class AutoLlmTrialRunner {
     public interface Listener {
-        void state(AutoLlmCampaign snapshot);
+        void state(AutoLlmExecutionContext.Snapshot snapshot);
         void event(String kind, Object detail);
     }
-    private final AutoLlmCampaign model;
+    private final AutoLlmExecutionContext model;
     private final Path executionRoot;
     private final AutoLlmProcessRunner processes;
     private final CodexTaskRunner codex;
@@ -26,15 +27,15 @@ public final class AutoLlmTrialRunner {
     private final Semaphore sessions;
     private final ReentrantLock metadataLock = new ReentrantLock();
     private record PreflightTool(List<String> command, boolean local) {}
-    public AutoLlmTrialRunner(AutoLlmCampaign model, Path root, AutoLlmProcessRunner processes, CodexTaskRunner codex,
+    public AutoLlmTrialRunner(AutoLlmExecutionContext model, Path root, AutoLlmProcessRunner processes, CodexTaskRunner codex,
                               Listener listener, java.util.function.BooleanSupplier stop, Semaphore sessions) {
         this.model = model; this.executionRoot = root; this.processes = processes; this.codex = codex;
         this.workloads = new AutoLlmExecutionService(processes); this.listener = listener; this.stop = stop; this.sessions = sessions;
     }
     private boolean cancelled() { return stop.getAsBoolean(); }
-    private synchronized void publish(AutoLlmCampaign campaign) { listener.state(AutoLlmPoolUtil.copy(campaign, AutoLlmCampaign.class)); }
+    private synchronized void publish(AutoLlmExecutionContext campaign) { listener.state(campaign.snapshot()); }
     private void event(String kind, Object detail) { listener.event(kind, detail); }
-    public AutoLlmCampaign snapshot() { return AutoLlmPoolUtil.copy(model, AutoLlmCampaign.class); }
+    public AutoLlmExecutionContext.Snapshot snapshot() { return model.snapshot(); }
     public void prepare(boolean metadataOnly) { prepareBaseline(model, metadataOnly); }
     public String endpoint() {
         if (model.config.execution().target() == AutoLlmConfig.Target.LOCAL) return "local";
@@ -58,14 +59,15 @@ public final class AutoLlmTrialRunner {
     public void cancelOutstanding() { workloads.cancelOutstanding(model.config, executionRoot, state -> remoteState(model, state)); }
     public void reconcile() {
         processes.reconcile(executionRoot);
-        for (var trial : model.trials) {
+        if (model.trial != null) {
+            var trial = model.trial;
             recoverTurn(model, trial);
             for (var a : trial.attempts) if (a.status.equals("RUNNING")) { a.status = "INTERRUPTED"; a.finishedAt = Instant.now().toString(); }
         }
     }
     public void execute() {
-        var c = model; var t = c.trials.getFirst();
-        c.problem = null; c.failure = null; c.status = "RUNNING";
+        var c = model; var t = c.trial;
+        c.problem = null;
         try {
             reconcile();
             if (c.config.execution().target() == AutoLlmConfig.Target.SSH) workloads.probe(c.config, executionRoot);
@@ -76,49 +78,57 @@ public final class AutoLlmTrialRunner {
                     if (e instanceof CancellationException) throw e;
                     if (e instanceof CodexQuotaUtil.QuotaLimitException quota) {
                         t.quotaRetryAt = quota.retryAt().toString(); t.problem = AutoLlmFailureUtil.describe(e, executionRoot.resolve("trials/%03d".formatted(t.number)));
-                        t.status = "WAITING_FOR_QUOTA"; c.problem = null; c.failure = null; publish(c);
+                        t.status = "WAITING_FOR_QUOTA"; c.problem = null; publish(c);
                         event("codex-quota-wait", Map.of("trial", t.number, "retryAt", t.quotaRetryAt, "failure", t.problem));
                         continue;
                     }
                     var problem = AutoLlmFailureUtil.describe(e, executionRoot.resolve("trials/%03d".formatted(t.number)));
                     if (!problem.retryable() || t.infrastructureRetries >= AutoLlmFailureUtil.MAX_RETRIES) throw e;
-                    t.infrastructureRetries++; t.problem = problem; c.problem = null; c.failure = null; publish(c);
+                    t.infrastructureRetries++; t.problem = problem; c.problem = null; publish(c);
                     event("infrastructure-retry", Map.of("trial", t.number, "retry", t.infrastructureRetries, "failure", problem));
                     try { Thread.sleep(1000L * t.infrastructureRetries); }
                     catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw new CancellationException(); }
                 }
             }
-            t.status = "SUCCEEDED"; t.failure = null; t.problem = null; c.status = "SUCCEEDED";
-        } catch (CancellationException e) { t.status = "INTERRUPTED"; c.status = "INTERRUPTED"; }
+            t.status = "SUCCEEDED"; t.failure = null; t.problem = null;
+        } catch (CancellationException e) { t.status = "INTERRUPTED"; }
         catch (RuntimeException e) {
             t.problem = AutoLlmFailureUtil.describe(e, executionRoot); t.failure = ExceptionUtil.stacktrace(e);
             t.status = t.problem.category() == AutoLlmFailureUtil.Category.COMPONENT ? "FAILED" : "BLOCKED";
-            c.problem = t.problem; c.failure = t.failure; c.status = t.status.equals("FAILED") ? "COMPLETED_WITH_FAILURES" : "NEEDS_ATTENTION";
+            c.problem = t.problem;
         } finally {
             for (var a : t.attempts) if (a.status.equals("RUNNING")) { a.status = "INTERRUPTED"; a.finishedAt = Instant.now().toString(); }
             publish(c);
         }
     }
-    private void recoverTurn(AutoLlmCampaign c, AutoLlmCampaign.Trial trial) {
+    private void recoverTurn(AutoLlmExecutionContext c, AutoLlmCampaign.Trial trial) {
         if (trial.attempts.isEmpty()) return;
         var attempt = trial.attempts.getLast();
         if (!List.of("GENERATION", "REPAIR").contains(attempt.stage) || !List.of("RUNNING", "INTERRUPTED", "FAILED", "QUOTA_LIMIT").contains(attempt.status)) return;
         Path root = executionRoot;
         try {
-            attempt.codexEvidence = codex.archive(root.resolve("trials/%03d/source".formatted(trial.number)), root.resolve(attempt.directory), trial.threadId);
+            attempt.codexEvidence = codex.archive(root.resolve("trials/%03d/source".formatted(trial.number)), model.path(attempt.directory), trial.threadId);
             if (attempt.codexEvidence.threadId() != null) trial.threadId = attempt.codexEvidence.threadId();
-            trial.resumeTurn = trial.threadId != null;
+            var recovered = codex.recoveredResult(model.path(attempt.directory), trial.threadId);
+            if (recovered != null) {
+                if (trial.repairPending) trial.repairTurns++;
+                trial.repairPending = false;
+                trial.threadId = recovered.threadId(); trial.blacklist = recovered.manifest().blacklist();
+                trial.complete(GENERATION, attempt.directory, null);
+                trial.resumeTurn = false; trial.failure = null;
+                finish(c, attempt, null);
+            } else trial.resumeTurn = trial.threadId != null;
             trial.problem = null;
         } catch (CodexEvidenceUtil.ArchiveException e) {
-            Path evidence = root.resolve(attempt.directory).resolve("evidence.json");
+            Path evidence = model.path(attempt.directory).resolve("evidence.json");
             if (Files.isRegularFile(evidence)) attempt.codexEvidence = AutoLlmFileUtil.read(evidence, CodexEvidenceUtil.Evidence.class);
             trial.status = "BLOCKED"; trial.failure = ExceptionUtil.stacktrace(e); trial.resumeTurn = false;
-            trial.problem = AutoLlmFailureUtil.describe(e, root.resolve(attempt.directory)); c.problem = trial.problem; c.status = "NEEDS_ATTENTION";
+            trial.problem = AutoLlmFailureUtil.describe(e, model.path(attempt.directory)); c.problem = trial.problem;
             attempt.status = "FAILED"; attempt.failure = trial.failure; attempt.finishedAt = Instant.now().toString();
         }
     }
 
-    private void prepareBaseline(AutoLlmCampaign c, boolean metadataOnly) {
+    private void prepareBaseline(AutoLlmExecutionContext c, boolean metadataOnly) {
         Path root = executionRoot; Path repo = Path.of(c.config.project().repository());
         Path preflight = root.resolve("baseline-preflight");
         var versions = new LinkedHashMap<String, String>();
@@ -195,7 +205,7 @@ public final class AutoLlmTrialRunner {
             AutoLlmFileUtil.write(root.resolve("control/config.json"), c.config); if (!metadataOnly) c.baselineCommit = commit; publish(c);
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
-    private void cloneProject(AutoLlmCampaign c, String commit, Path destination, Path output) {
+    private void cloneProject(AutoLlmExecutionContext c, String commit, Path destination, Path output) {
         if (!Files.exists(destination.resolve(".git"))) {
             try { DirectoryArchiveUtil.restore(destination); }
             catch (IOException e) { throw new UncheckedIOException(e); }
@@ -206,19 +216,19 @@ public final class AutoLlmTrialRunner {
         runCommand(c, List.of("git", "submodule", "update", "--init", "--recursive"), destination, output.resolve("submodules"), c.config.execution().buildTimeoutMillis(), true);
         AutoLlmFileUtil.write(output.resolve("clone-completed.json"), Map.of("commit", commit));
     }
-    private AutoLlmCampaign.Attempt attempt(AutoLlmCampaign c, AutoLlmCampaign.Trial t, String stage) {
-        if (c.config.execution().target() == AutoLlmConfig.Target.SSH && !t.attempts.isEmpty()) {
+    private AutoLlmCampaign.Attempt attempt(AutoLlmExecutionContext c, AutoLlmCampaign.Trial t, String stage) {
+        if (!t.attempts.isEmpty()) {
             var previous = t.attempts.getLast();
             if (previous.stage.equals(stage) && previous.status.equals("INTERRUPTED")) {
-                Path directory = executionRoot.resolve(previous.directory);
-                if (!AutoLlmFileUtil.ownedFiles(directory, "remote-job.json").isEmpty()) { previous.status = "RUNNING"; previous.finishedAt = null; previous.failure = null; previous.problem = null; t.status = stage; publish(c); event("attempt-rejoined", Map.of("directory", previous.directory)); return previous; }
+                Path directory = model.path(previous.directory);
+                if (!AutoLlmFileUtil.ownedFiles(directory, "remote-job.json").isEmpty() || !AutoLlmFileUtil.ownedFiles(directory, "workload-result.json").isEmpty() || !AutoLlmFileUtil.ownedFiles(directory, "collection-failure.json").isEmpty()) { previous.status = "RUNNING"; previous.finishedAt = null; previous.failure = null; previous.problem = null; t.status = stage; publish(c); event("attempt-rejoined", Map.of("directory", previous.directory)); return previous; }
             }
         }
         var a = new AutoLlmCampaign.Attempt(); a.number = t.attempts.size() + 1; a.stage = stage;
-        a.directory = "trials/%03d/attempts/%03d-%s".formatted(t.number, a.number, stage.toLowerCase()); a.startedAt = Instant.now().toString();
+        a.directory = (model.targetDirectory.isEmpty() ? "" : model.targetDirectory + "/") + "trials/%03d/attempts/%03d-%s".formatted(t.number, a.number, stage.toLowerCase()); a.startedAt = Instant.now().toString();
         t.status = stage; t.attempts.add(a); c.remote = null; publish(c); event("stage-started", Map.of("trial", t.number, "stage", stage, "attempt", a.number)); return a;
     }
-    private void substage(AutoLlmCampaign campaign, AutoLlmCampaign.Attempt attempt, String stage) {
+    private void substage(AutoLlmExecutionContext campaign, AutoLlmCampaign.Attempt attempt, String stage) {
         attempt.substage = stage; publish(campaign); event("preparation-stage", Map.of("attempt", attempt.directory, "stage", stage));
     }
     private void verifyDependencies(Path baseline, Path generated, Path evidence) {
@@ -231,38 +241,36 @@ public final class AutoLlmTrialRunner {
             throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INTEGRITY, "DEPENDENCIES_CHANGED", "Build dependencies changed from frozen baseline: " + differences, evidence.resolve("dependency-differences.json"));
         }
     }
-    private void finish(AutoLlmCampaign c, AutoLlmCampaign.Attempt a, RuntimeException failure) {
+    private void finish(AutoLlmExecutionContext c, AutoLlmCampaign.Attempt a, RuntimeException failure) {
         if (failure == null) a.status = "SUCCEEDED";
         else if (failure instanceof CodexQuotaUtil.QuotaLimitException) a.status = "QUOTA_LIMIT";
-        else if (failure instanceof CancellationException || AutoLlmCampaignStore.hasUncollectedJobs(executionRoot.resolve(a.directory))) a.status = "INTERRUPTED";
+        else if (failure instanceof CancellationException || AutoLlmCampaignStore.hasUncollectedJobs(model.path(a.directory)) || !AutoLlmFileUtil.ownedFiles(model.path(a.directory), "collection-failure.json").isEmpty()) a.status = "INTERRUPTED";
         else a.status = "FAILED";
         a.finishedAt = Instant.now().toString(); a.failure = failure == null ? null : ExceptionUtil.stacktrace(failure);
-        a.problem = failure == null || failure instanceof CancellationException ? null : AutoLlmFailureUtil.describe(failure, executionRoot.resolve(a.directory));
+        a.problem = failure == null || failure instanceof CancellationException ? null : AutoLlmFailureUtil.describe(failure, model.path(a.directory));
         var event = new LinkedHashMap<String,Object>(); event.put("directory", a.directory); event.put("status", a.status); event.put("problem", a.problem); event.put("failure", a.failure);
         event("attempt-finished", event);
         publish(c);
         if (List.of("GENERATION", "REPAIR").contains(a.stage)) {
-            Path evidence = executionRoot.resolve(a.directory).resolve("evidence.json");
+            Path evidence = model.path(a.directory).resolve("evidence.json");
             if (Files.isRegularFile(evidence)) a.codexEvidence = AutoLlmFileUtil.read(evidence, CodexEvidenceUtil.Evidence.class);
             publish(c);
         }
     }
-    private void runTrial(AutoLlmCampaign c, AutoLlmCampaign.Trial t) {
+    private void runTrial(AutoLlmExecutionContext c, AutoLlmCampaign.Trial t) {
         awaitQuota(c, t);
         Path root = executionRoot; Path source = root.resolve("trials/%03d/source".formatted(t.number));
         AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(root.resolve("control/frozen-hashes.json"), new TypeReference<>() {}));
         cloneProject(c, c.baselineCommit, source, root.resolve("trials/%03d/clone".formatted(t.number)));
         if (c.config.execution().target() == AutoLlmConfig.Target.SSH && t.resumeTurn) reconcileMetadata(c, t, source);
-        while (t.preparedArtifact == null) {
+        while (t.nextStage.ordinal() < TUNING.ordinal()) {
             if (cancelled()) throw new CancellationException();
-            if (t.nextStep.equals("GENERATE")) {
+            if (t.nextStage == GENERATION) {
                 boolean continuation = t.resumeTurn;
                 if (t.threadId != null && !continuation && t.repairTurns >= c.config.preparation().maxRepairs()) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "REPAIRS_EXHAUSTED", "Preparation exhausted repair limit: " + t.failure, root.resolve("trials/%03d".formatted(t.number)));
                 t.status = "WAITING_FOR_GENERATION"; publish(c);
-                try { sessions.acquire(); }
-                catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Queued generation interrupted"); }
-                if (cancelled()) { sessions.release(); throw new CancellationException(); }
-                var a = attempt(c, t, t.threadId == null || continuation && t.generationDirectory == null ? "GENERATION" : "REPAIR"); Path dir = root.resolve(a.directory);
+                try (var permit = es.urjc.etsii.grafo.util.ConcurrencyUtil.acquirePermit(sessions, this::cancelled)) {
+                var a = attempt(c, t, t.threadId == null || continuation && t.outputDirectory(GENERATION) == null ? "GENERATION" : "REPAIR"); Path dir = model.path(a.directory);
                 t.repairPending |= t.threadId != null && !continuation;
                 t.resumeTurn = false; publish(c);
                 try {
@@ -275,7 +283,7 @@ public final class AutoLlmTrialRunner {
                     }
                     try {
                         metadataLock.lockInterruptibly();
-                        try { if (t.repairPending) t.repairTurns++; t.repairPending = false; t.threadId = result.threadId(); t.blacklist = result.manifest().blacklist(); t.generationDirectory = a.directory; t.nextStep = "VERIFY"; t.failure = null; t.problem = null; finish(c, a, null); }
+                        try { if (t.repairPending) t.repairTurns++; t.repairPending = false; t.threadId = result.threadId(); t.blacklist = result.manifest().blacklist(); t.complete(GENERATION, a.directory, null); t.failure = null; t.problem = null; finish(c, a, null); }
                         finally { metadataLock.unlock(); }
                     } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Generation interrupted while awaiting a metadata check"); }
                 } catch (RuntimeException e) {
@@ -286,14 +294,14 @@ public final class AutoLlmTrialRunner {
                     t.resumeTurn = e instanceof CancellationException && t.threadId != null; publish(c);
                     if (e instanceof CancellationException) throw e;
                     t.resumeTurn = t.threadId != null; publish(c); throw e;
-                } finally { sessions.release(); }
+                }
+                }
             }
             if (c.config.execution().target() == AutoLlmConfig.Target.SSH) {
                 t.status = "METADATA_RECONCILIATION"; publish(c); reconcileMetadata(c, t, source);
             }
-            var a = attempt(c, t, "PREPARATION"); Path dir = root.resolve(a.directory);
             t.failure = null; t.problem = null;
-            try {
+            try { runStage(c, t, PREPARATION, (a, dir) -> {
                 substage(c, a, "BUILD");
                 runCommand(c, c.config.project().buildCommand(), source, dir.resolve("build"), c.config.execution().buildTimeoutMillis(), false);
                 var generatedHashes = AutoLlmFileUtil.sourceHashes(source);
@@ -306,7 +314,7 @@ public final class AutoLlmTrialRunner {
                 child(c, t, jar, dir.resolve("check"), "--autollm-check", 0, c.config.execution().searchSpaceTimeoutMillis(), List.of());
                 substage(c, a, "PROBES");
                 child(c, t, jar, dir.resolve("probe"), "--autollm-probe", 0, c.config.preparation().probeDurationMillis() + c.config.execution().startupTimeoutMillis(), List.of());
-                t.probeDirectory = a.directory + "/probe"; publish(c);
+                publish(c);
                 substage(c, a, "PILOT");
                 long pilotMillis = c.config.preparation().pilotDurationMillis();
                 child(c, t, jar, dir.resolve("pilot"), "--autoconfig", pilotMillis, c.config.execution().startupTimeoutMillis() + pilotMillis + c.config.execution().phaseTimeoutMillis() + c.config.execution().watchdogGraceMillis(), List.of());
@@ -320,35 +328,49 @@ public final class AutoLlmTrialRunner {
                 Files.copy(dir.resolve("check/execution/search-space.json"), frozen.resolve("search-space.json"), StandardCopyOption.REPLACE_EXISTING);
                 Files.copy(dir.resolve("check/execution/components.json"), frozen.resolve("components.json"), StandardCopyOption.REPLACE_EXISTING);
                 AutoLlmFileUtil.write(frozen.resolve("artifact.json"), Map.of("sha256", AutoLlmFileUtil.hash(frozen.resolve("project.jar")), "blacklist", t.blacklist == null ? "" : t.blacklist));
-                t.preparedArtifact = root.relativize(frozen.resolve("project.jar")).toString(); t.failure = null; finish(c, a, null);
-            } catch (IOException e) { throw new UncheckedIOException(e); }
-            catch (RuntimeException e) {
-                finish(c, a, e); if (e instanceof CancellationException) throw e;
-                t.problem = AutoLlmFailureUtil.describe(e, dir); t.failure = ExceptionUtil.stacktrace(e);
+                t.failure = null; return model.relative(frozen.resolve("project.jar"));
+            }); } catch (RuntimeException e) {
+                if (e instanceof CancellationException) throw e;
+                t.problem = AutoLlmFailureUtil.describe(e, model.path(t.attempts.getLast().directory)); t.failure = ExceptionUtil.stacktrace(e);
                 if (t.problem.category() != AutoLlmFailureUtil.Category.COMPONENT) throw e;
-                t.nextStep = "GENERATE"; publish(c);
+                t.nextStage = GENERATION; publish(c);
             }
         }
-        Path jar = root.resolve(t.preparedArtifact);
+        Path jar = model.path(t.artifact());
         var identity = AutoLlmFileUtil.read(jar.getParent().resolve("artifact.json"), Map.class);
         if (!AutoLlmFileUtil.hash(jar).equals(identity.get("sha256"))) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INTEGRITY, "ARTIFACT_CHANGED", "Frozen artifact was modified", jar);
-        if (t.mainDirectory == null) {
-            var a = attempt(c, t, "TUNING");
-            try { child(c, t, jar, root.resolve(a.directory), "--autoconfig", 0, c.config.execution().stageTimeoutMillis(), List.of()); t.mainDirectory = a.directory; finish(c, a, null); }
-            catch (RuntimeException e) { finish(c, a, e); throw e; }
-        }
-        if (t.winnerDirectory == null) {
-            var a = attempt(c, t, "WINNER_EXPORT");
-            try { child(c, t, jar, root.resolve(a.directory), "--autollm-export", 0, c.config.execution().searchSpaceTimeoutMillis(), List.of("--autollm.child.elites-file=" + root.resolve(t.mainDirectory).resolve("autoconfig-final-elites.json")));
-                t.winner = AutoLlmFileUtil.read(root.resolve(a.directory).resolve("execution/winner.json"), Object.class); t.winnerDirectory = a.directory; finish(c, a, null); }
-            catch (RuntimeException e) { finish(c, a, e); throw e; }
-        }
-        for (var previous : t.attempts) if (previous.stage.equals("COMPARISON") && previous.status.equals("SUCCEEDED")) return;
-        var a = attempt(c, t, "COMPARISON"); t.comparisonDirectory = a.directory; publish(c);
-        try { child(c, t, jar, root.resolve(a.directory), "--default", 0, c.config.execution().stageTimeoutMillis(), List.of("--autollm.child.comparison-enabled=true", "--autollm.child.winner-file=" + root.resolve(t.winnerDirectory).resolve("execution/winner.json"), "--solver.experiments=autollm-comparison", "--solver.repetitions=" + c.config.comparison().repetitions())); finish(c, a, null); }
-        catch (RuntimeException e) { finish(c, a, e); throw e; }
+        if (t.nextStage == TUNING) runStage(c, t, TUNING, (attempt, dir) -> {
+            child(c, t, jar, dir, "--autoconfig", 0, c.config.execution().stageTimeoutMillis(), List.of());
+            return null;
+        });
+        if (t.nextStage == WINNER_EXPORT) runStage(c, t, WINNER_EXPORT, (attempt, dir) -> {
+            child(c, t, jar, dir, "--autollm-export", 0, c.config.execution().searchSpaceTimeoutMillis(), List.of("--autollm.child.elites-file=" + model.path(t.outputDirectory(TUNING)).resolve("autoconfig-final-elites.json")));
+            t.winner = AutoLlmFileUtil.read(dir.resolve("execution/winner.json"), Object.class);
+            return null;
+        });
+        if (t.nextStage == COMPARISON) runStage(c, t, COMPARISON, (attempt, dir) -> {
+            child(c, t, jar, dir, "--default", 0, c.config.execution().stageTimeoutMillis(), List.of("--autollm.child.comparison-enabled=true", "--autollm.child.winner-file=" + model.path(t.outputDirectory(WINNER_EXPORT)).resolve("execution/winner.json"), "--solver.experiments=autollm-comparison", "--solver.repetitions=" + c.config.comparison().repetitions()));
+            return null;
+        });
     }
-    private void awaitQuota(AutoLlmCampaign campaign, AutoLlmCampaign.Trial trial) {
+    @FunctionalInterface private interface StageOperation {
+        String run(AutoLlmCampaign.Attempt attempt, Path directory) throws IOException;
+    }
+    private void runStage(AutoLlmExecutionContext context, AutoLlmCampaign.Trial trial, AutoLlmCampaign.Stage stage, StageOperation operation) {
+        var attempt = attempt(context, trial, stage.name());
+        Path directory = model.path(attempt.directory);
+        try {
+            String artifact = operation.run(attempt, directory);
+            Files.deleteIfExists(directory.resolve("collection-failure.json"));
+            trial.complete(stage, attempt.directory, artifact);
+            finish(context, attempt, null);
+        } catch (IOException | UncheckedIOException e) {
+            var failure = AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE, "EVIDENCE_COLLECTION", "Retry completed stage collection: " + e, directory);
+            AutoLlmFileUtil.write(directory.resolve("collection-failure.json"), failure.failure());
+            finish(context, attempt, failure); throw failure;
+        } catch (RuntimeException e) { finish(context, attempt, e); throw e; }
+    }
+    private void awaitQuota(AutoLlmExecutionContext campaign, AutoLlmCampaign.Trial trial) {
         if (trial.quotaRetryAt == null) return;
         trial.status = "WAITING_FOR_QUOTA"; publish(campaign);
         long reset = Instant.parse(trial.quotaRetryAt).toEpochMilli();
@@ -362,7 +384,7 @@ public final class AutoLlmTrialRunner {
         trial.quotaRetryAt = null; trial.problem = null; trial.failure = null; publish(campaign);
         event("codex-quota-resumed", Map.of("trial", trial.number));
     }
-    private void runCommand(AutoLlmCampaign c, List<String> command, Path cwd, Path dir, long timeout, boolean local) {
+    private void runCommand(AutoLlmExecutionContext c, List<String> command, Path cwd, Path dir, long timeout, boolean local) {
         AutoLlmProcessRunner.Result result;
         if (local) result = processes.run(command, cwd, dir, timeout, 0, c.config.execution().watchdogGraceMillis(), () -> cancelled(), false, 0);
         else {
@@ -380,11 +402,11 @@ public final class AutoLlmTrialRunner {
             throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE, "PREREQUISITE_FAILED", message, dir);
         }
     }
-    private AutoLlmProcessRunner.Result child(AutoLlmCampaign c, AutoLlmCampaign.Trial t, Path jar, Path output, String mode, long pilotMillis, long hardTimeout, List<String> extra) {
+    private AutoLlmProcessRunner.Result child(AutoLlmExecutionContext c, AutoLlmCampaign.Trial t, Path jar, Path output, String mode, long pilotMillis, long hardTimeout, List<String> extra) {
         Path root = executionRoot; Path controls = root.resolve("control/frozen-hashes.json");
         if (Files.exists(controls)) AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(controls, new TypeReference<>() {}));
         String artifactHash = AutoLlmFileUtil.hash(jar);
-        if (t != null && t.preparedArtifact != null && !artifactHash.equals(AutoLlmFileUtil.read(jar.getParent().resolve("artifact.json"), Map.class).get("sha256"))) throw new IllegalStateException("Frozen artifact was modified");
+        if (t != null && t.artifact() != null && !artifactHash.equals(AutoLlmFileUtil.read(jar.getParent().resolve("artifact.json"), Map.class).get("sha256"))) throw new IllegalStateException("Frozen artifact was modified");
         long seed = t == null ? c.config.seed() : mode.equals("--default") ? t.comparisonSeed : mode.equals("--autoconfig") && pilotMillis == 0 ? t.tuningSeed : t.pilotSeed;
         int workers = workloads.workers(c.config, root);
         boolean validation = mode.equals("--autollm-probe") || mode.equals("--autoconfig") && pilotMillis > 0;
@@ -421,16 +443,17 @@ public final class AutoLlmTrialRunner {
         if (Files.exists(failure)) return new AutoLlmFailureUtil.StageException(AutoLlmFileUtil.read(failure, AutoLlmFailureUtil.Failure.class), null);
         return AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.UNKNOWN, "CHILD_FAILED", message, output);
     }
-    private void remoteState(AutoLlmCampaign campaign, Map<String,Object> state) {
+    private void remoteState(AutoLlmExecutionContext campaign, Map<String,Object> state) {
         campaign.remote = state;
-        campaign.status = Set.of("WAITING_FOR_REMOTE", "CANCELLATION_PENDING").contains(state.get("status")) ? (String) state.get("status") : "RUNNING";
+        if (campaign.trial != null && state.get("jobId") instanceof String job && state.get("connectionRetries") instanceof Number retries)
+            campaign.trial.connectionRetries.merge(job, retries.intValue(), Math::max);
         publish(campaign);
     }
-    private AutoLlmConfig screenedConfig(AutoLlmCampaign campaign) {
+    private AutoLlmConfig screenedConfig(AutoLlmExecutionContext campaign) {
         Path proposal = Path.of(campaign.approvedScreeningPath).resolve("proposal");
         return campaign.config.withPaths(proposal.resolve("train.index").toString(), proposal.resolve("test.index").toString());
     }
-    private void reconcileMetadata(AutoLlmCampaign campaign, AutoLlmCampaign.Trial trial, Path source) {
+    private void reconcileMetadata(AutoLlmExecutionContext campaign, AutoLlmCampaign.Trial trial, Path source) {
         Path root = executionRoot, directory = root.resolve("trials/%03d/metadata".formatted(trial.number));
         if (Files.isDirectory(directory)) try (var files = Files.walk(directory)) {
             for (Path file : files.toList()) if (file.getFileName().toString().equals("remote-job.json")) {
@@ -451,7 +474,7 @@ public final class AutoLlmTrialRunner {
             }
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
-    private String metadataHelper(AutoLlmCampaign campaign, AutoLlmCampaign.Trial trial) {
+    private String metadataHelper(AutoLlmExecutionContext campaign, AutoLlmCampaign.Trial trial) {
         Path root = executionRoot, helper = root.resolve("control/metadata-check-" + trial.number + ".py");
         Path queue = root.resolve("trials/%03d/source/.mork-metadata".formatted(trial.number));
         long timeoutSeconds = (campaign.config.execution().buildTimeoutMillis() + campaign.config.execution().searchSpaceTimeoutMillis() + campaign.config.execution().phaseTimeoutMillis()) / 1000 + 30;
@@ -469,8 +492,8 @@ public final class AutoLlmTrialRunner {
         try {
             if (!id.equals(model.id)) throw new IllegalArgumentException("Campaign mismatch");
             var campaign = model;
-            AutoLlmCampaign.Trial trial = null;
-            for (var candidate : campaign.trials) if (candidate.number == number) trial = candidate;
+            var trial = campaign.trial;
+            if (trial != null && trial.number != number) throw new IllegalArgumentException("Trial mismatch");
             if (trial == null || !Set.of("GENERATION", "REPAIR").contains(trial.status) || trial.attempts.isEmpty() || !trial.attempts.getLast().status.equals("RUNNING")) throw new IllegalStateException("Metadata checks are available only during generation/repair");
             Path root = executionRoot, source = root.resolve("trials/%03d/source".formatted(number));
             Path output = root.resolve("trials/%03d/metadata/%s".formatted(number, requestId));

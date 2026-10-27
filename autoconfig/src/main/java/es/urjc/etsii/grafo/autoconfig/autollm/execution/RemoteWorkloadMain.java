@@ -119,9 +119,7 @@ public final class RemoteWorkloadMain {
                 for (String path : job.reset()) WorkloadArchiveUtil.deleteTree(WorkloadPathUtil.inside(root, path));
                 for (String layer : job.layers()) {
                     Path archive = WorkloadPathUtil.inside(root, layer);
-                    String hash = archive.getFileName().toString().replace(".zip", "");
-                    if (!hash.equals(AutoLlmFileUtil.hash(archive))) throw new IllegalStateException("Frozen input layer changed");
-                    WorkloadArchiveUtil.unpack(archive, root);
+                    WorkloadArchiveUtil.installLayer(archive, root);
                 }
                 WorkloadArchiveUtil.unpack(directory.resolve("input.zip"), root);
                 restoreGit(root);
@@ -149,6 +147,15 @@ public final class RemoteWorkloadMain {
                 failure = e.toString();
                 if (e instanceof RuntimeException problem) AutoLlmFileUtil.write(WorkloadPathUtil.inside(root, job.output()).resolve("execution/failure.json"), AutoLlmFailureUtil.describe(problem, WorkloadPathUtil.inside(root, job.output())));
             }
+            State completed = new State(id, outcome, result, failure, null);
+            AutoLlmFileUtil.write(directory.resolve("execution-completed.json"), completed);
+            AutoLlmFileUtil.write(directory.resolve("state.json"), new State(id, "COLLECTING", result, failure, null));
+            collectResult(root, id, job, completed);
+        }
+    }
+    /** Retry collection independently if the supervisor exits after execution finishes. */
+    private static void collectResult(Path root, String id, Job job, State completed) throws IOException {
+        Path directory = jobDirectory(root, id);
             var files = new TreeMap<String,Path>();
             DirectoryArchiveUtil.archive(WorkloadPathUtil.inside(root, job.output()).resolve("solutions"));
             WorkloadArchiveUtil.addTree(files, root, WorkloadPathUtil.inside(root, job.output()), false);
@@ -158,8 +165,7 @@ public final class RemoteWorkloadMain {
             }
             markRemoteOwners(files);
             WorkloadArchiveUtil.pack(directory.resolve("result.zip"), files);
-            AutoLlmFileUtil.write(directory.resolve("state.json"), new State(id, outcome, result, failure, AutoLlmFileUtil.hash(directory.resolve("result.zip"))));
-        }
+            AutoLlmFileUtil.write(directory.resolve("state.json"), new State(id, completed.status(), completed.result(), completed.failure(), AutoLlmFileUtil.hash(directory.resolve("result.zip"))));
     }
     private static void markRemoteOwners(Map<String,Path> files) {
         for (var entry : files.entrySet()) if (entry.getKey().endsWith("/owner.json")) {
@@ -188,7 +194,7 @@ public final class RemoteWorkloadMain {
         if (!Files.exists(file)) return new State(id, "NOT_FOUND", null, null, null);
         State state = AutoLlmFileUtil.read(file, State.class);
         Path owner = directory.resolve("started.json");
-        if (Set.of("SUBMITTED", "RUNNING").contains(state.status()) && Files.exists(owner)) {
+        if (Set.of("SUBMITTED", "RUNNING", "COLLECTING").contains(state.status()) && Files.exists(owner)) {
             var identity = AutoLlmFileUtil.read(owner, Map.class);
             boolean alive = ProcessHandle.of(((Number) identity.get("pid")).longValue()).filter(ProcessHandle::isAlive)
                     .flatMap(p -> p.info().startInstant()).map(Instant::toString).orElse("").equals(identity.get("start"));
@@ -196,9 +202,14 @@ public final class RemoteWorkloadMain {
                 try (var channel = FileChannel.open(directory.resolve("run.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.tryLock()) {
                 if (lock == null) return AutoLlmFileUtil.read(file, State.class);
                 state = AutoLlmFileUtil.read(file, State.class);
-                if (!Set.of("SUBMITTED", "RUNNING").contains(state.status())) return state;
+                if (!Set.of("SUBMITTED", "RUNNING", "COLLECTING").contains(state.status())) return state;
                 System.setProperty("mork.execution.remote", "true");
                 Job job = AutoLlmFileUtil.read(directory.resolve("job.json"), Job.class);
+                Path completed = directory.resolve("execution-completed.json");
+                if (Files.isRegularFile(completed)) {
+                    collectResult(root, id, job, AutoLlmFileUtil.read(completed, State.class));
+                    return AutoLlmFileUtil.read(file, State.class);
+                }
                 new AutoLlmProcessRunner().reconcile(WorkloadPathUtil.inside(root, job.output()));
                 var files = new TreeMap<String,Path>(); WorkloadArchiveUtil.addTree(files, root, WorkloadPathUtil.inside(root, job.output()), false);
                 WorkloadArchiveUtil.pack(directory.resolve("result.zip"), files);

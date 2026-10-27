@@ -19,6 +19,23 @@ public final class StatisticsUtil {
         return accumulator.summary(mode, reference);
     }
 
+    /** Constant-space live statistics. Exact quantiles remain available in completed reports. */
+    public static final class OnlineAccumulator {
+        private int count;
+        private double mean, m2, minimum = Double.POSITIVE_INFINITY, maximum = Double.NEGATIVE_INFINITY;
+        public void add(double value) {
+            if (!Double.isFinite(value)) return;
+            count++; double delta = value - mean; mean += delta / count; m2 += delta * (value - mean);
+            minimum = Math.min(minimum, value); maximum = Math.max(maximum, value);
+        }
+        public Summary summary(FMode mode) {
+            if (count == 0) return new Summary(0, null, null, null, null, null, null, null, null, null);
+            return new Summary(count, mode == FMode.MAXIMIZE ? maximum : minimum, mean, null,
+                    count < 2 ? null : Math.sqrt(m2 / (count - 1)), null, null,
+                    mode == FMode.MAXIMIZE ? minimum : maximum, null, null);
+        }
+    }
+
     /** Constant-time updates; sorted quantiles are computed only when a new summary is requested. */
     public static final class Accumulator {
         private final List<Double> values = new ArrayList<>();

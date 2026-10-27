@@ -49,11 +49,29 @@ public class CodexTaskRunner {
             RuntimeException processFailure = null;
             try {
                 result = processes.run(args, checkout, output, config.execution().codexTimeoutMillis(), 0, config.execution().watchdogGraceMillis(), cancelled, false, config.execution().startupTimeoutMillis());
+                AutoLlmFileUtil.write(output.resolve("process-result.json"), result);
             } catch (RuntimeException e) { processFailure = e; throw e; }
             finally {
                 try { archive(checkout, output, threadId); }
                 catch (CodexEvidenceUtil.ArchiveException e) { if (processFailure != null) e.addSuppressed(processFailure); throw e; }
             }
+            return completedResult(output, threadId, result, startedAt);
+        } catch (IOException e) { throw new UncheckedIOException(e); }
+    }
+    /** Read a completed turn after evidence recovery, without launching a new Codex turn. */
+    public Result recoveredResult(Path output, String threadId) {
+        Path result = output.resolve("process-result.json");
+        if (!Files.isRegularFile(result)) return null;
+        var process = AutoLlmFileUtil.read(result, AutoLlmProcessRunner.Result.class);
+        if (process.exitCode() != 0) return null;
+        return completedResult(output, threadId, process, java.time.Instant.parse(
+                AutoLlmFileUtil.JSON.readTree(read(output.resolve("codex-launch.json"))).path("startedAt").asString()));
+    }
+    private static String read(Path file) {
+        try { return Files.readString(file); } catch (IOException e) { throw new UncheckedIOException(e); }
+    }
+    private Result completedResult(Path output, String threadId, AutoLlmProcessRunner.Result result, java.time.Instant startedAt) {
+        try {
             var events = CodexEvidenceUtil.cli(output.resolve("stdout.log"));
             String actualThread = events.threadId() == null ? threadId : events.threadId();
             if (actualThread != null) Files.writeString(output.resolve("thread-id.txt"), actualThread);

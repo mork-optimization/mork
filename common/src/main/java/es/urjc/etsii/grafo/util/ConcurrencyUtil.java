@@ -15,6 +15,29 @@ import java.util.function.Consumer;
  */
 public class ConcurrencyUtil {
 
+    /** A cancellable, exception-safe permit. Acquire directly in a try-with-resources block. */
+    public static Permit acquirePermit(java.util.concurrent.Semaphore semaphore, java.util.function.BooleanSupplier cancelled) {
+        try {
+            while (!cancelled.getAsBoolean()) {
+                if (semaphore.tryAcquire(100, TimeUnit.MILLISECONDS)) {
+                    var permit = new Permit(semaphore);
+                    try {
+                        if (!cancelled.getAsBoolean()) return permit;
+                    } catch (RuntimeException | Error e) { permit.close(); throw e; }
+                    permit.close(); break;
+                }
+            }
+        } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
+        throw new java.util.concurrent.CancellationException("Generation wait cancelled");
+    }
+    public static final class Permit implements AutoCloseable {
+        private java.util.concurrent.Semaphore semaphore;
+        private Permit(java.util.concurrent.Semaphore semaphore) { this.semaphore = semaphore; }
+        @Override public void close() {
+            if (semaphore != null) { semaphore.release(); semaphore = null; }
+        }
+    }
+
     /** Resolve Mork's automatic worker setting on the machine executing the workload. */
     public static int resolveWorkerCount(int requested, int availableProcessors) {
         return requested > 0 ? requested : Math.max(1, availableProcessors / 2);

@@ -85,7 +85,7 @@ def capabilities(base, workspace=None, jar=None, cwd=None):
 
 
 def check_capabilities(info, workspace=None, jar=None, cwd=None):
-    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 3 or info.get("checkpointVersion") != 3 or info.get("runnerProtocol") != 3 or not FEATURES.issubset(info.get("features", [])):
+    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 4 or info.get("checkpointVersion") != 4 or info.get("runnerProtocol") != 4 or not FEATURES.issubset(info.get("features", [])):
         raise RuntimeError("Backend lacks required AutoLLM capabilities; use the matching rebuilt executable")
     if workspace and Path(info["workspace"]).resolve() != Path(workspace).resolve():
         raise RuntimeError("Backend workspace does not match")
@@ -208,6 +208,8 @@ def lifecycle(args, base):
     if args.action in ("get", "review", "summary", "recovery"):
         return request(base, path if args.action == "get" else path + "/" + args.action, timeout=args.timeout)
     body = {"proposalSha256": args.proposal_sha256} if args.action == "approve" else {}
+    if args.command == "campaign" and args.action == "start":
+        body = {"targets": args.target}
     return request(base, path + "/" + args.action, body, timeout=args.timeout)
 
 
@@ -290,7 +292,7 @@ def watch_owner(args, base, deadline):
 
 def watch_snapshot(base, kind, identifier, deadline):
     root = f"/{kind}s/{quote(identifier, safe='')}"
-    saved = request(base, root, timeout=watch_timeout(deadline))
+    saved = request(base, root + ("/status" if kind == "campaign" else ""), timeout=watch_timeout(deadline))
     snapshot = {"type": "status", "kind": kind, "id": identifier, "status": saved["status"],
                 "problem": saved.get("problem"), "remote": saved.get("remote")}
     if kind == "screening":
@@ -456,7 +458,7 @@ def status(args, base):
     selected = args.campaign or campaigns["active"] or (candidates[0]["id"] if candidates else None)
     if selected:
         root = "/campaigns/" + quote(selected, safe="")
-        campaign = request(base, root, timeout=args.timeout)
+        campaign = request(base, root + "/status", timeout=args.timeout)
         result["campaign"] = {key: campaign.get(key) for key in ("id", "status", "problem", "poolRevision", "targets")}
         result["campaign"]["trials"] = [{key: trial.get(key) for key in ("number", "targetId", "status", "repairTurns", "infrastructureRetries", "quotaRetryAt", "problem")} for trial in campaign["trials"]]
         selected_trials = [trial for trial in campaign["trials"] if trial["status"] != "PENDING"]
@@ -672,6 +674,8 @@ def lifecycle_commands(commands):
             action = actions.add_parser(name)
             action.add_argument("--id", required=True, help=f"Saved {kind} ID; mutating commands never select another operation")
             action.add_argument("--timeout", type=positive_seconds, default=3600 if name == "baseline-check" else 30)
+            if kind == "campaign" and name == "start":
+                action.add_argument("--target", action="append", default=[], help="Start only these qualified servers; repeat for an explicit healthy subset")
             if name == "approve":
                 action.add_argument("--proposal-sha256", required=True, type=reviewed_sha256)
 

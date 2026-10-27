@@ -24,6 +24,38 @@ public class AutoLlmCampaignStore {
         }
     }
     public synchronized void reserve(String id) { requireReservation(id); AutoLlmFileUtil.write(root.resolve("operation-reservation.json"), Map.of("id", id)); }
+    /** Acquire both ownership resources before exposing an active operation. */
+    public OperationLease acquire(String id, Path directory) {
+        var lock = lock();
+        try {
+            reserve(id);
+            return new OperationLease(id, directory, lock);
+        } catch (RuntimeException | Error e) {
+            lock.close();
+            throw e;
+        }
+    }
+    public final class OperationLease implements AutoCloseable {
+        private final String id;
+        private final Path directory;
+        private final ExecutionLock lock;
+        private boolean closed;
+        private OperationLease(String id, Path directory, ExecutionLock lock) {
+            this.id = id; this.directory = directory; this.lock = lock;
+        }
+        /** Detach on controller shutdown: retain the reservation for recovery. */
+        public synchronized void detach() {
+            if (closed) return;
+            closed = true;
+            lock.close();
+        }
+        @Override public synchronized void close() {
+            if (closed) return;
+            closed = true;
+            try { releaseReservation(id, directory); }
+            finally { lock.close(); }
+        }
+    }
     public synchronized void releaseReservation(String id, Path directory) {
         requireReservation(id);
         if (hasUncollectedJobs(directory)) return;
@@ -39,6 +71,7 @@ public class AutoLlmCampaignStore {
     }
     public synchronized void save(AutoLlmCampaign campaign) {
         AutoLlmFileUtil.write(directory(campaign.id).resolve("campaign.json"), campaign);
+        AutoLlmFileUtil.write(directory(campaign.id).resolve("status.json"), campaign.statusSnapshot());
         var state = new LinkedHashMap<String,Object>(); state.put("campaignId", campaign.id); state.put("status", campaign.status);
         state.put("configurationPath", directory(campaign.id).resolve("control/config.json").toString()); state.put("targets", campaign.targets);
         state.put("updatedAt", Instant.now().toString()); AutoLlmFileUtil.write(root.resolve("campaign-session.json"), state);
@@ -49,6 +82,18 @@ public class AutoLlmCampaignStore {
         var campaign = AutoLlmFileUtil.read(file, AutoLlmCampaign.class);
         if (campaign.schemaVersion != AutoLlmCampaign.SCHEMA_VERSION) throw new IllegalStateException("Unsupported campaign schema " + campaign.schemaVersion + "; use a fresh workspace. Historical evidence remains available with the original controller.");
         return campaign;
+    }
+    public synchronized AutoLlmCampaign status(String id) {
+        return AutoLlmFileUtil.read(directory(id).resolve("status.json"), AutoLlmCampaign.class);
+    }
+    public synchronized List<AutoLlmCampaign> statuses() {
+        var result = new ArrayList<AutoLlmCampaign>();
+        if (!Files.isDirectory(root)) return result;
+        try (var directories = Files.list(root)) {
+            for (Path directory : directories.toList()) if (Files.isRegularFile(directory.resolve("status.json"))) result.add(status(directory.getFileName().toString()));
+        } catch (IOException e) { throw new UncheckedIOException(e); }
+        result.sort(Comparator.comparing((AutoLlmCampaign c) -> c.createdAt).reversed());
+        return result;
     }
     public synchronized List<AutoLlmCampaign> list() {
         var campaigns = new ArrayList<AutoLlmCampaign>();

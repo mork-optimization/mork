@@ -51,6 +51,50 @@ class SshWorkloadTest {
         root = temp.resolve("local mirror").toAbsolutePath(); Files.createDirectories(root);
     }
     @AfterEach void stopSsh() { if (server != null) server.destroyForcibly(); }
+    @Test void interruptedScreeningCancellationUsesItsPersistedSingleServer() throws Exception {
+        var execution = config.execution(); var ssh = execution.ssh();
+        var pool = new AutoLlmConfig(config.project(), temp.resolve("campaigns").toString(), 1, config.seed(), config.maxParameters(), null, null, null, null,
+                config.codex(), config.preparation(), config.tuning(), config.comparison(),
+                new AutoLlmConfig.Execution(execution.workers(), execution.watchdogGraceMillis(), execution.codexTimeoutMillis(), execution.buildTimeoutMillis(), execution.startupTimeoutMillis(), execution.searchSpaceTimeoutMillis(), execution.phaseTimeoutMillis(), execution.stageTimeoutMillis(), execution.heap(), AutoLlmConfig.Target.SSH,
+                        new AutoLlmConfig.Ssh(ssh.screeningServerId(), ssh.runnerArtifact(), List.of(ssh.onlyServer(), new AutoLlmConfig.Server("other", "unreachable-fixture", "/unused", "java", Map.of(), null, null, null)))));
+        var store = new AutoLlmCampaignStore(pool);
+        var job = new es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.Job(); job.id = UUID.randomUUID().toString(); job.status = "INTERRUPTED";
+        job.request = new es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.Request(pool, null, null, null);
+        job.executionConfig = pool.forServer(ssh.onlyServer());
+        root = store.root().resolve("screenings").resolve(job.id); Files.createDirectories(root);
+        var work = workload("success", "screening cancellation");
+        assertEquals(0, new SshWorkloadExecutor(job.executionConfig, root, new SshTransport(job.executionConfig, temp.resolve("transport")), state -> {}).run(work, () -> false).exitCode());
+        Files.delete(work.output().resolve("collection-completed.json"));
+        AutoLlmFileUtil.write(root.resolve("job.json"), job);
+        store.reserve(job.id);
+        var service = new es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService(store, new AutoLlmProcessRunner());
+        try {
+            assertEquals(1, service.load(job.id).executionConfig.execution().ssh().servers().size());
+            service.cancel(job.id);
+            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
+            while (service.active() != null && System.nanoTime() < deadline) Thread.sleep(20);
+            assertNull(service.active()); assertEquals("CANCELLED", service.load(job.id).status);
+            assertTrue(Files.exists(work.output().resolve("collection-completed.json")));
+            assertDoesNotThrow(() -> store.requireReservation(UUID.randomUUID().toString()));
+        } finally { service.close(); }
+    }
+    @Test void supervisorRetriesCollectionWithoutLaunchingCompletedWorkAgain() throws Exception {
+        var transport = new SshTransport(config, temp.resolve("transport"));
+        var work = workload("success", "completed once");
+        assertEquals(0, new SshWorkloadExecutor(config, root, transport, state -> {}).run(work, () -> false).exitCode());
+        var job = AutoLlmFileUtil.read(work.output().resolve("remote-job.json"), WorkloadProtocol.Job.class);
+        Path directory = Path.of(job.root(), ".jobs", job.id());
+        var completed = AutoLlmFileUtil.read(directory.resolve("execution-completed.json"), WorkloadProtocol.State.class);
+        AutoLlmFileUtil.write(directory.resolve("started.json"), Map.of("pid", Long.MAX_VALUE, "start", "gone"));
+        AutoLlmFileUtil.write(directory.resolve("state.json"), new WorkloadProtocol.State(job.id(), "COLLECTING", completed.result(), null, null));
+        Files.delete(directory.resolve("result.zip")); Files.createDirectory(directory.resolve("result.zip"));
+        assertThrows(RuntimeException.class, () -> transport.call("status", job.root(), job.id(), Map.of()));
+        Files.delete(directory.resolve("result.zip"));
+        var collected = AutoLlmFileUtil.JSON.readValue(transport.call("status", job.root(), job.id(), Map.of()), WorkloadProtocol.State.class);
+        assertEquals("SUCCEEDED", collected.status()); assertNotNull(collected.archiveSha256());
+        assertEquals(Long.MAX_VALUE, AutoLlmFileUtil.JSON.readTree(Files.readString(directory.resolve("started.json"))).path("pid").asLong());
+        assertEquals(completed.result(), collected.result());
+    }
     @Test void collectsEarlySpringFailureWithItsOriginalClassification() throws Exception {
         Path baseline = root.resolve("baseline.json");
         AutoLlmFileUtil.write(baseline, List.of());

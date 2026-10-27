@@ -121,14 +121,7 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
         var outcomes = new LinkedHashMap<String, String>();
         var requests = new ArrayList<IraceExecuteConfig>(specs.size());
         for (int i = 0; i < specs.size(); i++) {
-            String[] table = InitialConfigurationUtil.toIraceTable(space, List.of(specs.get(i))).split("\n");
-            String[] headers = table[0].split("\t"); String[] cells = table[1].split("\t");
-            var parameters = new LinkedHashMap<String, String>();
-            for (int j = 0; j < headers.length; j++) {
-                String value = cells[j];
-                if (value.startsWith("\"")) value = value.substring(1, value.length() - 1).replace("\\\"", "\"");
-                parameters.put(headers[j], value);
-            }
+            var parameters = InitialConfigurationUtil.parameters(space, specs.get(i));
             requests.add(IraceExecuteConfig.of(names.get(i), 1, instance, (int) solver.getSeed(), parameters));
         }
         ExecutionJournalUtil.write("probes.json", Map.of("outcomes", outcomes, "skipped", skipped));

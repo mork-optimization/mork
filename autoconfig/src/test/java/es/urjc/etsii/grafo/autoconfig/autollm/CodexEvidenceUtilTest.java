@@ -30,6 +30,40 @@ class CodexEvidenceUtilTest {
     private CodexEvidenceUtil.Evidence collect(Path output, String id) { return CodexEvidenceUtil.collect(home(), checkout(), output, id); }
     private String id() { return UUID.randomUUID().toString(); }
 
+    @Test void missingConversationCanBeCollectedLaterAndFailedAttemptsArePreserved() throws Exception {
+        String thread = id(); Path output = temp.resolve("attempt");
+        CodexEvidenceUtil.begin(home(), checkout(), output, null);
+        assertThrows(CodexEvidenceUtil.ArchiveException.class, () -> collect(output, thread));
+        session(thread, null);
+        var recovered = collect(output, thread); assertEquals("ARCHIVED", recovered.status());
+        var failures = AutoLlmFileUtil.ownedFiles(output.resolve("collection-failures"), "evidence.json");
+        assertEquals(1, failures.size());
+        assertEquals("FAILED", AutoLlmFileUtil.read(failures.getFirst(), CodexEvidenceUtil.Evidence.class).status());
+        assertEquals(recovered, collect(output, thread));
+    }
+    @Test void unavailableConversationIsNotSealedWhenItsSessionArrivesLater() {
+        Path output = temp.resolve("attempt"); CodexEvidenceUtil.begin(home(), checkout(), output, null);
+        assertEquals("UNAVAILABLE", collect(output, null).status());
+        String thread = id(); session(thread, null);
+        assertEquals("ARCHIVED", collect(output, thread).status());
+    }
+    @Test void successfulGenerationSurvivesArchiveFailureWithoutAnotherCodexTurn() throws Exception {
+        String thread = id(); Path output = temp.resolve("attempt");
+        var processes = org.mockito.Mockito.mock(AutoLlmProcessRunner.class);
+        org.mockito.Mockito.when(processes.run(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyLong())).thenAnswer(call -> {
+            AutoLlmFileUtil.append(output.resolve("stdout.log"), Map.of("type", "thread.started", "thread_id", thread));
+            AutoLlmFileUtil.append(output.resolve("stdout.log"), Map.of("type", "turn.completed"));
+            AutoLlmFileUtil.write(output.resolve("manifest.json"), new CodexTaskRunner.Manifest(List.of(), List.of(), List.of(), null, List.of(), List.of()));
+            return new AutoLlmProcessRunner.Result(0, false, 1);
+        });
+        var codex = new CodexTaskRunner(processes, new org.springframework.mock.env.MockEnvironment().withProperty("CODEX_HOME", home().toString()));
+        assertThrows(CodexEvidenceUtil.ArchiveException.class, () -> codex.run(AutoLlmConfig.defaults(), checkout(), output, "fixture", null, () -> false));
+        session(thread, null);
+        assertEquals("ARCHIVED", codex.archive(checkout(), output, thread).status());
+        assertEquals(thread, codex.recoveredResult(output, thread).threadId());
+        assertEquals(1, org.mockito.Mockito.mockingDetails(processes).getInvocations().size());
+    }
     @Test void exactConversationAndLinkedChildrenAreArchivedWithDeduplicatedUsage() throws Exception {
         Path output = temp.resolve("attempt"); CodexEvidenceUtil.begin(home(), checkout(), output, null);
         String root = id(), child = id(), grandchild = id();

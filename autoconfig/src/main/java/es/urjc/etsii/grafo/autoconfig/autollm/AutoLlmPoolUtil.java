@@ -7,27 +7,6 @@ import java.util.function.UnaryOperator;
 /** Snapshot and path operations shared by the coordinator, runners, and reporting. */
 public final class AutoLlmPoolUtil {
     private AutoLlmPoolUtil() {}
-    public static <T> T copy(T value, Class<T> type) {
-        return AutoLlmFileUtil.JSON.readValue(AutoLlmFileUtil.JSON.writeValueAsBytes(value), type);
-    }
-    public static AutoLlmCampaign.Trial trialPaths(AutoLlmCampaign.Trial source, String prefix, boolean global) {
-        var trial = copy(source, AutoLlmCampaign.Trial.class);
-        trial.preparedArtifact = path(trial.preparedArtifact, prefix, global);
-        trial.mainDirectory = path(trial.mainDirectory, prefix, global);
-        trial.winnerDirectory = path(trial.winnerDirectory, prefix, global);
-        trial.comparisonDirectory = path(trial.comparisonDirectory, prefix, global);
-        trial.probeDirectory = path(trial.probeDirectory, prefix, global);
-        trial.generationDirectory = path(trial.generationDirectory, prefix, global);
-        for (var attempt : trial.attempts) attempt.directory = path(attempt.directory, prefix, global);
-        trial.directory = global ? prefix + "/trials/%03d".formatted(trial.number) : "trials/%03d".formatted(trial.number);
-        return trial;
-    }
-    private static String path(String value, String prefix, boolean global) {
-        if (value == null) return null;
-        if (global) return prefix + "/" + value;
-        if (!value.startsWith(prefix + "/")) throw new IllegalStateException("Trial evidence does not belong to its assigned target");
-        return value.substring(prefix.length() + 1);
-    }
     public static Map<String, Object> remote(Map<String, Object> value, String prefix) {
         if (value == null) return null;
         var result = new LinkedHashMap<>(value);

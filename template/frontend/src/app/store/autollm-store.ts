@@ -12,6 +12,8 @@ export class AutoLlmStore {
   readonly active = signal('');
   readonly selectedId = signal('');
   readonly selectedTrial = signal(1);
+  readonly startTargets = signal<string[]>([]);
+  private curveCursor = 0;
   readonly campaign = computed(() => this.campaigns().find(c => c.id === this.selectedId()) ?? null);
   readonly trial = computed(() => this.campaign()?.trials.find(t => t.number === this.selectedTrial()) ?? null);
   readonly completed = computed(() => this.campaign()?.trials.filter(t => ['SUCCEEDED', 'FAILED'].includes(t.status)).length ?? 0);
@@ -67,13 +69,19 @@ export class AutoLlmStore {
     if (this.destroyed) return;
     try {
       if (!this.config()) this.config.set(await this.client.defaults());
-      const [data, screenings] = await Promise.all([this.client.list(), this.client.screenings()]);
+      const [campaignResult, screeningResult] = await Promise.allSettled([this.client.list(), this.client.screenings()]);
       if (this.destroyed) return;
       this.connectionError.set(null);
-      this.campaigns.set(data.campaigns); this.active.set(data.active);
-      this.screenings.set(screenings.jobs); this.activeScreening.set(screenings.active);
-      if (!this.selectedScreening()) this.selectedScreening.set(screenings.active || screenings.jobs[0]?.id || '');
-      if (!this.selectedId()) this.selectedId.set(data.active || data.campaigns[0]?.id || '');
+      if (campaignResult.status === 'fulfilled') {
+        const data = campaignResult.value;
+        this.campaigns.set(data.campaigns); this.active.set(data.active);
+        if (!this.selectedId()) this.selectedId.set(data.active || data.campaigns[0]?.id || '');
+      } else this.connectionError.set(this.message(campaignResult.reason));
+      if (screeningResult.status === 'fulfilled') {
+        const data = screeningResult.value;
+        this.screenings.set(data.jobs); this.activeScreening.set(data.active);
+        if (!this.selectedScreening()) this.selectedScreening.set(data.active || data.jobs[0]?.id || '');
+      } else this.connectionError.set(this.message(screeningResult.reason));
       this.now.set(Date.now());
       const campaignId = this.selectedId(), activeTrials = this.activeTrials();
       const [updates] = await Promise.all([Promise.allSettled(activeTrials.map(trial => this.client.progress(campaignId, trial.number))), this.refreshRecovery()]);
@@ -87,9 +95,10 @@ export class AutoLlmStore {
       }
       if (this.trial()) {
         const id = this.selectedId(), trial = this.selectedTrial();
-        const [progress, comparison] = await Promise.all([this.activeProgress()[trial]?.progress ?? this.client.progress(id, trial), this.client.comparison(id, trial)]);
+        const [progress, comparison] = await Promise.allSettled([this.activeProgress()[trial]?.progress ?? this.client.progress(id, trial), this.client.comparison(id, trial)]);
         if (this.selectedId() === id && this.selectedTrial() === trial && !this.destroyed) {
-          this.progress.set(progress); this.comparison.set(comparison);
+          if (progress.status === 'fulfilled') this.progress.set(progress.value);
+          if (comparison.status === 'fulfilled') this.comparison.update(previous => ({ ...comparison.value, curves: previous?.['curves'] ?? [] }));
         }
       }
       const attempt = this.conversationAttempt();
@@ -110,8 +119,8 @@ export class AutoLlmStore {
     } catch (e) { if (!this.destroyed) this.connectionError.set(this.message(e)); }
     finally { if (!this.destroyed) this.timer = setTimeout(() => void this.poll(), 2000); }
   }
-  select(id: string): void { this.selectedId.set(id); this.selectedTrial.set(1); this.artifacts.set([]); this.recovery.set(null); this.recoveryError.set(null); this.selectLog(''); this.progress.set(null); this.comparison.set(null); this.watchGeneration(null); }
-  selectTrial(number: number): void { this.selectedTrial.set(number); this.progress.set(null); this.comparison.set(null); this.selectLog(''); this.watchGeneration(null); }
+  select(id: string): void { this.selectedId.set(id); this.startTargets.set([]); this.curveCursor = 0; this.selectedTrial.set(1); this.artifacts.set([]); this.recovery.set(null); this.recoveryError.set(null); this.selectLog(''); this.progress.set(null); this.comparison.set(null); this.watchGeneration(null); }
+  selectTrial(number: number): void { this.selectedTrial.set(number); this.curveCursor = 0; this.progress.set(null); this.comparison.set(null); this.selectLog(''); this.watchGeneration(null); }
   watchGeneration(attempt: number | null): void { this.generationAttempt.set(attempt); this.activityKey = ''; this.activity.set([]); }
   selectLog(path: string): void {
     this.logRequest++; this.logPath.set(path); this.logPreview.set(null); this.logError.set(null); this.logLoading.set(false);
@@ -174,6 +183,7 @@ export class AutoLlmStore {
       const check = await this.client.baselineCheck(campaign.id);
       this.summary.set(await this.client.summary(campaign.id));
       if (!check.withinLimit) throw new Error(`Baseline emits ${check.parameters} parameters; limit is ${check.maxParameters}. Prune the search space while preserving every seed before starting this draft.`);
+      if (!check.ready) throw new Error(`Baseline is not ready. Failed targets: ${check.failedTargets.join(', ')}. Inspect qualification results before selecting servers to start.`);
       await this.client.action(campaign.id, 'start'); this.active.set(campaign.id);
     });
   }
@@ -181,8 +191,20 @@ export class AutoLlmStore {
     const config = this.config(); if (!config) return;
     await this.operate(async () => { this.targetStatus.set(await this.client.probeTarget(config)); });
   }
-  async action(action: 'start' | 'resume' | 'cancel' | 'report'): Promise<void> {
-    await this.operate(async () => { const id = this.selectedId(); const campaign = await this.client.action(id, action); this.updateCampaign(campaign); if (action === 'start' || action === 'resume') this.active.set(id); await this.refreshRecovery(); });
+  async action(action: 'start' | 'resume' | 'cancel' | 'report', targets: string[] = []): Promise<void> {
+    await this.operate(async () => { const id = this.selectedId(); const campaign = await this.client.action(id, action, targets); this.updateCampaign(campaign); if (action === 'start' || action === 'resume') this.active.set(id); await this.refreshRecovery(); });
+  }
+  toggleStartTarget(id: string, selected: boolean): void {
+    this.startTargets.update(values => selected ? [...values, id] : values.filter(value => value !== id));
+  }
+  async loadCurves(): Promise<void> {
+    const id = this.selectedId(), trial = this.selectedTrial();
+    await this.operate(async () => {
+      const page = await this.client.curves(id, trial, this.curveCursor);
+      if (id === this.selectedId() && trial === this.selectedTrial()) {
+        this.comparison.update(previous => ({ ...previous, curves: page.curves })); this.curveCursor = page.nextCursor;
+      }
+    });
   }
   async addTarget(server: AutoLlmServer): Promise<void> {
     const id = this.selectedId();

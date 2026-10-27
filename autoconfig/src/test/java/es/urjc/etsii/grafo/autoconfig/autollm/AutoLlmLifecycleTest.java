@@ -92,12 +92,12 @@ class AutoLlmLifecycleTest {
             }
         };
         var service = new AutoLlmCampaignService(settings, store, runner, generator, mock(AutoLlmReportService.class), instances) {
-            @Override protected AutoLlmTrialRunner runner(AutoLlmCampaign model, Path root, AutoLlmTrialRunner.Listener listener, BooleanSupplier stop, java.util.concurrent.Semaphore permits) {
+            @Override protected AutoLlmTrialRunner runner(AutoLlmExecutionContext model, Path root, AutoLlmTrialRunner.Listener listener, BooleanSupplier stop, java.util.concurrent.Semaphore permits) {
                 return new AutoLlmTrialRunner(model, root, runner, generator, new AutoLlmTrialRunner.Listener() {
-                    public void state(AutoLlmCampaign snapshot) {
-                        if (!snapshot.trials.isEmpty() && snapshot.trials.getFirst().status.equals("WAITING_FOR_QUOTA")) {
-                            assertEquals(0, snapshot.trials.getFirst().infrastructureRetries);
-                            assertEquals(0, snapshot.trials.getFirst().repairTurns);
+                    public void state(AutoLlmExecutionContext.Snapshot snapshot) {
+                        if (snapshot.trial() != null && snapshot.trial().status.equals("WAITING_FOR_QUOTA")) {
+                            assertEquals(0, snapshot.trial().infrastructureRetries);
+                            assertEquals(0, snapshot.trial().repairTurns);
                             assertEquals(1, permits.availablePermits()); quotaReleasedSlot.set(true);
                         }
                         listener.state(snapshot);
@@ -107,7 +107,7 @@ class AutoLlmLifecycleTest {
             }
         };
         try {
-            var created = service.create(settings); service.start(created.id, false);
+            var created = service.create(settings); service.start(created.id, false, Set.of());
             long deadline = System.currentTimeMillis() + 45000;
             while (service.active() != null && System.currentTimeMillis() < deadline) Thread.sleep(50);
             assertNull(service.active(), "Campaign must terminate within the test budget");
@@ -139,7 +139,7 @@ class AutoLlmLifecycleTest {
             if (mode.equals("framework")) {
                 assertEquals("NEEDS_ATTENTION", campaign.status, campaign.failure); assertEquals("BLOCKED", campaign.trials.getFirst().status);
                 assertEquals(1, generations.get()); assertEquals(0, campaign.trials.getFirst().repairTurns);
-                service.start(campaign.id, true); deadline = System.currentTimeMillis() + 45000;
+                service.start(campaign.id, true, Set.of()); deadline = System.currentTimeMillis() + 45000;
                 while (service.active() != null && System.currentTimeMillis() < deadline) Thread.sleep(50);
                 assertNull(service.active()); var recovered = store.load(campaign.id);
                 assertEquals("COMPLETED_WITH_FAILURES", recovered.status, recovered.failure); assertEquals(2, generations.get());
@@ -163,7 +163,7 @@ class AutoLlmLifecycleTest {
                 assertEquals(0, campaign.trials.getFirst().repairTurns);
                 assertEquals("PENDING", campaign.trials.get(1).status);
                 assertEquals("FAILED", campaign.trials.getFirst().attempts.getFirst().codexEvidence.status());
-                service.start(campaign.id, true);
+                service.start(campaign.id, true, Set.of());
                 deadline = System.currentTimeMillis() + 10000;
                 while (service.active() != null && System.currentTimeMillis() < deadline) Thread.sleep(20);
                 assertNull(service.active()); assertEquals("BLOCKED", store.load(campaign.id).trials.getFirst().status);
@@ -221,8 +221,8 @@ class AutoLlmLifecycleTest {
                     case "TUNING", "WINNER_EXPORT", "COMPARISON" -> assertChildAssertions(directory, false);
                 }
             }
-            assertTrue(Files.exists(root.resolve(second.mainDirectory).resolve("autoconfig-final-elites.json")));
-            var rows = AutoLlmFileUtil.events(root.resolve(second.comparisonDirectory).resolve("execution/events.jsonl"));
+            assertTrue(Files.exists(root.resolve(second.outputDirectory(AutoLlmCampaign.Stage.TUNING)).resolve("autoconfig-final-elites.json")));
+            var rows = AutoLlmFileUtil.events(root.resolve(second.outputDirectory(AutoLlmCampaign.Stage.COMPARISON)).resolve("execution/events.jsonl"));
             int results = 0; for (var row : rows) if ("evaluation-result".equals(row.get("kind"))) results++;
             assertEquals(4, results);
             assertEquals("// original\n", Files.readString(repo.resolve("src/main/java/Original.java")));
@@ -241,7 +241,7 @@ class AutoLlmLifecycleTest {
             assertEquals(archiveFailure ? 20L : 80L, campaign.codexUsage.tokens().totalTokens());
             assertEquals(archiveFailure ? "PARTIAL" : "COMPLETE", campaign.codexUsage.status());
             assertFalse(Files.exists(repo.resolve("src/main/java/FixtureUtil.java")));
-            assertThrows(IllegalStateException.class, () -> service.start(campaign.id, true));
+            assertThrows(IllegalStateException.class, () -> service.start(campaign.id, true, Set.of()));
         } finally { service.close(); }
     }
     @Test void frozenFilesArchivesAndArtifactPathsCannotBeChangedOrEscaped() throws Exception {
@@ -278,11 +278,15 @@ class AutoLlmLifecycleTest {
         try {
             service.recover(); var recovered = store.load(campaign.id);
             assertEquals("INTERRUPTED", recovered.status);
-            var task = new AutoLlmTrialRunner(recovered, store.directory(campaign.id), runner, codex(runner), new AutoLlmTrialRunner.Listener() {
-                public void state(AutoLlmCampaign snapshot) {} public void event(String kind, Object detail) {}
-            }, () -> false, new java.util.concurrent.Semaphore(1));
-            task.reconcile();
-            assertEquals("NEEDS_ATTENTION", recovered.status); assertEquals("SUCCEEDED", recovered.trials.getFirst().status); assertEquals("INTERRUPTED", recovered.trials.get(1).attempts.getFirst().status);
+            for (var trial : recovered.trials) {
+                var context = new AutoLlmExecutionContext(recovered.id, "", store.directory(campaign.id), recovered.prompt);
+                context.config = recovered.config; context.trial = trial;
+                var task = new AutoLlmTrialRunner(context, store.directory(campaign.id), runner, codex(runner), new AutoLlmTrialRunner.Listener() {
+                    public void state(AutoLlmExecutionContext.Snapshot snapshot) {} public void event(String kind, Object detail) {}
+                }, () -> false, new java.util.concurrent.Semaphore(1));
+                task.reconcile();
+            }
+            assertEquals("SUCCEEDED", recovered.trials.getFirst().status); assertEquals("INTERRUPTED", recovered.trials.get(1).attempts.getFirst().status);
             assertEquals(thread, recovered.trials.get(2).threadId); assertTrue(recovered.trials.get(2).resumeTurn); assertEquals(0, recovered.trials.get(2).repairTurns);
             assertEquals("ARCHIVED", recovered.trials.get(2).attempts.getFirst().codexEvidence.status());
             assertEquals("BLOCKED", recovered.trials.get(3).status); assertFalse(recovered.trials.get(3).resumeTurn);

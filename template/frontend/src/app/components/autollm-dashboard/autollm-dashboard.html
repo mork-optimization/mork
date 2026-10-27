@@ -102,7 +102,13 @@
         @if (store.active() === campaign.id) { <button mat-button [disabled]="campaign.status === 'CANCELLATION_PENDING'" (click)="store.action('cancel')">Cancel campaign</button> }
         @if (['INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION', 'WAITING_FOR_TARGETS'].includes(campaign.status) && !store.active()) { <button mat-flat-button [disabled]="store.busy() || !store.recovery()?.resumeCampaign?.allowed" [title]="store.recovery()?.resumeCampaign?.reason || store.recovery()?.resumeCampaign?.effect || ''" (click)="store.action('resume')">Resume from checkpoints</button> }
         @if (campaign.status === 'NEEDS_ATTENTION') { <button mat-button [disabled]="store.busy()" (click)="store.action('cancel')">Reconcile and cancel remote work</button> }
-        @if (campaign.status === 'DRAFT' && !store.active()) { <button mat-flat-button (click)="store.action('start')">Start saved draft</button> }
+        @if (campaign.status === 'DRAFT' && !store.active()) {
+          <button mat-flat-button (click)="store.action('start')">Start all servers</button>
+          @for (target of store.targets(); track target.id) {
+            <label><input type="checkbox" [checked]="store.startTargets().includes(target.id)" [disabled]="!!target.problem || !(target.baselineReady || target.status === 'VALIDATED')" (change)="store.toggleStartTarget(target.id, $any($event.target).checked)"> {{ target.id }}</label>
+          }
+          <button mat-button [disabled]="!store.startTargets().length" (click)="store.action('start', store.startTargets())">Start selected servers</button>
+        }
         @if (campaign.status !== 'DRAFT' && !store.active()) { <button mat-button [disabled]="store.busy()" (click)="store.action('report')">Regenerate reports</button> }
       </div>
       <mat-progress-bar mode="determinate" [value]="100 * store.completed() / campaign.trials.length" />
@@ -193,6 +199,8 @@
           </div>
         }
         @if (trial.winner) { <h3>First-ranked proposal: components and parameters</h3><p>Generated algorithm components end in New.</p><pre>{{ trial.winner | json }}</pre> }
+        <button mat-button [disabled]="store.busy()" (click)="store.loadCurves()">Load next comparison curves</button>
+        <p>Curves load in pages and are sampled for display. Full data is available in the comparison journal.</p>
         @if (store.comparison()) { <details open><summary>Comparison results</summary><pre>{{ comparisonSummary() | json }}</pre></details> }
         @if (instances().length) {
           <div class="fields comparison-controls">

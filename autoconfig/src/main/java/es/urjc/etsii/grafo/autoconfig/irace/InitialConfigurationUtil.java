@@ -32,24 +32,13 @@ public final class InitialConfigurationUtil {
         for (String parameter : searchSpace.iraceParameters()) {
             names.add(parameter.split("\\s+", 2)[0]);
         }
-        var knownNames = new HashSet<>(names);
         var table = new StringBuilder(String.join("\t", names)).append('\n');
         var rows = new HashSet<String>();
         for (int i = 0; i < seeds.size(); i++) {
-            var values = new HashMap<String, String>();
-            var seed = seeds.get(i);
-            try {
-                TreeNode root = findRoot(searchSpace.roots(), seed.component());
-                values.put("ROOT", root.className());
-                flatten(root, seed, "ROOT_" + root.className(), searchSpace.componentParameters(), values);
-            } catch (IllegalArgumentException e) {
+            Map<String,String> values;
+            try { values = parameters(searchSpace, seeds.get(i)); }
+            catch (IllegalArgumentException e) {
                 throw new IllegalArgumentException("Initial configuration " + (i + 1) + ": " + e.getMessage(), e);
-            }
-
-            for (String name : values.keySet()) {
-                if (!knownNames.contains(name)) {
-                    throw new IllegalStateException("Generated search space does not contain parameter " + name);
-                }
             }
             var cells = new ArrayList<String>(names.size());
             for (String name : names) {
@@ -62,6 +51,22 @@ public final class InitialConfigurationUtil {
             table.append(row).append('\n');
         }
         return table.toString();
+    }
+
+    /** Encode directly for evaluator requests; the TSV representation is only a formatter. */
+    public static Map<String,String> parameters(AutoconfigSearchSpace space, ComponentSpec spec) {
+        var values = new HashMap<String,String>();
+        TreeNode root = findRoot(space.roots(), spec.component());
+        values.put("ROOT", root.className());
+        flatten(root, spec, "ROOT_" + root.className(), space.componentParameters(), values);
+        var ordered = new java.util.LinkedHashMap<String,String>();
+        for (String declaration : space.iraceParameters()) {
+            String name = declaration.split("\\s+", 2)[0];
+            ordered.put(name, values.getOrDefault(name, "NA"));
+        }
+        for (String name : values.keySet()) if (!ordered.containsKey(name))
+            throw new IllegalStateException("Generated search space does not contain parameter " + name);
+        return ordered;
     }
 
     private static TreeNode findRoot(List<TreeNode> roots, String name) {

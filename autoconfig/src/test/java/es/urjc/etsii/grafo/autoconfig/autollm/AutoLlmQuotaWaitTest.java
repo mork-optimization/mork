@@ -32,11 +32,13 @@ class AutoLlmQuotaWaitTest {
         when(codex.archive(any(), any(), eq(trial.threadId))).thenReturn(
                 new CodexEvidenceUtil.Evidence("ARCHIVED", trial.threadId, List.of(), null, null));
         var permits = new Semaphore(1); var cancel = new AtomicBoolean(); var waiting = new CountDownLatch(1);
-        var runner = new AutoLlmTrialRunner(restored, temp, mock(AutoLlmProcessRunner.class), codex,
+        var context = new AutoLlmExecutionContext(restored.id, "", temp, restored.prompt);
+        context.config = restored.config; context.trial = restored.trials.getFirst();
+        var runner = new AutoLlmTrialRunner(context, temp, mock(AutoLlmProcessRunner.class), codex,
                 new AutoLlmTrialRunner.Listener() {
-                    public void state(AutoLlmCampaign snapshot) {
-                        AutoLlmFileUtil.write(checkpoint, snapshot);
-                        if (snapshot.trials.getFirst().status.equals("WAITING_FOR_QUOTA")) waiting.countDown();
+                    public void state(AutoLlmExecutionContext.Snapshot snapshot) {
+                        restored.trials.set(0, snapshot.trial()); AutoLlmFileUtil.write(checkpoint, restored);
+                        if (snapshot.trial().status.equals("WAITING_FOR_QUOTA")) waiting.countDown();
                     }
                     public void event(String kind, Object detail) { }
                 }, cancel::get, permits);
@@ -50,7 +52,7 @@ class AutoLlmQuotaWaitTest {
             assertEquals(1, permits.availablePermits());
             if (interrupt) worker.interrupt(); else cancel.set(true);
             task.get(5, TimeUnit.SECONDS);
-            saved = runner.snapshot().trials.getFirst();
+            saved = runner.snapshot().trial();
             assertEquals("INTERRUPTED", saved.status); assertEquals(trial.quotaRetryAt, saved.quotaRetryAt);
             assertTrue(saved.repairPending); assertEquals(0, saved.repairTurns); assertEquals(0, saved.infrastructureRetries);
             verify(codex, never()).run(any(), any(), any(), any(), any(), any());

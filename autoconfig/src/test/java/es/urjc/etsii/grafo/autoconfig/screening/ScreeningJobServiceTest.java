@@ -47,6 +47,13 @@ class ScreeningJobServiceTest {
         assertDoesNotThrow(() -> campaigns.requireReservation(UUID.randomUUID().toString()));
         try (var lock = campaigns.lock()) { assertTrue(lock.lock().isValid()); }
     }
+    @Test void failedReservationWriteReleasesScreeningOwnership() throws Exception {
+        var job = service.create(request);
+        Files.createDirectory(campaigns.root().resolve("operation-reservation.json.tmp"));
+        assertThrows(java.io.UncheckedIOException.class, () -> service.resume(job.id));
+        assertNull(service.active()); assertEquals("DRAFT", service.load(job.id).status);
+        try (var lock = campaigns.lock()) { assertTrue(lock.lock().isValid()); }
+    }
     @Test void sharedValidationRejectsCampaignOwnedArgumentOverrides() {
         var c = request.config(); var altered = new AutoLlmConfig(new AutoLlmConfig.Project(c.project().repository(), "HEAD", c.project().buildCommand(), c.project().artifact(), List.of("--solver.n-workers=99")), c.workspace(), null, null, null, c.sotaFile(), null, null, null, null, null, null, null, c.execution());
         assertThrows(IllegalArgumentException.class, () -> service.create(new ScreeningJobService.Request(altered, request.settings(), request.inputPath(), null)));

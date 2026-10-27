@@ -187,7 +187,7 @@ An operator can end a blocked or interrupted trial with `POST /api/autollm/campa
 
 ## Backend discovery and operator helper
 
-API, checkpoint and runner protocol version 3 require a fresh workspace. There is no migration or recovery adapter for older campaigns; inspect those artifacts with the original controller. `GET /api/autollm/capabilities` identifies the mode, API/checkpoint/runner versions, supported features, executable checksum, working directory, PID and workspace. Verify these before reusing a backend.
+API, checkpoint and runner protocol version 4 require a fresh workspace. There is no migration or recovery adapter for older campaigns; inspect those artifacts with the original controller. `GET /api/autollm/capabilities` identifies the mode, API/checkpoint/runner versions, supported features, executable checksum, working directory, PID and workspace. Verify these before reusing a backend.
 
 The skill includes a dependency-free Python helper:
 
@@ -265,6 +265,14 @@ Source preservation is instruction-based: preparation does not automatically rej
 
 Expected rejected combinations, infeasible results, and missing AUC evidence remain normal tuning penalties. A component exception found by a targeted probe produces repair feedback. A normal time-limit expiry with a valid incumbent remains successful; an excessive overrun is rejected. A hard hang in preparation stops that attempt and may consume a repair turn. A hard hang in main tuning or comparison fails that trial and the campaign continues to the next one. 
 The dashboard shows preparation substages, elapsed time, generation readiness and last activity, readable messages/commands/edits, separate repair and infrastructure retry counts, tuning outcomes, winner JSON and saved comparisons. `LAUNCHING` means no session event has arrived; `SESSION_READY` records a thread; `ACTIVE` records observed turn/tool activity. Startup timeout uses `execution.startupTimeoutMillis`, independently of the full generation deadline. Turns, commands, edit events and assistant messages count observable CLI events, not hidden model iterations. Live reported usage remains separate from authoritative archived usage. Large outputs are previewed with raw downloads retained.
+
+The baseline response separates `withinLimit` (all target parameter counts are known and fit the cap) from `ready` (the entire pool also passed qualification). `qualifiedTargets`, `failedTargets`, and per-target results explain partial readiness. Starting without a target selection rejects saved qualification failures. To start a healthy subset, send `{"targets":["worker-a","worker-c"]}` to `/start`, use repeated `campaign start --target ID` arguments, or select servers in the dashboard. Omitted servers are drained; trials remain pinned when resuming.
+
+Runner state contains one execution context and one trial. Stage outputs are committed under `outputs`, keyed by `GENERATION`, `PREPARATION`, `TUNING`, `WINNER_EXPORT`, and `COMPARISON`; `nextStage` determines the remaining work. All evidence paths use the same campaign-relative namespace, including the target prefix.
+
+Execution results are saved before evidence collection. Resume retries local compaction, SSH result collection, or failed conversation archiving without repeating a completed workload or successful generation. Earlier failed transcript collection attempts remain in `collection-failures/`; successfully archived evidence remains sealed. Immutable input payloads and Git bundles use separate content-addressed transfer layers, prepared once per content identity and installed once per worker workspace.
+
+Polling uses `status.json`, which omits prompts, stack traces, winner payloads, and per-attempt conversation evidence; full detail remains available through the campaign endpoint and artifact downloads. Connection retry totals are updated as remote progress arrives. Comparison summaries consume at most 4 MiB of new journal data per read, report `cursor`, `more`, and `omittedEvents`, and keep constant-space live statistics (exact quantiles remain in reports). Detailed curves load on demand from `/trials/{number}/curves?cursor=...`, up to 16 journal rows and 256 points per curve per page. Oversized/malformed rows are reported as omitted rather than blocking polling; download the original journal for complete data. Dashboard reads time out after ten seconds and independent sections retain healthy updates.
 
 Cancel stops owned processes and confirms remote evidence collection. Resume preserves completed work, rejoins unresolved SSH jobs, and uses fresh attempts for interrupted work that needs restarting. Completed failed trials stay failed. Campaigns, screening and baseline checks share workspace ownership.
 

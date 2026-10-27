@@ -50,6 +50,39 @@ public final class WorkloadArchiveUtil {
         }
     }
 
+    /** Content identity is checked before compression, so unchanged layers are prepared only once. */
+    public static String prepareLayer(Path cache, Map<String,Path> files) throws IOException {
+        var manifest = new TreeMap<String,Entry>();
+        for (var item : files.entrySet()) {
+            Path path = item.getValue();
+            String link = Files.isSymbolicLink(path) ? Files.readSymbolicLink(path).toString() : null;
+            manifest.put(item.getKey(), new Entry(link == null ? AutoLlmFileUtil.hash(path) : null, mode(path), link));
+        }
+        String identity = AutoLlmFileUtil.hash(new ByteArrayInputStream(AutoLlmFileUtil.JSON.writeValueAsBytes(manifest)));
+        Path descriptor = cache.resolve(identity + ".json");
+        if (Files.exists(descriptor)) {
+            String hash = AutoLlmFileUtil.JSON.readTree(Files.readString(descriptor)).path("sha256").asString();
+            if (Files.isRegularFile(cache.resolve(hash + ".zip"))) return hash;
+        }
+        Path temporary = cache.resolve(identity + ".tmp");
+        pack(temporary, files);
+        if (!manifest.equals(verify(temporary, cache))) throw new IOException("Inputs changed while preparing a transfer layer");
+        String hash = AutoLlmFileUtil.hash(temporary);
+        Files.move(temporary, cache.resolve(hash + ".zip"), StandardCopyOption.REPLACE_EXISTING);
+        AutoLlmFileUtil.write(descriptor, Map.of("sha256", hash));
+        return hash;
+    }
+
+    /** Layers contain immutable data and Git bundles, outside all workload reset paths. */
+    public static void installLayer(Path archive, Path root) throws IOException {
+        String hash = archive.getFileName().toString().replace(".zip", "");
+        Path installed = archive.resolveSibling(hash + ".installed.json");
+        if (Files.isRegularFile(installed)) return;
+        if (!hash.equals(AutoLlmFileUtil.hash(archive))) throw new IOException("Frozen input layer changed");
+        unpack(archive, root);
+        AutoLlmFileUtil.write(installed, Map.of("sha256", hash));
+    }
+
     public static void unpack(Path archive, Path root) throws IOException {
         Files.createDirectories(root);
         try (var zip = new ZipFile(archive.toFile())) {

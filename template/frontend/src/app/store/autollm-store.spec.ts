@@ -10,7 +10,7 @@ describe('AutoLLM campaign lifecycle store', () => {
   let store: AutoLlmStore;
   beforeEach(() => {
     vi.useFakeTimers();
-    client = { recovery: vi.fn().mockResolvedValue({ trials: {}, targets: {}, resumeCampaign: { allowed: false, reason: 'Already running', effect: '' } }), resumeTrial: vi.fn().mockResolvedValue(campaign), failTrial: vi.fn().mockResolvedValue(campaign), targetAction: vi.fn().mockResolvedValue(campaign), screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true }), action: vi.fn().mockResolvedValue(campaign), preview: vi.fn().mockResolvedValue({ text: '', lineCount: 0, sizeBytes: 0, truncated: false, byteLimited: false }) };
+    client = { recovery: vi.fn().mockResolvedValue({ trials: {}, targets: {}, resumeCampaign: { allowed: false, reason: 'Already running', effect: '' } }), resumeTrial: vi.fn().mockResolvedValue(campaign), failTrial: vi.fn().mockResolvedValue(campaign), targetAction: vi.fn().mockResolvedValue(campaign), screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true, ready: true, qualifiedTargets: ['a'], failedTargets: [] }), action: vi.fn().mockResolvedValue(campaign), preview: vi.fn().mockResolvedValue({ text: '', lineCount: 0, sizeBytes: 0, truncated: false, byteLimited: false }) };
     TestBed.configureTestingModule({ providers: [AutoLlmStore, { provide: AutoLlmClient, useValue: client }] });
     store = TestBed.inject(AutoLlmStore);
   });
@@ -41,21 +41,34 @@ describe('AutoLLM campaign lifecycle store', () => {
   it('creates, starts, cancels, and resumes through explicit lifecycle actions', async () => {
     store.config.set(config); await store.createAndStart();
     expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'start');
-    await store.action('cancel'); expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'cancel');
-    await store.action('resume'); expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'resume');
+    await store.action('cancel'); expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'cancel', []);
+    await store.action('resume'); expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'resume', []);
+  });
+  it('does not start when a target failed qualification even if parameter limits passed', async () => {
+    store.config.set(config);
+    client.baselineCheck.mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true, ready: false, qualifiedTargets: ['a'], failedTargets: ['b'] });
+    await store.createAndStart();
+    expect(client.action).not.toHaveBeenCalled(); expect(store.error()).toContain('Failed targets: b');
+    await store.action('start', ['a']); expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'start', ['a']);
+  });
+  it('keeps campaign progress when screening status is unavailable', async () => {
+    client.screenings.mockRejectedValue(new Error('screening unavailable'));
+    await store.start();
+    expect(store.active()).toBe(campaign.id); expect(store.activeProgress()[1].stale).toBe(false);
+    expect(store.connectionError()).toBe('screening unavailable');
   });
   it('keeps an over-budget baseline as a draft and does not start it', async () => {
-    store.config.set(config); client.baselineCheck.mockResolvedValue({ parameters: 350, maxParameters: 299, withinLimit: false });
+    store.config.set(config); client.baselineCheck.mockResolvedValue({ parameters: 350, maxParameters: 299, withinLimit: false, ready: false, qualifiedTargets: [], failedTargets: ['a'] });
     await store.createAndStart();
     expect(store.selectedId()).toBe(campaign.id); expect(store.error()).toContain('350 parameters'); expect(client.action).not.toHaveBeenCalled();
   });
   it('keeps the preparation busy while a cancellation request completes', async () => {
     store.config.set(config);
-    let finish!: (value: { parameters: number; maxParameters: number; withinLimit: boolean }) => void;
+    let finish!: (value: Awaited<ReturnType<AutoLlmClient['baselineCheck']>>) => void;
     client.baselineCheck.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
     const preparing = store.createAndStart(); await vi.waitFor(() => expect(client.baselineCheck).toHaveBeenCalled());
     await store.action('cancel'); expect(store.busy()).toBe(true);
-    finish({ parameters: 350, maxParameters: 299, withinLimit: false }); await preparing; expect(store.busy()).toBe(false);
+    finish({ parameters: 350, maxParameters: 299, withinLimit: false, ready: false, qualifiedTargets: [], failedTargets: ['a'] }); await preparing; expect(store.busy()).toBe(false);
   });
   it('loads the newest 500 lines immediately and replaces the preview on each poll', async () => {
     await store.start();

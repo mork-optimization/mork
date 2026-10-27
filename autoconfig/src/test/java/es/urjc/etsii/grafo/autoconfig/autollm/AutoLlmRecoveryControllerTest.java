@@ -23,7 +23,7 @@ class AutoLlmRecoveryControllerTest {
         mvc.perform(post(base + "/trials/3/resume")).andExpect(status().isOk());
         mvc.perform(post(base + "/targets/worker-a/requalify")).andExpect(status().isOk());
         verify(service).failTrial("saved", 9, "Sampling exhausted"); verify(service).resumeTrial("saved", 3); verify(service).requalifyTarget("saved", "worker-a");
-        verify(service, never()).start(anyString(), anyBoolean());
+        verify(service, never()).start(anyString(), anyBoolean(), anySet());
         when(mode.mode()).thenReturn(MonitorModeState.Mode.STANDARD);
         mvc.perform(post(base + "/trials/4/resume")).andExpect(status().isConflict());
         verify(service, never()).resumeTrial("saved", 4);

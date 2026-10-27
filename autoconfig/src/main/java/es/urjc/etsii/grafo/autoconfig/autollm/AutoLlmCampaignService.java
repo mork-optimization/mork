@@ -93,7 +93,7 @@ public class AutoLlmCampaignService {
     private volatile boolean cancelled;
     private volatile boolean closing;
     private AutoLlmCampaign current;
-    private AutoLlmCampaignStore.ExecutionLock ownership;
+    private AutoLlmCampaignStore.OperationLease ownership;
     private Semaphore sessions;
     private boolean checkingBaseline;
     private volatile long reportSequence;
@@ -137,12 +137,12 @@ public class AutoLlmCampaignService {
     }
     private void acquire(AutoLlmCampaign c) {
         if (active != null) throw new IllegalStateException("A campaign is already active");
-        store.requireReservation(c.id); ownership = store.lock(); current = c; active = c.id; cancelled = false;
-        sessions = new Semaphore(c.config.codex().maxConcurrentSessions(), true); reportedAttempts.clear(); store.reserve(c.id);
+        ownership = store.acquire(c.id, store.directory(c.id)); current = c; active = c.id; cancelled = false;
+        sessions = new Semaphore(c.config.codex().maxConcurrentSessions(), true); reportedAttempts.clear();
     }
     private void release() {
-        try { store.releaseReservation(current.id, store.directory(current.id)); }
-        finally { if (ownership != null) ownership.close(); ownership = null; active = null; current = null; }
+        try { if (ownership != null) ownership.close(); }
+        finally { ownership = null; active = null; current = null; }
     }
     private void pin(AutoLlmCampaign c) {
         Path root = store.directory(c.id);
@@ -173,11 +173,25 @@ public class AutoLlmCampaignService {
         try { AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(root.resolve("control/canonical-hashes.json"), new TypeReference<>() {})); }
         catch (RuntimeException e) { throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INTEGRITY, "CANONICAL_INPUT_CHANGED", e.getMessage(), root.resolve("control/canonical-hashes.json")); }
     }
-    public AutoLlmCampaign start(String id, boolean resume) {
+    public AutoLlmCampaign start(String id, boolean resume, Set<String> selectedTargets) {
         return invoke(() -> {
             var c = store.load(id);
             if (!resume && !c.status.equals("DRAFT")) throw new IllegalStateException("Only draft campaigns can start");
             if (resume && !Set.of("RUNNING", "INTERRUPTED", "NEEDS_ATTENTION", "CANCELLED", "WAITING_FOR_TARGETS", "CANCELLATION_PENDING").contains(c.status)) throw new IllegalStateException("Campaign has no interrupted work");
+            if (resume && !selectedTargets.isEmpty()) throw new IllegalArgumentException("Target selection is only supported when starting a draft");
+            if (!resume) {
+                for (String targetId : selectedTargets) {
+                    var target = requireTarget(c, targetId);
+                    if (target.problem != null || !(target.baselineReady || target.status.equals("VALIDATED")))
+                        throw new IllegalStateException("Selected target must pass the baseline check: " + targetId);
+                }
+                if (selectedTargets.isEmpty()) {
+                    for (var target : c.targets.values()) if (!target.draining && target.problem != null)
+                        throw new IllegalStateException("Some targets failed qualification; explicitly select qualified targets to start a subset");
+                } else {
+                    for (var entry : c.targets.entrySet()) entry.getValue().draining = !selectedTargets.contains(entry.getKey());
+                }
+            }
             acquire(c);
             try {
                 pin(c); c.status = "RUNNING"; c.problem = null; c.failure = null;
@@ -188,14 +202,14 @@ public class AutoLlmCampaignService {
                 if (resume) for (var t : c.trials) if (Set.of("BLOCKED", "INTERRUPTED").contains(t.status) || !TERMINAL_TRIALS.contains(t.status)) {
                     t.status = "PENDING"; t.infrastructureRetries = 0;
                 }
-                save(); dispatch(); return AutoLlmPoolUtil.copy(c, AutoLlmCampaign.class);
-            } catch (RuntimeException e) { c.status = "NEEDS_ATTENTION"; c.problem = AutoLlmFailureUtil.describe(e, store.directory(id)); save(); release(); throw e; }
+                save(); dispatch(); return c.copy();
+            } catch (RuntimeException e) { c.status = "NEEDS_ATTENTION"; c.problem = AutoLlmFailureUtil.describe(e, store.directory(id)); try { save(); } finally { release(); } throw e; }
         });
     }
-    private AutoLlmCampaign executionModel(AutoLlmCampaign c, String targetId, AutoLlmCampaign.Trial trial) {
+    private AutoLlmExecutionContext executionModel(AutoLlmCampaign c, String targetId, AutoLlmCampaign.Trial trial) {
         var target = c.targets.get(targetId); Path root = store.directory(c.id).resolve(target.directory);
         AutoLlmFileUtil.write(root.resolve("execution-context.json"), AutoLlmPoolUtil.identity(c.id, targetId));
-        var model = new AutoLlmCampaign(); model.id = c.id; model.prompt = c.prompt; model.createdAt = c.createdAt;
+        var model = new AutoLlmExecutionContext(c.id, target.directory, store.directory(c.id), c.prompt);
         model.approvedScreeningPath = c.approvedScreeningPath;
         model.config = target.resolvedConfig != null ? target.resolvedConfig : c.config.execution().target() == AutoLlmConfig.Target.LOCAL ? c.config : c.config.forServer(target.definition);
         model.baselineCommit = target.baselineReady ? c.baselineCommit : null; model.executionHost = target.host; model.versions = target.versions;
@@ -208,32 +222,32 @@ public class AutoLlmCampaignService {
             model.config = new AutoLlmConfig(cfg.project(), cfg.workspace(), cfg.trials(), cfg.seed(), cfg.maxParameters(), root.resolve("control/sota.json").toString(), root.resolve("control/seeds.json").toString(), cfg.trainingPath(), cfg.comparisonPath(), cfg.codex(), cfg.preparation(), cfg.tuning(), cfg.comparison(), cfg.execution());
         }
         AutoLlmFileUtil.write(root.resolve("control/config.json"), model.config);
-        if (trial != null) model.trials.add(AutoLlmPoolUtil.trialPaths(trial, target.directory, false));
+        if (trial != null) model.trial = trial.copy();
         return model;
     }
-    protected AutoLlmTrialRunner runner(AutoLlmCampaign model, Path root, AutoLlmTrialRunner.Listener listener, java.util.function.BooleanSupplier stop, Semaphore permits) {
+    protected AutoLlmTrialRunner runner(AutoLlmExecutionContext model, Path root, AutoLlmTrialRunner.Listener listener, java.util.function.BooleanSupplier stop, Semaphore permits) {
         return new AutoLlmTrialRunner(model, root, processes, codex, listener, stop, permits);
     }
     private AutoLlmTrialRunner newRunner(String targetId, String token, AutoLlmCampaign.Trial trial) {
         var c = current; var target = c.targets.get(targetId);
         return runner(executionModel(c, targetId, trial), store.directory(c.id).resolve(target.directory), new AutoLlmTrialRunner.Listener() {
-            public void state(AutoLlmCampaign snapshot) { enqueue(() -> update(targetId, token, snapshot)); }
+            public void state(AutoLlmExecutionContext.Snapshot snapshot) { enqueue(() -> update(targetId, token, snapshot)); }
             public void event(String kind, Object detail) { enqueue(() -> { if (current != null && jobs.containsKey(targetId) && jobs.get(targetId).token.equals(token)) store.event(c.id, kind, Map.of("targetId", targetId, "detail", detail)); }); }
         }, () -> cancelled, sessions);
     }
-    private void update(String targetId, String token, AutoLlmCampaign model) {
+    private void update(String targetId, String token, AutoLlmExecutionContext.Snapshot model) {
         var running = jobs.get(targetId); if (running == null || !running.token.equals(token) || current == null) return;
         apply(targetId, model); save();
-        for (var trial : model.trials) for (var attempt : trial.attempts) {
-            if (attempt.codexEvidence != null && !attempt.status.equals("RUNNING") && reportedAttempts.add(targetId + "/" + trial.number + "/" + attempt.number)) reportAsync(false);
+        if (model.trial() != null) for (var attempt : model.trial().attempts) {
+            if (attempt.codexEvidence != null && !attempt.status.equals("RUNNING") && reportedAttempts.add(targetId + "/" + model.trial().number + "/" + attempt.number)) reportAsync(false);
         }
     }
-    private void apply(String targetId, AutoLlmCampaign model) {
+    private void apply(String targetId, AutoLlmExecutionContext.Snapshot model) {
         var target = current.targets.get(targetId);
-        target.resolvedConfig = model.config; target.host = model.executionHost; target.versions = model.versions;
-        target.remote = AutoLlmPoolUtil.remote(model.remote, target.directory);
-        for (var local : model.trials) {
-            var copy = AutoLlmPoolUtil.trialPaths(local, target.directory, true);
+        target.resolvedConfig = model.config(); target.host = model.executionHost(); target.versions = model.versions();
+        target.remote = AutoLlmPoolUtil.remote(model.remote(), target.directory);
+        if (model.trial() != null) {
+            var copy = model.trial().copy();
             for (int i = 0; i < current.trials.size(); i++) if (current.trials.get(i).number == copy.number) current.trials.set(i, copy);
         }
     }
@@ -260,20 +274,20 @@ public class AutoLlmCampaignService {
         });
         jobs.put(targetId, new Running(token, taskRunner, future)); save(); workers.execute(future);
     }
-    private void verifyQualification(String id, AutoLlmCampaign model) {
+    private void verifyQualification(String id, AutoLlmExecutionContext.Snapshot model) {
         Path root = store.directory(current.id), targetRoot = root.resolve(current.targets.get(id).directory);
         verifyCanonical(current);
         for (String kind : List.of("training", "comparison")) {
             String expected = kind.equals("training") ? current.config.trainingPath() : current.config.comparisonPath();
-            String actual = kind.equals("training") ? model.config.trainingPath() : model.config.comparisonPath();
+            String actual = kind.equals("training") ? model.config().trainingPath() : model.config().comparisonPath();
             var expectedHashes = new ArrayList<>(AutoLlmPoolUtil.inputIdentities(expected));
             var actualHashes = new ArrayList<>(AutoLlmPoolUtil.inputIdentities(actual));
             Collections.sort(expectedHashes); Collections.sort(actualHashes);
             if (!expectedHashes.equals(actualHashes)) throw new IllegalStateException("Qualified target changed the frozen " + kind + " selection");
         }
         var fingerprint = new LinkedHashMap<String,Object>();
-        fingerprint.put("trainingOrder", AutoLlmPoolUtil.inputIdentities(model.config.trainingPath()));
-        fingerprint.put("comparisonOrder", AutoLlmPoolUtil.inputIdentities(model.config.comparisonPath()));
+        fingerprint.put("trainingOrder", AutoLlmPoolUtil.inputIdentities(model.config().trainingPath()));
+        fingerprint.put("comparisonOrder", AutoLlmPoolUtil.inputIdentities(model.config().comparisonPath()));
         for (String file : List.of("baseline/components.json", "baseline-preflight/check/execution/search-space.json"))
             fingerprint.put(file, AutoLlmFileUtil.read(targetRoot.resolve(file), Object.class));
         Map<String,Object> dependencies = AutoLlmFileUtil.read(targetRoot.resolve("baseline/dependencies.json"), new TypeReference<>() {});
@@ -282,7 +296,7 @@ public class AutoLlmCampaignService {
         if (Files.exists(budgetFile)) {
             Map<String,Long> budgets = AutoLlmFileUtil.read(budgetFile, new TypeReference<>() {});
             var orderedBudgets = new ArrayList<Long>();
-            for (String input : es.urjc.etsii.grafo.util.InstancePathUtil.list(model.config.comparisonPath())) {
+            for (String input : es.urjc.etsii.grafo.util.InstancePathUtil.list(model.config().comparisonPath())) {
                 Long budget = budgets.get(input);
                 if (budget == null || budget <= 0) throw new IllegalStateException("Missing frozen comparison budget: " + input);
                 orderedBudgets.add(budget);
@@ -362,7 +376,7 @@ public class AutoLlmCampaignService {
         if (!current.status.equals("WAITING_FOR_TARGETS")) reportAsync(true);
     }
     private void reportAsync(boolean releaseAfter) {
-        var snapshot = AutoLlmPoolUtil.copy(current, AutoLlmCampaign.class); long sequence = ++reportSequence;
+        var snapshot = current.copy(); long sequence = ++reportSequence;
         reporting.execute(() -> {
             if (sequence != reportSequence) return;
             buildReport(snapshot);
@@ -389,7 +403,10 @@ public class AutoLlmCampaignService {
             try (var lock = store.lock()) { var c = store.load(id); buildReport(c); store.save(c); return c; }
         });
     }
-    public Object baselineCheck(String id) {
+    public record TargetCheck(Integer parameters, boolean qualified, boolean withinLimit, String directory, AutoLlmFailureUtil.Failure problem) {}
+    public record BaselineCheck(int parameters, int maxParameters, boolean withinLimit, boolean ready,
+            List<String> qualifiedTargets, List<String> failedTargets, Map<String,TargetCheck> targets) {}
+    public BaselineCheck baselineCheck(String id) {
         var completions = invoke(() -> {
             var c = store.load(id); if (!c.status.equals("DRAFT")) throw new IllegalStateException("Baseline checks require a draft");
             acquire(c); checkingBaseline = true;
@@ -403,19 +420,30 @@ public class AutoLlmCampaignService {
         finally { invoke(() -> {
             checkingBaseline = false;
             if (cancelled) cancelJobs();
-            else { current.status = "DRAFT"; save(); release(); }
+            else { current.status = "DRAFT"; try { save(); } finally { release(); } }
             return null;
         }); }
-        var c = store.load(id); var result = new LinkedHashMap<String,Object>(); var targets = new LinkedHashMap<String,Object>(); int maximum = 0; boolean found = false;
+        var c = store.load(id);
+        var targets = new LinkedHashMap<String,TargetCheck>();
+        var qualified = new ArrayList<String>(); var failed = new ArrayList<String>();
+        int maximum = 0;
         for (var entry : c.targets.entrySet()) {
-            var target = entry.getValue(); Path path = store.directory(id).resolve(target.directory).resolve("baseline-preflight/check/execution/check.json");
-            if (target.problem == null && Files.exists(path)) {
-                int parameters = AutoLlmFileUtil.JSON.readTree(read(path)).path("parameters").asInt(); maximum = Math.max(maximum, parameters); found = true;
-                targets.put(entry.getKey(), Map.of("parameters", parameters, "withinLimit", parameters <= c.config.maxParameters(), "directory", path.getParent().toString()));
-            } else targets.put(entry.getKey(), Map.of("status", target.status, "problem", target.problem == null ? "No check result" : target.problem));
+            var target = entry.getValue();
+            Path path = store.directory(id).resolve(target.directory).resolve("baseline-preflight/check/execution/check.json");
+            Integer parameters = Files.isRegularFile(path)
+                    ? AutoLlmFileUtil.JSON.readTree(read(path)).path("parameters").asInt() : null;
+            boolean withinLimit = parameters != null && parameters <= c.config.maxParameters();
+            boolean passed = target.problem == null && (target.baselineReady || target.status.equals("VALIDATED")) && withinLimit;
+            if (parameters != null) maximum = Math.max(maximum, parameters);
+            (passed ? qualified : failed).add(entry.getKey());
+            targets.put(entry.getKey(), new TargetCheck(parameters, target.problem == null && (target.baselineReady || target.status.equals("VALIDATED")), withinLimit, path.getParent().toString(), target.problem));
         }
-        result.put("parameters", maximum); result.put("maxParameters", c.config.maxParameters()); result.put("withinLimit", c.status.equals("DRAFT") && found && maximum <= c.config.maxParameters()); result.put("targets", targets); return result;
+        boolean ready = c.status.equals("DRAFT") && !qualified.isEmpty() && failed.isEmpty();
+        boolean withinLimit = !targets.isEmpty();
+        for (var target : targets.values()) withinLimit &= target.withinLimit();
+        return new BaselineCheck(maximum, c.config.maxParameters(), withinLimit, ready, List.copyOf(qualified), List.copyOf(failed), Map.copyOf(targets));
     }
+
     private static String read(Path path) { try { return Files.readString(path); } catch (IOException e) { throw new UncheckedIOException(e); } }
     public Object probeTarget(AutoLlmConfig config) {
         var result = new LinkedHashMap<String,Object>(); var workloads = new AutoLlmExecutionService(processes);
@@ -433,7 +461,7 @@ public class AutoLlmCampaignService {
             if (Set.of("SUCCEEDED", "COMPLETED_WITH_FAILURES").contains(c.status)) throw new IllegalStateException("Campaign has completed");
             register(c, server); store.save(c);
             if (c == current && !checkingBaseline && !cancelled) dispatch();
-            return AutoLlmPoolUtil.copy(c, AutoLlmCampaign.class);
+            return c.copy();
         });
     }
     public AutoLlmCampaign drainTarget(String id, String targetId, boolean remove) {
@@ -442,10 +470,10 @@ public class AutoLlmCampaignService {
             if (remove && (jobs.containsKey(targetId) && c == current || AutoLlmCampaignStore.hasUncollectedJobs(store.directory(id).resolve(target.directory)))) throw new IllegalStateException("Drain and reconcile the busy target before removal");
             if (remove) for (var trial : c.trials) if (targetId.equals(trial.targetId) && !TERMINAL_TRIALS.contains(trial.status))
                 throw new IllegalStateException("An unfinished trial is pinned to this target; reconcile it before removal");
-            if (target.status.equals("REMOVED") || target.draining && !remove) return AutoLlmPoolUtil.copy(c, AutoLlmCampaign.class);
+            if (target.status.equals("REMOVED") || target.draining && !remove) return c.copy();
             target.draining = true; target.status = remove ? "REMOVED" : "DRAINING"; target.revision = ++c.poolRevision;
             store.event(id, remove ? "target-removed" : "target-draining", Map.of("targetId", targetId, "revision", c.poolRevision)); store.save(c);
-            if (c == current) dispatch(); return AutoLlmPoolUtil.copy(c, AutoLlmCampaign.class);
+            if (c == current) dispatch(); return c.copy();
         });
     }
     private AutoLlmCampaign.TargetState requireTarget(AutoLlmCampaign c, String id) {
@@ -473,7 +501,7 @@ public class AutoLlmCampaignService {
         target.draining = false; target.problem = null; target.status = target.baselineReady ? "READY" : "REGISTERED"; target.revision = ++current.poolRevision;
         store.event(id, requalify ? "target-requalification-requested" : "target-resumed", Map.of("targetId", targetId, "revision", current.poolRevision));
         for (var trial : current.trials) if (targetId.equals(trial.targetId) && Set.of("BLOCKED", "INTERRUPTED").contains(trial.status)) { trial.status = "PENDING"; trial.infrastructureRetries = 0; }
-        save(); dispatch(); return AutoLlmPoolUtil.copy(current, AutoLlmCampaign.class);
+        save(); dispatch(); return current.copy();
     }
     public AutoLlmRecoveryUtil.Recovery recovery(String id) {
         return invoke(() -> recoveryInternal(id.equals(active) ? current : store.load(id)));
@@ -500,7 +528,7 @@ public class AutoLlmCampaignService {
             trial.status = "PENDING"; trial.infrastructureRetries = 0;
             target.draining = false; target.problem = null; target.status = "READY"; target.revision = ++current.poolRevision;
             store.event(id, "trial-resumed-by-operator", Map.of("trial", number, "targetId", trial.targetId));
-            save(); dispatch(); return AutoLlmPoolUtil.copy(current, AutoLlmCampaign.class);
+            save(); dispatch(); return current.copy();
         });
     }
     public AutoLlmCampaign failTrial(String id, int number, String reason) {
@@ -516,7 +544,7 @@ public class AutoLlmCampaignService {
         AutoLlmCampaign.Trial trial = null;
         for (var candidate : c.trials) if (candidate.number == number) { trial = candidate; break; }
         if (trial == null) throw new NoSuchElementException("Unknown trial " + number);
-        if (trial.status.equals("FAILED")) return AutoLlmPoolUtil.copy(c, AutoLlmCampaign.class);
+        if (trial.status.equals("FAILED")) return c.copy();
         recoveryInternal(c).trials().get(number).fail().requireAllowed();
         var target = requireTarget(c, trial.targetId);
         trial.status = "FAILED";
@@ -524,12 +552,12 @@ public class AutoLlmCampaignService {
         store.event(c.id, "trial-failed-by-operator", Map.of("trial", number, "targetId", trial.targetId, "reason", reason.strip()));
         if (c == current) { save(); reportAsync(false); dispatch(); }
         else store.save(c);
-        return AutoLlmPoolUtil.copy(c, AutoLlmCampaign.class);
+        return c.copy();
     }
     public AutoLlmCampaign cancel(String id) {
         return invoke(() -> {
             if (!id.equals(active)) acquire(store.load(id));
-            cancelled = true; current.status = "CANCELLATION_PENDING"; save(); cancelJobs(); return AutoLlmPoolUtil.copy(current, AutoLlmCampaign.class);
+            cancelled = true; current.status = "CANCELLATION_PENDING"; save(); cancelJobs(); return current.copy();
         });
     }
     private void cancelJobs() {
@@ -589,7 +617,7 @@ public class AutoLlmCampaignService {
         Runnable relinquish = () -> {
             try { workers.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS); reporting.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS); }
             catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
-            if (lock != null) lock.close();
+            if (lock != null) lock.detach();
         };
         try {
             if (workers.awaitTermination(5, TimeUnit.SECONDS) && reporting.awaitTermination(5, TimeUnit.SECONDS)) relinquish.run();

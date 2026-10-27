@@ -84,7 +84,7 @@ class AutoLlmPreparationBudgetTest {
         campaign.baselineCommit = "fixed";
         var trial = new AutoLlmCampaign.Trial();
         trial.number = 1;
-        trial.nextStep = "VERIFY";
+        trial.nextStage = AutoLlmCampaign.Stage.PREPARATION;
         campaign.trials.add(trial);
         var observedProbeTimeout = new AtomicLong(-1);
         var observedPilotBudget = new AtomicLong(-1);
@@ -122,15 +122,17 @@ class AutoLlmPreparationBudgetTest {
             }
         };
         var listener = new AutoLlmTrialRunner.Listener() {
-            public void state(AutoLlmCampaign snapshot) {}
+            public void state(AutoLlmExecutionContext.Snapshot snapshot) {}
             public void event(String kind, Object detail) {}
         };
-        new AutoLlmTrialRunner(campaign, root, processes, mock(CodexTaskRunner.class), listener,
+        var context = new AutoLlmExecutionContext(campaign.id, "", root, campaign.prompt);
+        context.config = campaign.config; context.baselineCommit = campaign.baselineCommit; context.trial = trial;
+        new AutoLlmTrialRunner(context, root, processes, mock(CodexTaskRunner.class), listener,
                 () -> false, new Semaphore(1)).execute();
 
         assertEquals("SUCCEEDED", trial.status, trial.failure);
         assertEquals(probeMillis + startupMillis, observedProbeTimeout.get());
         assertEquals(pilotMillis, observedPilotBudget.get());
-        assertNotNull(trial.preparedArtifact);
+        assertNotNull(trial.artifact());
     }
 }

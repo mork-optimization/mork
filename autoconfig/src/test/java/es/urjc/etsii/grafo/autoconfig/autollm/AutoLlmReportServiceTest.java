@@ -43,7 +43,7 @@ class AutoLlmReportServiceTest {
             Path root = Path.of(args[0]); String input = root.resolve("instance.txt").toString();
             var campaign = new AutoLlmCampaign(); campaign.id = "bounded-heap"; campaign.config = AutoLlmConfig.defaults().withPaths(input, input);
             var target = new AutoLlmCampaign.TargetState(); target.directory = "targets/worker"; target.resolvedConfig = campaign.config; campaign.targets.put("worker", target);
-            var trial = new AutoLlmCampaign.Trial(); trial.number = 1; trial.targetId = "worker"; trial.status = "FAILED"; trial.comparisonDirectory = "comparison"; campaign.trials.add(trial);
+            var trial = new AutoLlmCampaign.Trial(); trial.number = 1; trial.targetId = "worker"; trial.status = "FAILED"; trial.complete(AutoLlmCampaign.Stage.COMPARISON, "comparison", null); campaign.trials.add(trial);
             new AutoLlmReportService(null).report(campaign, root);
         }
     }
@@ -78,14 +78,14 @@ class AutoLlmReportServiceTest {
             }
             target.host = new WorkloadProtocol.Host(3, Map.of("hostname", id), 1, 1, 1, 1, 1, List.of()); campaign.targets.put(id, target);
             var trial = new AutoLlmCampaign.Trial(); trial.number = campaign.trials.size() + 1; trial.targetId = id; trial.targetRevision = trial.number;
-            trial.status = id.equals("a") ? "SUCCEEDED" : "FAILED"; trial.comparisonDirectory = target.directory + "/comparison"; campaign.trials.add(trial);
+            trial.status = id.equals("a") ? "SUCCEEDED" : "FAILED"; trial.complete(AutoLlmCampaign.Stage.COMPARISON, target.directory + "/comparison", null); campaign.trials.add(trial);
             for (String algorithm : List.of("SOTA", "IraceProposal")) {
                 var row = new LinkedHashMap<String,Object>(); row.put("kind", "evaluation-result"); row.put("measured", true); row.put("state", id.equals("b") && algorithm.equals("IraceProposal") ? "FAILED" : "SUCCEEDED");
                 row.put("id", UUID.randomUUID().toString()); row.put("instance", eventInstance); row.put("instanceId", "instance"); row.put("algorithm", algorithm); row.put("iteration", "0"); row.put("seed", 42);
                 row.put("objectives", Map.of("cost", 3)); row.put("properties", Map.of()); row.put("executionTimeNanos", 100); row.put("timeToBestNanos", 50);
-                AutoLlmFileUtil.append(root.resolve(trial.comparisonDirectory).resolve("execution/events.jsonl"), row);
+                AutoLlmFileUtil.append(root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.COMPARISON)).resolve("execution/events.jsonl"), row);
             }
-            Path comparison = root.resolve(trial.comparisonDirectory);
+            Path comparison = root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.COMPARISON));
             Files.createDirectories(comparison.resolve("solutions"));
             Files.writeString(comparison.resolve("solutions/tour.json"), "{\"cost\":3}");
             es.urjc.etsii.grafo.autoconfig.autollm.execution.DirectoryArchiveUtil.archive(comparison.resolve("solutions"));

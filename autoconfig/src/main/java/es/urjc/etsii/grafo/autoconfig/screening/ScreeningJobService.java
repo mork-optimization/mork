@@ -18,9 +18,10 @@ import java.util.concurrent.*;
 public class ScreeningJobService {
     public record Request(AutoLlmConfig config, InstanceScreeningConfig settings, String inputPath, Double trainingFraction) {}
     public static class Job {
-        public int version = 3;
+        public int version = 4;
         public String id, createdAt, status = "DRAFT", mirror, reviewedHash;
         public Request request;
+        public AutoLlmConfig executionConfig;
         public Map<String,Object> activity;
         public Object progress;
         public AutoLlmFailureUtil.Failure problem;
@@ -31,6 +32,7 @@ public class ScreeningJobService {
     private volatile String active;
     private volatile boolean cancelled;
     private Future<?> task;
+    private AutoLlmCampaignStore.OperationLease ownership;
     public ScreeningJobService(AutoLlmCampaignStore campaigns, AutoLlmProcessRunner processes) { this.campaigns = campaigns; this.processes = processes; }
     public String active() { return active; }
     private Path directory(String id) {
@@ -44,7 +46,7 @@ public class ScreeningJobService {
     public Job load(String id) {
         Path file = directory(id).resolve("job.json"); if (!Files.exists(file)) throw new NoSuchElementException("Screening job unavailable");
         Job job = AutoLlmFileUtil.read(file, Job.class);
-        if (job.version != 3) throw new IllegalStateException("Use a fresh screening workspace");
+        if (job.version != 4) throw new IllegalStateException("Use a fresh screening workspace");
         if (job.mirror != null && Files.exists(Path.of(job.mirror).resolve("proposal/screening-progress.json"))) job.progress = AutoLlmFileUtil.read(Path.of(job.mirror).resolve("proposal/screening-progress.json"), Object.class);
         return job;
     }
@@ -73,7 +75,9 @@ public class ScreeningJobService {
         var job = new Job(); job.id = UUID.randomUUID().toString(); job.createdAt = Instant.now().toString();
         var selected = request.settings();
         var settings = new InstanceScreeningConfig(repo.resolve(sota).toString(), directory(job.id).resolve("evidence").toString(), selected.thresholdMillis(), selected.candidateMultiplier(), selected.horizonMillis(), selected.confirmationRuns(), selected.fastFraction(), selected.python(), selected.warmupRepetitions(), selected.warmupMillis(), null);
-        job.request = new Request(config, settings, repo.resolve(request.inputPath()).toString(), fraction); save(job); return job;
+        job.request = new Request(config, settings, repo.resolve(request.inputPath()).toString(), fraction);
+        job.executionConfig = config.execution().target() == AutoLlmConfig.Target.SSH ? config.forServer(config.execution().ssh().screeningServer()) : config;
+        save(job); return job;
     }
     public synchronized Job resume(String id) { return start(id, null); }
     public synchronized Job approve(String id, String reviewedHash) {
@@ -86,10 +90,9 @@ public class ScreeningJobService {
         if (active != null) throw new IllegalStateException("A screening job is active");
         var job = load(id);
         if (job.status.equals("APPROVED") || approval == null && job.status.equals("AWAITING_APPROVAL")) throw new IllegalStateException("Selection is already complete; review or use its published indexes");
-        campaigns.requireReservation(id); var lock = campaigns.lock();
+        var lease = campaigns.acquire(id, directory(id));
         try {
-            campaigns.reserve(id);
-            active = id; cancelled = false; if (approval != null) job.reviewedHash = approval;
+            ownership = lease; active = id; cancelled = false; if (approval != null) job.reviewedHash = approval;
             job.status = "RUNNING"; job.problem = null; save(job);
             task = executor.submit(() -> {
                 try {
@@ -100,29 +103,32 @@ public class ScreeningJobService {
                         if (state.get("remote") instanceof Map<?,?> remote) job.status = Set.of("WAITING_FOR_REMOTE", "CANCELLATION_PENDING").contains(remote.get("status")) ? (String)remote.get("status") : "RUNNING";
                         save(job);
                     }, () -> cancelled || Thread.currentThread().isInterrupted());
-                    service.run(job.request.config(), job.request.settings(), inputs, solver, job.reviewedHash != null, job.reviewedHash, List.of("api-screening", id));
+                    service.run(job.executionConfig, job.request.settings(), inputs, solver, job.reviewedHash != null, job.reviewedHash, List.of("api-screening", id));
                     job.status = job.reviewedHash == null ? "AWAITING_APPROVAL" : "APPROVED";
                 } catch (CancellationException e) { job.status = cancelled ? "CANCELLED" : "INTERRUPTED"; }
                 catch (IOException | RuntimeException e) {
                     job.status = "NEEDS_ATTENTION"; job.problem = AutoLlmFailureUtil.describe(e instanceof RuntimeException runtime ? runtime : new UncheckedIOException((IOException)e), directory(id));
                 } finally {
                     try { save(job); }
-                    finally { try { campaigns.releaseReservation(id, directory(id)); } finally { lock.close(); synchronized (this) { active = null; } } }
+                    finally { release(lease); }
                 }
             });
             return job;
-        } catch (RuntimeException e) { active = null; try { campaigns.releaseReservation(id, directory(id)); } finally { lock.close(); } throw e; }
+        } catch (RuntimeException e) { release(lease); throw e; }
     }
     public synchronized Job cancel(String id) {
         if (active == null && AutoLlmCampaignStore.hasUncollectedJobs(directory(id))) {
-            var job = load(id); campaigns.requireReservation(id); var lock = campaigns.lock(); campaigns.reserve(id); active = id; cancelled = true;
+            var job = load(id); var lease = campaigns.acquire(id, directory(id));
+            try {
+            ownership = lease; active = id; cancelled = true;
             job.status = "CANCELLATION_PENDING"; save(job);
             task = executor.submit(() -> {
-                try { new AutoLlmExecutionService(processes).cancelOutstanding(job.request.config(), directory(id), state -> { job.activity = Map.of("phase", "CANCELLATION", "remote", state); save(job); }); job.status = "CANCELLED"; job.problem = null; }
+                try { new AutoLlmExecutionService(processes).cancelOutstanding(job.executionConfig, directory(id), state -> { job.activity = Map.of("phase", "CANCELLATION", "remote", state); save(job); }); job.status = "CANCELLED"; job.problem = null; }
                 catch (RuntimeException e) { job.status = "NEEDS_ATTENTION"; job.problem = AutoLlmFailureUtil.describe(e, directory(id)); }
-                finally { save(job); try { campaigns.releaseReservation(id, directory(id)); } finally { lock.close(); synchronized (this) { active = null; } } }
+                finally { try { save(job); } finally { release(lease); } }
             });
             return job;
+            } catch (RuntimeException | Error e) { release(lease); throw e; }
         }
         if (active == null && List.of("DRAFT", "NEEDS_ATTENTION", "INTERRUPTED").contains(load(id).status)) { var job = load(id); job.status = "CANCELLED"; save(job); return job; }
         if (!id.equals(active)) throw new IllegalStateException("Screening is not active");
@@ -143,5 +149,14 @@ public class ScreeningJobService {
                 "proposalDirectory", proposal.toString(), "artifactPrefix", directory(id).relativize(proposal).toString()); }
         catch (IOException e) { throw new UncheckedIOException(e); }
     }
-    @PreDestroy public void close() { if (task != null) task.cancel(true); executor.shutdownNow(); }
+    private synchronized void release(AutoLlmCampaignStore.OperationLease lease) {
+        try { lease.close(); }
+        finally { if (ownership == lease) { ownership = null; active = null; } }
+    }
+    @PreDestroy public synchronized void close() {
+        if (task != null) task.cancel(true);
+        executor.shutdownNow();
+        if (ownership != null) ownership.detach();
+        ownership = null; active = null;
+    }
 }

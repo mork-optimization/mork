@@ -47,10 +47,20 @@ public final class CodexEvidenceUtil {
     /** Called after the owned process tree stops, including during interrupted-attempt recovery. */
     public static Evidence collect(Path home, Path checkout, Path output, String expectedThread) {
         Path marker = output.resolve("evidence.json");
+        if (Files.isRegularFile(marker) && !"ARCHIVED".equals(AutoLlmFileUtil.read(marker, Evidence.class).status())) {
+            // A failed collection is evidence of an attempt, not a sealed archive.
+            Path previous = output.resolve("collection-failures/" + UUID.randomUUID());
+            try {
+                Files.createDirectories(previous);
+                for (String name : List.of("evidence.json", "usage.json", "conversations")) {
+                    Path file = output.resolve(name);
+                    if (Files.exists(file)) Files.move(file, previous.resolve(name));
+                }
+            } catch (IOException e) { throw new ArchiveException("Cannot preserve previous collection failure", e); }
+        }
         if (Files.isRegularFile(marker)) {
             try {
                 var evidence = AutoLlmFileUtil.read(marker, Evidence.class);
-                if ("FAILED".equals(evidence.status())) throw new ArchiveException(evidence.failure(), null);
                 if (expectedThread != null && !expectedThread.equals(evidence.threadId())) throw new ArchiveException("Archived Codex thread differs from the requested thread", null);
                 for (var conversation : evidence.conversations()) {
                     if (!conversation.sha256().equals(AutoLlmFileUtil.hash(AutoLlmFileUtil.inside(output, conversation.path())))) throw new ArchiveException("Archived Codex conversation changed", null);

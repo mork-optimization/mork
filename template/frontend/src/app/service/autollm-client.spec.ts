@@ -6,6 +6,17 @@ import { AutoLlmClient } from './autollm-client';
 describe('AutoLlmClient file previews', () => {
   afterEach(() => TestBed.resetTestingModule());
 
+  it('bounds status reads and cancels a hung request without replaying mutations', async () => {
+    vi.useFakeTimers();
+    try {
+      TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+      const client = TestBed.inject(AutoLlmClient), http = TestBed.inject(HttpTestingController);
+      const pending = client.list(); const rejected = expect(pending).rejects.toThrow('Timeout');
+      const request = http.expectOne('http://localhost:8080/api/autollm/campaigns');
+      await vi.advanceTimersByTimeAsync(10000); await rejected;
+      expect(request.cancelled).toBe(true); http.verify();
+    } finally { vi.useRealTimers(); }
+  });
   it('requests only the selected tail and keeps downloads on the full-file endpoint', async () => {
     TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
     const client = TestBed.inject(AutoLlmClient), http = TestBed.inject(HttpTestingController);

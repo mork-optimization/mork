@@ -35,7 +35,7 @@ class OperatorClientTest(unittest.TestCase):
         with patch.object(client, "request", return_value={"mode": "AUTOLLM", "apiVersion": 1}):
             with self.assertRaisesRegex(RuntimeError, "capabilities"):
                 client.capabilities("http://localhost")
-        info = {"mode": "AUTOLLM", "apiVersion": 3, "checkpointVersion": 3, "runnerProtocol": 3, "workspace": "/other", "features": list(client.FEATURES)}
+        info = {"mode": "AUTOLLM", "apiVersion": 4, "checkpointVersion": 4, "runnerProtocol": 4, "workspace": "/other", "features": list(client.FEATURES)}
         with patch.object(client, "request", return_value=info):
             with self.assertRaisesRegex(RuntimeError, "workspace"):
                 client.capabilities("http://localhost", "/requested")
@@ -46,7 +46,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"frozen executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url="http://localhost")
-            info = {"mode": "AUTOLLM", "apiVersion": 3, "checkpointVersion": 3, "runnerProtocol": 3, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            info = {"mode": "AUTOLLM", "apiVersion": 4, "checkpointVersion": 4, "runnerProtocol": 4, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             with patch.object(client, "request", return_value=info), patch.object(client.subprocess, "Popen") as launch:
                 self.assertEqual(client.backend(args), info)
                 launch.assert_not_called()
@@ -70,7 +70,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url=None, java="java", port=0, timeout=10)
-            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 3, "checkpointVersion": 3, "runnerProtocol": 3, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 4, "checkpointVersion": 4, "runnerProtocol": 4, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             launching = dict(ready, mode="STARTING")
             with patch.object(client, "request", side_effect=[RuntimeError("offline"), launching, ready]), patch.object(client.socket, "socket") as socket, patch.object(client.subprocess, "Popen") as launch, patch.object(client.time, "sleep"):
                 socket.return_value.__enter__.return_value.getsockname.return_value = ("127.0.0.1", 18081)
@@ -99,7 +99,7 @@ class OperatorClientTest(unittest.TestCase):
         def response(base, path, **kwargs):
             if path == "/campaigns": return {"active": "saved", "campaigns": [saved]}
             if path == "/screenings": raise RuntimeError("screenings offline")
-            if path == "/campaigns/saved": return saved
+            if path == "/campaigns/saved/status": return saved
             if path.endswith("/1/progress"): raise RuntimeError("worker unavailable")
             if path.endswith("/2/progress"): return {"elapsedMillis": 3600000, "workload": {"budget": {"used": 2500, "maximum": 10000}}, "remote": {"lastSynchronizedAt": "now"}}
             if path.endswith("/summary"): raise RuntimeError("summary unavailable")
@@ -219,7 +219,12 @@ class OperatorClientTest(unittest.TestCase):
                 call = request.call_args
                 self.assertEqual(call.args[:2], ("http://localhost", "/campaigns/saved" + ("" if action == "get" else "/" + action)))
                 self.assertEqual(call.kwargs["timeout"], 91)
-                self.assertEqual(call.args[2:], () if action in ("get", "summary") else ({},))
+                self.assertEqual(call.args[2:], () if action in ("get", "summary") else ({"targets": []},) if action == "start" else ({},))
+
+    def test_start_names_the_qualified_subset_explicitly(self):
+        self.root = "/work"
+        _, _, request = self.cli(["campaign", "start", "--id", "saved", "--target", "a", "--target", "c"], [{"id": "saved"}])
+        self.assertEqual(request.call_args.args[2], {"targets": ["a", "c"]})
 
     def test_probe_uses_complete_config_and_its_own_deadline(self):
         with tempfile.TemporaryDirectory() as self.root:
@@ -283,7 +288,7 @@ class OperatorClientTest(unittest.TestCase):
             {"number": 1, "targetId": "a", "status": "GENERATION", "attempts": [{"number": 1, "stage": "GENERATION"}]},
             {"number": 2, "targetId": "b", "status": "GENERATION", "attempts": [{"number": 1, "stage": "GENERATION"}]}]}
         def response(base, path, **kwargs):
-            if path == "/campaigns/saved": return saved
+            if path == "/campaigns/saved/status": return saved
             if path.endswith("/progress"): return {"status": "GENERATION"}
             if "/1/activity?" in path: raise RuntimeError("activity offline")
             if "/2/activity?" in path: return {"text": '{"type":"message","text":"healthy worker"}\n', "nextCursor": 50, "more": False, "reset": False}
