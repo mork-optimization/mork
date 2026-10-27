@@ -43,7 +43,7 @@ class AutoLlmReportServiceTest {
             Path root = Path.of(args[0]); String input = root.resolve("instance.txt").toString();
             var campaign = new AutoLlmCampaign(); campaign.id = "bounded-heap"; campaign.config = AutoLlmConfig.defaults().withPaths(input, input);
             var target = new AutoLlmCampaign.TargetState(); target.directory = "targets/worker"; target.resolvedConfig = campaign.config; campaign.targets.put("worker", target);
-            var trial = new AutoLlmCampaign.Trial(); trial.number = 1; trial.targetId = "worker"; trial.status = "FAILED"; trial.complete(AutoLlmCampaign.Stage.COMPARISON, "comparison", null); campaign.trials.add(trial);
+            var trial = new AutoLlmCampaign.Trial(); trial.number = 1; trial.targetId = "worker"; trial.status = AutoLlmCampaign.TrialStatus.FAILED; trial.complete(AutoLlmCampaign.Stage.COMPARISON, "comparison", null); campaign.trials.add(trial);
             new AutoLlmReportService(null).report(campaign, root);
         }
     }
@@ -78,7 +78,7 @@ class AutoLlmReportServiceTest {
             }
             target.host = new WorkloadProtocol.Host(3, Map.of("hostname", id), 1, 1, 1, 1, 1, List.of()); campaign.targets.put(id, target);
             var trial = new AutoLlmCampaign.Trial(); trial.number = campaign.trials.size() + 1; trial.targetId = id; trial.targetRevision = trial.number;
-            trial.status = id.equals("a") ? "SUCCEEDED" : "FAILED"; trial.complete(AutoLlmCampaign.Stage.COMPARISON, target.directory + "/comparison", null); campaign.trials.add(trial);
+            trial.status = id.equals("a") ? AutoLlmCampaign.TrialStatus.SUCCEEDED : AutoLlmCampaign.TrialStatus.FAILED; trial.complete(AutoLlmCampaign.Stage.COMPARISON, target.directory + "/comparison", null); campaign.trials.add(trial);
             for (String algorithm : List.of("SOTA", "IraceProposal")) {
                 var row = new LinkedHashMap<String,Object>(); row.put("kind", "evaluation-result"); row.put("measured", true); row.put("state", id.equals("b") && algorithm.equals("IraceProposal") ? "FAILED" : "SUCCEEDED");
                 row.put("id", UUID.randomUUID().toString()); row.put("instance", eventInstance); row.put("instanceId", "instance"); row.put("algorithm", algorithm); row.put("iteration", "0"); row.put("seed", 42);

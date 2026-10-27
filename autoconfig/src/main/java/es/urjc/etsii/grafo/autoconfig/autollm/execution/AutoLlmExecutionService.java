@@ -79,7 +79,7 @@ public final class AutoLlmExecutionService {
             if (!qualification) host = new WorkloadProtocol.Host(host.version(), host.identity(), host.requestedWorkers(), host.effectiveWorkers(), host.maxMemoryBytes(), host.totalMemoryBytes(), host.usableDiskBytes(), previous.prerequisites());
         }
         AutoLlmFileUtil.write(root.resolve("target-preflight.json"), host);
-        boolean ready = true; for (var check : host.prerequisites()) if (check.status().equals("FAILED")) ready = false;
+        boolean ready = true; for (var check : host.prerequisites()) if (check.status() == TargetPreflightUtil.PrerequisiteStatus.FAILED) ready = false;
         if (ready) AutoLlmFileUtil.write(saved, host); return host;
     }
     public int workers(AutoLlmConfig config, Path root) {

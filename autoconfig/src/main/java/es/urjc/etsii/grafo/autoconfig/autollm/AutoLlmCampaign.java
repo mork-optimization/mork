@@ -9,11 +9,40 @@ import java.util.Map;
 /** Versioned JSON checkpoint. Mutations are serialized by the campaign service/store. */
 public class AutoLlmCampaign {
     public static final int SCHEMA_VERSION = 4;
+    public enum CampaignStatus {
+        DRAFT, RUNNING, WAITING_FOR_REMOTE, WAITING_FOR_TARGETS, CANCELLATION_PENDING,
+        INTERRUPTED, NEEDS_ATTENTION, CANCELLED, SUCCEEDED, COMPLETED_WITH_FAILURES;
+        public boolean completed() { return this == SUCCEEDED || this == COMPLETED_WITH_FAILURES; }
+        public boolean resumable() {
+            return switch (this) {
+                case RUNNING, WAITING_FOR_REMOTE, WAITING_FOR_TARGETS, INTERRUPTED, NEEDS_ATTENTION, CANCELLED -> true;
+                case DRAFT, CANCELLATION_PENDING, SUCCEEDED, COMPLETED_WITH_FAILURES -> false;
+            };
+        }
+        public boolean inProgress() { return this == RUNNING || this == WAITING_FOR_REMOTE || this == WAITING_FOR_TARGETS || this == CANCELLATION_PENDING; }
+    }
+    public enum TargetStatus { REGISTERED, VALIDATED, QUALIFYING, READY, BUSY, DRAINING, NEEDS_ATTENTION, REMOVED }
+    public enum TrialStatus {
+        PENDING, STARTING, WAITING_FOR_GENERATION, GENERATION, REPAIR, METADATA_RECONCILIATION,
+        PREPARATION, TUNING, WINNER_EXPORT, COMPARISON, WAITING_FOR_QUOTA, WAITING_FOR_REMOTE,
+        INTERRUPTED, BLOCKED, SUCCEEDED, FAILED;
+        public boolean terminal() { return this == SUCCEEDED || this == FAILED; }
+        public boolean recoverable() { return this == BLOCKED || this == INTERRUPTED; }
+        public boolean inProgress() { return this != PENDING && !terminal(); }
+    }
+    public enum AttemptStatus { RUNNING, SUCCEEDED, FAILED, INTERRUPTED, QUOTA_LIMIT }
+    public enum AttemptStage {
+        GENERATION, REPAIR, PREPARATION, TUNING, WINNER_EXPORT, COMPARISON;
+        public boolean generation() { return this == GENERATION || this == REPAIR; }
+        public Stage committedStage() { return this == REPAIR ? Stage.GENERATION : Stage.valueOf(name()); }
+        public TrialStatus trialStatus() { return TrialStatus.valueOf(name()); }
+    }
+    public enum PreparationStage { BUILD, DEPENDENCIES, METADATA, PROBES, PILOT }
     public int schemaVersion = SCHEMA_VERSION;
     public String id;
     public AutoLlmConfig config;
     public String createdAt;
-    public String status = "DRAFT";
+    public CampaignStatus status = CampaignStatus.DRAFT;
     public String failure;
     public AutoLlmFailureUtil.Failure problem;
     public String reportFailure;
@@ -65,7 +94,7 @@ public class AutoLlmCampaign {
     }
     public static class TargetState {
         public AutoLlmConfig.Server definition;
-        public String status = "REGISTERED";
+        public TargetStatus status = TargetStatus.REGISTERED;
         public String directory;
         public String endpoint;
         public long revision;
@@ -78,6 +107,11 @@ public class AutoLlmCampaign {
         public Map<String, String> versions = Map.of();
         public AutoLlmFailureUtil.Failure problem;
 
+        public void resume(boolean requalify, long revision) {
+            if (requalify) baselineReady = false;
+            draining = false; problem = null; this.revision = revision;
+            status = baselineReady ? TargetStatus.READY : TargetStatus.REGISTERED;
+        }
         public TargetState copy() {
             var result = new TargetState();
             result.definition = this.definition;
@@ -106,7 +140,7 @@ public class AutoLlmCampaign {
         public long pilotSeed;
         public long tuningSeed;
         public long comparisonSeed;
-        public String status = "PENDING";
+        public TrialStatus status = TrialStatus.PENDING;
         public String failure;
         public AutoLlmFailureUtil.Failure problem;
         public int infrastructureRetries;
@@ -124,7 +158,7 @@ public class AutoLlmCampaign {
         public List<Attempt> attempts = new ArrayList<>();
         public String outputDirectory(Stage stage) { var output = outputs.get(stage); return output == null ? null : output.directory(); }
         public String latestDirectory(Stage stage) {
-            for (int i = attempts.size() - 1; i >= 0; i--) if (attempts.get(i).stage.equals(stage.name())) return attempts.get(i).directory;
+            for (int i = attempts.size() - 1; i >= 0; i--) if (attempts.get(i).stage.committedStage() == stage) return attempts.get(i).directory;
             return outputDirectory(stage);
         }
         public String artifact() { var output = outputs.get(Stage.PREPARATION); return output == null ? null : output.artifact(); }
@@ -133,6 +167,10 @@ public class AutoLlmCampaign {
             nextStage = Stage.values()[stage.ordinal() + 1];
         }
 
+        public void queueForResume() {
+            if (status.terminal()) throw new IllegalStateException("Completed trials cannot be resumed");
+            status = TrialStatus.PENDING; infrastructureRetries = 0;
+        }
         public Trial copy() {
             var result = new Trial();
             result.number = this.number;
@@ -163,14 +201,14 @@ public class AutoLlmCampaign {
     }
     public static class Attempt {
         public int number;
-        public String stage;
+        public AttemptStage stage;
         public String directory;
-        public String status = "RUNNING";
+        public AttemptStatus status = AttemptStatus.RUNNING;
         public String startedAt;
         public String finishedAt;
         public String failure;
         public AutoLlmFailureUtil.Failure problem;
-        public String substage;
+        public PreparationStage substage;
         public CodexEvidenceUtil.Evidence codexEvidence;
 
         public Attempt copy() {

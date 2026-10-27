@@ -9,7 +9,8 @@ import java.util.*;
 
 /** Inspects the environment inherited by actual workloads, without installing anything. */
 public final class TargetPreflightUtil {
-    public record Prerequisite(String name, String executable, String status, String output, String diagnostic) {}
+    public enum PrerequisiteStatus { PASSED, FAILED, DEFERRED }
+    public record Prerequisite(String name, String executable, PrerequisiteStatus status, String output, String diagnostic) {}
     private TargetPreflightUtil() {}
     public static int minimumJavaFeature() {
         try (var input = new DataInputStream(Objects.requireNonNull(AutoLlmConfig.class.getResourceAsStream("AutoLlmConfig.class")))) {
@@ -29,7 +30,7 @@ public final class TargetPreflightUtil {
         var commands = new LinkedHashMap<String,List<String>>();
         commands.put("java", List.of(Path.of(System.getProperty("java.home"), "bin/java").toString(), "-version"));
         commands.put("git", List.of("git", "--version"));
-        commands.put("r-packages", List.of("Rscript", "-e", "for(p in c('irace','httr','jsonlite')) {if(!requireNamespace(p,quietly=TRUE)) stop(paste('Missing R package',p));cat(p,as.character(packageVersion(p)),'\\n')}"));
+        commands.put("r-packages", List.of("Rscript", "-e", "cat(R.version.string,'\\n');for(p in c('irace','httr','jsonlite')) {if(!requireNamespace(p,quietly=TRUE)) stop(paste('Missing R package',p));cat(p,as.character(packageVersion(p)),'\\n')}"));
         String python = selectorPython != null && !selectorPython.isBlank() ? selectorPython : config.execution().target() == AutoLlmConfig.Target.SSH ? config.execution().ssh().onlyServer().environment().getOrDefault("MORK_SELECTOR_PYTHON", "python3") : System.getenv().getOrDefault("MORK_SELECTOR_PYTHON", "python3");
         if (selectorPython != null) commands.put("selector-python", List.of(python, "-c", "import sys,numpy,pandas,sklearn,yellowbrick,matplotlib,seaborn; print(sys.executable); print(sys.version)"));
         String build = config.project().buildCommand().getFirst();
@@ -50,16 +51,22 @@ public final class TargetPreflightUtil {
             try {
                 var result = processes.run(entry.getValue(), root, output, CHECK_TIMEOUT_MILLIS, 0, CHECK_GRACE_MILLIS, () -> Thread.currentThread().isInterrupted(), false, 0);
                 String log = AutoLlmFailureUtil.tail(output.resolve("stdout.log"), 4000) + AutoLlmFailureUtil.tail(output.resolve("stderr.log"), 4000);
-                checks.add(new Prerequisite(entry.getKey(), executable(entry.getValue().getFirst()), result.exitCode() == 0 ? "PASSED" : "FAILED", log,
+                checks.add(new Prerequisite(entry.getKey(), executable(entry.getValue().getFirst()), result.exitCode() == 0 ? PrerequisiteStatus.PASSED : PrerequisiteStatus.FAILED, log,
                         result.exitCode() == 0 ? null : "Prepare this dependency in the configured noninteractive environment, then rerun preflight. Evidence: " + output));
             } catch (java.util.concurrent.CancellationException e) { throw e; }
-            catch (RuntimeException e) { checks.add(new Prerequisite(entry.getKey(), executable(entry.getValue().getFirst()), "FAILED", "", e.toString())); }
+            catch (RuntimeException e) { checks.add(new Prerequisite(entry.getKey(), executable(entry.getValue().getFirst()), PrerequisiteStatus.FAILED, "", e.toString())); }
         }
-        if (build.contains("/")) checks.add(new Prerequisite("build-wrapper", build, "DEFERRED", "", "The committed wrapper is checked with --version after its source snapshot is staged."));
+        if (build.contains("/")) checks.add(new Prerequisite("build-wrapper", build, PrerequisiteStatus.DEFERRED, "", "The committed wrapper is checked with --version after its source snapshot is staged."));
         var host = identity(config, root, checks); AutoLlmFileUtil.write(root.resolve("target-preflight.json"), host); return host;
     }
+    /** Use the same captured prerequisite results for qualification and baseline provenance. */
+    public static Map<String,String> versions(WorkloadProtocol.Host host) {
+        var versions = new LinkedHashMap<String,String>();
+        for (var check : host.prerequisites()) if (check.status() == PrerequisiteStatus.PASSED) versions.put(check.name(), check.output());
+        return versions;
+    }
     public static void requireReady(WorkloadProtocol.Host host, Path evidence) {
-        for (var check : host.prerequisites()) if (check.status().equals("FAILED")) throw AutoLlmFailureUtil.error(
+        for (var check : host.prerequisites()) if (check.status() == PrerequisiteStatus.FAILED) throw AutoLlmFailureUtil.error(
                 AutoLlmFailureUtil.Category.INFRASTRUCTURE, "PREREQUISITE_FAILED", check.name() + ": " + check.diagnostic(), evidence.resolve("target-preflight.json"));
     }
     private static String executable(String name) {

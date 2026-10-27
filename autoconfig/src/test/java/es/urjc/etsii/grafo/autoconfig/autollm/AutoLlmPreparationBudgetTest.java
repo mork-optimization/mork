@@ -132,7 +132,7 @@ class AutoLlmPreparationBudgetTest {
         new AutoLlmTrialRunner(context, root, processes, mock(CodexTaskRunner.class), listener,
                 () -> false, new Semaphore(1)).execute();
 
-        assertEquals("SUCCEEDED", trial.status, trial.failure);
+        assertEquals("SUCCEEDED", trial.status.name(), trial.failure);
         assertEquals(probeMillis + startupMillis, observedProbeTimeout.get());
         assertEquals(pilotMillis, observedPilotBudget.get());
         assertNotNull(trial.artifact());

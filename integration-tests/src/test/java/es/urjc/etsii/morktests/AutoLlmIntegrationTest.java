@@ -100,7 +100,7 @@ class AutoLlmIntegrationTest {
             var created = request(client, base + "/campaigns", AutoLlmFileUtil.JSON.writeValueAsString(settings));
             String id = created.path("id").stringValue();
             var metadata = request(client, base + "/campaigns/" + id + "/baseline-check", "{}"); assertTrue(metadata.path("withinLimit").asBoolean());
-            var draft = AutoLlmFileUtil.read(workspace.resolve(id).resolve("campaign.json"), AutoLlmCampaign.class); assertEquals("DRAFT", draft.status);
+            var draft = AutoLlmFileUtil.read(workspace.resolve(id).resolve("campaign.json"), AutoLlmCampaign.class); assertEquals("DRAFT", draft.status.name());
             assertNotEquals("HEAD", draft.config.project().ref());
             assertTrue(Files.exists(workspace.resolve(id).resolve("targets/" + targetId + "/baseline-preflight/reproducibility/verified.json")));
             var summary = get(client, base + "/campaigns/" + id + "/summary").path("targets").path(targetId); assertTrue(summary.path("comparisonLimitsResolved").asBoolean());
@@ -110,7 +110,7 @@ class AutoLlmIntegrationTest {
             do {
                 Thread.sleep(200);
                 campaign = AutoLlmFileUtil.read(workspace.resolve(id).resolve("campaign.json"), AutoLlmCampaign.class);
-            } while (List.of("RUNNING", "WAITING_FOR_REMOTE", "CANCELLATION_PENDING").contains(campaign.status) && parent.isAlive() && System.currentTimeMillis() < deadline);
+            } while (Set.of(AutoLlmCampaign.CampaignStatus.RUNNING, AutoLlmCampaign.CampaignStatus.WAITING_FOR_REMOTE, AutoLlmCampaign.CampaignStatus.CANCELLATION_PENDING).contains(campaign.status) && parent.isAlive() && System.currentTimeMillis() < deadline);
             tools.jackson.databind.JsonNode campaigns;
             do {
                 campaigns = AutoLlmFileUtil.JSON.readTree(client.send(HttpRequest.newBuilder(URI.create(base + "/campaigns")).GET().build(), HttpResponse.BodyHandlers.ofString()).body());
@@ -118,9 +118,9 @@ class AutoLlmIntegrationTest {
                 Thread.sleep(100);
             } while (parent.isAlive() && System.currentTimeMillis() < deadline);
             assertFalse(id.equals(campaigns.path("active").stringValue()), "Campaign must release the workspace after reporting");
-            assertEquals("SUCCEEDED", campaign.status, campaign.failure + "\n" + campaign.trials.getFirst().failure + "\n" + read(temp.resolve("parent.log")));
+            assertEquals("SUCCEEDED", campaign.status.name(), campaign.failure + "\n" + campaign.trials.getFirst().failure + "\n" + read(temp.resolve("parent.log")));
             var trial = campaign.trials.getFirst(); targetId = trial.targetId; Path root = workspace.resolve(id);
-            assertEquals("SUCCEEDED", trial.status, trial.failure);
+            assertEquals("SUCCEEDED", trial.status.name(), trial.failure);
             assertTrue(Files.exists(root.resolve(trial.artifact())));
             Path targetRoot = root.resolve(campaign.targets.get(trial.targetId).directory);
             String probeReference = AutoLlmFileUtil.JSON.readTree(read(root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.PREPARATION)).resolve("probe/execution/probe-instance.json"))).path("instance").asString();
@@ -154,7 +154,7 @@ class AutoLlmIntegrationTest {
                 assertEquals(2, campaign.targets.size()); assertEquals(2, campaign.trials.size());
                 var assignedTargets = new HashSet<String>();
                 for (var completed : campaign.trials) {
-                    assignedTargets.add(completed.targetId); assertEquals("SUCCEEDED", completed.status, completed.failure);
+                    assignedTargets.add(completed.targetId); assertEquals("SUCCEEDED", completed.status.name(), completed.failure);
                     assertTrue(Files.exists(root.resolve("reports/targets/" + completed.targetId + "/campaign.xlsx")));
                     assertTrue(completed.outputDirectory(AutoLlmCampaign.Stage.COMPARISON).startsWith("targets/" + completed.targetId + "/"));
                     var descriptor = AutoLlmFileUtil.JSON.readTree(read(root.resolve(completed.outputDirectory(AutoLlmCampaign.Stage.COMPARISON)).resolve("remote-job.json")));

@@ -93,7 +93,7 @@ class CodexEvidenceUtilTest {
         var campaign = new AutoLlmCampaign(); campaign.id = root;
         var trial = new AutoLlmCampaign.Trial(); trial.number = 1; campaign.trials.add(trial);
         for (Path directory : List.of(first, repair)) {
-            var attempt = new AutoLlmCampaign.Attempt(); attempt.stage = "GENERATION"; attempt.status = "INTERRUPTED"; attempt.directory = temp.relativize(directory).toString(); trial.attempts.add(attempt);
+            var attempt = new AutoLlmCampaign.Attempt(); attempt.stage = AutoLlmCampaign.AttemptStage.GENERATION; attempt.status = AutoLlmCampaign.AttemptStatus.INTERRUPTED; attempt.directory = temp.relativize(directory).toString(); trial.attempts.add(attempt);
         }
         CodexEvidenceUtil.report(campaign, temp); assertEquals(40L, campaign.codexUsage.tokens().totalTokens());
         CodexEvidenceUtil.report(campaign, temp); assertEquals(40L, campaign.codexUsage.tokens().totalTokens());

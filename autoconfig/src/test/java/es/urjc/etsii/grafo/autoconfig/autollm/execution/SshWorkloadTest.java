@@ -58,7 +58,7 @@ class SshWorkloadTest {
                 new AutoLlmConfig.Execution(execution.workers(), execution.watchdogGraceMillis(), execution.codexTimeoutMillis(), execution.buildTimeoutMillis(), execution.startupTimeoutMillis(), execution.searchSpaceTimeoutMillis(), execution.phaseTimeoutMillis(), execution.stageTimeoutMillis(), execution.heap(), AutoLlmConfig.Target.SSH,
                         new AutoLlmConfig.Ssh(ssh.screeningServerId(), ssh.runnerArtifact(), List.of(ssh.onlyServer(), new AutoLlmConfig.Server("other", "unreachable-fixture", "/unused", "java", Map.of(), null, null, null)))));
         var store = new AutoLlmCampaignStore(pool);
-        var job = new es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.Job(); job.id = UUID.randomUUID().toString(); job.status = "INTERRUPTED";
+        var job = new es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.Job(); job.id = UUID.randomUUID().toString(); job.status = es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.ScreeningStatus.INTERRUPTED;
         job.request = new es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.Request(pool, null, null, null);
         job.executionConfig = pool.forServer(ssh.onlyServer());
         root = store.root().resolve("screenings").resolve(job.id); Files.createDirectories(root);
@@ -73,7 +73,7 @@ class SshWorkloadTest {
             service.cancel(job.id);
             long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(20);
             while (service.active() != null && System.nanoTime() < deadline) Thread.sleep(20);
-            assertNull(service.active()); assertEquals("CANCELLED", service.load(job.id).status);
+            assertNull(service.active()); assertEquals("CANCELLED", service.load(job.id).status.name());
             assertTrue(Files.exists(work.output().resolve("collection-completed.json")));
             assertDoesNotThrow(() -> store.requireReservation(UUID.randomUUID().toString()));
         } finally { service.close(); }
@@ -86,12 +86,12 @@ class SshWorkloadTest {
         Path directory = Path.of(job.root(), ".jobs", job.id());
         var completed = AutoLlmFileUtil.read(directory.resolve("execution-completed.json"), WorkloadProtocol.State.class);
         AutoLlmFileUtil.write(directory.resolve("started.json"), Map.of("pid", Long.MAX_VALUE, "start", "gone"));
-        AutoLlmFileUtil.write(directory.resolve("state.json"), new WorkloadProtocol.State(job.id(), "COLLECTING", completed.result(), null, null));
+        AutoLlmFileUtil.write(directory.resolve("state.json"), new WorkloadProtocol.State(job.id(), WorkloadProtocol.JobStatus.COLLECTING, completed.result(), null, null));
         Files.delete(directory.resolve("result.zip")); Files.createDirectory(directory.resolve("result.zip"));
         assertThrows(RuntimeException.class, () -> transport.call("status", job.root(), job.id(), Map.of()));
         Files.delete(directory.resolve("result.zip"));
         var collected = AutoLlmFileUtil.JSON.readValue(transport.call("status", job.root(), job.id(), Map.of()), WorkloadProtocol.State.class);
-        assertEquals("SUCCEEDED", collected.status()); assertNotNull(collected.archiveSha256());
+        assertEquals("SUCCEEDED", collected.status().name()); assertNotNull(collected.archiveSha256());
         assertEquals(Long.MAX_VALUE, AutoLlmFileUtil.JSON.readTree(Files.readString(directory.resolve("started.json"))).path("pid").asLong());
         assertEquals(completed.result(), collected.result());
     }
@@ -251,7 +251,7 @@ class SshWorkloadTest {
         var service = new AutoLlmExecutionService(new AutoLlmProcessRunner());
         var qualified = service.probe(config, root, "");
         assertEquals("x", Files.readString(count));
-        assertEquals("PASSED", qualified.prerequisites().get(3).status());
+        assertEquals("PASSED", qualified.prerequisites().get(3).status().name());
         assertEquals("selector-python", qualified.prerequisites().get(3).name());
         Files.writeString(fail, "dependency removed");
         service.identity(config, root); assertEquals("x", Files.readString(count));
@@ -259,7 +259,7 @@ class SshWorkloadTest {
         assertEquals("PREREQUISITE_FAILED", failure.failure().code()); assertEquals("xx", Files.readString(count));
         var failed = AutoLlmFileUtil.read(root.resolve("target-preflight.json"), WorkloadProtocol.Host.class);
         assertEquals("r-packages", failed.prerequisites().get(2).name());
-        assertEquals("FAILED", failed.prerequisites().get(2).status());
+        assertEquals("FAILED", failed.prerequisites().get(2).status().name());
         Files.delete(fail); service.probe(config, root, ""); assertEquals("xxx", Files.readString(count));
     }
     @Test void resumeUsesTheVerifiedRunnerAfterLocalBuildOutputDisappears() throws Exception {

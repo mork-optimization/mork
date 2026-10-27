@@ -25,7 +25,7 @@ public class AutoLlmReportService<S extends Solution<S,I>, I extends Instance> {
         Files.createDirectories(portable.getParent());
         try (var writer = AutoLlmFileUtil.JSON.writerWithDefaultPrettyPrinter().writeValuesAsArray(temporary)) {
         for (var trial : campaign.trials) {
-            counts.merge(trial.status, 1, Integer::sum);
+            counts.merge(trial.status.name(), 1, Integer::sum);
             if (trial.latestDirectory(AutoLlmCampaign.Stage.COMPARISON) == null) continue;
             var localInstances = AutoLlmPoolUtil.localInstances(campaign, root, trial);
             AutoLlmFileUtil.forEachEvent(root.resolve(trial.latestDirectory(AutoLlmCampaign.Stage.COMPARISON)).resolve("execution/events.jsonl"), row -> {

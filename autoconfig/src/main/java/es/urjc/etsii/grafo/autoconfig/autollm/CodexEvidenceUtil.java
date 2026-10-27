@@ -287,7 +287,7 @@ public final class CodexEvidenceUtil {
             int tc = 0, tp = 0, tu = 0;
             var attempts = new ArrayList<Map<String,Object>>();
             for (var attempt : trial.attempts) {
-                if (!List.of("GENERATION", "REPAIR").contains(attempt.stage)) continue;
+                if (!attempt.stage.generation()) continue;
                 Path directory = root.resolve(attempt.directory);
                 if (Files.isRegularFile(directory.resolve("evidence.json"))) attempt.codexEvidence = AutoLlmFileUtil.read(directory.resolve("evidence.json"), Evidence.class);
                 Usage usage = Files.isRegularFile(directory.resolve("usage.json")) ? AutoLlmFileUtil.read(directory.resolve("usage.json"), Usage.class) : new Usage(summary(List.of(), false), List.of(), List.of(), List.of(), List.of("Legacy or unfinished attempt has no usage artifact"));

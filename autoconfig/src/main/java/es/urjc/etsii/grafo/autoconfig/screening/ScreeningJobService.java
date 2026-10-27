@@ -16,10 +16,22 @@ import java.util.concurrent.*;
 @Service
 @ConditionalOnProperty("autollm")
 public class ScreeningJobService {
+    public enum ScreeningStatus {
+        DRAFT, RUNNING, WAITING_FOR_REMOTE, CANCELLATION_PENDING, AWAITING_APPROVAL,
+        APPROVED, NEEDS_ATTENTION, INTERRUPTED, CANCELLED;
+        public boolean inProgress() { return this == RUNNING || this == WAITING_FOR_REMOTE || this == CANCELLATION_PENDING; }
+        public boolean cancelWithoutWork() { return this == DRAFT || this == NEEDS_ATTENTION || this == INTERRUPTED; }
+        public static ScreeningStatus remoteProgress(Object status) {
+            if (WAITING_FOR_REMOTE.name().equals(status)) return WAITING_FOR_REMOTE;
+            if (CANCELLATION_PENDING.name().equals(status)) return CANCELLATION_PENDING;
+            return RUNNING;
+        }
+    }
     public record Request(AutoLlmConfig config, InstanceScreeningConfig settings, String inputPath, Double trainingFraction) {}
     public static class Job {
         public int version = 4;
-        public String id, createdAt, status = "DRAFT", mirror, reviewedHash;
+        public String id, createdAt, mirror, reviewedHash;
+        public ScreeningStatus status = ScreeningStatus.DRAFT;
         public Request request;
         public AutoLlmConfig executionConfig;
         public Map<String,Object> activity;
@@ -58,7 +70,7 @@ public class ScreeningJobService {
     }
     @PostConstruct public void recover() {
         try (var lock = campaigns.lock()) {
-            for (var job : list()) if (List.of("RUNNING", "WAITING_FOR_REMOTE", "CANCELLATION_PENDING").contains(job.status)) { job.status = "INTERRUPTED"; save(job); }
+            for (var job : list()) if (job.status.inProgress()) { job.status = ScreeningStatus.INTERRUPTED; save(job); }
         } catch (IllegalStateException ignored) { /* Another owned controller is active. */ }
     }
     public synchronized Job create(Request request) {
@@ -82,32 +94,32 @@ public class ScreeningJobService {
     public synchronized Job resume(String id) { return start(id, null); }
     public synchronized Job approve(String id, String reviewedHash) {
         var job = load(id);
-        if (!job.status.equals("AWAITING_APPROVAL")) throw new IllegalStateException("Review a completed proposal before approval");
+        if (job.status != ScreeningStatus.AWAITING_APPROVAL) throw new IllegalStateException("Review a completed proposal before approval");
         if (reviewedHash == null || !reviewedHash.equals(AutoLlmFileUtil.hash(Path.of(job.mirror).resolve("proposal/proposal.json")))) throw new IllegalArgumentException("Approval requires the exact reviewed proposal SHA-256");
         return start(id, reviewedHash);
     }
     private Job start(String id, String approval) {
         if (active != null) throw new IllegalStateException("A screening job is active");
         var job = load(id);
-        if (job.status.equals("APPROVED") || approval == null && job.status.equals("AWAITING_APPROVAL")) throw new IllegalStateException("Selection is already complete; review or use its published indexes");
+        if (job.status == ScreeningStatus.APPROVED || approval == null && job.status == ScreeningStatus.AWAITING_APPROVAL) throw new IllegalStateException("Selection is already complete; review or use its published indexes");
         var lease = campaigns.acquire(id, directory(id));
         try {
             ownership = lease; active = id; cancelled = false; if (approval != null) job.reviewedHash = approval;
-            job.status = "RUNNING"; job.problem = null; save(job);
+            job.status = ScreeningStatus.RUNNING; job.problem = null; save(job);
             task = executor.submit(() -> {
                 try {
                     var inputs = new InstanceConfiguration(); inputs.setForSelection(job.request.inputPath()); inputs.setPreliminarPercentage(job.request.trainingFraction());
                     var solver = new SolverConfig(); solver.setSeed(job.request.config().seed()); solver.setRandomType(es.urjc.etsii.grafo.util.random.RandomType.DEFAULT);
                     var service = new RemoteScreeningService(processes, state -> {
                         job.activity = state; if (state.containsKey("mirror")) job.mirror = (String)state.get("mirror");
-                        if (state.get("remote") instanceof Map<?,?> remote) job.status = Set.of("WAITING_FOR_REMOTE", "CANCELLATION_PENDING").contains(remote.get("status")) ? (String)remote.get("status") : "RUNNING";
+                        if (state.get("remote") instanceof Map<?,?> remote) job.status = ScreeningStatus.remoteProgress(remote.get("status"));
                         save(job);
                     }, () -> cancelled || Thread.currentThread().isInterrupted());
                     service.run(job.executionConfig, job.request.settings(), inputs, solver, job.reviewedHash != null, job.reviewedHash, List.of("api-screening", id));
-                    job.status = job.reviewedHash == null ? "AWAITING_APPROVAL" : "APPROVED";
-                } catch (CancellationException e) { job.status = cancelled ? "CANCELLED" : "INTERRUPTED"; }
+                    job.status = job.reviewedHash == null ? ScreeningStatus.AWAITING_APPROVAL : ScreeningStatus.APPROVED;
+                } catch (CancellationException e) { job.status = cancelled ? ScreeningStatus.CANCELLED : ScreeningStatus.INTERRUPTED; }
                 catch (IOException | RuntimeException e) {
-                    job.status = "NEEDS_ATTENTION"; job.problem = AutoLlmFailureUtil.describe(e instanceof RuntimeException runtime ? runtime : new UncheckedIOException((IOException)e), directory(id));
+                    job.status = ScreeningStatus.NEEDS_ATTENTION; job.problem = AutoLlmFailureUtil.describe(e instanceof RuntimeException runtime ? runtime : new UncheckedIOException((IOException)e), directory(id));
                 } finally {
                     try { save(job); }
                     finally { release(lease); }
@@ -121,16 +133,16 @@ public class ScreeningJobService {
             var job = load(id); var lease = campaigns.acquire(id, directory(id));
             try {
             ownership = lease; active = id; cancelled = true;
-            job.status = "CANCELLATION_PENDING"; save(job);
+            job.status = ScreeningStatus.CANCELLATION_PENDING; save(job);
             task = executor.submit(() -> {
-                try { new AutoLlmExecutionService(processes).cancelOutstanding(job.executionConfig, directory(id), state -> { job.activity = Map.of("phase", "CANCELLATION", "remote", state); save(job); }); job.status = "CANCELLED"; job.problem = null; }
-                catch (RuntimeException e) { job.status = "NEEDS_ATTENTION"; job.problem = AutoLlmFailureUtil.describe(e, directory(id)); }
+                try { new AutoLlmExecutionService(processes).cancelOutstanding(job.executionConfig, directory(id), state -> { job.activity = Map.of("phase", "CANCELLATION", "remote", state); save(job); }); job.status = ScreeningStatus.CANCELLED; job.problem = null; }
+                catch (RuntimeException e) { job.status = ScreeningStatus.NEEDS_ATTENTION; job.problem = AutoLlmFailureUtil.describe(e, directory(id)); }
                 finally { try { save(job); } finally { release(lease); } }
             });
             return job;
             } catch (RuntimeException | Error e) { release(lease); throw e; }
         }
-        if (active == null && List.of("DRAFT", "NEEDS_ATTENTION", "INTERRUPTED").contains(load(id).status)) { var job = load(id); job.status = "CANCELLED"; save(job); return job; }
+        if (active == null && load(id).status.cancelWithoutWork()) { var job = load(id); job.status = ScreeningStatus.CANCELLED; save(job); return job; }
         if (!id.equals(active)) throw new IllegalStateException("Screening is not active");
         cancelled = true; return load(id);
     }

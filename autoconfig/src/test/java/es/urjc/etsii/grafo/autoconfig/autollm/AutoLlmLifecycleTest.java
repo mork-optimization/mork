@@ -69,6 +69,7 @@ class AutoLlmLifecycleTest {
                 new AutoLlmConfig.Tuning(100, 2L, 20L, false), new AutoLlmConfig.Comparison(2, 20L), new AutoLlmConfig.Execution(2, 50L, 5000L, 5000L, 5000L, 5000L, 5000L, 10000L, "128m", null, null));
         var failures = new java.util.concurrent.atomic.AtomicInteger(mode.equals("transient") ? 2 : mode.equals("persistent") ? 3 : 0);
         var generations = new java.util.concurrent.atomic.AtomicInteger();
+        var prerequisiteChecks = new java.util.concurrent.atomic.AtomicInteger();
         var runner = new AutoLlmProcessRunner() {
             @Override public Result run(List<String> command, Path cwd, Path output, long timeout, long planned, long grace, BooleanSupplier cancel, boolean watch, long startup) {
                 if (command.contains("exec")) {
@@ -76,6 +77,7 @@ class AutoLlmLifecycleTest {
                     if (failures.getAndDecrement() > 0) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.TRANSIENT_INFRASTRUCTURE, "TEMPORARY_LAUNCH", "Temporary launch failure", output);
                 }
                 if (!command.getFirst().equals("Rscript")) return super.run(command, cwd, output, timeout, planned, grace, cancel, watch, startup);
+                prerequisiteChecks.incrementAndGet();
                 try { Files.createDirectories(output); Files.writeString(output.resolve("stdout.log"), "fake-r-version"); Files.writeString(output.resolve("stderr.log"), ""); } catch (Exception e) { throw new IllegalStateException(e); }
                 return new Result(0, false, 0);
             }
@@ -95,7 +97,7 @@ class AutoLlmLifecycleTest {
             @Override protected AutoLlmTrialRunner runner(AutoLlmExecutionContext model, Path root, AutoLlmTrialRunner.Listener listener, BooleanSupplier stop, java.util.concurrent.Semaphore permits) {
                 return new AutoLlmTrialRunner(model, root, runner, generator, new AutoLlmTrialRunner.Listener() {
                     public void state(AutoLlmExecutionContext.Snapshot snapshot) {
-                        if (snapshot.trial() != null && snapshot.trial().status.equals("WAITING_FOR_QUOTA")) {
+                        if ((snapshot.trial() != null && snapshot.trial().status == AutoLlmCampaign.TrialStatus.WAITING_FOR_QUOTA)) {
                             assertEquals(0, snapshot.trial().infrastructureRetries);
                             assertEquals(0, snapshot.trial().repairTurns);
                             assertEquals(1, permits.availablePermits()); quotaReleasedSlot.set(true);
@@ -112,6 +114,8 @@ class AutoLlmLifecycleTest {
             while (service.active() != null && System.currentTimeMillis() < deadline) Thread.sleep(50);
             assertNull(service.active(), "Campaign must terminate within the test budget");
             var campaign = store.load(created.id);
+            assertEquals(1, prerequisiteChecks.get(), "Qualification must check R dependencies once, including relocation and all trials");
+            assertEquals("fake-r-version", campaign.targets.get("local").versions.get("r-packages"));
             Path campaignRoot = store.directory(created.id);
             assertEquals(List.of(input.toString()), Files.readAllLines(campaignRoot.resolve("data/training.index")));
             assertFalse(Files.exists(campaignRoot.resolve("data/training")));
@@ -121,15 +125,15 @@ class AutoLlmLifecycleTest {
                 assertFalse(Files.exists(campaignRoot.resolve("targets/local/data/training")));
             }
             if (mode.startsWith("quota-")) {
-                assertEquals("COMPLETED_WITH_FAILURES", campaign.status, campaign.failure);
+                assertEquals("COMPLETED_WITH_FAILURES", campaign.status.name(), campaign.failure);
                 var first = campaign.trials.getFirst();
-                assertEquals("FAILED", first.status); assertEquals("SUCCEEDED", campaign.trials.get(1).status);
+                assertEquals("FAILED", first.status.name()); assertEquals("SUCCEEDED", campaign.trials.get(1).status.name());
                 assertEquals(0, first.infrastructureRetries); assertEquals(mode.equals("quota-repair") ? 1 : 0, first.repairTurns);
                 assertNull(first.quotaRetryAt); assertFalse(first.repairPending); assertTrue(quotaReleasedSlot.get());
                 int limited = 0;
-                for (var attempt : first.attempts) if (List.of("GENERATION", "REPAIR").contains(attempt.stage)) {
+                for (var attempt : first.attempts) if (attempt.stage.generation()) {
                     assertEquals(first.threadId, attempt.codexEvidence.threadId());
-                    if (attempt.status.equals("QUOTA_LIMIT")) limited++;
+                    if ((attempt.status == AutoLlmCampaign.AttemptStatus.QUOTA_LIMIT)) limited++;
                 }
                 assertEquals(mode.equals("quota-repeat") ? 4 : 1, limited);
                 String events = Files.readString(store.directory(campaign.id).resolve("campaign-events.jsonl"));
@@ -137,49 +141,49 @@ class AutoLlmLifecycleTest {
                 return;
             }
             if (mode.equals("framework")) {
-                assertEquals("NEEDS_ATTENTION", campaign.status, campaign.failure); assertEquals("BLOCKED", campaign.trials.getFirst().status);
+                assertEquals("NEEDS_ATTENTION", campaign.status.name(), campaign.failure); assertEquals("BLOCKED", campaign.trials.getFirst().status.name());
                 assertEquals(1, generations.get()); assertEquals(0, campaign.trials.getFirst().repairTurns);
                 service.start(campaign.id, true, Set.of()); deadline = System.currentTimeMillis() + 45000;
                 while (service.active() != null && System.currentTimeMillis() < deadline) Thread.sleep(50);
                 assertNull(service.active()); var recovered = store.load(campaign.id);
-                assertEquals("COMPLETED_WITH_FAILURES", recovered.status, recovered.failure); assertEquals(2, generations.get());
-                assertEquals(0, recovered.trials.getFirst().repairTurns); assertEquals("SUCCEEDED", recovered.trials.get(1).status);
+                assertEquals("COMPLETED_WITH_FAILURES", recovered.status.name(), recovered.failure); assertEquals(2, generations.get());
+                assertEquals(0, recovered.trials.getFirst().repairTurns); assertEquals("SUCCEEDED", recovered.trials.get(1).status.name());
                 assertTrue(Files.readString(store.directory(campaign.id).resolve("campaign-events.jsonl")).contains("BUILD_FAILED"));
                 assertTrue(Files.readString(store.directory(campaign.id).resolve(recovered.trials.getFirst().attempts.get(1).directory).resolve("build/stderr.log")).contains("Unchanged framework test failed")); return;
             }
             if (mode.equals("baseline")) {
-                assertEquals("NEEDS_ATTENTION", campaign.status, campaign.failure); assertEquals(0, generations.get());
-                assertTrue(campaign.trials.getFirst().attempts.isEmpty()); assertEquals("PENDING", campaign.trials.get(1).status); return;
+                assertEquals("NEEDS_ATTENTION", campaign.status.name(), campaign.failure); assertEquals(0, generations.get());
+                assertTrue(campaign.trials.getFirst().attempts.isEmpty()); assertEquals("PENDING", campaign.trials.get(1).status.name()); return;
             }
             if (mode.equals("persistent")) {
-                assertEquals("NEEDS_ATTENTION", campaign.status, campaign.failure); assertEquals("BLOCKED", campaign.trials.getFirst().status);
+                assertEquals("NEEDS_ATTENTION", campaign.status.name(), campaign.failure); assertEquals("BLOCKED", campaign.trials.getFirst().status.name());
                 assertEquals(2, campaign.trials.getFirst().infrastructureRetries); assertEquals(0, campaign.trials.getFirst().repairTurns);
-                assertEquals(3, generations.get()); assertEquals("PENDING", campaign.trials.get(1).status); return;
+                assertEquals(3, generations.get()); assertEquals("PENDING", campaign.trials.get(1).status.name()); return;
             }
             if (archiveFailure) {
-                assertEquals("NEEDS_ATTENTION", campaign.status, campaign.failure);
-                assertEquals("BLOCKED", campaign.trials.getFirst().status);
+                assertEquals("NEEDS_ATTENTION", campaign.status.name(), campaign.failure);
+                assertEquals("BLOCKED", campaign.trials.getFirst().status.name());
                 assertEquals(AutoLlmFailureUtil.Category.INTEGRITY, campaign.trials.getFirst().problem.category());
                 assertEquals(0, campaign.trials.getFirst().repairTurns);
-                assertEquals("PENDING", campaign.trials.get(1).status);
+                assertEquals("PENDING", campaign.trials.get(1).status.name());
                 assertEquals("FAILED", campaign.trials.getFirst().attempts.getFirst().codexEvidence.status());
                 service.start(campaign.id, true, Set.of());
                 deadline = System.currentTimeMillis() + 10000;
                 while (service.active() != null && System.currentTimeMillis() < deadline) Thread.sleep(20);
-                assertNull(service.active()); assertEquals("BLOCKED", store.load(campaign.id).trials.getFirst().status);
+                assertNull(service.active()); assertEquals("BLOCKED", store.load(campaign.id).trials.getFirst().status.name());
                 assertEquals(1, generations.get());
                 return;
             }
             if (mode.equals("transient")) {
-                assertEquals("COMPLETED_WITH_FAILURES", campaign.status, campaign.failure); assertNull(campaign.problem);
+                assertEquals("COMPLETED_WITH_FAILURES", campaign.status.name(), campaign.failure); assertNull(campaign.problem);
                 assertEquals(2, campaign.trials.getFirst().infrastructureRetries); assertEquals(1, campaign.trials.getFirst().repairTurns);
-                assertEquals("SUCCEEDED", campaign.trials.get(1).status, campaign.trials.get(1).failure);
+                assertEquals("SUCCEEDED", campaign.trials.get(1).status.name(), campaign.trials.get(1).failure);
                 assertEquals(80L, campaign.codexUsage.tokens().totalTokens()); assertEquals("PARTIAL", campaign.codexUsage.status()); return;
             }
-            assertEquals("COMPLETED_WITH_FAILURES", campaign.status, campaign.failure);
-            assertEquals("FAILED", campaign.trials.getFirst().status, campaign.trials.getFirst().failure);
+            assertEquals("COMPLETED_WITH_FAILURES", campaign.status.name(), campaign.failure);
+            assertEquals("FAILED", campaign.trials.getFirst().status.name(), campaign.trials.getFirst().failure);
             assertTrue(campaign.trials.getFirst().failure.contains(archiveFailure ? "could not be archived" : "Hung evaluation"));
-            var second = campaign.trials.get(1); assertEquals("SUCCEEDED", second.status, second.failure);
+            var second = campaign.trials.get(1); assertEquals("SUCCEEDED", second.status.name(), second.failure);
             assertNotEquals(campaign.trials.getFirst().threadId, second.threadId); assertNotEquals(campaign.trials.getFirst().tuningSeed, second.tuningSeed);
             assertEquals(campaign.trials.getFirst().comparisonSeed, second.comparisonSeed);
             String sourceInstructions;
@@ -190,12 +194,12 @@ class AutoLlmLifecycleTest {
                 assertEquals(archiveFailure ? 0 : 1, trial.repairTurns);
                 assertEquals(archiveFailure && trial.number == 1 ? "UNAVAILABLE" : "COMPLETE", trial.codexUsage.status());
                 if (!archiveFailure) assertEquals(40L, trial.codexUsage.tokens().totalTokens());
-                for (var generation : trial.attempts) if (List.of("GENERATION", "REPAIR").contains(generation.stage)) {
+                for (var generation : trial.attempts) if (generation.stage.generation()) {
                     String prompt = Files.readString(store.directory(campaign.id).resolve(generation.directory).resolve("prompt.txt"));
                     assertTrue(prompt.startsWith(created.prompt));
                     assertTrue(prompt.endsWith(sourceInstructions));
                 }
-                for (var repair : trial.attempts) if (repair.stage.equals("REPAIR")) {
+                for (var repair : trial.attempts) if ((repair.stage == AutoLlmCampaign.AttemptStage.REPAIR)) {
                     Map<?,?> owner = AutoLlmFileUtil.read(store.directory(campaign.id).resolve(repair.directory).resolve("owner.json"), Map.class);
                     List<?> command = assertInstanceOf(List.class, owner.get("command")); assertEquals(trial.threadId, command.get(command.indexOf("resume") + 1));
                     assertEquals(1, repair.codexEvidence.conversations().size());
@@ -211,14 +215,14 @@ class AutoLlmLifecycleTest {
             for (var trial : campaign.trials) for (var stage : trial.attempts) {
                 Path directory = root.resolve(stage.directory);
                 switch (stage.stage) {
-                    case "PREPARATION" -> {
-                        if (stage.status.equals("SUCCEEDED")) {
+                    case PREPARATION -> {
+                        if ((stage.status == AutoLlmCampaign.AttemptStatus.SUCCEEDED)) {
                             assertChildAssertions(directory.resolve("check"), false);
                             assertChildAssertions(directory.resolve("probe"), true);
                             assertChildAssertions(directory.resolve("pilot"), true);
                         }
                     }
-                    case "TUNING", "WINNER_EXPORT", "COMPARISON" -> assertChildAssertions(directory, false);
+                    case TUNING, WINNER_EXPORT, COMPARISON -> assertChildAssertions(directory, false);
                 }
             }
             assertTrue(Files.exists(root.resolve(second.outputDirectory(AutoLlmCampaign.Stage.TUNING)).resolve("autoconfig-final-elites.json")));
@@ -259,25 +263,25 @@ class AutoLlmLifecycleTest {
     }
     @Test void recoveryPreservesCompletedTrialsAndReconcilesOwnedChildren() throws Exception {
         var settings = new AutoLlmConfig(null, temp.toString(), null, null, null, null, null, null, null, null, null, null, null, null);
-        var store = new AutoLlmCampaignStore(settings); var campaign = new AutoLlmCampaign(); campaign.id = UUID.randomUUID().toString(); campaign.createdAt = "2026-10-07"; campaign.config = settings; campaign.status = "RUNNING";
-        var completed = new AutoLlmCampaign.Trial(); completed.number = 1; completed.status = "SUCCEEDED"; campaign.trials.add(completed);
-        var interrupted = new AutoLlmCampaign.Trial(); interrupted.number = 2; interrupted.status = "TUNING";
-        var attempt = new AutoLlmCampaign.Attempt(); attempt.stage = "TUNING"; attempt.directory = "trials/002/attempts/001-tuning"; interrupted.attempts.add(attempt); campaign.trials.add(interrupted); store.save(campaign);
-        var generation = new AutoLlmCampaign.Trial(); generation.number = 3; generation.status = "GENERATION";
-        var generating = new AutoLlmCampaign.Attempt(); generating.stage = "GENERATION"; generating.directory = "trials/003/attempts/001-generation"; generation.attempts.add(generating); campaign.trials.add(generation); store.save(campaign);
+        var store = new AutoLlmCampaignStore(settings); var campaign = new AutoLlmCampaign(); campaign.id = UUID.randomUUID().toString(); campaign.createdAt = "2026-10-07"; campaign.config = settings; campaign.status = AutoLlmCampaign.CampaignStatus.RUNNING;
+        var completed = new AutoLlmCampaign.Trial(); completed.number = 1; completed.status = AutoLlmCampaign.TrialStatus.SUCCEEDED; campaign.trials.add(completed);
+        var interrupted = new AutoLlmCampaign.Trial(); interrupted.number = 2; interrupted.status = AutoLlmCampaign.TrialStatus.TUNING;
+        var attempt = new AutoLlmCampaign.Attempt(); attempt.stage = AutoLlmCampaign.AttemptStage.TUNING; attempt.directory = "trials/002/attempts/001-tuning"; interrupted.attempts.add(attempt); campaign.trials.add(interrupted); store.save(campaign);
+        var generation = new AutoLlmCampaign.Trial(); generation.number = 3; generation.status = AutoLlmCampaign.TrialStatus.GENERATION;
+        var generating = new AutoLlmCampaign.Attempt(); generating.stage = AutoLlmCampaign.AttemptStage.GENERATION; generating.directory = "trials/003/attempts/001-generation"; generation.attempts.add(generating); campaign.trials.add(generation); store.save(campaign);
         String thread = UUID.randomUUID().toString();
         Path log = store.directory(campaign.id).resolve(generating.directory).resolve("stdout.log"); Files.createDirectories(log.getParent()); Files.writeString(log, "{\"type\":\"thread.started\",\"thread_id\":\"" + thread + "\"}\n");
         Path source = store.directory(campaign.id).resolve("trials/003/source");
         CodexEvidenceUtil.begin(temp.resolve("codex-home"), source, log.getParent(), null);
         AutoLlmFileUtil.append(temp.resolve("codex-home/sessions/rollout-" + thread + ".jsonl"), Map.of("type", "session_meta", "payload", Map.of("id", thread, "cwd", source.toString())));
-        var lost = new AutoLlmCampaign.Trial(); lost.number = 4; lost.status = "GENERATION";
-        var missing = new AutoLlmCampaign.Attempt(); missing.stage = "GENERATION"; missing.directory = "trials/004/attempts/001-generation"; lost.attempts.add(missing); campaign.trials.add(lost); store.save(campaign);
+        var lost = new AutoLlmCampaign.Trial(); lost.number = 4; lost.status = AutoLlmCampaign.TrialStatus.GENERATION;
+        var missing = new AutoLlmCampaign.Attempt(); missing.stage = AutoLlmCampaign.AttemptStage.GENERATION; missing.directory = "trials/004/attempts/001-generation"; lost.attempts.add(missing); campaign.trials.add(lost); store.save(campaign);
         AutoLlmFileUtil.append(store.directory(campaign.id).resolve(missing.directory).resolve("stdout.log"), Map.of("type", "thread.started", "thread_id", UUID.randomUUID().toString()));
         var runner = new AutoLlmProcessRunner();
         var service = new AutoLlmCampaignService(settings, store, runner, codex(runner), mock(AutoLlmReportService.class), new InstanceConfiguration());
         try {
             service.recover(); var recovered = store.load(campaign.id);
-            assertEquals("INTERRUPTED", recovered.status);
+            assertEquals("INTERRUPTED", recovered.status.name());
             for (var trial : recovered.trials) {
                 var context = new AutoLlmExecutionContext(recovered.id, "", store.directory(campaign.id), recovered.prompt);
                 context.config = recovered.config; context.trial = trial;
@@ -286,10 +290,10 @@ class AutoLlmLifecycleTest {
                 }, () -> false, new java.util.concurrent.Semaphore(1));
                 task.reconcile();
             }
-            assertEquals("SUCCEEDED", recovered.trials.getFirst().status); assertEquals("INTERRUPTED", recovered.trials.get(1).attempts.getFirst().status);
+            assertEquals("SUCCEEDED", recovered.trials.getFirst().status.name()); assertEquals("INTERRUPTED", recovered.trials.get(1).attempts.getFirst().status.name());
             assertEquals(thread, recovered.trials.get(2).threadId); assertTrue(recovered.trials.get(2).resumeTurn); assertEquals(0, recovered.trials.get(2).repairTurns);
             assertEquals("ARCHIVED", recovered.trials.get(2).attempts.getFirst().codexEvidence.status());
-            assertEquals("BLOCKED", recovered.trials.get(3).status); assertFalse(recovered.trials.get(3).resumeTurn);
+            assertEquals("BLOCKED", recovered.trials.get(3).status.name()); assertFalse(recovered.trials.get(3).resumeTurn);
             assertEquals("FAILED", recovered.trials.get(3).attempts.getFirst().codexEvidence.status());
             try (var lock = store.lock()) {
                 assertTrue(lock.lock().isValid());

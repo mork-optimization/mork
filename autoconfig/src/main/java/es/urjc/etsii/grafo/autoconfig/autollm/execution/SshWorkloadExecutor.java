@@ -72,7 +72,7 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                 try {
                     if (!initialized) { transport.bootstrap(); initialized = true; }
                     State state = AutoLlmFileUtil.JSON.readValue(transport.call("status", remote, job.id(), Map.of()), State.class);
-                    if (state.status().equals("NOT_FOUND")) {
+                    if (state.status() == JobStatus.NOT_FOUND) {
                         for (String layer : job.layers()) {
                             String hash = Path.of(layer).getFileName().toString().replace(".zip", "");
                             var cached = AutoLlmFileUtil.JSON.readTree(transport.call("has", remote, layer, Map.of()));
@@ -83,7 +83,7 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                         transport.upload(remote, ".jobs/" + job.id() + "/input.zip", archive);
                         state = AutoLlmFileUtil.JSON.readValue(transport.call("submit", remote, job.id(), job), State.class);
                         verified = true;
-                    } else if (!verified || state.status().equals("SUBMITTED")) {
+                    } else if (!verified || state.status() == JobStatus.SUBMITTED) {
                         state = AutoLlmFileUtil.JSON.readValue(transport.call("submit", remote, job.id(), job), State.class);
                         verified = true;
                     }
@@ -105,7 +105,7 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                     }
                     state = page.state();
                     lastSynchronizedAt = Instant.now().toString();
-                    publish(work.output(), job, cancellationSent ? "CANCELLATION_PENDING" : state.status(), null);
+                    publish(work.output(), job, cancellationSent ? "CANCELLATION_PENDING" : state.status().name(), null);
                     if (state.archiveSha256() != null) {
                         Path archive = work.output().resolve("remote-result.zip"); transport.download(remote, job.id(), archive);
                         if (!state.archiveSha256().equals(AutoLlmFileUtil.hash(archive))) throw new IllegalStateException("Remote result checksum mismatch");
@@ -113,10 +113,10 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                         DirectoryArchiveUtil.archive(work.output().resolve("solutions"));
                         Files.delete(archive);
                         AutoLlmFileUtil.write(work.output().resolve("collection-completed.json"), Map.of("jobId", job.id(), "archiveSha256", state.archiveSha256()));
-                        publish(work.output(), job, state.status(), state.failure());
-                        if (state.status().equals("CANCELLED")) throw new CancellationException("Remote cancellation confirmed");
-                        if (state.status().equals("HOST_CHANGED")) throw new ExecutionTargetException(state.failure());
-                        if (state.status().equals("INTERRUPTED")) throw new CancellationException("Remote supervisor interrupted; resume without a component repair");
+                        publish(work.output(), job, state.status().name(), state.failure());
+                        if (state.status() == JobStatus.CANCELLED) throw new CancellationException("Remote cancellation confirmed");
+                        if (state.status() == JobStatus.HOST_CHANGED) throw new ExecutionTargetException(state.failure());
+                        if (state.status() == JobStatus.INTERRUPTED) throw new CancellationException("Remote supervisor interrupted; resume without a component repair");
                         if (state.result() == null) {
                             Path failure = work.output().resolve("execution/failure.json");
                             if (Files.exists(failure)) throw new AutoLlmFailureUtil.StageException(AutoLlmFileUtil.read(failure, AutoLlmFailureUtil.Failure.class), null);

@@ -120,9 +120,9 @@ public class AutoLlmController {
                 progress.put("attempt", attempt); progress.put("substage", attempt.substage);
                 progress.put("elapsedMillis", java.time.Duration.between(java.time.Instant.parse(attempt.startedAt), attempt.finishedAt == null ? java.time.Instant.now() : java.time.Instant.parse(attempt.finishedAt)).toMillis());
                 Path remote = directory.resolve("remote-status.json");
-                if (attempt.substage != null) remote = directory.resolve(switch (attempt.substage) { case "BUILD" -> "build"; case "METADATA" -> "check"; case "PROBES" -> "probe"; case "PILOT" -> "pilot"; default -> ""; }).resolve("remote-status.json");
+                if (attempt.substage != null) remote = directory.resolve(switch (attempt.substage) { case BUILD -> "build"; case METADATA -> "check"; case PROBES -> "probe"; case PILOT -> "pilot"; default -> ""; }).resolve("remote-status.json");
                 if (Files.exists(remote)) progress.put("remote", AutoLlmFileUtil.read(remote, Object.class));
-                if (List.of("GENERATION", "REPAIR").contains(attempt.stage)) progress.put("generation", CodexProgressUtil.refresh(directory));
+                if (attempt.stage.generation()) progress.put("generation", CodexProgressUtil.refresh(directory));
                 for (String name : List.of("execution/tuning-progress.json", "pilot/execution/tuning-progress.json", "execution/tuning-status.json", "probe/execution/probes.json")) {
                     if (Files.exists(directory.resolve(name))) { progress.put("workload", AutoLlmFileUtil.read(directory.resolve(name), Object.class)); break; }
                 }
@@ -133,7 +133,7 @@ public class AutoLlmController {
     }
     @GetMapping("/campaigns/{id}/trials/{number}/activity") public AutoLlmLogUtil.Page activity(@PathVariable String id, @PathVariable int number,
             @RequestParam int attempt, @RequestParam(defaultValue = "0") long cursor) {
-        for (var trial : store.status(id).trials) if (trial.number == number) for (var candidate : trial.attempts) if (candidate.number == attempt && List.of("GENERATION", "REPAIR").contains(candidate.stage)) {
+        for (var trial : store.status(id).trials) if (trial.number == number) for (var candidate : trial.attempts) if (candidate.number == attempt && candidate.stage.generation()) {
             Path directory = store.directory(id).resolve(candidate.directory); CodexProgressUtil.refresh(directory);
             return AutoLlmLogUtil.read(directory.resolve("activity.jsonl"), cursor, 65536);
         }

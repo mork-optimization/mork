@@ -86,10 +86,10 @@ public final class RemoteWorkloadMain {
             } else {
                 if (!requested.inputSha256().equals(AutoLlmFileUtil.hash(directory.resolve("input.zip")))) throw new IllegalStateException("Workload input checksum mismatch");
                 AutoLlmFileUtil.write(file, requested);
-                AutoLlmFileUtil.write(directory.resolve("state.json"), new State(id, "SUBMITTED", null, null, null));
+                AutoLlmFileUtil.write(directory.resolve("state.json"), new State(id, JobStatus.SUBMITTED, null, null, null));
             }
             State current = state(root, id);
-            if (current.status().equals("SUBMITTED") && !Files.exists(directory.resolve("started.json"))) {
+            if (current.status() == JobStatus.SUBMITTED && !Files.exists(directory.resolve("started.json"))) {
                 var command = new ArrayList<>(List.of("nohup")); command.addAll(selfCommand()); command.addAll(List.of("supervise", root.toString(), id));
                 new ProcessBuilder(command).directory(root.toFile()).redirectInput(ProcessBuilder.Redirect.from(new File("/dev/null")))
                         .redirectOutput(directory.resolve("supervisor.log").toFile()).redirectErrorStream(true).start();
@@ -111,7 +111,7 @@ public final class RemoteWorkloadMain {
             if (lock == null || Files.exists(directory.resolve("started.json"))) return;
             AutoLlmFileUtil.write(directory.resolve("started.json"), Map.of("pid", ProcessHandle.current().pid(), "start", ProcessHandle.current().info().startInstant().orElseThrow().toString()));
             Job job = AutoLlmFileUtil.read(directory.resolve("job.json"), Job.class);
-            AutoLlmProcessRunner.Result result = null; String failure = null; String outcome = "FAILED";
+            AutoLlmProcessRunner.Result result = null; String failure = null; JobStatus outcome = JobStatus.FAILED;
             try (var workspace = FileChannel.open(WorkloadPathUtil.workspace(root).resolve("execution.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var ownership = workspace.tryLock()) {
                 if (ownership == null) throw new IllegalStateException("Another remote measurement owns this workspace");
                 if (!job.expectedHost().isEmpty() && !job.expectedHost().equals(ScreeningFileUtil.host())) throw new ExecutionTargetException("Execution host or allocation changed; prepare and review a new dataset");
@@ -123,7 +123,7 @@ public final class RemoteWorkloadMain {
                 }
                 WorkloadArchiveUtil.unpack(directory.resolve("input.zip"), root);
                 restoreGit(root);
-                AutoLlmFileUtil.write(directory.resolve("state.json"), new State(id, "RUNNING", null, null, null));
+                AutoLlmFileUtil.write(directory.resolve("state.json"), new State(id, JobStatus.RUNNING, null, null, null));
                 var command = new ArrayList<String>();
                 if (!job.environment().isEmpty()) {
                     command.add("env");
@@ -140,16 +140,16 @@ public final class RemoteWorkloadMain {
                 }
                 result = new AutoLlmProcessRunner().run(command, WorkloadPathUtil.inside(root, job.cwd()), WorkloadPathUtil.inside(root, job.output()),
                         job.timeoutMillis(), job.plannedMillis(), job.graceMillis(), () -> Files.exists(directory.resolve("cancel")), job.watchEvaluations(), job.startupMillis());
-                outcome = result.exitCode() == 0 || result.plannedDeadline() ? "SUCCEEDED" : "FAILED";
-            } catch (CancellationException e) { outcome = "CANCELLED"; failure = e.toString(); }
-            catch (ExecutionTargetException e) { outcome = "HOST_CHANGED"; failure = e.toString(); }
+                outcome = result.exitCode() == 0 || result.plannedDeadline() ? JobStatus.SUCCEEDED : JobStatus.FAILED;
+            } catch (CancellationException e) { outcome = JobStatus.CANCELLED; failure = e.toString(); }
+            catch (ExecutionTargetException e) { outcome = JobStatus.HOST_CHANGED; failure = e.toString(); }
             catch (Exception e) {
                 failure = e.toString();
                 if (e instanceof RuntimeException problem) AutoLlmFileUtil.write(WorkloadPathUtil.inside(root, job.output()).resolve("execution/failure.json"), AutoLlmFailureUtil.describe(problem, WorkloadPathUtil.inside(root, job.output())));
             }
             State completed = new State(id, outcome, result, failure, null);
             AutoLlmFileUtil.write(directory.resolve("execution-completed.json"), completed);
-            AutoLlmFileUtil.write(directory.resolve("state.json"), new State(id, "COLLECTING", result, failure, null));
+            AutoLlmFileUtil.write(directory.resolve("state.json"), new State(id, JobStatus.COLLECTING, result, failure, null));
             collectResult(root, id, job, completed);
         }
     }
@@ -191,10 +191,10 @@ public final class RemoteWorkloadMain {
     }
     private static State state(Path root, String id) throws IOException {
         Path directory = jobDirectory(root, id), file = directory.resolve("state.json");
-        if (!Files.exists(file)) return new State(id, "NOT_FOUND", null, null, null);
+        if (!Files.exists(file)) return new State(id, JobStatus.NOT_FOUND, null, null, null);
         State state = AutoLlmFileUtil.read(file, State.class);
         Path owner = directory.resolve("started.json");
-        if (Set.of("SUBMITTED", "RUNNING", "COLLECTING").contains(state.status()) && Files.exists(owner)) {
+        if (state.status().inProgress() && Files.exists(owner)) {
             var identity = AutoLlmFileUtil.read(owner, Map.class);
             boolean alive = ProcessHandle.of(((Number) identity.get("pid")).longValue()).filter(ProcessHandle::isAlive)
                     .flatMap(p -> p.info().startInstant()).map(Instant::toString).orElse("").equals(identity.get("start"));
@@ -202,7 +202,7 @@ public final class RemoteWorkloadMain {
                 try (var channel = FileChannel.open(directory.resolve("run.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.tryLock()) {
                 if (lock == null) return AutoLlmFileUtil.read(file, State.class);
                 state = AutoLlmFileUtil.read(file, State.class);
-                if (!Set.of("SUBMITTED", "RUNNING", "COLLECTING").contains(state.status())) return state;
+                if (!state.status().inProgress()) return state;
                 System.setProperty("mork.execution.remote", "true");
                 Job job = AutoLlmFileUtil.read(directory.resolve("job.json"), Job.class);
                 Path completed = directory.resolve("execution-completed.json");
@@ -213,7 +213,7 @@ public final class RemoteWorkloadMain {
                 new AutoLlmProcessRunner().reconcile(WorkloadPathUtil.inside(root, job.output()));
                 var files = new TreeMap<String,Path>(); WorkloadArchiveUtil.addTree(files, root, WorkloadPathUtil.inside(root, job.output()), false);
                 WorkloadArchiveUtil.pack(directory.resolve("result.zip"), files);
-                state = new State(id, "INTERRUPTED", null, "Remote supervisor exited before completion", AutoLlmFileUtil.hash(directory.resolve("result.zip")));
+                state = new State(id, JobStatus.INTERRUPTED, null, "Remote supervisor exited before completion", AutoLlmFileUtil.hash(directory.resolve("result.zip")));
                 AutoLlmFileUtil.write(file, state);
                 }
             }

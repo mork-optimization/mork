@@ -20,10 +20,10 @@ class AutoLlmQuotaWaitTest {
     void restoresTheWaitFromCheckpointAndCanBeCancelled(boolean interrupt) throws Exception {
         var original = new AutoLlmCampaign(); original.id = "quota-fixture";
         original.config = new AutoLlmConfig(null, temp.toString(), 1, null, null, null, null, null, null, null, null, null, null, null);
-        var trial = new AutoLlmCampaign.Trial(); trial.number = 1; trial.status = "INTERRUPTED";
+        var trial = new AutoLlmCampaign.Trial(); trial.number = 1; trial.status = AutoLlmCampaign.TrialStatus.INTERRUPTED;
         trial.threadId = "saved-conversation"; trial.resumeTurn = true; trial.repairPending = true;
         trial.quotaRetryAt = Instant.now().plusSeconds(86400).toString();
-        var attempt = new AutoLlmCampaign.Attempt(); attempt.stage = "REPAIR"; attempt.status = "QUOTA_LIMIT";
+        var attempt = new AutoLlmCampaign.Attempt(); attempt.stage = AutoLlmCampaign.AttemptStage.REPAIR; attempt.status = AutoLlmCampaign.AttemptStatus.QUOTA_LIMIT;
         attempt.directory = "trials/001/attempts/001-repair"; trial.attempts.add(attempt); original.trials.add(trial);
         Path checkpoint = temp.resolve("checkpoint.json");
         AutoLlmFileUtil.write(checkpoint, original);
@@ -38,7 +38,7 @@ class AutoLlmQuotaWaitTest {
                 new AutoLlmTrialRunner.Listener() {
                     public void state(AutoLlmExecutionContext.Snapshot snapshot) {
                         restored.trials.set(0, snapshot.trial()); AutoLlmFileUtil.write(checkpoint, restored);
-                        if (snapshot.trial().status.equals("WAITING_FOR_QUOTA")) waiting.countDown();
+                        if ((snapshot.trial().status == AutoLlmCampaign.TrialStatus.WAITING_FOR_QUOTA)) waiting.countDown();
                     }
                     public void event(String kind, Object detail) { }
                 }, cancel::get, permits);
@@ -47,13 +47,13 @@ class AutoLlmQuotaWaitTest {
         try {
             assertTrue(waiting.await(10, TimeUnit.SECONDS));
             var saved = AutoLlmFileUtil.read(checkpoint, AutoLlmCampaign.class).trials.getFirst();
-            assertEquals("WAITING_FOR_QUOTA", saved.status); assertEquals(trial.quotaRetryAt, saved.quotaRetryAt);
+            assertEquals("WAITING_FOR_QUOTA", saved.status.name()); assertEquals(trial.quotaRetryAt, saved.quotaRetryAt);
             assertEquals(trial.threadId, saved.threadId); assertTrue(saved.repairPending);
             assertEquals(1, permits.availablePermits());
             if (interrupt) worker.interrupt(); else cancel.set(true);
             task.get(5, TimeUnit.SECONDS);
             saved = runner.snapshot().trial();
-            assertEquals("INTERRUPTED", saved.status); assertEquals(trial.quotaRetryAt, saved.quotaRetryAt);
+            assertEquals("INTERRUPTED", saved.status.name()); assertEquals(trial.quotaRetryAt, saved.quotaRetryAt);
             assertTrue(saved.repairPending); assertEquals(0, saved.repairTurns); assertEquals(0, saved.infrastructureRetries);
             verify(codex, never()).run(any(), any(), any(), any(), any(), any());
         } finally {

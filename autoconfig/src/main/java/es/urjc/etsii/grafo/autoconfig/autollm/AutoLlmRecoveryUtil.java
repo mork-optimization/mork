@@ -1,5 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.autollm;
 
+import es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmCampaign.TargetStatus;
+
 import java.util.*;
 
 /** The same availability rules are used by recovery requests and operator interfaces. */
@@ -17,7 +19,7 @@ public final class AutoLlmRecoveryUtil {
         boolean running = campaign.id.equals(active);
         String common = blocked;
         if (common == null && active != null && !running) common = "Another campaign is active";
-        if (common == null && Set.of("DRAFT", "SUCCEEDED", "COMPLETED_WITH_FAILURES", "CANCELLATION_PENDING").contains(campaign.status)) common = "Campaign state " + campaign.status + " does not allow recovery";
+        if (common == null && !campaign.status.resumable()) common = "Campaign state " + campaign.status + " does not allow recovery";
         String resumeReason = common;
         if (resumeReason == null && running) resumeReason = "This campaign is already active; recover an individual trial or server";
         String activeReason = common;
@@ -26,7 +28,7 @@ public final class AutoLlmRecoveryUtil {
         for (var entry : campaign.targets.entrySet()) {
             String id = entry.getKey(); var target = entry.getValue();
             String reason = activeReason;
-            if (reason == null && target.status.equals("REMOVED")) reason = "Removed server IDs cannot be reused";
+            if (reason == null && target.status == TargetStatus.REMOVED) reason = "Removed server IDs cannot be reused";
             if (reason == null && busy.contains(id)) reason = "The server already has an active controller workload";
             String qualifyReason = reason;
             if (qualifyReason == null && uncollected.contains(id)) qualifyReason = "Resume existing work to reconcile remote jobs and collect evidence before requalifying";
@@ -36,9 +38,9 @@ public final class AutoLlmRecoveryUtil {
         var trials = new LinkedHashMap<Integer, TrialActions>();
         for (var trial : campaign.trials) {
             String reason = common;
-            if (reason == null && !Set.of("BLOCKED", "INTERRUPTED").contains(trial.status)) reason = "Only blocked or interrupted trials can be recovered";
+            if (reason == null && !trial.status.recoverable()) reason = "Only blocked or interrupted trials can be recovered";
             var target = campaign.targets.get(trial.targetId);
-            if (reason == null && (target == null || target.status.equals("REMOVED"))) reason = "The trial has no available assigned server";
+            if (reason == null && (target == null || target.status == TargetStatus.REMOVED)) reason = "The trial has no available assigned server";
             if (reason == null && busy.contains(trial.targetId)) reason = "The assigned server already has an active controller workload";
             String failReason = reason;
             if (failReason == null && !target.baselineReady) failReason = "The trial's server must remain qualified";

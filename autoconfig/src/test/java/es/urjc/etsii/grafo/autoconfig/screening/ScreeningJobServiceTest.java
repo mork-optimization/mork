@@ -23,22 +23,22 @@ class ScreeningJobServiceTest {
     }
     @AfterEach void close() { service.close(); }
     @Test void creationSavesDraftWithOwnedOutputAndPreservesWorkerOverride() {
-        var job = service.create(request); assertEquals("DRAFT", job.status); assertNull(service.active());
+        var job = service.create(request); assertEquals("DRAFT", job.status.name()); assertNull(service.active());
         var saved = service.load(job.id); assertEquals(32, saved.request.config().execution().workers()); assertEquals(0.15, saved.request.trainingFraction());
         assertTrue(Path.of(saved.request.settings().output()).startsWith(campaigns.root().resolve("screenings").resolve(job.id)));
         assertEquals(job.id, service.list().getFirst().id);
     }
     @Test void approvalRequiresCompletedReviewAndExactHash() throws Exception {
         var job = service.create(request); assertThrows(IllegalStateException.class, () -> service.approve(job.id, "hash"));
-        job.status = "AWAITING_APPROVAL"; job.mirror = campaigns.root().resolve("screenings").resolve(job.id).resolve("evidence/local-fixture").toString();
+        job.status = es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.ScreeningStatus.AWAITING_APPROVAL; job.mirror = campaigns.root().resolve("screenings").resolve(job.id).resolve("evidence/local-fixture").toString();
         AutoLlmFileUtil.write(Path.of(job.mirror).resolve("proposal/proposal.json"), Map.of("reviewed", true));
         AutoLlmFileUtil.write(campaigns.root().resolve("screenings").resolve(job.id).resolve("job.json"), job);
         assertThrows(IllegalArgumentException.class, () -> service.approve(job.id, "stale-hash"));
-        assertEquals("AWAITING_APPROVAL", service.load(job.id).status); assertNull(service.active());
+        assertEquals("AWAITING_APPROVAL", service.load(job.id).status.name()); assertNull(service.active());
     }
     @Test void unresolvedCampaignPreventsStartingScreening() {
         var job = service.create(request); campaigns.reserve(UUID.randomUUID().toString());
-        assertThrows(IllegalStateException.class, () -> service.resume(job.id)); assertEquals("DRAFT", service.load(job.id).status);
+        assertThrows(IllegalStateException.class, () -> service.resume(job.id)); assertEquals("DRAFT", service.load(job.id).status.name());
     }
     @Test void failedCheckpointWriteReleasesOwnershipWithoutStartingWork() throws Exception {
         var job = service.create(request);
@@ -51,7 +51,7 @@ class ScreeningJobServiceTest {
         var job = service.create(request);
         Files.createDirectory(campaigns.root().resolve("operation-reservation.json.tmp"));
         assertThrows(java.io.UncheckedIOException.class, () -> service.resume(job.id));
-        assertNull(service.active()); assertEquals("DRAFT", service.load(job.id).status);
+        assertNull(service.active()); assertEquals("DRAFT", service.load(job.id).status.name());
         try (var lock = campaigns.lock()) { assertTrue(lock.lock().isValid()); }
     }
     @Test void sharedValidationRejectsCampaignOwnedArgumentOverrides() {
