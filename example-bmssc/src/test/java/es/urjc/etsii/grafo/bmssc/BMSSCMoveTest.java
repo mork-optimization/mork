@@ -174,6 +174,31 @@ class BMSSCMoveTest {
         assertFeasible(solution);
     }
 
+    @Test
+    void smallMovesAtLargeObjectiveScalesReportTheRepresentableChange() {
+        var instance = new BMSSCInstance("large-objective-small-swap", 6, 1, 2,
+                new double[][]{{0}, {1e7}, {1}, {0}, {-1e7}, {1.00001}});
+        var solution = assigned(instance, 0, 0, 0, 1, 1, 1);
+        var move = new SwapMove(solution, 2, 5);
+        double before = solution.getCost();
+        assertDoesNotThrow(() -> move.execute(solution));
+        assertEquals(solution.getCost() - before, move.getCostDelta());
+        assertTrue(new BMSSCSolutionValidator().validate(solution).isValid());
+        double expected = cost(instance, assignment(solution));
+        assertEquals(expected, solution.getCost(), Math.ulp(expected) * 4);
+    }
+
+    @Test
+    void bulkAssignmentInitializesAllCachesAndRejectsUnbalancedInputs() {
+        var instance = instance(7, 3);
+        int[] assignments = {0, 1, 2, 0, 1, 2, 0};
+        var solution = new BMSSCSolution(instance, assignments);
+        assertFeasible(solution);
+        assertArrayEquals(assignments, assignment(solution));
+        assertThrows(IllegalArgumentException.class, () -> new BMSSCSolution(instance, new int[7]));
+        assertThrows(IllegalArgumentException.class, () -> new BMSSCSolution(instance, new int[6]));
+    }
+
     private void checkMove(BMSSCSolution solution, BMSSCMove move, int[] expected) {
         double expectedCost = cost(solution.getInstance(), expected);
         assertTrue(Double.isFinite(move.getCostDelta()));

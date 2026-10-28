@@ -16,7 +16,7 @@ public final class SwapMove extends BMSSCMove implements RefreshableMove<SwapMov
         if (!solution.canSwap(p, q)) throw new IllegalArgumentException("Invalid swap");
         this.p = Math.min(p, q);
         this.q = Math.max(p, q);
-        this.delta = solution.swapDelta(this.p, this.q);
+        this.delta = roundedDelta(solution.swapDelta(this.p, this.q));
     }
 
     @Override

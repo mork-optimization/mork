@@ -23,6 +23,7 @@ public class FirstImpLS extends Improver<BMSSCSolution, BMSSCInstance> {
         var instance = solution.getInstance();
         for (int i = 0; i < instance.n - 1; i++) {
             for (int j = i + 1; j < instance.n; j++) {
+                if (TimeControl.isTimeUp()) return false;
                 if (solution.clusterOf(i) == solution.clusterOf(j)) continue;
                 var swap = new SwapMove(solution, i, j);
                 if(isNegative(swap.getCostDelta())){

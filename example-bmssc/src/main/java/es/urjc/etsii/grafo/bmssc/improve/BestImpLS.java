@@ -26,6 +26,7 @@ public class BestImpLS extends Improver<BMSSCSolution, BMSSCInstance> {
         SwapMove bestMove = null;
         for (int i = 0; i < ins.n - 1; i++) {
             for (int j = i + 1; j < ins.n; j++) {
+                if (TimeControl.isTimeUp()) return false;
                 if (solution.clusterOf(i) == solution.clusterOf(j))
                     continue;
                 var swap = new SwapMove(solution, i, j);
@@ -38,8 +39,9 @@ public class BestImpLS extends Improver<BMSSCSolution, BMSSCInstance> {
         if (bestMove != null && isNegative(bestMove.getCostDelta())){
             bestMove.execute(solution);
             Metrics.addCurrentObjectives(solution);
+            return true;
         }
-        return bestMove != null;
+        return false;
     }
 
     @Override

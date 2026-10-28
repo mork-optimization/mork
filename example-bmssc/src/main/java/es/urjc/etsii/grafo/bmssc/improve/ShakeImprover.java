@@ -6,6 +6,7 @@ import es.urjc.etsii.grafo.bmssc.model.sol.BMSSCSolution;
 import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.improve.Improver;
 import es.urjc.etsii.grafo.shake.Shake;
+import es.urjc.etsii.grafo.util.TimeControl;
 
 import static es.urjc.etsii.grafo.util.DoubleComparator.*;
 
@@ -23,10 +24,13 @@ public class ShakeImprover extends Improver<BMSSCSolution, BMSSCInstance> {
 
     @Override
     public BMSSCSolution improve(BMSSCSolution solution) {
+        if (TimeControl.isTimeUp()) return solution;
         solution = improver.improve(solution);
+        if (TimeControl.isTimeUp()) return solution;
         var copy = solution.cloneSolution();
+        if (TimeControl.isTimeUp()) return solution;
         copy = shake.shake(copy, 1);
-        copy = improver.improve(copy);
+        if (!TimeControl.isTimeUp()) copy = improver.improve(copy);
         if(isLess(copy.getCost(), solution.getCost())) {
             return copy;
         } else {

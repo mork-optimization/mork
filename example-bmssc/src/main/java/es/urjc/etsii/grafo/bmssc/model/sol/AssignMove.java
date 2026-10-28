@@ -12,7 +12,7 @@ public final class AssignMove extends BMSSCMove {
         if (!solution.canAssign(point, cluster)) throw new IllegalArgumentException("Invalid assignment");
         this.point = point;
         this.cluster = cluster;
-        this.delta = solution.assignDelta(point, cluster);
+        this.delta = roundedDelta(solution.assignDelta(point, cluster));
     }
 
     @Override

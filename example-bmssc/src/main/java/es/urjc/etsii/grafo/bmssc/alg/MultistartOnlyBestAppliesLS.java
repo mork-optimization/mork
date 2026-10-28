@@ -49,7 +49,7 @@ public class MultistartOnlyBestAppliesLS extends Algorithm<BMSSCSolution, BMSSCI
                 Metrics.addCurrentObjectives(solution);
             }
         }
-        solution = improve(solution);
+        if (!TimeControl.isTimeUp()) solution = improve(solution);
         return solution;
     }
 

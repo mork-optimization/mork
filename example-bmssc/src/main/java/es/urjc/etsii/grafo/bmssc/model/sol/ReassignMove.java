@@ -12,7 +12,7 @@ public final class ReassignMove extends BMSSCMove {
         if (!solution.canReassign(point, cluster)) throw new IllegalArgumentException("Invalid reassignment");
         this.point = point;
         this.cluster = cluster;
-        this.delta = solution.reassignDelta(point, cluster);
+        this.delta = roundedDelta(solution.reassignDelta(point, cluster));
     }
 
     @Override

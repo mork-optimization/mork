@@ -38,6 +38,35 @@ public class BMSSCSolution extends Solution<BMSSCSolution, BMSSCInstance> {
         pointClusterDistance = new double[instance.n][instance.k];
     }
 
+    /** Initialize a complete assignment in O(n^2), then validate the completed state. */
+    public BMSSCSolution(BMSSCInstance instance, int[] assignment) {
+        this(instance);
+        if (assignment.length != instance.n) throw new IllegalArgumentException("Incorrect assignment length");
+        for (int p = 0; p < instance.n; p++) {
+            int cluster = assignment[p];
+            if (cluster < 0 || cluster >= instance.k || isFullCluster(cluster)) {
+                throw new IllegalArgumentException("Invalid cluster assignment for point " + p);
+            }
+            clusterOfPoint[p] = cluster;
+            clusters[cluster].add(p);
+            sizes[cluster]++;
+            unassigned.remove(p);
+        }
+        for (int p = 0; p < instance.n; p++) {
+            int a = clusterOfPoint[p];
+            for (int q = p + 1; q < instance.n; q++) {
+                int b = clusterOfPoint[q];
+                double distance = instance.distance(p, q);
+                pointClusterDistance[p][b] += distance;
+                pointClusterDistance[q][a] += distance;
+                if (a == b) pairSums[a] += distance;
+            }
+        }
+        for (int c = 0; c < instance.k; c++) cost += contribution(pairSums[c], sizes[c]);
+        assert cachesValid();
+        notifyUpdate();
+    }
+
     public BMSSCSolution(BMSSCSolution original) {
         super(original);
         clusters = new BitSet[original.clusters.length];
@@ -99,7 +128,7 @@ public class BMSSCSolution extends Solution<BMSSCSolution, BMSSCInstance> {
         for (int c = 0; c < capacities.length; c++) capacities[c] = getInstance().getClusterSize(c);
     }
 
-    double assignDelta(int point, int cluster) {
+    public double assignDelta(int point, int cluster) {
         return contribution(pairSums[cluster] + pointClusterDistance[point][cluster], sizes[cluster] + 1)
                 - contribution(pairSums[cluster], sizes[cluster]);
     }
