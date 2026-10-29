@@ -82,3 +82,13 @@ export interface ScreeningReview {
   jobId: string; proposalSha256: string; report: string; proposalDirectory: string; artifactPrefix: string;
   proposal: { trainingCount: number; testingCount: number; splitFailure: string | null; instances: { instance: string; classification: string; reason: string; fastHits: number; confirmations: number }[] };
 }
+
+export interface ComparisonInstance {
+  instanceId: string;
+  instance: string;
+  counts: Record<string, Record<string, number>>;
+}
+export interface AutoLlmComparison {
+  instances?: ComparisonInstance[];
+  [key: string]: unknown;
+}

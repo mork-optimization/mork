@@ -1,6 +1,7 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { AutoLlmClient } from '../service/autollm-client';
-import { AutoLlmActivity, AutoLlmArtifact, AutoLlmCampaign, AutoLlmConfig, AutoLlmLogPreview, AutoLlmProgress, AutoLlmRecovery, AutoLlmServer, ScreeningJob, ScreeningReview } from '../model/autollm';
+import { AutoLlmComparison, AutoLlmActivity, AutoLlmArtifact, AutoLlmCampaign, AutoLlmConfig, AutoLlmLogPreview, AutoLlmProgress, AutoLlmRecovery, AutoLlmServer, ScreeningJob, ScreeningReview } from '../model/autollm';
+import { ComparisonCurveRow } from '../util/comparison-chart-util';
 import { AutoconfigStatus } from '../model/autoconfig';
 
 @Injectable({ providedIn: 'root' })
@@ -13,7 +14,6 @@ export class AutoLlmStore {
   readonly selectedId = signal('');
   readonly selectedTrial = signal(1);
   readonly startTargets = signal<string[]>([]);
-  private curveCursor = 0;
   readonly campaign = computed(() => this.campaigns().find(c => c.id === this.selectedId()) ?? null);
   readonly trial = computed(() => this.campaign()?.trials.find(t => t.number === this.selectedTrial()) ?? null);
   readonly completed = computed(() => this.campaign()?.trials.filter(t => ['SUCCEEDED', 'FAILED'].includes(t.status)).length ?? 0);
@@ -36,7 +36,15 @@ export class AutoLlmStore {
   readonly screening = computed(() => this.screenings().find(job => job.id === this.selectedScreening()) ?? null);
   readonly review = signal<ScreeningReview | null>(null);
   readonly summary = signal<Record<string, unknown> | null>(null);
-  readonly comparison = signal<Record<string, unknown> | null>(null);
+  readonly comparison = signal<AutoLlmComparison | null>(null);
+  readonly comparisonInstances = computed(() => this.comparison()?.instances ?? []);
+  readonly curveInstance = signal('');
+  readonly curves = signal<ComparisonCurveRow[]>([]);
+  readonly curvesLoading = signal(false);
+  readonly curvesError = signal<string | null>(null);
+  private comparisonSelection = 0;
+  private curveRequest = 0;
+  private curveCounts = '';
   readonly artifacts = signal<AutoLlmArtifact[]>([]);
   readonly logPath = signal('');
   readonly logLines = signal(500);
@@ -100,11 +108,16 @@ export class AutoLlmStore {
         this.activeProgress.set(next);
       }
       if (this.trial()) {
-        const id = this.selectedId(), trial = this.selectedTrial();
+        const id = this.selectedId(), trial = this.selectedTrial(), selection = this.comparisonSelection;
         const [progress, comparison] = await Promise.allSettled([this.activeProgress()[trial]?.progress ?? this.client.progress(id, trial), this.client.comparison(id, trial)]);
-        if (this.selectedId() === id && this.selectedTrial() === trial && !this.destroyed) {
+        if (selection === this.comparisonSelection && !this.destroyed) {
           if (progress.status === 'fulfilled') this.progress.set(progress.value);
-          if (comparison.status === 'fulfilled') this.comparison.update(previous => ({ ...comparison.value, curves: previous?.['curves'] ?? [] }));
+          if (comparison.status === 'fulfilled') {
+            this.comparison.set(comparison.value);
+            if (!this.comparisonInstances().some(instance => instance.instanceId === this.curveInstance())) {
+              await this.selectCurveInstance(this.comparisonInstances()[0]?.instanceId ?? '');
+            } else await this.refreshCurves();
+          }
         }
       }
       const attempt = this.conversationAttempt();
@@ -125,8 +138,8 @@ export class AutoLlmStore {
     } catch (e) { if (!this.destroyed) this.connectionError.set(this.message(e)); }
     finally { if (!this.destroyed) this.timer = setTimeout(() => void this.poll(), 2000); }
   }
-  select(id: string): void { this.selectedId.set(id); this.startTargets.set([]); this.curveCursor = 0; this.selectedTrial.set(1); this.artifacts.set([]); this.recovery.set(null); this.recoveryError.set(null); this.selectLog(''); this.progress.set(null); this.comparison.set(null); this.watchGeneration(null); }
-  selectTrial(number: number): void { this.selectedTrial.set(number); this.curveCursor = 0; this.progress.set(null); this.comparison.set(null); this.selectLog(''); this.watchGeneration(null); }
+  select(id: string): void { this.selectedId.set(id); this.startTargets.set([]); this.resetComparison(); this.selectedTrial.set(1); this.artifacts.set([]); this.recovery.set(null); this.recoveryError.set(null); this.selectLog(''); this.progress.set(null); this.watchGeneration(null); }
+  selectTrial(number: number): void { this.selectedTrial.set(number); this.resetComparison(); this.progress.set(null); this.selectLog(''); this.watchGeneration(null); }
   watchGeneration(attempt: number | null): void { this.generationAttempt.set(attempt); this.activityKey = ''; this.activity.set([]); }
   selectLog(path: string): void {
     this.logRequest++; this.logPath.set(path); this.logPreview.set(null); this.logError.set(null); this.logLoading.set(false);
@@ -203,14 +216,33 @@ export class AutoLlmStore {
   toggleStartTarget(id: string, selected: boolean): void {
     this.startTargets.update(values => selected ? [...values, id] : values.filter(value => value !== id));
   }
-  async loadCurves(): Promise<void> {
-    const id = this.selectedId(), trial = this.selectedTrial();
-    await this.operate(async () => {
-      const page = await this.client.curves(id, trial, this.curveCursor);
-      if (id === this.selectedId() && trial === this.selectedTrial()) {
-        this.comparison.update(previous => ({ ...previous, curves: page.curves })); this.curveCursor = page.nextCursor;
+  private resetComparison(): void {
+    this.comparisonSelection++; this.curveRequest++; this.curveCounts = '';
+    this.comparison.set(null); this.curveInstance.set(''); this.curves.set([]);
+    this.curvesLoading.set(false); this.curvesError.set(null);
+  }
+  async selectCurveInstance(instanceId: string): Promise<void> {
+    this.curveRequest++; this.curveCounts = ''; this.curveInstance.set(instanceId);
+    this.curves.set([]); this.curvesLoading.set(false); this.curvesError.set(null);
+    await this.refreshCurves();
+  }
+  async refreshCurves(): Promise<void> {
+    const instance = this.comparisonInstances().find(value => value.instanceId === this.curveInstance());
+    if (!instance || this.curvesLoading() || this.destroyed) return;
+    const counts = JSON.stringify(instance.counts);
+    if (counts === this.curveCounts) return;
+    const request = ++this.curveRequest;
+    this.curvesLoading.set(true); this.curvesError.set(null);
+    try {
+      const result = await this.client.curves(this.selectedId(), this.selectedTrial(), instance.instanceId);
+      if (request === this.curveRequest && !this.destroyed) {
+        this.curves.set(result.curves); this.curveCounts = counts;
       }
-    });
+    } catch (e) {
+      if (request === this.curveRequest && !this.destroyed) this.curvesError.set(this.message(e));
+    } finally {
+      if (request === this.curveRequest && !this.destroyed) this.curvesLoading.set(false);
+    }
   }
   async addTarget(server: AutoLlmServer): Promise<void> {
     const id = this.selectedId();

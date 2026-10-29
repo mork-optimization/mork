@@ -7,7 +7,7 @@ import { AutoLlmStore } from '../../store/autollm-store';
 import { AutoLlmConfig, AutoLlmServer } from '../../model/autollm';
 import { DashboardChart } from '../dashboard-chart/dashboard-chart';
 import { ChartViewModel } from '../../model/dashboard';
-import { ComparisonChartUtil, ComparisonCurveRow, ComparisonYAxisScale } from '../../util/comparison-chart-util';
+import { ComparisonChartUtil, ComparisonYAxisScale } from '../../util/comparison-chart-util';
 import { InstanceLabelUtil } from '../../util/instance-label-util';
 import { FilePreviewUtil } from '../../util/file-preview-util';
 
@@ -20,7 +20,6 @@ import { FilePreviewUtil } from '../../util/file-preview-util';
 export class AutoLlmDashboard {
   readonly canPreviewFile = FilePreviewUtil.canPreview;
   readonly store = inject(AutoLlmStore);
-  readonly selectedInstance = signal('');
   readonly failureReason = signal('');
   readonly selectedObjective = signal('');
   readonly yAxisScale = signal<ComparisonYAxisScale>('linear');
@@ -29,19 +28,18 @@ export class AutoLlmDashboard {
   readonly newTarget = signal('{"id":"server-2","host":"user@host","workspace":"/home/user/autollm","javaExecutable":"java","environment":{}}');
   readonly originalPool = signal('');
   readonly trainingFraction = signal(0.15);
-  readonly curves = computed(() => (this.store.comparison()?.['curves'] ?? []) as ComparisonCurveRow[]);
-  readonly instances = computed(() => [...new Set(this.curves().map(row => row.instance))]);
-  readonly objectives = computed(() => [...new Set(this.curves().flatMap(row => Object.keys(row.curves)))]);
-  readonly instanceLabels = computed(() => InstanceLabelUtil.relativeLabels(this.instances()));
-  readonly activeInstance = computed(() => this.instances().includes(this.selectedInstance()) ? this.selectedInstance() : this.instances()[0]);
+  readonly instances = this.store.comparisonInstances;
+  readonly instanceLabels = computed(() => InstanceLabelUtil.relativeLabels(this.instances().map(instance => instance.instance)));
+  readonly activeInstance = computed(() => this.instances().find(instance => instance.instanceId === this.store.curveInstance()));
+  readonly curveCounts = computed(() => {
+    const counts = this.activeInstance()?.counts ?? {};
+    return [...new Set(['SOTA', 'IraceProposal', ...Object.keys(counts)])].map(algorithm => ({ algorithm, succeeded: counts[algorithm]?.['SUCCEEDED'] ?? 0, failed: counts[algorithm]?.['FAILED'] ?? 0 }));
+  });
+  readonly objectives = computed(() => [...new Set(this.store.curves().flatMap(row => Object.keys(row.curves)))]);
   readonly activeObjective = computed(() => this.objectives().includes(this.selectedObjective()) ? this.selectedObjective() : this.objectives()[0]);
-  readonly selectedCurves = computed(() => this.curves().filter(row => row.instance === this.activeInstance()));
+  readonly selectedCurves = this.store.curves;
   readonly canLogYAxis = computed(() => ComparisonChartUtil.canUseLogarithmicScale(this.selectedCurves(), this.activeObjective()));
   readonly effectiveYAxisScale = computed(() => this.yAxisScale() === 'logarithmic' && this.canLogYAxis() ? 'logarithmic' : 'linear');
-  readonly comparisonSummary = computed(() => {
-    const { curves, ...summary } = this.store.comparison() ?? {};
-    return summary;
-  });
   readonly curveChart = computed<ChartViewModel>(() => ComparisonChartUtil.build(this.selectedCurves(), this.activeObjective(), this.effectiveYAxisScale()));
   constructor() {
     effect(() => { this.store.selectedId(); this.store.selectedTrial(); this.failureReason.set(''); });

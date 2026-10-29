@@ -1,10 +1,10 @@
-import { Component, input, provideZonelessChangeDetection, signal, WritableSignal } from '@angular/core';
+import { computed, Component, input, provideZonelessChangeDetection, signal, WritableSignal } from '@angular/core';
 import { TestBed } from '@angular/core/testing';
 import { DashboardChart } from '../dashboard-chart/dashboard-chart';
 import { ChartViewModel } from '../../model/dashboard';
 import { AutoLlmStore } from '../../store/autollm-store';
 import { AutoLlmDashboard } from './autollm-dashboard';
-import { AutoLlmActivity, AutoLlmCampaign, AutoLlmConfig, AutoLlmTrial, CodexProgress, ScreeningJob, ScreeningReview } from '../../model/autollm';
+import { AutoLlmComparison, ComparisonInstance, AutoLlmActivity, AutoLlmCampaign, AutoLlmConfig, AutoLlmTrial, CodexProgress, ScreeningJob, ScreeningReview } from '../../model/autollm';
 
 @Component({ selector: 'app-dashboard-chart', template: '' })
 class ChartStub { readonly model = input.required<ChartViewModel>(); readonly resizable = input(false); }
@@ -12,8 +12,8 @@ class ChartStub { readonly model = input.required<ChartViewModel>(); readonly re
 describe('AutoLLM dashboard', () => {
   beforeEach(async () => {
     const trial = { number: 1, status: 'SUCCEEDED', tuningSeed: 1234, repairTurns: 1, attempts: [], winner: { $component: 'SimpleAlgorithm', constructive: { $component: 'ConstructiveNew' } } };
-    const campaign = { id: 'campaign', status: 'SUCCEEDED', createdAt: '2026-10-07T00:00:00Z', trials: [trial], config: { execution: { target: 'LOCAL' } }, versions: {}, poolRevision: 1, targets: {} };
-    const store = { targets: signal([]), activeTrials: signal([]), activeProgress: signal({}), screenings: signal([]), activeScreening: signal(''), selectedScreening: signal(''), screening: signal(null), review: signal(null), summary: signal(null), progress: signal(null), generation: signal(null), conversationAttempt: signal(null), activity: signal([]), config: signal(null), targetStatus: signal(null), recovery: signal(null), recoveryError: signal(null), trialRecovery: signal(null), error: signal(null), connectionError: signal(null), active: signal(''), busy: signal(false), selectedId: signal(campaign.id), selectedTrial: signal(1), campaigns: signal([campaign]), campaign: signal(campaign), trial: signal(trial), completed: signal(1), tuning: signal(null), logPath: signal(''), logLines: signal(500), logFollow: signal(true), logPreview: signal(null), logLoading: signal(false), logError: signal(null), artifacts: signal([]), comparison: signal({ counts: { SOTA: { SUCCEEDED: 1 } }, curves: [{ instance: 'instance.txt', instanceId: 'instance', algorithm: 'SOTA', iteration: '0', curves: { Cost: [{ instant: 0, value: 10 }, { instant: 10000000, value: 8 }] } }] }), start: vi.fn().mockResolvedValue(undefined) };
+    const campaign = { id: 'campaign', status: 'SUCCEEDED', createdAt: '2026-10-07T00:00:00Z', trials: [trial], config: { execution: { target: 'LOCAL' }, comparison: { repetitions: 30 } }, versions: {}, poolRevision: 1, targets: {} };
+    const store = { targets: signal([]), activeTrials: signal([]), activeProgress: signal({}), screenings: signal([]), activeScreening: signal(''), selectedScreening: signal(''), screening: signal(null), review: signal(null), summary: signal(null), progress: signal(null), generation: signal(null), conversationAttempt: signal(null), activity: signal([]), config: signal(null), targetStatus: signal(null), recovery: signal(null), recoveryError: signal(null), trialRecovery: signal(null), error: signal(null), connectionError: signal(null), active: signal(''), busy: signal(false), selectedId: signal(campaign.id), selectedTrial: signal(1), campaigns: signal([campaign]), campaign: signal(campaign), trial: signal(trial), completed: signal(1), tuning: signal(null), logPath: signal(''), logLines: signal(500), logFollow: signal(true), logPreview: signal(null), logLoading: signal(false), logError: signal(null), artifacts: signal([]), comparison: signal<AutoLlmComparison>({ counts: { SOTA: { SUCCEEDED: 1 } }, instances: [{ instance: 'instance.txt', instanceId: 'instance', counts: { SOTA: { SUCCEEDED: 1 } } }] }), comparisonInstances: computed((): ComparisonInstance[] => store.comparison().instances ?? []), curveInstance: signal('instance'), curvesLoading: signal(false), curvesError: signal(null), curves: signal([{ instance: 'instance.txt', instanceId: 'instance', algorithm: 'SOTA', iteration: '0', curves: { Cost: [{ instant: 0, value: 10 }, { instant: 10000000, value: 8 }] } }]), start: vi.fn().mockResolvedValue(undefined) };
     await TestBed.configureTestingModule({ imports: [AutoLlmDashboard], providers: [provideZonelessChangeDetection(), { provide: AutoLlmStore, useValue: store }] })
       .overrideComponent(AutoLlmDashboard, { remove: { imports: [DashboardChart] }, add: { imports: [ChartStub] } }).compileComponents();
   });
@@ -58,7 +58,9 @@ describe('AutoLLM dashboard', () => {
     const text = fixture.nativeElement.textContent as string;
     expect(text).toContain('1/1 trials finished'); expect(text).toContain('ConstructiveNew'); expect(text).toContain('Comparison results');
     expect(fixture.nativeElement.querySelector('app-dashboard-chart')).not.toBeNull();
-    expect(fixture.componentInstance.comparisonSummary()).not.toHaveProperty('curves');
+    expect(text).toContain('SOTA: 1/30 repetitions completed');
+    expect(text).toContain('IraceProposal: 0/30 repetitions completed');
+    expect(text).not.toContain('Load next comparison curves');
   });
   it('uses relative milliseconds for saved nanosecond progress curves', () => {
     const fixture = TestBed.createComponent(AutoLlmDashboard);
@@ -67,13 +69,20 @@ describe('AutoLLM dashboard', () => {
   it('shows relative instance labels and retains full paths when switching the chart', async () => {
     const store = TestBed.inject(AutoLlmStore);
     const paths = ['/remote/campaign/data/00000000/one.txt', '/remote/campaign/data/00000001/two.txt'];
-    store.comparison.set({ curves: paths.map((instance, index) => ({ instance, instanceId: instance, algorithm: 'SOTA', iteration: '0', curves: { Cost: [{ instant: 0, value: index + 10 }] } })) });
+    store.comparison.set({ instances: paths.map((instance, index) => ({ instance, instanceId: `id-${index}`, counts: { SOTA: { SUCCEEDED: 1 } } })) });
+    store.curveInstance.set('id-0');
+    store.selectCurveInstance = vi.fn(async id => {
+      store.curveInstance.set(id);
+      const index = id === 'id-1' ? 1 : 0;
+      store.curves.set([{ instance: paths[index], instanceId: id, algorithm: 'SOTA', iteration: '0', curves: { Cost: [{ instant: 0, value: index + 10 }] } }]);
+    });
     const fixture = TestBed.createComponent(AutoLlmDashboard); fixture.detectChanges(); await fixture.whenStable();
     const select = fixture.nativeElement.querySelector('.comparison-controls select') as HTMLSelectElement;
     expect([...select.options].map(option => option.textContent?.trim())).toEqual(['00000000/one.txt', '00000001/two.txt']);
-    expect(select.options[1].value).toBe(paths[1]); expect(select.options[1].title).toBe(paths[1]);
-    select.value = paths[1]; select.dispatchEvent(new Event('change')); fixture.detectChanges();
-    expect(fixture.componentInstance.activeInstance()).toBe(paths[1]);
+    expect(select.options[1].value).toBe('id-1'); expect(select.options[1].title).toBe(paths[1]);
+    select.value = 'id-1'; select.dispatchEvent(new Event('change')); fixture.detectChanges();
+    expect(store.selectCurveInstance).toHaveBeenCalledWith('id-1');
+    expect(fixture.componentInstance.activeInstance()?.instance).toBe(paths[1]);
     expect(fixture.componentInstance.curveChart().options.series![0]).toEqual(expect.objectContaining({ data: [[0, 11]] }));
     expect(select.title).toBe(paths[1]);
   });

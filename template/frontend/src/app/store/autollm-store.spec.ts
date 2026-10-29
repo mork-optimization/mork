@@ -6,15 +6,55 @@ import { AutoLlmStore } from './autollm-store';
 describe('AutoLLM campaign lifecycle store', () => {
   const config = {} as AutoLlmConfig;
   const campaign = { id: 'campaign', status: 'RUNNING', config, trials: [{ number: 1, status: 'GENERATION' }, { number: 2, status: 'PENDING' }] } as AutoLlmCampaign;
-  let client: { probeTarget: ReturnType<typeof vi.fn>; targetProbe: ReturnType<typeof vi.fn>; recovery: ReturnType<typeof vi.fn>; resumeTrial: ReturnType<typeof vi.fn>; failTrial: ReturnType<typeof vi.fn>; targetAction: ReturnType<typeof vi.fn>; screeningAction: ReturnType<typeof vi.fn>; screeningReview: ReturnType<typeof vi.fn>; screenings: ReturnType<typeof vi.fn>; summary: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; preview: ReturnType<typeof vi.fn> };
+  let client: { curves: ReturnType<typeof vi.fn>; probeTarget: ReturnType<typeof vi.fn>; targetProbe: ReturnType<typeof vi.fn>; recovery: ReturnType<typeof vi.fn>; resumeTrial: ReturnType<typeof vi.fn>; failTrial: ReturnType<typeof vi.fn>; targetAction: ReturnType<typeof vi.fn>; screeningAction: ReturnType<typeof vi.fn>; screeningReview: ReturnType<typeof vi.fn>; screenings: ReturnType<typeof vi.fn>; summary: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; preview: ReturnType<typeof vi.fn> };
   let store: AutoLlmStore;
   beforeEach(() => {
     vi.useFakeTimers();
-    client = { probeTarget: vi.fn().mockResolvedValue({ id: 'probe', status: 'RUNNING', targets: {} }), targetProbe: vi.fn().mockResolvedValue({ id: 'probe', status: 'SUCCEEDED', targets: { local: { status: 'SUCCEEDED' } } }), recovery: vi.fn().mockResolvedValue({ trials: {}, targets: {}, resumeCampaign: { allowed: false, reason: 'Already running', effect: '' } }), resumeTrial: vi.fn().mockResolvedValue(campaign), failTrial: vi.fn().mockResolvedValue(campaign), targetAction: vi.fn().mockResolvedValue(campaign), screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true, ready: true, qualifiedTargets: ['a'], failedTargets: [] }), action: vi.fn().mockResolvedValue(campaign), preview: vi.fn().mockResolvedValue({ text: '', lineCount: 0, sizeBytes: 0, truncated: false, byteLimited: false }) };
+    client = { curves: vi.fn().mockResolvedValue({ curves: [], sampled: true }), probeTarget: vi.fn().mockResolvedValue({ id: 'probe', status: 'RUNNING', targets: {} }), targetProbe: vi.fn().mockResolvedValue({ id: 'probe', status: 'SUCCEEDED', targets: { local: { status: 'SUCCEEDED' } } }), recovery: vi.fn().mockResolvedValue({ trials: {}, targets: {}, resumeCampaign: { allowed: false, reason: 'Already running', effect: '' } }), resumeTrial: vi.fn().mockResolvedValue(campaign), failTrial: vi.fn().mockResolvedValue(campaign), targetAction: vi.fn().mockResolvedValue(campaign), screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true, ready: true, qualifiedTargets: ['a'], failedTargets: [] }), action: vi.fn().mockResolvedValue(campaign), preview: vi.fn().mockResolvedValue({ text: '', lineCount: 0, sizeBytes: 0, truncated: false, byteLimited: false }) };
     TestBed.configureTestingModule({ providers: [AutoLlmStore, { provide: AutoLlmClient, useValue: client }] });
     store = TestBed.inject(AutoLlmStore);
   });
   afterEach(() => { TestBed.resetTestingModule(); vi.useRealTimers(); });
+  const instance = (id: string, repetitions = 1) => ({ instanceId: id, instance: `/remote/${id}`, counts: { SOTA: { SUCCEEDED: repetitions }, IraceProposal: { SUCCEEDED: repetitions } } });
+  const curves = (id: string) => ['SOTA', 'IraceProposal'].map(algorithm => ({ instance: `/remote/${id}`, instanceId: id, algorithm, iteration: '0', curves: { Cost: [{ instant: 0, value: 10 }] } }));
+  it('loads both algorithms for the first instance and refreshes only when its counts change', async () => {
+    client.comparison.mockResolvedValue({ instances: [instance('one'), instance('two')] });
+    client.curves.mockResolvedValue({ curves: curves('one'), sampled: true });
+    await store.start();
+    expect(client.curves).toHaveBeenCalledExactlyOnceWith(campaign.id, 1, 'one');
+    expect(store.curves()).toEqual(curves('one'));
+    await vi.advanceTimersByTimeAsync(2000); expect(client.curves).toHaveBeenCalledTimes(1);
+    client.comparison.mockResolvedValue({ instances: [instance('one'), instance('two', 2)] });
+    await vi.advanceTimersByTimeAsync(2000); expect(client.curves).toHaveBeenCalledTimes(1);
+    client.comparison.mockResolvedValue({ instances: [instance('one', 2), instance('two', 2)] });
+    await vi.advanceTimersByTimeAsync(2000); expect(client.curves).toHaveBeenCalledTimes(2);
+    expect(store.comparison()).not.toHaveProperty('curves');
+  });
+  it('discards late curves when switching instances and trials, including switching away and back', async () => {
+    client.comparison.mockResolvedValue({ instances: [instance('one'), instance('two')] });
+    await store.start();
+    let resolve!: (value: unknown) => void;
+    client.curves.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    const pending = store.selectCurveInstance('two');
+    expect(store.curvesLoading()).toBe(true); expect(store.curves()).toEqual([]);
+    client.curves.mockResolvedValue({ curves: curves('one'), sampled: true });
+    await store.selectCurveInstance('one');
+    resolve({ curves: curves('two') }); await pending;
+    expect(store.curves()).toEqual(curves('one')); expect(store.curvesLoading()).toBe(false);
+    client.curves.mockImplementationOnce(() => new Promise(done => { resolve = done; }));
+    const oldTrial = store.selectCurveInstance('two'); store.selectTrial(2); store.selectTrial(1);
+    resolve({ curves: curves('two') }); await oldTrial;
+    expect(store.curves()).toEqual([]); expect(store.curveInstance()).toBe(''); expect(store.curvesLoading()).toBe(false);
+  });
+  it('retries failed curve reads without losing summary results', async () => {
+    client.comparison.mockResolvedValue({ instances: [instance('one')] });
+    client.curves.mockRejectedValueOnce(new Error('offline')).mockResolvedValue({ curves: curves('one'), sampled: true });
+    await store.start(); expect(store.curvesError()).toBe('offline'); expect(store.comparisonInstances()).toHaveLength(1);
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(store.curvesError()).toBeNull(); expect(store.curves()).toEqual(curves('one'));
+    client.comparison.mockResolvedValue({ instances: [] }); await vi.advanceTimersByTimeAsync(2000);
+    expect(store.curves()).toEqual([]); expect(store.curveInstance()).toBe('');
+  });
   it('shows the saved preflight id immediately and polls its results independently', async () => {
     store.config.set(config); await store.probeTarget();
     expect(store.targetStatus()?.['id']).toBe('probe'); expect(store.targetStatus()?.['status']).toBe('RUNNING');

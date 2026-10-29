@@ -2,8 +2,9 @@ import { Injectable, inject, DestroyRef } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { firstValueFrom, timeout } from 'rxjs';
+import { ComparisonCurveRow } from '../util/comparison-chart-util';
 import { environment } from '../../environments/environment';
-import { AutoLlmArtifact, AutoLlmCampaign, AutoLlmConfig, AutoLlmLog, AutoLlmLogPreview, AutoLlmProgress, AutoLlmRecovery, AutoLlmServer, ScreeningJob, ScreeningReview } from '../model/autollm';
+import { AutoLlmComparison, AutoLlmArtifact, AutoLlmCampaign, AutoLlmConfig, AutoLlmLog, AutoLlmLogPreview, AutoLlmProgress, AutoLlmRecovery, AutoLlmServer, ScreeningJob, ScreeningReview } from '../model/autollm';
 
 @Injectable({ providedIn: 'root' })
 export class AutoLlmClient {
@@ -37,8 +38,8 @@ export class AutoLlmClient {
   failTrial(id: string, trial: number, reason: string): Promise<AutoLlmCampaign> { return this.post(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/fail`, { reason }); }
   summary(id: string): Promise<Record<string, unknown>> { return this.get(`/campaigns/${encodeURIComponent(id)}/summary`); }
   activity(id: string, trial: number, attempt: number, cursor: number): Promise<AutoLlmLog> { return this.get(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/activity`, { attempt, cursor }); }
-  comparison(id: string, trial: number): Promise<Record<string, unknown>> { return this.get(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/comparison`); }
-  curves(id: string, trial: number, cursor: number): Promise<{ curves: unknown[]; nextCursor: number; more: boolean }> { return this.get(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/curves`, { cursor }); }
+  comparison(id: string, trial: number): Promise<AutoLlmComparison> { return this.get(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/comparison`); }
+  curves(id: string, trial: number, instanceId: string): Promise<{ curves: ComparisonCurveRow[]; sampled: boolean }> { return this.get(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/curves`, { instanceId }); }
   artifacts(id: string): Promise<AutoLlmArtifact[]> { return this.get(`/campaigns/${encodeURIComponent(id)}/artifacts`); }
   preview(id: string, path: string, lines: number): Promise<AutoLlmLogPreview> { return this.get(`/campaigns/${encodeURIComponent(id)}/preview`, { path, lines }); }
   artifactUrl(id: string, path: string): string { return `${this.base}/campaigns/${encodeURIComponent(id)}/artifact?${new URLSearchParams({ path })}`; }

@@ -199,19 +199,24 @@
           </div>
         }
         @if (trial.winner) { <h3>First-ranked proposal: components and parameters</h3><p>Generated algorithm components end in New.</p><pre>{{ trial.winner | json }}</pre> }
-        <button mat-button [disabled]="store.busy()" (click)="store.loadCurves()">Load next comparison curves</button>
-        <p>Curves load in pages and are sampled for display. Full data is available in the comparison journal.</p>
-        @if (store.comparison()) { <details open><summary>Comparison results</summary><pre>{{ comparisonSummary() | json }}</pre></details> }
+        @if (store.comparison()) { <details open><summary>Comparison results</summary><pre>{{ store.comparison() | json }}</pre></details> }
         @if (instances().length) {
           <div class="fields comparison-controls">
-            <label>Convergence instance<select [value]="activeInstance()" [title]="activeInstance()" (change)="selectedInstance.set($any($event.target).value)">@for (instance of instances(); track instance) { <option [value]="instance" [title]="instance">{{ instanceLabels().get(instance) }}</option> }</select></label>
+            <label>Convergence instance<select [value]="store.curveInstance()" [title]="activeInstance()?.instance ?? ''" (change)="store.selectCurveInstance($any($event.target).value)">@for (instance of instances(); track instance.instanceId) { <option [value]="instance.instanceId" [title]="instance.instance">{{ instanceLabels().get(instance.instance) }}</option> }</select></label>
             <label>Objective<select [value]="activeObjective()" (change)="selectedObjective.set($any($event.target).value)">@for (objective of objectives(); track objective) { <option [value]="objective">{{ objective }}</option> }</select></label>
             <label>Y-axis scale<select [value]="effectiveYAxisScale()" (change)="yAxisScale.set($any($event.target).value)"><option value="linear">Linear</option><option value="logarithmic" [disabled]="!canLogYAxis()">Logarithmic</option></select></label>
             <label>Chart height<select [value]="chartHeight()" (change)="chartHeight.set(+$any($event.target).value)"><option value="520">Standard</option><option value="760">Tall</option><option value="1000">Extra tall</option></select></label>
           </div>
-          <p class="chart-help">Drag a rectangle to zoom, Shift-drag to pan, or resize from the bottom-right corner. Click an algorithm in the legend to show or hide all its repetitions.</p>
-          @if (!canLogYAxis()) { <p class="chart-help">Logarithmic scale requires positive objective values; this selection uses a linear scale.</p> }
-          <app-dashboard-chart [model]="curveChart()" [resizable]="true" [style.height.px]="chartHeight()" aria-label="Comparison convergence chart" />
+          <p>All available repetitions for this instance, sampled to at most 256 points per curve. Full data is available in the comparison journal.</p>
+          @for (count of curveCounts(); track count.algorithm) { <p>{{ count.algorithm }}: {{ count.succeeded }}/{{ campaign.config.comparison.repetitions }} repetitions completed@if (count.failed) { · {{ count.failed }} failed }</p> }
+          @if (store.curvesLoading()) { <p role="status">Loading saved curves…</p> }
+          @if (store.curvesError()) { <p role="alert" class="error">{{ store.curvesError() }} <button mat-button (click)="store.refreshCurves()">Retry loading curves</button></p> }
+          @if (!store.curvesLoading() && !store.curvesError() && !selectedCurves().length) { <p>No successful comparison curves available for this instance.</p> }
+          @if (selectedCurves().length) {
+            <p class="chart-help">Drag a rectangle to zoom, Shift-drag to pan, or resize from the bottom-right corner. Click an algorithm in the legend to show or hide all its repetitions.</p>
+            @if (!canLogYAxis()) { <p class="chart-help">Logarithmic scale requires positive objective values; this selection uses a linear scale.</p> }
+            <app-dashboard-chart [model]="curveChart()" [resizable]="true" [style.height.px]="chartHeight()" aria-label="Comparison convergence chart" />
+          }
         }
       </mat-card-content></mat-card>
     }

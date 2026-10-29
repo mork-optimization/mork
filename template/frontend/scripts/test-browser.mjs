@@ -256,7 +256,8 @@ if (!process.env.MORK_MONITOR_URL) {
         body = comparisonCampaign;
       }
       else if (path.endsWith('/progress')) body = { status: 'COMPARISON', infrastructureRetries: 0, repairTurns: 0 };
-      else if (path.endsWith('/comparison')) body = { counts: { SOTA: { SUCCEEDED: 60 }, IraceProposal: { SUCCEEDED: 60 } }, pollCount: ++comparisonPoll, curves: comparisonCurves };
+      else if (path.endsWith('/comparison')) body = { counts: { SOTA: { SUCCEEDED: 60 }, IraceProposal: { SUCCEEDED: 60 } }, pollCount: ++comparisonPoll, instances: comparisonPaths.map((instance, index) => ({ instance, instanceId: `instance-${index}`, counts: { SOTA: { SUCCEEDED: 30 }, IraceProposal: { SUCCEEDED: 30 } } })) };
+      else if (path.endsWith('/curves')) body = { sampled: true, curves: comparisonCurves.filter(row => row.instanceId === url.searchParams.get('instanceId')) };
       else if (path.endsWith('/artifacts')) body = [{ path: 'attempt/stdout.log', size: Buffer.byteLength(fixtureLog), sha256: 'fixture' }];
       else if (path.endsWith('/preview')) {
         const lines = Number(url.searchParams.get('lines'));
@@ -648,7 +649,7 @@ try {
     await waitFor(`document.querySelector('.comparison-controls') && document.querySelectorAll('.highcharts-series-group .highcharts-graph').length === 60`);
     const controls = `document.querySelectorAll('.comparison-controls select')`;
     assert.deepEqual(await evaluate(`Array.from(${controls}[0].options).map(option => option.textContent.trim())`), ['00000000/n250w200.001.txt', '00000001/n250w200.002.txt']);
-    assert.equal(await evaluate(`${controls}[0].options[1].value`), comparisonPaths[1]);
+    assert.equal(await evaluate(`${controls}[0].options[1].value`), 'instance-1');
     assert.equal(await evaluate(`${controls}[0].options[1].title`), comparisonPaths[1]);
     assert.deepEqual(await evaluate(`Array.from(document.querySelectorAll('.highcharts-legend-item text')).map(el => el.textContent)`), ['SOTA', 'IraceProposal']);
     assert.equal(await evaluate(`Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-graph')).every(el => !el.getAttribute('stroke-dasharray') || el.getAttribute('stroke-dasharray') === 'none')`), true, 'all repetitions use solid lines');
@@ -677,13 +678,13 @@ try {
     const pollAtZoom = comparisonPoll;
     await waitFor(`JSON.parse(Array.from(document.querySelectorAll('details')).find(el => el.querySelector('summary')?.textContent === 'Comparison results').querySelector('pre').textContent).pollCount > ${pollAtZoom}`);
     assert.equal(await evaluate(`!!document.querySelector('.highcharts-reset-zoom')`), true, 'polling preserves the zoom');
-    await evaluate(`${controls}[0].value=${JSON.stringify(comparisonPaths[1])}; ${controls}[0].dispatchEvent(new Event('change', {bubbles:true}))`);
+    await evaluate(`${controls}[0].value='instance-1'; ${controls}[0].dispatchEvent(new Event('change', {bubbles:true}))`);
     await waitFor(`!document.querySelector('.highcharts-reset-zoom')`);
     await evaluate(`${controls}[2].value='logarithmic'; ${controls}[2].dispatchEvent(new Event('change', {bubbles:true}))`);
     await waitFor(`${controls}[2].value === 'logarithmic' && document.querySelectorAll('.highcharts-series-group .highcharts-graph').length === 60`);
     await evaluate(`${controls}[1].value='Signed'; ${controls}[1].dispatchEvent(new Event('change', {bubbles:true}))`);
     await waitFor(`${controls}[2].value === 'linear' && ${controls}[2].options[1].disabled`);
-    await evaluate(`${controls}[1].value='Cost'; ${controls}[1].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[0].value=${JSON.stringify(comparisonPaths[0])}; ${controls}[0].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[2].value='linear'; ${controls}[2].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[3].value='520'; ${controls}[3].dispatchEvent(new Event('change', {bubbles:true}))`);
+    await evaluate(`${controls}[1].value='Cost'; ${controls}[1].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[0].value='instance-0'; ${controls}[0].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[2].value='linear'; ${controls}[2].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[3].value='520'; ${controls}[3].dispatchEvent(new Event('change', {bubbles:true}))`);
     await waitFor(`document.querySelector('.highcharts-root').getBoundingClientRect().height < 530`);
     await evaluate(`document.querySelector('.comparison-controls').scrollIntoView({block:'start'})`);
     await writeFile(join(artifacts, 'autollm-comparison.png'), Buffer.from((await send('Page.captureScreenshot')).data, 'base64'));

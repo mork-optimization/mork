@@ -152,9 +152,9 @@ public class AutoLlmController {
         return file == null || !Files.exists(file) ? Map.of("status", "NOT_STARTED") : comparisons.summary(file);
     }
     @GetMapping("/campaigns/{id}/trials/{number}/curves") public Object curves(@PathVariable String id, @PathVariable int number,
-            @RequestParam(defaultValue = "0") long cursor) {
+            @RequestParam String instanceId) {
         Path file = comparisonJournal(id, number);
-        return file == null || !Files.exists(file) ? Map.of("curves", List.of(), "nextCursor", 0, "more", false) : AutoLlmComparisonUtil.curves(file, cursor);
+        return file == null || !Files.exists(file) ? Map.of("curves", List.of(), "sampled", true) : comparisons.curves(file, instanceId);
     }
     private void requireMode() { if (mode.mode() != MonitorModeState.Mode.AUTOLLM) throw new ResponseStatusException(HttpStatus.CONFLICT, "Launch Mork using --autollm"); }
     @ExceptionHandler(IllegalArgumentException.class) public ResponseEntity<Map<String,String>> invalid(IllegalArgumentException e) { return ResponseEntity.badRequest().body(Map.of("message", e.getMessage())); }
