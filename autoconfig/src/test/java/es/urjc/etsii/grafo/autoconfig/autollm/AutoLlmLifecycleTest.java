@@ -61,6 +61,9 @@ class AutoLlmLifecycleTest {
         git(repo, "init"); git(repo, "add", "."); git(repo, "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-m", "baseline");
         Path cli = temp.resolve("fake-codex");
         Files.writeString(cli, "#!/bin/sh\nexport CODEX_HOME='" + temp.resolve("codex-home") + "'\nexec '" + java + "' -cp '" + classpath.replace("'", "'\\''") + "' " + AutoLlmCodexFixture.class.getName() + " \"$@\"\n"); cli.toFile().setExecutable(true);
+        var login = new AutoLlmProcessRunner().run(List.of(cli.toString(), "login", "status"), repo, temp.resolve("login-status"), 5000, 0, 50, () -> false, false, 0);
+        assertEquals(1, login.exitCode(), "The local-provider fixture must work without an OpenAI login");
+        assertEquals("Not logged in", Files.readString(temp.resolve("login-status/stderr.log")).strip());
         var buildCommand = new ArrayList<>(List.of(java, "-cp", classpath, AutoLlmBuildFixture.class.getName()));
         if (mode.equals("baseline")) buildCommand.add("--fail-replay");
         if (mode.equals("framework")) buildCommand.add("--fail-once-trial");

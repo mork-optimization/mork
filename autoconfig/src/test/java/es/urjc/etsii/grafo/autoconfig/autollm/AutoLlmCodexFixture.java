@@ -11,7 +11,7 @@ public class AutoLlmCodexFixture {
             "src/main/java/ProjectExplorationFilter.java", "class ProjectExplorationFilter { boolean reject(int depth) { return depth > 2; } }\n",
             "src/main/java/ProjectSolution.java", "class ProjectSolution { int state; }\n");
     public static void main(String[] args) throws Exception {
-        if (args[0].equals("login")) { System.out.println("Authenticated fixture"); return; }
+        if (args[0].equals("login")) { System.err.println("Not logged in"); System.exit(1); }
         if (Arrays.asList(args).contains("--version")) { System.out.println("fake-codex-test"); return; }
         String thread = UUID.randomUUID().toString();
         if (args.length > 2 && args[1].equals("resume")) thread = args[2];

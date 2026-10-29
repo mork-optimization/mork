@@ -146,7 +146,6 @@ public final class AutoLlmTrialRunner {
         Path codexVersion = preflight.resolve("codex-version");
         runCommand(c, List.of(c.config.codex().executable(), "--version"), repo, codexVersion, 30_000, true);
         versions.put("codex", AutoLlmFailureUtil.tail(codexVersion.resolve("stdout.log"), 4000) + AutoLlmFailureUtil.tail(codexVersion.resolve("stderr.log"), 4000));
-        runCommand(c, List.of(c.config.codex().executable(), "login", "status"), repo, preflight.resolve("codex-auth"), 30_000, true);
         runCommand(c, List.of("git", "rev-parse", "--verify", c.config.project().ref() + "^{commit}"), repo, preflight.resolve("ref"), 30_000, true);
         try {
             String commit = Files.readString(preflight.resolve("ref/stdout.log")).strip();
@@ -416,7 +415,7 @@ public final class AutoLlmTrialRunner {
                 "--autollm.child.config-file=" + executionRoot.resolve("control/config.json"), "--autollm.child.time-limits-file=" + executionRoot.resolve("control/comparison-time-limits.json"), "--irace.initial-configurations-file=" + c.config.initialConfigurationsFile(), "--irace.ablation=false", "--irace.reject-execution-errors=true",
                 "--solver.autorestart=true", "--solver.seed=" + seed, "--solver.experiments-per-parameter=0", "--solver.minimum-number-of-experiments=" + c.config.tuning().evaluations(),
                 "--solver.ignore-initial-millis=" + c.config.tuning().ignoreInitialMillis(), "--solver.interval-duration-millis=" + c.config.tuning().intervalDurationMillis(), "--solver.log-scale-area=" + c.config.tuning().logScaleArea(),
-                "--solver.parallel-executor=" + (workers > 1), "--solver.n-workers=" + workers, "--solver.metrics=true", "--serializers.xlsx.enabled=true", "--serializers.xlsx.frequency=EXPERIMENT_END"));
+                "--solver.parallel-executor=" + (workers > 1), "--solver.n-workers=" + workers, "--solver.progress-bar=false", "--solver.metrics=true", "--serializers.xlsx.enabled=true", "--serializers.xlsx.frequency=EXPERIMENT_END"));
         if (t != null) args.addAll(3, List.of("-Dmork.execution.target=" + t.targetId, "-Dmork.execution.pool-revision=" + t.targetRevision, "-Dmork.execution.campaign=" + c.id, "-Dmork.execution.trial=" + t.number, "-Dmork.execution.tuning-seed=" + t.tuningSeed, "-Dmork.execution.artifact-sha256=" + artifactHash));
         if (t != null) { args.add("--autollm.child.baseline-components-file=" + executionRoot.resolve("baseline/components.json")); if (t.blacklist != null && !t.blacklist.isBlank()) args.add("--blacklist=" + t.blacklist); }
         boolean newFilter = t != null && t.blacklist != null && !t.blacklist.isBlank();
