@@ -1,10 +1,10 @@
 export type AutoLlmCampaignStatus = 'DRAFT' | 'RUNNING' | 'WAITING_FOR_REMOTE' | 'WAITING_FOR_TARGETS' | 'CANCELLATION_PENDING' | 'INTERRUPTED' | 'NEEDS_ATTENTION' | 'CANCELLED' | 'SUCCEEDED' | 'COMPLETED_WITH_FAILURES';
 export type AutoLlmTargetStatus = 'REGISTERED' | 'VALIDATED' | 'QUALIFYING' | 'READY' | 'BUSY' | 'DRAINING' | 'NEEDS_ATTENTION' | 'REMOVED';
-export type AutoLlmTrialStatus = 'PENDING' | 'STARTING' | 'WAITING_FOR_GENERATION' | 'GENERATION' | 'REPAIR' | 'METADATA_RECONCILIATION' | 'PREPARATION' | 'TUNING' | 'WINNER_EXPORT' | 'COMPARISON' | 'WAITING_FOR_QUOTA' | 'WAITING_FOR_REMOTE' | 'INTERRUPTED' | 'BLOCKED' | 'SUCCEEDED' | 'FAILED';
+export type AutoLlmTrialStatus = 'PENDING' | 'WAITING_FOR_TARGET' | 'LOCAL_PREPARATION' | 'STARTING' | 'WAITING_FOR_GENERATION' | 'GENERATION' | 'REPAIR' | 'METADATA_RECONCILIATION' | 'PREPARATION' | 'TUNING' | 'WINNER_EXPORT' | 'COMPARISON' | 'WAITING_FOR_QUOTA' | 'WAITING_FOR_REMOTE' | 'INTERRUPTED' | 'BLOCKED' | 'SUCCEEDED' | 'FAILED';
 export type AutoLlmAttemptStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'INTERRUPTED' | 'QUOTA_LIMIT';
-export type AutoLlmAttemptStage = 'GENERATION' | 'REPAIR' | 'PREPARATION' | 'TUNING' | 'WINNER_EXPORT' | 'COMPARISON';
+export type AutoLlmAttemptStage = 'GENERATION' | 'REPAIR' | 'LOCAL_PREPARATION' | 'PREPARATION' | 'TUNING' | 'WINNER_EXPORT' | 'COMPARISON';
 export type AutoLlmPreparationStage = 'BUILD' | 'DEPENDENCIES' | 'METADATA' | 'PROBES' | 'PILOT';
-export type ScreeningStatus = 'DRAFT' | 'RUNNING' | 'WAITING_FOR_REMOTE' | 'CANCELLATION_PENDING' | 'AWAITING_APPROVAL' | 'APPROVED' | 'NEEDS_ATTENTION' | 'INTERRUPTED' | 'CANCELLED';
+export type ScreeningStatus = 'DRAFT' | 'RUNNING' | 'WAITING_FOR_REMOTE' | 'CANCELLATION_PENDING' | 'READY_FOR_REVIEW' | 'NEEDS_ATTENTION' | 'INTERRUPTED' | 'CANCELLED';
 
 export interface AutoLlmServer {
   id: string; host: string; workspace: string; javaExecutable: string; environment: Record<string, string>;
@@ -21,10 +21,10 @@ export interface AutoLlmConfig {
   sotaFile: string | null; initialConfigurationsFile: string | null;
   trainingPath: string | null; comparisonPath: string | null;
   codex: { executable: string; promptFile: string | null; prompt: string | null; model: string | null; reasoningEffort: string | null; maxConcurrentSessions: number };
-  preparation: { probeDurationMillis: number; pilotDurationMillis: number; maxRepairs: number };
+  preparation: { probeDurationMillis: number; pilotDurationMillis: number; maxRepairs: number; localBuilds?: number; readyQueueSize?: number; localWorkers?: number; localHeap?: string };
   tuning: { evaluations: number; ignoreInitialMillis: number; intervalDurationMillis: number; logScaleArea: boolean };
   comparison: { repetitions: number; timeLimitMillis: number };
-  execution: { workers: number; target?: 'LOCAL' | 'SSH'; ssh?: { screeningServerId: string; runnerArtifact: string | null; servers: AutoLlmServer[] } | null; watchdogGraceMillis: number; codexTimeoutMillis: number; buildTimeoutMillis: number; startupTimeoutMillis: number; searchSpaceTimeoutMillis: number; phaseTimeoutMillis: number; stageTimeoutMillis: number; heap: string };
+  execution: { workers: number; target?: 'LOCAL' | 'SSH'; ssh?: { screeningServerId: string; runnerArtifact: string | null; servers: AutoLlmServer[]; reconnect?: { initialDelayMillis: number; maximumDelayMillis: number; budgetMillis: number } } | null; watchdogGraceMillis: number; codexTimeoutMillis: number; buildTimeoutMillis: number; startupTimeoutMillis: number; searchSpaceTimeoutMillis: number; phaseTimeoutMillis: number; stageTimeoutMillis: number; heap: string };
 }
 export interface AutoLlmAttempt {
   number: number; stage: AutoLlmAttemptStage; directory: string; status: AutoLlmAttemptStatus;

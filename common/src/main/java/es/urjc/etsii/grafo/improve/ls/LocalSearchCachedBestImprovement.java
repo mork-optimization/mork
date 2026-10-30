@@ -11,6 +11,7 @@ import es.urjc.etsii.grafo.solution.neighborhood.ListExploreResult;
 import es.urjc.etsii.grafo.solution.neighborhood.Neighborhood;
 import es.urjc.etsii.grafo.util.Context;
 
+import java.lang.ScopedValue;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.PriorityQueue;
@@ -37,7 +38,7 @@ public class LocalSearchCachedBestImprovement<
         > extends LocalSearch<M, S, I> {
 
     private final int cacheSize;
-    private final Deque<M> cachedMoves;
+    private final ScopedValue<Deque<M>> cachedMoves = ScopedValue.newInstance();
 
     /**
      * Create a new cached best improvement local search method using the given neighborhood.
@@ -69,23 +70,24 @@ public class LocalSearchCachedBestImprovement<
         super(objective, neighborhood);
         validateCacheSize(cacheSize);
         this.cacheSize = cacheSize;
-        this.cachedMoves = new ArrayDeque<>(cacheSize);
     }
 
     @Override
     public S improve(S solution) {
-        this.cachedMoves.clear();
-        return super.improve(solution);
+        // Each invocation owns its cache, including concurrent and nested calls on the same improver.
+        return ScopedValue.where(cachedMoves, new ArrayDeque<>()).call(() -> super.improve(solution));
     }
 
     /**
      * {@inheritDoc}
      * <p>
      * Get next move to execute.
+     * Calls outside {@link #improve(Solution)} explore the neighborhood without retaining cached moves.
      */
     @Override
     public M getMove(S solution) {
-        var cachedMove = getRefreshedCachedMove(solution);
+        var cache = cachedMoves.isBound() ? cachedMoves.get() : null;
+        var cachedMove = cache == null ? null : getRefreshedCachedMove(solution, cache);
         if (cachedMove != null) {
             return cachedMove;
         }
@@ -96,13 +98,13 @@ public class LocalSearchCachedBestImprovement<
         }
 
         var bestMove = topMoves.removeFirst();
-        this.cachedMoves.addAll(topMoves);
+        if (cache != null) cache.addAll(topMoves);
         return bestMove;
     }
 
-    private M getRefreshedCachedMove(S solution) {
-        while (!this.cachedMoves.isEmpty()) {
-            var refreshed = this.cachedMoves.removeFirst().refresh(solution);
+    private M getRefreshedCachedMove(S solution, Deque<M> cache) {
+        while (!cache.isEmpty()) {
+            var refreshed = cache.removeFirst().refresh(solution);
             if (refreshed.isEmpty()) {
                 continue;
             }

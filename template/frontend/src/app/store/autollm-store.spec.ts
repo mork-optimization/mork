@@ -6,11 +6,11 @@ import { AutoLlmStore } from './autollm-store';
 describe('AutoLLM campaign lifecycle store', () => {
   const config = {} as AutoLlmConfig;
   const campaign = { id: 'campaign', status: 'RUNNING', config, trials: [{ number: 1, status: 'GENERATION' }, { number: 2, status: 'PENDING' }] } as AutoLlmCampaign;
-  let client: { curves: ReturnType<typeof vi.fn>; probeTarget: ReturnType<typeof vi.fn>; targetProbe: ReturnType<typeof vi.fn>; recovery: ReturnType<typeof vi.fn>; resumeTrial: ReturnType<typeof vi.fn>; failTrial: ReturnType<typeof vi.fn>; targetAction: ReturnType<typeof vi.fn>; screeningAction: ReturnType<typeof vi.fn>; screeningReview: ReturnType<typeof vi.fn>; screenings: ReturnType<typeof vi.fn>; summary: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; preview: ReturnType<typeof vi.fn> };
+  let client: { proposal: ReturnType<typeof vi.fn>; approve: ReturnType<typeof vi.fn>; curves: ReturnType<typeof vi.fn>; probeTarget: ReturnType<typeof vi.fn>; targetProbe: ReturnType<typeof vi.fn>; recovery: ReturnType<typeof vi.fn>; resumeTrial: ReturnType<typeof vi.fn>; failTrial: ReturnType<typeof vi.fn>; targetAction: ReturnType<typeof vi.fn>; screeningAction: ReturnType<typeof vi.fn>; screeningReview: ReturnType<typeof vi.fn>; screenings: ReturnType<typeof vi.fn>; summary: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; preview: ReturnType<typeof vi.fn> };
   let store: AutoLlmStore;
   beforeEach(() => {
     vi.useFakeTimers();
-    client = { curves: vi.fn().mockResolvedValue({ curves: [], sampled: true }), probeTarget: vi.fn().mockResolvedValue({ id: 'probe', status: 'RUNNING', targets: {} }), targetProbe: vi.fn().mockResolvedValue({ id: 'probe', status: 'SUCCEEDED', targets: { local: { status: 'SUCCEEDED' } } }), recovery: vi.fn().mockResolvedValue({ trials: {}, targets: {}, resumeCampaign: { allowed: false, reason: 'Already running', effect: '' } }), resumeTrial: vi.fn().mockResolvedValue(campaign), failTrial: vi.fn().mockResolvedValue(campaign), targetAction: vi.fn().mockResolvedValue(campaign), screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true, ready: true, qualifiedTargets: ['a'], failedTargets: [] }), action: vi.fn().mockResolvedValue(campaign), preview: vi.fn().mockResolvedValue({ text: '', lineCount: 0, sizeBytes: 0, truncated: false, byteLimited: false }) };
+    client = { proposal: vi.fn().mockResolvedValue({ digest: "reviewed", testing: [], training: [] }), approve: vi.fn().mockResolvedValue({}), curves: vi.fn().mockResolvedValue({ curves: [], sampled: true }), probeTarget: vi.fn().mockResolvedValue({ id: 'probe', status: 'RUNNING', targets: {} }), targetProbe: vi.fn().mockResolvedValue({ id: 'probe', status: 'SUCCEEDED', targets: { local: { status: 'SUCCEEDED' } } }), recovery: vi.fn().mockResolvedValue({ trials: {}, targets: {}, resumeCampaign: { allowed: false, reason: 'Already running', effect: '' } }), resumeTrial: vi.fn().mockResolvedValue(campaign), failTrial: vi.fn().mockResolvedValue(campaign), targetAction: vi.fn().mockResolvedValue(campaign), screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true, ready: true, qualifiedTargets: ['a'], failedTargets: [] }), action: vi.fn().mockResolvedValue(campaign), preview: vi.fn().mockResolvedValue({ text: '', lineCount: 0, sizeBytes: 0, truncated: false, byteLimited: false }) };
     TestBed.configureTestingModule({ providers: [AutoLlmStore, { provide: AutoLlmClient, useValue: client }] });
     store = TestBed.inject(AutoLlmStore);
   });
@@ -89,11 +89,13 @@ describe('AutoLLM campaign lifecycle store', () => {
   });
   it('validates before creating and never starts an invalid configuration', async () => {
     store.config.set(config); client.validate.mockResolvedValue({ valid: false, errors: ['Missing SOTA'] });
-    await store.createAndStart();
+    await store.prepareCampaign();
     expect(store.error()).toBe('Missing SOTA'); expect(client.create).not.toHaveBeenCalled(); expect(client.action).not.toHaveBeenCalled(); expect(store.busy()).toBe(false);
   });
   it('creates, starts, cancels, and resumes through explicit lifecycle actions', async () => {
-    store.config.set(config); await store.createAndStart();
+    store.config.set(config); await store.prepareCampaign();
+    expect(client.action).not.toHaveBeenCalled();
+    await store.approveAndStart(); expect(client.approve).toHaveBeenCalledWith(campaign.id, 'reviewed');
     expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'start');
     await store.action('cancel'); expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'cancel', []);
     await store.action('resume'); expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'resume', []);
@@ -101,7 +103,7 @@ describe('AutoLLM campaign lifecycle store', () => {
   it('does not start when a target failed qualification even if parameter limits passed', async () => {
     store.config.set(config);
     client.baselineCheck.mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true, ready: false, qualifiedTargets: ['a'], failedTargets: ['b'] });
-    await store.createAndStart();
+    await store.prepareCampaign();
     expect(client.action).not.toHaveBeenCalled(); expect(store.error()).toContain('Failed targets: b');
     await store.action('start', ['a']); expect(client.action).toHaveBeenLastCalledWith(campaign.id, 'start', ['a']);
   });
@@ -113,14 +115,14 @@ describe('AutoLLM campaign lifecycle store', () => {
   });
   it('keeps an over-budget baseline as a draft and does not start it', async () => {
     store.config.set(config); client.baselineCheck.mockResolvedValue({ parameters: 350, maxParameters: 299, withinLimit: false, ready: false, qualifiedTargets: [], failedTargets: ['a'] });
-    await store.createAndStart();
+    await store.prepareCampaign();
     expect(store.selectedId()).toBe(campaign.id); expect(store.error()).toContain('350 parameters'); expect(client.action).not.toHaveBeenCalled();
   });
   it('keeps the preparation busy while a cancellation request completes', async () => {
     store.config.set(config);
     let finish!: (value: Awaited<ReturnType<AutoLlmClient['baselineCheck']>>) => void;
     client.baselineCheck.mockImplementationOnce(() => new Promise(resolve => { finish = resolve; }));
-    const preparing = store.createAndStart(); await vi.waitFor(() => expect(client.baselineCheck).toHaveBeenCalled());
+    const preparing = store.prepareCampaign(); await vi.waitFor(() => expect(client.baselineCheck).toHaveBeenCalled());
     await store.action('cancel'); expect(store.busy()).toBe(true);
     finish({ parameters: 350, maxParameters: 299, withinLimit: false, ready: false, qualifiedTargets: [], failedTargets: ['a'] }); await preparing; expect(store.busy()).toBe(false);
   });
@@ -181,11 +183,13 @@ describe('AutoLLM campaign lifecycle store', () => {
     expect(client.activity).toHaveBeenLastCalledWith(campaign.id, 1, 1, 53);
     expect(store.activity()).toEqual([{ timestamp: 'now', type: 'item.completed', text: 'hello' }]);
   });
-  it('never approves a review belonging to a different screening', async () => {
-    store.selectedScreening.set('second'); store.review.set({ jobId: 'first', proposalSha256: 'reviewed' } as ScreeningReview);
-    await store.screeningAction('approve'); expect(client.screeningAction).not.toHaveBeenCalled();
-    store.review.set({ jobId: 'second', proposalSha256: 'reviewed' } as ScreeningReview);
-    await store.screeningAction('approve'); expect(client.screeningAction).toHaveBeenCalledWith('second', 'approve', 'reviewed');
+  it('uses proposed indexes without a separate screening approval', () => {
+    store.config.set(config); store.selectedScreening.set('second');
+    store.screenings.set([{ id: 'second', status: 'READY_FOR_REVIEW', mirror: '/screening' } as import('../model/autollm').ScreeningJob]);
+    store.useSelection();
+    expect(store.config()?.trainingPath).toBe('/screening/proposal/proposed-train.index');
+    expect(store.config()?.comparisonPath).toBe('/screening/proposal/proposed-test.index');
+    expect(client.screeningAction).not.toHaveBeenCalled();
   });
   it('recovers only the selected trial, records its failure reason, and refreshes availability', async () => {
     await store.start(); store.selectTrial(2);

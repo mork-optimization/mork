@@ -20,6 +20,8 @@ import { FilePreviewUtil } from '../../util/file-preview-util';
 export class AutoLlmDashboard {
   readonly canPreviewFile = FilePreviewUtil.canPreview;
   readonly store = inject(AutoLlmStore);
+  readonly amendedTrials = signal(10);
+  readonly datasetEdit = signal('');
   readonly failureReason = signal('');
   readonly selectedObjective = signal('');
   readonly yAxisScale = signal<ComparisonYAxisScale>('linear');
@@ -42,6 +44,10 @@ export class AutoLlmDashboard {
   readonly effectiveYAxisScale = computed(() => this.yAxisScale() === 'logarithmic' && this.canLogYAxis() ? 'logarithmic' : 'linear');
   readonly curveChart = computed<ChartViewModel>(() => ComparisonChartUtil.build(this.selectedCurves(), this.activeObjective(), this.effectiveYAxisScale()));
   constructor() {
+    effect(() => {
+      const proposal = this.store.proposal(), config = this.store.config();
+      if (proposal && config && JSON.stringify(proposal.configuration) !== JSON.stringify(config)) this.store.proposal.set(null);
+    });
     effect(() => { this.store.selectedId(); this.store.selectedTrial(); this.failureReason.set(''); });
     void this.store.start();
   }

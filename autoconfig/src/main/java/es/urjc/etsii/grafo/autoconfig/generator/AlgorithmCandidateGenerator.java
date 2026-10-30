@@ -249,8 +249,8 @@ public class AlgorithmCandidateGenerator {
     }
 
     private static void validateIntegerParameter(Parameter p, IntegerParam annotation) {
-        if (annotation.min() > annotation.max()) {
-            throw new ComponentDefinitionException(p, "Invalid @IntegerParam range for %s: min %s > max %s".formatted(describe(p), annotation.min(), annotation.max()));
+        if (annotation.min() >= annotation.max()) {
+            throw new ComponentDefinitionException(p, "Invalid @IntegerParam range for %s: min %s >= max %s".formatted(describe(p), annotation.min(), annotation.max()));
         }
         if (!isIntegerType(p.getType())) {
             throw new ComponentDefinitionException(p, "@IntegerParam can only be used on integer-compatible parameters. Found %s in %s".formatted(p.getType().getSimpleName(), describe(p)));
@@ -258,8 +258,11 @@ public class AlgorithmCandidateGenerator {
     }
 
     private static void validateRealParameter(Parameter p, RealParam annotation) {
-        if (annotation.min() > annotation.max()) {
-            throw new ComponentDefinitionException(p, "Invalid @RealParam range for %s: min %s > max %s".formatted(describe(p), annotation.min(), annotation.max()));
+        String domainError = es.urjc.etsii.grafo.autoconfig.irace.IracePrecision.domainError(annotation.min(), annotation.max());
+        if (domainError != null) throw new ComponentDefinitionException(p,
+                "Invalid @RealParam domain (%s, %s) for %s: %s".formatted(annotation.min(), annotation.max(), describe(p), domainError));
+        if (annotation.min() >= annotation.max()) {
+            throw new ComponentDefinitionException(p, "Invalid @RealParam range for %s: min %s >= max %s".formatted(describe(p), annotation.min(), annotation.max()));
         }
         if (!Double.isFinite(annotation.min()) || !Double.isFinite(annotation.max())) {
             throw new ComponentDefinitionException(p, "Invalid @RealParam range for %s: min and max must be finite".formatted(describe(p)));

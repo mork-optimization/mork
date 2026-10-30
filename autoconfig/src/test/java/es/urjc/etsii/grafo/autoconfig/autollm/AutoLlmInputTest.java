@@ -72,7 +72,7 @@ class AutoLlmInputTest {
         String index = AutoLlmInputUtil.snapshot(root, "training", inputs);
         var defaults = AutoLlmConfig.defaults();
         var execution = new AutoLlmConfig.Execution(null, null, null, null, null, null, null, null, null, AutoLlmConfig.Target.SSH,
-                new AutoLlmConfig.Ssh("server", null, List.of(new AutoLlmConfig.Server("server", "server", "/remote", "java", null, null, null, null))));
+                new AutoLlmConfig.Ssh("server", null, List.of(new AutoLlmConfig.Server("server", "server", "/remote", "java", null, null, null, null)), null));
         var config = new AutoLlmConfig(defaults.project(), defaults.workspace(), null, null, null, null, null, index, index, null, null, null, null, execution);
         config = new AutoLlmExecutionService(new AutoLlmProcessRunner()).stageInputs(config, root);
         assertEquals(inputs, InstancePathUtil.list(config.trainingPath()));
@@ -136,7 +136,7 @@ class AutoLlmInputTest {
         Path original = temp.resolve("original.txt"), owned = screening.resolve("data/original/owned.txt");
         Files.createDirectories(owned.getParent()); Files.writeString(owned, "input");
         Files.createDirectories(proposal); Files.writeString(proposal.resolve("train.index"), "../data/original/owned.txt\n");
-        Files.writeString(proposal.resolve("approved.json"), "{}");
+        Files.writeString(proposal.resolve("proposal.json"), "{}");
         AutoLlmFileUtil.write(screening.resolve("data/original-inputs.json"), Map.of(original.toString(), Map.of("path", owned.toString(), "sha256", "fixture")));
         var aliases = AutoLlmInputUtil.aliases(proposal.resolve("train.index"), proposal.resolve("train.index"));
         assertEquals(Map.of(original.toString(), owned.toString()), aliases);

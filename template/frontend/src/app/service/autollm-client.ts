@@ -22,7 +22,15 @@ export class AutoLlmClient {
   probeTarget(config: AutoLlmConfig): Promise<Record<string, unknown>> { return this.post('/targets/probe', config); }
   targetProbe(id: string): Promise<Record<string, unknown>> { return this.get(`/targets/probes/${encodeURIComponent(id)}`); }
   list(): Promise<{ active: string; campaigns: AutoLlmCampaign[] }> { return this.get('/campaigns'); }
-  create(config: AutoLlmConfig): Promise<AutoLlmCampaign> { return this.post('/campaigns', config); }
+  async create(config: AutoLlmConfig): Promise<AutoLlmCampaign> {
+    const receipt = await this.post<{ id: string }>('/campaigns', config);
+    return this.get(`/campaigns/${encodeURIComponent(receipt.id)}/status`);
+  }
+  proposal(id: string, targets: string[] = []): Promise<{ digest: string; configuration: AutoLlmConfig; training: string[]; testing: string[]; screening: unknown; targets: unknown }> { return this.post(`/campaigns/${encodeURIComponent(id)}/proposal`, { targets }); }
+  async reviseDataset(id: string, selection: unknown): Promise<AutoLlmCampaign> { const receipt = await firstValueFrom(this.http.put<{ id: string }>(`${this.base}/campaigns/${encodeURIComponent(id)}/dataset`, selection).pipe(takeUntilDestroyed(this.destroy))); return this.get(`/campaigns/${encodeURIComponent(receipt.id)}/status`); }
+  async editDraft(id: string, config: AutoLlmConfig): Promise<AutoLlmCampaign> { const receipt = await firstValueFrom(this.http.put<{ id: string }>(`${this.base}/campaigns/${encodeURIComponent(id)}/draft`, config).pipe(takeUntilDestroyed(this.destroy))); return this.get(`/campaigns/${encodeURIComponent(receipt.id)}/status`); }
+  amendTrials(id: string, trials: number): Promise<Awaited<ReturnType<AutoLlmClient["proposal"]>>> { return this.post(`/campaigns/${encodeURIComponent(id)}/amend-trials`, { trials }); }
+  approve(id: string, digest: string): Promise<unknown> { return this.post(`/campaigns/${encodeURIComponent(id)}/approve`, { digest }); }
   baselineCheck(id: string): Promise<{ parameters: number; maxParameters: number; withinLimit: boolean; ready: boolean; qualifiedTargets: string[]; failedTargets: string[] }> { return this.post(`/campaigns/${encodeURIComponent(id)}/baseline-check`); }
   action(id: string, action: 'start' | 'resume' | 'cancel' | 'report', targets: string[] = []): Promise<AutoLlmCampaign> { return this.post(`/campaigns/${encodeURIComponent(id)}/${action}`, action === 'start' ? { targets } : {}); }
   addTarget(id: string, server: AutoLlmServer): Promise<AutoLlmCampaign> {
@@ -47,7 +55,7 @@ export class AutoLlmClient {
   createScreening(config: AutoLlmConfig, inputPath: string, trainingFraction: number): Promise<ScreeningJob> {
     return this.post('/screenings', { config, inputPath, trainingFraction, settings: { sotaFile: config.sotaFile, python: config.execution.ssh?.servers.find(server => server.id === config.execution.ssh?.screeningServerId)?.environment?.['MORK_SELECTOR_PYTHON'] ?? 'python3' } });
   }
-  screeningAction(id: string, action: 'resume' | 'cancel' | 'approve', proposalSha256?: string): Promise<ScreeningJob> { return this.post(`/screenings/${encodeURIComponent(id)}/${action}`, { proposalSha256 }); }
+  screeningAction(id: string, action: 'resume' | 'cancel'): Promise<ScreeningJob> { return this.post(`/screenings/${encodeURIComponent(id)}/${action}`, {}); }
   screeningReview(id: string): Promise<ScreeningReview> { return this.get(`/screenings/${encodeURIComponent(id)}/review`); }
   screeningArtifactUrl(id: string, path: string): string { return `${this.base}/screenings/${encodeURIComponent(id)}/artifact?${new URLSearchParams({ path })}`; }
 }

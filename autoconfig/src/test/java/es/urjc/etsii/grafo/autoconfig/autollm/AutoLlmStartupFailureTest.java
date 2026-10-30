@@ -16,11 +16,21 @@ class AutoLlmStartupFailureTest {
     @TempDir Path temp;
 
     @Test
+    void realPrecisionFailuresReachRepairOnlyForNewComponents() throws Exception {
+        var failure = launch("precision", List.of(), null);
+        assertEquals(AutoLlmFailureUtil.Category.COMPONENT, failure.category());
+        assertEquals("INVALID_COMPONENT_DEFINITION", failure.code());
+        assertTrue(failure.message().contains("digits=4"));
+        var baseline = launch("precision", List.of(StartupFailureFixture.InvalidPrecisionComponentNew.class.getName()), null);
+        assertEquals(AutoLlmFailureUtil.Category.UNKNOWN, baseline.category());
+    }
+
+    @Test
     void newComponentDeclarationFailureSurvivesEarlySpringStartupFailure() throws Exception {
         var failure = launch("component", List.of(), null);
         assertEquals(AutoLlmFailureUtil.Category.COMPONENT, failure.category());
         assertEquals("INVALID_COMPONENT_DEFINITION", failure.code());
-        assertTrue(failure.message().contains("min 2 > max 1"));
+        assertTrue(failure.message().contains("min 2 >= max 1"));
     }
 
     @Test

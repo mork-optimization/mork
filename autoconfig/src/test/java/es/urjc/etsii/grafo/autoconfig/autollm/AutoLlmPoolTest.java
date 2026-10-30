@@ -18,6 +18,11 @@ class AutoLlmPoolTest {
     @FunctionalInterface interface Execution { void run(AutoLlmExecutionContext model, BooleanSupplier stop) throws Exception; }
     private final Map<String, Execution> executions = new ConcurrentHashMap<>();
     private final Map<String, String> endpoints = new ConcurrentHashMap<>();
+    private Execution preparation = (model, stop) -> {
+        model.trial.nextStage = AutoLlmCampaign.Stage.PREPARATION;
+        model.trial.status = AutoLlmCampaign.TrialStatus.WAITING_FOR_TARGET;
+    };
+    private final java.util.concurrent.atomic.AtomicInteger localPreparations = new java.util.concurrent.atomic.AtomicInteger();
     private AutoLlmCampaignStore store;
     private AutoLlmCampaign campaign;
     private AutoLlmCampaignService service;
@@ -27,22 +32,37 @@ class AutoLlmPoolTest {
         Path runner = temp.resolve("runner.jar"); Files.writeString(runner, "fixture");
         var definitions = new ArrayList<AutoLlmConfig.Server>(); for (String id : ids) definitions.add(server(id));
         var config = new AutoLlmConfig(null, temp.toString(), trials, null, null, null, null, input.toString(), input.toString(), null, null, null, null,
-                new AutoLlmConfig.Execution(2, null, null, null, null, null, null, null, null, AutoLlmConfig.Target.SSH, new AutoLlmConfig.Ssh(ids[0], runner.toString(), definitions)));
+                new AutoLlmConfig.Execution(2, null, null, null, null, null, null, null, null, AutoLlmConfig.Target.SSH, new AutoLlmConfig.Ssh(ids[0], runner.toString(), definitions, null)));
         store = new AutoLlmCampaignStore(config); campaign = new AutoLlmCampaign(); campaign.id = UUID.randomUUID().toString(); campaign.createdAt = "2026-10-22"; campaign.config = config; campaign.baselineCommit = "fixed";
         for (String id : ids) { var t = new AutoLlmCampaign.TargetState(); t.definition = server(id); t.directory = "targets/" + id; t.revision = ++campaign.poolRevision; t.baselineReady = true; t.resolvedConfig = config.forServer(t.definition); campaign.targets.put(id, t); }
-        for (int i = 1; i <= trials; i++) { var trial = new AutoLlmCampaign.Trial(); trial.number = i; trial.tuningSeed = 100L + i; campaign.trials.add(trial); }
+        for (int i = 1; i <= trials; i++) { var trial = new AutoLlmCampaign.Trial(); trial.number = i; trial.directory = "trials/%03d".formatted(i); trial.nextStage = AutoLlmCampaign.Stage.PREPARATION; trial.status = AutoLlmCampaign.TrialStatus.WAITING_FOR_TARGET; trial.tuningSeed = 100L + i; campaign.trials.add(trial); }
         AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/canonical-hashes.json"), Map.of());
         AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/instance-paths.json"), Map.of());
         AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/input-aliases.json"), Map.of());
         AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/sota.json"), Map.of());
         AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/seeds.json"), List.of()); store.save(campaign);
+        campaign.localPreparation.directory = "preparation"; campaign.localPreparation.baselineReady = true; campaign.localPreparation.resolvedConfig = config.localPreparation();
+        var qualified = new ArrayList<>(campaign.targets.values()); qualified.add(campaign.localPreparation);
+        for (var target : qualified) {
+            Path root = store.directory(campaign.id).resolve(target.directory);
+            Files.createDirectories(root.resolve("control"));
+            Files.copy(store.directory(campaign.id).resolve("control/sota.json"), root.resolve("control/sota.json"));
+            Files.copy(store.directory(campaign.id).resolve("control/seeds.json"), root.resolve("control/seeds.json"));
+            AutoLlmFileUtil.write(root.resolve("control/comparison-time-limits.json"), Map.of(input.toString(), 100L));
+            AutoLlmFileUtil.write(root.resolve("baseline/components.json"), List.of("Original"));
+            AutoLlmFileUtil.write(root.resolve("baseline-preflight/check/execution/check.json"), Map.of("parameters", 1));
+            Path artifact = root.resolve("baseline/source").resolve(config.project().artifact()); Files.createDirectories(artifact.getParent()); Files.writeString(artifact, "fixture");
+        }
+        store.save(campaign);
         service = new AutoLlmCampaignService(config, store, new AutoLlmProcessRunner(), mock(CodexTaskRunner.class), mock(AutoLlmReportService.class), new InstanceConfiguration()) {
             @Override protected AutoLlmTrialRunner runner(AutoLlmExecutionContext model, Path root, AutoLlmTrialRunner.Listener listener, BooleanSupplier stop, Semaphore sessions) {
-                String id = root.getFileName().toString(); var runner = mock(AutoLlmTrialRunner.class);
+                String id = model.trial == null ? root.getFileName().toString() : model.trial.targetId; var runner = mock(AutoLlmTrialRunner.class);
                 when(runner.snapshot()).thenAnswer(_ -> model.snapshot());
                 when(runner.endpoint()).thenAnswer(_ -> endpoints.getOrDefault(id, id));
                 doAnswer(_ -> {
                     AutoLlmFileUtil.write(root.resolve("baseline/components.json"), List.of("Original"));
+                    AutoLlmFileUtil.write(root.resolve("control/comparison-time-limits.json"), Map.of(input.toString(), 100L));
+                    Path jar = root.resolve("baseline/source").resolve(config.project().artifact()); Files.createDirectories(jar.getParent()); Files.writeString(jar, "fixture");
                     AutoLlmFileUtil.write(root.resolve("baseline/dependencies.json"), Map.of());
                     AutoLlmFileUtil.write(root.resolve("baseline-preflight/check/execution/search-space.json"), Map.of());
                     AutoLlmFileUtil.write(root.resolve("baseline-preflight/check/execution/check.json"), Map.of("parameters", 1)); return null;
@@ -51,14 +71,59 @@ class AutoLlmPoolTest {
                     model.trial.status = AutoLlmCampaign.TrialStatus.TUNING; listener.state(model.snapshot());
                     executions.get(id).run(model, stop); return null;
                 }).when(runner).execute();
+                doAnswer(_ -> { localPreparations.incrementAndGet(); preparation.run(model, stop); return null; }).when(runner).prepareTrialLocally();
                 return runner;
             }
         };
+        campaign.reviewedTargets.addAll(campaign.targets.keySet()); campaign.approvedTargets.addAll(campaign.targets.keySet()); store.save(campaign);
+        campaign.approvedProposal = service.proposal(campaign.id).digest(); store.save(campaign);
     }
     private void await(BooleanSupplier condition) throws Exception {
         long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
         while (!condition.getAsBoolean() && System.nanoTime() < end) Thread.sleep(10);
         assertTrue(condition.getAsBoolean(), () -> AutoLlmFileUtil.JSON.writeValueAsString(store.load(campaign.id)));
+    }
+    @Test void preparesLocallyWhileWorkerIsBusyWithoutLaunchingTheTrialTwice() throws Exception {
+        setup(2, "a");
+        campaign.trials.get(1).nextStage = AutoLlmCampaign.Stage.GENERATION;
+        campaign.trials.get(1).status = AutoLlmCampaign.TrialStatus.PENDING; store.save(campaign);
+        var remoteEntered = new CountDownLatch(1); var finishRemote = new CountDownLatch(1);
+        var localEntered = new CountDownLatch(1); var finishLocal = new CountDownLatch(1);
+        preparation = (model, stop) -> {
+            localEntered.countDown(); assertTrue(finishLocal.await(10, TimeUnit.SECONDS));
+            model.trial.nextStage = AutoLlmCampaign.Stage.PREPARATION; model.trial.status = AutoLlmCampaign.TrialStatus.WAITING_FOR_TARGET;
+        };
+        executions.put("a", (model, stop) -> {
+            if (model.trial.number == 1) { remoteEntered.countDown(); assertTrue(finishRemote.await(10, TimeUnit.SECONDS)); }
+            model.trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED;
+        });
+        try {
+            service.start(campaign.id, false, Set.of()); assertTrue(remoteEntered.await(10, TimeUnit.SECONDS)); assertTrue(localEntered.await(10, TimeUnit.SECONDS));
+            service.drainTarget(campaign.id, "a", false);
+            assertEquals(1, localPreparations.get());
+            assertNull(store.load(campaign.id).trials.get(1).targetId);
+            finishLocal.countDown(); await(() -> store.load(campaign.id).trials.get(1).status == AutoLlmCampaign.TrialStatus.WAITING_FOR_TARGET);
+            assertEquals("trials/002", store.load(campaign.id).trials.get(1).directory);
+            finishRemote.countDown(); await(() -> store.load(campaign.id).status == AutoLlmCampaign.CampaignStatus.WAITING_FOR_TARGETS);
+            service.resumeTarget(campaign.id, "a"); await(() -> service.active() == null);
+            assertEquals("SUCCEEDED", store.load(campaign.id).status.name()); assertEquals(1, localPreparations.get());
+        } finally { finishRemote.countDown(); finishLocal.countDown(); service.close(); }
+    }
+    @Test void campaignApprovalIsRequiredAndRejectsAStaleRevision() throws Exception {
+        setup(1, "a"); campaign.approvedProposal = null; campaign.approvedTargets.clear(); store.save(campaign);
+        try {
+            assertThrows(IllegalStateException.class, () -> service.start(campaign.id, false, Set.of()));
+            assertNull(service.active());
+            assertThrows(IllegalStateException.class, () -> service.approve(campaign.id, "stale"));
+            var proposal = service.proposal(campaign.id);
+            service.approve(campaign.id, proposal.digest());
+            assertEquals(proposal.digest(), service.proposal(campaign.id).approvedDigest());
+            service.selectProposal(campaign.id, Set.of("a"));
+            assertEquals(proposal.digest(), service.proposal(campaign.id).digest());
+            executions.put("a", (model, stop) -> model.trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED);
+            service.start(campaign.id, false, Set.of()); await(() -> service.active() == null);
+            assertEquals("SUCCEEDED", store.load(campaign.id).status.name());
+        } finally { service.close(); }
     }
     @Test void pendingCancellationCannotBeResumedWhenRecoveryReportsItUnavailable() throws Exception {
         setup(1, "a"); campaign.status = AutoLlmCampaign.CampaignStatus.CANCELLATION_PENDING; store.save(campaign);
@@ -92,6 +157,7 @@ class AutoLlmPoolTest {
     }
     @Test void qualificationFailureIsSeparateFromParameterLimitsAndSubsetMustBeExplicit() throws Exception {
         setup(1, "a", "b"); endpoints.put("a", "same"); endpoints.put("b", "same");
+        for (var t : campaign.targets.values()) t.baselineReady = false; store.save(campaign);
         try {
             var result = service.baselineCheck(campaign.id);
             assertFalse(result.ready()); assertEquals(1, result.failedTargets().size());
@@ -100,7 +166,7 @@ class AutoLlmPoolTest {
             assertNull(service.active());
             String healthy = result.qualifiedTargets().getFirst();
             executions.put(healthy, (model, stop) -> model.trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED);
-            service.start(campaign.id, false, Set.of(healthy)); await(() -> service.active() == null);
+            service.selectProposal(campaign.id, Set.of(healthy)); service.approve(campaign.id, service.proposal(campaign.id).digest()); service.start(campaign.id, false, Set.of()); await(() -> service.active() == null);
             var saved = store.load(campaign.id);
             assertEquals(healthy, saved.trials.getFirst().targetId);
             assertTrue(saved.targets.get(result.failedTargets().getFirst()).draining);
@@ -141,7 +207,7 @@ class AutoLlmPoolTest {
         try {
             service.start(campaign.id, false, java.util.Set.of()); assertTrue(entered.await(10, TimeUnit.SECONDS)); service.drainTarget(campaign.id, "a", false);
             assertThrows(IllegalStateException.class, () -> service.drainTarget(campaign.id, "a", true));
-            service.addTarget(campaign.id, "b", server("b")); service.addTarget(campaign.id, "b", server("b"));
+            service.addTarget(campaign.id, "b", server("b")); await(() -> store.load(campaign.id).targets.get("b").baselineReady); service.approve(campaign.id, service.proposal(campaign.id).digest()); service.addTarget(campaign.id, "b", server("b")); await(() -> store.load(campaign.id).targets.get("b").baselineReady); service.approve(campaign.id, service.proposal(campaign.id).digest());
             await(() -> store.load(campaign.id).trials.get(2).status == AutoLlmCampaign.TrialStatus.SUCCEEDED);
             var busy = store.load(campaign.id); assertEquals("a", busy.trials.get(0).targetId); assertEquals("b", busy.trials.get(1).targetId); assertTrue(busy.targets.get("a").draining);
             finish.countDown(); await(() -> service.active() == null); assertEquals("SUCCEEDED", store.load(campaign.id).status.name());
@@ -176,7 +242,7 @@ class AutoLlmPoolTest {
             if (drained) {
                 var waiting = store.load(campaign.id);
                 assertTrue(waiting.targets.get("a").draining); assertEquals("DRAINING", waiting.targets.get("a").status.name());
-                assertEquals("PENDING", waiting.trials.get(2).status.name());
+                assertEquals("WAITING_FOR_TARGET", waiting.trials.get(2).status.name());
                 service.resumeTarget(campaign.id, "a");
             }
             assertTrue(nextTrial.await(10, TimeUnit.SECONDS));
@@ -283,6 +349,7 @@ class AutoLlmPoolTest {
             assertTrue(stop.getAsBoolean()); model.trial.status = AutoLlmCampaign.TrialStatus.INTERRUPTED;
         });
         try {
+            service.approve(campaign.id, service.proposal(campaign.id).digest());
             service.start(campaign.id, false, java.util.Set.of()); assertTrue(entered.await(10, TimeUnit.SECONDS)); Files.writeString(frozen, "changed");
             service.addTarget(campaign.id, "b", server("b")); await(() -> service.active() == null);
             var result = store.load(campaign.id); assertEquals("NEEDS_ATTENTION", result.status.name()); assertNotNull(result.problem); assertEquals(AutoLlmFailureUtil.Category.INTEGRITY, result.problem.category());

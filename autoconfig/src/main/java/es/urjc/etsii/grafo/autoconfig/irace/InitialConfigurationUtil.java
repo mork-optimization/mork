@@ -9,7 +9,6 @@ import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -18,7 +17,6 @@ import java.util.Map;
 
 /** Converts JSON component descriptions into irace's initial-configuration table. */
 public final class InitialConfigurationUtil {
-    static final int GENERATED_REAL_DIGITS = 2;
 
     private InitialConfigurationUtil() {
     }
@@ -197,12 +195,12 @@ public final class InitialConfigurationUtil {
                     || number > ((Number) domain[1]).doubleValue()) {
                 throw new IllegalArgumentException("Value " + value + " is outside the domain of " + path);
             }
-            BigDecimal decimal = BigDecimal.valueOf(number);
+            BigDecimal decimal;
             try {
-                decimal = decimal.setScale(GENERATED_REAL_DIGITS, RoundingMode.UNNECESSARY);
+                decimal = IracePrecision.exact(number);
             } catch (ArithmeticException e) {
                 throw new IllegalArgumentException("Value " + value + " at " + path
-                        + " has more than " + GENERATED_REAL_DIGITS + " decimal places used by irace", e);
+                        + " has more than " + IracePrecision.DIGITS + " decimal places used by irace", e);
             }
             return decimal.toPlainString();
         } catch (NumberFormatException e) {

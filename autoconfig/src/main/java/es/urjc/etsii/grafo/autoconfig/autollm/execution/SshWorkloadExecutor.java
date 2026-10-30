@@ -16,6 +16,9 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
     private final Consumer<Map<String,Object>> observer;
     private String lastSynchronizedAt;
     private int connectionRetries;
+    private Instant disconnectedAt;
+    private Instant nextRetryAt;
+    private int connectionFailures;
     public SshWorkloadExecutor(AutoLlmConfig config, Path root, SshTransport transport, Consumer<Map<String,Object>> observer) {
         this.config = config; this.root = root; this.transport = transport; this.observer = observer;
     }
@@ -59,20 +62,31 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
             Path previous = work.output().resolve("remote-status.json");
             if (Files.exists(previous)) {
                 var saved = AutoLlmFileUtil.JSON.readTree(Files.readString(previous));
+                if (!saved.path("disconnectedAt").isNull() && !saved.path("disconnectedAt").isMissingNode()) disconnectedAt = Instant.parse(saved.path("disconnectedAt").asString());
+                connectionFailures = saved.path("consecutiveFailures").asInt(0);
+                if (!saved.path("nextRetryAt").isNull() && !saved.path("nextRetryAt").isMissingNode()) nextRetryAt = Instant.parse(saved.path("nextRetryAt").asString());
                 lastSynchronizedAt = saved.path("lastSynchronizedAt").asString(null); connectionRetries = saved.path("connectionRetries").asInt(0);
             }
             var offsets = new HashMap<String,Long>();
             for (String name : List.of("stdout.log", "stderr.log", "execution/events.jsonl")) {
                 Path file = work.output().resolve(name); offsets.put(name, Files.exists(file) ? Files.size(file) : 0L);
             }
-            boolean cancellationSent = false; boolean initialized = false; boolean verified = false;
-            int connectionFailures = 0;
+            boolean cancellationSent = false; boolean cancellationAttempted = false; boolean initialized = false; boolean verified = false;
+
             while (true) {
                 if (Thread.currentThread().isInterrupted()) throw new CancellationException("Remote job detached; resume the saved job identity");
                 try {
+                    if (nextRetryAt != null) {
+                        while (Instant.now().isBefore(nextRetryAt)) {
+                            if (cancelled.getAsBoolean() && !cancellationAttempted) break;
+                            Thread.sleep(Math.min(200, Math.max(1, java.time.Duration.between(Instant.now(), nextRetryAt).toMillis())));
+                        }
+                    }
+                    cancellationAttempted |= cancelled.getAsBoolean();
                     if (!initialized) { transport.bootstrap(); initialized = true; }
                     State state = AutoLlmFileUtil.JSON.readValue(transport.call("status", remote, job.id(), Map.of()), State.class);
                     if (state.status() == JobStatus.NOT_FOUND) {
+                        if (lastSynchronizedAt != null) throw new ExecutionTargetException("Previously observed remote job disappeared; inspect its identity before any replacement");
                         for (String layer : job.layers()) {
                             String hash = Path.of(layer).getFileName().toString().replace(".zip", "");
                             var cached = AutoLlmFileUtil.JSON.readTree(transport.call("has", remote, layer, Map.of()));
@@ -105,14 +119,17 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                     }
                     state = page.state();
                     lastSynchronizedAt = Instant.now().toString();
-                    publish(work.output(), job, cancellationSent ? "CANCELLATION_PENDING" : state.status().name(), null);
                     if (state.archiveSha256() != null) {
+                        publish(work.output(), job, cancellationSent ? "CANCELLATION_PENDING" : "COLLECTING", null);
+                        long downloadStart = System.nanoTime();
                         Path archive = work.output().resolve("remote-result.zip"); transport.download(remote, job.id(), archive);
+                        long archiveBytes = Files.size(archive), downloadMillis = (System.nanoTime() - downloadStart) / 1_000_000;
                         if (!state.archiveSha256().equals(AutoLlmFileUtil.hash(archive))) throw new IllegalStateException("Remote result checksum mismatch");
                         WorkloadArchiveUtil.unpack(archive, root);
                         DirectoryArchiveUtil.archive(work.output().resolve("solutions"));
                         Files.delete(archive);
-                        AutoLlmFileUtil.write(work.output().resolve("collection-completed.json"), Map.of("jobId", job.id(), "archiveSha256", state.archiveSha256()));
+                        AutoLlmFileUtil.write(work.output().resolve("collection-completed.json"), Map.of("jobId", job.id(), "archiveSha256", state.archiveSha256(), "archiveBytes", archiveBytes, "downloadMillis", downloadMillis, "collectionMillis", (System.nanoTime() - downloadStart) / 1_000_000));
+                        disconnectedAt = null; nextRetryAt = null; connectionFailures = 0;
                         publish(work.output(), job, state.status().name(), state.failure());
                         if (state.status() == JobStatus.CANCELLED) throw new CancellationException("Remote cancellation confirmed");
                         if (state.status() == JobStatus.HOST_CHANGED) throw new ExecutionTargetException(state.failure());
@@ -124,18 +141,23 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                         }
                         return state.result();
                     }
-                    connectionFailures = 0;
+                    connectionFailures = 0; disconnectedAt = null; nextRetryAt = null;
+                    publish(work.output(), job, cancellationSent ? "CANCELLATION_PENDING" : state.status().name(), null);
                 } catch (SshTransport.ConnectionException e) {
                     AutoLlmFileUtil.append(work.output().resolve("connection-attempts.jsonl"), Map.of("timestamp", Instant.now().toString(), "failure", e.getMessage(), "retry", connectionFailures));
-                    boolean exhausted = connectionFailures++ >= AutoLlmFailureUtil.MAX_RETRIES;
-                    if (!exhausted) connectionRetries++;
+                    if (disconnectedAt == null) disconnectedAt = Instant.now();
+                    connectionFailures++; connectionRetries++;
+                    var policy = config.execution().ssh().reconnect();
+                    boolean exhausted = java.time.Duration.between(disconnectedAt, Instant.now()).toMillis() >= policy.budgetMillis();
+                    nextRetryAt = Instant.now().plusMillis(Math.min(policy.delay(connectionFailures), Math.max(1, policy.budgetMillis() - java.time.Duration.between(disconnectedAt, Instant.now()).toMillis())));
                     publish(work.output(), job, cancelled.getAsBoolean() ? "CANCELLATION_PENDING" : "WAITING_FOR_REMOTE", e.getMessage());
                     if (exhausted) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE, "REMOTE_UNREACHABLE", "Remote job " + job.id() + " is detached; resume or cancel this saved operation to reconcile it. The server watchdog still owns the workload.", descriptor);
                 }
-                try { Thread.sleep(2000); }
+                try { Thread.sleep(nextRetryAt == null ? 2000 : 1); }
                 catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Remote job detached; reconcile before resuming"); }
             }
-        } catch (IOException e) { throw new UncheckedIOException(e); }
+        } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("SSH reconnect interrupted; saved job retained"); }
+        catch (IOException e) { throw new UncheckedIOException(e); }
     }
     private void publish(Path output, Job job, String state, String failure) {
         var values = new LinkedHashMap<String,Object>();
@@ -145,6 +167,9 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
         values.put("remoteRoot", WorkloadPathUtil.remoteRoot(config, root)); values.put("requestedWorkers", config.execution().workers());
         values.put("updatedAt", Instant.now().toString()); values.put("failure", failure);
         values.put("lastSynchronizedAt", lastSynchronizedAt);
+        values.put("disconnectedAt", disconnectedAt == null ? null : disconnectedAt.toString());
+        values.put("nextRetryAt", nextRetryAt == null ? null : nextRetryAt.toString());
+        values.put("consecutiveFailures", connectionFailures);
         AutoLlmFileUtil.write(output.resolve("remote-status.json"), values); observer.accept(values);
     }
 }

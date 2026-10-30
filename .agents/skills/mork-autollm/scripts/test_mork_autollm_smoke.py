@@ -23,7 +23,7 @@ class PackagedBackendTest(unittest.TestCase):
         helper = Path(__file__).with_name("mork_autollm.py")
         with tempfile.TemporaryDirectory(prefix="mork-autollm-client-smoke-") as temporary:
             workspace = Path(temporary)
-            command = [sys.executable, "-B", str(helper), "--workspace", str(workspace)]
+            command = [sys.executable, "-B", str(helper), "--workspace", str(workspace), "--json"]
 
             def run(*arguments):
                 result = subprocess.run([*command, *arguments], capture_output=True, text=True, timeout=120)
@@ -33,10 +33,10 @@ class PackagedBackendTest(unittest.TestCase):
                 return result.stdout
 
             try:
-                backend = json.loads(run("backend", "--jar", str(jar), "--cwd", str(cwd), "--port", "0", "--timeout", "90"))
-                again = json.loads(run("backend", "--jar", str(jar), "--cwd", str(cwd), "--port", "0"))
+                backend = json.loads(run("backend", "start", "--jar", str(jar), "--cwd", str(cwd), "--port", "0", "--timeout", "90"))
+                again = json.loads(run("backend", "start", "--jar", str(jar), "--cwd", str(cwd), "--port", "0"))
                 self.assertEqual(again["pid"], backend["pid"])
-                self.assertEqual(backend["apiVersion"], 4)
+                self.assertEqual(backend["apiVersion"], 5)
                 sota, instance = workspace / "sota.json", workspace / "fixture.txt"
                 sota.write_text('{"$component":"DraftOnlyFixture"}')
                 instance.write_text("draft input; no workload consumes this fixture\n")
@@ -49,7 +49,7 @@ class PackagedBackendTest(unittest.TestCase):
                 campaign = json.loads(run("campaign", "create", "--config", str(configuration)))
                 identifier = campaign["id"]
                 self.assertEqual(campaign["status"], "DRAFT")
-                self.assertEqual(campaign["config"]["execution"]["workers"], 32)
+                self.assertEqual(json.loads(run("campaign", "get", "--id", identifier))["config"]["execution"]["workers"], 32)
                 self.assertEqual(json.loads(run("campaign", "get", "--id", identifier))["id"], identifier)
                 self.assertTrue(json.loads(run("campaign", "summary", "--id", identifier)))
                 watch = [json.loads(line) for line in run("watch", "--once", "--json").splitlines()]

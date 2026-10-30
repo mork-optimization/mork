@@ -11,8 +11,9 @@ public final class AutoLlmExecutionContext {
     public final Path campaignRoot;
     public final String prompt;
     public AutoLlmConfig config;
-    public String approvedScreeningPath;
+    public String screeningPath;
     public String baselineCommit;
+    public Path baselineSource;
     public WorkloadProtocol.Host executionHost;
     public Map<String,String> versions = Map.of();
     public volatile Map<String,Object> remote;

@@ -30,6 +30,10 @@ public final class AutoLlmTrialRunner {
     private final Listener listener;
     private final java.util.function.BooleanSupplier stop;
     private final Semaphore sessions;
+    private Semaphore buildPermits = new Semaphore(1);
+    public void localBuildPermits(Semaphore permits) { buildPermits = permits; }
+    private boolean localOnly;
+    public void prepareTrialLocally() { localOnly = true; execute(); }
     private final ReentrantLock metadataLock = new ReentrantLock();
     public AutoLlmTrialRunner(AutoLlmExecutionContext model, Path root, AutoLlmProcessRunner processes, CodexTaskRunner codex,
                               Listener listener, java.util.function.BooleanSupplier stop, Semaphore sessions) {
@@ -81,12 +85,12 @@ public final class AutoLlmTrialRunner {
                 catch (RuntimeException e) {
                     if (e instanceof CancellationException) throw e;
                     if (e instanceof CodexQuotaUtil.QuotaLimitException quota) {
-                        t.quotaRetryAt = quota.retryAt().toString(); t.problem = AutoLlmFailureUtil.describe(e, executionRoot.resolve("trials/%03d".formatted(t.number)));
+                        t.quotaRetryAt = quota.retryAt().toString(); t.problem = AutoLlmFailureUtil.describe(e, executionRoot);
                         t.status = TrialStatus.WAITING_FOR_QUOTA; c.problem = null; publish(c);
                         event("codex-quota-wait", Map.of("trial", t.number, "retryAt", t.quotaRetryAt, "failure", t.problem));
                         continue;
                     }
-                    var problem = AutoLlmFailureUtil.describe(e, executionRoot.resolve("trials/%03d".formatted(t.number)));
+                    var problem = AutoLlmFailureUtil.describe(e, executionRoot);
                     if (!problem.retryable() || t.infrastructureRetries >= AutoLlmFailureUtil.MAX_RETRIES) throw e;
                     t.infrastructureRetries++; t.problem = problem; c.problem = null; publish(c);
                     event("infrastructure-retry", Map.of("trial", t.number, "retry", t.infrastructureRetries, "failure", problem));
@@ -94,7 +98,8 @@ public final class AutoLlmTrialRunner {
                     catch (InterruptedException interrupted) { Thread.currentThread().interrupt(); throw new CancellationException(); }
                 }
             }
-            t.status = TrialStatus.SUCCEEDED; t.failure = null; t.problem = null;
+            t.status = localOnly || t.nextStage == GENERATION ? TrialStatus.WAITING_FOR_TARGET : TrialStatus.SUCCEEDED;
+            if (t.nextStage != GENERATION) { t.failure = null; t.problem = null; }
         } catch (CancellationException e) { t.status = TrialStatus.INTERRUPTED; }
         catch (RuntimeException e) {
             t.problem = AutoLlmFailureUtil.describe(e, executionRoot); t.failure = ExceptionUtil.stacktrace(e);
@@ -111,7 +116,7 @@ public final class AutoLlmTrialRunner {
         if (!attempt.stage.generation() || !Set.of(AttemptStatus.RUNNING, AttemptStatus.INTERRUPTED, AttemptStatus.FAILED, AttemptStatus.QUOTA_LIMIT).contains(attempt.status)) return;
         Path root = executionRoot;
         try {
-            attempt.codexEvidence = codex.archive(root.resolve("trials/%03d/source".formatted(trial.number)), model.path(attempt.directory), trial.threadId);
+            attempt.codexEvidence = codex.archive(root.resolve("source"), model.path(attempt.directory), trial.threadId);
             if (attempt.codexEvidence.threadId() != null) trial.threadId = attempt.codexEvidence.threadId();
             var recovered = codex.recoveredResult(model.path(attempt.directory), trial.threadId);
             if (recovered != null) {
@@ -139,8 +144,8 @@ public final class AutoLlmTrialRunner {
         var versions = new LinkedHashMap<>(TargetPreflightUtil.versions(c.executionHost));
         c.versions = Map.copyOf(versions);
         if (c.config.execution().target() == AutoLlmConfig.Target.SSH) {
-            if (c.approvedScreeningPath == null) c.approvedScreeningPath = Path.of(c.config.trainingPath()).getParent().getParent().toString();
-            es.urjc.etsii.grafo.autoconfig.screening.RemoteScreeningService.approved(screenedConfig(c));
+            if (c.screeningPath == null) c.screeningPath = Path.of(c.config.trainingPath()).getParent().getParent().toString();
+            es.urjc.etsii.grafo.autoconfig.screening.RemoteScreeningService.screened(screenedConfig(c));
             AutoLlmFileUtil.write(root.resolve("control/config.json"), c.config); publish(c);
         }
         Path codexVersion = preflight.resolve("codex-version");
@@ -152,9 +157,9 @@ public final class AutoLlmTrialRunner {
             c.config = c.config.withRef(commit);
             Path baseline = root.resolve("baseline/source"); cloneProject(c, commit, baseline, preflight.resolve("clone"));
             if (c.config.execution().target() == AutoLlmConfig.Target.SSH) {
-                var prepared = es.urjc.etsii.grafo.autoconfig.screening.RemoteScreeningService.approved(screenedConfig(c));
+                var prepared = es.urjc.etsii.grafo.autoconfig.screening.RemoteScreeningService.screened(screenedConfig(c));
                 if (!commit.equals(prepared.commit())) throw new IllegalStateException("Baseline commit differs from approved screening");
-                Path screeningRoot = Path.of(c.approvedScreeningPath);
+                Path screeningRoot = Path.of(c.screeningPath);
                 var manifest = AutoLlmFileUtil.read(screeningRoot.resolve("proposal/manifest.json"), es.urjc.etsii.grafo.autoconfig.screening.ScreeningData.Manifest.class);
                 if (!"QUALIFIED_SERVER_POOL".equals(manifest.reusePolicy()) || !prepared.sotaSha256().equals(AutoLlmFileUtil.hash(Path.of(c.config.sotaFile())))) throw new IllegalStateException("Approved selection policy or SOTA changed");
                 Path screened = screeningRoot.resolve(prepared.artifact());
@@ -223,7 +228,7 @@ public final class AutoLlmTrialRunner {
             }
         }
         var a = new AutoLlmCampaign.Attempt(); a.number = t.attempts.size() + 1; a.stage = stage;
-        a.directory = (model.targetDirectory.isEmpty() ? "" : model.targetDirectory + "/") + "trials/%03d/attempts/%03d-%s".formatted(t.number, a.number, stage.name().toLowerCase(java.util.Locale.ROOT)); a.startedAt = Instant.now().toString();
+        a.directory = t.directory + "/attempts/%03d-%s".formatted(a.number, stage.name().toLowerCase(java.util.Locale.ROOT)); a.startedAt = Instant.now().toString();
         t.status = stage.trialStatus(); t.attempts.add(a); c.remote = null; publish(c); event("stage-started", Map.of("trial", t.number, "stage", stage, "attempt", a.number)); return a;
     }
     private void substage(AutoLlmExecutionContext campaign, AutoLlmCampaign.Attempt attempt, PreparationStage stage) {
@@ -257,15 +262,16 @@ public final class AutoLlmTrialRunner {
     }
     private void runTrial(AutoLlmExecutionContext c, AutoLlmCampaign.Trial t) {
         awaitQuota(c, t);
-        Path root = executionRoot; Path source = root.resolve("trials/%03d/source".formatted(t.number));
+        Path root = executionRoot; Path source = root.resolve("source");
         AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(root.resolve("control/frozen-hashes.json"), new TypeReference<>() {}));
-        cloneProject(c, c.baselineCommit, source, root.resolve("trials/%03d/clone".formatted(t.number)));
+        cloneProject(c, c.baselineCommit, source, root.resolve("clone"));
         if (c.config.execution().target() == AutoLlmConfig.Target.SSH && t.resumeTurn) reconcileMetadata(c, t, source);
         while (t.nextStage.ordinal() < TUNING.ordinal()) {
+            if (localOnly && t.nextStage.ordinal() >= PREPARATION.ordinal()) return;
             if (cancelled()) throw new CancellationException();
             if (t.nextStage == GENERATION) {
                 boolean continuation = t.resumeTurn;
-                if (t.threadId != null && !continuation && t.repairTurns >= c.config.preparation().maxRepairs()) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "REPAIRS_EXHAUSTED", "Preparation exhausted repair limit: " + t.failure, root.resolve("trials/%03d".formatted(t.number)));
+                if (t.threadId != null && !continuation && t.repairTurns >= c.config.preparation().maxRepairs()) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "REPAIRS_EXHAUSTED", "Preparation exhausted repair limit: " + t.failure, root);
                 t.status = TrialStatus.WAITING_FOR_GENERATION; publish(c);
                 try (var permit = es.urjc.etsii.grafo.util.ConcurrencyUtil.acquirePermit(sessions, this::cancelled)) {
                 var a = attempt(c, t, t.threadId == null || continuation && t.outputDirectory(GENERATION) == null ? AttemptStage.GENERATION : AttemptStage.REPAIR); Path dir = model.path(a.directory);
@@ -273,10 +279,10 @@ public final class AutoLlmTrialRunner {
                 t.resumeTurn = false; publish(c);
                 try {
                     String prompt = c.prompt + "\nBuild/test command: " + c.config.project().buildCommand() + "\nFrozen seed descriptions: " + c.config.initialConfigurationsFile() + "\nTraining inputs: " + c.config.trainingPath();
-                    if (c.config.execution().target() == AutoLlmConfig.Target.SSH) prompt += "\nWorkloads run on SSH; keep analysis and edits local. Use the controller metadata helper instead of local builds or experiments: " + metadataHelper(c, t) + ". It runs build/tests and --autollm-check remotely and returns local evidence. Do not invoke pilots/tuning/comparisons yourself.";
-                    if (t.failure != null && t.problem != null && t.problem.category() == AutoLlmFailureUtil.Category.COMPONENT) prompt += "\nRepair feedback:\n" + t.failure + "\nInspect the previous verification logs under " + root.resolve("trials/%03d/attempts".formatted(t.number));
+                    prompt += "\nGeneration and initial preparation run locally; keep analysis and edits in this checkout. Use the controller metadata helper instead of local builds or experiments: " + metadataHelper(c, t) + ". It runs build/tests and --autollm-check in the preparation context and returns local evidence. Do not invoke pilots/tuning/comparisons yourself.";
+                    if (t.failure != null && t.problem != null && t.problem.category() == AutoLlmFailureUtil.Category.COMPONENT) prompt += "\nRepair feedback:\n" + t.failure + "\nInspect the previous verification logs under " + root.resolve("attempts");
                     CodexTaskRunner.Result result;
-                    try (var bridge = c.config.execution().target() == AutoLlmConfig.Target.SSH ? new GenerationMetadataBridge(source, root.resolve("trials/%03d/metadata-requests".formatted(t.number)), options -> metadataCheck(c.id, t.number, options.get("blacklist"), options.get("requestId"))) : null) {
+                    try (var bridge = new GenerationMetadataBridge(source, root.resolve("metadata-requests"), options -> metadataCheck(c.id, t.number, options.get("blacklist"), options.get("requestId")))) {
                         result = codex.run(c.config, source, dir, prompt, t.threadId, () -> cancelled() || c.problem != null);
                     }
                     try {
@@ -295,6 +301,20 @@ public final class AutoLlmTrialRunner {
                 }
                 }
             }
+            if (t.nextStage == LOCAL_PREPARATION) {
+                try (var permit = es.urjc.etsii.grafo.util.ConcurrencyUtil.acquirePermit(buildPermits, this::cancelled)) { runStage(c, t, LOCAL_PREPARATION, (a, dir) -> {
+                    runCommand(c, c.config.project().buildCommand(), source, dir.resolve("build"), c.config.execution().buildTimeoutMillis(), false);
+                    Path jar = source.resolve(c.config.project().artifact());
+                    verifyDependencies(root.resolve("baseline/source").resolve(c.config.project().artifact()), jar, dir);
+                    child(c, t, jar, dir.resolve("check"), "--autollm-check", 0, c.config.execution().searchSpaceTimeoutMillis(), List.of());
+                    return null;
+                }); } catch (RuntimeException e) {
+                    var problem = AutoLlmFailureUtil.describe(e, root);
+                    if (problem.category() != AutoLlmFailureUtil.Category.COMPONENT) throw e;
+                    t.problem = problem; t.failure = ExceptionUtil.stacktrace(e); t.nextStage = GENERATION; publish(c); continue;
+                }
+                if (localOnly) return;
+            }
             if (c.config.execution().target() == AutoLlmConfig.Target.SSH) {
                 t.status = TrialStatus.METADATA_RECONCILIATION; publish(c); reconcileMetadata(c, t, source);
             }
@@ -310,6 +330,13 @@ public final class AutoLlmTrialRunner {
                 verifyDependencies(root.resolve("baseline/source").resolve(c.config.project().artifact()), jar, dir);
                 substage(c, a, PreparationStage.METADATA);
                 child(c, t, jar, dir.resolve("check"), "--autollm-check", 0, c.config.execution().searchSpaceTimeoutMillis(), List.of());
+                String localPreparation = t.outputDirectory(LOCAL_PREPARATION);
+                if (localPreparation != null) {
+                    var localMetadata = AutoLlmFileUtil.read(model.path(localPreparation).resolve("check/execution/search-space.json"), Object.class);
+                    var remoteMetadata = AutoLlmFileUtil.read(dir.resolve("check/execution/search-space.json"), Object.class);
+                    if (!AutoLlmFileUtil.canonicalHash(localMetadata).equals(AutoLlmFileUtil.canonicalHash(remoteMetadata)))
+                        throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INTEGRITY, "PREPARATION_METADATA_CHANGED", "Generated search-space metadata differs between local preparation and the assigned target", dir);
+                }
                 substage(c, a, PreparationStage.PROBES);
                 child(c, t, jar, dir.resolve("probe"), "--autollm-probe", 0, c.config.preparation().probeDurationMillis() + c.config.execution().startupTimeoutMillis(), List.of());
                 publish(c);
@@ -319,7 +346,7 @@ public final class AutoLlmTrialRunner {
                 boolean observed = false;
                 for (var event : AutoLlmFileUtil.events(dir.resolve("pilot/execution/events.jsonl"))) if ("evaluation-result".equals(event.get("kind")) && "SUCCEEDED".equals(event.get("state"))) observed = true;
                 if (!observed) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.UNKNOWN, "EMPTY_PILOT", "Verification autoconfig produced no successful evaluations", dir);
-                Path frozen = root.resolve("trials/%03d/frozen".formatted(t.number)); Files.createDirectories(frozen);
+                Path frozen = root.resolve("frozen"); Files.createDirectories(frozen);
                 Files.copy(jar, frozen.resolve("project.jar"), StandardCopyOption.REPLACE_EXISTING);
                 AutoLlmFileUtil.archiveSources(source, frozen.resolve("source.zip"), generatedHashes);
                 AutoLlmFileUtil.write(frozen.resolve("source-hashes.json"), generatedHashes);
@@ -332,6 +359,7 @@ public final class AutoLlmTrialRunner {
                 t.problem = AutoLlmFailureUtil.describe(e, model.path(t.attempts.getLast().directory)); t.failure = ExceptionUtil.stacktrace(e);
                 if (t.problem.category() != AutoLlmFailureUtil.Category.COMPONENT) throw e;
                 t.nextStage = GENERATION; publish(c);
+                if (!localOnly) return;
             }
         }
         Path jar = model.path(t.artifact());
@@ -396,7 +424,7 @@ public final class AutoLlmTrialRunner {
         }
         if (result.exitCode() != 0) {
             String message = "Command failed (" + result.exitCode() + "): " + command + "; logs: " + dir;
-            if (command.equals(c.config.project().buildCommand())) throw AutoLlmFailureUtil.buildFailure(cwd, executionRoot.resolve("baseline/source"), dir, message, AutoLlmExecutionService.localPaths(c.config, executionRoot));
+            if (command.equals(c.config.project().buildCommand())) throw AutoLlmFailureUtil.buildFailure(cwd, c.baselineSource == null ? executionRoot.resolve("baseline/source") : c.baselineSource, dir, message, AutoLlmExecutionService.localPaths(c.config, executionRoot));
             throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE, "PREREQUISITE_FAILED", message, dir);
         }
     }
@@ -419,10 +447,13 @@ public final class AutoLlmTrialRunner {
         if (t != null) args.addAll(3, List.of("-Dmork.execution.target=" + t.targetId, "-Dmork.execution.pool-revision=" + t.targetRevision, "-Dmork.execution.campaign=" + c.id, "-Dmork.execution.trial=" + t.number, "-Dmork.execution.tuning-seed=" + t.tuningSeed, "-Dmork.execution.artifact-sha256=" + artifactHash));
         if (t != null) { args.add("--autollm.child.baseline-components-file=" + executionRoot.resolve("baseline/components.json")); if (t.blacklist != null && !t.blacklist.isBlank()) args.add("--blacklist=" + t.blacklist); }
         boolean newFilter = t != null && t.blacklist != null && !t.blacklist.isBlank();
+        boolean detailedTiming = false;
         for (String argument : c.config.project().runArguments()) {
+            if (argument.split("=", 2)[0].replace("-", "").replace("_", "").equalsIgnoreCase("solver.timestats")) { detailedTiming = Boolean.parseBoolean(argument.split("=", 2)[1]); continue; }
             if (newFilter && (argument.startsWith("--blacklist=") || argument.startsWith("--whitelist="))) continue;
             args.add(argument);
         }
+        args.add("--solver.time-stats=" + detailedTiming);
         if (newFilter) args.add("--whitelist=");
         args.addAll(extra);
         AutoLlmFileUtil.write(output.resolve("command.json"), args);
@@ -448,11 +479,11 @@ public final class AutoLlmTrialRunner {
         publish(campaign);
     }
     private AutoLlmConfig screenedConfig(AutoLlmExecutionContext campaign) {
-        Path proposal = Path.of(campaign.approvedScreeningPath).resolve("proposal");
-        return campaign.config.withPaths(proposal.resolve("train.index").toString(), proposal.resolve("test.index").toString());
+        Path proposal = Path.of(campaign.screeningPath).resolve("proposal");
+        return campaign.config.withPaths(proposal.resolve("proposed-train.index").toString(), proposal.resolve("proposed-test.index").toString());
     }
     private void reconcileMetadata(AutoLlmExecutionContext campaign, AutoLlmCampaign.Trial trial, Path source) {
-        Path root = executionRoot, directory = root.resolve("trials/%03d/metadata".formatted(trial.number));
+        Path root = executionRoot, directory = root.resolve("metadata");
         if (Files.isDirectory(directory)) try (var files = Files.walk(directory)) {
             for (Path file : files.toList()) if (file.getFileName().toString().equals("remote-job.json")) {
                 Path output = file.getParent();
@@ -474,7 +505,7 @@ public final class AutoLlmTrialRunner {
     }
     private String metadataHelper(AutoLlmExecutionContext campaign, AutoLlmCampaign.Trial trial) {
         Path root = executionRoot, helper = root.resolve("control/metadata-check-" + trial.number + ".py");
-        Path queue = root.resolve("trials/%03d/source/.mork-metadata".formatted(trial.number));
+        Path queue = root.resolve("source/.mork-metadata");
         long timeoutSeconds = (campaign.config.execution().buildTimeoutMillis() + campaign.config.execution().searchSpaceTimeoutMillis() + campaign.config.execution().phaseTimeoutMillis()) / 1000 + 30;
         String body = "import json,time,uuid,sys\nfrom pathlib import Path\nqueue=Path(" + AutoLlmFileUtil.JSON.writeValueAsString(queue.toString()) + ")\nqueue.mkdir(exist_ok=True)\nkey=uuid.uuid4().hex\npending=queue/(key+'.pending')\npending.write_text(json.dumps({'blacklist':sys.argv[1]} if len(sys.argv)>1 else {}))\npending.rename(queue/(key+'.request.json'))\nresponse=queue/(key+'.result.json')\ndeadline=time.monotonic()+" + timeoutSeconds + "\nwhile not response.exists():\n if time.monotonic()>deadline: raise SystemExit('Metadata request '+key+' timed out; inspect controller diagnostics before retrying')\n time.sleep(0.2)\nresult=json.loads(response.read_text())\nif 'error' in result: raise SystemExit(json.dumps(result,indent=2))\nprint(json.dumps(result['result'],indent=2))\n";
         try { Files.writeString(helper, body); } catch (IOException e) { throw new UncheckedIOException(e); }
@@ -493,10 +524,10 @@ public final class AutoLlmTrialRunner {
             var trial = campaign.trial;
             if (trial != null && trial.number != number) throw new IllegalArgumentException("Trial mismatch");
             if (trial == null || !(Set.of(TrialStatus.GENERATION, TrialStatus.REPAIR).contains(trial.status) || trial.attempts.isEmpty() || trial.attempts.getLast().status != AttemptStatus.RUNNING)) throw new IllegalStateException("Metadata checks are available only during generation/repair");
-            Path root = executionRoot, source = root.resolve("trials/%03d/source".formatted(number));
-            Path output = root.resolve("trials/%03d/metadata/%s".formatted(number, requestId));
+            Path root = executionRoot, source = root.resolve("source");
+            Path output = root.resolve("metadata/" + requestId);
             // The metadata bridge/API owns this check while the campaign thread waits for local Codex.
-            try {
+            try (var permit = es.urjc.etsii.grafo.util.ConcurrencyUtil.acquirePermit(buildPermits, this::cancelled)) {
                 runCommand(campaign, campaign.config.project().buildCommand(), source, output.resolve("build"), campaign.config.execution().buildTimeoutMillis(), false);
                 var probe = new AutoLlmCampaign.Trial(); probe.targetId = trial.targetId; probe.targetRevision = trial.targetRevision; probe.number = trial.number; probe.pilotSeed = trial.pilotSeed; probe.blacklist = blacklist == null ? trial.blacklist : blacklist;
                 child(campaign, probe, source.resolve(campaign.config.project().artifact()), output.resolve("check"), "--autollm-check", 0, campaign.config.execution().searchSpaceTimeoutMillis(), List.of());

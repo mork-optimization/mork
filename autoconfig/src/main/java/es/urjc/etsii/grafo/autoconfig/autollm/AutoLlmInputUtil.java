@@ -30,7 +30,7 @@ public final class AutoLlmInputUtil {
     /** Preserve original dataset identities when approved screening indexes refer to owned copies. */
     public static Map<String,String> aliases(Path training, Path comparison) {
         Path proposal = training.getParent();
-        if (proposal == null || !Files.isRegularFile(proposal.resolve("approved.json"))) return Map.of();
+        if (proposal == null || !Files.isRegularFile(proposal.resolve("proposal.json"))) return Map.of();
         Path original = proposal.getParent().resolve("data/original-inputs.json");
         if (!Files.isRegularFile(original)) return Map.of();
         var members = new HashSet<>(InstancePathUtil.list(training.toString()));

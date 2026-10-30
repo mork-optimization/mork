@@ -88,6 +88,20 @@ public final class AutoLlmComparisonUtil {
                         "instances", instances, "omittedEvents", progress.omitted);
             } catch (IOException e) { throw new UncheckedIOException(e); }
         }
+        public synchronized List<MeasuredInstance> measured(Path file, String objective, FMode mode) {
+            try {
+                var result = new ArrayList<MeasuredInstance>();
+                for (var entry : refresh(file).instances.entrySet()) {
+                    var instance = entry.getValue(); var algorithms = new TreeMap<String,Measured>();
+                    for (var a : instance.scores.entrySet()) {
+                        var score = a.getValue().get(objective);
+                        if (score != null) algorithms.put(a.getKey(), new Measured(score.summary(mode), instance.timing.get(a.getKey()).summary(FMode.MINIMIZE), instance.bestTime.get(a.getKey()).summary(FMode.MINIMIZE)));
+                    }
+                    result.add(new MeasuredInstance(entry.getKey(), instance.path, instance.counts, algorithms));
+                }
+                return result;
+            } catch (IOException e) { throw new UncheckedIOException(e); }
+        }
         public synchronized Object curves(Path file, String instanceId) {
             try {
                 var progress = refresh(file);
@@ -105,9 +119,13 @@ public final class AutoLlmComparisonUtil {
             } catch (IOException e) { throw new UncheckedIOException(e); }
         }
     }
+    public record Measured(StatisticsUtil.Summary objective, StatisticsUtil.Summary executionTimeMillis, StatisticsUtil.Summary timeToOwnBestMillis) {}
+    public record MeasuredInstance(String instanceId, String instance, Map<String,Map<String,Integer>> counts, Map<String,Measured> algorithms) {}
     private static final class InstanceProgress {
         final String path;
         final Map<String,Map<String,Integer>> counts = new TreeMap<>();
+        final Map<String,Map<String,StatisticsUtil.OnlineAccumulator>> scores = new TreeMap<>();
+        final Map<String,StatisticsUtil.OnlineAccumulator> timing = new TreeMap<>(), bestTime = new TreeMap<>();
         final List<Location> curves = new ArrayList<>();
         InstanceProgress(String path) { this.path = path; }
     }
@@ -128,6 +146,10 @@ public final class AutoLlmComparisonUtil {
             instance.counts.computeIfAbsent(algorithm, _ -> new TreeMap<>()).merge((String)event.get("state"), 1, Integer::sum);
             if (!"SUCCEEDED".equals(event.get("state"))) return;
             instance.curves.add(location);
+            instance.timing.computeIfAbsent(algorithm, _ -> new StatisticsUtil.OnlineAccumulator()).add(((Number)event.get("executionTimeNanos")).doubleValue() / 1_000_000);
+            instance.bestTime.computeIfAbsent(algorithm, _ -> new StatisticsUtil.OnlineAccumulator()).add(((Number)event.get("timeToBestNanos")).doubleValue() / 1_000_000);
+            for (var entry : AutoLlmFileUtil.objectMap(event.get("objectives")).entrySet()) if (entry.getValue() instanceof Number value)
+                instance.scores.computeIfAbsent(algorithm, _ -> new TreeMap<>()).computeIfAbsent(entry.getKey(), _ -> new StatisticsUtil.OnlineAccumulator()).add(value.doubleValue());
             timing.computeIfAbsent(algorithm, _ -> new StatisticsUtil.OnlineAccumulator()).add(((Number)event.get("executionTimeNanos")).doubleValue() / 1_000_000);
             bestTime.computeIfAbsent(algorithm, _ -> new StatisticsUtil.OnlineAccumulator()).add(((Number)event.get("timeToBestNanos")).doubleValue() / 1_000_000);
             for (var entry : AutoLlmFileUtil.objectMap(event.get("objectives")).entrySet()) if (entry.getValue() instanceof Number value)

@@ -13,6 +13,21 @@ public final class AutoLlmFileUtil {
     public static final JsonMapper JSON = new JsonMapper();
     private static final TypeReference<Map<String, Object>> OBJECT_TYPE = new TypeReference<>() {};
     private AutoLlmFileUtil() {}
+    public static String canonicalHash(Object value) {
+        try { return hash(new ByteArrayInputStream(JSON.writeValueAsBytes(sorted(JSON.convertValue(value, Object.class))))); }
+        catch (IOException e) { throw new UncheckedIOException(e); }
+    }
+    private static Object sorted(Object value) {
+        if (value instanceof Map<?,?> map) {
+            var result = new TreeMap<String,Object>();
+            for (var e : map.entrySet()) result.put(e.getKey().toString(), sorted(e.getValue()));
+            return result;
+        }
+        if (value instanceof List<?> list) {
+            var result = new ArrayList<Object>(); for (var item : list) result.add(sorted(item)); return result;
+        }
+        return value;
+    }
     public static List<Path> ownedFiles(Path root, String filename) {
         var result = new ArrayList<Path>(); if (!Files.isDirectory(root)) return result;
         try {

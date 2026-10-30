@@ -17,7 +17,7 @@ class AutoLlmTargetProbeServiceTest {
         var servers = new ArrayList<AutoLlmConfig.Server>();
         for (int i = 0; i < 7; i++) servers.add(new AutoLlmConfig.Server("s" + i, "host" + i, "/work", "java", Map.of(), null, null, null));
         return new AutoLlmConfig(null, temp.toString(), null, null, null, null, null, null, null, null, null, null, null,
-                new AutoLlmConfig.Execution(null, null, null, null, null, null, null, null, null, AutoLlmConfig.Target.SSH, new AutoLlmConfig.Ssh("s0", runner.toString(), servers)));
+                new AutoLlmConfig.Execution(null, null, null, null, null, null, null, null, null, AutoLlmConfig.Target.SSH, new AutoLlmConfig.Ssh("s0", runner.toString(), servers, null)));
     }
     private AutoLlmTargetProbeService.Probe finished(AutoLlmTargetProbeService service, String id) throws Exception {
         long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);

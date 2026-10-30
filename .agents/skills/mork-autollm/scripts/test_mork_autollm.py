@@ -35,7 +35,7 @@ class OperatorClientTest(unittest.TestCase):
         with patch.object(client, "request", return_value={"mode": "AUTOLLM", "apiVersion": 1}):
             with self.assertRaisesRegex(RuntimeError, "capabilities"):
                 client.capabilities("http://localhost")
-        info = {"mode": "AUTOLLM", "apiVersion": 4, "checkpointVersion": 4, "runnerProtocol": 4, "workspace": "/other", "features": list(client.FEATURES)}
+        info = {"mode": "AUTOLLM", "apiVersion": 5, "checkpointVersion": 5, "runnerProtocol": 5, "workspace": "/other", "features": list(client.FEATURES)}
         with patch.object(client, "request", return_value=info):
             with self.assertRaisesRegex(RuntimeError, "workspace"):
                 client.capabilities("http://localhost", "/requested")
@@ -46,7 +46,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"frozen executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url="http://localhost")
-            info = {"mode": "AUTOLLM", "apiVersion": 4, "checkpointVersion": 4, "runnerProtocol": 4, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            info = {"mode": "AUTOLLM", "apiVersion": 5, "checkpointVersion": 5, "runnerProtocol": 5, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             with patch.object(client, "request", return_value=info), patch.object(client.subprocess, "Popen") as launch:
                 self.assertEqual(client.backend(args), info)
                 launch.assert_not_called()
@@ -57,12 +57,12 @@ class OperatorClientTest(unittest.TestCase):
                 launch.assert_not_called()
 
     def test_status_reads_saved_work_without_mutation(self):
-        campaign = {"id": "saved", "status": "NEEDS_ATTENTION", "trials": [{"number": 1, "status": "BLOCKED", "repairTurns": 0}]}
-        args = SimpleNamespace(workspace="/work", campaign=None, screening=None, timeout=10)
-        with patch.object(client, "request", side_effect=[{"active": "", "campaigns": [campaign]}, {"active": "", "jobs": []}, campaign, {"status": "BLOCKED"}, {}]) as request:
+        campaign = {"id": "saved", "status": "NEEDS_ATTENTION", "checkedAt": "now", "errors": {}, "partial": False, "trials": [{"number": 1, "status": "BLOCKED", "repairTurns": 0}]}
+        args = SimpleNamespace(workspace="/work", campaign="saved", timeout=10)
+        with patch.object(client, "request", return_value=campaign) as request:
             result = client.status(args, "http://localhost")
         self.assertEqual(result["campaign"]["status"], "NEEDS_ATTENTION")
-        self.assertTrue(all(len(call.args) == 2 for call in request.call_args_list))
+        request.assert_called_once_with("http://localhost", "/campaigns/saved/observation", timeout=10)
 
     def test_backend_waits_for_ready_mode_and_starts_without_workloads(self):
         with tempfile.TemporaryDirectory() as temporary:
@@ -70,7 +70,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url=None, java="java", port=0, timeout=10)
-            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 4, "checkpointVersion": 4, "runnerProtocol": 4, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 5, "checkpointVersion": 5, "runnerProtocol": 5, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             launching = dict(ready, mode="STARTING")
             with patch.object(client, "request", side_effect=[RuntimeError("offline"), launching, ready]), patch.object(client.socket, "socket") as socket, patch.object(client.subprocess, "Popen") as launch, patch.object(client.time, "sleep"):
                 socket.return_value.__enter__.return_value.getsockname.return_value = ("127.0.0.1", 18081)
@@ -94,22 +94,15 @@ class OperatorClientTest(unittest.TestCase):
 
     def test_status_keeps_healthy_trials_when_another_progress_endpoint_fails(self):
         self.root = "/work"
-        saved = {"id": "saved", "status": "RUNNING", "targets": {}, "trials": [
-            {"number": 1, "targetId": "a", "status": "TUNING"}, {"number": 2, "targetId": "b", "status": "TUNING"}, {"number": 3, "status": "PENDING"}]}
-        def response(base, path, **kwargs):
-            if path == "/campaigns": return {"active": "saved", "campaigns": [saved]}
-            if path == "/screenings": raise RuntimeError("screenings offline")
-            if path == "/campaigns/saved/status": return saved
-            if path.endswith("/1/progress"): raise RuntimeError("worker unavailable")
-            if path.endswith("/2/progress"): return {"elapsedMillis": 3600000, "workload": {"budget": {"used": 2500, "maximum": 10000}}, "remote": {"lastSynchronizedAt": "now"}}
-            if path.endswith("/summary"): raise RuntimeError("summary unavailable")
-            self.fail(path)
+        value = {"id": "saved", "status": "RUNNING", "checkedAt": "now", "errors": {"1": "worker unavailable"}, "partial": True,
+                 "trials": [{"number": 1, "status": "TUNING", "targetId": "a"},
+                 {"number": 2, "status": "TUNING", "targetId": "b", "progress": {"elapsedMillis": 3600000, "workload": {"budget": {"used": 2500, "maximum": 10000}}}}]}
         output = io.StringIO()
-        with patch.object(client, "capabilities"), patch.object(client, "request", side_effect=response), contextlib.redirect_stdout(output):
-            self.assertEqual(client.main(["--workspace", self.root, "status", "--table", "--campaign", "saved"]), 0)
-        text = output.getvalue()
-        for expected in ["PARTIAL STATUS", "2,500/10,000 (25.0%)", "1h 0m", "PENDING", "worker unavailable", "summary unavailable"]:
-            self.assertIn(expected, text)
+        with patch.object(client, "capabilities"), patch.object(client, "request", return_value=value) as request, contextlib.redirect_stdout(output):
+            self.assertEqual(client.main(["--workspace", self.root, "status", "--campaign", "saved"]), 0)
+        request.assert_called_once()
+        for expected in ("PARTIAL STATUS", "2,500/10,000 (25.0%)", "1h 0m", "worker unavailable"):
+            self.assertIn(expected, output.getvalue())
 
     def test_trial_recovery_and_requalification_send_only_explicit_saved_ids(self):
         self.root = "/work"
@@ -275,11 +268,11 @@ class OperatorClientTest(unittest.TestCase):
         self.assertEqual(body["inputPath"], "full-pool.index")
         self.assertEqual(body["trainingFraction"], 0.2)
 
-    def test_screening_approval_sends_only_exact_supplied_hash(self):
+    def test_campaign_approval_sends_only_exact_supplied_digest(self):
         self.root = "/work"
         reviewed = "abc123" * 10 + "abcd"
-        _, _, request = self.cli(["screening", "approve", "--id", "selection", "--proposal-sha256", reviewed], [{"status": "RUNNING"}])
-        request.assert_called_once_with("http://localhost", "/screenings/selection/approve", {"proposalSha256": reviewed}, timeout=30)
+        _, _, request = self.cli(["campaign", "approve", "--id", "selection", "--proposal-sha256", reviewed], [{"status": "RUNNING"}])
+        request.assert_called_once_with("http://localhost", "/campaigns/selection/approve", {"digest": reviewed}, timeout=30)
 
     def test_parser_rejects_missing_ids_hashes_and_unbounded_watch_before_api_calls(self):
         for argv in (["campaign", "start"], ["screening", "approve", "--id", "selection"],
@@ -412,7 +405,7 @@ class OperatorClientTest(unittest.TestCase):
 
     def test_watch_screening_shows_counts_and_stops_for_review(self):
         self.root = "/work"
-        state = {"status": "AWAITING_APPROVAL", "activity": {"phase": "SCREENING"}, "progress": {
+        state = {"status": "READY_FOR_REVIEW", "activity": {"phase": "SCREENING"}, "progress": {
             "phase": "CONFIRMATIONS", "initialCompleted": 10, "initialTotal": 10, "confirmationsCompleted": 30, "confirmationsTotal": 30}}
         _, output, request = self.cli(["watch", "--screening", "selection"], [state])
         self.assertIn("CONFIRMATIONS", output)

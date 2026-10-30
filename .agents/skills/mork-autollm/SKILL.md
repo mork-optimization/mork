@@ -1,36 +1,32 @@
 ---
 name: mork-autollm
-description: Prepare, run, inspect, diagnose, and resume Mork AutoLLM component-generation and autoconfig campaigns, locally or over SSH.
+description: Prepare, run, inspect, diagnose, and resume Mork AutoLLM campaigns locally or over SSH.
 ---
 
 # Mork AutoLLM
 
-Operate through Mork's API using [the helper](scripts/mork_autollm.py). Mork owns generation, repairs, screening, execution and checkpoints. Reuse saved IDs and established user choices. “Improve SOTA” authorizes running within that scope; a configuration-only request ends at a validated draft. Dataset approval and permission to run are separate; preserve existing authorization across follow-ups.
+Use [the helper](scripts/mork_autollm.py); Mork owns generation, repairs, execution and checkpoints. Read this entrypoint once, then use command help or relevant sections of the [AutoLLM guide](../../../docs/features/autollm.md) and [screening guide](../../../docs/features/instance-screening.md). Resolve guides in the checkout when installed separately.
 
-Use command `--help` for arguments, the [AutoLLM guide](../../../docs/features/autollm.md) for configuration and execution contracts, and the [screening guide](../../../docs/features/instance-screening.md) for dataset preparation. If installed separately, resolve these guides in the Mork checkout. Load only the relevant sections.
+## Prepare and approve
 
-## Prepare and start
+Reuse established hosts, workspaces, resource limits and authorization. Preserve the user's checkout; trials use committed source. Keep Codex, credentials and transcripts local. Discover the repository/module, build argument array, executable, fixed SOTA, seeds and full original input pool.
 
-- Reuse the established local/SSH workload location. Ask only for missing hosts, dedicated workspaces, environments or resource limits. Keep Codex, authentication, transcripts and orchestration local. Preserve explicit worker overrides and leave Codex concurrency at its default unless the user requests otherwise.
-- Discover the committed baseline, application working directory, build argument array, executable artifact, fixed SOTA and full original input pool. Preserve the user's checkout; campaign trials use committed source. For monorepos, resolve repository/module paths and build the required reactor.
-- Use the helper to find or start a compatible backend for the intended artifact and workspace. Preserve unrelated backends. Run target preflight and inspect per-target results; a saved probe may remain `RUNNING`, in which case use `campaign probe-status --id ID`.
-- Prepare or reuse an approved dataset with matching provenance. Save a complete configuration, validate it, create a draft, and run its baseline check. Use the backend's parameter counts, readiness and failure details. If pruning is needed, preserve SOTA and every supplied seed configuration. Starting a healthy subset requires explicit server selection through repeated `campaign start --target ID`; omitted targets are drained.
-- Present the effective trials, resources, repair limits, tuning/comparison budgets and unresolved time limits. Start the saved draft when authorized. Do not replace a missing approved training index with the raw pool.
+Use `backend status` to distinguish the saved address from live health; `backend start` discovers or launches a compatible controller. Restart through saved metadata with `backend restart`. Preserve unrelated controllers and use the matching operator for historical checkpoint versions.
 
-## Review the dataset
+Screen the original pool using Mork's warmed-worker protocol. Keep inconclusive inputs; testing includes training. Screening evidence can feed a campaign draft without separate selection approval. Use proposed training/testing indexes and preserve provenance; never substitute the raw pool for a missing index.
 
-Screen the full original pool with fixed SOTA using Mork's sequential warmed-worker protocol. Preserve inconclusive inputs. Testing must contain every retained instance, including training; the overlap is intentional.
+Validate the configuration, create the draft, and run its baseline check. Preserve SOTA and all supplied seeds when pruning. Review `campaign proposal`: exact testing/training membership, trivial exclusions with reasons, selected servers/readiness and complete resolved settings. Present this concrete proposal to the user and obtain explicit campaign approval before launch, even for a broad “improve SOTA” request. Edit preferences before approval; select a healthy subset explicitly. Approve the reviewed digest and launch that revision. Changes require a revised review; unchanged resume/reconnect retains authorization.
 
-Before approval, show the concrete report, provenance, criteria, exclusions, retained/inconclusive inputs, and training/testing membership. Obtain explicit agreement on the exact reviewed proposal SHA-256, then approve that proposal through Mork. Changed source, executable, SOTA or inputs invalidate approval. Reuse frozen indexes across qualified servers only under the proposal's reuse policy; screening timing remains evidence from its original host.
+Leave concurrency at its configured default unless requested otherwise. Generation and local build/metadata preparation can precede worker assignment; probes, pilot and measurements run on the selected worker. Detailed component timing is opt-in.
 
-## Inspect and recover
+## Observe and recover
 
-Use `status --campaign ID --table`, `watch`, bounded `logs`, and `diagnose` to inspect saved work. Report observed CLI activity and available token usage; keep unavailable progress unknown. Performance claims need saved comparisons, accounting for failed/incomplete trials and keeping results grouped by host.
+Start with compact `status --campaign ID`. Use explicit `--json` or `campaign get` for needed detail, bounded `logs`/`diagnose` for evidence, and `watch` for generation activity. Keep unavailable progress unknown. Distinguish tuning finished, evidence collected and comparison finished; process existence alone is not progress.
 
-Use backend recovery actions (`campaign recovery` or `trial actions`) to determine eligibility and effects, then apply the authorized scoped trial/target action. Preserve trial assignments, seeds, checkpoints and remote job identities. Resume a stopped campaign before recovering active work. Mark a blocked trial failed only when the user directs it; slowness alone is insufficient.
+Use `remote --campaign ID --trial N` for stale, blocked or contradictory remote observations. Use backend recovery eligibility and scoped `recover --campaign ID --trial N` (repeat for selected trials); resume a stopped campaign first. Rejoin saved jobs and retain seeds/assignments. Infrastructure failures do not consume component repairs. Never mark a blocked trial failed merely for slowness.
 
-Infrastructure failures must not consume component repairs or prompt a trial agent to change framework tests, objectives, validators or dependencies. Respect the backend's failure classification and correct the underlying cause before resuming. Missing conversation/result collection can be retried through normal recovery without repeating completed work.
+Do not replay a mutation after an uncertain response: inspect saved state first. WAITING_FOR_REMOTE does not establish failure; CANCELLATION_PENDING does not confirm termination. Reconcile and collect evidence before conflicting work. Repair collection/reporting without repeating completed experiments.
 
-Never automatically replay a mutation after an uncertain response. Rejoin saved remote jobs: `WAITING_FOR_REMOTE` does not establish failure, and `CANCELLATION_PENDING` does not confirm termination. Confirm cancellation and evidence collection before conflicting workloads. Regenerate reports without retuning when only reporting needs repair.
+Use `compare` for saved journal results; keep host-matched SOTA comparisons and exclusion/completeness details. Choose an explicit ranking method before claiming a single best proposal. Do not parse spreadsheets or load curves for routine comparison tables.
 
-Return the actual status, campaign/screening/probe ID, configuration path, dashboard URL and evidence location.
+Return observed status, IDs, configuration/proposal location, dashboard URL and relevant evidence. Token usage and progress must come from available observations.

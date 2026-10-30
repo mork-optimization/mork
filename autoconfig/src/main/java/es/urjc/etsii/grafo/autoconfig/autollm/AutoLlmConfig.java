@@ -16,7 +16,7 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
         seed = seed == null ? 1234L : seed;
         maxParameters = maxParameters == null ? 299 : maxParameters;
         codex = codex == null ? new Codex(null, null, null, null, null, null) : codex;
-        preparation = preparation == null ? new Preparation(null, null, null) : preparation;
+        preparation = preparation == null ? new Preparation(null, null, null, null, null, null, null) : preparation;
         tuning = tuning == null ? new Tuning(null, null, null, null) : tuning;
         comparison = comparison == null ? new Comparison(null, null) : comparison;
         execution = execution == null ? new Execution(null, null, null, null, null, null, null, null, null, null, null) : execution;
@@ -31,14 +31,31 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
         }
     }
     public record Codex(String executable, String promptFile, String prompt, String model, String reasoningEffort, Integer maxConcurrentSessions) {
-        public Codex { executable = executable == null ? "codex" : executable; maxConcurrentSessions = maxConcurrentSessions == null ? 1 : maxConcurrentSessions; }
+        public Codex { executable = executable == null ? "codex" : executable; maxConcurrentSessions = maxConcurrentSessions == null ? 2 : maxConcurrentSessions; }
     }
-    public record Preparation(Long probeDurationMillis, Long pilotDurationMillis, Integer maxRepairs) {
+    public record Preparation(Long probeDurationMillis, Long pilotDurationMillis, Integer maxRepairs,
+                              Integer localBuilds, Integer readyQueueSize, Integer localWorkers, String localHeap) {
         public Preparation {
             probeDurationMillis = probeDurationMillis == null ? 600_000L : probeDurationMillis;
             pilotDurationMillis = pilotDurationMillis == null ? 600_000L : pilotDurationMillis;
             maxRepairs = maxRepairs == null ? 3 : maxRepairs;
+            localBuilds = localBuilds == null ? 2 : localBuilds;
+            readyQueueSize = readyQueueSize == null ? 4 : readyQueueSize;
+            localWorkers = localWorkers == null ? 1 : localWorkers;
+            localHeap = localHeap == null ? "2g" : localHeap;
+            if (localBuilds < 1 || readyQueueSize < 1 || localWorkers < 1) throw new IllegalArgumentException("Local preparation limits must be positive");
         }
+    }
+    public AutoLlmConfig withTrials(int count) {
+        return new AutoLlmConfig(project, workspace, count, seed, maxParameters, sotaFile, initialConfigurationsFile,
+                trainingPath, comparisonPath, codex, preparation, tuning, comparison, execution);
+    }
+    public AutoLlmConfig localPreparation() {
+        var e = execution;
+        return new AutoLlmConfig(project, workspace, trials, seed, maxParameters, sotaFile, initialConfigurationsFile,
+                trainingPath, comparisonPath, codex, preparation, tuning, comparison,
+                new Execution(preparation.localWorkers(), e.watchdogGraceMillis(), e.codexTimeoutMillis(), e.buildTimeoutMillis(),
+                        e.startupTimeoutMillis(), e.searchSpaceTimeoutMillis(), e.phaseTimeoutMillis(), e.stageTimeoutMillis(), preparation.localHeap(), Target.LOCAL, null));
     }
     public record Tuning(Integer evaluations, Long ignoreInitialMillis, Long intervalDurationMillis, Boolean logScaleArea) {
         public Tuning { evaluations = evaluations == null ? 10_000 : evaluations; ignoreInitialMillis = ignoreInitialMillis == null ? 10_000L : ignoreInitialMillis;
@@ -63,8 +80,9 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
         }
     }
     public enum Target { LOCAL, SSH }
-    public record Ssh(String screeningServerId, String runnerArtifact, List<Server> servers) {
+    public record Ssh(String screeningServerId, String runnerArtifact, List<Server> servers, Reconnect reconnect) {
         public Ssh {
+            reconnect = reconnect == null ? new Reconnect(null, null, null) : reconnect;
             servers = servers == null ? List.of() : List.copyOf(servers);
             screeningServerId = screeningServerId == null && !servers.isEmpty() ? servers.getFirst().id() : screeningServerId;
             runnerArtifact = runnerArtifact == null || runnerArtifact.isBlank() ? null : runnerArtifact;
@@ -76,6 +94,20 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
         public Server screeningServer() {
             for (var server : servers) if (server.id().equals(screeningServerId)) return server;
             throw new IllegalArgumentException("Screening server must name a configured server");
+        }
+    }
+    public record Reconnect(Long initialDelayMillis, Long maximumDelayMillis, Long budgetMillis) {
+        public Reconnect {
+            initialDelayMillis = initialDelayMillis == null ? 2_000L : initialDelayMillis;
+            maximumDelayMillis = maximumDelayMillis == null ? 60_000L : maximumDelayMillis;
+            budgetMillis = budgetMillis == null ? 1_800_000L : budgetMillis;
+            if (initialDelayMillis <= 0 || maximumDelayMillis < initialDelayMillis || budgetMillis <= 0)
+                throw new IllegalArgumentException("Invalid SSH reconnect delays/budget");
+        }
+        public long delay(int failures) {
+            long cap = initialDelayMillis;
+            for (int i = 1; i < failures && cap < maximumDelayMillis; i++) cap = Math.min(maximumDelayMillis, cap > maximumDelayMillis / 2 ? maximumDelayMillis : cap * 2);
+            return cap - java.util.concurrent.ThreadLocalRandom.current().nextLong(cap / 5 + 1);
         }
     }
     public record Server(String id, String host, String workspace, String javaExecutable, Map<String,String> environment, String configFile, Integer workers, String heap) {
@@ -91,7 +123,7 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
         var e = execution;
         var resolved = new Execution(server.workers() == null ? e.workers() : server.workers(), e.watchdogGraceMillis(), e.codexTimeoutMillis(), e.buildTimeoutMillis(),
                 e.startupTimeoutMillis(), e.searchSpaceTimeoutMillis(), e.phaseTimeoutMillis(), e.stageTimeoutMillis(), server.heap() == null ? e.heap() : server.heap(),
-                Target.SSH, new Ssh(server.id(), e.ssh().runnerArtifact(), List.of(server)));
+                Target.SSH, new Ssh(server.id(), e.ssh().runnerArtifact(), List.of(server), e.ssh().reconnect()));
         return new AutoLlmConfig(project, workspace, trials, seed, maxParameters, sotaFile, initialConfigurationsFile, trainingPath, comparisonPath, codex, preparation, tuning, comparison, resolved);
     }
     public AutoLlmConfig withPaths(String training, String comparison) {

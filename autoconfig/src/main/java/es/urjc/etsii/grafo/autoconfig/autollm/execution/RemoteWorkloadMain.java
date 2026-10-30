@@ -24,7 +24,7 @@ public final class RemoteWorkloadMain {
         if (args.length < 2) throw new IllegalArgumentException("Expected action and absolute workspace");
         Path root = Path.of(args[1]).toAbsolutePath().normalize();
         if (!Path.of(args[1]).isAbsolute()) throw new IllegalArgumentException("Workspace must be absolute");
-        Files.createDirectories(root);
+        if (!args[0].equals("inspect")) Files.createDirectories(root);
         String id = args.length > 2 ? args[2] : "";
         switch (args[0]) {
             case "identify" -> print(Map.of("version", VERSION, "sha256", AutoLlmFileUtil.hash(Path.of(System.getProperty("java.class.path")))));
@@ -52,6 +52,7 @@ public final class RemoteWorkloadMain {
             }
             case "submit" -> submit(root, id);
             case "supervise" -> supervise(root, id);
+            case "inspect" -> print(inspect(root, id));
             case "status" -> print(state(root, id));
             case "poll" -> poll(root, id);
             case "cancel" -> { Files.writeString(jobDirectory(root, id).resolve("cancel"), Instant.now().toString()); print(state(root, id)); }
@@ -62,6 +63,43 @@ public final class RemoteWorkloadMain {
             }
             default -> throw new IllegalArgumentException("Unknown workload action: " + args[0]);
         }
+    }
+    /** Observational counterpart to status: never reconciles jobs or collects evidence. */
+    private static Object inspect(Path root, String id) throws IOException {
+        if (!id.matches("[a-f0-9]{64}")) throw new IllegalArgumentException("Invalid workload ID");
+        Path directory = root.resolve(".jobs/" + id);
+        var result = new LinkedHashMap<String,Object>();
+        result.put("jobId", id); result.put("checkedAt", Instant.now().toString());
+        for (String name : List.of("state.json", "execution-completed.json", "collection-metrics.json"))
+            if (Files.isRegularFile(directory.resolve(name))) result.put(name, AutoLlmFileUtil.read(directory.resolve(name), Object.class));
+        Path started = directory.resolve("started.json");
+        if (Files.isRegularFile(started)) {
+            Map<String,Object> identity = AutoLlmFileUtil.read(started, new TypeReference<>() {});
+            boolean alive = ProcessHandle.of(((Number) identity.get("pid")).longValue()).filter(ProcessHandle::isAlive)
+                    .flatMap(p -> p.info().startInstant()).map(Instant::toString).orElse("").equals(identity.get("start"));
+            result.put("supervisorAlive", alive);
+        }
+        Path descriptor = directory.resolve("job.json");
+        if (Files.isRegularFile(descriptor)) {
+            Job job = AutoLlmFileUtil.read(descriptor, Job.class);
+            result.put("identityMatches", job.id().equals(id) && job.root().equals(root.toString()));
+            result.put("hostMatches", job.expectedHost().isEmpty() || job.expectedHost().equals(ScreeningFileUtil.host()));
+            for (String name : List.of("owner.json", "execution/terminal.json", "execution/tuning-progress.json")) {
+                Path file = WorkloadPathUtil.inside(root, job.output()).resolve(name);
+                if (Files.isRegularFile(file)) {
+                    result.put(name, AutoLlmFileUtil.read(file, Object.class));
+                    if (name.equals("owner.json")) {
+                        Map<String,Object> owner = AutoLlmFileUtil.read(file, new TypeReference<>() {});
+                        boolean alive = ProcessHandle.of(((Number) owner.get("pid")).longValue()).filter(ProcessHandle::isAlive)
+                                .flatMap(p -> p.info().startInstant()).map(Instant::toString).orElse("").equals(owner.get("start"));
+                        result.put("childAlive", alive);
+                    }
+                    result.put(name + "UpdatedAt", Files.getLastModifiedTime(file).toInstant().toString());
+                }
+            }
+        }
+        result.put("found", Files.isRegularFile(descriptor));
+        return result;
     }
     private static void print(Object value) throws IOException { System.out.write(AutoLlmFileUtil.JSON.writeValueAsBytes(value)); }
     private static Path jobDirectory(Path root, String id) throws IOException {
@@ -155,6 +193,7 @@ public final class RemoteWorkloadMain {
     }
     /** Retry collection independently if the supervisor exits after execution finishes. */
     private static void collectResult(Path root, String id, Job job, State completed) throws IOException {
+        long collectionStarted = System.nanoTime();
         Path directory = jobDirectory(root, id);
             var files = new TreeMap<String,Path>();
             DirectoryArchiveUtil.archive(WorkloadPathUtil.inside(root, job.output()).resolve("solutions"));
@@ -165,6 +204,7 @@ public final class RemoteWorkloadMain {
             }
             markRemoteOwners(files);
             WorkloadArchiveUtil.pack(directory.resolve("result.zip"), files);
+            AutoLlmFileUtil.write(directory.resolve("collection-metrics.json"), Map.of("archiveBytes", Files.size(directory.resolve("result.zip")), "collectionMillis", (System.nanoTime() - collectionStarted) / 1_000_000));
             AutoLlmFileUtil.write(directory.resolve("state.json"), new State(id, completed.status(), completed.result(), completed.failure(), AutoLlmFileUtil.hash(directory.resolve("result.zip"))));
     }
     private static void markRemoteOwners(Map<String,Path> files) {

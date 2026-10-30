@@ -20,7 +20,7 @@ $mork-autollm Start the campaign using the saved configuration in autollm/bmssc.
 $mork-autollm Check the status of campaign <campaign-id>.
 ```
 
-The skill discovers project settings and prerequisites, saves a complete configuration, and validates it through Mork. Configuration-only requests leave the campaign unstarted; run/start requests launch it. The skill returns the dashboard URL, campaign ID, and evidence location, and supports later status, cancel, resume, and report requests through the existing API.
+The skill discovers project settings and prerequisites, saves a complete configuration, and validates it through Mork. Configuration-only requests leave a validated draft. A run request prepares a concrete campaign proposal; the user reviews its dataset and effective configuration before approving launch. The skill returns the dashboard URL, campaign ID, and evidence location, and supports later status, cancel, resume, and report requests through the existing API.
 
 ## Prerequisites
 
@@ -54,12 +54,16 @@ autollm:
   comparison-path: ./instances/test.index
   codex:
     executable: codex
-    max-concurrent-sessions: 1
+    max-concurrent-sessions: 2
     # Optional: prompt-file, prompt, model, reasoning-effort.
   preparation:
     probe-duration-millis: 600000
     pilot-duration-millis: 600000
     max-repairs: 3
+    local-builds: 2
+    ready-queue-size: 4
+    local-workers: 1
+    local-heap: 2g
   tuning:
     evaluations: 10000
     ignore-initial-millis: 10000
@@ -87,7 +91,7 @@ Repository-relative paths resolve against `project.repository`; the artifact is 
 
 Campaigns and target workspaces retain training/comparison indexes and hash manifests that reference the original inputs. They do not create another loose copy of each instance. Archive members keep their `archive.zip!member` load paths. Membership, manifests and original payloads are checked before recovery and child workloads, so keep the referenced datasets available and unchanged. SSH stages send the required original files or archive containers in verified input layers, with indexes and time-limit keys translated for the remote workspace; local staging does not extract or copy those payloads into each target directory. Existing historical snapshots remain readable through their saved paths.
 
-For campaigns prepared with the AutoLLM skill, run [trivial-instance screening](instance-screening.md) on the full original pool before selecting preliminary training inputs. Mork's instance selector chooses the preliminary subset from retained inputs; final testing uses the entire retained pool, including training. Reuse only matching approved screening evidence and indexes. Legacy or missing indexes trigger preparation and review before campaign creation.
+For campaigns prepared with the AutoLLM skill, run [trivial-instance screening](instance-screening.md) on the full original pool before selecting preliminary training inputs. Mork's instance selector chooses the preliminary subset from retained inputs; final testing uses the entire retained pool, including training. Reuse matching screening evidence and proposed indexes; approval applies to the complete campaign. Legacy or missing indexes trigger preparation and review before campaign creation.
 
 For a multi-module repository, configure the build argument array and JAR path explicitly, for example `["./mvnw", "-pl", "example-bmssc", "-am", "verify"]` and `example-bmssc/target/project.jar`. Build commands run in the clone. `run-arguments` supplies project-specific settings; it cannot override campaign-owned seeds, budgets, execution mode, workers, instance paths, or irace settings. A generated blacklist replaces the baseline inventory filter.
 
@@ -103,13 +107,46 @@ The SOTA file contains one [component JSON specification](autoconfig.md), such a
 
 The optional additional-seed file contains an array of specifications. SOTA is always included and identical seeds are deduplicated. The baseline must be able to encode and actually execute the supplied seeds before generation starts. SOTA-based comparison limits are resolved once on the baseline, frozen, and shared by all trials and both comparison algorithms.
 
+## Review, approval and local preparation
+
+Create a draft and run its baseline check. `GET /campaigns/{id}/proposal` returns a digest, exact training/testing membership, screening decisions (including trivial exclusions and inconclusive inputs), selected servers/readiness and the complete effective configuration. Testing includes training. `POST /campaigns/{id}/proposal` with `{"targets":["server-a"]}` selects an explicit launch subset for review.
+
+Review these values with the user. Submit the reviewed `digest` to `POST /campaigns/{id}/approve`, then start the campaign. Start/resume verifies the current digest and input provenance. A broad optimization request permits preparation but still requires explicit approval of this concrete proposal. Unchanged recovery/reconnect retains approval. An enrolled server can qualify before an amendment is approved, but receives trials only after approval includes it. `POST /campaigns/{id}/amend-trials` proposes an increased total trial count; it creates no trials until the amended proposal is approved.
+
+`PUT /campaigns/{id}/draft` accepts revised configuration. Settings that require requalification produce a replacement draft while retaining screening evidence. Changes to trial count/seed can retain qualification when other settings match. `PUT /campaigns/{id}/dataset` accepts `training`, `testing` and an `excluded` object mapping ignored instance paths to reasons; testing plus exclusions must account for the complete original pool. Dataset edits create a replacement draft and do not rerun screening. Approval is tied to the exact revision. The dashboard provides prepare, review/edit and approve/launch actions.
+
+Trial data lives at `trials/<number>/`, independently of server assignment. Generation and local build/metadata preparation proceed while servers are occupied, bounded by Codex permits, `preparation.localBuilds` and ready queue capacity. Local preparation has its own workers/heap. Probes/pilot still execute on the selected measurement host. Pre-tuning component repairs return to local preparation after evidence collection; tuning and later stages retain their target. Resume reuses prepared outputs and saved remote job IDs.
+
+Detailed component method timing defaults off for AutoLLM children. Opt in with `project.runArguments: ["--solver.time-stats=true"]`. Objective curves, per-evaluation execution times and time to own best are retained. Result collection records archive size and download/collection duration.
+
+Generated irace real domains use two decimal places consistently for export, seeds and probe sampling. Bounds must be finite, strictly ordered and exactly representable at that precision. For example `(0.9, 0.9999)` fails during metadata construction with a declaration diagnostic requiring four digits; it never reaches the pilot. Invalid newly generated components receive repair feedback; baseline/framework failures remain outside component repairs.
+
+## Compact operations and comparison tables
+
+The operator helper defaults to compact status and mutation receipts. Use global `--json` for machine-readable output, `campaign get` for full saved state, and bounded diagnostics when needed. API/checkpoint/runner version 5 requires the matching controller and remote runner. Historical campaigns retain their original controller/operator; do not migrate active version-4 campaigns.
+
+```bash
+python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace WORKSPACE backend status
+python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace WORKSPACE backend restart
+python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace WORKSPACE status --campaign ID
+python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace WORKSPACE remote --campaign ID --trial 3
+python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace WORKSPACE recover --campaign ID --trial 3 --trial 6
+python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace WORKSPACE compare --campaign ID --objective Cost --format markdown
+```
+
+`backend status` reports the saved address separately from reachability and observed process/artifact identity. It never launches a process. `backend restart` reuses saved launch metadata and checks the saved artifact. Compact campaign observations omit historical conversation/curve data and mark unavailable progress explicitly. Remote inspection checks saved job/host identity, actual supervisor/child identity, terminal and collection evidence, and progress timestamps; inspection does not reconcile or restart the job.
+
+SSH reconnect policy lives under `execution.ssh.reconnect`: `initialDelayMillis` defaults to 2000, `maximumDelayMillis` to 60000 and `budgetMillis` to 1800000. Consecutive failures use exponential backoff with jitter. The continuous-disconnection budget and next attempt are persisted; successful synchronization resets backoff. Authentication/configuration, host identity and integrity failures require intervention. Cancellation remains pending until confirmed remotely. Collection retries reuse the completed job rather than retuning.
+
+Comparison tables use completed journal measurements, each trial's own host-matched SOTA, equal instance weights and explicit observed/expected repetitions. Invalid/incomplete results are excluded with reasons. Relative improvement is undefined for zero SOTA; absolute differences remain available. Common-reference ranking is explicit (`--ranking COMMON_SOTA`), requires matching instance identities and positive references, and uses each instance's mean SOTA across the selected complete runs. It implies no statistical significance. Time to own best does not measure time to a common target.
+
 ## Remote execution over SSH
 
 For external VM provisioning, worker dependencies, and reusable images, see [preparing OpenStack workers](autollm-openstack.md). VM creation and provisioning stay outside Mork; the backend consumes ready SSH targets.
 
 The skill asks whether workloads should run locally or on a pool of configured SSH servers before preflight, builds or screening, unless the choice was already explicit. The controller, source analysis, Codex generation/repairs, authentication, transcripts, dashboard and report analysis stay local in both modes.
 
-In SSH mode, builds/tests, metadata checks, probes, screening/selection, pilot, R/irace, winner export and comparisons execute on the trial’s assigned Unix/Linux server. Screening and selection run once on the selected screening server. R and the evaluation JVM communicate over remote loopback. A detached supervisor owns each workload and its deadlines; closing SSH does not stop it. The coordinator dispatches one complete trial per server and runs independent trials concurrently. It never splits an irace race across servers. Generation and repairs share a local semaphore, defaulting to one Codex session; increase `codex.max-concurrent-sessions` explicitly when desired.
+In SSH mode, generation and initial build/tests/metadata checks run locally before a server is assigned. Remote build/dependency/metadata validation, probes, pilot, R/irace, winner export and comparisons execute on the assigned Unix/Linux server. Screening and selection run once on the selected screening server. R and the evaluation JVM communicate over remote loopback. A detached supervisor owns each workload and its deadlines; closing SSH does not stop it. The coordinator dispatches one remote trial per server and runs independent trials concurrently. It never splits an irace race across servers. Generation and repairs share a local semaphore, defaulting to two Codex sessions; adjust `codex.max-concurrent-sessions` before campaign approval.
 
 Build the attached runner with `./mvnw -pl autoconfig -am package`. The normal dependency JAR retains its purpose; `autoconfig/target/autoconfig-0.23-SNAPSHOT-remote-runner.jar` is the separate executable transferred to the server. Use a committed baseline containing the matching AutoLLM implementation. Every execution server needs compatible Java/build tools, Git and R with `irace`, `httr` and `jsonlite`. Only the screening server needs the selector’s Python dependencies. Codex is required only locally. Preflight reports prerequisites without installing them.
 
@@ -151,9 +188,9 @@ Target diagnostics include resolved executable paths, versions/output, individua
 
 Workers default to `-1`, resolving Mork's `max(1, Runtime.availableProcessors() / 2)` on the execution host, including its resource allocation. Auto on 32 visible processors uses 16 workers; explicit `32` uses 32. Pilot/main evaluations and comparisons use the effective count. Screening retains one sequential warmed worker. Workers share the evaluation JVM's configured heap. Requested/effective counts and host identity are saved as evidence.
 
-Complete [remote screening and approval](instance-screening.md#remote-screening), then configure the printed local mirror's published `train.index`/`test.index`. Remote campaigns require this approval and adopt the exact screened baseline JAR. Review remains local, while host/executable verification and approval execute remotely.
+Complete [remote screening](instance-screening.md#remote-screening), then configure the local mirror's `proposed-train.index`/`proposed-test.index`. Review this evidence as part of campaign approval. Remote target qualification adopts the screened baseline JAR and verifies reproducibility; local preparation builds its own platform's baseline.
 
-Create and save a draft ID before calling `POST /api/autollm/campaigns/{id}/baseline-check`. This metadata-only preparation returns `parameters`, `maxParameters`, `withinLimit` and a `targets` map containing each server’s parameter count, failure, and evidence directory without running probes, pilot or tuning. Read `targets/<id>/baseline-preflight/check/execution/check.json` and start that same draft after preparation and authorization. During generation/repair, Codex receives a local helper command for remote builds/tests and metadata checks. It uses a file queue inside the trial clone, requiring neither SSH credentials nor network access in Codex's sandbox; diagnostics are mirrored locally. The controller owns all pilots, tuning and comparisons.
+Create and save a draft ID before calling `POST /api/autollm/campaigns/{id}/baseline-check`. This preparation returns `parameters`, `maxParameters`, `withinLimit` and a `targets` map containing each server’s parameter count, failure, and evidence directory after baseline validation and probes, without pilot or tuning. Read `targets/<id>/baseline-preflight/check/execution/check.json` and review and approve that same draft before launch. During generation/repair, Codex receives a local helper command for preparation builds/tests and metadata checks. It uses a file queue inside the trial clone, requiring neither SSH credentials nor network access in Codex's sandbox; diagnostics are mirrored locally. The controller owns all pilots, tuning and comparisons.
 
 Baseline preparation also rebuilds the unchanged commit in `baseline-replay/source` and independently checks its dependency fingerprints and metadata before the first generation. Metadata request IDs and results are retained outside editable source in `metadata-requests`; the clone-local mailbox can be recreated without repeating accepted requests. Helper waits are bounded. A helper failure classified as infrastructure pauses the controller rather than asking Codex to repair the framework.
 
@@ -187,13 +224,13 @@ An operator can end a blocked or interrupted trial with `POST /api/autollm/campa
 
 ## Backend discovery and operator helper
 
-API, checkpoint and runner protocol version 4 require a fresh workspace. There is no migration or recovery adapter for older campaigns; inspect those artifacts with the original controller. `GET /api/autollm/capabilities` identifies the mode, API/checkpoint/runner versions, supported features, executable checksum, working directory, PID and workspace. Verify these before reusing a backend.
+API, checkpoint and runner protocol version 5 require a fresh workspace. There is no migration or recovery adapter for older campaigns; inspect those artifacts with the original controller. `GET /api/autollm/capabilities` identifies the mode, API/checkpoint/runner versions, supported features, executable checksum, working directory, PID and workspace. Verify these before reusing a backend.
 
 The skill includes a dependency-free Python helper:
 
 ```bash
 python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace /absolute/new-workspace \
-  backend --jar /absolute/app.jar --cwd /absolute/application --port 0
+  backend start --jar /absolute/app.jar --cwd /absolute/application --port 0
 python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace /absolute/new-workspace \
   config --overrides /absolute/choices.json --output /absolute/campaign.json
 python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace /absolute/new-workspace status
@@ -203,7 +240,7 @@ python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace /absolut
 
 `logs --campaign ID --path targets/SERVER/trials/.../stdout.log --follow` reads bounded byte cursors. `diagnose --campaign ID --output diagnostics.zip` exports status, failure evidence, an artifact index and bounded log tails without changing the experiment. The API's `/effective-config` and campaign `/summary` expose tuning/comparison horizons, resolved comparison limits, requested/effective workers and workload estimates. Estimates exclude generation, builds and repairs and do not guarantee wall time. Unspecified settings retain backend defaults; explicit user choices take precedence.
 
-`status --campaign ID --table` displays every trial, its latest published tuning budget, stage duration and last synchronization/activity timestamp. Progress reads run with bounded concurrency and a shared read deadline (`--timeout`, default ten seconds). A failed progress, screening or summary request produces an explicit partial result while healthy trials remain visible. Without `--table`, output remains JSON with `progressErrors`, section `errors` and a `partial` flag. Watch output also includes available budgets and isolates unavailable progress/activity endpoints.
+`status --campaign ID` uses one compact observation request for the selected campaign, with explicit progress timestamps and partial errors. Terminal trials do not refresh generation activity. Text is the default; global `--json` returns the compact machine-readable observation. Full checkpoints are available through `campaign get`. Watch output includes available budgets and isolates unavailable progress/activity endpoints.
 
 `campaign recovery --id ID` and `trial actions --campaign ID --number N` show current recovery eligibility, blocking reasons and effects. The dashboard uses the same backend rules. `trial resume --campaign ID --number N` resumes only that blocked/interrupted trial on its original server and saved checkpoints; `target requalify --campaign ID --id SERVER` runs qualification before resuming that server's blocked work. Requalification is unavailable while the server has an active workload or uncollected remote jobs. Resume existing work to reconcile those jobs first. A stopped campaign must be resumed explicitly before trial/server execution resumes.
 
@@ -270,9 +307,9 @@ AutoLLM child processes disable the terminal progress bar with `solver.progress-
 
 The baseline response separates `withinLimit` (all target parameter counts are known and fit the cap) from `ready` (the entire pool also passed qualification). `qualifiedTargets`, `failedTargets`, and per-target results explain partial readiness. Starting without a target selection rejects saved qualification failures. To start a healthy subset, send `{"targets":["worker-a","worker-c"]}` to `/start`, use repeated `campaign start --target ID` arguments, or select servers in the dashboard. Omitted servers are drained; trials remain pinned when resuming.
 
-`instances.path.reference` remains the shared warm-up/probe override. A parent setting is frozen when the campaign is created; a per-campaign `project.runArguments` entry `--instances.path.reference=...` takes precedence, followed by the child application's setting. Relative references resolve against the configured project repository. Original identities are mapped through approved screening copies and the same SSH input manifest as training data, including archive members. The selected reference must still belong to the experiment inputs. Without an override, fastest-loading selection remains automatic.
+`instances.path.reference` remains the shared warm-up/probe override. A parent setting is frozen when the campaign is created; a per-campaign `project.runArguments` entry `--instances.path.reference=...` takes precedence, followed by the child application's setting. Relative references resolve against the configured project repository. Original identities are mapped through screening copies and the same SSH input manifest as training data, including archive members. The selected reference must still belong to the experiment inputs. Without an override, fastest-loading selection remains automatic.
 
-Campaign, target, trial, attempt, screening, preflight, and remote-job lifecycle states use typed enums. Their JSON names are unchanged. Campaign resume requests use the same eligibility rules exposed by the recovery API: pending cancellation blocks resume until reconciliation finishes, and a stopped campaign waiting for a remote job remains resumable. Trial requeueing preserves its assignment and seeds; completed trials stay terminal.
+Campaign, target, trial, attempt, screening, preflight, and remote-job lifecycle states use typed enums. New checkpoints add LOCAL_PREPARATION and WAITING_FOR_TARGET states. Campaign resume requests use the same eligibility rules exposed by the recovery API: pending cancellation blocks resume until reconciliation finishes, and a stopped campaign waiting for a remote job remains resumable. Trial requeueing preserves its assignment and seeds; completed trials stay terminal.
 
 Qualification captures execution-host prerequisites once. Baseline preparation reuses their structured results for version provenance, including R runtime/package versions, while checking the Codex version on the controller. Build-wrapper validation still happens after staging the actual source, and independent baseline reproducibility builds remain required.
 
@@ -298,7 +335,7 @@ Each generation or repair attempt also retains `conversations/<thread-id>.jsonl`
 
 Each attempt saves `evidence-before.json`, `evidence.json`, and `usage.json`. Usage preserves reported input, cached input, cache-write input, output, reasoning output, and total tokens, plus resolved models, CLI version, and the counter source. Per-response native records are preferred and response IDs are deduplicated; older cumulative native counters use validated deltas from the pre-attempt checkpoint. CLI-reported usage is supplemental because resumed turns may report cumulative totals. Missing fields remain `null`; usage is marked `COMPLETE`, `PARTIAL`, or `UNAVAILABLE` and does not block tuning. Cached input is part of input and reasoning output is part of output, so these fields must not be added again to total tokens.
 
-`targets/<id>/trials/<number>/llm-usage.json` and `reports/llm-usage.json` summarize all generation and repair attempts, including failed and interrupted attempts. Partial totals include only known counts and may underestimate usage. The dashboard and campaign API expose these summaries and transcript downloads. Report regeneration uses saved artifacts. Historical campaigns require their original controller; missing historical usage is not reconstructed. No cost or pricing statistics are collected.
+`trials/<number>/llm-usage.json` and `reports/llm-usage.json` summarize all generation and repair attempts, including failed and interrupted attempts. Partial totals include only known counts and may underestimate usage. The dashboard and campaign API expose these summaries and transcript downloads. Report regeneration uses saved artifacts. Historical campaigns require their original controller; missing historical usage is not reconstructed. No cost or pricing statistics are collected.
 
 Comparison records preserve objective values, runtime, time-to-best, curves, seeds, instance paths, repetitions, and failure/interruption outcomes. Each comparison retains its normal workbook; `reports/targets/<id>/campaign.xlsx` groups successful cached result rows by execution server without loading generated classes into the parent. `reports/comparison-rows.json` also retains partial and failed trial data. Workbooks never pool servers into a single ranking. Rows retain target ID, pool revision and execution-host provenance; failed and incomplete rows stay in the portable JSON evidence. Workbook gaps use the existing best-reference calculation. Artifact listings include SHA-256 checksums.
 
@@ -314,6 +351,12 @@ All paths below are relative to `/api/autollm`; endpoints are registered when th
 | `POST /validate`, `/effective-config`, `/targets/probe` | Static validation, budget summary and creation of saved prerequisite diagnostics |
 | `GET /targets/probes/{id}` | Saved preflight status, per-target results and failures |
 | `GET/POST /campaigns`, `GET /campaigns/{id}` | List, save a draft, inspect checkpoints |
+| `GET /campaigns/{id}/observation` | Compact campaign/trial observations, timestamps and recovery availability |
+| `GET/POST /campaigns/{id}/proposal`, `POST /campaigns/{id}/approve` | Review selected servers, effective configuration, dataset and approve its digest |
+| `PUT /campaigns/{id}/draft`, `/dataset` | Revise settings or exact dataset membership before launch |
+| `GET /campaigns/{id}/comparison?objective=Cost&ranking=NONE` | Host-matched aggregate tables without curve arrays; explicit optional ranking |
+| `GET /campaigns/{id}/trials/{number}/remote-inspection` | Observe remote process/job evidence without reconciling it |
+| `POST /campaigns/{id}/recover` | Recover explicitly selected trials; per-trial outcomes |
 | `POST /campaigns/{id}/baseline-check` | Baseline build/reproducibility/metadata checks without tuning |
 | `POST /campaigns/{id}/start`, `/resume`, `/cancel`, `/report` | Lifecycle actions; reporting uses cached results |
 | `GET /campaigns/{id}/targets`, `PUT/DELETE /campaigns/{id}/targets/{targetId}` | Inspect pool, register an immutable server, remove an idle reconciled server |
@@ -330,5 +373,5 @@ All paths below are relative to `/api/autollm`; endpoints are registered when th
 | `POST /campaigns/{id}/targets/{targetId}/requalify` | Requalify an idle, reconciled server before resuming its blocked work |
 | `GET /screenings/{id}/preview?path=...&lines=500` | Same bounded tail and UTF-8-safe follow cursor for screening files |
 | `GET/POST /screenings`, `GET /screenings/{id}` | Durable dataset preparation jobs; create returns a draft |
-| `POST /screenings/{id}/resume`, `/cancel`, `/approve` | Start/resume, reconcile cancellation, publish an explicitly reviewed selection |
+| `POST /screenings/{id}/resume`, `/cancel` | Prepare screening evidence or reconcile cancellation; campaign review owns launch approval |
 | `GET /screenings/{id}/review`, `/artifact?path=...`, `/log?path=...&cursor=0` | Completed proposal/report/hash, evidence and bounded logs |

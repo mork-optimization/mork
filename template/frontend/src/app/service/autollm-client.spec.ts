@@ -6,6 +6,20 @@ import { AutoLlmClient } from './autollm-client';
 describe('AutoLlmClient file previews', () => {
   afterEach(() => TestBed.resetTestingModule());
 
+  it('reads the replacement draft after a compact edit receipt', async () => {
+    TestBed.configureTestingModule({ providers: [provideHttpClient(), provideHttpClientTesting()] });
+    const client = TestBed.inject(AutoLlmClient), http = TestBed.inject(HttpTestingController);
+    const config = { trials: 4 } as import('../model/autollm').AutoLlmConfig;
+    const pending = client.editDraft('original', config);
+    const edit = http.expectOne('http://localhost:8080/api/autollm/campaigns/original/draft');
+    expect(edit.request.method).toBe('PUT'); expect(edit.request.body).toEqual(config);
+    edit.flush({ id: 'replacement', status: 'DRAFT', accepted: true });
+    await Promise.resolve();
+    http.expectOne('http://localhost:8080/api/autollm/campaigns/replacement/status').flush({ id: 'replacement', status: 'DRAFT', config });
+    await expect(pending).resolves.toMatchObject({ id: 'replacement', config });
+    http.verify();
+  });
+
   it('bounds status reads and cancels a hung request without replaying mutations', async () => {
     vi.useFakeTimers();
     try {

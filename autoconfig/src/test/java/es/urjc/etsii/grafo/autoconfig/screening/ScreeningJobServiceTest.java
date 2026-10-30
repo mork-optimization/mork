@@ -28,13 +28,12 @@ class ScreeningJobServiceTest {
         assertTrue(Path.of(saved.request.settings().output()).startsWith(campaigns.root().resolve("screenings").resolve(job.id)));
         assertEquals(job.id, service.list().getFirst().id);
     }
-    @Test void approvalRequiresCompletedReviewAndExactHash() throws Exception {
-        var job = service.create(request); assertThrows(IllegalStateException.class, () -> service.approve(job.id, "hash"));
-        job.status = es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.ScreeningStatus.AWAITING_APPROVAL; job.mirror = campaigns.root().resolve("screenings").resolve(job.id).resolve("evidence/local-fixture").toString();
-        AutoLlmFileUtil.write(Path.of(job.mirror).resolve("proposal/proposal.json"), Map.of("reviewed", true));
+    @Test void completedScreeningCanBeReviewedWithoutAnApprovalMutation() throws Exception {
+        var job = service.create(request);
+        job.status = ScreeningJobService.ScreeningStatus.READY_FOR_REVIEW;
         AutoLlmFileUtil.write(campaigns.root().resolve("screenings").resolve(job.id).resolve("job.json"), job);
-        assertThrows(IllegalArgumentException.class, () -> service.approve(job.id, "stale-hash"));
-        assertEquals("AWAITING_APPROVAL", service.load(job.id).status.name()); assertNull(service.active());
+        assertThrows(IllegalStateException.class, () -> service.resume(job.id));
+        assertNull(service.active());
     }
     @Test void unresolvedCampaignPreventsStartingScreening() {
         var job = service.create(request); campaigns.reserve(UUID.randomUUID().toString());

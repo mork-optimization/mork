@@ -33,6 +33,10 @@
             <label>Training instances<input [value]="config.trainingPath ?? ''" (change)="update('trainingPath', $event)" /></label>
             <label>Comparison instances<input [value]="config.comparisonPath ?? ''" (change)="update('comparisonPath', $event)" /></label>
             <label>Independent trials<input type="number" min="1" [value]="config.trials" (change)="update('trials', $event, true)" /></label>
+            <label>Local preparation builds<input type="number" min="1" [value]="config.preparation.localBuilds ?? 2" (change)="update('preparation.localBuilds', $event, true)" /></label>
+            <label>Prepared trials waiting for a server<input type="number" min="1" [value]="config.preparation.readyQueueSize ?? 4" (change)="update('preparation.readyQueueSize', $event, true)" /></label>
+            <label>Local preparation workers<input type="number" min="1" [value]="config.preparation.localWorkers ?? 1" (change)="update('preparation.localWorkers', $event, true)" /></label>
+            <label>Local preparation heap<input [value]="config.preparation.localHeap ?? '2g'" (change)="update('preparation.localHeap', $event)" /></label>
             <label>Campaign seed<input type="number" [value]="config.seed" (change)="update('seed', $event, true)" /></label>
             <label>Parameter limit<input type="number" min="1" max="299" [value]="config.maxParameters" (change)="update('maxParameters', $event, true)" /></label>
             <label>Workers<select [value]="config.execution.workers < 1 ? 'AUTO' : 'CUSTOM'" (change)="workerMode($event)"><option value="AUTO">Auto: half the available processors on the execution host</option><option value="CUSTOM">Set worker count</option></select></label>
@@ -56,12 +60,12 @@
         <details><summary>Prepare a screened dataset</summary>
           <div class="fields"><label>Full original input pool<input [value]="originalPool()" (input)="originalPool.set($any($event.target).value)" /></label>
             <label>Training fraction<input type="number" min="0.01" max="0.99" step="0.01" [value]="trainingFraction()" (input)="trainingFraction.set(+$any($event.target).value)" /></label></div>
-          <p>Screening uses one sequential worker. Review the completed proposal before publishing training/testing indexes. Testing includes all retained instances, including training. Approval permits reuse by qualified servers; measurement provenance remains tied to the screening server.</p>
+          <p>Screening uses one sequential worker. Review the completed screening evidence together with campaign settings before launch. Testing includes all retained instances, including training. Campaign approval covers reuse by qualified servers; measurement provenance remains tied to the screening server.</p>
           <button mat-button [disabled]="!executionChoice() || !originalPool() || !!store.active() || !!store.activeScreening() || store.busy()" (click)="store.createScreening(originalPool(), trainingFraction())">Prepare dataset</button>
         </details>
         <button mat-button [disabled]="!executionChoice() || !!store.active() || store.busy()" (click)="store.probeTarget()">Check execution host</button>
         @if (store.targetStatus()) { <pre>{{ store.targetStatus() | json }}</pre> }
-        <button mat-flat-button [disabled]="!executionChoice() || !!store.active() || !!store.activeScreening() || store.busy()" (click)="store.createAndStart()">Create and start campaign</button>
+        <button mat-flat-button [disabled]="!executionChoice() || !!store.active() || !!store.activeScreening() || store.busy()" (click)="store.prepareCampaign()">Prepare campaign for review</button>
       </details>
     </mat-card-content></mat-card>
   }
@@ -80,8 +84,8 @@
         <div class="actions">
           @if (['DRAFT', 'INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION'].includes(job.status)) { <button mat-button [disabled]="!!store.active() || !!store.activeScreening() || store.busy()" (click)="store.screeningAction('resume')">Resume preparation</button> }
           @if (store.activeScreening() === job.id || job.status === 'NEEDS_ATTENTION') { <button mat-button [disabled]="store.busy()" (click)="store.screeningAction('cancel')">Cancel preparation</button> }
-          @if (['AWAITING_APPROVAL', 'APPROVED'].includes(job.status)) { <button mat-button [disabled]="store.busy()" (click)="store.reviewScreening()">Review proposal</button> }
-          @if (job.status === 'APPROVED') { <button mat-button (click)="store.useSelection()">Use approved selection</button> }
+          @if (['READY_FOR_REVIEW'].includes(job.status)) { <button mat-button [disabled]="store.busy()" (click)="store.reviewScreening()">Review proposal</button> }
+          @if (['READY_FOR_REVIEW'].includes(job.status)) { <button mat-button (click)="store.useSelection()">Use proposed selection</button> }
         </div>
       }
       @if (store.review(); as review) {
@@ -89,7 +93,7 @@
         <p>Reviewed proposal SHA-256: {{ review.proposalSha256 }}</p>
         <div class="actions">@for (name of ['instances.csv', 'proposed-retained.index', 'proposed-train.index', 'proposed-test.index', 'manifest.json']; track name) { <a [href]="store.screeningArtifactUrl(review.artifactPrefix + '/' + name)">{{ name }}</a> }</div>
         <details><summary>All instance decisions</summary><table><thead><tr><th>Instance</th><th>Decision</th><th>Fast confirmations</th><th>Reason</th></tr></thead><tbody>@for (decision of review.proposal.instances; track decision.instance) { <tr><td>{{ decision.instance }}</td><td>{{ decision.classification }}</td><td>{{ decision.fastHits }}/{{ decision.confirmations }}</td><td>{{ decision.reason }}</td></tr> }</tbody></table></details>
-        @if (store.screening()?.status === 'AWAITING_APPROVAL') { <button mat-flat-button [disabled]="store.busy() || !!store.active() || !!store.activeScreening() || !!review.proposal.splitFailure" (click)="store.screeningAction('approve')">Approve this reviewed selection</button> }
+
       }
     </mat-card-content></mat-card>
   }
@@ -103,14 +107,37 @@
         @if (['INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION', 'WAITING_FOR_TARGETS'].includes(campaign.status) && !store.active()) { <button mat-flat-button [disabled]="store.busy() || !store.recovery()?.resumeCampaign?.allowed" [title]="store.recovery()?.resumeCampaign?.reason || store.recovery()?.resumeCampaign?.effect || ''" (click)="store.action('resume')">Resume from checkpoints</button> }
         @if (campaign.status === 'NEEDS_ATTENTION') { <button mat-button [disabled]="store.busy()" (click)="store.action('cancel')">Reconcile and cancel remote work</button> }
         @if (campaign.status === 'DRAFT' && !store.active()) {
-          <button mat-flat-button (click)="store.action('start')">Start all servers</button>
+          <button mat-button [disabled]="store.busy()" (click)="store.saveDraftChanges()">Save edited configuration</button>
+          <button mat-flat-button (click)="store.reviewProposal()">Review campaign with all servers</button>
           @for (target of store.targets(); track target.id) {
             <label><input type="checkbox" [checked]="store.startTargets().includes(target.id)" [disabled]="!!target.problem || !(target.baselineReady || target.status === 'VALIDATED')" (change)="store.toggleStartTarget(target.id, $any($event.target).checked)"> {{ target.id }}</label>
           }
-          <button mat-button [disabled]="!store.startTargets().length" (click)="store.action('start', store.startTargets())">Start selected servers</button>
+          <button mat-button [disabled]="!store.startTargets().length" (click)="store.reviewProposal(store.startTargets())">Review campaign with selected servers</button>
         }
         @if (campaign.status !== 'DRAFT' && !store.active()) { <button mat-button [disabled]="store.busy()" (click)="store.action('report')">Regenerate reports</button> }
       </div>
+      @if (store.proposal(); as proposal) {
+        <h2>Review campaign before launch</h2>
+        <p>Check the testing instances, trivial exclusions and effective settings. To change settings, edit the configuration and prepare a revised draft.</p>
+        <details open><summary>Testing instances ({{ proposal.testing.length }})</summary><pre>{{ proposal.testing | json }}</pre></details>
+        <details><summary>Training membership</summary><pre>{{ proposal.training | json }}</pre></details>
+        <details open><summary>Screening decisions and exclusions</summary><pre>{{ proposal.screening | json }}</pre></details>
+        <details open><summary>Selected servers and readiness</summary><pre>{{ proposal.targets | json }}</pre></details>
+        <details open><summary>Effective campaign configuration</summary><pre>{{ proposal.configuration | json }}</pre></details>
+        <details><summary>Edit testing, training and exclusions</summary>
+          <p>Provide training and testing lists and an excluded object mapping every ignored instance to its reason. Testing and exclusions must cover the original pool.</p>
+          <textarea aria-label="Revised dataset selection" [value]="datasetEdit()" (input)="datasetEdit.set($any($event.target).value)"></textarea>
+          <button mat-button [disabled]="store.busy() || !datasetEdit()" (click)="store.reviseDataset(datasetEdit())">Validate revised dataset</button>
+        </details>
+        <button mat-flat-button [disabled]="store.busy()" (click)="store.approveAndStart()">{{ store.active() === campaign.id ? 'Approve campaign amendment' : 'Approve this campaign and launch' }}</button>
+      }
+      @if (store.active() === campaign.id) {
+        <details><summary>Review a campaign amendment</summary>
+          <label>Total trials<input type="number" [min]="campaign.trials.length" max="10000" [value]="amendedTrials()" (input)="amendedTrials.set(+$any($event.target).value)" /></label>
+          <button mat-button [disabled]="store.busy()" (click)="store.amendTrials(amendedTrials())">Propose trial count</button>
+          <button mat-button [disabled]="store.busy()" (click)="store.reviewProposal()">Review enrolled servers</button>
+        </details>
+      }
       <mat-progress-bar mode="determinate" [value]="100 * store.completed() / campaign.trials.length" />
       @if (store.recoveryError()) { <p class="error">Recovery actions unavailable: {{ store.recoveryError() }}</p> }
       @if (!store.active() && store.recovery(); as recovery) { <p>{{ recovery.resumeCampaign.reason || recovery.resumeCampaign.effect }}</p> }

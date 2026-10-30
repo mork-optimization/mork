@@ -32,7 +32,9 @@ public class StartupFailureFixture {
                 if (environment.getProperty("fixture.failure", "component").equals("unknown")) {
                     throw new IllegalArgumentException("unclassified framework failure");
                 }
-                var inventory = new AlgorithmInventoryService(c -> c == InvalidComponentNew.class, List.of(), List.of());
+                Class<?> component = environment.getProperty("fixture.failure", "component").equals("precision")
+                        ? InvalidPrecisionComponentNew.class : InvalidComponentNew.class;
+                var inventory = new AlgorithmInventoryService(c -> c == component, List.of(), List.of());
                 inventory.runComponentDiscovery("mork.startupfixture");
                 new AlgorithmCandidateGenerator(inventory, new DefaultExplorationFilter());
             };
@@ -42,6 +44,11 @@ public class StartupFailureFixture {
     public static class InvalidComponentNew extends Algorithm<TestSolution, TestInstance> {
         @AutoconfigConstructor
         public InvalidComponentNew(@IntegerParam(min = 2, max = 1) int iterations) { super("invalid"); }
+        @Override public TestSolution algorithm(TestInstance instance) { return null; }
+    }
+    public static class InvalidPrecisionComponentNew extends Algorithm<TestSolution, TestInstance> {
+        @AutoconfigConstructor
+        public InvalidPrecisionComponentNew(@es.urjc.etsii.grafo.annotations.RealParam(min = 0.9, max = 0.9999) double cooling) { super("invalid-precision"); }
         @Override public TestSolution algorithm(TestInstance instance) { return null; }
     }
 }

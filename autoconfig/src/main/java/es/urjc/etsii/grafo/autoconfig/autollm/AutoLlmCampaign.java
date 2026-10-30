@@ -8,7 +8,7 @@ import java.util.Map;
 
 /** Versioned JSON checkpoint. Mutations are serialized by the campaign service/store. */
 public class AutoLlmCampaign {
-    public static final int SCHEMA_VERSION = 4;
+    public static final int SCHEMA_VERSION = 5;
     public enum CampaignStatus {
         DRAFT, RUNNING, WAITING_FOR_REMOTE, WAITING_FOR_TARGETS, CANCELLATION_PENDING,
         INTERRUPTED, NEEDS_ATTENTION, CANCELLED, SUCCEEDED, COMPLETED_WITH_FAILURES;
@@ -23,7 +23,7 @@ public class AutoLlmCampaign {
     }
     public enum TargetStatus { REGISTERED, VALIDATED, QUALIFYING, READY, BUSY, DRAINING, NEEDS_ATTENTION, REMOVED }
     public enum TrialStatus {
-        PENDING, STARTING, WAITING_FOR_GENERATION, GENERATION, REPAIR, METADATA_RECONCILIATION,
+        PENDING, WAITING_FOR_TARGET, LOCAL_PREPARATION, STARTING, WAITING_FOR_GENERATION, GENERATION, REPAIR, METADATA_RECONCILIATION,
         PREPARATION, TUNING, WINNER_EXPORT, COMPARISON, WAITING_FOR_QUOTA, WAITING_FOR_REMOTE,
         INTERRUPTED, BLOCKED, SUCCEEDED, FAILED;
         public boolean terminal() { return this == SUCCEEDED || this == FAILED; }
@@ -32,7 +32,7 @@ public class AutoLlmCampaign {
     }
     public enum AttemptStatus { RUNNING, SUCCEEDED, FAILED, INTERRUPTED, QUOTA_LIMIT }
     public enum AttemptStage {
-        GENERATION, REPAIR, PREPARATION, TUNING, WINNER_EXPORT, COMPARISON;
+        GENERATION, REPAIR, LOCAL_PREPARATION, PREPARATION, TUNING, WINNER_EXPORT, COMPARISON;
         public boolean generation() { return this == GENERATION || this == REPAIR; }
         public Stage committedStage() { return this == REPAIR ? Stage.GENERATION : Stage.valueOf(name()); }
         public TrialStatus trialStatus() { return TrialStatus.valueOf(name()); }
@@ -48,12 +48,18 @@ public class AutoLlmCampaign {
     public String reportFailure;
     public String reportUpdatedAt;
     public String baselineCommit;
-    public String approvedScreeningPath;
+    public String approvedProposal;
+    public String approvedAt;
+    public Integer proposedTrials;
+    public java.util.Set<String> reviewedTargets = new java.util.LinkedHashSet<>();
+    public java.util.Set<String> approvedTargets = new java.util.LinkedHashSet<>();
+    public String screeningPath;
     public WorkloadProtocol.Host executionHost;
     public Map<String,Object> remote;
     public String prompt;
     public Map<String, String> versions = Map.of();
     public CodexEvidenceUtil.Summary codexUsage;
+    public TargetState localPreparation = new TargetState();
     public long poolRevision;
     public Map<String, TargetState> targets = new java.util.LinkedHashMap<>();
     public List<Trial> trials = new ArrayList<>();
@@ -70,12 +76,16 @@ public class AutoLlmCampaign {
         result.reportFailure = this.reportFailure;
         result.reportUpdatedAt = this.reportUpdatedAt;
         result.baselineCommit = this.baselineCommit;
-        result.approvedScreeningPath = this.approvedScreeningPath;
+        result.approvedProposal = this.approvedProposal;
+        result.approvedAt = this.approvedAt; result.proposedTrials = this.proposedTrials;
+        result.reviewedTargets.addAll(reviewedTargets); result.approvedTargets.addAll(approvedTargets);
+        result.screeningPath = this.screeningPath;
         result.executionHost = this.executionHost;
         result.remote = remote == null ? null : new java.util.LinkedHashMap<>(remote);
         result.prompt = this.prompt;
         result.versions = this.versions;
         result.codexUsage = this.codexUsage;
+        result.localPreparation = this.localPreparation.copy();
         result.poolRevision = this.poolRevision;
         for (var entry : targets.entrySet()) result.targets.put(entry.getKey(), entry.getValue().copy());
         for (var trial : trials) result.trials.add(trial.copy());
@@ -97,6 +107,7 @@ public class AutoLlmCampaign {
         public TargetStatus status = TargetStatus.REGISTERED;
         public String directory;
         public String endpoint;
+        public String baselineArtifactSha256;
         public long revision;
         public boolean draining;
         public boolean baselineReady;
@@ -117,7 +128,7 @@ public class AutoLlmCampaign {
             result.definition = this.definition;
             result.status = this.status;
             result.directory = this.directory;
-            result.endpoint = this.endpoint;
+            result.endpoint = this.endpoint; result.baselineArtifactSha256 = this.baselineArtifactSha256;
             result.revision = this.revision;
             result.draining = this.draining;
             result.baselineReady = this.baselineReady;
@@ -130,7 +141,7 @@ public class AutoLlmCampaign {
             return result;
         }
     }
-    public enum Stage { GENERATION, PREPARATION, TUNING, WINNER_EXPORT, COMPARISON, COMPLETE }
+    public enum Stage { GENERATION, LOCAL_PREPARATION, PREPARATION, TUNING, WINNER_EXPORT, COMPARISON, COMPLETE }
     public record StageOutput(String directory, String artifact) {}
     public static class Trial {
         public int number;

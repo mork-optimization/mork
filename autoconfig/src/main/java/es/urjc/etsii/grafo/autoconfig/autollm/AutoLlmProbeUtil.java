@@ -4,8 +4,6 @@ import es.urjc.etsii.grafo.autoconfig.builder.ComponentSpec;
 import es.urjc.etsii.grafo.autoconfig.generator.TreeNode;
 import es.urjc.etsii.grafo.autoconfig.irace.params.ParameterType;
 import es.urjc.etsii.grafo.autoconfig.service.AutoconfigSearchSpace;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.*;
 
 /** Builds small representative configurations from the actual bounded derivation tree. */
@@ -42,7 +40,7 @@ public final class AutoLlmProbeUtil {
             } else if (p.getType() == ParameterType.INTEGER) {
                 values.put(p.getName(), ((Number) p.getValues()[0]).intValue());
             } else if (p.getType() == ParameterType.REAL) {
-                var low = new BigDecimal(p.getValues()[0].toString()).setScale(2, RoundingMode.CEILING);
+                var low = es.urjc.etsii.grafo.autoconfig.irace.IracePrecision.exact(((Number) p.getValues()[0]).doubleValue());
                 values.put(p.getName(), low.doubleValue());
             } else values.put(p.getName(), p.getValues()[0]);
         }

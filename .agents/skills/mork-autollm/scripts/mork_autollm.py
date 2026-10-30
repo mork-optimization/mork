@@ -17,10 +17,10 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 import zipfile
 
-FEATURES = {"SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "ASYNC_TARGET_PREFLIGHT"}
+FEATURES = {"SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION"}
 
 
-def request(base, path, body=None, timeout=30, method=None, maximum_bytes=None):
+def request(base, path, body=None, timeout=30, method=None, maximum_bytes=2_000_000):
     req = Request(base.rstrip("/") + "/api/autollm" + path,
                   data=None if body is None else json.dumps(body).encode(),
                   headers={"Content-Type": "application/json"}, method=method)
@@ -85,7 +85,7 @@ def capabilities(base, workspace=None, jar=None, cwd=None):
 
 
 def check_capabilities(info, workspace=None, jar=None, cwd=None):
-    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 4 or info.get("checkpointVersion") != 4 or info.get("runnerProtocol") != 4 or not FEATURES.issubset(info.get("features", [])):
+    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 5 or info.get("checkpointVersion") != 5 or info.get("runnerProtocol") != 5 or not FEATURES.issubset(info.get("features", [])):
         raise RuntimeError("Backend lacks required AutoLLM capabilities; use the matching rebuilt executable")
     if workspace and Path(info["workspace"]).resolve() != Path(workspace).resolve():
         raise RuntimeError("Backend workspace does not match")
@@ -132,7 +132,11 @@ def backend(args):
         except ProcessLookupError:
             pass
         else:
-            raise RuntimeError("Saved backend PID still exists; inspect ownership and reconnect before starting another")
+            process = subprocess.run(["ps", "-p", str(int(previous["pid"])), "-o", "command="], capture_output=True, text=True, timeout=3)
+            previous_command = previous.get("command") or []
+            artifact = previous.get("artifact") or (previous_command[previous_command.index("-jar") + 1] if "-jar" in previous_command else None)
+            if not artifact or artifact in process.stdout and "--autollm" in process.stdout:
+                raise RuntimeError("Saved backend process still exists; inspect ownership and reconnect before starting another")
     command = [args.java, "-jar", str(jar), "--autollm", f"--autollm.workspace={workspace}",
                "--server.address=127.0.0.1", f"--server.port={port}", "--instances.preload=false", "--solver.benchmark=false"]
     log = workspace / "backend.log"
@@ -225,9 +229,14 @@ def lifecycle(args, base):
                       "trainingFraction": args.training_fraction})
         return request(base, root, body, timeout=args.timeout)
     path = root + "/" + quote(args.id, safe="")
-    if args.action in ("get", "review", "summary", "recovery"):
+    if args.command == "campaign" and args.action == "proposal" and args.target:
+        return request(base, path + "/proposal", {"targets": args.target}, timeout=args.timeout)
+    if args.action in ("get", "review", "summary", "recovery", "proposal"):
         return request(base, path if args.action == "get" else path + "/" + args.action, timeout=args.timeout)
-    body = {"proposalSha256": args.proposal_sha256} if args.action == "approve" else {}
+    if args.action == "dataset": return request(base, path + "/dataset", read_object(args.selection), method="PUT", timeout=args.timeout)
+    if args.action == "edit": return request(base, path + "/draft", read_configuration(args), method="PUT", timeout=args.timeout)
+    body = ({"digest": args.proposal_sha256}) if args.action == "approve" else {}
+    if args.action == "amend-trials": body = {"trials": args.trials}
     if args.command == "campaign" and args.action == "start":
         body = {"targets": args.target}
     return request(base, path + "/" + args.action, body, timeout=args.timeout)
@@ -432,7 +441,7 @@ def watch(args, base):
     kind, identifier = watch_owner(args, base, deadline)
     cursors = {}
     stopped = {"DRAFT", "NEEDS_ATTENTION", "INTERRUPTED", "CANCELLED", "FAILED", "SUCCEEDED",
-               "COMPLETED_WITH_FAILURES", "AWAITING_APPROVAL", "APPROVED"}
+               "COMPLETED_WITH_FAILURES", "READY_FOR_REVIEW"}
     while True:
         snapshot, sources = watch_snapshot(base, kind, identifier, deadline)
         events, caught_up = [], True
@@ -466,34 +475,20 @@ def watch(args, base):
 
 
 def status(args, base):
-    campaigns = request(base, "/campaigns", timeout=args.timeout)
-    result = {"baseUrl": base, "workspace": str(Path(args.workspace).resolve()), "activeCampaign": campaigns["active"],
-              "checkedAt": datetime.now(timezone.utc).isoformat(), "errors": {}}
-    try:
-        screenings = request(base, "/screenings", timeout=args.timeout)
-        result.update(activeScreening=screenings["active"], screenings=screenings["jobs"])
-    except (RuntimeError, OSError, ValueError) as error:
-        result["errors"]["screenings"] = str(error)
-    candidates = campaigns["campaigns"]
-    selected = args.campaign or campaigns["active"] or (candidates[0]["id"] if candidates else None)
-    if selected:
-        root = "/campaigns/" + quote(selected, safe="")
-        campaign = request(base, root + "/status", timeout=args.timeout)
-        result["campaign"] = {key: campaign.get(key) for key in ("id", "status", "problem", "poolRevision", "targets")}
-        result["campaign"]["trials"] = [{key: trial.get(key) for key in ("number", "targetId", "status", "repairTurns", "infrastructureRetries", "quotaRetryAt", "problem")} for trial in campaign["trials"]]
-        selected_trials = [trial for trial in campaign["trials"] if trial["status"] != "PENDING"]
-        result["progress"], result["progressErrors"] = read_progress(base, root, selected_trials, args.timeout)
-        try:
-            result["summary"] = request(base, root + "/summary", timeout=args.timeout)
-        except (RuntimeError, OSError, ValueError) as error:
-            result["errors"]["summary"] = str(error)
-    if args.screening:
-        try:
-            result["screening"] = request(base, "/screenings/" + quote(args.screening, safe=""), timeout=args.timeout)
-        except (RuntimeError, OSError, ValueError) as error:
-            result["errors"]["screening"] = str(error)
-    result["partial"] = bool(result["errors"] or result.get("progressErrors"))
-    return result
+    selected = args.campaign
+    if not selected:
+        saved = Path(args.workspace) / "campaign-session.json"
+        if saved.is_file():
+            selected = read_object(saved).get("campaignId")
+    if not selected:
+        listing = request(base, "/campaigns", timeout=args.timeout)
+        selected = listing.get("active") or next((c["id"] for c in listing["campaigns"]), None)
+    if not selected:
+        return {"baseUrl": base, "checkedAt": datetime.now(timezone.utc).isoformat(), "campaign": {}, "partial": False, "errors": {}}
+    value = request(base, "/campaigns/" + quote(selected, safe="") + "/observation", timeout=args.timeout)
+    return {"baseUrl": base, "checkedAt": value["checkedAt"], "campaign": value,
+            "progress": {str(t["number"]): t.get("progress") or {} for t in value["trials"]},
+            "progressErrors": value["errors"], "errors": {}, "partial": value["partial"]}
 
 
 def status_table(value):
@@ -689,15 +684,89 @@ def lifecycle_commands(commands):
                 action.add_argument("--settings", help="JSON screening settings; omitted values use backend defaults")
                 action.add_argument("--input", required=True, help="Full original instance pool, relative to the configured repository")
                 action.add_argument("--training-fraction", type=float)
-        names = ("get", "probe-status", "baseline-check", "summary", "recovery", "start", "resume", "cancel", "report") if kind == "campaign" else ("get", "review", "resume", "cancel", "approve")
+        names = ("get", "probe-status", "baseline-check", "summary", "recovery", "proposal", "approve", "edit", "dataset", "amend-trials", "start", "resume", "cancel", "report") if kind == "campaign" else ("get", "review", "resume", "cancel")
         for name in names:
             action = actions.add_parser(name)
             action.add_argument("--id", required=True, help=f"Saved {kind} ID; mutating commands never select another operation")
             action.add_argument("--timeout", type=positive_seconds, default=3600 if name == "baseline-check" else 30)
-            if kind == "campaign" and name == "start":
+            if kind == "campaign" and name in ("start", "proposal"):
                 action.add_argument("--target", action="append", default=[], help="Start only these qualified servers; repeat for an explicit healthy subset")
+            if name == "edit": action.add_argument("--config", required=True)
+            if name == "amend-trials": action.add_argument("--trials", required=True, type=bounded_integer(1, 10000))
+            if name == "dataset": action.add_argument("--selection", required=True)
             if name == "approve":
                 action.add_argument("--proposal-sha256", required=True, type=reviewed_sha256)
+
+
+def backend_status(args):
+    base = base_url(args)
+    result = {"savedAddress": base, "reachable": False, "compatible": False}
+    for name in ("session.json", "backend-launch.json"):
+        path = Path(args.workspace) / name
+        if path.exists(): result[name] = read_object(path)
+    saved = result.get("session.json") or result.get("backend-launch.json") or {}
+    if saved.get("pid"):
+        process = subprocess.run(["ps", "-p", str(int(saved["pid"])), "-o", "command="], capture_output=True, text=True, timeout=3)
+        result["savedPidExists"] = process.returncode == 0
+        command = saved.get("command") or []
+        expected = saved.get("artifact") or (command[command.index("-jar") + 1] if "-jar" in command else None)
+        result["savedProcessMatches"] = bool(process.returncode == 0 and expected and expected in process.stdout and "--autollm" in process.stdout)
+    try:
+        info = request(base, "/capabilities", timeout=3)
+        result.update(reachable=True, observed=info)
+        check_capabilities(info, args.workspace)
+        saved = result.get("session.json") or {}
+        result["identityMatches"] = all(not saved.get(k) or saved[k] == info.get(k) for k in ("pid", "processStartedAt", "artifactSha256"))
+        result["compatible"] = True
+    except (RuntimeError, OSError, ValueError) as error: result["problem"] = str(error)
+    return result
+
+
+def operator(args, base):
+    root = "/campaigns/" + quote(args.campaign, safe="")
+    if args.command == "remote":
+        deadline = time.monotonic() + args.timeout
+        def inspect(number):
+            try:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0: raise RuntimeError("Inspection deadline expired")
+                return number, request(base, root + f"/trials/{number}/remote-inspection?" + urlencode({"timeoutMillis": min(30000, max(100, int(remaining * 1000)))}), timeout=remaining)
+            except (RuntimeError, OSError, ValueError) as error: return number, {"error": str(error)}
+        with ThreadPoolExecutor(max_workers=4) as pool: return dict(pool.map(inspect, args.trial))
+    if args.command == "recover": return request(base, root + "/recover", {"trials": args.trial}, timeout=args.timeout)
+    query = {"objective": args.objective, "mode": args.mode, "ranking": args.ranking}
+    if args.trial: query["trials"] = ",".join(map(str, args.trial))
+    value = request(base, root + "/comparison?" + urlencode(query), timeout=args.timeout)
+    if args.format == "json": return value
+    rows = [["Trial", "Server", "Mean improvement %", "Wins", "Ties", "Losses", "Undefined percentages"]]
+    if args.instances:
+        rows = [["Trial", "Server", "Instance", "SOTA mean", "Proposal mean", "Proposal best", "Improvement %", "Repetitions", "SOTA ms", "Proposal ms", "Proposal time to own best ms"]]
+    for trial in value["trials"]:
+        if not args.instances:
+            rows.append([trial["trial"], trial["targetId"], trial["meanImprovementPercent"], trial["wins"], trial["ties"], trial["losses"], trial["undefinedPercentages"]])
+        else:
+            for instance in trial["instances"]:
+                sota, proposal = instance["sota"], instance["proposal"]
+                rows.append([trial["trial"], trial["targetId"], instance["instance"], sota["objective"]["mean"], proposal["objective"]["mean"], proposal["objective"]["best"], instance["improvementPercent"], f'{proposal["objective"]["count"]}/{trial["repetitions"]}', sota["executionTimeMillis"]["mean"], proposal["executionTimeMillis"]["mean"], proposal["timeToOwnBestMillis"]["mean"]])
+    if args.format == "csv":
+        import csv
+        csv.writer(sys.stdout).writerows(rows)
+    else:
+        print("Reference: " + value["reference"])
+        for i, row in enumerate(rows):
+            print(" | ".join(str(c) for c in row))
+            if i == 0 and args.format == "markdown": print(" | ".join("---" for _ in row))
+        for trial, reason in value["excluded"].items(): print(f"Excluded trial {trial}: {reason}")
+        if value.get("ranking"):
+            print(value["rankingMethod"])
+            for rank in value["ranking"]: print(f'Trial {rank["trial"]}: {rank["meanImprovementPercent"]:.6g}%')
+    return None
+
+
+def mutation_receipt(value, operation):
+    if not isinstance(value, dict) or "id" not in value or "trials" not in value: return value
+    return {"operation": operation, "id": value["id"], "status": value["status"],
+            "next": "status --campaign " + value["id"]}
 
 
 def main(argv=None):
@@ -705,7 +774,13 @@ def main(argv=None):
     parser.add_argument("--workspace", default="autollm-runs")
     parser.add_argument("--url")
     commands = parser.add_subparsers(dest="command", required=True)
-    start = commands.add_parser("backend", help="Discover a matching backend or start an owned persistent one")
+    parser.add_argument("--json", action="store_true", help="Machine-readable compact output")
+    backends = commands.add_parser("backend", help="Inspect or launch an owned controller")
+    backend_actions = backends.add_subparsers(dest="action", required=True)
+    health = backend_actions.add_parser("status")
+    restart = backend_actions.add_parser("restart", help="Launch using saved metadata; never kill an existing process")
+    restart.add_argument("--timeout", type=positive_seconds, default=120)
+    start = backend_actions.add_parser("start")
     start.add_argument("--jar", required=True)
     start.add_argument("--cwd", required=True)
     start.add_argument("--java", default="java")
@@ -718,7 +793,7 @@ def main(argv=None):
     state = commands.add_parser("status")
     state.add_argument("--campaign")
     state.add_argument("--screening")
-    state.add_argument("--table", action="store_true", help="Compact all-trial status, budgets and observation timestamps")
+    state.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
     state.add_argument("--timeout", type=positive_seconds, default=10, help="Read deadline in seconds; unavailable sections remain explicitly unknown")
     tail = commands.add_parser("logs")
     owner = tail.add_mutually_exclusive_group(required=True)
@@ -764,16 +839,37 @@ def main(argv=None):
     monitor.add_argument("--timeout", type=positive_seconds, default=300)
     monitor.add_argument("--once", action="store_true", help="Read one bounded status/activity batch")
     monitor.add_argument("--json", action="store_true", help="Emit newline-delimited JSON status and activity events")
+    for name in ("remote", "recover", "compare"):
+        action = commands.add_parser(name)
+        action.add_argument("--campaign", required=True)
+        action.add_argument("--trial", action="append", type=bounded_integer(1, 2**31 - 1), required=name != "compare")
+        action.add_argument("--timeout", type=positive_seconds, default=30)
+        if name == "compare":
+            action.add_argument("--instances", action="store_true", help="Include per-instance measurements")
+            action.add_argument("--ranking", choices=("NONE", "COMMON_SOTA"), default="NONE")
+            action.add_argument("--objective", required=True)
+            action.add_argument("--mode", choices=("MINIMIZE", "MAXIMIZE"), default="MINIMIZE")
+            action.add_argument("--format", choices=("text", "markdown", "csv", "json"), default="text")
     args = parser.parse_args(argv)
     if args.command == "backend":
-        result = backend(args)
+        if args.action == "status": result = backend_status(args)
+        else:
+            if args.action == "restart":
+                saved = read_object(Path(args.workspace) / "backend-launch.json")
+                command = saved["command"]
+                args.java, args.jar, args.cwd = command[0], command[command.index("-jar") + 1], saved["workingDirectory"]
+                args.port = int(saved["baseUrl"].rsplit(":", 1)[1])
+                if fingerprint(args.jar) != saved["artifactSha256"]: raise RuntimeError("Saved controller artifact changed")
+            result = backend(args)
     else:
         base = base_url(args)
         capabilities(base, args.workspace)
         result = {"config": configuration, "status": status, "logs": logs, "diagnose": diagnose,
-                  "campaign": lifecycle, "screening": lifecycle, "watch": watch, "target": target, "trial": trial}[args.command](args, base)
+                  "campaign": lifecycle, "screening": lifecycle, "watch": watch, "target": target, "trial": trial, "remote": operator, "recover": operator, "compare": operator}[args.command](args, base)
     if result is not None:
-        print(status_table(result) if args.command == "status" and args.table else json.dumps(result, indent=2, ensure_ascii=False))
+        if not args.json and args.command not in ("status", "compare") and getattr(args, "action", "") != "get":
+            result = mutation_receipt(result, args.command + " " + str(getattr(args, "action", "")))
+        print(status_table(result) if args.command == "status" and not args.json else json.dumps(result, indent=2, ensure_ascii=False))
     return 2 if args.command == "campaign" and args.action == "validate" and not result["valid"] else 0
 
 

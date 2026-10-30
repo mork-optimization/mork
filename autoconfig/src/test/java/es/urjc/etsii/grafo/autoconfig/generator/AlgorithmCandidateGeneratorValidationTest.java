@@ -28,6 +28,24 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class AlgorithmCandidateGeneratorValidationTest {
 
+    @Test
+    void rejectsIraceIncompatibleRealDomainsBeforeExport() throws Exception {
+        var error = assertThrows(es.urjc.etsii.grafo.autoconfig.exception.ComponentDefinitionException.class,
+                () -> generator.toComponentParameter(Map.of(), firstParameter(FineCooling.class)));
+        assertTrue(error.getMessage().contains("digits=4"));
+        assertEquals(FineCooling.class, error.componentType());
+        assertThrows(es.urjc.etsii.grafo.autoconfig.exception.ComponentDefinitionException.class,
+                () -> generator.toComponentParameter(Map.of(), firstParameter(FixedReal.class)));
+        assertThrows(es.urjc.etsii.grafo.autoconfig.exception.ComponentDefinitionException.class,
+                () -> generator.toComponentParameter(Map.of(), firstParameter(FixedInteger.class)));
+        assertEquals(ParameterType.REAL, generator.toComponentParameter(Map.of(), firstParameter(ValidCooling.class)).getType());
+    }
+
+    public static class FineCooling { public FineCooling(@RealParam(min = 0.9, max = 0.9999) double cooling) {} }
+    public static class FixedReal { public FixedReal(@RealParam(min = 1, max = 1) double cooling) {} }
+    public static class FixedInteger { public FixedInteger(@IntegerParam(min = 1, max = 1) int iterations) {} }
+    public static class ValidCooling { public ValidCooling(@RealParam(min = -1e-2, max = 0.99) double cooling) {} }
+
     private AlgorithmCandidateGenerator generator;
 
     @BeforeEach

@@ -11,7 +11,7 @@ public final class IraceParameterFileUtil {
             result.append("\n[forbidden]\n");
             for (var expression : space.forbiddenExpressions()) result.append(expression).append('\n');
         }
-        result.append("\n[global]\ndigits = ").append(InitialConfigurationUtil.GENERATED_REAL_DIGITS).append('\n');
+        result.append("\n[global]\ndigits = ").append(IracePrecision.DIGITS).append('\n');
         return result.toString();
     }
 }

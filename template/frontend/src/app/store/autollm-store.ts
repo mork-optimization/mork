@@ -13,6 +13,7 @@ export class AutoLlmStore {
   readonly active = signal('');
   readonly selectedId = signal('');
   readonly selectedTrial = signal(1);
+  readonly proposal = signal<Awaited<ReturnType<AutoLlmClient["proposal"]>> | null>(null);
   readonly startTargets = signal<string[]>([]);
   readonly campaign = computed(() => this.campaigns().find(c => c.id === this.selectedId()) ?? null);
   readonly trial = computed(() => this.campaign()?.trials.find(t => t.number === this.selectedTrial()) ?? null);
@@ -138,7 +139,7 @@ export class AutoLlmStore {
     } catch (e) { if (!this.destroyed) this.connectionError.set(this.message(e)); }
     finally { if (!this.destroyed) this.timer = setTimeout(() => void this.poll(), 2000); }
   }
-  select(id: string): void { this.selectedId.set(id); this.startTargets.set([]); this.resetComparison(); this.selectedTrial.set(1); this.artifacts.set([]); this.recovery.set(null); this.recoveryError.set(null); this.selectLog(''); this.progress.set(null); this.watchGeneration(null); }
+  select(id: string): void { this.proposal.set(null); this.selectedId.set(id); this.startTargets.set([]); this.resetComparison(); this.selectedTrial.set(1); this.artifacts.set([]); this.recovery.set(null); this.recoveryError.set(null); this.selectLog(''); this.progress.set(null); this.watchGeneration(null); }
   selectTrial(number: number): void { this.selectedTrial.set(number); this.resetComparison(); this.progress.set(null); this.selectLog(''); this.watchGeneration(null); }
   watchGeneration(attempt: number | null): void { this.generationAttempt.set(attempt); this.activityKey = ''; this.activity.set([]); }
   selectLog(path: string): void {
@@ -178,14 +179,13 @@ export class AutoLlmStore {
     const id = this.selectedScreening();
     await this.operate(async () => { const review = await this.client.screeningReview(id); if (this.selectedScreening() === id) this.review.set({ ...review, jobId: id }); });
   }
-  async screeningAction(action: 'resume' | 'cancel' | 'approve'): Promise<void> {
-    const id = this.selectedScreening(), review = this.review();
-    if (action === 'approve' && review?.jobId !== id) return;
-    await this.operate(async () => { await this.client.screeningAction(id, action, review?.proposalSha256); });
+  async screeningAction(action: 'resume' | 'cancel'): Promise<void> {
+    const id = this.selectedScreening();
+    await this.operate(async () => { await this.client.screeningAction(id, action); });
   }
   useSelection(): void {
-    const job = this.screening(); if (job?.status !== 'APPROVED' || !job.mirror) return;
-    this.config.update(config => config ? { ...config, trainingPath: `${job.mirror}/proposal/train.index`, comparisonPath: `${job.mirror}/proposal/test.index` } : config);
+    const job = this.screening(); if (!job || !['READY_FOR_REVIEW'].includes(job.status) || !job.mirror) return;
+    this.config.update(config => config ? { ...config, trainingPath: `${job.mirror}/proposal/proposed-train.index`, comparisonPath: `${job.mirror}/proposal/proposed-test.index` } : config);
   }
   screeningArtifactUrl(path: string): string { return this.client.screeningArtifactUrl(this.selectedScreening(), path); }
   async refreshArtifacts(): Promise<void> {
@@ -193,7 +193,7 @@ export class AutoLlmStore {
     const id = this.selectedId();
     try { const artifacts = await this.client.artifacts(id); if (id === this.selectedId() && !this.destroyed) this.artifacts.set(artifacts); } catch (e) { this.error.set(this.message(e)); }
   }
-  async createAndStart(): Promise<void> {
+  async prepareCampaign(): Promise<void> {
     const config = this.config(); if (!config) return;
     await this.operate(async () => {
       const validation = await this.client.validate(config);
@@ -203,7 +203,39 @@ export class AutoLlmStore {
       this.summary.set(await this.client.summary(campaign.id));
       if (!check.withinLimit) throw new Error(`Baseline emits ${check.parameters} parameters; limit is ${check.maxParameters}. Prune the search space while preserving every seed before starting this draft.`);
       if (!check.ready) throw new Error(`Baseline is not ready. Failed targets: ${check.failedTargets.join(', ')}. Inspect qualification results before selecting servers to start.`);
-      await this.client.action(campaign.id, 'start'); this.active.set(campaign.id);
+      const proposal = await this.client.proposal(campaign.id); this.config.set(structuredClone(proposal.configuration)); this.proposal.set(proposal);
+    });
+  }
+  async reviseDataset(text: string): Promise<void> {
+    await this.operate(async () => {
+      const campaign = await this.client.reviseDataset(this.selectedId(), JSON.parse(text));
+      this.campaigns.update(values => [campaign, ...values.filter(value => value.id !== campaign.id)]); this.select(campaign.id);
+      await this.client.baselineCheck(campaign.id); const proposal = await this.client.proposal(campaign.id); this.config.set(structuredClone(proposal.configuration)); this.proposal.set(proposal);
+    });
+  }
+  async saveDraftChanges(): Promise<void> {
+    const config = this.config(); if (!config) return;
+    await this.operate(async () => {
+      const campaign = await this.client.editDraft(this.selectedId(), config);
+      this.campaigns.update(values => [campaign, ...values.filter(value => value.id !== campaign.id)]); this.select(campaign.id);
+      await this.client.baselineCheck(campaign.id); const proposal = await this.client.proposal(campaign.id); this.config.set(structuredClone(proposal.configuration)); this.proposal.set(proposal);
+    });
+  }
+  async reviewProposal(targets: string[] = []): Promise<void> {
+    await this.operate(async () => { const id = this.selectedId(); const proposal = await this.client.proposal(id, targets); if (id === this.selectedId()) { this.config.set(structuredClone(proposal.configuration)); this.proposal.set(proposal); } });
+  }
+  async amendTrials(count: number): Promise<void> {
+    await this.operate(async () => {
+      const proposal = await this.client.amendTrials(this.selectedId(), count);
+      this.config.set(structuredClone(proposal.configuration)); this.proposal.set(proposal);
+    });
+  }
+  async approveAndStart(): Promise<void> {
+    const proposal = this.proposal(); if (!proposal) return;
+    await this.operate(async () => {
+      const id = this.selectedId(); await this.client.approve(id, proposal.digest);
+      if (this.active() !== id) { this.updateCampaign(await this.client.action(id, 'start')); this.active.set(id); }
+      this.proposal.set(null);
     });
   }
   async probeTarget(): Promise<void> {
@@ -214,6 +246,7 @@ export class AutoLlmStore {
     await this.operate(async () => { const id = this.selectedId(); const campaign = await this.client.action(id, action, targets); this.updateCampaign(campaign); if (action === 'start' || action === 'resume') this.active.set(id); await this.refreshRecovery(); });
   }
   toggleStartTarget(id: string, selected: boolean): void {
+    this.proposal.set(null);
     this.startTargets.update(values => selected ? [...values, id] : values.filter(value => value !== id));
   }
   private resetComparison(): void {
@@ -271,7 +304,7 @@ export class AutoLlmStore {
     await this.operate(async () => { this.updateCampaign(await this.client.failTrial(id, number, reason.trim())); await this.refreshRecovery(); });
   }
   private updateCampaign(campaign: AutoLlmCampaign): void {
-    this.campaigns.update(values => values.map(value => value.id === campaign.id ? campaign : value));
+    this.campaigns.update(values => values.map(value => value.id === campaign.id ? { ...value, ...campaign } : value));
   }
   targetStale(lastSync: string | null | undefined): boolean { return !lastSync || this.now() - Date.parse(lastSync) > 30000; }
   private async operate(callback: () => Promise<void>): Promise<void> {

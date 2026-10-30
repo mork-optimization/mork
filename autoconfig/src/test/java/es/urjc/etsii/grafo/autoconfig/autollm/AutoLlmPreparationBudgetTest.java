@@ -27,6 +27,9 @@ class AutoLlmPreparationBudgetTest {
         var defaults = AutoLlmConfig.defaults().preparation();
         assertEquals(600_000L, defaults.probeDurationMillis());
         assertEquals(600_000L, defaults.pilotDurationMillis());
+        assertEquals(2, AutoLlmConfig.defaults().codex().maxConcurrentSessions());
+        assertEquals(2, defaults.localBuilds());
+        assertEquals(4, defaults.readyQueueSize());
 
         var config = AutoLlmFileUtil.JSON.readValue(
                 "{\"preparation\":{\"pilotDurationMillis\":1234}}", AutoLlmConfig.class);
@@ -45,7 +48,7 @@ class AutoLlmPreparationBudgetTest {
     @CsvSource({"0,1000", "-1,1000", "1000,0", "1000,-1"})
     void rejectsNonpositiveProbeOrPilotBudgets(long probeMillis, long pilotMillis) {
         var config = new AutoLlmConfig(null, temp.toString(), null, null, null, null, null, null, null,
-                null, new AutoLlmConfig.Preparation(probeMillis, pilotMillis, 0), null, null, null);
+                null, new AutoLlmConfig.Preparation(probeMillis, pilotMillis, 0, null, null, null, null), null, null, null);
         var service = new AutoLlmCampaignService(config, new AutoLlmCampaignStore(config), mock(AutoLlmProcessRunner.class),
                 mock(CodexTaskRunner.class), mock(AutoLlmReportService.class), new InstanceConfiguration());
         try {
@@ -66,24 +69,24 @@ class AutoLlmPreparationBudgetTest {
         try (var jar = new JarOutputStream(Files.newOutputStream(baseline))) {
             // Dependency-free fixture artifact; all process behavior is controlled below.
         }
-        Path source = root.resolve("trials/001/source");
+        Path source = root.resolve("source");
         Files.createDirectories(source.resolve("target"));
         Files.copy(baseline, source.resolve("target/project.jar"));
-        AutoLlmFileUtil.write(root.resolve("trials/001/clone/clone-completed.json"), Map.of("commit", "fixed"));
+        AutoLlmFileUtil.write(root.resolve("clone/clone-completed.json"), Map.of("commit", "fixed"));
         AutoLlmFileUtil.write(root.resolve("control/frozen-hashes.json"), Map.of());
 
         var config = new AutoLlmConfig(new AutoLlmConfig.Project(root.resolve("baseline/source").toString(), "fixed",
                 List.of("fixture-build"), "target/project.jar", null), root.toString(), 1, null, null,
                 root.resolve("control/sota.json").toString(), root.resolve("control/seeds.json").toString(),
                 root.resolve("training.index").toString(), root.resolve("testing.index").toString(), null,
-                new AutoLlmConfig.Preparation(probeMillis, pilotMillis, 0), null, null,
+                new AutoLlmConfig.Preparation(probeMillis, pilotMillis, 0, null, null, null, null), null, null,
                 new AutoLlmConfig.Execution(1, 50L, null, null, startupMillis, null, 1000L, null, null, null, null));
         var campaign = new AutoLlmCampaign();
         campaign.id = "fixture";
         campaign.config = config;
         campaign.baselineCommit = "fixed";
         var trial = new AutoLlmCampaign.Trial();
-        trial.number = 1;
+        trial.number = 1; trial.directory = ".";
         trial.nextStage = AutoLlmCampaign.Stage.PREPARATION;
         campaign.trials.add(trial);
         var observedProbeTimeout = new AtomicLong(-1);

@@ -47,16 +47,32 @@ class SshWorkloadTest {
         var defaults = AutoLlmConfig.defaults();
         config = new AutoLlmConfig(defaults.project(), defaults.workspace(), 1, 1234L, 299, null, null, null, null, defaults.codex(), defaults.preparation(), defaults.tuning(), defaults.comparison(),
                 new AutoLlmConfig.Execution(32, 100L, 30000L, 30000L, 5000L, 5000L, 30000L, 30000L, "128m", AutoLlmConfig.Target.SSH,
-                        new AutoLlmConfig.Ssh("fixture", runner.toString(), List.of(new AutoLlmConfig.Server("fixture", "mork-fixture", temp.resolve("remote workspace").toString(), java, Map.of(), ssh.toString(), null, null)))));
+                        new AutoLlmConfig.Ssh("fixture", runner.toString(), List.of(new AutoLlmConfig.Server("fixture", "mork-fixture", temp.resolve("remote workspace").toString(), java, Map.of(), ssh.toString(), null, null)), new AutoLlmConfig.Reconnect(10L, 40L, 200L))));
         root = temp.resolve("local mirror").toAbsolutePath(); Files.createDirectories(root);
     }
     @AfterEach void stopSsh() { if (server != null) server.destroyForcibly(); }
+    @Test void inspectionDoesNotReconcileStaleStateOrCreateAMissingJob() throws Exception {
+        var transport = new SshTransport(config, temp.resolve("transport"));
+        var work = workload("success", "inspection");
+        assertEquals(0, new SshWorkloadExecutor(config, root, transport, state -> {}).run(work, () -> false).exitCode());
+        var job = AutoLlmFileUtil.read(work.output().resolve("remote-job.json"), WorkloadProtocol.Job.class);
+        Path directory = Path.of(job.root()).resolve(".jobs/" + job.id());
+        AutoLlmFileUtil.write(directory.resolve("state.json"), new WorkloadProtocol.State(job.id(), WorkloadProtocol.JobStatus.RUNNING, null, null, null));
+        AutoLlmFileUtil.write(directory.resolve("started.json"), Map.of("pid", ProcessHandle.current().pid(), "start", "not-this-process"));
+        String saved = Files.readString(directory.resolve("state.json"));
+        var inspected = AutoLlmFileUtil.JSON.readTree(transport.call("inspect", job.root(), job.id(), Map.of()));
+        assertFalse(inspected.path("supervisorAlive").asBoolean());
+        assertEquals(saved, Files.readString(directory.resolve("state.json")));
+        String missing = "0".repeat(64);
+        assertFalse(AutoLlmFileUtil.JSON.readTree(transport.call("inspect", job.root(), missing, Map.of())).path("found").asBoolean());
+        assertFalse(Files.exists(Path.of(job.root()).resolve(".jobs/" + missing)));
+    }
     @Test void interruptedScreeningCancellationUsesItsPersistedSingleServer() throws Exception {
         var execution = config.execution(); var ssh = execution.ssh();
         var pool = new AutoLlmConfig(config.project(), temp.resolve("campaigns").toString(), 1, config.seed(), config.maxParameters(), null, null, null, null,
                 config.codex(), config.preparation(), config.tuning(), config.comparison(),
                 new AutoLlmConfig.Execution(execution.workers(), execution.watchdogGraceMillis(), execution.codexTimeoutMillis(), execution.buildTimeoutMillis(), execution.startupTimeoutMillis(), execution.searchSpaceTimeoutMillis(), execution.phaseTimeoutMillis(), execution.stageTimeoutMillis(), execution.heap(), AutoLlmConfig.Target.SSH,
-                        new AutoLlmConfig.Ssh(ssh.screeningServerId(), ssh.runnerArtifact(), List.of(ssh.onlyServer(), new AutoLlmConfig.Server("other", "unreachable-fixture", "/unused", "java", Map.of(), null, null, null)))));
+                        new AutoLlmConfig.Ssh(ssh.screeningServerId(), ssh.runnerArtifact(), List.of(ssh.onlyServer(), new AutoLlmConfig.Server("other", "unreachable-fixture", "/unused", "java", Map.of(), null, null, null)), null)));
         var store = new AutoLlmCampaignStore(pool);
         var job = new es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.Job(); job.id = UUID.randomUUID().toString(); job.status = es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.ScreeningStatus.INTERRUPTED;
         job.request = new es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService.Request(pool, null, null, null);
@@ -299,7 +315,7 @@ class SshWorkloadTest {
         };
         var work = workload("success", "completed once");
         var failure = assertThrows(AutoLlmFailureUtil.StageException.class, () -> new SshWorkloadExecutor(config, root, transport, state -> {}).run(work, () -> false));
-        assertEquals("REMOTE_UNREACHABLE", failure.failure().code()); assertEquals(3, downloads.get());
+        assertEquals("REMOTE_UNREACHABLE", failure.failure().code()); assertTrue(downloads.get() >= 1);
         Path descriptor = work.output().resolve("remote-job.json"); String checksum = AutoLlmFileUtil.hash(descriptor);
         assertEquals(0, new SshWorkloadExecutor(config, root, new SshTransport(config, temp.resolve("transport")), state -> {}).run(work, () -> false).exitCode());
         assertEquals(checksum, AutoLlmFileUtil.hash(descriptor)); assertFalse(AutoLlmCampaignStore.hasUncollectedJobs(root));

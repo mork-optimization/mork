@@ -190,6 +190,7 @@ const comparisonConfig = {
   tuning: { evaluations: 10000, ignoreInitialMillis: 10000, intervalDurationMillis: 50000, logScaleArea: true },
   comparison: { repetitions: 30, timeLimitMillis: 10000 }, execution: { target: 'LOCAL', workers: 16, heap: '2g' },
 };
+const approvalMutations = [];
 const comparisonCampaign = {
   id: 'comparison-fixture', status: 'RUNNING', createdAt: new Date().toISOString(), config: comparisonConfig, versions: {}, poolRevision: 1, targets: {},
   trials: [{ number: 1, status: 'COMPARISON', tuningSeed: 1234, repairTurns: 0, attempts: [] }],
@@ -244,7 +245,16 @@ if (!process.env.MORK_MONITOR_URL) {
     else if (autollmMode && url.pathname.startsWith('/api/autollm/')) {
       const path = url.pathname.slice('/api/autollm/'.length);
       if (path === 'defaults') body = comparisonConfig;
-      else if (path === 'campaigns') body = { active: comparisonCampaign.id, campaigns: [comparisonCampaign] };
+      else if (path === 'campaigns') body = { active: comparisonCampaign.status === 'DRAFT' ? '' : comparisonCampaign.id, campaigns: [comparisonCampaign] };
+      else if (path.endsWith('/proposal')) body = { digest: 'reviewed-campaign', configuration: comparisonConfig, training: [comparisonPaths[0]], testing: comparisonPaths, screening: { excluded: { 'trivial.txt': 'SOTA reaches its best within the trivial threshold' } }, targets: { local: { selected: true, ready: true } } };
+      else if (request.method === 'POST' && path.endsWith('/approve')) {
+        let payload = ''; for await (const chunk of request) payload += chunk;
+        approvalMutations.push({ action: 'approve', body: JSON.parse(payload) }); body = { digest: 'reviewed-campaign' };
+      }
+      else if (request.method === 'POST' && path.endsWith('/start')) {
+        approvalMutations.push({ action: 'start' }); comparisonCampaign.status = 'RUNNING';
+        body = { id: comparisonCampaign.id, status: 'RUNNING', operation: 'start', accepted: true };
+      }
       else if (path === 'screenings') body = { active: '', jobs: [] };
       else if (path.endsWith('/recovery')) {
         const action = allowed => ({ allowed, reason: allowed ? null : 'Work is already active', effect: 'Preserve saved evidence and checkpoints' });
@@ -728,6 +738,18 @@ try {
     await clickText('.trial-recovery button', 'Resume existing work');
     await waitFor(`!document.querySelector('.trial-recovery')`);
     assert.equal(recoveryMutations[1].path, 'campaigns/comparison-fixture/trials/2/resume');
+    comparisonCampaign.status = 'DRAFT';
+    await send('Page.navigate', { url: address });
+    await waitFor(`Array.from(document.querySelectorAll('button')).some(button=>button.textContent.includes('Review campaign with all servers'))`);
+    assert.equal(approvalMutations.length, 0, 'loading a draft never launches it');
+    await clickText('button', 'Review campaign with all servers');
+    await waitFor(`document.body.textContent.includes('Review campaign before launch')`);
+    assert.equal(await evaluate(`document.body.textContent.includes('trivial.txt') && document.body.textContent.includes('Effective campaign configuration')`), true);
+    await writeFile(join(artifacts, 'autollm-campaign-approval.png'), Buffer.from((await send('Page.captureScreenshot')).data, 'base64'));
+    await clickText('button', 'Approve this campaign and launch');
+    await waitFor(`!document.body.textContent.includes('Review campaign before launch')`);
+    assert.deepEqual(approvalMutations, [{ action: 'approve', body: { digest: 'reviewed-campaign' } }, { action: 'start' }]);
+
   }
   assert.deepEqual(errors, [], 'browser runtime errors');
   console.log(

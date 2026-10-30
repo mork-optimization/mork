@@ -122,7 +122,12 @@ public class SshTransport {
                 }
                 if (process.exitValue() != 0) {
                     String message = Files.readString(errors); if (message.length() > 4000) message = message.substring(message.length() - 4000);
-                    if (process.exitValue() == 255) throw new ConnectionException("SSH unavailable: " + message);
+                    if (process.exitValue() == 255) {
+                        String lower = message.toLowerCase(Locale.ROOT);
+                        if (lower.contains("permission denied") || lower.contains("host key verification failed") || lower.contains("remote host identification has changed") || lower.contains("bad configuration") || lower.contains("could not resolve hostname"))
+                            throw new ExecutionTargetException("SSH authentication, identity or configuration failure: " + message);
+                        throw new ConnectionException("SSH unavailable: " + message);
+                    }
                     throw new IllegalStateException("Remote runner failed (" + process.exitValue() + "): " + message);
                 }
             } catch (InterruptedException e) { process.destroyForcibly(); Thread.currentThread().interrupt(); throw new java.util.concurrent.CancellationException("SSH detached; reconcile the saved remote job before resuming"); }

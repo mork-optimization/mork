@@ -23,7 +23,6 @@ public class ScreeningJobController {
     @GetMapping("/{id}") public Object get(@PathVariable String id) { return service.load(id); }
     @PostMapping("/{id}/resume") public Object resume(@PathVariable String id) { requireMode(); return service.resume(id); }
     @PostMapping("/{id}/cancel") public Object cancel(@PathVariable String id) { requireMode(); return service.cancel(id); }
-    @PostMapping("/{id}/approve") public Object approve(@PathVariable String id, @RequestBody Map<String,String> review) { requireMode(); return service.approve(id, review.get("proposalSha256")); }
     @GetMapping("/{id}/review") public Object review(@PathVariable String id) { return service.review(id); }
     @GetMapping("/{id}/artifact") public ResponseEntity<FileSystemResource> artifact(@PathVariable String id, @RequestParam String path) {
         var file = service.artifact(id, path);

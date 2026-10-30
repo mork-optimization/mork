@@ -13,7 +13,7 @@ describe('AutoLLM dashboard', () => {
   beforeEach(async () => {
     const trial = { number: 1, status: 'SUCCEEDED', tuningSeed: 1234, repairTurns: 1, attempts: [], winner: { $component: 'SimpleAlgorithm', constructive: { $component: 'ConstructiveNew' } } };
     const campaign = { id: 'campaign', status: 'SUCCEEDED', createdAt: '2026-10-07T00:00:00Z', trials: [trial], config: { execution: { target: 'LOCAL' }, comparison: { repetitions: 30 } }, versions: {}, poolRevision: 1, targets: {} };
-    const store = { targets: signal([]), activeTrials: signal([]), activeProgress: signal({}), screenings: signal([]), activeScreening: signal(''), selectedScreening: signal(''), screening: signal(null), review: signal(null), summary: signal(null), progress: signal(null), generation: signal(null), conversationAttempt: signal(null), activity: signal([]), config: signal(null), targetStatus: signal(null), recovery: signal(null), recoveryError: signal(null), trialRecovery: signal(null), error: signal(null), connectionError: signal(null), active: signal(''), busy: signal(false), selectedId: signal(campaign.id), selectedTrial: signal(1), campaigns: signal([campaign]), campaign: signal(campaign), trial: signal(trial), completed: signal(1), tuning: signal(null), logPath: signal(''), logLines: signal(500), logFollow: signal(true), logPreview: signal(null), logLoading: signal(false), logError: signal(null), artifacts: signal([]), comparison: signal<AutoLlmComparison>({ counts: { SOTA: { SUCCEEDED: 1 } }, instances: [{ instance: 'instance.txt', instanceId: 'instance', counts: { SOTA: { SUCCEEDED: 1 } } }] }), comparisonInstances: computed((): ComparisonInstance[] => store.comparison().instances ?? []), curveInstance: signal('instance'), curvesLoading: signal(false), curvesError: signal(null), curves: signal([{ instance: 'instance.txt', instanceId: 'instance', algorithm: 'SOTA', iteration: '0', curves: { Cost: [{ instant: 0, value: 10 }, { instant: 10000000, value: 8 }] } }]), start: vi.fn().mockResolvedValue(undefined) };
+    const store = { proposal: signal(null), targets: signal([]), activeTrials: signal([]), activeProgress: signal({}), screenings: signal([]), activeScreening: signal(''), selectedScreening: signal(''), screening: signal(null), review: signal(null), summary: signal(null), progress: signal(null), generation: signal(null), conversationAttempt: signal(null), activity: signal([]), config: signal(null), targetStatus: signal(null), recovery: signal(null), recoveryError: signal(null), trialRecovery: signal(null), error: signal(null), connectionError: signal(null), active: signal(''), busy: signal(false), selectedId: signal(campaign.id), selectedTrial: signal(1), campaigns: signal([campaign]), campaign: signal(campaign), trial: signal(trial), completed: signal(1), tuning: signal(null), logPath: signal(''), logLines: signal(500), logFollow: signal(true), logPreview: signal(null), logLoading: signal(false), logError: signal(null), artifacts: signal([]), comparison: signal<AutoLlmComparison>({ counts: { SOTA: { SUCCEEDED: 1 } }, instances: [{ instance: 'instance.txt', instanceId: 'instance', counts: { SOTA: { SUCCEEDED: 1 } } }] }), comparisonInstances: computed((): ComparisonInstance[] => store.comparison().instances ?? []), curveInstance: signal('instance'), curvesLoading: signal(false), curvesError: signal(null), curves: signal([{ instance: 'instance.txt', instanceId: 'instance', algorithm: 'SOTA', iteration: '0', curves: { Cost: [{ instant: 0, value: 10 }, { instant: 10000000, value: 8 }] } }]), start: vi.fn().mockResolvedValue(undefined) };
     await TestBed.configureTestingModule({ imports: [AutoLlmDashboard], providers: [provideZonelessChangeDetection(), { provide: AutoLlmStore, useValue: store }] })
       .overrideComponent(AutoLlmDashboard, { remove: { imports: [DashboardChart] }, add: { imports: [ChartStub] } }).compileComponents();
   });
@@ -28,7 +28,7 @@ describe('AutoLLM dashboard', () => {
   it('requires a location choice before creating a campaign', async () => {
     TestBed.inject(AutoLlmStore).config.set(configuration());
     const fixture = TestBed.createComponent(AutoLlmDashboard); fixture.detectChanges(); await fixture.whenStable();
-    const button = [...fixture.nativeElement.querySelectorAll('button')].find((element: unknown) => (element as HTMLButtonElement).textContent?.includes('Create and start')) as HTMLButtonElement;
+    const button = [...fixture.nativeElement.querySelectorAll('button')].find((element: unknown) => (element as HTMLButtonElement).textContent?.includes('Prepare campaign for review')) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
     fixture.componentInstance.executionTarget({ target: { value: 'LOCAL' } } as unknown as Event); fixture.detectChanges();
     expect(button.disabled).toBe(false); expect(TestBed.inject(AutoLlmStore).config()?.execution.target).toBe('LOCAL');
@@ -159,17 +159,17 @@ describe('AutoLLM dashboard', () => {
     expect(text).toContain('live-thread'); expect(text).toContain('2 completed / 3 started');
     expect(text).toContain('Building a new neighborhood'); expect(text).toContain('model iteration totals are unavailable');
   });
-  it('shows screening progress and requires a completed review for approval', async () => {
+  it('shows screening evidence before campaign review', async () => {
     const store = TestBed.inject(AutoLlmStore);
-    const job = { id: 'screening', createdAt: '2026-10-20T00:00:00Z', status: 'AWAITING_APPROVAL', mirror: '/evidence', problem: null, activity: null,
-      progress: { phase: 'AWAITING_APPROVAL', initialCompleted: 415, initialTotal: 415, confirmationsCompleted: 5850, confirmationsTotal: 5850, updatedAt: '2026-10-20T10:00:00Z' } } as ScreeningJob;
+    const job = { id: 'screening', createdAt: '2026-10-20T00:00:00Z', status: 'READY_FOR_REVIEW', mirror: '/evidence', problem: null, activity: null,
+      progress: { phase: 'READY_FOR_REVIEW', initialCompleted: 415, initialTotal: 415, confirmationsCompleted: 5850, confirmationsTotal: 5850, updatedAt: '2026-10-20T10:00:00Z' } } as ScreeningJob;
     store.screenings.set([job]); (store.screening as WritableSignal<ScreeningJob | null>).set(job);
     const fixture = TestBed.createComponent(AutoLlmDashboard); fixture.detectChanges(); await fixture.whenStable();
     expect(fixture.nativeElement.textContent).toContain('415/415'); expect(fixture.nativeElement.textContent).toContain('5850/5850');
     expect(fixture.nativeElement.textContent).not.toContain('Approve this reviewed selection');
     store.review.set({ jobId: job.id, report: 'Completed report', proposalSha256: 'reviewed-hash', proposalDirectory: '/evidence/proposal', artifactPrefix: 'proposal', proposal: { trainingCount: 50, testingCount: 333, instances: [], splitFailure: null } } as ScreeningReview);
     (store as unknown as { screeningArtifactUrl: (path: string) => string }).screeningArtifactUrl = path => '/artifact?path=' + path;
-    fixture.detectChanges(); await fixture.whenStable(); expect(fixture.nativeElement.textContent).toContain('Approve this reviewed selection');
+    fixture.detectChanges(); await fixture.whenStable(); expect(fixture.nativeElement.textContent).not.toContain('Approve this reviewed selection');
     expect(fixture.nativeElement.textContent).toContain('reviewed-hash');
   });
 });

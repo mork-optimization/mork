@@ -17,8 +17,8 @@ import java.util.concurrent.*;
 @ConditionalOnProperty("autollm")
 public class ScreeningJobService {
     public enum ScreeningStatus {
-        DRAFT, RUNNING, WAITING_FOR_REMOTE, CANCELLATION_PENDING, AWAITING_APPROVAL,
-        APPROVED, NEEDS_ATTENTION, INTERRUPTED, CANCELLED;
+        DRAFT, RUNNING, WAITING_FOR_REMOTE, CANCELLATION_PENDING, READY_FOR_REVIEW,
+        NEEDS_ATTENTION, INTERRUPTED, CANCELLED;
         public boolean inProgress() { return this == RUNNING || this == WAITING_FOR_REMOTE || this == CANCELLATION_PENDING; }
         public boolean cancelWithoutWork() { return this == DRAFT || this == NEEDS_ATTENTION || this == INTERRUPTED; }
         public static ScreeningStatus remoteProgress(Object status) {
@@ -29,8 +29,8 @@ public class ScreeningJobService {
     }
     public record Request(AutoLlmConfig config, InstanceScreeningConfig settings, String inputPath, Double trainingFraction) {}
     public static class Job {
-        public int version = 4;
-        public String id, createdAt, mirror, reviewedHash;
+        public int version = 5;
+        public String id, createdAt, mirror;
         public ScreeningStatus status = ScreeningStatus.DRAFT;
         public Request request;
         public AutoLlmConfig executionConfig;
@@ -58,7 +58,7 @@ public class ScreeningJobService {
     public Job load(String id) {
         Path file = directory(id).resolve("job.json"); if (!Files.exists(file)) throw new NoSuchElementException("Screening job unavailable");
         Job job = AutoLlmFileUtil.read(file, Job.class);
-        if (job.version != 4) throw new IllegalStateException("Use a fresh screening workspace");
+        if (job.version != 5) throw new IllegalStateException("Use a fresh screening workspace");
         if (job.mirror != null && Files.exists(Path.of(job.mirror).resolve("proposal/screening-progress.json"))) job.progress = AutoLlmFileUtil.read(Path.of(job.mirror).resolve("proposal/screening-progress.json"), Object.class);
         return job;
     }
@@ -91,20 +91,14 @@ public class ScreeningJobService {
         job.executionConfig = config.execution().target() == AutoLlmConfig.Target.SSH ? config.forServer(config.execution().ssh().screeningServer()) : config;
         save(job); return job;
     }
-    public synchronized Job resume(String id) { return start(id, null); }
-    public synchronized Job approve(String id, String reviewedHash) {
-        var job = load(id);
-        if (job.status != ScreeningStatus.AWAITING_APPROVAL) throw new IllegalStateException("Review a completed proposal before approval");
-        if (reviewedHash == null || !reviewedHash.equals(AutoLlmFileUtil.hash(Path.of(job.mirror).resolve("proposal/proposal.json")))) throw new IllegalArgumentException("Approval requires the exact reviewed proposal SHA-256");
-        return start(id, reviewedHash);
-    }
-    private Job start(String id, String approval) {
+    public synchronized Job resume(String id) { return start(id); }
+    private Job start(String id) {
         if (active != null) throw new IllegalStateException("A screening job is active");
         var job = load(id);
-        if (job.status == ScreeningStatus.APPROVED || approval == null && job.status == ScreeningStatus.AWAITING_APPROVAL) throw new IllegalStateException("Selection is already complete; review or use its published indexes");
+        if (job.status == ScreeningStatus.READY_FOR_REVIEW) throw new IllegalStateException("Screening is complete; review its evidence with the campaign proposal");
         var lease = campaigns.acquire(id, directory(id));
         try {
-            ownership = lease; active = id; cancelled = false; if (approval != null) job.reviewedHash = approval;
+            ownership = lease; active = id; cancelled = false;
             job.status = ScreeningStatus.RUNNING; job.problem = null; save(job);
             task = executor.submit(() -> {
                 try {
@@ -115,8 +109,8 @@ public class ScreeningJobService {
                         if (state.get("remote") instanceof Map<?,?> remote) job.status = ScreeningStatus.remoteProgress(remote.get("status"));
                         save(job);
                     }, () -> cancelled || Thread.currentThread().isInterrupted());
-                    service.run(job.executionConfig, job.request.settings(), inputs, solver, job.reviewedHash != null, job.reviewedHash, List.of("api-screening", id));
-                    job.status = job.reviewedHash == null ? ScreeningStatus.AWAITING_APPROVAL : ScreeningStatus.APPROVED;
+                    service.run(job.executionConfig, job.request.settings(), inputs, solver, false, null, List.of("api-screening", id));
+                    job.status = ScreeningStatus.READY_FOR_REVIEW;
                 } catch (CancellationException e) { job.status = cancelled ? ScreeningStatus.CANCELLED : ScreeningStatus.INTERRUPTED; }
                 catch (IOException | RuntimeException e) {
                     job.status = ScreeningStatus.NEEDS_ATTENTION; job.problem = AutoLlmFailureUtil.describe(e instanceof RuntimeException runtime ? runtime : new UncheckedIOException((IOException)e), directory(id));

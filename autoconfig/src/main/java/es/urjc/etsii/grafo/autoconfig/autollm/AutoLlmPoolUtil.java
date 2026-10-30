@@ -16,8 +16,9 @@ public final class AutoLlmPoolUtil {
     public static UnaryOperator<String> localInstances(AutoLlmCampaign campaign, Path root, AutoLlmCampaign.Trial trial) {
         var target = campaign.targets.get(trial.targetId);
         if (target == null) throw new IllegalStateException("Trial target unavailable");
-        Path executionRoot = root.resolve(target.directory);
-        return es.urjc.etsii.grafo.autoconfig.autollm.execution.AutoLlmExecutionService.localPaths(target.resolvedConfig, executionRoot);
+        Path executionRoot = root.resolve(trial.directory);
+        var config = AutoLlmFileUtil.read(executionRoot.resolve("control/config.json"), AutoLlmConfig.class);
+        return es.urjc.etsii.grafo.autoconfig.autollm.execution.AutoLlmExecutionService.localPaths(config, executionRoot);
     }
     public static Map<String, Object> identity(String campaignId, String targetId) {
         return Map.of("campaignId", campaignId, "targetId", targetId);

@@ -43,7 +43,7 @@ class AutoLlmReportServiceTest {
             Path root = Path.of(args[0]); String input = root.resolve("instance.txt").toString();
             var campaign = new AutoLlmCampaign(); campaign.id = "bounded-heap"; campaign.config = AutoLlmConfig.defaults().withPaths(input, input);
             var target = new AutoLlmCampaign.TargetState(); target.directory = "targets/worker"; target.resolvedConfig = campaign.config; campaign.targets.put("worker", target);
-            var trial = new AutoLlmCampaign.Trial(); trial.number = 1; trial.targetId = "worker"; trial.status = AutoLlmCampaign.TrialStatus.FAILED; trial.complete(AutoLlmCampaign.Stage.COMPARISON, "comparison", null); campaign.trials.add(trial);
+            var trial = new AutoLlmCampaign.Trial(); trial.number = 1; trial.directory = "."; AutoLlmFileUtil.write(root.resolve("control/config.json"), campaign.config); trial.targetId = "worker"; trial.status = AutoLlmCampaign.TrialStatus.FAILED; trial.complete(AutoLlmCampaign.Stage.COMPARISON, "comparison", null); campaign.trials.add(trial);
             new AutoLlmReportService(null).report(campaign, root);
         }
     }
@@ -64,21 +64,22 @@ class AutoLlmReportServiceTest {
         var captured = new LinkedHashMap<Path,List<WorkUnitResult>>(); var excel = mock(ExcelSerializer.class);
         doAnswer(call -> { captured.put(call.getArgument(3), call.getArgument(1)); return null; }).when(excel).serializeCachedResults(anyString(), anyList(), anyList(), any(Path.class));
         for (String id : List.of("a", "b")) {
+            String trialDirectory = "trials/%03d".formatted(campaign.trials.size() + 1);
             var target = new AutoLlmCampaign.TargetState(); target.directory = "targets/" + id; target.resolvedConfig = config;
             String eventInstance = input.toString();
             if (remote) {
                 var execution = new AutoLlmConfig.Execution(null, null, null, null, null, null, null, null, null, AutoLlmConfig.Target.SSH,
-                        new AutoLlmConfig.Ssh(id, null, List.of(new AutoLlmConfig.Server(id, id, "/remote", "java", null, null, null, null))));
+                        new AutoLlmConfig.Ssh(id, null, List.of(new AutoLlmConfig.Server(id, id, "/remote", "java", null, null, null, null)), null));
                 var sshConfig = new AutoLlmConfig(config.project(), config.workspace(), null, null, null, null, null,
                         input.toString(), input.toString(), null, null, null, null, execution);
-                Path targetRoot = root.resolve(target.directory);
+                Path targetRoot = root.resolve(trialDirectory);
                 target.resolvedConfig = new AutoLlmExecutionService(new AutoLlmProcessRunner()).stageInputs(sshConfig, targetRoot);
                 var staged = AutoLlmFileUtil.JSON.readTree(Files.readString(targetRoot.resolve("data/staged-inputs.json")));
                 eventInstance = WorkloadPathUtil.translate(staged.path(input.toString()).path("path").asString(), targetRoot.toString(), WorkloadPathUtil.remoteRoot(target.resolvedConfig, targetRoot));
             }
             target.host = new WorkloadProtocol.Host(3, Map.of("hostname", id), 1, 1, 1, 1, 1, List.of()); campaign.targets.put(id, target);
-            var trial = new AutoLlmCampaign.Trial(); trial.number = campaign.trials.size() + 1; trial.targetId = id; trial.targetRevision = trial.number;
-            trial.status = id.equals("a") ? AutoLlmCampaign.TrialStatus.SUCCEEDED : AutoLlmCampaign.TrialStatus.FAILED; trial.complete(AutoLlmCampaign.Stage.COMPARISON, target.directory + "/comparison", null); campaign.trials.add(trial);
+            var trial = new AutoLlmCampaign.Trial(); trial.number = campaign.trials.size() + 1; trial.directory = trialDirectory; AutoLlmFileUtil.write(root.resolve(trialDirectory).resolve("control/config.json"), target.resolvedConfig); trial.targetId = id; trial.targetRevision = trial.number;
+            trial.status = id.equals("a") ? AutoLlmCampaign.TrialStatus.SUCCEEDED : AutoLlmCampaign.TrialStatus.FAILED; trial.complete(AutoLlmCampaign.Stage.COMPARISON, trialDirectory + "/comparison", null); campaign.trials.add(trial);
             for (String algorithm : List.of("SOTA", "IraceProposal")) {
                 var row = new LinkedHashMap<String,Object>(); row.put("kind", "evaluation-result"); row.put("measured", true); row.put("state", id.equals("b") && algorithm.equals("IraceProposal") ? "FAILED" : "SUCCEEDED");
                 row.put("id", UUID.randomUUID().toString()); row.put("instance", eventInstance); row.put("instanceId", "instance"); row.put("algorithm", algorithm); row.put("iteration", "0"); row.put("seed", 42);

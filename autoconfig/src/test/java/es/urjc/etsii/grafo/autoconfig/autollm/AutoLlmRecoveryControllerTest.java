@@ -16,6 +16,9 @@ class AutoLlmRecoveryControllerTest {
         when(mode.mode()).thenReturn(MonitorModeState.Mode.AUTOLLM);
         var allowed = AutoLlmRecoveryUtil.action(null, "Preserve saved evidence");
         when(service.recovery("saved")).thenReturn(new AutoLlmRecoveryUtil.Recovery(allowed, Map.of(9, new AutoLlmRecoveryUtil.TrialActions(allowed, allowed)), Map.of()));
+        var campaign = new AutoLlmCampaign(); campaign.id = "saved"; campaign.status = AutoLlmCampaign.CampaignStatus.RUNNING;
+        when(service.failTrial(anyString(), anyInt(), anyString())).thenReturn(campaign);
+        when(service.resumeTrial(anyString(), anyInt())).thenReturn(campaign); when(service.requalifyTarget(anyString(), anyString())).thenReturn(campaign);
         var mvc = MockMvcBuilders.standaloneSetup(new AutoLlmController(service, mock(AutoLlmCampaignStore.class), mode, new MockEnvironment())).build();
         String base = "/api/autollm/campaigns/saved";
         mvc.perform(get(base + "/recovery")).andExpect(status().isOk()).andExpect(jsonPath("$.trials.9.fail.allowed").value(true));
