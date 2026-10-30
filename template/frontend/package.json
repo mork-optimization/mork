@@ -27,7 +27,7 @@
     "@types/stompjs": "^2.3.5",
     "autoprefixer": "^10.4.7",
     "bootstrap": "^5.1.3",
-    "highcharts": "^10.1.0",
+    "highcharts": "^13.1.1",
     "highcharts-angular": "^3.0.0",
     "rxjs": "~7.5.0",
     "sockjs-client": "^1.6.0",
