@@ -17,6 +17,8 @@ Screen the original pool using Mork's warmed-worker protocol. Keep inconclusive 
 
 Validate the configuration, create the draft, and run its baseline check. Preserve SOTA and all supplied seeds when pruning. Review `campaign proposal`: exact testing/training membership, trivial exclusions with reasons, selected servers/readiness and complete resolved settings. Present this concrete proposal to the user and obtain explicit campaign approval before launch, even for a broad “improve SOTA” request. Edit preferences before approval; select a healthy subset explicitly. Approve the reviewed digest and launch that revision. Changes require a revised review; unchanged resume/reconnect retains authorization.
 
+Include one line in the campaign approval showing estimated additional peak storage and available space on the controller and each worker, and the controller node with a warning if the campaign may not fit.
+
 Leave concurrency at its configured default unless requested otherwise. Generation and local build/metadata preparation can precede worker assignment; probes, pilot and measurements run on the selected worker. Detailed component timing is opt-in.
 
 ## Observe and recover
