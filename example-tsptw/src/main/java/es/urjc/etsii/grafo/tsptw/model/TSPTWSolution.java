@@ -5,7 +5,6 @@ import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ArrayUtil;
 import es.urjc.etsii.grafo.util.CollectionUtil;
 import es.urjc.etsii.grafo.util.DoubleComparator;
-import es.urjc.etsii.grafo.util.TimeControl;
 import es.urjc.etsii.grafo.util.random.RandomManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -530,7 +529,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             if (getInstance().isTimeWindowInfeasible(cj, ci)) continue;
             v.add(i);
         }
-        CollectionUtil.shuffle(v);
+        TSPTWUtil.shuffle(v);
     }
 
     @TimeStats
@@ -540,7 +539,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         List<Integer> rand_nodes = new ArrayList<>();
         shuffle_1shift_feasible_nodes(rand_nodes);
 
-        for (int k = 0; k < rand_nodes.size() && !TimeControl.isTimeUp(); k++) {
+        for (int k = 0; k < rand_nodes.size(); k++) {
             int i = rand_nodes.get(k);
             int ci = permutation[i];
             double delta1 = distance[permutation[i - 1]][ci]
@@ -550,7 +549,6 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             // This is in fact swapping backwards i + 1
             for (int d = i - 1; d > 0; d--) {
                 int cj = permutation[d];
-                if (TimeControl.isTimeUp()) return false;
                 if (getInstance().isTimeWindowInfeasible(ci, cj)) break;
                 double delta2 = distance[permutation[d - 1]][ci]
                         + distance[ci][cj]
@@ -568,7 +566,6 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             // Swapping forward i
             for (int d = i + 2; d < n; d++) {
                 int cj = permutation[d];
-                if (TimeControl.isTimeUp()) return false;
                 if (getInstance().isTimeWindowInfeasible(cj, ci)) break;
                 double delta2 = distance[ci][permutation[d + 1]]
                         + distance[cj][ci]
@@ -651,6 +648,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         ArrayUtil.reverse(permutation, h1 + 1, h3);
     }
 
+    /** Exhaust native randomized 2-opt; true means at least one move was accepted. */
     @TimeStats
     public boolean two_opt_first() {
         if (!getInstance().isSymmetric()) {
@@ -659,16 +657,16 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         assert _constraint_violations == 0;
 
         List<Integer> rand_nodes = CollectionUtil.generateIntegerList(0, n);
-        CollectionUtil.shuffle(rand_nodes);
+        TSPTWUtil.shuffle(rand_nodes);
+        boolean improved = false;
 
-        while (!rand_nodes.isEmpty() && !TimeControl.isTimeUp()) {
+        while (!rand_nodes.isEmpty()) {
             int pos_c1 = rand_nodes.remove(rand_nodes.size() - 1);
             int c1 = permutation[pos_c1];
             int s1 = permutation[pos_c1 + 1];
             double radius = distance[c1][s1];
 
             for (int h = pos_c1 + 2; h < n; h++) {
-                if (TimeControl.isTimeUp()) return false;
                 int pos_c2 = h;
                 int c2 = permutation[pos_c2];
                 if (getInstance().isTimeWindowInfeasible(c2, s1)) break;
@@ -686,16 +684,19 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
                     two_opt_move(pos_c1, pos_c2);
                     _tourcost += gain;
                     assert_solution();
-                    return true;
+                    improved = true;
+                    rand_nodes = CollectionUtil.generateIntegerList(0, n);
+                    TSPTWUtil.shuffle(rand_nodes);
+                    break;
                 }
             }
         }
-        return false;
+        return improved;
     }
 
     public TSPTWSolution localsearch_2opt_first() {
         TSPTWSolution s = this.clone_solution();
-        while (!TimeControl.isTimeUp() && s.two_opt_first()) {
+        while (s.two_opt_first()) {
             s.notifyUpdate();
         }
         return s;
@@ -717,7 +718,7 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         var rng = RandomManager.getRandom();
         int remaining = min(n, level);
         List<Integer> index = CollectionUtil.generateIntegerList(1, n - 1);
-        for (int j = n - 3; j >= 0 && !TimeControl.isTimeUp(); j--) {
+        for (int j = n - 3; j >= 0; j--) {
             int k = rng.nextInt(j + 1);
             Collections.swap(index, k, j);
             int from = index.get(j);
@@ -728,11 +729,11 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
             int step = from < to ? 1 : -1;
             int firstSwap = from < to ? from : from - 1;
             int endSwap = from < to ? to : to - 1;
-            for (int d = firstSwap; d != endSwap && !TimeControl.isTimeUp(); d += step) {
+            for (int d = firstSwap; d != endSwap; d += step) {
                 if (candidate.infeasible_move(d, d + 1)) break;
                 candidate.do_swap(d);
                 if (candidate.is_feasible_swap(d, firstInvalid)) {
-                    // Only publish complete feasible prefixes; discard an unfinished candidate on interruption.
+                    // Publish only complete feasible prefixes of this insertion.
                     copy_from(candidate);
                     notifyUpdate();
                     assert_solution();
@@ -749,17 +750,16 @@ public class TSPTWSolution extends Solution<TSPTWSolution, TSPTWInstance> {
         if (level < 1) throw new IllegalArgumentException("Perturbation level must be positive");
         var rng = RandomManager.getRandom();
         boolean moved = false;
-        for (int num = min(n, level); num > 0 && !TimeControl.isTimeUp(); num--) {
+        for (int num = min(n, level); num > 0; num--) {
             int from = 1 + rng.nextInt(n - 1);
             int to;
             do {
                 to = 1 + rng.nextInt(n - 1);
-            } while (to == from && !TimeControl.isTimeUp());
-            if (TimeControl.isTimeUp()) break;
+            } while (to == from);
             TSPTWUtil.reinsert(permutation, from, to);
             moved = true;
         }
-        // Even when interrupted, reevaluate all completed moves before returning.
+        // Reevaluate the complete perturbation before returning to the outer driver.
         if (moved) {
             full_eval();
             notifyUpdate();

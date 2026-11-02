@@ -1,11 +1,15 @@
 package es.urjc.etsii.grafo.tsptw.model;
 
-import es.urjc.etsii.grafo.util.CollectionUtil;
+import es.urjc.etsii.grafo.util.random.RandomManager;
 
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 
 public final class TSPTWUtil {
+    // Change before compilation: false reproduces C; true uses each customer's deadline.
+    private static final boolean FIX_REPAIR_DEADLINE_INDEX = false;
+
     private TSPTWUtil() {}
 
     public static void requireMinimumSize(TSPTWInstance instance) {
@@ -49,12 +53,41 @@ public final class TSPTWUtil {
         return true;
     }
 
+    /** Forward Fisher-Yates, matching native generate_array/generate_vector and libc++ random_shuffle. */
+    public static void shuffle(int[] values) {
+        var random = RandomManager.getRandom();
+        for (int i = 0; i < values.length - 1; i++) {
+            int j = i + random.nextInt(values.length - i);
+            int value = values[i];
+            values[i] = values[j];
+            values[j] = value;
+        }
+    }
+
+    public static void shuffle(List<?> values) {
+        var random = RandomManager.getRandom();
+        for (int i = 0; i < values.size() - 1; i++) {
+            Collections.swap(values, i, i + random.nextInt(values.size() - i));
+        }
+    }
+
+    /** Describes the compiled repair policy for logs and native replay fixtures. */
+    public static String repairDeadlineIndex() {
+        return FIX_REPAIR_DEADLINE_INDEX ? "CORRECTED" : "ORIGINAL_C";
+    }
+
+    /** Candidate selection only; actual time-window validation always indexes by customer. */
+    public static boolean isLateForRepair(TSPTWSolution solution, int position) {
+        int index = FIX_REPAIR_DEADLINE_INDEX ? solution.permutation[position] : position;
+        return solution._makespan[position] > solution.window_end[index];
+    }
+
     public static List<Integer> shuffledPositions(TSPTWSolution solution, boolean violated) {
         var positions = new java.util.ArrayList<Integer>();
         for (int i = 1; i < solution.getInstance().n(); i++) {
-            if (solution.isLateAt(i) == violated) positions.add(i);
+            if (isLateForRepair(solution, i) == violated) positions.add(i);
         }
-        CollectionUtil.shuffle(positions);
+        shuffle(positions);
         return positions;
     }
 }

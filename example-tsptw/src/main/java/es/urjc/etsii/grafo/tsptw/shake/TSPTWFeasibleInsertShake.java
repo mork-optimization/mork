@@ -5,7 +5,7 @@ import es.urjc.etsii.grafo.shake.Shake;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 
-/** Preserves feasibility, including when the deadline interrupts a perturbation. */
+/** Completes a feasibility-preserving perturbation before the outer driver checks its deadline. */
 public class TSPTWFeasibleInsertShake extends Shake<TSPTWSolution, TSPTWInstance> {
     @AutoconfigConstructor
     public TSPTWFeasibleInsertShake() {}

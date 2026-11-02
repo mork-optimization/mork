@@ -36,17 +36,24 @@ class TSPTWComponentsTest {
     @AfterEach void tearDown() { cleanup(); }
 
     @Test
-    void classifiesCustomersByTheirOwnDeadlinesAndRepairsReorderedTour() {
+    void compiledRepairClassificationDoesNotChangeCustomerIndexedValidation() {
         var instance = new TSPTWInstance("positions", 4,
                 new double[][]{{0, 1, 1, 1}, {1, 0, 1, 1}, {1, 1, 0, 1}, {1, 1, 1, 0}},
                 new int[4], new int[]{100, 1, 100, 100});
         var solution = tour(instance, 2, 1, 3);
         assertFalse(solution.isLateAt(1));
         assertTrue(solution.isLateAt(2));
-        assertEquals(List.of(2), TSPTWUtil.shuffledPositions(solution, true));
-        new TSPTWBackwardViolated().repair(solution);
-        assertArrayEquals(new int[]{0, 1, 2, 3, 0}, solution.permutation);
-        assertEquals(0, solution.constraint_violations());
+        if (TSPTWUtil.repairDeadlineIndex().equals("CORRECTED")) {
+            assertEquals(List.of(2), TSPTWUtil.shuffledPositions(solution, true));
+            new TSPTWBackwardViolated().repair(solution);
+            assertArrayEquals(new int[]{0, 1, 2, 3, 0}, solution.permutation);
+            assertEquals(0, solution.constraint_violations());
+        } else {
+            assertTrue(TSPTWUtil.shuffledPositions(solution, true).isEmpty());
+            new TSPTWBackwardViolated().repair(solution);
+            assertArrayEquals(new int[]{0, 2, 1, 3, 0}, solution.permutation);
+            assertEquals(1, solution.constraint_violations());
+        }
         assertConsistent(solution);
     }
 
@@ -87,23 +94,22 @@ class TSPTWComponentsTest {
     }
 
     @Test
-    void expiredDeadlineLeavesPerturbationAndRepairStateUnchanged() throws Exception {
+    void completeOperationsLeaveDeadlineChecksToTheOuterDriver() throws Exception {
         var solution = tour(instance("best"), 1, 2, 3, 4, 5);
-        var before = solution.toString();
         expireTimeLimit();
         new TSPTWFeasibleInsertShake().shake(solution, 8);
+        assertEquals(0, solution.constraint_violations());
+        assertConsistent(solution);
         new TSPTWUnrestrictedInsertShake().shake(solution, 8);
-        assertEquals(before, solution.toString());
         assertConsistent(solution);
         var infeasible = tour(instance("prune"), 2, 1, 3);
-        before = infeasible.toString();
         new TSPTWFeasibilityRepair().repair(infeasible);
-        assertEquals(before, infeasible.toString());
+        assertEquals(0, infeasible.constraint_violations());
         assertConsistent(infeasible);
     }
 
     @Test
-    void interruptedUnrestrictedPerturbationReevaluatesCompletedInsertions() throws Exception {
+    void unrestrictedPerturbationFinishesAndReevaluatesWhenTheDeadlineExpiresDuringItsLoop() throws Exception {
         var solution = tour(instance("best"), 1, 2, 3, 4, 5);
         var rng = mock(RandomGenerator.JumpableGenerator.class);
         int[] values = {0, 2, 0, 1};
@@ -111,31 +117,31 @@ class TSPTWComponentsTest {
         when(rng.nextInt(anyInt())).thenAnswer(invocation -> {
             int call = calls.getAndIncrement();
             if (call == 2) expireTimeLimit();
-            return values[call];
+            return values[call % values.length];
         });
         Context.Configurator.setRandom(rng);
         new TSPTWUnrestrictedInsertShake().shake(solution, 8);
-        assertArrayEquals(new int[]{0, 2, 3, 1, 4, 5, 0}, solution.permutation);
+        assertEquals(2 * Math.min(solution.n, 8), calls.get());
         assertConsistent(solution);
     }
 
     @Test
-    void interruptionDuringFeasiblePerturbationAndRepairLeavesConsistentIncumbents() throws Exception {
+    void feasiblePerturbationAndRepairCompleteTheirOperationsBeforeReturning() throws Exception {
         var solution = new InterruptingSolution(tour(instance("best"), 1, 2, 3, 4, 5));
         var rng = mock(RandomGenerator.JumpableGenerator.class);
         // Choose position 4 and shift it back toward position 1.
         when(rng.nextInt(anyInt())).thenReturn(3, 0);
         Context.Configurator.setRandom(rng);
         new TSPTWFeasibleInsertShake().shake(solution, 8);
-        assertEquals(1, solution.swaps.get());
+        assertTrue(solution.swaps.get() > 1);
         assertEquals(0, solution.constraint_violations());
         assertConsistent(solution);
 
         startTimeLimit();
         var instance = new TSPTWInstance("repair-interrupt", 4,
                 new double[][]{{0, 1, 1, 1}, {1, 0, 1, 1}, {1, 1, 0, 1}, {1, 1, 1, 0}},
-                new int[4], new int[]{100, 1, 100, 100});
-        solution = new InterruptingSolution(tour(instance, 2, 1, 3));
+                new int[4], new int[]{100, 100, 1, 100});
+        solution = new InterruptingSolution(tour(instance, 1, 2, 3));
         new TSPTWBackwardViolated().repair(solution);
         assertEquals(1, solution.swaps.get());
         assertEquals(0, solution.constraint_violations());

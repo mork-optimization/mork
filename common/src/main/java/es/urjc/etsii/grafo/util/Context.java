@@ -19,7 +19,6 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Future;
 import java.util.logging.Logger;
 import java.util.random.RandomGenerator;
-import java.util.random.RandomGeneratorFactory;
 import java.util.stream.Stream;
 
 public class Context {
@@ -302,12 +301,7 @@ public class Context {
          * @param seed seed
          */
         public static void resetRandom(RandomType randomType, long seed){
-            var rnd = RandomGeneratorFactory.of(randomType.getJavaName()).create(seed);
-            if(rnd instanceof RandomGenerator.JumpableGenerator jumpableGenerator){
-                Context.Configurator.setRandom(jumpableGenerator);
-            } else {
-                throw new IllegalArgumentException("RandomGenerator %s is not of type JumpableGenerator".formatted(randomType));
-            }
+            setRandom(randomType.create(seed));
         }
 
         public static void setObjectives(Objective<?, ?, ?> objective) {

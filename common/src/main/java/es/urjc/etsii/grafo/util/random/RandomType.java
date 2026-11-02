@@ -1,5 +1,8 @@
 package es.urjc.etsii.grafo.util.random;
 
+import java.util.random.RandomGenerator;
+import java.util.random.RandomGeneratorFactory;
+
 /**
  * Minimum set of available random generators.
  * See official Javadoc for a detailed comparison between Random providers: https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/util/random/package-summary.html#algorithms
@@ -63,7 +66,10 @@ public enum RandomType {
     /**
      * Xoshiro256PlusPlus
      */
-    XOSHIRO256PP("Xoshiro256PlusPlus");
+    XOSHIRO256PP("Xoshiro256PlusPlus"),
+
+    /** Park-Miller, including the native bounded-integer conversion. */
+    PARK_MILLER("ParkMiller");
 
     private final String javaName;
 
@@ -82,5 +88,17 @@ public enum RandomType {
      */
     public String getJavaName() {
         return javaName;
+    }
+
+    /**
+     * Create a seeded generator, including providers supplied by Mork.
+     * @param seed initial generator seed
+     * @return jumpable generator compatible with Mork's thread-local contexts
+     */
+    public RandomGenerator.JumpableGenerator create(long seed) {
+        if (this == PARK_MILLER) return new ParkMillerRandom(seed);
+        var random = RandomGeneratorFactory.of(javaName).create(seed);
+        if (random instanceof RandomGenerator.JumpableGenerator jumpable) return jumpable;
+        throw new IllegalArgumentException("RandomGenerator is not jumpable: " + javaName);
     }
 }

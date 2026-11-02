@@ -8,7 +8,7 @@ public class TSPTWInsertionSearch extends TSPTWCostSearch {
     public TSPTWInsertionSearch() {}
 
     @Override
-    protected boolean improveOnce(TSPTWSolution solution) {
+    protected boolean improveNeighborhood(TSPTWSolution solution) {
         return solution.feasible_1shift_first();
     }
 }

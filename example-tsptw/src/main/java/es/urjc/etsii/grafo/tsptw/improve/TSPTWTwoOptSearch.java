@@ -8,7 +8,7 @@ public class TSPTWTwoOptSearch extends TSPTWCostSearch {
     public TSPTWTwoOptSearch() {}
 
     @Override
-    protected boolean improveOnce(TSPTWSolution solution) {
+    protected boolean improveNeighborhood(TSPTWSolution solution) {
         return solution.two_opt_first();
     }
 }

@@ -4,7 +4,7 @@ import es.urjc.etsii.grafo.annotations.AutoconfigConstructor;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.create.Constructive;
-import es.urjc.etsii.grafo.util.ArrayUtil;
+import es.urjc.etsii.grafo.tsptw.model.TSPTWUtil;
 
 public class TSPTWRandomConstructive extends Constructive<TSPTWSolution, TSPTWInstance> {
 
@@ -19,7 +19,7 @@ public class TSPTWRandomConstructive extends Constructive<TSPTWSolution, TSPTWIn
         for (int k = 0; k < instance.n() - 1; k++) {
             tour[k] = k + 1;
         }
-        ArrayUtil.shuffle(tour);
+        TSPTWUtil.shuffle(tour);
         solution.add(tour);
 
         solution.notifyUpdate();

@@ -4,7 +4,6 @@ import es.urjc.etsii.grafo.algorithms.multistart.MultiStartAlgorithm;
 import es.urjc.etsii.grafo.autoconfig.irace.AutomaticAlgorithmBuilder;
 import es.urjc.etsii.grafo.tsptw.Main;
 import es.urjc.etsii.grafo.tsptw.alg.GVNS;
-import es.urjc.etsii.grafo.tsptw.model.TSPTWConfig;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.algorithms.Algorithm;
@@ -15,12 +14,9 @@ import java.util.List;
 
 public class FinalExperiment extends AbstractExperiment<TSPTWSolution, TSPTWInstance> {
 
-    private final TSPTWConfig config;
     private final AutomaticAlgorithmBuilder<TSPTWSolution, TSPTWInstance> builder;
 
-    public FinalExperiment(TSPTWConfig config, AutomaticAlgorithmBuilder<TSPTWSolution, TSPTWInstance> builder) {
-        // Any config class can be requested via the constructor
-        this.config = config;
+    public FinalExperiment(AutomaticAlgorithmBuilder<TSPTWSolution, TSPTWInstance> builder) {
         this.builder = builder;
     }
 

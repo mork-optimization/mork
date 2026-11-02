@@ -6,7 +6,6 @@ import es.urjc.etsii.grafo.annotations.ComponentParam;
 import es.urjc.etsii.grafo.aop.TimeStats;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWUtil;
-import es.urjc.etsii.grafo.util.TimeControl;
 
 import java.util.List;
 
@@ -30,14 +29,14 @@ public class TSPTWFeasibilityRepair {
         do {
             before = solution.infeasibility();
             for (var phase : phases) {
-                if (solution.constraint_violations() == 0 || TimeControl.isTimeUp()) return;
+                if (solution.constraint_violations() == 0) return;
                 phase.repair(solution);
             }
-        } while (solution.infeasibility() < before && !TimeControl.isTimeUp());
+        } while (solution.infeasibility() < before);
     }
 
     @Override
     public String toString() {
-        return "TSPTWFeasibilityRepair{phases=" + phases + "}";
+        return "TSPTWFeasibilityRepair{deadlineIndex=" + TSPTWUtil.repairDeadlineIndex() + ", phases=" + phases + "}";
     }
 }

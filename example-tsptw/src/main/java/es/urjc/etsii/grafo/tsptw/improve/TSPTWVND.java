@@ -7,7 +7,6 @@ import es.urjc.etsii.grafo.tsptw.Main;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWInstance;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWSolution;
 import es.urjc.etsii.grafo.tsptw.model.TSPTWUtil;
-import es.urjc.etsii.grafo.util.TimeControl;
 
 import java.util.List;
 
@@ -32,13 +31,13 @@ public class TSPTWVND extends Improver<TSPTWSolution, TSPTWInstance> {
         boolean repeat;
         do {
             repeat = false;
-            for (int i = 0; i < searches.size() && !TimeControl.isTimeUp(); i++) {
+            for (int i = 0; i < searches.size(); i++) {
                 double before = solution.cost();
                 solution = searches.get(i).improve(solution);
                 // The first search is already exhausted. Only a later search can enable it again.
                 if (i > 0 && solution.cost() < before) repeat = true;
             }
-        } while (repeat && !TimeControl.isTimeUp());
+        } while (repeat);
         return solution;
     }
 

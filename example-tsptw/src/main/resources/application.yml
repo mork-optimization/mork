@@ -20,7 +20,7 @@ solver:
   seed: 1234
 
   # Random generator provider, see RandomType enum for a full list of available implementations
-  random-type: default
+  random-type: park-miller
 
   # Which experiments should be executed? .* --> All.
   # Experiment names default to the class name in which they are declared unless overridden.
