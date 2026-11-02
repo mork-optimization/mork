@@ -35,6 +35,8 @@ public final class AutoLlmFailureUtil {
         var visited = Collections.newSetFromMap(new IdentityHashMap<Throwable, Boolean>());
         for (Throwable cause = error; cause != null && visited.add(cause); cause = cause.getCause()) {
             if (cause instanceof StageException typed) return typed.failure();
+            if (cause instanceof CodexCapacityUtil.CapacityException capacity) return new Failure(Category.INFRASTRUCTURE, "CODEX_CAPACITY",
+                    capacity.getMessage(), evidence == null ? List.of() : List.of(evidence.toString()), false, "Waiting to resume the same model and conversation.");
             if (cause instanceof CodexQuotaUtil.QuotaLimitException quota) return new Failure(Category.QUOTA, "CODEX_USAGE_LIMIT",
                     quota.getMessage(), evidence == null ? List.of() : List.of(evidence.toString()), false,
                     "Waiting until " + quota.retryAt() + " before resuming the same Codex session.");
@@ -74,7 +76,7 @@ public final class AutoLlmFailureUtil {
         var pattern = Pattern.compile("^\\s*(?:\\[ERROR]\\s*)?(.+?\\.java):\\[?[0-9]+", Pattern.MULTILINE);
         for (String log : List.of("stdout.log", "stderr.log")) {
             Path file = output.resolve(log);
-            if (!Files.exists(file)) continue;
+            if (!AutoLlmEvidenceFiles.exists(file)) continue;
             var matcher = pattern.matcher(tail(file, 262144));
             while (matcher.find()) {
                 Path changed = source.resolve(localPath.apply(matcher.group(1).trim())).normalize();
@@ -99,9 +101,9 @@ public final class AutoLlmFailureUtil {
         return error(Category.UNKNOWN, "BUILD_FAILED", message + "; failure was not attributable to a changed component", output);
     }
     public static String tail(Path file, int maximumBytes) {
-        try (var input = new RandomAccessFile(file.toFile(), "r")) {
-            input.seek(Math.max(0, input.length() - maximumBytes));
-            byte[] bytes = new byte[(int)Math.min(maximumBytes, input.length())]; input.readFully(bytes);
+        try {
+            long size = AutoLlmEvidenceFiles.attributes(file).size();
+            byte[] bytes = AutoLlmEvidenceFiles.range(file, Math.max(0, size - maximumBytes), (int)Math.min(maximumBytes, size));
             return new String(bytes, java.nio.charset.StandardCharsets.UTF_8);
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }

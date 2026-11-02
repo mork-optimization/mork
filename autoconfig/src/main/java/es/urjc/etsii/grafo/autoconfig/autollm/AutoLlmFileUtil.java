@@ -58,11 +58,11 @@ public final class AutoLlmFileUtil {
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
     public static <T> T read(Path path, Class<T> type) {
-        try { return JSON.readValue(Files.readString(path), type); }
+        try { return JSON.readValue(AutoLlmEvidenceFiles.readString(path), type); }
         catch (IOException e) { throw new UncheckedIOException(e); }
     }
     public static <T> T read(Path path, TypeReference<T> type) {
-        try { return JSON.readValue(Files.readString(path), type); }
+        try { return JSON.readValue(AutoLlmEvidenceFiles.readString(path), type); }
         catch (IOException e) { throw new UncheckedIOException(e); }
     }
     public static Map<String, Object> parseObject(String json) {
@@ -79,6 +79,7 @@ public final class AutoLlmFileUtil {
     }
     public static void append(Path file, Map<String,?> event) {
         try {
+            if (AutoLlmEvidenceFiles.archived(file)) throw new IOException("Cannot append to closed archived evidence: " + file);
             Files.createDirectories(file.getParent());
             byte[] data = (JSON.writeValueAsString(event) + "\n").getBytes(java.nio.charset.StandardCharsets.UTF_8);
             try (var channel = java.nio.channels.FileChannel.open(file, StandardOpenOption.CREATE, StandardOpenOption.WRITE, StandardOpenOption.APPEND)) {
@@ -102,7 +103,7 @@ public final class AutoLlmFileUtil {
         write(output.resolve("execution/unfinished.json"), remaining); write(active, Map.of());
     }
     public static String hash(Path path) {
-        try (var input = Files.newInputStream(path)) {
+        try (var input = AutoLlmEvidenceFiles.open(path)) {
             return hash(input);
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
@@ -208,8 +209,8 @@ public final class AutoLlmFileUtil {
     }
     /** Keep only a single journal row and its lookahead in memory; ignore an incomplete final write. */
     public static void forEachEvent(Path file, java.util.function.Consumer<Map<String, Object>> consumer) {
-        if (!Files.exists(file)) return;
-        try (var reader = Files.newBufferedReader(file)) {
+        if (!AutoLlmEvidenceFiles.exists(file)) return;
+        try (var reader = AutoLlmEvidenceFiles.reader(file)) {
             for (String line = reader.readLine(); line != null;) {
                 String next = reader.readLine();
                 if (!line.isBlank()) {

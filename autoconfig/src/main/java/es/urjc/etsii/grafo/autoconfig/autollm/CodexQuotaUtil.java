@@ -27,8 +27,8 @@ public final class CodexQuotaUtil {
     public static QuotaLimitException detect(Path output, Instant startedAt, Instant now, ZoneId zone) {
         JsonNode error = null;
         Path log = output.resolve("stdout.log");
-        if (!Files.isRegularFile(log)) return null;
-        try (var reader = Files.newBufferedReader(log)) {
+        if (!AutoLlmEvidenceFiles.exists(log)) return null;
+        try (var reader = AutoLlmEvidenceFiles.reader(log)) {
             for (String line; (line = reader.readLine()) != null;) {
                 JsonNode event = parse(line);
                 if (event == null) continue;
@@ -71,7 +71,7 @@ public final class CodexQuotaUtil {
         for (var conversation : archive.path("conversations")) {
             if (!conversation.path("threadId").asString("").equals(archive.path("threadId").asString(""))) continue;
             Path file = AutoLlmFileUtil.inside(output, conversation.path("path").asString());
-            try (var reader = Files.newBufferedReader(file)) {
+            try (var reader = AutoLlmEvidenceFiles.reader(file)) {
                 for (String line; (line = reader.readLine()) != null;) {
                     var event = parse(line);
                     if (event == null || !event.path("type").asString("").equals("event_msg")) continue;

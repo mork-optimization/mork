@@ -18,7 +18,9 @@ public class AutoLlmChildFixture {
         ExecutionJournalUtil.write("assertions.json", Map.of("application", assertions,
                 "moves", Move.class.desiredAssertionStatus(), "solutions", Solution.class.desiredAssertionStatus()));
         ExecutionJournalUtil.write("readiness.json", Map.of("startedAtMillis", System.currentTimeMillis(), "pid", ProcessHandle.current().pid()));
-        if (Arrays.asList(args).contains("--autollm-check")) {
+        if (Arrays.asList(args).contains("--autollm-inventory")) {
+            ExecutionJournalUtil.write("components.json", List.of("Dummy")); ExecutionJournalUtil.write("search-space.json", Map.of("parameters", 2));
+        } else if (Arrays.asList(args).contains("--autollm-check")) {
             var training = Files.readAllLines(Path.of(flags.get("--instances.path.irace")));
             var comparison = Files.readAllLines(Path.of(flags.get("--instances.path.autollm-comparison")));
             ExecutionJournalUtil.write("components.json", List.of("Dummy")); ExecutionJournalUtil.write("search-space.json", Map.of("parameters", 2));

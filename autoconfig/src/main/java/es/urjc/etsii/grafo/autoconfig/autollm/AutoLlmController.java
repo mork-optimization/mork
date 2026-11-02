@@ -2,7 +2,6 @@ package es.urjc.etsii.grafo.autoconfig.autollm;
 
 import es.urjc.etsii.grafo.monitoring.MonitorModeState;
 import org.springframework.core.env.Environment;
-import org.springframework.core.io.FileSystemResource;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -28,7 +27,7 @@ public class AutoLlmController {
     }
     @GetMapping("/capabilities") public Map<String,Object> capabilities() {
         var result = new LinkedHashMap<String,Object>();
-        result.put("mode", mode.mode().name()); result.put("apiVersion", 5); result.put("checkpointVersion", AutoLlmCampaign.SCHEMA_VERSION);
+        result.put("mode", mode.mode().name()); result.put("apiVersion", 6); result.put("checkpointVersion", AutoLlmCampaign.SCHEMA_VERSION);
         result.put("runnerProtocol", es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol.VERSION);
         result.put("minimumJavaFeature", es.urjc.etsii.grafo.autoconfig.autollm.execution.TargetPreflightUtil.minimumJavaFeature());
         result.put("workspace", store.root().toString()); result.put("pid", ProcessHandle.current().pid());
@@ -43,6 +42,49 @@ public class AutoLlmController {
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
     public void saveSession() { AutoLlmFileUtil.write(store.root().resolve("session.json"), capabilities()); }
     @PostMapping("/effective-config") public Object effectiveConfig(@RequestBody AutoLlmConfig config) { return AutoLlmSummaryUtil.summarize(config, null, Map.of(), config.trials()); }
+    @GetMapping("/campaigns/{id}/storage") public AutoLlmStorageReport.Report storage(@PathVariable String id) {
+        store.load(id);
+        return AutoLlmStorageReport.inspect(store.directory(id));
+    }
+    @PostMapping("/campaigns/{id}/storage/maintain") public Object maintainStorage(@PathVariable String id) {
+        requireMode(); return service.maintainStorage(id);
+    }
+    public record RestoreSourceRequest(String output) {}
+    @PostMapping("/campaigns/{id}/trials/{number}/artifact/rebuild") public Object rebuildArtifact(@PathVariable String id, @PathVariable int number, @RequestBody RestoreSourceRequest request) {
+        requireMode();
+        if (request.output() == null || request.output().isBlank()) throw new IllegalArgumentException("Provide a new output directory");
+        var campaign = store.load(id);
+        AutoLlmCampaign.Trial trial = null;
+        for (var candidate : campaign.trials) if (candidate.number == number) { trial = candidate; break; }
+        if (trial == null) throw new NoSuchElementException("Unknown trial " + number);
+        if (!trial.status.terminal()) throw new IllegalStateException("Rebuild export requires a completed trial");
+        Path destination = Path.of(request.output()).toAbsolutePath().normalize();
+        if (destination.startsWith(store.root().toAbsolutePath().normalize())) throw new IllegalArgumentException("Rebuild outside the controller workspace");
+        try {
+            var verified = AutoLlmArtifactRebuild.rebuild(store.directory(id), AutoLlmFileUtil.inside(store.directory(id), trial.executionDirectory()),
+                    trial.assignment() == null ? campaign.config : trial.assignment().config, destination, destination.resolve("verification"), new AutoLlmProcessRunner(), () -> false);
+            return Map.of("campaign", id, "trial", number, "output", destination.toString(), "artifact", destination.resolve("project.jar").toString(), "verification", verified);
+        } catch (java.io.IOException e) { throw new java.io.UncheckedIOException(e); }
+    }
+    @PostMapping("/campaigns/{id}/trials/{number}/source/restore") public Object restoreSource(@PathVariable String id, @PathVariable int number, @RequestBody RestoreSourceRequest request) {
+        requireMode();
+        if (request.output() == null || request.output().isBlank()) throw new IllegalArgumentException("Provide a new output directory");
+        var campaign = store.load(id);
+        AutoLlmCampaign.Trial trial = null;
+        for (var candidate : campaign.trials) if (candidate.number == number) { trial = candidate; break; }
+        if (trial == null) throw new NoSuchElementException("Unknown trial " + number);
+        Path destination = Path.of(request.output()).toAbsolutePath().normalize();
+        if (destination.startsWith(store.root().toAbsolutePath().normalize())) throw new IllegalArgumentException("Restore sources outside the controller workspace");
+        var processes = new AutoLlmProcessRunner();
+        try {
+            var source = AutoLlmSourceService.restore(store.directory(id), AutoLlmFileUtil.inside(store.directory(id), trial.executionDirectory()), destination,
+                    (args, cwd, logs) -> {
+                        var result = processes.run(args, cwd, logs, campaign.config.execution().buildTimeoutMillis(), 0, 1000, () -> false, false, 0);
+                        if (result.exitCode() != 0) throw new IllegalStateException("Source restoration failed: " + AutoLlmFailureUtil.tail(logs.resolve("stderr.log"), 4000));
+                    });
+            return Map.of("campaign", id, "trial", number, "output", destination.toString(), "verified", true, "source", source);
+        } catch (java.io.IOException e) { throw new java.io.UncheckedIOException(e); }
+    }
     @GetMapping("/campaigns/{id}/summary") public Object summary(@PathVariable String id) {
         var campaign = store.load(id); var result = new LinkedHashMap<String,Object>();
         result.put("poolRevision", campaign.poolRevision); result.put("maxConcurrentSessions", campaign.config.codex().maxConcurrentSessions());
@@ -101,11 +143,13 @@ public class AutoLlmController {
         }
         throw new NoSuchElementException("Unknown trial " + trial);
     }
-    @GetMapping("/campaigns/{id}/artifact") public ResponseEntity<FileSystemResource> download(@PathVariable String id, @RequestParam String path) {
+    @GetMapping("/campaigns/{id}/artifact") public ResponseEntity<org.springframework.core.io.Resource> download(@PathVariable String id, @RequestParam String path) {
         Path file = store.artifact(id, path);
-        return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM)
+        try { return ResponseEntity.ok().contentType(MediaType.APPLICATION_OCTET_STREAM)
+                .contentLength(AutoLlmEvidenceFiles.attributes(file).size())
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment().filename(file.getFileName().toString()).build().toString())
-                .body(new FileSystemResource(file));
+                .body(new org.springframework.core.io.InputStreamResource(AutoLlmEvidenceFiles.open(file)));
+        } catch (java.io.IOException e) { throw new java.io.UncheckedIOException(e); }
     }
     @GetMapping("/campaigns/{id}/log") public AutoLlmLogUtil.Page log(@PathVariable String id, @RequestParam(defaultValue = "campaign-events.jsonl") String path,
             @RequestParam(defaultValue = "0") long cursor, @RequestParam(defaultValue = "65536") int maximumBytes) {
@@ -128,9 +172,11 @@ public class AutoLlmController {
             for (int count : trial.connectionRetries.values()) retries += count;
             progress.put("infrastructureRetries", retries); progress.put("repairTurns", trial.repairTurns);
             progress.put("quotaRetryAt", trial.quotaRetryAt);
+            progress.put("capacityWait", trial.capacityWait);
             if (!trial.attempts.isEmpty()) {
                 var attempt = trial.attempts.getLast(); Path directory = store.directory(id).resolve(attempt.directory);
                 progress.put("attempt", attempt); progress.put("substage", attempt.substage);
+                if (Files.isRegularFile(directory.resolve("model-selection.json"))) progress.put("modelSelection", AutoLlmFileUtil.read(directory.resolve("model-selection.json"), Object.class));
                 progress.put("elapsedMillis", java.time.Duration.between(java.time.Instant.parse(attempt.startedAt), attempt.finishedAt == null ? java.time.Instant.now() : java.time.Instant.parse(attempt.finishedAt)).toMillis());
                 Path remote = directory.resolve("remote-status.json");
                 if (attempt.substage != null) remote = directory.resolve(switch (attempt.substage) { case BUILD -> "build"; case METADATA -> "check"; case PROBES -> "probe"; case PILOT -> "pilot"; default -> ""; }).resolve("remote-status.json");
@@ -164,11 +210,17 @@ public class AutoLlmController {
         return new Observation(id, c.status, java.time.Instant.now().toString(), rows, targets, service.recovery(id), errors, !errors.isEmpty(), c.approvedProposal, c.approvedAt, c.proposedTrials != null || !c.reviewedTargets.equals(c.approvedTargets));
     }
     @GetMapping("/campaigns/{id}/trials/{number}/remote-inspection") public Object inspectRemote(@PathVariable String id, @PathVariable int number,
-            @RequestParam(defaultValue = "10000") long timeoutMillis) {
+            @RequestParam(defaultValue = "10000") long timeoutMillis, @RequestParam(required = false) String assignmentId) {
         if (timeoutMillis < 100 || timeoutMillis > 30000) throw new IllegalArgumentException("Inspection timeout must be between 100 and 30000 ms");
         var c = store.load(id);
         for (var trial : c.trials) if (trial.number == number) {
-            Path root = store.directory(id).resolve(trial.directory);
+            var assignment = trial.assignment();
+            if (assignmentId != null) {
+                assignment = null;
+                for (var candidate : trial.assignments) if (candidate.id.equals(assignmentId)) { assignment = candidate; break; }
+                if (assignment == null) throw new NoSuchElementException("Unknown assignment " + assignmentId);
+            }
+            Path root = store.directory(id).resolve(assignment == null ? trial.directory : assignment.directory);
             Path configFile = root.resolve("control/config.json");
             if (!Files.isRegularFile(configFile)) throw new IllegalStateException("Trial has no saved execution context");
             var config = AutoLlmFileUtil.read(configFile, AutoLlmConfig.class);
@@ -224,7 +276,7 @@ public class AutoLlmController {
     }
     @GetMapping("/campaigns/{id}/trials/{number}/comparison") public Object comparison(@PathVariable String id, @PathVariable int number) {
         Path file = comparisonJournal(id, number);
-        return file == null || !Files.exists(file) ? Map.of("status", "NOT_STARTED") : comparisons.summary(file);
+        return file == null || !AutoLlmEvidenceFiles.exists(file) ? Map.of("status", "NOT_STARTED") : comparisons.summary(file);
     }
     @GetMapping("/campaigns/{id}/comparison") public Object compare(@PathVariable String id, @RequestParam String objective,
             @RequestParam(defaultValue = "MINIMIZE") es.urjc.etsii.grafo.algorithms.FMode mode,
@@ -235,7 +287,7 @@ public class AutoLlmController {
         for (var trial : c.trials) {
             if (trials != null && !trials.contains(trial.number)) continue;
             Path journal = comparisonJournal(id, trial.number);
-            if (trial.status != AutoLlmCampaign.TrialStatus.SUCCEEDED || journal == null || !Files.isRegularFile(journal)) {
+            if (trial.status != AutoLlmCampaign.TrialStatus.SUCCEEDED || journal == null || !AutoLlmEvidenceFiles.exists(journal)) {
                 excluded.put(trial.number, "Comparison incomplete: " + trial.status); continue;
             }
             try {
@@ -251,7 +303,7 @@ public class AutoLlmController {
     @GetMapping("/campaigns/{id}/trials/{number}/curves") public Object curves(@PathVariable String id, @PathVariable int number,
             @RequestParam String instanceId) {
         Path file = comparisonJournal(id, number);
-        return file == null || !Files.exists(file) ? Map.of("curves", List.of(), "sampled", true) : comparisons.curves(file, instanceId);
+        return file == null || !AutoLlmEvidenceFiles.exists(file) ? Map.of("curves", List.of(), "sampled", true) : comparisons.curves(file, instanceId);
     }
     private void requireMode() { if (mode.mode() != MonitorModeState.Mode.AUTOLLM) throw new ResponseStatusException(HttpStatus.CONFLICT, "Launch Mork using --autollm"); }
     @ExceptionHandler(IllegalArgumentException.class) public ResponseEntity<Map<String,String>> invalid(IllegalArgumentException e) { return ResponseEntity.badRequest().body(Map.of("message", e.getMessage())); }

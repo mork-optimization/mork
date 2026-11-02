@@ -16,6 +16,59 @@ spec.loader.exec_module(client)
 
 
 class OperatorClientTest(unittest.TestCase):
+    def test_storage_inspects_by_default_and_maintenance_is_explicit(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            result = {"logicalBytes": 123}
+            code, text, request = self.cli(["storage", "--campaign", "saved"], [result])
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(text), result)
+            request.assert_called_once_with("http://localhost", "/campaigns/saved/storage", timeout=120)
+            code, text, request = self.cli(["storage", "--campaign", "saved", "--maintain"], [result])
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(text), result)
+            request.assert_called_once_with("http://localhost", "/campaigns/saved/storage/maintain", {}, timeout=3600)
+
+    def test_storage_maintenance_does_not_replay_an_uncertain_response(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            with patch.object(client, "capabilities"), patch.object(client, "request", side_effect=RuntimeError("response lost")) as request:
+                with self.assertRaisesRegex(RuntimeError, "response lost"):
+                    client.main(["--workspace", self.root, "--url", "http://localhost", "storage", "--campaign", "saved", "--maintain", "--timeout", "19"])
+            request.assert_called_once_with("http://localhost", "/campaigns/saved/storage/maintain", {}, timeout=19)
+
+    def test_campaign_proposal_prints_single_storage_line_and_preserves_json(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            line = "Storage (additional peak estimate): controller 1–4 GiB / 2 GiB free. WARNING: may not fit."
+            value = {"digest": "a" * 64, "storage": {"approvalLine": line}}
+            errors = io.StringIO()
+            with contextlib.redirect_stderr(errors):
+                code, text, request = self.cli(["campaign", "proposal", "--id", "saved"], [value])
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(text), value)
+            self.assertEqual(errors.getvalue(), line + "\n")
+            errors = io.StringIO()
+            with contextlib.redirect_stderr(errors):
+                _, text, _ = self.cli(["--json", "campaign", "proposal", "--id", "saved"], [value])
+            self.assertEqual(errors.getvalue(), "")
+            self.assertEqual(json.loads(text), value)
+
+    def test_artifact_rebuild_returns_verification_without_replaying(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            output = str(Path(self.root) / "rebuilt executable")
+            result = {"artifact": output + "/project.jar", "verification": {"verified": True}}
+            code, text, request = self.cli(["artifact", "rebuild", "--campaign", "saved", "--trial", "7", "--output", output], [result])
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(text), result)
+            request.assert_called_once_with("http://localhost", "/campaigns/saved/trials/7/artifact/rebuild", {"output": str(Path(output).resolve())}, timeout=3600)
+
+    def test_source_restore_sends_exact_trial_and_new_output_without_replaying(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            output = str(Path(self.root) / "restored sources")
+            result = {"campaign": "saved", "trial": 7, "output": output, "verified": True}
+            code, text, request = self.cli(["source", "restore", "--campaign", "saved", "--trial", "7", "--output", output], [result])
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(text), result)
+            request.assert_called_once_with("http://localhost", "/campaigns/saved/trials/7/source/restore", {"output": str(Path(output).resolve())}, timeout=3600)
+
     def test_configuration_keeps_worker_override_and_omits_spring_nulls(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -35,7 +88,7 @@ class OperatorClientTest(unittest.TestCase):
         with patch.object(client, "request", return_value={"mode": "AUTOLLM", "apiVersion": 1}):
             with self.assertRaisesRegex(RuntimeError, "capabilities"):
                 client.capabilities("http://localhost")
-        info = {"mode": "AUTOLLM", "apiVersion": 5, "checkpointVersion": 5, "runnerProtocol": 5, "workspace": "/other", "features": list(client.FEATURES)}
+        info = {"mode": "AUTOLLM", "apiVersion": 6, "checkpointVersion": 6, "runnerProtocol": 6, "workspace": "/other", "features": list(client.FEATURES)}
         with patch.object(client, "request", return_value=info):
             with self.assertRaisesRegex(RuntimeError, "workspace"):
                 client.capabilities("http://localhost", "/requested")
@@ -46,7 +99,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"frozen executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url="http://localhost")
-            info = {"mode": "AUTOLLM", "apiVersion": 5, "checkpointVersion": 5, "runnerProtocol": 5, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            info = {"mode": "AUTOLLM", "apiVersion": 6, "checkpointVersion": 6, "runnerProtocol": 6, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             with patch.object(client, "request", return_value=info), patch.object(client.subprocess, "Popen") as launch:
                 self.assertEqual(client.backend(args), info)
                 launch.assert_not_called()
@@ -70,7 +123,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url=None, java="java", port=0, timeout=10)
-            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 5, "checkpointVersion": 5, "runnerProtocol": 5, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 6, "checkpointVersion": 6, "runnerProtocol": 6, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             launching = dict(ready, mode="STARTING")
             with patch.object(client, "request", side_effect=[RuntimeError("offline"), launching, ready]), patch.object(client.socket, "socket") as socket, patch.object(client.subprocess, "Popen") as launch, patch.object(client.time, "sleep"):
                 socket.return_value.__enter__.return_value.getsockname.return_value = ("127.0.0.1", 18081)

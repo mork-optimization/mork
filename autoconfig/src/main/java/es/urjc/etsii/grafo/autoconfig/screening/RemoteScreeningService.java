@@ -13,7 +13,7 @@ import java.util.*;
 public final class RemoteScreeningService {
     public record Preparation(String commit, String artifact, String artifactSha256, String sotaSha256,
                               AutoLlmConfig config, InstanceScreeningConfig settings, List<String> arguments,
-                              long seed, String randomType, double trainingFraction, String originalPool) {}
+                              long seed, String randomType, double trainingFraction, String originalPool, CommittedBaseline.Receipt baseline) {}
     private final AutoLlmProcessRunner processes;
     private final AutoLlmExecutionService workloads;
     private final java.util.function.Consumer<Map<String,Object>> observer;
@@ -29,7 +29,7 @@ public final class RemoteScreeningService {
         String key = AutoLlmFileUtil.hash(new ByteArrayInputStream(output.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8))).substring(0, 24);
         Path root = output.resolve(config.execution().target().name().toLowerCase(Locale.ROOT) + "-" + key); Files.createDirectories(root);
         Path preparedFile = root.resolve("remote-screening.json");
-        Path source = root.resolve("baseline/source"), artifact = source.resolve(config.project().artifact());
+        Path artifact;
         Preparation preparation;
         observer.accept(Map.of("phase", "PREFLIGHT", "mirror", root.toString()));
         workloads.probe(config, root, settings.python() == null ? "" : settings.python());
@@ -40,7 +40,7 @@ public final class RemoteScreeningService {
             if (reviewedHash == null || !reviewedHash.equals(AutoLlmFileUtil.hash(root.resolve("proposal/proposal.json")))) throw new IllegalArgumentException("Approval requires the exact reviewed remote proposal hash");
             ScreeningFileUtil.verifyProposalArtifacts(root.resolve("proposal"), AutoLlmFileUtil.read(root.resolve("proposal/proposal.json"), ScreeningData.Proposal.class));
             if (!AutoLlmFileUtil.hash(preparedFile).equals(AutoLlmFileUtil.hash(root.resolve("proposal/source-metadata.json")))) throw new IllegalStateException("Reviewed source metadata changed");
-            if (!preparation.artifactSha256().equals(AutoLlmFileUtil.hash(artifact))) throw new IllegalStateException("Screening executable changed");
+
         } else {
             if (Files.exists(preparedFile)) {
                 preparation = AutoLlmFileUtil.read(preparedFile, Preparation.class);
@@ -49,15 +49,11 @@ public final class RemoteScreeningService {
                 if (Files.exists(root.resolve("proposal/approved.json"))) throw new IllegalStateException("Selection is already approved; choose a new output directory to rescreen");
             } else {
                 observer.accept(Map.of("phase", "SOURCE", "mirror", root.toString()));
-                Path repository = Path.of(config.project().repository()).toAbsolutePath().normalize();
-                command(List.of("git", "rev-parse", "--verify", config.project().ref() + "^{commit}"), repository, root.resolve("ref"));
-                String commit = Files.readString(root.resolve("ref/stdout.log")).strip();
-                if (!Files.exists(source.resolve(".git"))) DirectoryArchiveUtil.restore(source);
-                if (!Files.exists(source.resolve(".git"))) {
-                    command(List.of("git", "clone", "--no-hardlinks", "--no-checkout", repository.toString(), source.toString()), repository, root.resolve("clone"));
-                    command(List.of("git", "checkout", "--detach", commit), source, root.resolve("checkout"));
-                    command(List.of("git", "submodule", "update", "--init", "--recursive"), source, root.resolve("submodules"));
-                }
+                var attempt = CommittedBaseline.prepare(root, config, this::command);
+                String commit = attempt.commit();
+                Path source = root.resolve(attempt.directory()).resolve("source");
+                artifact = source.resolve(config.project().artifact());
+                Path build = root.resolve(attempt.directory()).resolve("build");
                 Files.createDirectories(root.resolve("control"));
                 Files.copy(Path.of(settings.sotaFile()), root.resolve("control/sota.json"), StandardCopyOption.REPLACE_EXISTING);
                 observer.accept(Map.of("phase", "INPUTS", "mirror", root.toString()));
@@ -74,14 +70,18 @@ public final class RemoteScreeningService {
                 Files.write(root.resolve("control/original.index"), pool); AutoLlmFileUtil.write(root.resolve("data/original-inputs.json"), original);
                 AutoLlmFileUtil.write(root.resolve("control/config.json"), config);
                 observer.accept(Map.of("phase", "BUILD", "mirror", root.toString()));
-                var result = workloads.run(config, root, config.project().buildCommand(), source, root.resolve("build"), source, List.of(artifact),
+                CommittedBaseline.verifyBeforeSubmission(root, attempt);
+                var result = workloads.run(config, root, config.project().buildCommand(), source, build, source, List.of(artifact),
                         config.execution().buildTimeoutMillis(), 0, false, 0, cancelled, state -> observer.accept(Map.of("phase", "BUILD", "remote", state, "mirror", root.toString())));
-                if (result.exitCode() != 0) throw new IllegalStateException("Remote screening baseline build failed; inspect " + root.resolve("build"));
+                AutoLlmFileUtil.write(build.resolve("baseline-result.json"), new CommittedBaseline.Built(result, result.exitCode() == 0 ? AutoLlmFileUtil.hash(artifact) : null));
+                if (result.exitCode() != 0) throw new IllegalStateException("Committed screening baseline build failed; inspect " + build);
                 preparation = new Preparation(commit, root.relativize(artifact).toString(), AutoLlmFileUtil.hash(artifact), AutoLlmFileUtil.hash(root.resolve("control/sota.json")), config, settings, runArguments,
-                        solver.getSeed(), solver.getRandomType().name(), inputs.getPreliminarPercentage(), path);
+                        solver.getSeed(), solver.getRandomType().name(), inputs.getPreliminarPercentage(), path, CommittedBaseline.completed(root, attempt, config, artifact));
                 AutoLlmFileUtil.write(preparedFile, preparation);
             }
         }
+        CommittedBaseline.verify(root, preparation);
+        artifact = root.resolve(preparation.artifact());
         if (!preparation.sotaSha256().equals(AutoLlmFileUtil.hash(Path.of(preparation.settings().sotaFile())))) throw new IllegalStateException("Original SOTA changed since remote preparation");
         Map<String,Map<String,String>> original = AutoLlmFileUtil.read(root.resolve("data/original-inputs.json"), new TypeReference<>() {});
         if (!new HashSet<>(InstancePathUtil.list(preparation.originalPool())).equals(original.keySet())) throw new IllegalStateException("Original pool membership changed since remote preparation");
@@ -140,6 +140,7 @@ public final class RemoteScreeningService {
         var decision = AutoLlmFileUtil.read(proposal.resolve("proposal.json"), ScreeningData.Proposal.class);
         ScreeningFileUtil.verifyProposalArtifacts(proposal, decision);
         var preparation = AutoLlmFileUtil.read(root.resolve("remote-screening.json"), Preparation.class);
+        CommittedBaseline.verify(root, preparation);
         var manifest = AutoLlmFileUtil.read(proposal.resolve("manifest.json"), ScreeningData.Manifest.class);
         if (!AutoLlmFileUtil.hash(root.resolve("remote-screening.json")).equals(AutoLlmFileUtil.hash(proposal.resolve("source-metadata.json")))) throw new IllegalStateException("Approved source metadata changed");
         if (manifest.version() != 3 || !"QUALIFIED_SERVER_POOL".equals(manifest.reusePolicy())) throw new IllegalStateException("Dataset approval does not authorize qualified server-pool reuse");

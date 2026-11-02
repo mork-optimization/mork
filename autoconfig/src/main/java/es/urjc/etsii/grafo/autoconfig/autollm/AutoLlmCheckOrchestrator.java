@@ -40,7 +40,7 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
         this.environment = environment; this.space = space; this.builder = builder; this.instances = instances; this.evaluator = evaluator;
         this.state = state; this.solver = solver; this.blocks = blocks; this.irace = irace; this.limits = limits; this.validator = validator; this.lifecycle = lifecycle;
     }
-    @Override public List<String> getNames() { return List.of("autollm-check", "autollm-probe", "autollm-export"); }
+    @Override public List<String> getNames() { return List.of("autollm-check", "autollm-probe", "autollm-export", "autollm-inventory"); }
     @Override public es.urjc.etsii.grafo.monitoring.MonitorModeState.Mode getMode() { return es.urjc.etsii.grafo.monitoring.MonitorModeState.Mode.UTILITY; }
     @Override public void run(String... args) {
         var outcome = es.urjc.etsii.grafo.events.types.ExecutionEndedEvent.Outcome.SUCCEEDED;
@@ -49,6 +49,11 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
             if (validator.isEmpty()) throw new IllegalStateException("AutoLLM requires a solution validator");
             Context.Configurator.setSolverConfig(solver); Context.Configurator.setBlockConfig(blocks);
             ExecutionJournalUtil.write("readiness.json", Map.of("startedAtMillis", System.currentTimeMillis(), "pid", ProcessHandle.current().pid(), "port", environment.getProperty("local.server.port", Integer.class, 0)));
+            for (String arg : args) if (arg.equals("--autollm-inventory")) {
+                ExecutionJournalUtil.write("components.json", components());
+                ExecutionJournalUtil.write("search-space.json", space.snapshot());
+                return;
+            }
             var config = AutoLlmFileUtil.read(Path.of(environment.getRequiredProperty("autollm.child.config-file")), AutoLlmConfig.class);
             for (String arg : args) if (arg.equals("--autollm-export")) { exportWinner(); return; }
             String baselineFile = environment.getProperty("autollm.child.baseline-components-file");
@@ -58,12 +63,7 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
             var seeds = codec.parseList(Files.readString(Path.of(irace.getInitialConfigurationsFile())));
             try { InitialConfigurationUtil.toIraceTable(space, seeds); }
             catch (IllegalArgumentException | IllegalStateException e) { throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "SEED_ENCODING", e.toString(), ExecutionJournalUtil.directory()); }
-            var components = new TreeSet<String>();
-            for (String pkg : environment.getProperty("advanced.scan-pkgs", "es.urjc.etsii").split(",")) {
-                for (var type : ReflectionUtil.findTypesByAnnotation(pkg, AlgorithmComponent.class)) {
-                    if (Modifier.isPublic(type.getModifiers()) && !Modifier.isAbstract(type.getModifiers())) components.add(type.getName());
-                }
-            }
+            var components = components();
             List<String> added = new ArrayList<>();
             if (baselineFile != null) {
                 var baseline = new HashSet<>(List.of(AutoLlmFileUtil.read(Path.of(baselineFile), String[].class)));
@@ -99,6 +99,15 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
             throw e;
         }
         finally { lifecycle.complete(0, outcome); }
+    }
+    private SortedSet<String> components() {
+        var components = new TreeSet<String>();
+        for (String pkg : environment.getProperty("advanced.scan-pkgs", "es.urjc.etsii").split(",")) {
+            for (var type : ReflectionUtil.findTypesByAnnotation(pkg, AlgorithmComponent.class)) {
+                if (Modifier.isPublic(type.getModifiers()) && !Modifier.isAbstract(type.getModifiers())) components.add(type.getName());
+            }
+        }
+        return components;
     }
     private void exportWinner() throws IOException {
         Path file = Path.of(environment.getRequiredProperty("autollm.child.elites-file"));

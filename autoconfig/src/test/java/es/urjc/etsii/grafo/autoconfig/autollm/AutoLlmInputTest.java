@@ -16,6 +16,15 @@ import static org.junit.jupiter.api.Assertions.*;
 class AutoLlmInputTest {
     @TempDir Path temp;
 
+    @Test void inventoryStartupSkipsExperimentConfigWhileNormalChecksRequireIt() throws Exception {
+        var instances = new es.urjc.etsii.grafo.config.InstanceConfiguration();
+        var solver = org.mockito.Mockito.mock(es.urjc.etsii.grafo.config.SolverConfig.class);
+        var environment = new org.springframework.mock.env.MockEnvironment().withProperty("autollm.child.config-file", temp.toString());
+        var runner = new AutoLlmConfiguration().workerEvidence(solver, instances, environment);
+        runner.run(new org.springframework.boot.DefaultApplicationArguments("--autollm-check", "--autollm-inventory"));
+        assertThrows(java.io.UncheckedIOException.class, () -> runner.run(new org.springframework.boot.DefaultApplicationArguments("--autollm-check")));
+    }
+
     private Path archive(String payload) throws Exception {
         Path archive = temp.resolve("original instances.zip");
         try (var zip = new ZipOutputStream(Files.newOutputStream(archive))) {

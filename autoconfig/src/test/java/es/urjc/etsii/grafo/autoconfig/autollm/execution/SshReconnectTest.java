@@ -26,6 +26,51 @@ class SshReconnectTest {
     private AutoLlmWorkloadExecutor.Workload work() {
         return new AutoLlmWorkloadExecutor.Workload(List.of("unused"), root, root.resolve("output"), Map.of(), List.of(), List.of(), 1000, 0, 100, false, 1000);
     }
+    @Test void stagesShareFrozenExecutableLayerInsteadOfRepeatingItInPayloads() throws Exception {
+        Path jar = root.resolve("frozen/project.jar"); Files.createDirectories(jar.getParent());
+        Files.writeString(jar, "immutable executable");
+        var transport = mock(SshTransport.class);
+        doThrow(new ExecutionTargetException("fixture stops before remote IO")).when(transport).bootstrap();
+        String layer = null;
+        for (String stage : List.of("tuning", "comparison")) {
+            Path output = root.resolve(stage);
+            var work = new AutoLlmWorkloadExecutor.Workload(List.of("unused"), root, output,
+                    Map.of("frozen/project.jar", jar), List.of(), List.of(), 1000, 0, 100, false, 1000);
+            assertThrows(ExecutionTargetException.class, () -> new SshWorkloadExecutor(config(), root, transport, state -> {}).run(work, () -> false));
+            var job = AutoLlmFileUtil.read(output.resolve("remote-job.json"), WorkloadProtocol.Job.class);
+            assertEquals(1, job.layers().size());
+            if (layer != null) assertEquals(layer, job.layers().getFirst());
+            layer = job.layers().getFirst();
+            try (var zip = new java.util.zip.ZipFile(root.resolve(".transfer/" + job.id() + ".zip").toFile())) {
+                assertNull(zip.getEntry("frozen/project.jar"));
+            }
+        }
+        Path archive = root.resolve(".transfer/layers/" + Path.of(layer).getFileName());
+        assertEquals(AutoLlmFileUtil.hash(jar), WorkloadArchiveUtil.verify(archive, root).get("frozen/project.jar").sha256());
+    }
+    @Test void managedTrialsShareBaselineExecutableTransfersAcrossOwners() throws Exception {
+        AutoLlmFileUtil.write(root.resolve("control/storage-layout.json"), Map.of("version", 1));
+        Path jar = root.resolve("baseline.jar"); Files.writeString(jar, "same executable for every trial");
+        var transport = mock(SshTransport.class);
+        doThrow(new ExecutionTargetException("fixture stops before remote IO")).when(transport).bootstrap();
+        String previous = null;
+        for (String number : List.of("001", "002")) {
+            Path trial = root.resolve("trials/" + number), output = trial.resolve("check");
+            String name = "baseline/source/target/project.jar";
+            var work = new AutoLlmWorkloadExecutor.Workload(List.of("unused"), trial, output,
+                    Map.of(name, jar), List.of(), List.of(), 1000, 0, 100, false, 1000);
+            assertThrows(ExecutionTargetException.class, () -> new SshWorkloadExecutor(config(), trial, transport, _ -> {}).run(work, () -> false));
+            var job = AutoLlmFileUtil.read(output.resolve("remote-job.json"), WorkloadProtocol.Job.class);
+            assertTrue(job.managedStorage()); assertEquals(1, job.layers().size());
+            String layer = job.layers().getFirst(); assertTrue(layer.startsWith(".campaign-layers/"));
+            if (previous != null) assertEquals(previous, layer);
+            previous = layer;
+            try (var zip = new java.util.zip.ZipFile(trial.resolve(".transfer/" + job.id() + ".zip").toFile())) { assertNull(zip.getEntry(name)); }
+        }
+        try (var files = Files.newDirectoryStream(root.resolve(".store/layers"), "*.zip")) {
+            int count = 0; for (Path ignored : files) count++; assertEquals(1, count);
+        }
+    }
     @ParameterizedTest
     @ValueSource(strings = {"offline", "agent refused operation\nPermission denied (publickey)."})
     void restartRetainsTheExhaustedDisconnectionBudgetAndJobIdentity(String diagnostic) {

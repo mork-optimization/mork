@@ -24,18 +24,27 @@ public final class RemoteWorkloadMain {
         if (args.length < 2) throw new IllegalArgumentException("Expected action and absolute workspace");
         Path root = Path.of(args[1]).toAbsolutePath().normalize();
         if (!Path.of(args[1]).isAbsolute()) throw new IllegalArgumentException("Workspace must be absolute");
-        if (!args[0].equals("inspect")) Files.createDirectories(root);
+        if (!Set.of("inspect", "storage").contains(args[0])) Files.createDirectories(root);
         String id = args.length > 2 ? args[2] : "";
         switch (args[0]) {
-            case "identify" -> print(Map.of("version", VERSION, "sha256", AutoLlmFileUtil.hash(Path.of(System.getProperty("java.class.path")))));
+            case "identify" -> print(Map.of("version", VERSION, "sha256", AutoLlmFileUtil.hash(Path.of(System.getProperty("java.class.path"))), "features", List.of("CAMPAIGN_ASSETS", "COLLECTION_ACK", "STORAGE_OBSERVATION")));
             case "identity" -> {
                 var config = AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), AutoLlmConfig.class);
                 print(TargetPreflightUtil.identity(config, root, List.of()));
             }
             case "has" -> {
-                Path file = WorkloadPathUtil.inside(root, id);
+                Path file = RemoteCampaignStorage.shared(id) ? RemoteCampaignStorage.layer(root, id) : WorkloadPathUtil.inside(root, id);
                 print(Map.of("sha256", Files.isRegularFile(file) ? AutoLlmFileUtil.hash(file) : ""));
             }
+            case "storage" -> {
+                Path existing = root;
+                while (existing != null && !Files.exists(existing)) existing = existing.getParent();
+                if (existing == null) throw new IOException("No filesystem available for " + root);
+                print(Map.of("usableDiskBytes", Files.getFileStore(existing).getUsableSpace(), "observedAt", Instant.now().toString()));
+            }
+            case "retain-layers" -> { RemoteCampaignStorage.retainLayers(root, AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), new TypeReference<List<String>>() {})); print(Map.of("retained", true)); }
+            case "acknowledge" -> print(RemoteCampaignStorage.acknowledge(root, id, AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), RemoteCampaignStorage.Acknowledgement.class)));
+            case "retire" -> print(RemoteCampaignStorage.retire(root));
             case "probe" -> {
                 try (var channel = FileChannel.open(WorkloadPathUtil.workspace(root).resolve("execution.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.tryLock()) {
                 if (lock == null) throw new IllegalStateException("Another remote workload owns this workspace; wait before preflight");
@@ -44,11 +53,15 @@ public final class RemoteWorkloadMain {
                 }
             }
             case "put" -> {
-                Path target = WorkloadPathUtil.inside(root, id);
+                Path target = RemoteCampaignStorage.shared(id) ? RemoteCampaignStorage.layer(root, id) : WorkloadPathUtil.inside(root, id);
                 Files.createDirectories(target.getParent());
                 Path temporary = target.resolveSibling(target.getFileName() + "." + UUID.randomUUID() + ".tmp");
-                try (var output = Files.newOutputStream(temporary)) { System.in.transferTo(output); }
-                Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING); print(Map.of("sha256", AutoLlmFileUtil.hash(target)));
+                try {
+                    try (var output = Files.newOutputStream(temporary)) { System.in.transferTo(output); }
+                    String hash = AutoLlmFileUtil.hash(temporary);
+                    if (RemoteCampaignStorage.shared(id) && !target.getFileName().toString().equals(hash + ".zip")) throw new IOException("Shared layer upload checksum mismatch");
+                    Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING); print(Map.of("sha256", hash));
+                } finally { Files.deleteIfExists(temporary); }
             }
             case "submit" -> submit(root, id);
             case "supervise" -> supervise(root, id);
@@ -108,11 +121,18 @@ public final class RemoteWorkloadMain {
     }
     private static void submit(Path root, String id) throws Exception {
         Path directory = jobDirectory(root, id);
+        try (var owner = FileChannel.open(root.resolve(".storage-owner.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var ownerLock = owner.lock()) {
         Job requested = AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), Job.class);
         if (requested.version() != VERSION || !id.equals(requested.id()) || !root.toString().equals(requested.root())) throw new IllegalArgumentException("Workload protocol, root or identity mismatch");
+        if (Files.exists(root.resolve("storage-retired.json"))) {
+            Path saved = directory.resolve("job.json");
+            if (!Files.isRegularFile(saved) || !requested.equals(AutoLlmFileUtil.read(saved, Job.class))) throw new IllegalStateException("Cannot submit new work to a retired owner");
+            print(state(root, id)); return;
+        }
         WorkloadPathUtil.inside(root, requested.cwd()); WorkloadPathUtil.inside(root, requested.output());
         for (String path : requested.collect()) WorkloadPathUtil.inside(root, path);
-        for (String path : requested.layers()) if (!path.matches("\\.layers/[a-f0-9]{64}\\.zip")) throw new IllegalArgumentException("Invalid input layer");
+        for (String path : requested.layers()) if (!(requested.managedStorage() ? RemoteCampaignStorage.shared(path) : path.matches("\\.layers/[a-f0-9]{64}\\.zip"))) throw new IllegalArgumentException("Invalid input layer");
+        if (requested.managedStorage()) RemoteCampaignStorage.retainLayers(root, requested.layers());
         for (String path : requested.reset()) {
             if (path.isBlank() || path.equals(".")) throw new IllegalArgumentException("Cannot reset workspace root");
             WorkloadPathUtil.inside(root, path);
@@ -134,6 +154,7 @@ public final class RemoteWorkloadMain {
             }
         }
         print(state(root, id));
+        }
     }
     private static List<String> selfCommand() {
         var result = new ArrayList<>(List.of(Path.of(System.getProperty("java.home"), "bin/java").toString()));
@@ -156,8 +177,7 @@ public final class RemoteWorkloadMain {
                 if (!job.inputSha256().equals(AutoLlmFileUtil.hash(directory.resolve("input.zip")))) throw new IllegalStateException("Frozen job input changed");
                 for (String path : job.reset()) WorkloadArchiveUtil.deleteTree(WorkloadPathUtil.inside(root, path));
                 for (String layer : job.layers()) {
-                    Path archive = WorkloadPathUtil.inside(root, layer);
-                    WorkloadArchiveUtil.installLayer(archive, root);
+                    RemoteCampaignStorage.install(root, layer);
                 }
                 WorkloadArchiveUtil.unpack(directory.resolve("input.zip"), root);
                 restoreGit(root);
@@ -221,7 +241,7 @@ public final class RemoteWorkloadMain {
                 Map<String,String> entry = AutoLlmFileUtil.read(descriptor, new TypeReference<>() {});
                 Path source = WorkloadPathUtil.inside(root, entry.get("source"));
                 if (Files.exists(source.resolve(".git"))) continue;
-                for (List<String> command : List.of(List.of("git", "init", "--quiet"), List.of("git", "fetch", "--quiet", WorkloadPathUtil.inside(root, entry.get("bundle")).toString(), "HEAD"), List.of("git", "reset", "--mixed", "--quiet", "FETCH_HEAD"))) {
+                for (List<String> command : List.of(List.of("git", "init", "--quiet"), List.of("git", "fetch", "--quiet", WorkloadPathUtil.inside(root, entry.get("bundle")).toString(), entry.getOrDefault("ref", "HEAD")), List.of("git", "reset", "--mixed", "--quiet", "FETCH_HEAD"))) {
                     var process = new ProcessBuilder(command).directory(source.toFile()).redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD).start();
                     if (!process.waitFor(30000, java.util.concurrent.TimeUnit.MILLISECONDS)) { process.destroyForcibly(); throw new IllegalStateException("Git snapshot restore timed out"); }
                     if (process.exitValue() != 0) throw new IllegalStateException("Cannot restore source Git metadata");

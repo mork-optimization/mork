@@ -53,6 +53,53 @@ class SshWorkloadTest {
         root = temp.resolve("local mirror").toAbsolutePath(); Files.createDirectories(root);
     }
     @AfterEach void stopSsh() { if (server != null) server.destroyForcibly(); }
+    @Test void lostAcknowledgementReplyRejoinsCollectedJobWithoutDownloadingOrExecutingAgain() throws Exception {
+        AutoLlmFileUtil.write(root.resolve("control/storage-layout.json"), Map.of("version", 1));
+        var transport = new SshTransport(config, root.resolve(".transport")) {
+            @Override public byte[] call(String action, String remote, String id, Object input) {
+                byte[] response = super.call(action, remote, id, input);
+                if (action.equals("acknowledge")) throw new ConnectionException("lost acknowledgement reply");
+                return response;
+            }
+        };
+        var work = workload("success", "collected once");
+        assertEquals(0, new SshWorkloadExecutor(config, root, transport, _ -> {}).run(work, () -> false).exitCode());
+        var job = AutoLlmFileUtil.read(work.output().resolve("remote-job.json"), WorkloadProtocol.Job.class);
+        Path remoteJob = Path.of(job.root()).resolve(".jobs/" + job.id());
+        assertTrue(Files.exists(work.output().resolve("acknowledgement-pending.json")));
+        assertFalse(Files.exists(remoteJob.resolve("result.zip")));
+        var recovery = new SshTransport(config, root.resolve(".transport")) {
+            @Override public void download(String remote, String id, Path target) { fail("Collected evidence must not be downloaded again"); }
+            @Override public byte[] call(String action, String remote, String id, Object input) {
+                assertFalse(Set.of("submit", "poll").contains(action), "Completed jobs must not be replayed");
+                return super.call(action, remote, id, input);
+            }
+        };
+        assertEquals(0, new SshWorkloadExecutor(config, root, recovery, _ -> {}).run(work, () -> false).exitCode());
+        assertTrue(Files.exists(work.output().resolve("remote-acknowledged.json")));
+        RemoteStorageMaintenance.maintain(root, root, config, () -> false);
+        assertEquals("RELEASED", AutoLlmFileUtil.read(root.resolve("storage/remote-retention.json"), Map.class).get("status"));
+        assertTrue(Files.exists(remoteJob.resolve("job.json")));
+        assertFalse(Files.exists(Path.of(job.root()).resolve("output with spaces/literal.txt")));
+        assertEquals("collected once", Files.readString(work.output().resolve("literal.txt")));
+    }
+    @Test void missingLocalEvidencePreventsRetryAcknowledgementAndPreservesRemoteArchive() throws Exception {
+        AutoLlmFileUtil.write(root.resolve("control/storage-layout.json"), Map.of("version", 1));
+        var transport = new SshTransport(config, root.resolve(".transport")) {
+            @Override public byte[] call(String action, String remote, String id, Object input) {
+                if (action.equals("acknowledge")) throw new ConnectionException("offline before acknowledgement");
+                return super.call(action, remote, id, input);
+            }
+        };
+        var work = workload("success", "preserved remotely");
+        assertEquals(0, new SshWorkloadExecutor(config, root, transport, _ -> {}).run(work, () -> false).exitCode());
+        var job = AutoLlmFileUtil.read(work.output().resolve("remote-job.json"), WorkloadProtocol.Job.class);
+        Files.delete(work.output().resolve("literal.txt"));
+        assertThrows(UncheckedIOException.class, () -> new SshWorkloadExecutor(config, root, new SshTransport(config, root.resolve(".transport")), _ -> {}).run(work, () -> false));
+        assertTrue(Files.exists(Path.of(job.root()).resolve(".jobs/" + job.id() + "/result.zip")));
+        Files.writeString(work.output().resolve("literal.txt"), "preserved remotely");
+        assertEquals(0, new SshWorkloadExecutor(config, root, new SshTransport(config, root.resolve(".transport")), _ -> {}).run(work, () -> false).exitCode());
+    }
     @Test void inspectionDoesNotReconcileStaleStateOrCreateAMissingJob() throws Exception {
         var transport = new SshTransport(config, temp.resolve("transport"));
         var work = workload("success", "inspection");

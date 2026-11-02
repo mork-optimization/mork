@@ -103,5 +103,11 @@ class AutoLlmReportServiceTest {
         assertEquals("b", portable.get(3).path("targetId").asString()); assertEquals("b", portable.get(3).path("executionHost").path("identity").path("hostname").asString());
         assertEquals(2, portable.get(3).path("poolRevision").asLong());
         assertEquals("a", captured.get(root.resolve("reports/targets/a/campaign.xlsx")).getFirst().solutionProperties().get("Execution target"));
+        String reportHash = AutoLlmFileUtil.hash(root.resolve("reports/comparison-rows.json"));
+        for (var trial : campaign.trials) AutoLlmEvidenceFiles.compact(root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.COMPARISON)).resolve("execution/events.jsonl"));
+        new AutoLlmReportService(excel).report(campaign, root);
+        assertEquals(reportHash, AutoLlmFileUtil.hash(root.resolve("reports/comparison-rows.json")), "Compression must preserve every exported report row");
+        assertEquals(2, captured.get(root.resolve("reports/targets/a/campaign.xlsx")).size());
+        assertEquals(1, captured.get(root.resolve("reports/targets/b/campaign.xlsx")).size());
     }
 }

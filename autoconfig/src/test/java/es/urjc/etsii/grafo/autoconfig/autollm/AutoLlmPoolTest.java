@@ -83,6 +83,65 @@ class AutoLlmPoolTest {
         while (!condition.getAsBoolean() && System.nanoTime() < end) Thread.sleep(10);
         assertTrue(condition.getAsBoolean(), () -> AutoLlmFileUtil.JSON.writeValueAsString(store.load(campaign.id)));
     }
+    @ParameterizedTest @ValueSource(ints = {16, 32})
+    void repairedTrialGetsIndependentAssignmentIdentityAndPreservesSeeds(int secondWorkers) throws Exception {
+        setup(1, "a", "b");
+        for (String id : List.of("a", "b")) {
+            var target = campaign.targets.get(id);
+            int workers = id.equals("a") ? 16 : secondWorkers;
+            target.definition = new AutoLlmConfig.Server(id, id, "/work", "java", Map.of(), null, workers, null);
+            target.resolvedConfig = campaign.config.forServer(target.definition);
+            target.host = new es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol.Host(
+                    es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol.VERSION,
+                    Map.of("hostname", id, "cpu", "same-hardware"), workers, workers, 1, 1, 1, List.of());
+        }
+        campaign.approvedProposal = null; store.save(campaign);
+        campaign.approvedProposal = service.proposal(campaign.id).digest(); store.save(campaign);
+        var first = new CountDownLatch(1); var release = new CountDownLatch(1);
+        var directories = new CopyOnWriteArrayList<String>();
+        executions.put("a", (model, stop) -> {
+            directories.add(model.trial.executionDirectory()); first.countDown(); assertTrue(release.await(10, TimeUnit.SECONDS));
+            model.trial.nextStage = AutoLlmCampaign.Stage.GENERATION;
+            model.trial.status = AutoLlmCampaign.TrialStatus.WAITING_FOR_TARGET;
+        });
+        executions.put("b", (model, stop) -> {
+            directories.add(model.trial.executionDirectory());
+            var saved = AutoLlmFileUtil.read(store.directory(campaign.id).resolve(model.trial.executionDirectory()).resolve("execution-target.json"),
+                    es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol.Host.class);
+            assertEquals("b", saved.identity().get("hostname")); assertEquals(secondWorkers, saved.effectiveWorkers());
+            assertEquals(secondWorkers, model.config.execution().workers());
+            assertEquals(101, model.trial.tuningSeed);
+            model.trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED;
+        });
+        try {
+            service.start(campaign.id, false, Set.of()); assertTrue(first.await(10, TimeUnit.SECONDS));
+            service.drainTarget(campaign.id, "a", false); release.countDown(); await(() -> service.active() == null);
+            var result = store.load(campaign.id).trials.getFirst();
+            assertEquals(AutoLlmCampaign.TrialStatus.SUCCEEDED, result.status);
+            assertEquals(2, result.assignments.size()); assertTrue(result.assignments.getFirst().released);
+            assertNotEquals(directories.get(0), directories.get(1));
+            assertEquals("a", result.assignments.getFirst().host.identity().get("hostname"));
+            assertEquals("b", result.assignment().host.identity().get("hostname"));
+        } finally { release.countDown(); service.close(); }
+    }
+    @ParameterizedTest @ValueSource(booleans = {false, true})
+    void cannotReleaseAnAssignmentWithUncollectedJobsOrTuningPin(boolean pinned) throws Exception {
+        setup(1, "a", "b");
+        executions.put("a", (model, stop) -> {
+            model.trial.assignment().pinned = pinned;
+            if (!pinned) AutoLlmFileUtil.write(store.directory(campaign.id).resolve(model.trial.executionDirectory()).resolve("attempts/pilot/remote-job.json"), Map.of("id", "pending"));
+            model.trial.nextStage = AutoLlmCampaign.Stage.GENERATION;
+            model.trial.status = AutoLlmCampaign.TrialStatus.WAITING_FOR_TARGET;
+        });
+        executions.put("b", (model, stop) -> fail("Cannot reassign before collection or after tuning"));
+        try {
+            service.start(campaign.id, false, Set.of()); await(() -> service.active() == null);
+            var result = store.load(campaign.id).trials.getFirst();
+            assertEquals("a", result.targetId); assertEquals(1, result.assignments.size());
+            assertFalse(result.assignment().released); assertEquals(0, localPreparations.get());
+            assertEquals(AutoLlmCampaign.CampaignStatus.NEEDS_ATTENTION, store.load(campaign.id).status);
+        } finally { service.close(); }
+    }
     @Test void preparesLocallyWhileWorkerIsBusyWithoutLaunchingTheTrialTwice() throws Exception {
         setup(2, "a");
         campaign.trials.get(1).nextStage = AutoLlmCampaign.Stage.GENERATION;

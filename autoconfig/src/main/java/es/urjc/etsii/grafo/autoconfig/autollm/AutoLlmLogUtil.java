@@ -15,12 +15,10 @@ public final class AutoLlmLogUtil {
     /** Reads only a bounded suffix, even when a file is several gigabytes or has an enormous single line. */
     public static Preview tail(Path file, int maximumLines) {
         if (maximumLines < 1 || maximumLines > 5000) throw new IllegalArgumentException("Preview lines must be between 1 and 5000");
-        try (var input = new RandomAccessFile(file.toFile(), "r")) {
-            long size = input.length(), offset = Math.max(0, size - MAXIMUM_PREVIEW_BYTES);
-            input.seek(Math.max(0, offset - 1));
-            int previous = offset > 0 ? input.read() : '\n';
-            byte[] bytes = new byte[(int)(size - offset)];
-            input.readFully(bytes);
+        try {
+            long size = AutoLlmEvidenceFiles.attributes(file).size(), offset = Math.max(0, size - MAXIMUM_PREVIEW_BYTES);
+            int previous = offset > 0 ? AutoLlmEvidenceFiles.range(file, offset - 1, 1)[0] & 255 : '\n';
+            byte[] bytes = AutoLlmEvidenceFiles.range(file, offset, (int)(size - offset));
             int begin = bytes.length, separators = 0;
             while (begin > 0) {
                 begin--;
@@ -50,13 +48,14 @@ public final class AutoLlmLogUtil {
 
     public static Page read(Path file, long cursor, int maximumBytes) {
         if (cursor < 0 || maximumBytes < 4 || maximumBytes > 262144) throw new IllegalArgumentException("Invalid log cursor/page size");
-        if (!Files.exists(file)) return new Page(cursor, cursor, "", false, false);
-        try (var input = new RandomAccessFile(file.toFile(), "r")) {
-            boolean reset = cursor > input.length(); if (reset) cursor = 0;
-            input.seek(cursor); byte[] bytes = new byte[(int)Math.min(maximumBytes, input.length() - cursor)]; input.readFully(bytes);
+        if (!AutoLlmEvidenceFiles.exists(file)) return new Page(cursor, cursor, "", false, false);
+        try {
+            long size = AutoLlmEvidenceFiles.attributes(file).size();
+            boolean reset = cursor > size; if (reset) cursor = 0;
+            byte[] bytes = AutoLlmEvidenceFiles.range(file, cursor, (int)Math.min(maximumBytes, size - cursor));
             var buffer = ByteBuffer.wrap(bytes); String text = decode(buffer);
             long next = cursor + buffer.position();
-            return new Page(cursor, next, text, next > cursor && next < input.length(), reset);
+            return new Page(cursor, next, text, next > cursor && next < size, reset);
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
 

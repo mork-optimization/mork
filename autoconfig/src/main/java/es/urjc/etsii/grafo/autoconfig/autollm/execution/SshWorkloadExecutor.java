@@ -25,6 +25,7 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
     @Override public AutoLlmProcessRunner.Result run(Workload work, BooleanSupplier cancelled) {
         String remote = WorkloadPathUtil.remoteRoot(config, root);
         Path descriptor = work.output().resolve("remote-job.json");
+        Path campaign = CampaignAssetStore.campaign(root);
         Job job;
         try {
             Files.createDirectories(work.output());
@@ -35,16 +36,17 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                 Path generationFile = root.resolve(".transfer/generation-" + key + ".json");
                 int generation = Files.exists(generationFile) ? AutoLlmFileUtil.JSON.readTree(Files.readString(generationFile)).path("value").asInt() : 0;
                 String id = generation == 0 ? key : AutoLlmFileUtil.hash(new ByteArrayInputStream((name + ":" + generation).getBytes(java.nio.charset.StandardCharsets.UTF_8)));
-                var data = new TreeMap<String,Path>(); var bundles = new TreeMap<String,Path>(); var mutable = new TreeMap<String,Path>();
+                var data = new TreeMap<String,Path>(); var bundles = new TreeMap<String,Path>(); var executables = new TreeMap<String,Path>(); var mutable = new TreeMap<String,Path>();
                 for (var entry : work.inputs().entrySet()) {
                     if (entry.getKey().startsWith("data/inputs/")) data.put(entry.getKey(), entry.getValue());
                     else if (entry.getKey().startsWith(".source-bundles/") && entry.getKey().endsWith(".bundle")) bundles.put(entry.getKey(), entry.getValue());
+                    else if (entry.getKey().equals("frozen/project.jar") || campaign != null && entry.getKey().endsWith(".jar")) executables.put(entry.getKey(), entry.getValue());
                     else mutable.put(entry.getKey(), entry.getValue());
                 }
                 var layers = new ArrayList<String>();
-                for (var immutable : List.of(data, bundles)) if (!immutable.isEmpty()) {
-                    String hash = WorkloadArchiveUtil.prepareLayer(root.resolve(".transfer/layers"), immutable);
-                    layers.add(".layers/" + hash + ".zip");
+                for (var immutable : List.of(data, bundles, executables)) if (!immutable.isEmpty()) {
+                    String hash = campaign == null ? WorkloadArchiveUtil.prepareLayer(root.resolve(".transfer/layers"), immutable) : CampaignAssetStore.layer(campaign, work.output(), immutable);
+                    layers.add((campaign == null ? ".layers/" : ".campaign-layers/") + hash + ".zip");
                 }
                 Path archive = root.resolve(".transfer/" + id + ".zip"); WorkloadArchiveUtil.pack(archive, mutable);
                 var command = new ArrayList<String>();
@@ -53,12 +55,21 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                     command.set(0, config.execution().ssh().onlyServer().javaExecutable()); command.add(1, "-Dmork.execution.remote=true");
                 }
                 var reset = new ArrayList<>(work.reset()); reset.add(name);
-                job = new Job(VERSION, id, remote, AutoLlmFileUtil.hash(archive), layers, command, root.relativize(work.cwd()).toString(), name, work.collect(), reset,
+                job = new Job(VERSION, id, remote, AutoLlmFileUtil.hash(archive), layers, command, root.relativize(work.cwd()).toString().replace('\\', '/'), name, work.collect(), reset,
                         config.execution().ssh().onlyServer().environment(), Files.exists(root.resolve("execution-target.json")) ? AutoLlmFileUtil.read(root.resolve("execution-target.json"), Host.class).identity() : Map.of(),
-                        work.timeoutMillis(), work.plannedMillis(), work.graceMillis(), work.watchEvaluations(), work.startupMillis());
+                        work.timeoutMillis(), work.plannedMillis(), work.graceMillis(), work.watchEvaluations(), work.startupMillis(), campaign != null);
                 AutoLlmFileUtil.write(descriptor, job); // durable identity before any uncertain remote submission
             }
             if (!remote.equals(job.root())) throw new ExecutionTargetException("Remote workspace changed; reconcile the original job before configuring another target");
+            Path collection = work.output().resolve("collection-completed.json");
+            if (job.managedStorage() && Files.isRegularFile(collection)) {
+                var saved = AutoLlmFileUtil.read(collection, RemoteCampaignStorage.Collected.class);
+                if (saved.version() != 1 || !job.id().equals(saved.jobId())) throw new IOException("Invalid local collection receipt");
+                if (!Files.isRegularFile(work.output().resolve("remote-acknowledged.json"))) RemoteCampaignStorage.verifyCollection(root, saved);
+                acknowledge(work.output(), job, saved, false);
+                publish(work.output(), job, saved.state().status().name(), saved.state().failure());
+                return completed(saved.state(), work.output());
+            }
             Path previous = work.output().resolve("remote-status.json");
             if (Files.exists(previous)) {
                 var saved = AutoLlmFileUtil.JSON.readTree(Files.readString(previous));
@@ -87,10 +98,11 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                     State state = AutoLlmFileUtil.JSON.readValue(transport.call("status", remote, job.id(), Map.of()), State.class);
                     if (state.status() == JobStatus.NOT_FOUND) {
                         if (lastSynchronizedAt != null) throw new ExecutionTargetException("Previously observed remote job disappeared; inspect its identity before any replacement");
+                        if (job.managedStorage()) transport.call("retain-layers", remote, job.id(), job.layers());
                         for (String layer : job.layers()) {
                             String hash = Path.of(layer).getFileName().toString().replace(".zip", "");
                             var cached = AutoLlmFileUtil.JSON.readTree(transport.call("has", remote, layer, Map.of()));
-                            if (!hash.equals(cached.path("sha256").asString())) transport.upload(remote, layer, root.resolve(".transfer/layers/" + hash + ".zip"));
+                            if (!hash.equals(cached.path("sha256").asString())) transport.upload(remote, layer, (job.managedStorage() ? Objects.requireNonNull(campaign).resolve(".store/layers") : root.resolve(".transfer/layers")).resolve(hash + ".zip"));
                         }
                         Path archive = root.resolve(".transfer/" + job.id() + ".zip");
                         if (!job.inputSha256().equals(AutoLlmFileUtil.hash(archive))) throw new IllegalStateException("Saved workload payload changed");
@@ -125,21 +137,23 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                         Path archive = work.output().resolve("remote-result.zip"); transport.download(remote, job.id(), archive);
                         long archiveBytes = Files.size(archive), downloadMillis = (System.nanoTime() - downloadStart) / 1_000_000;
                         if (!state.archiveSha256().equals(AutoLlmFileUtil.hash(archive))) throw new IllegalStateException("Remote result checksum mismatch");
+                        var manifest = job.managedStorage() ? WorkloadArchiveUtil.verify(archive, root) : Map.<String,WorkloadArchiveUtil.Entry>of();
                         WorkloadArchiveUtil.unpack(archive, root);
+                        if (job.managedStorage()) {
+                            if (!WorkloadArchiveUtil.matches(root, manifest)) throw new IOException("Collected files do not match remote evidence");
+                            for (var item : manifest.entrySet()) if (item.getValue().link() == null) RemoteCampaignStorage.force(WorkloadPathUtil.inside(root, item.getKey()));
+                        }
                         DirectoryArchiveUtil.archive(work.output().resolve("solutions"));
+                        if (job.managedStorage()) {
+                            var receipt = new RemoteCampaignStorage.Collected(1, job.id(), state.archiveSha256(), archiveBytes, downloadMillis, (System.nanoTime() - downloadStart) / 1_000_000, manifest, state);
+                            RemoteCampaignStorage.verifyCollection(root, receipt);
+                            AutoLlmFileUtil.write(collection, receipt); RemoteCampaignStorage.force(collection);
+                            acknowledge(work.output(), job, receipt, true);
+                        } else AutoLlmFileUtil.write(collection, Map.of("jobId", job.id(), "archiveSha256", state.archiveSha256(), "archiveBytes", archiveBytes, "downloadMillis", downloadMillis, "collectionMillis", (System.nanoTime() - downloadStart) / 1_000_000));
                         Files.delete(archive);
-                        AutoLlmFileUtil.write(work.output().resolve("collection-completed.json"), Map.of("jobId", job.id(), "archiveSha256", state.archiveSha256(), "archiveBytes", archiveBytes, "downloadMillis", downloadMillis, "collectionMillis", (System.nanoTime() - downloadStart) / 1_000_000));
                         disconnectedAt = null; nextRetryAt = null; connectionFailures = 0;
                         publish(work.output(), job, state.status().name(), state.failure());
-                        if (state.status() == JobStatus.CANCELLED) throw new CancellationException("Remote cancellation confirmed");
-                        if (state.status() == JobStatus.HOST_CHANGED) throw new ExecutionTargetException(state.failure());
-                        if (state.status() == JobStatus.INTERRUPTED) throw new CancellationException("Remote supervisor interrupted; resume without a component repair");
-                        if (state.result() == null) {
-                            Path failure = work.output().resolve("execution/failure.json");
-                            if (Files.exists(failure)) throw new AutoLlmFailureUtil.StageException(AutoLlmFileUtil.read(failure, AutoLlmFailureUtil.Failure.class), null);
-                            throw new IllegalStateException(state.failure());
-                        }
-                        return state.result();
+                        return completed(state, work.output());
                     }
                     connectionFailures = 0; disconnectedAt = null; nextRetryAt = null;
                     publish(work.output(), job, cancellationSent ? "CANCELLATION_PENDING" : state.status().name(), null);
@@ -158,6 +172,33 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
             }
         } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("SSH reconnect interrupted; saved job retained"); }
         catch (IOException e) { throw new UncheckedIOException(e); }
+    }
+    private void acknowledge(Path output, Job job, RemoteCampaignStorage.Collected receipt, boolean connected) {
+        Path confirmed = output.resolve("remote-acknowledged.json");
+        if (Files.isRegularFile(confirmed)) return;
+        try {
+            if (!connected) transport.bootstrap();
+            RemoteCampaignStorage.verifyCollection(root, receipt);
+            var request = new RemoteCampaignStorage.Acknowledgement(job.id(), receipt.archiveSha256(), AutoLlmFileUtil.canonicalHash(receipt.entries()));
+            var response = AutoLlmFileUtil.JSON.readTree(transport.call("acknowledge", job.root(), job.id(), request));
+            if (!response.path("acknowledged").asBoolean() || !job.id().equals(response.path("jobId").asString())) throw new IllegalStateException("Remote acknowledgement identity mismatch");
+            AutoLlmFileUtil.write(confirmed, request); RemoteCampaignStorage.force(confirmed);
+            Files.deleteIfExists(output.resolve("acknowledgement-pending.json"));
+            Files.deleteIfExists(root.resolve(".transfer/" + job.id() + ".zip"));
+        } catch (IOException | RuntimeException failure) {
+            AutoLlmFileUtil.write(output.resolve("acknowledgement-pending.json"), Map.of("jobId", job.id(), "reason", failure.toString()));
+        }
+    }
+    private static AutoLlmProcessRunner.Result completed(State state, Path output) {
+        if (state.status() == JobStatus.CANCELLED) throw new CancellationException("Remote cancellation confirmed");
+        if (state.status() == JobStatus.HOST_CHANGED) throw new ExecutionTargetException(state.failure());
+        if (state.status() == JobStatus.INTERRUPTED) throw new CancellationException("Remote supervisor interrupted; resume without a component repair");
+        if (state.result() == null) {
+            Path failure = output.resolve("execution/failure.json");
+            if (Files.exists(failure)) throw new AutoLlmFailureUtil.StageException(AutoLlmFileUtil.read(failure, AutoLlmFailureUtil.Failure.class), null);
+            throw new IllegalStateException(state.failure());
+        }
+        return state.result();
     }
     private void publish(Path output, Job job, String state, String failure) {
         var values = new LinkedHashMap<String,Object>();

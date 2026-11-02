@@ -138,8 +138,8 @@ public final class CodexEvidenceUtil {
     public static Cli cli(Path file) {
         String thread = null; boolean completed = false;
         var usage = new ArrayList<Map<String,Object>>();
-        if (!Files.isRegularFile(file)) return new Cli(null, false, usage);
-        try (var reader = Files.newBufferedReader(file)) {
+        if (!AutoLlmEvidenceFiles.exists(file)) return new Cli(null, false, usage);
+        try (var reader = AutoLlmEvidenceFiles.reader(file)) {
             for (String line; (line = reader.readLine()) != null;) {
                 Map<String,Object> event;
                 try { event = AutoLlmFileUtil.parseObject(line); } catch (RuntimeException e) { continue; /* Interrupted output remains in the raw log. */ }
@@ -200,7 +200,7 @@ public final class CodexEvidenceUtil {
         return first.toAbsolutePath().normalize().equals(second.toAbsolutePath().normalize()) || Files.exists(first) && Files.exists(second) && Files.isSameFile(first, second);
     }
     private static Session metadata(Path file) throws IOException {
-        try (var reader = Files.newBufferedReader(file)) {
+        try (var reader = AutoLlmEvidenceFiles.reader(file)) {
             String line = reader.readLine(); if (line == null) return null;
             Map<String,Object> event;
             try { event = AutoLlmFileUtil.parseObject(line); } catch (RuntimeException e) { return null; }
@@ -208,6 +208,30 @@ public final class CodexEvidenceUtil {
             try { if (!UUID.fromString(id).toString().equalsIgnoreCase(id)) return null; } catch (IllegalArgumentException e) { return null; }
             return new Session(file, id, parent(payload.get("source")), (String) payload.get("cwd"), (String) payload.get("cli_version"));
         }
+    }
+    public record Selection(String model, String provider) {}
+    public static Selection selection(Path home, Path checkout, String thread) {
+        if (thread == null) return new Selection(null, null);
+        try {
+            for (var session : sessions(home, checkout, thread)) if (session.id().equals(thread)) return selection(session.path());
+            return new Selection(null, null);
+        } catch (IOException e) { throw new UncheckedIOException(e); }
+    }
+    static Selection selection(Path transcript) throws IOException {
+        String model = null, provider = null;
+        try (var reader = AutoLlmEvidenceFiles.reader(transcript)) {
+            for (String line; (line = reader.readLine()) != null;) {
+                Map<String,Object> event;
+                try { event = AutoLlmFileUtil.parseObject(line); } catch (RuntimeException ignored) { continue; }
+                if (!(event.get("payload") instanceof Map<?,?> payload)) continue;
+                if ("session_meta".equals(event.get("type")) && payload.get("model_provider") instanceof String value) provider = value;
+                if ("turn_context".equals(event.get("type"))) {
+                    if (payload.get("model") instanceof String value) model = value;
+                    if (payload.get("model_provider") instanceof String value) provider = value;
+                }
+            }
+        }
+        return new Selection(model, provider);
     }
     private static String parent(Object source) {
         if (source instanceof Map<?,?> map) {
@@ -218,7 +242,7 @@ public final class CodexEvidenceUtil {
     }
     private static Parsed parse(Path file) throws IOException {
         var parsed = new Parsed();
-        try (var reader = Files.newBufferedReader(file)) {
+        try (var reader = AutoLlmEvidenceFiles.reader(file)) {
             int number = 0;
             for (String line; (line = reader.readLine()) != null;) {
                 number++;

@@ -28,16 +28,7 @@ public class SshTransport {
         throw new IllegalArgumentException("Set execution.ssh.runnerArtifact to the attached autoconfig *-remote-runner.jar (mvn -pl autoconfig -am package)");
     }
     public void bootstrap() {
-        Path jar = scratch.resolve("runner.jar"), identityFile = scratch.resolve("runner.json");
-        try {
-            Files.createDirectories(scratch);
-            if (!Files.exists(identityFile)) {
-                Path source = runnerArtifact(config);
-                Files.copy(source, jar, StandardCopyOption.REPLACE_EXISTING);
-                AutoLlmFileUtil.write(identityFile, Map.of("sha256", AutoLlmFileUtil.hash(jar), "source", source.toString()));
-            }
-            if (!AutoLlmFileUtil.hash(jar).equals(AutoLlmFileUtil.JSON.readTree(Files.readString(identityFile)).path("sha256").asString())) throw new IllegalStateException("Frozen remote runner changed");
-        } catch (IOException e) { throw new UncheckedIOException(e); }
+        Path jar = frozenRunner();
         requireJava();
         String hash = AutoLlmFileUtil.hash(jar);
         String directory = config.execution().ssh().onlyServer().workspace().replaceAll("/+$", "") + "/.runner";
@@ -48,7 +39,7 @@ public class SshTransport {
             if (Files.readString(exists).equals("1")) {
                 try {
                     var identity = AutoLlmFileUtil.JSON.readTree(call("identify", config.execution().ssh().onlyServer().workspace(), null, Map.of()));
-                    if (identity.path("version").asInt() == WorkloadProtocol.VERSION && hash.equals(identity.path("sha256").asString())) return;
+                    if (compatible(identity, hash)) return;
                 } catch (IllegalStateException ignored) { /* Replace an incomplete or incompatible cached runner. */ }
             }
         } catch (IOException e) { throw new UncheckedIOException(e); }
@@ -57,7 +48,40 @@ public class SshTransport {
                 + " && cat > " + WorkloadPathUtil.quote(temporary) + " && mv -- " + WorkloadPathUtil.quote(temporary) + " " + WorkloadPathUtil.quote(runner);
         execute(command, jar, scratch.resolve(UUID.randomUUID() + ".bootstrap"));
         var identity = AutoLlmFileUtil.JSON.readTree(call("identify", config.execution().ssh().onlyServer().workspace(), null, Map.of()));
-        if (identity.path("version").asInt() != WorkloadProtocol.VERSION || !hash.equals(identity.path("sha256").asString())) throw new IllegalStateException("Remote runner checksum or protocol mismatch");
+        if (!compatible(identity, hash)) throw new IllegalStateException("Remote runner checksum, protocol or campaign-storage capability mismatch; rebuild the remote runner");
+    }
+    private boolean compatible(tools.jackson.databind.JsonNode identity, String hash) {
+        if (identity.path("version").asInt() != WorkloadProtocol.VERSION || !hash.equals(identity.path("sha256").asString())) return false;
+        if (CampaignAssetStore.campaign(scratch) == null) return true;
+        var features = new HashSet<String>(); for (var feature : identity.path("features")) features.add(feature.asString());
+        return features.containsAll(List.of("CAMPAIGN_ASSETS", "COLLECTION_ACK", "STORAGE_OBSERVATION"));
+    }
+    Path frozenRunner() {
+        Path identityFile = scratch.resolve("runner.json");
+        try {
+            Files.createDirectories(scratch);
+            if (!Files.exists(identityFile)) {
+                Path source = runnerArtifact(config);
+                Path campaign = CampaignAssetStore.campaign(scratch);
+                if (campaign != null) {
+                    Path jar = CampaignAssetStore.putArtifact(campaign, scratch, source);
+                    AutoLlmFileUtil.write(identityFile, Map.of("sha256", AutoLlmFileUtil.hash(jar), "source", source.toString(), "asset", campaign.relativize(jar).toString().replace('\\', '/')));
+                } else {
+                    Path jar = scratch.resolve("runner.jar"); Files.copy(source, jar, StandardCopyOption.REPLACE_EXISTING);
+                    AutoLlmFileUtil.write(identityFile, Map.of("sha256", AutoLlmFileUtil.hash(jar), "source", source.toString()));
+                }
+            }
+            Path jar = savedRunner();
+            if (!AutoLlmFileUtil.hash(jar).equals(AutoLlmFileUtil.JSON.readTree(Files.readString(identityFile)).path("sha256").asString())) throw new IllegalStateException("Frozen remote runner changed");
+            return jar;
+        } catch (IOException e) { throw new UncheckedIOException(e); }
+    }
+    private Path savedRunner() {
+        Object asset = AutoLlmFileUtil.read(scratch.resolve("runner.json"), Map.class).get("asset");
+        if (asset == null) return scratch.resolve("runner.jar");
+        Path campaign = CampaignAssetStore.campaign(scratch);
+        if (campaign == null || !(asset instanceof String path) || !path.matches("\\.store/artifacts/[a-f0-9]{64}\\.jar")) throw new IllegalStateException("Invalid shared runner identity");
+        return WorkloadPathUtil.inside(campaign, (String) asset);
     }
     private void requireJava() {
         var command = new StringBuilder("exec env");
@@ -77,9 +101,29 @@ public class SshTransport {
             Path data = Files.createTempFile(scratchDirectory(), "request-", ".json");
             Files.write(data, AutoLlmFileUtil.JSON.writeValueAsBytes(input));
             Path response = Files.createTempFile(scratchDirectory(), "response-", ".json");
-            try { execute(command(action, root, id), data, response, action.equals("probe") ? TargetPreflightUtil.timeoutMillis(config, id) : 60_000); return Files.readAllBytes(response); }
+            try { execute(command(action, root, id), data, response, action.equals("probe") ? TargetPreflightUtil.timeoutMillis(config, id) : action.equals("storage") ? 15_000 : 60_000); return Files.readAllBytes(response); }
             finally { Files.deleteIfExists(data); Files.deleteIfExists(response); Files.deleteIfExists(response.resolveSibling(response.getFileName() + ".stderr")); }
         } catch (IOException e) { throw new UncheckedIOException(e); }
+    }
+    /** Observe an already staged runner without bootstrapping, uploading, or altering a remote workspace. */
+    public byte[] storage() {
+        Path temporary = null;
+        try {
+            Path identity = scratch.resolve("runner.json");
+            if (!Files.isRegularFile(identity)) throw new IllegalStateException("No previously staged runner; remote capacity unavailable");
+            String hash = AutoLlmFileUtil.JSON.readTree(Files.readString(identity)).path("sha256").asString();
+            if (hash == null || !hash.matches("[a-f0-9]{64}")) throw new IllegalStateException("Invalid staged runner identity");
+            if (!hash.equals(AutoLlmFileUtil.hash(savedRunner()))) throw new IllegalStateException("Frozen remote runner changed");
+            temporary = Files.createTempDirectory("mork-storage-observation-");
+            var observer = new SshTransport(config, temporary);
+            String workspace = config.execution().ssh().onlyServer().workspace();
+            observer.runner = workspace.replaceAll("/+$", "") + "/.runner/" + hash + ".jar";
+            return observer.call("storage", workspace, null, Map.of());
+        } catch (IOException e) { throw new UncheckedIOException(e); }
+        finally {
+            if (temporary != null) try { WorkloadArchiveUtil.deleteTree(temporary); }
+            catch (IOException ignored) { /* A failed local scratch cleanup must not change a capacity observation. */ }
+        }
     }
     public void upload(String root, String relative, Path file) {
         try {

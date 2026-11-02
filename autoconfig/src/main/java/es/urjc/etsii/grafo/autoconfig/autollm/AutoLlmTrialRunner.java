@@ -32,6 +32,15 @@ public final class AutoLlmTrialRunner {
     private final Semaphore sessions;
     private Semaphore buildPermits = new Semaphore(1);
     public void localBuildPermits(Semaphore permits) { buildPermits = permits; }
+    private java.time.Clock capacityClock = java.time.Clock.systemUTC();
+    private java.util.function.DoubleSupplier capacityRandom = () -> java.util.concurrent.ThreadLocalRandom.current().nextDouble();
+    private java.util.function.LongConsumer capacitySleep = millis -> {
+        try { Thread.sleep(millis); }
+        catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Capacity wait interrupted"); }
+    };
+    void capacityTiming(java.time.Clock clock, java.util.function.DoubleSupplier random, java.util.function.LongConsumer sleep) {
+        capacityClock = clock; capacityRandom = random; capacitySleep = sleep;
+    }
     private boolean localOnly;
     public void prepareTrialLocally() { localOnly = true; execute(); }
     private final ReentrantLock metadataLock = new ReentrantLock();
@@ -84,6 +93,12 @@ public final class AutoLlmTrialRunner {
                 try { runTrial(c, t); break; }
                 catch (RuntimeException e) {
                     if (e instanceof CancellationException) throw e;
+                    if (e instanceof CodexCapacityUtil.CapacityException capacity) {
+                        t.capacityWait = CodexCapacityUtil.schedule(t.capacityWait, capacity.getMessage(), capacityClock, capacityRandom);
+                        t.problem = AutoLlmFailureUtil.describe(e, executionRoot); t.status = TrialStatus.WAITING_FOR_CAPACITY;
+                        c.problem = null; publish(c); event("codex-capacity-wait", Map.of("trial", t.number, "wait", t.capacityWait));
+                        continue;
+                    }
                     if (e instanceof CodexQuotaUtil.QuotaLimitException quota) {
                         t.quotaRetryAt = quota.retryAt().toString(); t.problem = AutoLlmFailureUtil.describe(e, executionRoot);
                         t.status = TrialStatus.WAITING_FOR_QUOTA; c.problem = null; publish(c);
@@ -107,13 +122,22 @@ public final class AutoLlmTrialRunner {
             c.problem = t.problem;
         } finally {
             for (var a : t.attempts) if (a.status == AttemptStatus.RUNNING) { a.status = AttemptStatus.INTERRUPTED; a.finishedAt = Instant.now().toString(); }
+            if (t.status.terminal() && !cancelled()) {
+                try (var permit = es.urjc.etsii.grafo.util.ConcurrencyUtil.acquirePermit(buildPermits, this::cancelled)) {
+                    if (!localOnly || t.assignments.isEmpty()) RemoteStorageMaintenance.maintain(c.campaignRoot, executionRoot, c.config, this::cancelled);
+                    AutoLlmArtifactRebuild.maintain(c.campaignRoot, executionRoot, t, c.config, processes, this::cancelled);
+                    AutoLlmCheckoutRetirement.maintainTrial(c.campaignRoot, executionRoot, t, c.config, c.baselineCommit, c.versions, processes, this::cancelled);
+                    AutoLlmEvidenceFiles.compact(c.campaignRoot, executionRoot, t);
+                } catch (CancellationException ignored) { /* Completed measurements remain completed; the executable is retained. */ }
+                catch (IOException | RuntimeException failure) { event("storage-maintenance-failed", Map.of("trial", t.number, "reason", failure.toString())); }
+            }
             publish(c);
         }
     }
     private void recoverTurn(AutoLlmExecutionContext c, AutoLlmCampaign.Trial trial) {
         if (trial.attempts.isEmpty()) return;
         var attempt = trial.attempts.getLast();
-        if (!attempt.stage.generation() || !Set.of(AttemptStatus.RUNNING, AttemptStatus.INTERRUPTED, AttemptStatus.FAILED, AttemptStatus.QUOTA_LIMIT).contains(attempt.status)) return;
+        if (!attempt.stage.generation() || !Set.of(AttemptStatus.RUNNING, AttemptStatus.INTERRUPTED, AttemptStatus.FAILED, AttemptStatus.QUOTA_LIMIT, AttemptStatus.CAPACITY_LIMIT).contains(attempt.status)) return;
         Path root = executionRoot;
         try {
             attempt.codexEvidence = codex.archive(root.resolve("source"), model.path(attempt.directory), trial.threadId);
@@ -122,7 +146,7 @@ public final class AutoLlmTrialRunner {
             if (recovered != null) {
                 if (trial.repairPending) trial.repairTurns++;
                 trial.repairPending = false;
-                trial.threadId = recovered.threadId(); trial.blacklist = recovered.manifest().blacklist();
+                trial.capacityWait = null; trial.threadId = recovered.threadId(); trial.blacklist = recovered.manifest().blacklist();
                 trial.complete(GENERATION, attempt.directory, null);
                 trial.resumeTurn = false; trial.failure = null;
                 finish(c, attempt, null);
@@ -165,7 +189,7 @@ public final class AutoLlmTrialRunner {
                 Path screened = screeningRoot.resolve(prepared.artifact());
                 if (!prepared.artifactSha256().equals(AutoLlmFileUtil.hash(screened))) throw new IllegalStateException("Approved screening executable changed");
                 Path destination = baseline.resolve(c.config.project().artifact()); Files.createDirectories(destination.getParent()); Files.copy(screened, destination, StandardCopyOption.REPLACE_EXISTING);
-                AutoLlmFileUtil.write(preflight.resolve("build/adopted-screening.json"), Map.of("artifactSha256", prepared.artifactSha256(), "buildEvidence", screeningRoot.resolve("build").toString()));
+                AutoLlmFileUtil.write(preflight.resolve("build/adopted-screening.json"), Map.of("artifactSha256", prepared.artifactSha256(), "buildEvidence", screeningRoot.resolve(prepared.baseline().buildDirectory()).toString()));
             } else runCommand(c, c.config.project().buildCommand(), baseline, preflight.resolve("build"), c.config.execution().buildTimeoutMillis(), false);
             Path jar = AutoLlmFileUtil.inside(baseline, c.config.project().artifact()); if (!Files.isRegularFile(jar)) throw new IllegalStateException("Build did not produce configured JAR: " + jar);
             if (c.config.execution().target() == AutoLlmConfig.Target.SSH) c.config = workloads.stageInputs(c.config, root);
@@ -208,15 +232,39 @@ public final class AutoLlmTrialRunner {
             AutoLlmFileUtil.write(root.resolve("control/config.json"), c.config); if (!metadataOnly) c.baselineCommit = commit; publish(c);
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
+    private void prepareAssignmentSource(AutoLlmExecutionContext c, AutoLlmCampaign.Trial trial) {
+        if (trial.assignment() == null || !executionRoot.equals(c.path(trial.assignment().directory))) return;
+        Path marker = executionRoot.resolve("clone/clone-completed.json");
+        if (Files.exists(marker)) return;
+        Path original = c.path(trial.directory).resolve("source"), pointer = executionRoot.resolve("input/source.json");
+        GitSourceStore.Command command = (args, cwd, logs) -> runCommand(c, args, cwd, logs, c.config.execution().buildTimeoutMillis(), true);
+        try {
+            AutoLlmSourceService.Source record;
+            if (Files.isRegularFile(pointer)) record = AutoLlmFileUtil.read(pointer, AutoLlmSourceService.Source.class);
+            else {
+                record = AutoLlmSourceService.capture(c.campaignRoot, original, executionRoot.resolve("input"), c.baselineCommit, c.config, c.versions, command);
+                AutoLlmFileUtil.write(pointer, record);
+            }
+            Path snapshot = c.path(record.snapshot()), source = executionRoot.resolve("source");
+            if (!AutoLlmFileUtil.hash(snapshot.resolve("snapshot.json")).equals(record.manifestSha256())) throw new IOException("Assignment source snapshot changed");
+            // An interrupted restore is retained for diagnosis; only a complete fresh restore is published.
+            if (Files.exists(source)) Files.move(source, executionRoot.resolve("input/interrupted-source-" + UUID.randomUUID()));
+            Path staged = executionRoot.resolve("input/restoring-" + UUID.randomUUID());
+            GitPatchSnapshot.restore(c.campaignRoot.resolve(".store/git/" + record.commit() + ".bundle"), snapshot, staged, command);
+            Files.move(staged, source);
+            AutoLlmFileUtil.write(marker, Map.of("commit", record.commit()));
+        } catch (IOException e) { throw new UncheckedIOException(e); }
+    }
     private void cloneProject(AutoLlmExecutionContext c, String commit, Path destination, Path output) {
         if (!Files.exists(destination.resolve(".git"))) {
             try { DirectoryArchiveUtil.restore(destination); }
             catch (IOException e) { throw new UncheckedIOException(e); }
         }
         if (Files.exists(output.resolve("clone-completed.json"))) return;
-        if (!Files.exists(destination.resolve(".git"))) runCommand(c, List.of("git", "clone", "--no-hardlinks", "--no-checkout", c.config.project().repository(), destination.toString()), Path.of(c.config.project().repository()), output, c.config.execution().buildTimeoutMillis(), true);
-        runCommand(c, List.of("git", "checkout", "--detach", commit), destination, output.resolve("checkout"), 30_000, true);
-        runCommand(c, List.of("git", "submodule", "update", "--init", "--recursive"), destination, output.resolve("submodules"), c.config.execution().buildTimeoutMillis(), true);
+        try {
+            GitSourceStore.checkout(c.campaignRoot.resolve(".store/git"), Path.of(c.config.project().repository()), commit, destination, output,
+                    (args, cwd, logs) -> runCommand(c, args, cwd, logs, c.config.execution().buildTimeoutMillis(), true));
+        } catch (IOException e) { throw new UncheckedIOException(e); }
         AutoLlmFileUtil.write(output.resolve("clone-completed.json"), Map.of("commit", commit));
     }
     private AutoLlmCampaign.Attempt attempt(AutoLlmExecutionContext c, AutoLlmCampaign.Trial t, AttemptStage stage) {
@@ -228,7 +276,8 @@ public final class AutoLlmTrialRunner {
             }
         }
         var a = new AutoLlmCampaign.Attempt(); a.number = t.attempts.size() + 1; a.stage = stage;
-        a.directory = t.directory + "/attempts/%03d-%s".formatted(a.number, stage.name().toLowerCase(java.util.Locale.ROOT)); a.startedAt = Instant.now().toString();
+        a.assignmentId = t.assignment() != null && executionRoot.equals(c.path(t.assignment().directory)) ? t.activeAssignmentId : null;
+        a.directory = model.relative(executionRoot.resolve("attempts/%03d-%s".formatted(a.number, stage.name().toLowerCase(java.util.Locale.ROOT)))); a.startedAt = Instant.now().toString();
         t.status = stage.trialStatus(); t.attempts.add(a); c.remote = null; publish(c); event("stage-started", Map.of("trial", t.number, "stage", stage, "attempt", a.number)); return a;
     }
     private void substage(AutoLlmExecutionContext campaign, AutoLlmCampaign.Attempt attempt, PreparationStage stage) {
@@ -247,6 +296,7 @@ public final class AutoLlmTrialRunner {
     private void finish(AutoLlmExecutionContext c, AutoLlmCampaign.Attempt a, RuntimeException failure) {
         if (failure == null) a.status = AttemptStatus.SUCCEEDED;
         else if (failure instanceof CodexQuotaUtil.QuotaLimitException) a.status = AttemptStatus.QUOTA_LIMIT;
+        else if (failure instanceof CodexCapacityUtil.CapacityException) a.status = AttemptStatus.CAPACITY_LIMIT;
         else if (failure instanceof CancellationException || AutoLlmCampaignStore.hasUncollectedJobs(model.path(a.directory)) || !AutoLlmFileUtil.ownedFiles(model.path(a.directory), "collection-failure.json").isEmpty()) a.status = AttemptStatus.INTERRUPTED;
         else a.status = AttemptStatus.FAILED;
         a.finishedAt = Instant.now().toString(); a.failure = failure == null ? null : ExceptionUtil.stacktrace(failure);
@@ -261,9 +311,11 @@ public final class AutoLlmTrialRunner {
         }
     }
     private void runTrial(AutoLlmExecutionContext c, AutoLlmCampaign.Trial t) {
+        awaitCapacity(c, t);
         awaitQuota(c, t);
         Path root = executionRoot; Path source = root.resolve("source");
         AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(root.resolve("control/frozen-hashes.json"), new TypeReference<>() {}));
+        prepareAssignmentSource(c, t);
         cloneProject(c, c.baselineCommit, source, root.resolve("clone"));
         if (c.config.execution().target() == AutoLlmConfig.Target.SSH && t.resumeTurn) reconcileMetadata(c, t, source);
         while (t.nextStage.ordinal() < TUNING.ordinal()) {
@@ -274,6 +326,7 @@ public final class AutoLlmTrialRunner {
                 if (t.threadId != null && !continuation && t.repairTurns >= c.config.preparation().maxRepairs()) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "REPAIRS_EXHAUSTED", "Preparation exhausted repair limit: " + t.failure, root);
                 t.status = TrialStatus.WAITING_FOR_GENERATION; publish(c);
                 try (var permit = es.urjc.etsii.grafo.util.ConcurrencyUtil.acquirePermit(sessions, this::cancelled)) {
+                if (t.capacityWait != null) CodexCapacityUtil.requireBudget(t.capacityWait, capacityClock);
                 var a = attempt(c, t, t.threadId == null || continuation && t.outputDirectory(GENERATION) == null ? AttemptStage.GENERATION : AttemptStage.REPAIR); Path dir = model.path(a.directory);
                 t.repairPending |= t.threadId != null && !continuation;
                 t.resumeTurn = false; publish(c);
@@ -287,7 +340,7 @@ public final class AutoLlmTrialRunner {
                     }
                     try {
                         metadataLock.lockInterruptibly();
-                        try { if (t.repairPending) t.repairTurns++; t.repairPending = false; t.threadId = result.threadId(); t.blacklist = result.manifest().blacklist(); t.complete(GENERATION, a.directory, null); t.failure = null; t.problem = null; finish(c, a, null); }
+                        try { if (t.repairPending) t.repairTurns++; t.repairPending = false; t.capacityWait = null; t.threadId = result.threadId(); t.blacklist = result.manifest().blacklist(); t.complete(GENERATION, a.directory, null); t.failure = null; t.problem = null; finish(c, a, null); }
                         finally { metadataLock.unlock(); }
                     } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Generation interrupted while awaiting a metadata check"); }
                 } catch (RuntimeException e) {
@@ -305,7 +358,7 @@ public final class AutoLlmTrialRunner {
                 try (var permit = es.urjc.etsii.grafo.util.ConcurrencyUtil.acquirePermit(buildPermits, this::cancelled)) { runStage(c, t, LOCAL_PREPARATION, (a, dir) -> {
                     runCommand(c, c.config.project().buildCommand(), source, dir.resolve("build"), c.config.execution().buildTimeoutMillis(), false);
                     Path jar = source.resolve(c.config.project().artifact());
-                    verifyDependencies(root.resolve("baseline/source").resolve(c.config.project().artifact()), jar, dir);
+                    verifyDependencies(baselineArtifact(c), jar, dir);
                     child(c, t, jar, dir.resolve("check"), "--autollm-check", 0, c.config.execution().searchSpaceTimeoutMillis(), List.of());
                     return null;
                 }); } catch (RuntimeException e) {
@@ -327,7 +380,7 @@ public final class AutoLlmTrialRunner {
                 var dependencies = AutoLlmFileUtil.dependencyHashes(jar);
                 AutoLlmFileUtil.write(dir.resolve("dependencies.json"), dependencies);
                 substage(c, a, PreparationStage.DEPENDENCIES);
-                verifyDependencies(root.resolve("baseline/source").resolve(c.config.project().artifact()), jar, dir);
+                verifyDependencies(baselineArtifact(c), jar, dir);
                 substage(c, a, PreparationStage.METADATA);
                 child(c, t, jar, dir.resolve("check"), "--autollm-check", 0, c.config.execution().searchSpaceTimeoutMillis(), List.of());
                 String localPreparation = t.outputDirectory(LOCAL_PREPARATION);
@@ -347,13 +400,22 @@ public final class AutoLlmTrialRunner {
                 for (var event : AutoLlmFileUtil.events(dir.resolve("pilot/execution/events.jsonl"))) if ("evaluation-result".equals(event.get("kind")) && "SUCCEEDED".equals(event.get("state"))) observed = true;
                 if (!observed) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.UNKNOWN, "EMPTY_PILOT", "Verification autoconfig produced no successful evaluations", dir);
                 Path frozen = root.resolve("frozen"); Files.createDirectories(frozen);
-                Files.copy(jar, frozen.resolve("project.jar"), StandardCopyOption.REPLACE_EXISTING);
-                AutoLlmFileUtil.archiveSources(source, frozen.resolve("source.zip"), generatedHashes);
+                boolean managed = Files.exists(c.campaignRoot.resolve("control/storage-layout.json"));
+                Path executable;
+                if (managed) executable = CampaignAssetStore.putArtifact(c.campaignRoot, root, jar);
+                else { executable = frozen.resolve("project.jar"); Files.copy(jar, executable, StandardCopyOption.REPLACE_EXISTING); }
+                if (Files.exists(c.campaignRoot.resolve("control/storage-layout.json"))) {
+                    AutoLlmSourceService.freeze(c.campaignRoot, root, source, dir, c.baselineCommit, c.config, c.versions,
+                            (args, cwd, logs) -> runCommand(c, args, cwd, logs, c.config.execution().buildTimeoutMillis(), true));
+                } else AutoLlmFileUtil.archiveSources(source, frozen.resolve("source.zip"), generatedHashes);
                 AutoLlmFileUtil.write(frozen.resolve("source-hashes.json"), generatedHashes);
                 Files.copy(dir.resolve("check/execution/search-space.json"), frozen.resolve("search-space.json"), StandardCopyOption.REPLACE_EXISTING);
                 Files.copy(dir.resolve("check/execution/components.json"), frozen.resolve("components.json"), StandardCopyOption.REPLACE_EXISTING);
-                AutoLlmFileUtil.write(frozen.resolve("artifact.json"), Map.of("sha256", AutoLlmFileUtil.hash(frozen.resolve("project.jar")), "blacklist", t.blacklist == null ? "" : t.blacklist));
-                t.failure = null; return model.relative(frozen.resolve("project.jar"));
+                var identity = new LinkedHashMap<String,String>(); identity.put("sha256", AutoLlmFileUtil.hash(executable)); identity.put("blacklist", t.blacklist == null ? "" : t.blacklist);
+                if (managed) identity.put("asset", model.relative(executable).replace('\\', '/'));
+                AutoLlmFileUtil.write(frozen.resolve("artifact.json"), identity);
+                if (Files.exists(frozen.resolve("source-snapshot.json"))) AutoLlmFileUtil.write(frozen.resolve("executable-fingerprint.json"), AutoLlmExecutableFingerprint.read(executable));
+                t.failure = null; return model.relative(executable);
             }); } catch (RuntimeException e) {
                 if (e instanceof CancellationException) throw e;
                 t.problem = AutoLlmFailureUtil.describe(e, model.path(t.attempts.getLast().directory)); t.failure = ExceptionUtil.stacktrace(e);
@@ -363,8 +425,14 @@ public final class AutoLlmTrialRunner {
             }
         }
         Path jar = model.path(t.artifact());
-        var identity = AutoLlmFileUtil.read(jar.getParent().resolve("artifact.json"), Map.class);
+        var identity = AutoLlmFileUtil.read(executionRoot.resolve("frozen/artifact.json"), Map.class);
         if (!AutoLlmFileUtil.hash(jar).equals(identity.get("sha256"))) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INTEGRITY, "ARTIFACT_CHANGED", "Frozen artifact was modified", jar);
+        if (t.nextStage == TUNING && t.assignment() != null && !t.assignment().pinned) {
+            Path pin = executionRoot.resolve("control/assignment-pinned.json");
+            AutoLlmFileUtil.write(pin, Map.of("assignmentId", t.assignment().id, "stage", "TUNING"));
+            try { RemoteCampaignStorage.force(pin); } catch (IOException e) { throw new UncheckedIOException(e); }
+            t.assignment().pinned = true; publish(c);
+        }
         if (t.nextStage == TUNING) runStage(c, t, TUNING, (attempt, dir) -> {
             child(c, t, jar, dir, "--autoconfig", 0, c.config.execution().stageTimeoutMillis(), List.of());
             return null;
@@ -396,6 +464,19 @@ public final class AutoLlmTrialRunner {
             finish(context, attempt, failure); throw failure;
         } catch (RuntimeException e) { finish(context, attempt, e); throw e; }
     }
+    private void awaitCapacity(AutoLlmExecutionContext campaign, AutoLlmCampaign.Trial trial) {
+        if (trial.capacityWait == null) return;
+        trial.status = TrialStatus.WAITING_FOR_CAPACITY; publish(campaign);
+        while (true) {
+            if (cancelled() || Thread.currentThread().isInterrupted()) throw new CancellationException("Capacity wait cancelled");
+            CodexCapacityUtil.requireBudget(trial.capacityWait, capacityClock);
+            long remaining = java.time.Duration.between(capacityClock.instant(), Instant.parse(trial.capacityWait.nextRetryAt())).toMillis();
+            if (remaining <= 0) break;
+            capacitySleep.accept(Math.min(1000, remaining));
+        }
+        trial.problem = null; trial.failure = null; publish(campaign);
+        event("codex-capacity-resumed", Map.of("trial", trial.number, "retry", trial.capacityWait.retries()));
+    }
     private void awaitQuota(AutoLlmExecutionContext campaign, AutoLlmCampaign.Trial trial) {
         if (trial.quotaRetryAt == null) return;
         trial.status = TrialStatus.WAITING_FOR_QUOTA; publish(campaign);
@@ -409,6 +490,14 @@ public final class AutoLlmTrialRunner {
         }
         trial.quotaRetryAt = null; trial.problem = null; trial.failure = null; publish(campaign);
         event("codex-quota-resumed", Map.of("trial", trial.number));
+    }
+    private Path baselineArtifact(AutoLlmExecutionContext c) {
+        Path identity = executionRoot.resolve("baseline/artifact.json");
+        if (!Files.isRegularFile(identity)) return executionRoot.resolve("baseline/source").resolve(c.config.project().artifact());
+        Map<String,String> entry = AutoLlmFileUtil.read(identity, new TypeReference<>() {});
+        Path artifact = WorkloadPathUtil.inside(c.campaignRoot, entry.get("asset"));
+        if (!AutoLlmFileUtil.hash(artifact).equals(entry.get("sha256"))) throw new IllegalStateException("Shared baseline artifact changed");
+        return artifact;
     }
     private void runCommand(AutoLlmExecutionContext c, List<String> command, Path cwd, Path dir, long timeout, boolean local) {
         AutoLlmProcessRunner.Result result;
@@ -432,7 +521,7 @@ public final class AutoLlmTrialRunner {
         Path root = executionRoot; Path controls = root.resolve("control/frozen-hashes.json");
         if (Files.exists(controls)) AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(controls, new TypeReference<>() {}));
         String artifactHash = AutoLlmFileUtil.hash(jar);
-        if (t != null && t.artifact() != null && !artifactHash.equals(AutoLlmFileUtil.read(jar.getParent().resolve("artifact.json"), Map.class).get("sha256"))) throw new IllegalStateException("Frozen artifact was modified");
+        if (t != null && t.artifact() != null && !artifactHash.equals(AutoLlmFileUtil.read(root.resolve("frozen/artifact.json"), Map.class).get("sha256"))) throw new IllegalStateException("Frozen artifact was modified");
         long seed = t == null ? c.config.seed() : mode.equals("--default") ? t.comparisonSeed : mode.equals("--autoconfig") && pilotMillis == 0 ? t.tuningSeed : t.pilotSeed;
         int workers = workloads.workers(c.config, root);
         boolean validation = mode.equals("--autollm-probe") || mode.equals("--autoconfig") && pilotMillis > 0;
@@ -444,7 +533,7 @@ public final class AutoLlmTrialRunner {
                 "--solver.autorestart=true", "--solver.seed=" + seed, "--solver.experiments-per-parameter=0", "--solver.minimum-number-of-experiments=" + c.config.tuning().evaluations(),
                 "--solver.ignore-initial-millis=" + c.config.tuning().ignoreInitialMillis(), "--solver.interval-duration-millis=" + c.config.tuning().intervalDurationMillis(), "--solver.log-scale-area=" + c.config.tuning().logScaleArea(),
                 "--solver.parallel-executor=" + (workers > 1), "--solver.n-workers=" + workers, "--solver.progress-bar=false", "--solver.metrics=true", "--serializers.xlsx.enabled=true", "--serializers.xlsx.frequency=EXPERIMENT_END"));
-        if (t != null) args.addAll(3, List.of("-Dmork.execution.target=" + t.targetId, "-Dmork.execution.pool-revision=" + t.targetRevision, "-Dmork.execution.campaign=" + c.id, "-Dmork.execution.trial=" + t.number, "-Dmork.execution.tuning-seed=" + t.tuningSeed, "-Dmork.execution.artifact-sha256=" + artifactHash));
+        if (t != null) args.addAll(3, List.of("-Dmork.execution.assignment=" + t.activeAssignmentId, "-Dmork.execution.target=" + t.targetId, "-Dmork.execution.pool-revision=" + t.targetRevision, "-Dmork.execution.campaign=" + c.id, "-Dmork.execution.trial=" + t.number, "-Dmork.execution.tuning-seed=" + t.tuningSeed, "-Dmork.execution.artifact-sha256=" + artifactHash));
         if (t != null) { args.add("--autollm.child.baseline-components-file=" + executionRoot.resolve("baseline/components.json")); if (t.blacklist != null && !t.blacklist.isBlank()) args.add("--blacklist=" + t.blacklist); }
         boolean newFilter = t != null && t.blacklist != null && !t.blacklist.isBlank();
         boolean detailedTiming = false;

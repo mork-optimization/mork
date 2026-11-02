@@ -8,7 +8,7 @@ import java.util.Map;
 
 /** Versioned JSON checkpoint. Mutations are serialized by the campaign service/store. */
 public class AutoLlmCampaign {
-    public static final int SCHEMA_VERSION = 5;
+    public static final int SCHEMA_VERSION = 6;
     public enum CampaignStatus {
         DRAFT, RUNNING, WAITING_FOR_REMOTE, WAITING_FOR_TARGETS, CANCELLATION_PENDING,
         INTERRUPTED, NEEDS_ATTENTION, CANCELLED, SUCCEEDED, COMPLETED_WITH_FAILURES;
@@ -24,13 +24,13 @@ public class AutoLlmCampaign {
     public enum TargetStatus { REGISTERED, VALIDATED, QUALIFYING, READY, BUSY, DRAINING, NEEDS_ATTENTION, REMOVED }
     public enum TrialStatus {
         PENDING, WAITING_FOR_TARGET, LOCAL_PREPARATION, STARTING, WAITING_FOR_GENERATION, GENERATION, REPAIR, METADATA_RECONCILIATION,
-        PREPARATION, TUNING, WINNER_EXPORT, COMPARISON, WAITING_FOR_QUOTA, WAITING_FOR_REMOTE,
+        PREPARATION, TUNING, WINNER_EXPORT, COMPARISON, WAITING_FOR_QUOTA, WAITING_FOR_CAPACITY, WAITING_FOR_REMOTE,
         INTERRUPTED, BLOCKED, SUCCEEDED, FAILED;
         public boolean terminal() { return this == SUCCEEDED || this == FAILED; }
         public boolean recoverable() { return this == BLOCKED || this == INTERRUPTED; }
         public boolean inProgress() { return this != PENDING && !terminal(); }
     }
-    public enum AttemptStatus { RUNNING, SUCCEEDED, FAILED, INTERRUPTED, QUOTA_LIMIT }
+    public enum AttemptStatus { RUNNING, SUCCEEDED, FAILED, INTERRUPTED, QUOTA_LIMIT, CAPACITY_LIMIT }
     public enum AttemptStage {
         GENERATION, REPAIR, LOCAL_PREPARATION, PREPARATION, TUNING, WINNER_EXPORT, COMPARISON;
         public boolean generation() { return this == GENERATION || this == REPAIR; }
@@ -143,8 +143,26 @@ public class AutoLlmCampaign {
     }
     public enum Stage { GENERATION, LOCAL_PREPARATION, PREPARATION, TUNING, WINNER_EXPORT, COMPARISON, COMPLETE }
     public record StageOutput(String directory, String artifact) {}
+    public static class Assignment {
+        public String id, targetId, directory;
+        public long poolRevision;
+        public AutoLlmConfig config;
+        public WorkloadProtocol.Host host;
+        public boolean pinned, released;
+        public Assignment copy() {
+            var a = new Assignment(); a.id = id; a.targetId = targetId; a.directory = directory;
+            a.poolRevision = poolRevision; a.config = config; a.host = host; a.pinned = pinned; a.released = released; return a;
+        }
+    }
     public static class Trial {
         public int number;
+        public String activeAssignmentId;
+        public List<Assignment> assignments = new ArrayList<>();
+        public Assignment assignment() {
+            for (var a : assignments) if (a.id.equals(activeAssignmentId)) return a;
+            return null;
+        }
+        public String executionDirectory() { var a = assignment(); return a == null ? directory : a.directory; }
         public String targetId;
         public String directory;
         public long targetRevision;
@@ -162,6 +180,7 @@ public class AutoLlmCampaign {
         public Map<Stage, StageOutput> outputs = new java.util.EnumMap<>(Stage.class);
         public boolean resumeTurn;
         public String quotaRetryAt;
+        public CodexCapacityUtil.Wait capacityWait;
         public boolean repairPending;
         public int repairTurns;
         public Object winner;
@@ -180,11 +199,14 @@ public class AutoLlmCampaign {
 
         public void queueForResume() {
             if (status.terminal()) throw new IllegalStateException("Completed trials cannot be resumed");
+            if (problem != null && "CODEX_CAPACITY_EXHAUSTED".equals(problem.code())) capacityWait = null;
             status = TrialStatus.PENDING; infrastructureRetries = 0;
         }
         public Trial copy() {
             var result = new Trial();
             result.number = this.number;
+            result.activeAssignmentId = activeAssignmentId;
+            for (var a : assignments) result.assignments.add(a.copy());
             result.targetId = this.targetId;
             result.directory = this.directory;
             result.targetRevision = this.targetRevision;
@@ -202,6 +224,7 @@ public class AutoLlmCampaign {
             result.outputs.putAll(outputs);
             result.resumeTurn = this.resumeTurn;
             result.quotaRetryAt = this.quotaRetryAt;
+            result.capacityWait = this.capacityWait;
             result.repairPending = this.repairPending;
             result.repairTurns = this.repairTurns;
             result.winner = this.winner;
@@ -212,6 +235,7 @@ public class AutoLlmCampaign {
     }
     public static class Attempt {
         public int number;
+        public String assignmentId;
         public AttemptStage stage;
         public String directory;
         public AttemptStatus status = AttemptStatus.RUNNING;
@@ -225,6 +249,7 @@ public class AutoLlmCampaign {
         public Attempt copy() {
             var result = new Attempt();
             result.number = this.number;
+            result.assignmentId = assignmentId;
             result.stage = this.stage;
             result.directory = this.directory;
             result.status = this.status;

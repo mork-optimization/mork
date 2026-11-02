@@ -85,7 +85,7 @@ def capabilities(base, workspace=None, jar=None, cwd=None):
 
 
 def check_capabilities(info, workspace=None, jar=None, cwd=None):
-    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 5 or info.get("checkpointVersion") != 5 or info.get("runnerProtocol") != 5 or not FEATURES.issubset(info.get("features", [])):
+    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 6 or info.get("checkpointVersion") != 6 or info.get("runnerProtocol") != 6 or not FEATURES.issubset(info.get("features", [])):
         raise RuntimeError("Backend lacks required AutoLLM capabilities; use the matching rebuilt executable")
     if workspace and Path(info["workspace"]).resolve() != Path(workspace).resolve():
         raise RuntimeError("Backend workspace does not match")
@@ -383,6 +383,8 @@ def watch_line(snapshot):
                                 f" edits={generation.get('edits', 0)} messages={generation.get('messages', 0)}"
                                 f" lastActivity={generation.get('lastActivityAt')}")
             description += f" repairs={progress.get('repairTurns', 0)} infraRetries={progress.get('infrastructureRetries', 0)}"
+            if progress.get("capacityWait"):
+                description += f" capacityRetryAt={progress['capacityWait']['nextRetryAt']} deadline={progress['capacityWait']['deadline']}"
             if progress.get("quotaRetryAt"):
                 description += f" quotaRetryAt={progress['quotaRetryAt']}"
             remote = progress.get("remote") or {}
@@ -521,6 +523,9 @@ def status_table(value):
         problem = progress.get("problem") or trial.get("problem")
         if problem:
             lines.append(f"Trial {number}: {problem.get('category')}/{problem.get('code')}: {str(problem.get('message', ''))[:1000]}")
+        if trial.get("capacityWait"):
+            wait = trial["capacityWait"]
+            lines.append(f"Trial {number}: model capacity retry {wait['retries']} at {wait['nextRetryAt']}; deadline {wait['deadline']}")
         if trial.get("quotaRetryAt"):
             lines.append(f"Trial {number}: quota retry after {trial['quotaRetryAt']}")
     for key, error in value.get("progressErrors", {}).items():
@@ -724,6 +729,14 @@ def backend_status(args):
 
 def operator(args, base):
     root = "/campaigns/" + quote(args.campaign, safe="")
+    if args.command == "source":
+        return request(base, root + f"/trials/{args.trial}/source/restore", {"output": str(Path(args.output).resolve())}, timeout=args.timeout)
+    if args.command == "artifact":
+        return request(base, root + f"/trials/{args.trial}/artifact/rebuild", {"output": str(Path(args.output).resolve())}, timeout=args.timeout)
+    if args.command == "storage":
+        timeout = args.timeout if args.timeout is not None else 3600 if args.maintain else 120
+        if args.maintain: return request(base, root + "/storage/maintain", {}, timeout=timeout)
+        return request(base, root + "/storage", timeout=timeout)
     if args.command == "remote":
         deadline = time.monotonic() + args.timeout
         def inspect(number):
@@ -795,6 +808,23 @@ def main(argv=None):
     state.add_argument("--screening")
     state.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
     state.add_argument("--timeout", type=positive_seconds, default=10, help="Read deadline in seconds; unavailable sections remain explicitly unknown")
+    storage = commands.add_parser("storage", help="Read campaign storage; use --maintain explicitly to retry completed-campaign cleanup")
+    storage.add_argument("--campaign", required=True)
+    storage.add_argument("--maintain", action="store_true", help="Retry verified storage maintenance for a completed campaign")
+    storage.add_argument("--timeout", type=positive_seconds, help="Seconds (default: 120 for inspection, 3600 for maintenance)")
+    source = commands.add_parser("source", help="Restore verified commit-plus-patch trial sources")
+    source_actions = source.add_subparsers(dest="action", required=True)
+    restore = source_actions.add_parser("restore")
+    restore.add_argument("--campaign", required=True)
+    restore.add_argument("--trial", required=True, type=bounded_integer(1, 2**31 - 1))
+    restore.add_argument("--output", required=True, help="New directory outside the controller workspace")
+    restore.add_argument("--timeout", type=positive_seconds, default=3600)
+    artifact = commands.add_parser("artifact", help="Rebuild and verify a completed trial executable from its saved sources")
+    rebuild = artifact.add_subparsers(dest="action", required=True).add_parser("rebuild")
+    rebuild.add_argument("--campaign", required=True)
+    rebuild.add_argument("--trial", required=True, type=bounded_integer(1, 2**31 - 1))
+    rebuild.add_argument("--output", required=True, help="New directory outside the controller workspace")
+    rebuild.add_argument("--timeout", type=positive_seconds, default=3600)
     tail = commands.add_parser("logs")
     owner = tail.add_mutually_exclusive_group(required=True)
     owner.add_argument("--campaign")
@@ -865,9 +895,13 @@ def main(argv=None):
         base = base_url(args)
         capabilities(base, args.workspace)
         result = {"config": configuration, "status": status, "logs": logs, "diagnose": diagnose,
-                  "campaign": lifecycle, "screening": lifecycle, "watch": watch, "target": target, "trial": trial, "remote": operator, "recover": operator, "compare": operator}[args.command](args, base)
+                  "campaign": lifecycle, "screening": lifecycle, "watch": watch, "target": target, "trial": trial, "remote": operator, "recover": operator, "compare": operator, "storage": operator, "source": operator, "artifact": operator}[args.command](args, base)
     if result is not None:
-        if not args.json and args.command not in ("status", "compare") and getattr(args, "action", "") != "get":
+        if args.command == "campaign" and getattr(args, "action", "") == "proposal" and not args.json:
+            storage_line = result.get("storage", {}).get("approvalLine")
+            if storage_line:
+                print(storage_line, file=sys.stderr)
+        if not args.json and args.command not in ("status", "compare", "storage", "source", "artifact") and getattr(args, "action", "") != "get":
             result = mutation_receipt(result, args.command + " " + str(getattr(args, "action", "")))
         print(status_table(result) if args.command == "status" and not args.json else json.dumps(result, indent=2, ensure_ascii=False))
     return 2 if args.command == "campaign" and args.action == "validate" and not result["valid"] else 0

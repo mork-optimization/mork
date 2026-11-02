@@ -15,6 +15,8 @@ Use `backend status` to distinguish the saved address from live health; `backend
 
 Screen the original pool using Mork's warmed-worker protocol. Keep inconclusive inputs; testing includes training. Screening evidence can feed a campaign draft without separate selection approval. Use proposed training/testing indexes and preserve provenance; never substitute the raw pool for a missing index.
 
+Require a successful pristine build of the selected committed baseline before screening. Put baseline corrections on a reviewable project branch and select its commit; never rely on cached build output or fixes made only in a disposable campaign checkout.
+
 Validate the configuration, create the draft, and run its baseline check. Preserve SOTA and all supplied seeds when pruning. Review `campaign proposal`: exact testing/training membership, trivial exclusions with reasons, selected servers/readiness and complete resolved settings. Present this concrete proposal to the user and obtain explicit campaign approval before launch, even for a broad “improve SOTA” request. Edit preferences before approval; select a healthy subset explicitly. Approve the reviewed digest and launch that revision. Changes require a revised review; unchanged resume/reconnect retains authorization.
 
 Include one line in the campaign approval showing estimated additional peak storage and available space on the controller and each worker, with a warning if the campaign may not fit.

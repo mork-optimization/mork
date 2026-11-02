@@ -35,11 +35,21 @@ public class CodexTaskRunner {
             for (String field : List.of("inventory", "metaheuristics", "components", "tests", "limitations")) properties.put(field, Map.of("type", "array", "items", Map.of("type", "string")));
             properties.put("blacklist", Map.of("type", List.of("string", "null")));
             AutoLlmFileUtil.write(output.resolve("schema.json"), Map.of("type", "object", "properties", properties, "required", properties.keySet(), "additionalProperties", false));
+            var previousSelection = CodexEvidenceUtil.selection(codexHome, checkout, threadId);
+            String requestedModel = config.codex().model();
+            String launchModel = requestedModel == null || requestedModel.isBlank() ? previousSelection.model() : requestedModel;
+            var selection = new LinkedHashMap<String,Object>();
+            selection.put("requestedModel", requestedModel); selection.put("launchModel", launchModel);
+            selection.put("launchProvider", previousSelection.provider());
+            selection.put("resolvedModel", null); selection.put("resolvedProvider", null);
+            selection.put("observation", "UNAVAILABLE");
+            AutoLlmFileUtil.write(output.resolve("model-selection.json"), selection);
             var args = new ArrayList<String>(List.of(config.codex().executable(), "exec"));
             if (threadId != null) { args.add("resume"); args.add(threadId); }
             else { args.add("--sandbox"); args.add("workspace-write"); }
             args.addAll(List.of("--json", "--output-schema", output.resolve("schema.json").toString(), "--output-last-message", output.resolve("manifest.json").toString()));
-            if (config.codex().model() != null && !config.codex().model().isBlank()) args.addAll(List.of("--model", config.codex().model()));
+            if (launchModel != null && !launchModel.isBlank()) args.addAll(List.of("--model", launchModel));
+            if (previousSelection.provider() != null) args.addAll(List.of("-c", "model_provider=" + AutoLlmFileUtil.JSON.writeValueAsString(previousSelection.provider())));
             if (config.codex().reasoningEffort() != null && !config.codex().reasoningEffort().isBlank()) args.addAll(List.of("-c", "model_reasoning_effort=\"" + config.codex().reasoningEffort() + "\""));
             args.add(prompt);
             CodexEvidenceUtil.begin(codexHome, checkout, output, threadId);
@@ -52,7 +62,15 @@ public class CodexTaskRunner {
                 AutoLlmFileUtil.write(output.resolve("process-result.json"), result);
             } catch (RuntimeException e) { processFailure = e; throw e; }
             finally {
-                try { archive(checkout, output, threadId); }
+                try {
+                    var evidence = archive(checkout, output, threadId);
+                    for (var conversation : evidence.conversations()) if (conversation.threadId().equals(evidence.threadId())) {
+                        var observed = CodexEvidenceUtil.selection(AutoLlmFileUtil.inside(output, conversation.path()));
+                        selection.put("resolvedModel", observed.model()); selection.put("resolvedProvider", observed.provider());
+                        selection.put("observation", observed.model() != null && observed.provider() != null ? "COMPLETE" : "PARTIAL");
+                    }
+                    AutoLlmFileUtil.write(output.resolve("model-selection.json"), selection);
+                }
                 catch (CodexEvidenceUtil.ArchiveException e) { if (processFailure != null) e.addSuppressed(processFailure); throw e; }
             }
             return completedResult(output, threadId, result, startedAt);
@@ -79,6 +97,8 @@ public class CodexTaskRunner {
             if (result.exitCode() != 0 || !events.completed() || actualThread == null || !Files.isRegularFile(output.resolve("manifest.json"))) {
                 var quota = CodexQuotaUtil.detect(output, startedAt, java.time.Instant.now(), java.time.ZoneId.systemDefault());
                 if (quota != null) throw quota;
+                var capacity = CodexCapacityUtil.detect(output);
+                if (capacity != null) throw capacity;
                 throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE, "CODEX_FAILED", "Codex task failed; inspect generation logs", output);
             }
             var manifest = AutoLlmFileUtil.read(output.resolve("manifest.json"), Manifest.class);

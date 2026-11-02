@@ -144,6 +144,8 @@ public final class AutoLlmExecutionService {
                 }
             }
             var transport = new SshTransport(config, root.resolve(".transport"));
+            var stagedCommand = new ArrayList<>(command);
+            Path campaign = CampaignAssetStore.campaign(root);
             var files = new TreeMap<String,Path>(); var reset = new ArrayList<String>();
             if (!Files.exists(output.resolve("remote-job.json"))) {
                 for (String directory : List.of("control", "data")) WorkloadArchiveUtil.addTree(files, root, root.resolve(directory), false);
@@ -156,18 +158,27 @@ public final class AutoLlmExecutionService {
                     files.put(relative, Path.of(IOUtil.containerPath(input.getKey())));
                 }
                 // Every stage receives only its declared JAR/winner/elites inputs, not conversations or unrelated local files.
-                for (String argument : command) {
+                for (int i = 0; i < command.size(); i++) {
+                    String argument = command.get(i);
                     int equals = argument.indexOf('='); String value = equals < 0 ? argument : argument.substring(equals + 1);
-                    if (value.startsWith(root + "/") && Files.isRegularFile(Path.of(value))) files.put(root.relativize(Path.of(value)).toString(), Path.of(value));
+                    Path path;
+                    try { path = Path.of(value); } catch (InvalidPathException ignored) { continue; }
+                    if (!path.isAbsolute() || !Files.isRegularFile(path)) continue;
+                    path = path.normalize();
+                    if (path.startsWith(root)) files.put(root.relativize(path).toString().replace('\\', '/'), path);
+                    else if (campaign != null && path.startsWith(campaign.resolve(".store/artifacts"))) {
+                        files.put("frozen/project.jar", path);
+                        stagedCommand.set(i, (equals < 0 ? "" : argument.substring(0, equals + 1)) + root.resolve("frozen/project.jar"));
+                    }
                 }
                 if (source != null) {
-                    WorkloadArchiveUtil.addTree(files, root, source, true); reset.add(root.relativize(source).toString());
+                    WorkloadArchiveUtil.addTree(files, root, source, true); reset.add(root.relativize(source).toString().replace('\\', '/'));
                     bundleSources(root, source, files);
                 }
                 materialize(config, root, files);
             }
-            var outputs = new ArrayList<String>(); for (Path path : collect) outputs.add(root.relativize(path).toString());
-            return new SshWorkloadExecutor(config, root, transport, observer).run(new AutoLlmWorkloadExecutor.Workload(command, cwd, output, files, outputs, reset,
+            var outputs = new ArrayList<String>(); for (Path path : collect) outputs.add(root.relativize(path).toString().replace('\\', '/'));
+            return new SshWorkloadExecutor(config, root, transport, observer).run(new AutoLlmWorkloadExecutor.Workload(stagedCommand, cwd, output, files, outputs, reset,
                     timeout, planned, config.execution().watchdogGraceMillis(), watch, startup), cancelled);
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
@@ -177,20 +188,29 @@ public final class AutoLlmExecutionService {
             for (Path path : paths.toList()) if (!path.equals(source) && Files.exists(path.resolve(".git")) && !path.toString().contains("/.git/")) repositories.add(path);
         }
         for (Path repository : repositories) {
-            String relative = root.relativize(repository).toString();
+            String relative = root.relativize(repository).toString().replace('\\', '/');
             String key = AutoLlmFileUtil.hash(new ByteArrayInputStream(relative.getBytes(java.nio.charset.StandardCharsets.UTF_8)));
             Path metadata = root.resolve(".transfer/head-" + key);
             var head = processes.run(List.of("git", "rev-parse", "HEAD"), repository, metadata, 30000, 0, 1000, () -> false, false, 0);
             if (head.exitCode() != 0) throw new IllegalStateException("Cannot identify source commit: " + repository);
             String commit = Files.readString(metadata.resolve("stdout.log")).strip();
             if (!commit.matches("[a-f0-9]{40,64}")) throw new IllegalStateException("Invalid source commit identity");
-            Path bundle = root.resolve(".source-bundles/" + commit + ".bundle"); Files.createDirectories(bundle.getParent());
+            String bundlePath = ".source-bundles/" + commit + ".bundle";
+            Path campaign = CampaignAssetStore.campaign(root);
+            Path bundle;
+            if (campaign != null) bundle = GitSourceStore.bundle(campaign.resolve(".store/git"), repository, commit, metadata.resolve("shared"), (args, cwd, logs) -> {
+                if (processes.run(args, cwd, logs, 300000, 0, 1000, () -> false, false, 0).exitCode() != 0) throw new IllegalStateException("Cannot snapshot source: " + repository);
+            });
+            else {
+                bundle = root.resolve(bundlePath); Files.createDirectories(bundle.getParent());
             if (!Files.exists(bundle)) {
                 var result = processes.run(List.of("git", "bundle", "create", bundle.toString(), "HEAD"), repository, root.resolve(".transfer/bundle-" + key), 300000, 0, 1000, () -> false, false, 0);
                 if (result.exitCode() != 0) throw new IllegalStateException("Cannot bundle committed source: " + repository);
             }
-            Path descriptor = bundle.resolveSibling(key + ".json"); AutoLlmFileUtil.write(descriptor, Map.of("source", relative, "bundle", root.relativize(bundle).toString()));
-            files.put(root.relativize(bundle).toString(), bundle); files.put(root.relativize(descriptor).toString(), descriptor);
+            }
+            Path descriptor = root.resolve(".source-bundles/" + key + ".json");
+            AutoLlmFileUtil.write(descriptor, Map.of("source", relative, "bundle", bundlePath, "ref", campaign == null ? "HEAD" : "refs/heads/baseline"));
+            files.put(bundlePath, bundle); files.put(root.relativize(descriptor).toString(), descriptor);
         }
     }
     private static void materialize(AutoLlmConfig config, Path root, Map<String,Path> files) throws IOException {

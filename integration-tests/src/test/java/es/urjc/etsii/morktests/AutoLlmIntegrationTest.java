@@ -39,7 +39,8 @@ class AutoLlmIntegrationTest {
         parentBuilder.environment().put("CODEX_HOME", temp.resolve("codex-home").toString());
         var parent = parentBuilder.start();
         try {
-            long deadline = System.currentTimeMillis() + (remote ? 420_000 : 150_000);
+            // Includes screening, baseline replay, trial measurements and clean rebuild verification.
+            long deadline = System.currentTimeMillis() + (remote ? 720_000 : 420_000);
             while (!Files.exists(parentExecution.resolve("readiness.json")) && parent.isAlive() && System.currentTimeMillis() < deadline) Thread.sleep(100);
             assertTrue(Files.exists(parentExecution.resolve("readiness.json")), () -> read(temp.resolve("parent.log")));
             int port = AutoLlmFileUtil.JSON.readTree(Files.readString(parentExecution.resolve("readiness.json"))).path("port").intValue();
@@ -56,7 +57,7 @@ class AutoLlmIntegrationTest {
                         new AutoLlmConfig.Execution(32, 5000L, 30_000L, 30_000L, 30_000L, 30_000L, 30_000L, 180_000L, "256m", AutoLlmConfig.Target.SSH, pool));
             }
             var capabilities = get(client, base + "/capabilities");
-            assertEquals(5, capabilities.path("apiVersion").asInt()); assertEquals(5, capabilities.path("checkpointVersion").asInt());
+            assertEquals(6, capabilities.path("apiVersion").asInt()); assertEquals(6, capabilities.path("checkpointVersion").asInt());
             assertTrue(Files.exists(workspace.resolve("session.json")));
             var probe = request(client, base + "/targets/probe", AutoLlmFileUtil.JSON.writeValueAsString(settings));
             assertEquals("RUNNING", probe.path("status").asString()); String probeId = probe.path("id").asString();
@@ -98,6 +99,9 @@ class AutoLlmIntegrationTest {
             var summary = get(client, base + "/campaigns/" + id + "/summary").path("targets").path(targetId); assertTrue(summary.path("comparisonLimitsResolved").asBoolean());
             assertEquals(50, summary.path("comparisonLimitMillis").get(0).asInt());
             var proposal = get(client, base + "/campaigns/" + id + "/proposal");
+            assertEquals("LIVE_FILESTORE", proposal.path("storage").path("controller").path("capacity").path("source").asString());
+            assertTrue(proposal.path("storage").path("approvalLine").asString().contains("additional peak estimate"));
+            if (remote) assertEquals("LIVE_REMOTE_FILESTORE", proposal.path("storage").path("workers").path(targetId).path("capacity").path("source").asString());
             request(client, base + "/campaigns/" + id + "/approve", AutoLlmFileUtil.JSON.writeValueAsString(Map.of("digest", proposal.path("digest").asString())));
             request(client, base + "/campaigns/" + id + "/start", "{}");
             AutoLlmCampaign campaign;
@@ -115,13 +119,41 @@ class AutoLlmIntegrationTest {
             assertEquals("SUCCEEDED", campaign.status.name(), campaign.failure + "\n" + campaign.trials.getFirst().failure + "\n" + read(temp.resolve("parent.log")));
             var trial = campaign.trials.getFirst(); targetId = trial.targetId; Path root = workspace.resolve(id);
             assertEquals("SUCCEEDED", trial.status.name(), trial.failure);
-            assertTrue(Files.exists(root.resolve(trial.artifact())));
+            Path trialRoot = root.resolve(trial.executionDirectory());
+            var retention = AutoLlmFileUtil.read(trialRoot.resolve("storage/artifact-retention.json"), Map.class);
+            assertEquals("RELEASED", retention.get("status"), retention.toString());
+            var checkoutRetention = AutoLlmFileUtil.read(trialRoot.resolve("storage/checkout/retention.json"), Map.class);
+            assertEquals("RELEASED", checkoutRetention.get("status"), checkoutRetention.toString());
+            assertFalse(Files.exists(trialRoot.resolve("source")));
+            if (remote) {
+                var remoteRetention = AutoLlmFileUtil.read(trialRoot.resolve("storage/remote-retention.json"), Map.class);
+                assertEquals("RELEASED", remoteRetention.get("status"), remoteRetention.toString());
+                for (Path descriptor : AutoLlmFileUtil.ownedFiles(trialRoot, "remote-job.json")) {
+                    var job = AutoLlmFileUtil.read(descriptor, es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol.Job.class);
+                    assertTrue(job.managedStorage());
+                    assertTrue(Files.exists(descriptor.resolveSibling("remote-acknowledged.json")));
+                    Path remoteJob = Path.of(job.root()).resolve(".jobs/" + job.id());
+                    assertFalse(Files.exists(remoteJob.resolve("result.zip")));
+                    assertFalse(Files.exists(remoteJob.resolve("input.zip")));
+                    assertTrue(Files.exists(remoteJob.resolve("job.json")));
+                }
+            }
+            assertFalse(Files.exists(root.resolve(trial.artifact())));
             Path targetRoot = root.resolve(campaign.targets.get(trial.targetId).directory);
             String probeReference = AutoLlmFileUtil.JSON.readTree(read(root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.PREPARATION)).resolve("probe/execution/probe-instance.json"))).path("instance").asString();
             assertEquals(reference, AutoLlmPoolUtil.localInstances(campaign, root, trial).apply(probeReference));
-            try (var zip = new java.util.zip.ZipFile(root.resolve(trial.directory).resolve("frozen/source.zip").toFile())) {
-                assertNotNull(zip.getEntry("src/main/java/es/urjc/etsii/grafo/autoconfigtests/components/FasterInvertedConstructiveNew.java"));
-            }
+            Path restored = temp.resolve("restored-trial");
+            var restoredSource = request(client, base + "/campaigns/" + id + "/trials/" + trial.number + "/source/restore",
+                    AutoLlmFileUtil.JSON.writeValueAsString(Map.of("output", restored.toString())));
+            assertTrue(restoredSource.path("verified").asBoolean());
+            assertTrue(Files.isRegularFile(restored.resolve("src/main/java/es/urjc/etsii/grafo/autoconfigtests/components/FasterInvertedConstructiveNew.java")));
+            Path rebuilt = temp.resolve("rebuilt-trial");
+            var rebuiltArtifact = request(client, base + "/campaigns/" + id + "/trials/" + trial.number + "/artifact/rebuild",
+                    AutoLlmFileUtil.JSON.writeValueAsString(Map.of("output", rebuilt.toString())));
+            assertTrue(rebuiltArtifact.path("verification").path("verified").asBoolean(), rebuiltArtifact.toString());
+            assertTrue(Files.isRegularFile(rebuilt.resolve("project.jar")));
+            var storage = request(client, base + "/campaigns/" + id + "/storage/maintain", "{}");
+            assertTrue(storage.path("availableBytes").asLong() > 0);
             assertTrue(Files.exists(root.resolve("reports/targets/" + targetId + "/campaign.xlsx")), () -> read(root.resolve("campaign-events.jsonl")));
             int measured = 0;
             for (var event : AutoLlmFileUtil.events(root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.COMPARISON)).resolve("execution/events.jsonl"))) if ("evaluation-result".equals(event.get("kind")) && Boolean.TRUE.equals(event.get("measured"))) { measured++; assertEquals("SUCCEEDED", event.get("state")); }
@@ -134,7 +166,7 @@ class AutoLlmIntegrationTest {
             System.out.println("AUTOLLM_OBSERVATION_BYTES remote=" + remote + " compact=" + compact.toString().length() + " detailed=" + detailed.toString().length());
             assertTrue(read(root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.TUNING)).resolve("runner.R")).contains("if (\"false\" == \"true\")"));
             assertFalse(Files.exists(root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.TUNING)).resolve("log-ablation.Rdata")));
-            assertTrue(read(root.resolve(trial.directory).resolve("frozen/search-space.json")).contains("FasterInvertedConstructiveNew"));
+            assertTrue(read(trialRoot.resolve("frozen/search-space.json")).contains("FasterInvertedConstructiveNew"));
             assertEquals(50, AutoLlmFileUtil.JSON.readTree(read(root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.COMPARISON)).resolve("execution/time-limits.json"))).properties().iterator().next().getValue().longValue());
             assertFalse(Files.exists(repo.resolve("src/main/java/es/urjc/etsii/grafo/autoconfigtests/components/FasterInvertedConstructiveNew.java")));
             request(client, base + "/campaigns/" + id + "/report", "{}"); var regenerated = get(client, base + "/campaigns/" + id); assertTrue(regenerated.path("reportFailure").isNull());
@@ -158,7 +190,7 @@ class AutoLlmIntegrationTest {
                     assertTrue(Files.exists(root.resolve("reports/targets/" + completed.targetId + "/campaign.xlsx")));
                     assertTrue(completed.outputDirectory(AutoLlmCampaign.Stage.COMPARISON).startsWith(completed.directory + "/"));
                     var descriptor = AutoLlmFileUtil.JSON.readTree(read(root.resolve(completed.outputDirectory(AutoLlmCampaign.Stage.COMPARISON)).resolve("remote-job.json")));
-                    assertTrue(descriptor.path("root").asString().endsWith("/campaigns/" + id + "/targets/" + completed.targetId + "/trials/" + completed.number));
+                    assertTrue(descriptor.path("root").asString().endsWith("/campaigns/" + id + "/targets/" + completed.targetId + "/trials/" + completed.number + "/assignments/" + completed.assignment().id));
                 }
                 var generationIntervals = new ArrayList<AutoLlmCampaign.Attempt>();
                 for (var completed : campaign.trials) generationIntervals.add(completed.attempts.getFirst());
@@ -181,6 +213,6 @@ class AutoLlmIntegrationTest {
         var response = client.send(HttpRequest.newBuilder(URI.create(url)).header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(json)).build(), HttpResponse.BodyHandlers.ofString());
         assertEquals(200, response.statusCode(), response.body()); return AutoLlmFileUtil.JSON.readTree(response.body());
     }
-    private static String read(Path file) { try { return Files.readString(file); } catch (Exception e) { return file + ": " + e; } }
+    private static String read(Path file) { try { return AutoLlmEvidenceFiles.readString(file); } catch (Exception e) { return file + ": " + e; } }
     private void git(Path repo, String... args) throws Exception { var command = new ArrayList<>(List.of("git")); command.addAll(List.of(args)); var process = new ProcessBuilder(command).directory(repo.toFile()).redirectErrorStream(true).start(); String output = new String(process.getInputStream().readAllBytes()); assertEquals(0, process.waitFor(), output); }
 }

@@ -9,7 +9,6 @@ import es.urjc.etsii.grafo.util.StatisticsUtil;
 import es.urjc.etsii.grafo.algorithms.FMode;
 import java.io.*;
 import java.nio.file.*;
-import java.nio.file.attribute.BasicFileAttributes;
 import java.util.*;
 import tools.jackson.core.type.TypeReference;
 
@@ -26,16 +25,15 @@ public final class AutoLlmComparisonUtil {
         private final LinkedHashMap<Path,Progress> entries = new LinkedHashMap<>(8, .75f, true);
 
         private Progress refresh(Path file) throws IOException {
-            var attributes = Files.readAttributes(file, BasicFileAttributes.class);
+            var attributes = AutoLlmEvidenceFiles.attributes(file);
             var progress = entries.get(file);
             if (progress == null || progress.size > attributes.size() || !Objects.equals(progress.fileKey, attributes.fileKey())
-                    || (progress.size == attributes.size() && !attributes.lastModifiedTime().equals(progress.modified))) {
+                    || (progress.size == attributes.size() && !attributes.modified().equals(progress.modified))) {
                 progress = new Progress(attributes.fileKey()); entries.put(file, progress);
                 if (entries.size() > 8) entries.remove(entries.keySet().iterator().next());
             }
             // Snapshot the length: an actively growing journal must not keep this request running forever.
-            try (var input = new BufferedInputStream(Files.newInputStream(file))) {
-                input.skipNBytes(progress.cursor);
+            try (var input = new BufferedInputStream(AutoLlmEvidenceFiles.open(file, progress.cursor))) {
                 var row = new ByteArrayOutputStream();
                 long start = progress.cursor;
                 for (long offset = start; offset < attributes.size(); offset++) {
@@ -56,7 +54,7 @@ public final class AutoLlmComparisonUtil {
                 }
                 // An incomplete trailing row stays uncommitted until its newline arrives.
             }
-            progress.size = attributes.size(); progress.modified = attributes.lastModifiedTime();
+            progress.size = attributes.size(); progress.modified = attributes.modified();
             return progress;
         }
 
@@ -107,10 +105,9 @@ public final class AutoLlmComparisonUtil {
                 var progress = refresh(file);
                 var instance = progress.instances.get(instanceId);
                 var rows = new ArrayList<Object>();
-                if (instance != null) try (var input = new RandomAccessFile(file.toFile(), "r")) {
+                if (instance != null) {
                     for (var location : instance.curves) {
-                        byte[] bytes = new byte[location.length()];
-                        input.seek(location.offset()); input.readFully(bytes);
+                        byte[] bytes = AutoLlmEvidenceFiles.range(file, location.offset(), location.length());
                         Map<String,Object> event = AutoLlmFileUtil.JSON.readValue(bytes, new TypeReference<>() {});
                         rows.add(sample(event));
                     }

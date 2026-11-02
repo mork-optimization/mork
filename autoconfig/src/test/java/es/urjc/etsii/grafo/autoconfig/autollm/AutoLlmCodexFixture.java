@@ -24,7 +24,11 @@ public class AutoLlmCodexFixture {
             AutoLlmFileUtil.append(session, Map.of("type", "token_usage_record", "payload", Map.of("response_id", UUID.randomUUID().toString(), "usage", Map.of("input_tokens", 10, "cached_input_tokens", 2, "cache_write_input_tokens", 0, "output_tokens", 10, "reasoning_output_tokens", 4, "total_tokens", 20))));
         }
         System.out.println("{\"type\":\"fixture.ready\"}");
-        var arguments = Arrays.asList(args);
+        var arguments = new ArrayList<>(Arrays.asList(args));
+        boolean capacityFixture = false;
+        for (int i = 0; i < arguments.size(); i++) if (arguments.get(i).startsWith("capacity-")) {
+            capacityFixture = true; arguments.set(i, arguments.get(i).replace("capacity-", "quota-"));
+        }
         Path quotaMarker = Path.of(".quota-emitted");
         boolean repeatedQuota = arguments.contains("quota-repeat-fixture") && Path.of("").toAbsolutePath().toString().contains("trials/001/");
         int quotaCount = repeatedQuota && Files.exists(quotaMarker) ? Integer.parseInt(Files.readString(quotaMarker).strip()) : 0;
@@ -39,7 +43,7 @@ public class AutoLlmCodexFixture {
                     Map.of("type", "event_msg", "payload", Map.of("type", "token_count", "rate_limits",
                             Map.of("limit_id", "codex", "primary", Map.of("used_percent", 100,
                                     "resets_at", java.time.Instant.now().plusSeconds(3600).getEpochSecond())))));
-            String message = "You've hit your usage limit.";
+            String message = capacityFixture ? "Selected model is at capacity." : "You've hit your usage limit.";
             System.out.println(AutoLlmFileUtil.JSON.writeValueAsString(Map.of("type", "error", "message", message)));
             System.out.println(AutoLlmFileUtil.JSON.writeValueAsString(Map.of("type", "turn.failed", "error", Map.of("message", message))));
             System.exit(1);

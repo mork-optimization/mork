@@ -36,7 +36,8 @@ public class AutoLlmReportService<S extends Solution<S,I>, I extends Instance> {
                 enriched.put("campaignId", campaign.id); enriched.put("trial", trial.number); enriched.put("tuningSeed", trial.tuningSeed); enriched.put("trialStatus", trial.status);
                 enriched.put("targetId", trial.targetId); enriched.put("poolRevision", trial.targetRevision);
                 var target = campaign.targets.get(trial.targetId);
-                enriched.put("executionHost", target.host);
+                var host = trial.assignment() == null ? target.host : trial.assignment().host;
+                enriched.put("assignmentId", trial.activeAssignmentId); enriched.put("executionHost", host);
                 writer.write(enriched); measuredRows[0]++;
                 if (!"SUCCEEDED".equals(row.get("state"))) return;
                 String name = "T%02d-%s".formatted(trial.number, row.get("algorithm"));
@@ -44,7 +45,7 @@ public class AutoLlmReportService<S extends Solution<S,I>, I extends Instance> {
                 var objectives = new LinkedHashMap<String, Double>();
                 for (var entry : AutoLlmFileUtil.objectMap(row.get("objectives")).entrySet()) if (entry.getValue() instanceof Number value) objectives.put(entry.getKey(), value.doubleValue());
                 var properties = AutoLlmFileUtil.objectMap(row.get("properties"));
-                properties.put("Execution target", trial.targetId); properties.put("Pool revision", trial.targetRevision); properties.put("Execution host", target.host == null ? "unknown" : target.host.identity().get("hostname"));
+                properties.put("Execution target", trial.targetId); properties.put("Pool revision", trial.targetRevision); properties.put("Execution host", host == null ? "unknown" : host.identity().get("hostname"));
                 properties.put("AutoLLM trial", trial.number); properties.put("Tuning seed", trial.tuningSeed); properties.put("Comparison seed", row.get("seed")); properties.put("Algorithm role", row.get("algorithm"));
                 grouped.computeIfAbsent(trial.targetId, _ -> new ArrayList<>()).add(new WorkUnitResult<>(UUID.fromString((String) row.get("id")), true, "autollm-campaign", localInstance, (String) row.get("instanceId"),
                         algorithm, (String) row.get("iteration"), null, objectives, properties, ((Number) row.get("executionTimeNanos")).longValue(), ((Number) row.get("timeToBestNanos")).longValue(), null));

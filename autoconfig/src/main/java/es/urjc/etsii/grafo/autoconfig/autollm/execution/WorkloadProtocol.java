@@ -6,11 +6,11 @@ import java.util.Map;
 
 /** Versioned, file-based protocol; workload arguments never pass through a shell. */
 public final class WorkloadProtocol {
-    public static final int VERSION = 5;
+    public static final int VERSION = 6;
     private WorkloadProtocol() {}
     public record Job(int version, String id, String root, String inputSha256, List<String> layers, List<String> command, String cwd, String output,
                       List<String> collect, List<String> reset, Map<String,String> environment, Map<String,String> expectedHost,
-                      long timeoutMillis, long plannedMillis, long graceMillis, boolean watchEvaluations, long startupMillis) {}
+                      long timeoutMillis, long plannedMillis, long graceMillis, boolean watchEvaluations, long startupMillis, boolean managedStorage) {}
     public enum JobStatus {
         NOT_FOUND, SUBMITTED, RUNNING, COLLECTING, SUCCEEDED, FAILED, CANCELLED, HOST_CHANGED, INTERRUPTED;
         public boolean inProgress() { return this == SUBMITTED || this == RUNNING || this == COLLECTING; }

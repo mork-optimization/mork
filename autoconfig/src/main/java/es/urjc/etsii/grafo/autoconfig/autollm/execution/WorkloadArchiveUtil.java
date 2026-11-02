@@ -51,7 +51,7 @@ public final class WorkloadArchiveUtil {
     }
 
     /** Content identity is checked before compression, so unchanged layers are prepared only once. */
-    public static String prepareLayer(Path cache, Map<String,Path> files) throws IOException {
+    public static synchronized String prepareLayer(Path cache, Map<String,Path> files) throws IOException {
         var manifest = new TreeMap<String,Entry>();
         for (var item : files.entrySet()) {
             Path path = item.getValue();
@@ -62,7 +62,10 @@ public final class WorkloadArchiveUtil {
         Path descriptor = cache.resolve(identity + ".json");
         if (Files.exists(descriptor)) {
             String hash = AutoLlmFileUtil.JSON.readTree(Files.readString(descriptor)).path("sha256").asString();
-            if (Files.isRegularFile(cache.resolve(hash + ".zip"))) return hash;
+            if (Files.isRegularFile(cache.resolve(hash + ".zip"))) {
+                if (!hash.equals(AutoLlmFileUtil.hash(cache.resolve(hash + ".zip")))) throw new IOException("Cached transfer layer changed");
+                return hash;
+            }
         }
         Path temporary = cache.resolve(identity + ".tmp");
         pack(temporary, files);
@@ -77,7 +80,7 @@ public final class WorkloadArchiveUtil {
     public static void installLayer(Path archive, Path root) throws IOException {
         String hash = archive.getFileName().toString().replace(".zip", "");
         Path installed = archive.resolveSibling(hash + ".installed.json");
-        if (Files.isRegularFile(installed)) return;
+        if (Files.isRegularFile(installed) && matches(root, verify(archive, root))) return;
         if (!hash.equals(AutoLlmFileUtil.hash(archive))) throw new IOException("Frozen input layer changed");
         unpack(archive, root);
         AutoLlmFileUtil.write(installed, Map.of("sha256", hash));
@@ -108,6 +111,15 @@ public final class WorkloadArchiveUtil {
     /** Verify every member without expanding the archive. */
     public static Map<String,Entry> verify(Path archive, Path root) throws IOException {
         try (var zip = new ZipFile(archive.toFile())) { return Map.copyOf(verifiedEntries(zip, root)); }
+    }
+    public static boolean matches(Path root, Map<String,Entry> entries) throws IOException {
+        for (var item : entries.entrySet()) {
+            Path path = WorkloadPathUtil.inside(root, item.getKey()); var expected = item.getValue();
+            if (expected.link() != null) {
+                if (!Files.isSymbolicLink(path) || !Files.readSymbolicLink(path).toString().equals(expected.link())) return false;
+            } else if (!Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) || !expected.sha256().equals(AutoLlmFileUtil.hash(path))) return false;
+        }
+        return true;
     }
 
     private static Map<String,Entry> verifiedEntries(ZipFile zip, Path root) throws IOException {

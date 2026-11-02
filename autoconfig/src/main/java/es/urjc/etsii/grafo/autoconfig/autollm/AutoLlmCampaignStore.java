@@ -113,11 +113,12 @@ public class AutoLlmCampaignStore {
         Path search = relativeDirectory == null ? base : AutoLlmFileUtil.inside(base, relativeDirectory);
         var artifacts = new ArrayList<Artifact>();
         if (!Files.isDirectory(search)) return artifacts;
-        try (var paths = Files.walk(search)) {
-            for (Path path : paths.toList()) {
+        try {
+            for (Path path : AutoLlmEvidenceFiles.files(search)) {
                 String name = base.relativize(path).toString().replace('\\', '/');
-                if (Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS) && downloadable(name)) {
-                    long size = Files.size(path), modified = Files.getLastModifiedTime(path).toMillis();
+                if (AutoLlmEvidenceFiles.exists(path) && downloadable(name)) {
+                    var attributes = AutoLlmEvidenceFiles.attributes(path);
+                    long size = attributes.size(), modified = attributes.modified().toMillis();
                     var cached = hashes.get(path);
                     if (includeHashes && (cached == null || cached.size != size || cached.modified != modified)) {
                         cached = new CachedHash(size, modified, AutoLlmFileUtil.hash(path)); hashes.put(path, cached);
@@ -130,15 +131,22 @@ public class AutoLlmCampaignStore {
         return artifacts;
     }
     private boolean downloadable(String name) {
-        return !name.matches("(?:.*/)?\\.(?:transport|transfer|source-bundles)/.*")
+        return !name.matches("(?:.*/)?\\.(?:transport|transfer|source-bundles|evidence)/.*")
                 && !AutoLlmFileUtil.excluded(name) && !name.endsWith("owner.json") && !name.endsWith("readiness.json") && !name.endsWith("scenario.txt") && !name.endsWith("runner.R") && !name.endsWith(".lock") && !name.endsWith(".tmp");
     }
     public Path artifact(String id, String relative) {
         Path path = AutoLlmFileUtil.inside(directory(id), relative);
-        if (!downloadable(relative) || !Files.isRegularFile(path, LinkOption.NOFOLLOW_LINKS)) throw new NoSuchElementException("Artifact unavailable");
-        try { if (!path.toRealPath().startsWith(directory(id).toRealPath())) throw new IllegalArgumentException("Artifact escapes campaign directory"); }
-        catch (IOException e) { throw new UncheckedIOException(e); }
-        return path;
+        if (!downloadable(relative) || !AutoLlmEvidenceFiles.exists(path)) throw new NoSuchElementException("Artifact unavailable");
+        for (Path physical : List.of(path, AutoLlmEvidenceFiles.archive(path))) {
+            try {
+                var attributes = Files.readAttributes(physical, java.nio.file.attribute.BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
+                if (!attributes.isRegularFile()) throw new NoSuchElementException("Artifact unavailable");
+                if (!physical.toRealPath().startsWith(directory(id).toRealPath())) throw new IllegalArgumentException("Artifact escapes campaign directory");
+                return path;
+            } catch (NoSuchFileException ignored) { /* Compaction can replace a loose file with its published archive. */ }
+            catch (IOException e) { throw new UncheckedIOException(e); }
+        }
+        throw new NoSuchElementException("Artifact unavailable");
     }
     public ExecutionLock lock() {
         try {

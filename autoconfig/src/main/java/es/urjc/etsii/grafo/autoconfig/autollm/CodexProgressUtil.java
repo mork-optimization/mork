@@ -25,7 +25,7 @@ public final class CodexProgressUtil {
     public static synchronized Progress refresh(Path output) {
         Path snapshot = output.resolve("codex-progress.json"), log = output.resolve("stdout.log");
         var progress = Files.exists(snapshot) ? AutoLlmFileUtil.read(snapshot, Progress.class) : new Progress();
-        if (!Files.isRegularFile(log)) return progress;
+        if (AutoLlmEvidenceFiles.archived(log) || !Files.isRegularFile(log)) return progress;
         boolean changed = false;
         try (var input = new RandomAccessFile(log.toFile(), "r")) {
             if (progress.cursor > input.length()) throw new IllegalStateException("Codex event stream was truncated");

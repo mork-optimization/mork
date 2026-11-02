@@ -1,7 +1,7 @@
 export type AutoLlmCampaignStatus = 'DRAFT' | 'RUNNING' | 'WAITING_FOR_REMOTE' | 'WAITING_FOR_TARGETS' | 'CANCELLATION_PENDING' | 'INTERRUPTED' | 'NEEDS_ATTENTION' | 'CANCELLED' | 'SUCCEEDED' | 'COMPLETED_WITH_FAILURES';
 export type AutoLlmTargetStatus = 'REGISTERED' | 'VALIDATED' | 'QUALIFYING' | 'READY' | 'BUSY' | 'DRAINING' | 'NEEDS_ATTENTION' | 'REMOVED';
-export type AutoLlmTrialStatus = 'PENDING' | 'WAITING_FOR_TARGET' | 'LOCAL_PREPARATION' | 'STARTING' | 'WAITING_FOR_GENERATION' | 'GENERATION' | 'REPAIR' | 'METADATA_RECONCILIATION' | 'PREPARATION' | 'TUNING' | 'WINNER_EXPORT' | 'COMPARISON' | 'WAITING_FOR_QUOTA' | 'WAITING_FOR_REMOTE' | 'INTERRUPTED' | 'BLOCKED' | 'SUCCEEDED' | 'FAILED';
-export type AutoLlmAttemptStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'INTERRUPTED' | 'QUOTA_LIMIT';
+export type AutoLlmTrialStatus = 'PENDING' | 'WAITING_FOR_TARGET' | 'LOCAL_PREPARATION' | 'STARTING' | 'WAITING_FOR_GENERATION' | 'GENERATION' | 'REPAIR' | 'METADATA_RECONCILIATION' | 'PREPARATION' | 'TUNING' | 'WINNER_EXPORT' | 'COMPARISON' | 'WAITING_FOR_QUOTA' | 'WAITING_FOR_CAPACITY' | 'WAITING_FOR_REMOTE' | 'INTERRUPTED' | 'BLOCKED' | 'SUCCEEDED' | 'FAILED';
+export type AutoLlmAttemptStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'INTERRUPTED' | 'QUOTA_LIMIT' | 'CAPACITY_LIMIT';
 export type AutoLlmAttemptStage = 'GENERATION' | 'REPAIR' | 'LOCAL_PREPARATION' | 'PREPARATION' | 'TUNING' | 'WINNER_EXPORT' | 'COMPARISON';
 export type AutoLlmPreparationStage = 'BUILD' | 'DEPENDENCIES' | 'METADATA' | 'PROBES' | 'PILOT';
 export type ScreeningStatus = 'DRAFT' | 'RUNNING' | 'WAITING_FOR_REMOTE' | 'CANCELLATION_PENDING' | 'READY_FOR_REVIEW' | 'NEEDS_ATTENTION' | 'INTERRUPTED' | 'CANCELLED';
@@ -44,6 +44,7 @@ export interface AutoLlmTrial {
   codexUsage?: CodexUsage | null;
   problem?: AutoLlmFailure | null; infrastructureRetries?: number;
   quotaRetryAt?: string | null;
+  capacityWait?: { firstFailureAt: string; deadline: string; nextRetryAt: string; retries: number; diagnostic: string } | null;
 }
 export interface AutoLlmCampaign {
   id: string; config: AutoLlmConfig; createdAt: string; status: AutoLlmCampaignStatus; failure: string | null;
@@ -67,9 +68,11 @@ export interface AutoLlmLogPreview { text: string; lineCount: number; sizeBytes:
 export interface AutoLlmFailure { category: string; code: string; message: string; evidence: string[]; retryable: boolean; recovery: string }
 export interface CodexProgress { state: string; threadId: string | null; lastActivityAt: string | null; turns: number; commandsStarted: number; commandsCompleted: number; edits: number; messages: number; usage: unknown }
 export interface AutoLlmProgress {
+  modelSelection?: { requestedModel: string | null; resolvedModel: string | null; resolvedProvider: string | null; observation: string };
   status: AutoLlmTrialStatus; attempt?: AutoLlmAttempt; substage?: AutoLlmPreparationStage | null; elapsedMillis?: number;
   problem?: AutoLlmFailure | null; repairTurns?: number; infrastructureRetries?: number;
   quotaRetryAt?: string | null;
+  capacityWait?: { firstFailureAt: string; deadline: string; nextRetryAt: string; retries: number; diagnostic: string } | null;
   generation?: CodexProgress; workload?: Record<string, unknown>; remote?: AutoLlmCampaign['remote'];
 }
 export interface AutoLlmActivity { timestamp: string; type: string; text: string }
