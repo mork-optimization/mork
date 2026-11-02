@@ -3,6 +3,8 @@ package es.urjc.etsii.grafo.autoconfig.autollm.execution;
 import es.urjc.etsii.grafo.autoconfig.autollm.*;
 import org.junit.jupiter.api.*;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.InetAddress;
@@ -130,12 +132,14 @@ class SshWorkloadTest {
         assertFalse(Files.exists(output.resolve("execution/readiness.json")));
         assertEquals("FAILED", AutoLlmFileUtil.JSON.readTree(Files.readString(output.resolve("execution/terminal.json"))).path("outcome").asString());
     }
-    @Test void reconnectsWithoutDuplicateSubmissionAndPreservesLiteralArguments() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"simulated connection loss after submit", "agent refused operation\nPermission denied (publickey).", "agent communication failed\nPermission denied (publickey)."})
+    void reconnectsWithoutDuplicateSubmissionAndPreservesLiteralArguments(String diagnostic) throws Exception {
         var submissions = new AtomicInteger(); var disconnected = new AtomicBoolean();
         SshTransport transport = new SshTransport(config, temp.resolve("transport")) {
             @Override public byte[] call(String action, String remote, String id, Object input) {
                 if (action.equals("submit")) submissions.incrementAndGet();
-                if (action.equals("poll") && disconnected.compareAndSet(false, true)) throw new ConnectionException("simulated connection loss after submit");
+                if (action.equals("poll") && disconnected.compareAndSet(false, true)) throw connectionFailure(diagnostic);
                 return super.call(action, remote, id, input);
             }
         };

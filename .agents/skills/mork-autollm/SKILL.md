@@ -17,7 +17,7 @@ Screen the original pool using Mork's warmed-worker protocol. Keep inconclusive 
 
 Validate the configuration, create the draft, and run its baseline check. Preserve SOTA and all supplied seeds when pruning. Review `campaign proposal`: exact testing/training membership, trivial exclusions with reasons, selected servers/readiness and complete resolved settings. Present this concrete proposal to the user and obtain explicit campaign approval before launch, even for a broad “improve SOTA” request. Edit preferences before approval; select a healthy subset explicitly. Approve the reviewed digest and launch that revision. Changes require a revised review; unchanged resume/reconnect retains authorization.
 
-Include one line in the campaign approval showing estimated additional peak storage and available space on the controller and each worker, and the controller node with a warning if the campaign may not fit.
+Include one line in the campaign approval showing estimated additional peak storage and available space on the controller and each worker, with a warning if the campaign may not fit.
 
 Leave concurrency at its configured default unless requested otherwise. Generation and local build/metadata preparation can precede worker assignment; probes, pilot and measurements run on the selected worker. Detailed component timing is opt-in.
 
@@ -28,6 +28,8 @@ Start with compact `status --campaign ID`. Use explicit `--json` or `campaign ge
 Use `remote --campaign ID --trial N` for stale, blocked or contradictory remote observations. Use backend recovery eligibility and scoped `recover --campaign ID --trial N` (repeat for selected trials); resume a stopped campaign first. Rejoin saved jobs and retain seeds/assignments. Infrastructure failures do not consume component repairs. Never mark a blocked trial failed merely for slowness.
 
 Do not replay a mutation after an uncertain response: inspect saved state first. WAITING_FOR_REMOTE does not establish failure; CANCELLATION_PENDING does not confirm termination. Reconcile and collect evidence before conflicting work. Repair collection/reporting without repeating completed experiments.
+
+Before cleaning up or reusing workers, drain them, verify completed results are collected locally and confirm remote inactivity; preserve per-host resource and toolchain settings when transferring workers to another campaign.
 
 Use `compare` for saved journal results; keep host-matched SOTA comparisons and exclusion/completeness details. Choose an explicit ranking method before claiming a single best proposal. Do not parse spreadsheets or load curves for routine comparison tables.
 

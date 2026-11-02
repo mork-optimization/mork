@@ -121,16 +121,28 @@ public class SshTransport {
                     process.destroyForcibly(); throw new ConnectionException("SSH transport timed out; remote job status is unknown");
                 }
                 if (process.exitValue() != 0) {
-                    String message = Files.readString(errors); if (message.length() > 4000) message = message.substring(message.length() - 4000);
-                    if (process.exitValue() == 255) {
-                        String lower = message.toLowerCase(Locale.ROOT);
-                        if (lower.contains("permission denied") || lower.contains("host key verification failed") || lower.contains("remote host identification has changed") || lower.contains("bad configuration") || lower.contains("could not resolve hostname"))
-                            throw new ExecutionTargetException("SSH authentication, identity or configuration failure: " + message);
-                        throw new ConnectionException("SSH unavailable: " + message);
-                    }
+                    String message = Files.readString(errors);
+                    if (process.exitValue() == 255) throw connectionFailure(message);
+                    if (message.length() > 4000) message = message.substring(message.length() - 4000);
                     throw new IllegalStateException("Remote runner failed (" + process.exitValue() + "): " + message);
                 }
             } catch (InterruptedException e) { process.destroyForcibly(); Thread.currentThread().interrupt(); throw new java.util.concurrent.CancellationException("SSH detached; reconcile the saved remote job before resuming"); }
         } catch (IOException e) { throw new ConnectionException("Cannot invoke SSH", e); }
+    }
+    static RuntimeException connectionFailure(String message) {
+        String lower = message.toLowerCase(Locale.ROOT);
+        String detail = message.length() > 4000 ? message.substring(message.length() - 4000) : message;
+        // Identity/configuration failures take precedence even when an agent error is also reported.
+        if (lower.contains("host key verification failed") || lower.contains("remote host identification has changed")
+                || lower.contains("bad configuration") || lower.contains("could not resolve hostname"))
+            return new ExecutionTargetException("SSH identity or configuration failure: " + detail);
+        // OpenSSH follows temporary signing failures with Permission denied (publickey).
+        // Reuse the bounded workload reconnect loop, which reconciles the saved job before retrying work.
+        if (lower.contains("agent refused operation") || lower.contains("agent communication failed")
+                || lower.contains("communication with agent failed"))
+            return new ConnectionException("SSH authentication agent unavailable: " + detail);
+        if (lower.contains("permission denied"))
+            return new ExecutionTargetException("SSH authentication failure: " + detail);
+        return new ConnectionException("SSH unavailable: " + detail);
     }
 }

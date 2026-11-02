@@ -3,6 +3,8 @@ package es.urjc.etsii.grafo.autoconfig.autollm.execution;
 import es.urjc.etsii.grafo.autoconfig.autollm.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import java.nio.file.*;
 import java.time.Instant;
 import java.util.*;
@@ -24,11 +26,13 @@ class SshReconnectTest {
     private AutoLlmWorkloadExecutor.Workload work() {
         return new AutoLlmWorkloadExecutor.Workload(List.of("unused"), root, root.resolve("output"), Map.of(), List.of(), List.of(), 1000, 0, 100, false, 1000);
     }
-    @Test void restartRetainsTheExhaustedDisconnectionBudgetAndJobIdentity() {
+    @ParameterizedTest
+    @ValueSource(strings = {"offline", "agent refused operation\nPermission denied (publickey)."})
+    void restartRetainsTheExhaustedDisconnectionBudgetAndJobIdentity(String diagnostic) {
         var transport = mock(SshTransport.class);
         var work = work();
         AutoLlmFileUtil.write(work.output().resolve("remote-status.json"), Map.of("disconnectedAt", Instant.now().minusSeconds(300).toString(), "consecutiveFailures", 4, "connectionRetries", 4));
-        doThrow(new SshTransport.ConnectionException("offline")).when(transport).bootstrap();
+        doThrow(SshTransport.connectionFailure(diagnostic)).when(transport).bootstrap();
         var executor = new SshWorkloadExecutor(config(), root, transport, state -> {});
         var failure = assertThrows(AutoLlmFailureUtil.StageException.class, () -> executor.run(work, () -> false));
         assertEquals("REMOTE_UNREACHABLE", failure.failure().code());
