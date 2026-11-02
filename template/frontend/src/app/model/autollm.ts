@@ -70,6 +70,12 @@ export interface AutoLlmServer {
   workers?: number | null;
   heap?: string | null;
 }
+export type ObjectiveModes = Record<string, 'MINIMIZE' | 'MAXIMIZE'>;
+export interface DatasetSelection {
+  training: string[];
+  testing: string[];
+  excluded: Record<string, string>;
+}
 export interface AutoLlmTarget {
   definition: AutoLlmServer;
   status: AutoLlmTargetStatus;
@@ -211,6 +217,7 @@ export interface AutoLlmTrial {
   } | null;
 }
 export interface AutoLlmCampaign {
+  approvedTargets?: string[];
   id: string;
   config: AutoLlmConfig;
   createdAt: string;
@@ -489,6 +496,7 @@ export interface ProposalTarget {
   draining?: boolean;
 }
 export interface ProposalScreening {
+  originalPool?: string[];
   excluded?: Record<string, string>;
   decisions?: { instance: string; classification: string; reason: string }[];
   screening?: ProposalScreening;

@@ -323,6 +323,7 @@ if (!process.env.MORK_MONITOR_URL) {
           active: comparisonCampaign.status === 'DRAFT' ? '' : comparisonCampaign.id,
           campaigns: [compactCampaign()],
         };
+      else if (path === 'objectives') body = { Cost: 'MINIMIZE', Quality: 'MAXIMIZE' };
       else if (path === 'campaigns/comparison-fixture') body = comparisonCampaign;
       else if (path === 'campaigns/comparison-fixture/status') body = compactCampaign();
       else if (path.endsWith('/proposal'))
@@ -863,6 +864,11 @@ try {
     );
     await clickText('.trial-table button', 'Open trial');
     await waitFor(`document.querySelector('.trial-inspector')`);
+    assert.equal(
+      await evaluate(`!!document.querySelector('.trial-table')`),
+      false,
+      'trial detail replaces the campaign table',
+    );
     await clickText('.trial-inspector [role=tab]', 'Algorithm');
     await waitFor(
       `document.querySelector('.trial-inspector').textContent.includes('GeneratedNew')`,
@@ -1031,6 +1037,7 @@ try {
       deviceScaleFactor: 1,
       mobile: false,
     });
+    await clickText('button', 'Back to campaign');
     await clickText('main > mat-tab-group > mat-tab-header [role=tab]', 'Artifacts');
     await waitFor(`document.querySelector('.artifact button')`);
     await clickText('button', 'Refresh artifacts');
@@ -1105,21 +1112,35 @@ try {
     await waitFor(`!document.querySelector('.trial-recovery')`);
     assert.equal(recoveryMutations[1].path, 'campaigns/comparison-fixture/trials/2/resume');
     comparisonCampaign.trials[0].status = 'SUCCEEDED';
+    await clickText('button', 'Back to campaign');
     await clickText('main > mat-tab-group > mat-tab-header [role=tab]', 'Results');
-    await waitFor(`document.querySelector('input[list="comparison-objectives"]')`);
-    await evaluate(
-      `const objective=document.querySelector('input[list="comparison-objectives"]'); objective.value='Cost'; objective.dispatchEvent(new Event('input',{bubbles:true})); const direction=document.querySelector('main > mat-tab-group select'); direction.value='MINIMIZE'; direction.dispatchEvent(new Event('change',{bubbles:true}))`,
-    );
-    await clickText('button', 'Compare');
     await waitFor(`document.querySelector('main > mat-tab-group').textContent.includes('5%')`);
     await writeFile(
       join(artifacts, 'autollm-results.png'),
       Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
     );
+    await evaluate(
+      `const objective=document.querySelector('main > mat-tab-group select'); objective.value='Quality'; objective.dispatchEvent(new Event('change',{bubbles:true}))`,
+    );
+    await waitFor(
+      `document.querySelector('main > mat-tab-group').textContent.includes('Quality · Maximize')`,
+    );
+    assert.ok(
+      requests.some(
+        (url) =>
+          url.pathname.endsWith('/comparison') &&
+          url.searchParams.get('objective') === 'Quality' &&
+          url.searchParams.get('mode') === 'MAXIMIZE',
+      ),
+      'objective direction follows backend metadata',
+    );
+    await clickText('button', 'More actions');
+    await clickText('button', 'Review cleanup');
+    await waitFor(`document.querySelector('#campaign-cleanup')?.open`);
     comparisonCampaign.status = 'DRAFT';
     await send('Page.navigate', { url: address });
     await waitFor(
-      `Array.from(document.querySelectorAll('button')).some(button=>button.textContent.includes('Review campaign with all servers'))`,
+      `Array.from(document.querySelectorAll('button')).some(button=>button.textContent.includes('Review campaign'))`,
     );
     assert.equal(approvalMutations.length, 0, 'loading a draft never launches it');
     await clickText('button', 'New campaign');
@@ -1136,10 +1157,10 @@ try {
       `const saved=document.querySelector('.campaign-picker select'); saved.value='comparison-fixture'; saved.dispatchEvent(new Event('change',{bubbles:true}))`,
     );
     await waitFor(
-      `Array.from(document.querySelectorAll('button')).some(button=>button.textContent.includes('Review campaign with all servers'))`,
+      `Array.from(document.querySelectorAll('button')).some(button=>button.textContent.includes('Review campaign'))`,
     );
 
-    await clickText('button', 'Review campaign with all servers');
+    await clickText('button', 'Review campaign');
     await waitFor(`document.body.textContent.includes('Review campaign before launch')`);
     assert.equal(
       await evaluate(
@@ -1150,6 +1171,40 @@ try {
     await writeFile(
       join(artifacts, 'autollm-campaign-approval.png'),
       Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
+    await clickText('summary', 'Edit testing, training and exclusions');
+    await waitFor(`document.querySelector('app-autollm-dataset-editor select')`);
+    await evaluate(
+      `document.querySelector('app-autollm-dataset-editor').scrollIntoView({block:'start'})`,
+    );
+    assert.equal(
+      await evaluate(
+        `Array.from(document.querySelectorAll('app-autollm-dataset-editor select')).map(select=>select.value).join(',')`,
+      ),
+      'training,testing,excluded',
+    );
+    await writeFile(
+      join(artifacts, 'autollm-dataset-editor.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
+    await evaluate(
+      `{ const membership=document.querySelectorAll('app-autollm-dataset-editor select')[1]; membership.value='excluded'; membership.dispatchEvent(new Event('change',{bubbles:true})); }`,
+    );
+    await waitFor(
+      `Array.from(document.querySelectorAll('button')).find(button=>button.textContent.includes('Approve this campaign and launch')).disabled`,
+    );
+    assert.equal(
+      await evaluate(
+        `document.body.textContent.includes('Validate the revised dataset before launching')`,
+      ),
+      true,
+      'unsaved membership cannot launch the saved selection',
+    );
+    await evaluate(
+      `{ const membership=document.querySelectorAll('app-autollm-dataset-editor select')[1]; membership.value='testing'; membership.dispatchEvent(new Event('change',{bubbles:true})); }`,
+    );
+    await waitFor(
+      `!Array.from(document.querySelectorAll('button')).find(button=>button.textContent.includes('Approve this campaign and launch')).disabled`,
     );
     await clickText('button', 'Approve this campaign and launch');
     await waitFor(`!document.body.textContent.includes('Review campaign before launch')`);

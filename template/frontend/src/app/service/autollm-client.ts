@@ -5,6 +5,8 @@ import { firstValueFrom, timeout } from 'rxjs';
 import { ComparisonCurveRow } from '../util/comparison-chart-util';
 import { environment } from '../../environments/environment';
 import {
+  ObjectiveModes,
+  DatasetSelection,
   ProposalTarget,
   ProposalScreening,
   CampaignReceipt,
@@ -41,6 +43,9 @@ export class AutoLlmClient {
   }
   defaults(): Promise<AutoLlmConfig> {
     return this.get('/defaults');
+  }
+  objectives(): Promise<ObjectiveModes> {
+    return this.get('/objectives');
   }
   validate(config: AutoLlmConfig): Promise<{ valid: boolean; errors: string[] }> {
     return this.post('/validate', config);
@@ -89,7 +94,7 @@ export class AutoLlmClient {
   }> {
     return this.post(`/campaigns/${encodeURIComponent(id)}/proposal`, { targets });
   }
-  async reviseDataset(id: string, selection: unknown): Promise<AutoLlmCampaign> {
+  async reviseDataset(id: string, selection: DatasetSelection): Promise<AutoLlmCampaign> {
     const receipt = await firstValueFrom(
       this.http
         .put<{ id: string }>(`${this.base}/campaigns/${encodeURIComponent(id)}/dataset`, selection)
@@ -111,9 +116,7 @@ export class AutoLlmClient {
   approve(id: string, digest: string): Promise<unknown> {
     return this.post(`/campaigns/${encodeURIComponent(id)}/approve`, { digest });
   }
-  baselineCheck(
-    id: string,
-  ): Promise<{
+  baselineCheck(id: string): Promise<{
     parameters: number;
     maxParameters: number;
     withinLimit: boolean;

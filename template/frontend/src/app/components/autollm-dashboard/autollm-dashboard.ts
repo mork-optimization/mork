@@ -24,7 +24,9 @@ import { MatMenuModule } from '@angular/material/menu';
 import { MonitorPanel } from '../monitor-panel/monitor-panel';
 import { PanelPreferences, AUTOLLM_PANELS } from '../../store/panel-preferences';
 import { AutoLlmStore } from '../../store/autollm-store';
-import { AutoLlmConfig, AutoLlmServer, AutoLlmTrial } from '../../model/autollm';
+import { AutoLlmConfig, AutoLlmTrial, DatasetSelection } from '../../model/autollm';
+import { AutoLlmDatasetEditor } from '../autollm-editors/dataset-editor';
+import { AutoLlmServerEditor } from '../autollm-editors/server-editor';
 import { DashboardChart } from '../dashboard-chart/dashboard-chart';
 import { ChartViewModel } from '../../model/dashboard';
 import { ComparisonChartUtil, ComparisonYAxisScale } from '../../util/comparison-chart-util';
@@ -34,6 +36,8 @@ import { FilePreviewUtil } from '../../util/file-preview-util';
 @Component({
   selector: 'app-autollm-dashboard',
   imports: [
+    AutoLlmDatasetEditor,
+    AutoLlmServerEditor,
     JsonPipe,
     DatePipe,
     DecimalPipe,
@@ -77,8 +81,6 @@ export class AutoLlmDashboard {
   readonly artifactTrial = signal('');
   readonly artifactPage = signal(0);
   readonly datasetSearch = signal('');
-  readonly resultObjective = signal('');
-  readonly resultMode = signal<'' | 'MINIMIZE' | 'MAXIMIZE'>('');
   readonly stages = [
     'GENERATION',
     'LOCAL_PREPARATION',
@@ -90,15 +92,12 @@ export class AutoLlmDashboard {
   readonly canPreviewFile = FilePreviewUtil.canPreview;
   readonly store = inject(AutoLlmStore);
   readonly amendedTrials = signal(10);
-  readonly datasetEdit = signal('');
+  readonly datasetDirty = signal(false);
   readonly failureReason = signal('');
   readonly selectedObjective = signal('');
   readonly yAxisScale = signal<ComparisonYAxisScale>('linear');
   readonly chartHeight = signal(520);
   readonly executionChoice = signal('');
-  readonly newTarget = signal(
-    '{"id":"server-2","host":"user@host","workspace":"/home/user/autollm","javaExecutable":"java","environment":{}}',
-  );
   readonly originalPool = signal('');
   readonly trainingFraction = signal(0.15);
   readonly instances = this.store.comparisonInstances;
@@ -221,6 +220,123 @@ export class AutoLlmDashboard {
       .map((path) => ({ path, training: training.has(path), testing: testing.has(path) }));
   });
   readonly proposalTargets = computed(() => Object.entries(this.store.proposal()?.targets ?? {}));
+  readonly targetIds = computed(() => this.store.targets().map((target) => target.id));
+  readonly datasetSelection = computed<DatasetSelection>(() => {
+    const proposal = this.store.proposal();
+    const screening = proposal?.screening;
+    const excluded = {
+      ...(screening?.selection?.excluded ??
+        screening?.screening?.excluded ??
+        screening?.excluded ??
+        {}),
+    };
+    const testing = proposal?.testing ?? [];
+    for (const path of screening?.originalPool ?? screening?.screening?.originalPool ?? []) {
+      if (!testing.includes(path) && !(path in excluded)) excluded[path] = '';
+    }
+    return { training: proposal?.training ?? [], testing, excluded };
+  });
+  readonly proposalChanges = computed(() => {
+    const campaign = this.store.campaign(),
+      proposal = this.store.proposal();
+    const rows: { field: string; before: string; after: string }[] = [];
+    if (!campaign || !proposal || campaign.status === 'DRAFT') return rows;
+    const visit = (before: unknown, after: unknown, path: string) => {
+      if (JSON.stringify(before) === JSON.stringify(after)) return;
+      if (
+        before &&
+        after &&
+        typeof before === 'object' &&
+        typeof after === 'object' &&
+        !Array.isArray(before) &&
+        !Array.isArray(after)
+      ) {
+        const a = before as Record<string, unknown>,
+          b = after as Record<string, unknown>;
+        for (const key of new Set([...Object.keys(a), ...Object.keys(b)]))
+          visit(a[key], b[key], path ? `${path}.${key}` : key);
+      } else
+        rows.push({
+          field: path === 'trials' ? 'Total trials' : path,
+          before:
+            before == null
+              ? '—'
+              : typeof before === 'object'
+                ? JSON.stringify(before)
+                : String(before),
+          after:
+            after == null ? '—' : typeof after === 'object' ? JSON.stringify(after) : String(after),
+        });
+    };
+    visit(campaign.config, proposal.configuration, '');
+    const before = [...(campaign.approvedTargets ?? [])].sort();
+    const after = this.proposalTargets()
+      .filter(([, target]) => target.selected)
+      .map(([id]) => id)
+      .sort();
+    if (JSON.stringify(before) !== JSON.stringify(after))
+      rows.push({
+        field: 'Approved servers',
+        before: before.join(', ') || 'None',
+        after: after.join(', ') || 'None',
+      });
+    return rows;
+  });
+  readonly trialSequence = computed(() => {
+    const filtered = this.filteredTrials();
+    return filtered.some((trial) => trial.number === this.store.selectedTrial())
+      ? filtered
+      : (this.store.campaign()?.trials ?? []);
+  });
+  readonly trialPosition = computed(() =>
+    this.trialSequence().findIndex((trial) => trial.number === this.store.selectedTrial()),
+  );
+  readonly primaryAction = computed(() => {
+    const campaign = this.store.campaign();
+    if (!campaign) return { label: '', kind: '', reason: '' };
+    if (this.store.proposal())
+      return {
+        label: this.store.active() === campaign.id ? 'Approve amendment' : 'Launch campaign',
+        kind: 'launch',
+        reason: this.datasetDirty()
+          ? 'Validate the revised dataset before launching.'
+          : this.store.proposal()!.generation.ready
+            ? ''
+            : this.store.proposal()!.generation.approvalLine,
+      };
+    if (campaign.status === 'DRAFT')
+      return {
+        label: 'Review campaign',
+        kind: 'review',
+        reason: this.draftDirty()
+          ? 'Save edited configuration in Settings before reviewing this campaign.'
+          : this.store.active()
+            ? 'Wait for the active campaign to finish before launching another.'
+            : '',
+      };
+    if (['SUCCEEDED', 'COMPLETED_WITH_FAILURES'].includes(campaign.status))
+      return { label: 'View results', kind: 'results', reason: '' };
+    if (
+      ['NEEDS_ATTENTION', 'WAITING_FOR_TARGETS'].includes(campaign.status) ||
+      (campaign.trials.some((trial) => ['BLOCKED', 'INTERRUPTED'].includes(trial.status)) &&
+        this.store.active() === campaign.id)
+    )
+      return { label: 'Resolve issue', kind: 'resolve', reason: '' };
+    if (['INTERRUPTED', 'CANCELLED'].includes(campaign.status) && !this.store.active())
+      return {
+        label: 'Resume campaign',
+        kind: 'resume',
+        reason: this.store.recovery()?.resumeCampaign?.allowed
+          ? ''
+          : this.store.recovery()?.resumeCampaign?.reason ||
+            'Checking whether this campaign can resume…',
+      };
+    return {
+      label: 'View active trial',
+      kind: 'active',
+      reason: this.store.activeTrials().length ? '' : 'Waiting for a trial to start.',
+    };
+  });
   readonly proposalExclusions = computed(() => {
     const screening = this.store.proposal()?.screening;
     return Object.entries(
@@ -291,7 +407,9 @@ export class AutoLlmDashboard {
         this.store.proposal.set(null);
     });
     effect(() => {
-      if (this.store.proposal()) {
+      const proposal = this.store.proposal();
+      this.datasetDirty.set(false);
+      if (proposal) {
         this.settingsOpen.set(false);
         this.focusPanel('.proposal');
       }
@@ -409,8 +527,6 @@ export class AutoLlmDashboard {
     this.trialPage.set(0);
     this.artifactTrial.set('');
     this.artifactPage.set(0);
-    this.resultObjective.set('');
-    this.resultMode.set('');
     this.executionChoice.set(this.store.config()?.execution.target ?? '');
     this.saveLocation();
   }
@@ -423,10 +539,12 @@ export class AutoLlmDashboard {
     this.saveLocation();
   }
   openSettings(): void {
+    this.closeTrial();
     this.settingsOpen.set(true);
     void this.store.refreshSummary();
   }
   selectTab(index: number): void {
+    this.store.inspecting.set(false);
     this.tab.set(index);
     if (index === 4 && !this.store.artifactsLoaded()) void this.store.refreshArtifacts();
     this.saveLocation();
@@ -434,7 +552,7 @@ export class AutoLlmDashboard {
   openTrial(number: number, detail = 0): void {
     this.store.selectTrial(number);
     this.detailTab.set(detail);
-    this.tab.set(1);
+    this.settingsOpen.set(false);
     this.resultInstancePage.set(0);
     this.saveLocation();
     this.focusPanel('.trial-inspector');
@@ -444,7 +562,7 @@ export class AutoLlmDashboard {
       () => {
         const panel = document.querySelector<HTMLElement>(selector);
         panel?.scrollIntoView({ block: 'start' });
-        panel?.querySelector<HTMLElement>('h2')?.focus({ preventScroll: true });
+        panel?.querySelector<HTMLElement>('h1, h2')?.focus({ preventScroll: true });
       },
       { injector: this.injector },
     );
@@ -456,6 +574,59 @@ export class AutoLlmDashboard {
   closeTrial(): void {
     this.store.inspecting.set(false);
     this.saveLocation();
+    this.focusPanel('.status-card');
+  }
+  async reviseDataset(selection: DatasetSelection): Promise<void> {
+    await this.store.reviseDataset(selection);
+    this.saveLocation();
+  }
+  adjacentTrial(delta: number): void {
+    const trial = this.trialSequence()[this.trialPosition() + delta];
+    if (trial) this.openTrial(trial.number, this.detailTab());
+  }
+  runPrimaryAction(): void {
+    const action = this.primaryAction();
+    if (action.reason || this.store.busy()) return;
+    switch (action.kind) {
+      case 'review':
+        void this.store.reviewProposal(this.store.startTargets());
+        break;
+      case 'launch':
+        void this.store.approveAndStart();
+        break;
+      case 'results':
+        this.selectTab(2);
+        break;
+      case 'resume':
+        void this.store.action('resume');
+        break;
+      case 'resolve': {
+        const trial = this.store
+          .campaign()
+          ?.trials.find((trial) => ['BLOCKED', 'INTERRUPTED'].includes(trial.status));
+        if (trial) this.openTrial(trial.number);
+        else this.selectTab(3);
+        break;
+      }
+      case 'active': {
+        const trial = this.store.activeTrials()[0];
+        if (trial) this.openTrial(trial.number);
+      }
+    }
+  }
+  openCleanup(): void {
+    this.selectTab(4);
+    afterNextRender(
+      () => {
+        const details = document.querySelector<HTMLDetailsElement>('#campaign-cleanup');
+        if (details) {
+          details.open = true;
+          details.scrollIntoView({ block: 'start' });
+          details.querySelector('summary')?.focus();
+        }
+      },
+      { injector: this.injector },
+    );
   }
   saveLocation(): void {
     const params = new URLSearchParams();
@@ -478,11 +649,6 @@ export class AutoLlmDashboard {
     link.download = `trial-${trial.number}-algorithm.json`;
     link.click();
     URL.revokeObjectURL(url);
-  }
-  compareResults(): void {
-    const mode = this.resultMode();
-    if (!mode) return;
-    void this.store.loadResults(this.resultObjective(), mode);
   }
   showTrialArtifacts(number: number): void {
     this.artifactTrial.set(String(number));
@@ -567,16 +733,6 @@ export class AutoLlmDashboard {
         },
       };
     });
-  }
-  enrollTarget(): void {
-    try {
-      const server = JSON.parse(this.newTarget()) as AutoLlmServer;
-      if (!server?.id || !server.host || !server.workspace)
-        throw new Error('Provide server id, host, and workspace');
-      void this.store.addTarget(server);
-    } catch (error) {
-      this.store.error.set((error as Error).message);
-    }
   }
   workerMode(event: Event): void {
     const automatic = (event.target as HTMLSelectElement).value === 'AUTO';

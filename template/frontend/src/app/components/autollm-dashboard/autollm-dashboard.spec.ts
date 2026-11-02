@@ -66,6 +66,8 @@ describe('AutoLLM dashboard', () => {
       resultsError: signal(null),
       resultObjective: signal(''),
       resultMode: signal('MINIMIZE'),
+      objectiveNames: signal(['Cost']),
+      objectivesError: signal(null),
       artifactsLoaded: signal(false),
       artifactsLoading: signal(false),
       artifactsError: signal(null),
@@ -301,7 +303,9 @@ describe('AutoLLM dashboard', () => {
     fixture.detectChanges();
     await fixture.whenStable();
     const text = fixture.nativeElement.textContent as string;
-    expect(text).toContain('1/1 trials finished');
+    expect(text).toContain('Back to campaign');
+    expect(fixture.nativeElement.querySelector('.status-card')).toBeNull();
+    expect(fixture.nativeElement.querySelector('.trial-table')).toBeNull();
     expect(text).toContain('ConstructiveNew');
     expect(text).toContain('First-ranked proposal');
     fixture.componentInstance.detailTab.set(1);
@@ -729,10 +733,103 @@ describe('AutoLLM dashboard', () => {
     await fixture.whenStable();
     const button = Array.from(
       fixture.nativeElement.querySelectorAll('button') as NodeListOf<HTMLButtonElement>,
-    ).find((b) => b.textContent?.includes('Review campaign with all servers'))!;
+    ).find((b) => b.textContent?.includes('Review campaign'))!;
     expect(button.disabled).toBe(true);
     store.config.set(structuredClone(original));
     fixture.detectChanges();
     expect(button.disabled).toBe(false);
+  });
+  it('returns from a dedicated trial view with filters, sorting and page intact', async () => {
+    const store = TestBed.inject(AutoLlmStore);
+    const trials = Array.from({ length: 60 }, (_, i) => ({ ...store.trial()!, number: i + 1 }));
+    (store.campaign as WritableSignal<AutoLlmCampaign | null>).update((c) =>
+      c ? { ...c, trials } : c,
+    );
+    store.selectTrial = vi.fn((number) => {
+      store.selectedTrial.set(number);
+      store.inspecting.set(true);
+    });
+    const fixture = TestBed.createComponent(AutoLlmDashboard),
+      dashboard = fixture.componentInstance;
+    await fixture.whenStable();
+    dashboard.selectTab(1);
+    dashboard.trialFilter.set('SUCCEEDED');
+    dashboard.trialSort.set('duration');
+    dashboard.trialPage.set(1);
+    dashboard.openTrial(26);
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.trial-table')).toBeNull();
+    dashboard.adjacentTrial(1);
+    expect(store.selectedTrial()).toBe(27);
+    dashboard.closeTrial();
+    await fixture.whenStable();
+    expect(dashboard.tab()).toBe(1);
+    expect(dashboard.trialFilter()).toBe('SUCCEEDED');
+    expect(dashboard.trialSort()).toBe('duration');
+    expect(dashboard.trialPage()).toBe(1);
+    expect(fixture.nativeElement.querySelector('.trial-table')).not.toBeNull();
+    expect(window.location.hash).not.toContain('trial=');
+  });
+  it('chooses the next campaign action and explains unavailable resume inline', async () => {
+    const store = TestBed.inject(AutoLlmStore);
+    const fixture = TestBed.createComponent(AutoLlmDashboard),
+      dashboard = fixture.componentInstance;
+    await fixture.whenStable();
+    expect(dashboard.primaryAction().label).toBe('View results');
+    (store.campaign as WritableSignal<AutoLlmCampaign | null>).update((c) =>
+      c ? { ...c, status: 'INTERRUPTED' } : c,
+    );
+    store.recovery.set({
+      resumeCampaign: { allowed: false, reason: 'Worker reconciliation is pending', effect: '' },
+      trials: {},
+      targets: {},
+    });
+    await fixture.whenStable();
+    expect(dashboard.primaryAction().label).toBe('Resume campaign');
+    expect(fixture.nativeElement.textContent).toContain('Worker reconciliation is pending');
+    (store.campaign as WritableSignal<AutoLlmCampaign | null>).update((c) =>
+      c ? { ...c, status: 'NEEDS_ATTENTION' } : c,
+    );
+    expect(dashboard.primaryAction().label).toBe('Resolve issue');
+  });
+  it('summarizes amended trial counts and server selection against the saved campaign', async () => {
+    const store = TestBed.inject(AutoLlmStore),
+      original = configuration();
+    (store.campaign as WritableSignal<AutoLlmCampaign | null>).update((c) =>
+      c
+        ? {
+            ...c,
+            status: 'RUNNING',
+            config: original,
+            approvedTargets: ['server-1'],
+          }
+        : c,
+    );
+    const updated = { ...original, trials: original.trials + 4 };
+    store.config.set(updated);
+    store.proposal.set({
+      digest: 'amended',
+      configuration: updated,
+      training: ['a'],
+      testing: ['a'],
+      screening: {},
+      targets: {
+        'server-1': { selected: true, ready: true },
+        'server-2': { selected: true, ready: true },
+      },
+      generation: {
+        model: 'model',
+        reasoningEffort: null,
+        ready: true,
+        approvalLine: 'Model: model',
+      },
+    });
+    const fixture = TestBed.createComponent(AutoLlmDashboard);
+    await fixture.whenStable();
+    expect(fixture.componentInstance.proposalChanges()).toEqual([
+      { field: 'Total trials', before: String(original.trials), after: String(updated.trials) },
+      { field: 'Approved servers', before: 'server-1', after: 'server-1, server-2' },
+    ]);
+    expect(fixture.nativeElement.textContent).toContain('Changes to approve');
   });
 });

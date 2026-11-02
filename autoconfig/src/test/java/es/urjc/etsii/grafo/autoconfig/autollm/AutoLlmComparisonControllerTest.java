@@ -17,6 +17,18 @@ class AutoLlmComparisonControllerTest {
     @TempDir Path temp;
     private static final String URL = "/api/autollm/campaigns/saved/trials/1/";
 
+    @Test void exposesOrderedObjectiveDirectionsWithoutRunningAComparison() throws Exception {
+        var cost = es.urjc.etsii.grafo.solution.Objective.ofMinimizing("Cost", solution -> 0);
+        var quality = es.urjc.etsii.grafo.solution.Objective.ofMaximizing("Quality", solution -> 0);
+        try {
+            es.urjc.etsii.grafo.util.Context.Configurator.setObjectives(false, new es.urjc.etsii.grafo.solution.Objective[]{cost, quality});
+            var response = controller().perform(get("/api/autollm/objectives")).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.Cost").value("MINIMIZE"))
+                    .andExpect(jsonPath("$.Quality").value("MAXIMIZE")).andReturn().getResponse().getContentAsString();
+            assertEquals(List.of("Cost", "Quality"), new ArrayList<>(AutoLlmFileUtil.JSON.readValue(response, LinkedHashMap.class).keySet()));
+        } finally { es.urjc.etsii.grafo.util.Context.reset(); }
+    }
+
     private MockMvc controller() throws Exception {
         var campaign = new AutoLlmCampaign(); campaign.id = "saved";
         var trial = new AutoLlmCampaign.Trial(); trial.number = 1; trial.complete(AutoLlmCampaign.Stage.COMPARISON, "comparison", null);

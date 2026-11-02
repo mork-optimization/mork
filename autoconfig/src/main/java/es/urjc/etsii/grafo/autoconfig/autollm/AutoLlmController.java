@@ -68,6 +68,14 @@ public class AutoLlmController {
         result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL", "RECOVERY_ACTIONS", "FILE_TAIL_PREVIEWS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKER_LEASES", "SCOPED_CLEANUP"));
         return result;
     }
+    /** Ordered objective definitions, shared with the experiment monitor. */
+    @GetMapping("/objectives") public Map<String,String> objectives() {
+        var result = new LinkedHashMap<String,String>();
+        for (var entry : es.urjc.etsii.grafo.util.Context.getObjectivesW().entrySet()) {
+            result.put(entry.getKey(), entry.getValue().getFMode().name());
+        }
+        return result;
+    }
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
     public void saveSession() { es.urjc.etsii.grafo.autoconfig.autollm.execution.OwnershipManifest.directory(store.root(), "workspace", store.root().toString()); AutoLlmFileUtil.write(store.root().resolve("session.json"), capabilities()); }
     @PostMapping("/effective-config") public Object effectiveConfig(@RequestBody AutoLlmConfig config) { var normalized = AutoLlmNormalization.normalize(config);

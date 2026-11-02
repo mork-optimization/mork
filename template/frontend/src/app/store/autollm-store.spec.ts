@@ -20,6 +20,7 @@ describe('AutoLLM campaign lifecycle store', () => {
     ],
   } as AutoLlmCampaign;
   let client: {
+    objectives: ReturnType<typeof vi.fn>;
     detail: ReturnType<typeof vi.fn>;
     status: ReturnType<typeof vi.fn>;
     campaignComparison: ReturnType<typeof vi.fn>;
@@ -55,6 +56,7 @@ describe('AutoLLM campaign lifecycle store', () => {
   beforeEach(() => {
     vi.useFakeTimers();
     client = {
+      objectives: vi.fn().mockResolvedValue({ Cost: 'MINIMIZE', Quality: 'MAXIMIZE' }),
       detail: vi.fn().mockResolvedValue(campaign),
       status: vi.fn().mockResolvedValue(campaign),
       campaignComparison: vi.fn().mockResolvedValue({ trials: [], excluded: {} }),
@@ -86,30 +88,24 @@ describe('AutoLLM campaign lifecycle store', () => {
         targets: {},
         resumeCampaign: { allowed: false, reason: 'Already running', effect: '' },
       }),
-      resumeTrial: vi
-        .fn()
-        .mockResolvedValue({
-          id: campaign.id,
-          status: campaign.status,
-          operation: 'resumeTrial',
-          accepted: true,
-        }),
-      failTrial: vi
-        .fn()
-        .mockResolvedValue({
-          id: campaign.id,
-          status: campaign.status,
-          operation: 'failTrial',
-          accepted: true,
-        }),
-      targetAction: vi
-        .fn()
-        .mockResolvedValue({
-          id: campaign.id,
-          status: campaign.status,
-          operation: 'targetAction',
-          accepted: true,
-        }),
+      resumeTrial: vi.fn().mockResolvedValue({
+        id: campaign.id,
+        status: campaign.status,
+        operation: 'resumeTrial',
+        accepted: true,
+      }),
+      failTrial: vi.fn().mockResolvedValue({
+        id: campaign.id,
+        status: campaign.status,
+        operation: 'failTrial',
+        accepted: true,
+      }),
+      targetAction: vi.fn().mockResolvedValue({
+        id: campaign.id,
+        status: campaign.status,
+        operation: 'targetAction',
+        accepted: true,
+      }),
       screeningAction: vi.fn(),
       screeningReview: vi.fn(),
       screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }),
@@ -129,14 +125,12 @@ describe('AutoLLM campaign lifecycle store', () => {
         qualifiedTargets: ['a'],
         failedTargets: [],
       }),
-      action: vi
-        .fn()
-        .mockResolvedValue({
-          id: campaign.id,
-          status: campaign.status,
-          operation: 'action',
-          accepted: true,
-        }),
+      action: vi.fn().mockResolvedValue({
+        id: campaign.id,
+        status: campaign.status,
+        operation: 'action',
+        accepted: true,
+      }),
       preview: vi.fn().mockResolvedValue({
         text: '',
         lineCount: 0,
@@ -693,9 +687,11 @@ describe('AutoLLM campaign lifecycle store', () => {
           result = done;
         }),
     );
+    store.objectiveModes.set({ Cost: 'MINIMIZE' });
     const a = store.refreshDetail(),
-      b = store.loadResults('Cost', 'MINIMIZE');
+      b = store.loadResults('Cost');
     store.select('other');
+    store.objectiveModes.set({});
     store.select(campaign.id);
     detail(campaign);
     result({ trials: [{ trial: 99 }] });
@@ -722,10 +718,33 @@ describe('AutoLLM campaign lifecycle store', () => {
   });
   it('requests host-matched comparison statistics with an explicit objective direction', async () => {
     await store.start();
-    await store.loadResults('Quality', 'MAXIMIZE');
+    expect(client.campaignComparison).toHaveBeenCalledWith(campaign.id, 'Cost', 'MINIMIZE');
+    client.campaignComparison.mockClear();
+    await store.loadResults('Quality');
     expect(client.campaignComparison).toHaveBeenCalledWith(campaign.id, 'Quality', 'MAXIMIZE');
     await store.refreshResults();
     expect(client.campaignComparison).toHaveBeenCalledTimes(1);
+  });
+  it('recovers unavailable objective metadata without blocking the campaign monitor', async () => {
+    client.objectives.mockRejectedValueOnce(new Error('metadata offline'));
+    await store.start();
+    expect(store.campaign()?.id).toBe(campaign.id);
+    expect(store.objectivesError()).toContain('metadata offline');
+    expect(client.campaignComparison).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(store.objectivesError()).toBeNull();
+    expect(client.campaignComparison).toHaveBeenCalledWith(campaign.id, 'Cost', 'MINIMIZE');
+  });
+  it('loads the default comparison when switching campaigns and ignores unknown objectives', async () => {
+    await store.start();
+    store.campaigns.update((campaigns) => [...campaigns, { ...campaign, id: 'other' }]);
+    store.select('other');
+    await Promise.resolve();
+    expect(client.campaignComparison).toHaveBeenLastCalledWith('other', 'Cost', 'MINIMIZE');
+    client.campaignComparison.mockClear();
+    await store.loadResults('missing');
+    expect(client.campaignComparison).not.toHaveBeenCalled();
+    expect(store.resultObjective()).toBe('Cost');
   });
   it('keeps unsaved setup and its probe when the workspace has no campaigns', async () => {
     client.list.mockResolvedValue({ active: '', campaigns: [] });

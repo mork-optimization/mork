@@ -1,6 +1,8 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { AutoLlmClient } from '../service/autollm-client';
 import {
+  ObjectiveModes,
+  DatasetSelection,
   CampaignReceipt,
   CampaignComparison,
   AutoLlmComparison,
@@ -48,6 +50,9 @@ export class AutoLlmStore {
   readonly resultsError = signal<string | null>(null);
   readonly resultsLoading = signal(false);
   readonly resultObjective = signal('');
+  readonly objectiveModes = signal<ObjectiveModes>({});
+  readonly objectiveNames = computed(() => Object.keys(this.objectiveModes()));
+  readonly objectivesError = signal<string | null>(null);
   readonly resultMode = signal<'MINIMIZE' | 'MAXIMIZE'>('MINIMIZE');
   readonly artifactsLoading = signal(false);
   readonly artifactsLoaded = signal(false);
@@ -179,14 +184,24 @@ export class AutoLlmStore {
     try {
       if (!this.config()) this.config.set(await this.client.defaults());
       const probe = this.targetStatus();
-      const [campaignResult, screeningResult, probeResult] = await Promise.allSettled([
-        this.client.list(),
-        this.client.screenings(),
-        probe?.['status'] === 'RUNNING' && typeof probe['id'] === 'string'
-          ? this.client.targetProbe(probe['id'])
-          : Promise.resolve(null),
-      ]);
+      const [campaignResult, screeningResult, probeResult, objectivesResult] =
+        await Promise.allSettled([
+          this.client.list(),
+          this.client.screenings(),
+          probe?.['status'] === 'RUNNING' && typeof probe['id'] === 'string'
+            ? this.client.targetProbe(probe['id'])
+            : Promise.resolve(null),
+          this.objectiveNames().length
+            ? Promise.resolve(this.objectiveModes())
+            : this.client.objectives(),
+        ]);
       if (this.destroyed) return;
+      if (objectivesResult.status === 'fulfilled') {
+        this.objectiveModes.set(objectivesResult.value);
+        this.objectivesError.set(
+          this.objectiveNames().length ? null : 'No objective definitions are available.',
+        );
+      } else this.objectivesError.set(this.message(objectivesResult.reason));
       this.connectionError.set(null);
       if (
         probeResult.status === 'fulfilled' &&
@@ -269,7 +284,9 @@ export class AutoLlmStore {
         }
       }
       if (this.inspecting()) await this.refreshDetail();
-      if (this.resultObjective()) await this.refreshResults();
+      if (!this.resultObjective() && this.objectiveNames().length && this.campaign())
+        await this.loadResults(this.objectiveNames()[0]);
+      else if (this.resultObjective()) await this.refreshResults();
       const attempt = this.conversationAttempt();
       if (attempt) {
         const id = this.selectedId(),
@@ -363,6 +380,7 @@ export class AutoLlmStore {
         trials[0]?.number ??
         1,
     );
+    if (campaign && this.objectiveNames().length) void this.loadResults(this.objectiveNames()[0]);
   }
   async newCampaign(): Promise<void> {
     this.select('');
@@ -410,7 +428,9 @@ export class AutoLlmStore {
       if (request === this.detailRequest) this.detailLoading.set(false);
     }
   }
-  async loadResults(objective: string, mode: 'MINIMIZE' | 'MAXIMIZE'): Promise<void> {
+  async loadResults(objective: string): Promise<void> {
+    const mode = this.objectiveModes()[objective];
+    if (!mode) return;
     this.resultsRequest++;
     this.resultsKey = '';
     this.results.set(null);
@@ -586,9 +606,9 @@ export class AutoLlmStore {
       this.proposal.set(proposal);
     });
   }
-  async reviseDataset(text: string): Promise<void> {
+  async reviseDataset(selection: DatasetSelection): Promise<void> {
     await this.operate(async () => {
-      const campaign = await this.client.reviseDataset(this.selectedId(), JSON.parse(text));
+      const campaign = await this.client.reviseDataset(this.selectedId(), selection);
       this.campaigns.update((values) => [
         campaign,
         ...values.filter((value) => value.id !== campaign.id),

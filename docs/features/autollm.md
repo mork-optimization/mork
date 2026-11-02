@@ -402,6 +402,7 @@ All paths below are relative to `/api/autollm`; endpoints are registered when th
 | `GET /campaigns/{id}/observation` | Compact campaign/trial observations, timestamps and recovery availability |
 | `GET/POST /campaigns/{id}/proposal`, `POST /campaigns/{id}/approve` | Review selected servers, effective configuration, dataset and approve its digest |
 | `PUT /campaigns/{id}/draft`, `/dataset` | Revise settings or exact dataset membership before launch |
+| `GET /objectives` | Ordered objective names and minimize/maximize directions; the dashboard selects the first and loads comparisons automatically |
 | `GET /campaigns/{id}/comparison?objective=Cost&ranking=NONE` | Host-matched aggregate tables without curve arrays; explicit optional ranking |
 | `GET /campaigns/{id}/trials/{number}/remote-inspection` | Observe remote process/job evidence without reconciling it |
 | `POST /campaigns/{id}/recover` | Recover explicitly selected trials; per-trial outcomes |
