@@ -13,6 +13,9 @@ export class AutoLlmStore {
   readonly active = signal('');
   readonly selectedId = signal('');
   readonly selectedTrial = signal(1);
+  readonly cleanupPlan = signal<import('../model/autollm').CleanupPlan | null>(null);
+  readonly cleanupReceipt = signal<import('../model/autollm').CleanupReceipt | null>(null);
+  readonly approvalDifferences = signal<import('../model/autollm').ApprovalDifference[]>([]);
   readonly proposal = signal<Awaited<ReturnType<AutoLlmClient["proposal"]>> | null>(null);
   readonly startTargets = signal<string[]>([]);
   readonly campaign = computed(() => this.campaigns().find(c => c.id === this.selectedId()) ?? null);
@@ -139,7 +142,7 @@ export class AutoLlmStore {
     } catch (e) { if (!this.destroyed) this.connectionError.set(this.message(e)); }
     finally { if (!this.destroyed) this.timer = setTimeout(() => void this.poll(), 2000); }
   }
-  select(id: string): void { this.proposal.set(null); this.selectedId.set(id); this.startTargets.set([]); this.resetComparison(); this.selectedTrial.set(1); this.artifacts.set([]); this.recovery.set(null); this.recoveryError.set(null); this.selectLog(''); this.progress.set(null); this.watchGeneration(null); }
+  select(id: string): void { this.proposal.set(null); this.cleanupPlan.set(null); this.cleanupReceipt.set(null); this.approvalDifferences.set([]); this.selectedId.set(id); this.startTargets.set([]); this.resetComparison(); this.selectedTrial.set(1); this.artifacts.set([]); this.recovery.set(null); this.recoveryError.set(null); this.selectLog(''); this.progress.set(null); this.watchGeneration(null); }
   selectTrial(number: number): void { this.selectedTrial.set(number); this.resetComparison(); this.progress.set(null); this.selectLog(''); this.watchGeneration(null); }
   watchGeneration(attempt: number | null): void { this.generationAttempt.set(attempt); this.activityKey = ''; this.activity.set([]); }
   selectLog(path: string): void {
@@ -230,9 +233,28 @@ export class AutoLlmStore {
       this.config.set(structuredClone(proposal.configuration)); this.proposal.set(proposal);
     });
   }
+  async reviewCleanup(): Promise<void> {
+    const id = this.selectedId();
+    await this.operate(async () => {
+      const plan = await this.client.cleanupPlan({ kind: 'campaign', id });
+      if (this.selectedId() === id) { this.cleanupPlan.set(plan); this.cleanupReceipt.set(null); }
+    });
+  }
+  async applyCleanup(): Promise<void> {
+    const plan = this.cleanupPlan(); if (!plan || plan.selection.id !== this.selectedId()) return;
+    await this.operate(async () => {
+      const receipt = await this.client.cleanupApply(plan.digest);
+      if (this.selectedId() === plan.selection.id) this.cleanupReceipt.set(receipt);
+      if (receipt.status === 'SUCCEEDED') {
+        this.campaigns.update(values => values.filter(value => value.id !== plan.selection.id));
+        if (this.selectedId() === plan.selection.id) { this.selectedId.set(''); this.cleanupPlan.set(null); }
+      }
+    });
+  }
   async approveAndStart(): Promise<void> {
     const proposal = this.proposal(); if (!proposal) return;
     await this.operate(async () => {
+      if (!proposal.generation.ready) throw new Error(proposal.generation.approvalLine);
       const id = this.selectedId(); await this.client.approve(id, proposal.digest);
       if (this.active() !== id) { this.updateCampaign(await this.client.action(id, 'start')); this.active.set(id); }
       this.proposal.set(null);
@@ -308,8 +330,11 @@ export class AutoLlmStore {
   }
   targetStale(lastSync: string | null | undefined): boolean { return !lastSync || this.now() - Date.parse(lastSync) > 30000; }
   private async operate(callback: () => Promise<void>): Promise<void> {
-    this.operations++; this.busy.set(true); this.error.set(null);
-    try { await callback(); } catch (e) { this.error.set(this.message(e)); } finally { this.operations--; this.busy.set(this.operations > 0); }
+    this.operations++; this.busy.set(true); this.error.set(null); this.approvalDifferences.set([]);
+    try { await callback(); } catch (e) {
+      const response = (e as { error?: { differences?: import('../model/autollm').ApprovalDifference[] } }).error;
+      this.approvalDifferences.set(response?.differences ?? []); this.error.set(this.message(e));
+    } finally { this.operations--; this.busy.set(this.operations > 0); }
   }
   artifactUrl(path: string): string { return this.client.artifactUrl(this.selectedId(), path); }
   private message(error: unknown): string {

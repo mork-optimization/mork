@@ -1,6 +1,6 @@
 export type AutoLlmCampaignStatus = 'DRAFT' | 'RUNNING' | 'WAITING_FOR_REMOTE' | 'WAITING_FOR_TARGETS' | 'CANCELLATION_PENDING' | 'INTERRUPTED' | 'NEEDS_ATTENTION' | 'CANCELLED' | 'SUCCEEDED' | 'COMPLETED_WITH_FAILURES';
 export type AutoLlmTargetStatus = 'REGISTERED' | 'VALIDATED' | 'QUALIFYING' | 'READY' | 'BUSY' | 'DRAINING' | 'NEEDS_ATTENTION' | 'REMOVED';
-export type AutoLlmTrialStatus = 'PENDING' | 'WAITING_FOR_TARGET' | 'LOCAL_PREPARATION' | 'STARTING' | 'WAITING_FOR_GENERATION' | 'GENERATION' | 'REPAIR' | 'METADATA_RECONCILIATION' | 'PREPARATION' | 'TUNING' | 'WINNER_EXPORT' | 'COMPARISON' | 'WAITING_FOR_QUOTA' | 'WAITING_FOR_CAPACITY' | 'WAITING_FOR_REMOTE' | 'INTERRUPTED' | 'BLOCKED' | 'SUCCEEDED' | 'FAILED';
+export type AutoLlmTrialStatus = 'PENDING' | 'WAITING_FOR_TARGET' | 'WAITING_FOR_WORKER' | 'LOCAL_PREPARATION' | 'STARTING' | 'WAITING_FOR_GENERATION' | 'GENERATION' | 'REPAIR' | 'METADATA_RECONCILIATION' | 'PREPARATION' | 'TUNING' | 'WINNER_EXPORT' | 'COMPARISON' | 'WAITING_FOR_QUOTA' | 'WAITING_FOR_CAPACITY' | 'WAITING_FOR_REMOTE' | 'INTERRUPTED' | 'BLOCKED' | 'SUCCEEDED' | 'FAILED';
 export type AutoLlmAttemptStatus = 'RUNNING' | 'SUCCEEDED' | 'FAILED' | 'INTERRUPTED' | 'QUOTA_LIMIT' | 'CAPACITY_LIMIT';
 export type AutoLlmAttemptStage = 'GENERATION' | 'REPAIR' | 'LOCAL_PREPARATION' | 'PREPARATION' | 'TUNING' | 'WINNER_EXPORT' | 'COMPARISON';
 export type AutoLlmPreparationStage = 'BUILD' | 'DEPENDENCIES' | 'METADATA' | 'PROBES' | 'PILOT';
@@ -12,6 +12,7 @@ export interface AutoLlmServer {
 }
 export interface AutoLlmTarget {
   definition: AutoLlmServer; status: AutoLlmTargetStatus; directory: string; revision: number; draining: boolean;
+  qualification?: 'QUALIFIED' | 'QUALIFYING' | 'UNQUALIFIED'; availability?: 'RESERVED' | 'UNKNOWN'; health?: 'HEALTHY' | 'UNHEALTHY' | 'UNKNOWN';
   assignedTrial: number | null; baselineReady: boolean; problem?: AutoLlmFailure | null;
   host?: AutoLlmCampaign['executionHost']; remote?: AutoLlmCampaign['remote'];
 }
@@ -54,7 +55,7 @@ export interface AutoLlmCampaign {
   codexUsage?: CodexUsage | null;
   problem?: AutoLlmFailure | null;
   executionHost?: { requestedWorkers: number; effectiveWorkers: number; identity: Record<string, string>; maxMemoryBytes: number } | null;
-  remote?: { host: string; jobId: string; status: string; stageDirectory?: string; updatedAt: string; lastSynchronizedAt?: string | null; failure: string | null } | null;
+  remote?: { host: string; jobId: string; status: string; stageDirectory?: string; updatedAt: string; lastSynchronizedAt?: string | null; lastContactAt?: string | null; workerId?: string; assignmentId?: string | null; lease?: WorkerLease; failure: string | null } | null;
 }
 export interface AutoLlmArtifact { path: string; size: number; sha256: string }
 export interface AutoLlmRecoveryAction { allowed: boolean; reason: string | null; effect: string }
@@ -77,6 +78,7 @@ export interface AutoLlmProgress {
 }
 export interface AutoLlmActivity { timestamp: string; type: string; text: string }
 export interface ScreeningJob {
+  progressObservation?: { sequence: number; lastMeaningfulChange: string | null; counters: Record<string, unknown> };
   id: string; createdAt: string; status: ScreeningStatus; mirror: string | null; problem: AutoLlmFailure | null;
   activity: { phase: string; remote?: AutoLlmCampaign['remote'] } | null;
   progress: { phase: string; initialCompleted: number; initialTotal: number; confirmationsCompleted: number; confirmationsTotal: number; updatedAt: string; training?: number; testing?: number; excluded?: number; retained?: number; inconclusive?: number } | null;
@@ -95,3 +97,11 @@ export interface AutoLlmComparison {
   instances?: ComparisonInstance[];
   [key: string]: unknown;
 }
+
+export interface WorkerLease { workerId: string; controller: string; operation: string; assignment: string | null; token: string; generation: number }
+export interface EffectiveConfiguration { configuration: AutoLlmConfig; errors: string[]; summary: Record<string, unknown>; digest: string }
+export interface ApprovalDifference { path: string; reviewed: unknown; current: unknown }
+export interface GenerationSettings { model: string | null; reasoningEffort: string | null; ready: boolean; approvalLine: string }
+export interface CleanupSelection { kind: 'campaign' | 'screening' | 'probe' | 'workspace'; id?: string; export?: string; shutdown?: boolean; retainReceipt?: boolean }
+export interface CleanupPlan { digest: string; workspace: string; selection: CleanupSelection; delete: unknown[]; retain: Record<string, string>; remote: unknown[]; blockers: string[]; processes: { evidence: string; identity: { pid: number; start: string } }[] }
+export interface CleanupReceipt { digest: string; status: 'UNKNOWN' | 'PLANNED' | 'PENDING' | 'SUCCEEDED'; completed: string[]; pending: Record<string, string> }

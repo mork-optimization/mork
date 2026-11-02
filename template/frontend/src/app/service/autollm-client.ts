@@ -26,7 +26,7 @@ export class AutoLlmClient {
     const receipt = await this.post<{ id: string }>('/campaigns', config);
     return this.get(`/campaigns/${encodeURIComponent(receipt.id)}/status`);
   }
-  proposal(id: string, targets: string[] = []): Promise<{ digest: string; configuration: AutoLlmConfig; training: string[]; testing: string[]; screening: unknown; targets: unknown }> { return this.post(`/campaigns/${encodeURIComponent(id)}/proposal`, { targets }); }
+  proposal(id: string, targets: string[] = []): Promise<{ digest: string; configuration: AutoLlmConfig; generation: import('../model/autollm').GenerationSettings; training: string[]; testing: string[]; screening: unknown; targets: unknown }> { return this.post(`/campaigns/${encodeURIComponent(id)}/proposal`, { targets }); }
   async reviseDataset(id: string, selection: unknown): Promise<AutoLlmCampaign> { const receipt = await firstValueFrom(this.http.put<{ id: string }>(`${this.base}/campaigns/${encodeURIComponent(id)}/dataset`, selection).pipe(takeUntilDestroyed(this.destroy))); return this.get(`/campaigns/${encodeURIComponent(receipt.id)}/status`); }
   async editDraft(id: string, config: AutoLlmConfig): Promise<AutoLlmCampaign> { const receipt = await firstValueFrom(this.http.put<{ id: string }>(`${this.base}/campaigns/${encodeURIComponent(id)}/draft`, config).pipe(takeUntilDestroyed(this.destroy))); return this.get(`/campaigns/${encodeURIComponent(receipt.id)}/status`); }
   amendTrials(id: string, trials: number): Promise<Awaited<ReturnType<AutoLlmClient["proposal"]>>> { return this.post(`/campaigns/${encodeURIComponent(id)}/amend-trials`, { trials }); }
@@ -44,6 +44,10 @@ export class AutoLlmClient {
   recovery(id: string): Promise<AutoLlmRecovery> { return this.get(`/campaigns/${encodeURIComponent(id)}/recovery`); }
   resumeTrial(id: string, trial: number): Promise<AutoLlmCampaign> { return this.post(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/resume`); }
   failTrial(id: string, trial: number, reason: string): Promise<AutoLlmCampaign> { return this.post(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/fail`, { reason }); }
+  effective(config: AutoLlmConfig): Promise<import('../model/autollm').EffectiveConfiguration> { return this.post('/effective-config', config); }
+  cleanupPlan(selection: import('../model/autollm').CleanupSelection): Promise<import('../model/autollm').CleanupPlan> { return this.post('/cleanup/plan', selection); }
+  cleanupApply(digest: string): Promise<import('../model/autollm').CleanupReceipt> { return this.post('/cleanup/apply', { digest }); }
+  cleanupStatus(digest: string): Promise<import('../model/autollm').CleanupReceipt> { return this.get(`/cleanup/status?digest=${encodeURIComponent(digest)}`); }
   summary(id: string): Promise<Record<string, unknown>> { return this.get(`/campaigns/${encodeURIComponent(id)}/summary`); }
   activity(id: string, trial: number, attempt: number, cursor: number): Promise<AutoLlmLog> { return this.get(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/activity`, { attempt, cursor }); }
   comparison(id: string, trial: number): Promise<AutoLlmComparison> { return this.get(`/campaigns/${encodeURIComponent(id)}/trials/${trial}/comparison`); }

@@ -46,13 +46,53 @@ class SshWorkloadTest {
         var classpath = new ArrayList<String>(); for (String entry : System.getProperty("java.class.path").split(File.pathSeparator)) classpath.add(Path.of(entry).toAbsolutePath().toUri().toString());
         manifest.getMainAttributes().put(Attributes.Name.CLASS_PATH, String.join(" ", classpath));
         try (var jar = new JarOutputStream(Files.newOutputStream(runner), manifest)) { /* Manifest delegates to this fixture's compiled classes. */ }
+        Path workerJava = temp.resolve("worker-java");
+        Files.writeString(workerJava, "#!/bin/sh\nexec " + WorkloadPathUtil.quote(java) + " " + WorkloadPathUtil.quote("-Dmork.test.workerRegistry=" + WorkerRegistry.system().directory()) + " \"$@\"\n");
+        assertTrue(workerJava.toFile().setExecutable(true));
         var defaults = AutoLlmConfig.defaults();
         config = new AutoLlmConfig(defaults.project(), defaults.workspace(), 1, 1234L, 299, null, null, null, null, defaults.codex(), defaults.preparation(), defaults.tuning(), defaults.comparison(),
                 new AutoLlmConfig.Execution(32, 100L, 30000L, 30000L, 5000L, 5000L, 30000L, 30000L, "128m", AutoLlmConfig.Target.SSH,
-                        new AutoLlmConfig.Ssh("fixture", runner.toString(), List.of(new AutoLlmConfig.Server("fixture", "mork-fixture", temp.resolve("remote workspace").toString(), java, Map.of(), ssh.toString(), null, null)), new AutoLlmConfig.Reconnect(10L, 40L, 200L))));
+                        new AutoLlmConfig.Ssh("fixture", runner.toString(), List.of(new AutoLlmConfig.Server("fixture", "mork-fixture", temp.resolve("remote workspace").toString(), workerJava.toString(), Map.of(), ssh.toString(), null, null)), new AutoLlmConfig.Reconnect(10L, 40L, 200L))));
         root = temp.resolve("local mirror").toAbsolutePath(); Files.createDirectories(root);
     }
     @AfterEach void stopSsh() { if (server != null) server.destroyForcibly(); }
+    @Test void historicalAssignmentsKeepTheirOwnersAndCleanupDeletesBothAliases() throws Exception {
+        var tree = AutoLlmFileUtil.JSON.valueToTree(config);
+        ((tools.jackson.databind.node.ObjectNode) tree).put("workspace", temp.toRealPath().resolve("managed-workspace").toString());
+        config = AutoLlmFileUtil.JSON.treeToValue(tree, AutoLlmConfig.class);
+        var store = new AutoLlmCampaignStore(config); String campaignId = UUID.randomUUID().toString(); Path campaign = store.directory(campaignId);
+        OwnershipManifest.directory(store.root(), "workspace", store.root().toString());
+        OwnershipManifest.directory(campaign, "campaign", campaign.toString());
+        var jobs = new ArrayList<WorkloadProtocol.Job>();
+        Path ssh = Path.of(config.execution().ssh().onlyServer().configFile());
+        Files.writeString(ssh, Files.readString(ssh).replace("Host mork-fixture", "Host mork-fixture alias-two"));
+        for (String assignment : List.of("first", "second")) {
+            root = campaign.resolve("trials/001/assignments/" + assignment); Files.createDirectories(root);
+            AutoLlmFileUtil.write(root.resolve("execution-context.json"), Map.of("campaignId", campaignId, "targetId", "fixture", "trial", 1, "assignment", assignment));
+            if (assignment.equals("second")) {
+                var changed = AutoLlmFileUtil.JSON.valueToTree(config);
+                ((tools.jackson.databind.node.ObjectNode) changed.path("execution").path("ssh").path("servers").get(0)).put("host", "alias-two");
+                config = AutoLlmFileUtil.JSON.treeToValue(changed, AutoLlmConfig.class);
+            }
+            var work = workload("success", assignment);
+            assertEquals(0, new SshWorkloadExecutor(config, root, new SshTransport(config, root.resolve(".transport")), state -> {}).run(work, () -> false).exitCode());
+            var job = AutoLlmFileUtil.read(work.output().resolve("remote-job.json"), WorkloadProtocol.Job.class); jobs.add(job);
+            ExecutionOwner.of(job).release();
+        }
+        assertEquals(jobs.getFirst().owner().lease().workerId(), jobs.getLast().owner().lease().workerId());
+        assertEquals("mork-fixture", jobs.getFirst().owner().config().execution().ssh().onlyServer().host());
+        assertEquals("alias-two", jobs.getLast().owner().config().execution().ssh().onlyServer().host());
+        for (var job : jobs) {
+            var transport = ExecutionOwner.of(job).transport(); transport.bootstrap();
+            assertTrue(AutoLlmFileUtil.JSON.readTree(transport.call("inspect", job.root(), job.id(), Map.of())).path("identityMatches").asBoolean());
+        }
+        var cleanup = new AutoLlmCleanup(store); var plan = cleanup.plan(new AutoLlmCleanup.Selection("campaign", campaignId, null, false, true));
+        assertTrue(plan.blockers().isEmpty(), plan.blockers().toString());
+        var receipt = cleanup.apply(plan.digest(), true); assertEquals("SUCCEEDED", receipt.status(), receipt.toString());
+        assertFalse(Files.exists(campaign));
+        for (var job : jobs) assertFalse(Files.exists(Path.of(job.root())));
+        assertNull(WorkerRegistry.system().status().lease());
+    }
     @Test void lostAcknowledgementReplyRejoinsCollectedJobWithoutDownloadingOrExecutingAgain() throws Exception {
         AutoLlmFileUtil.write(root.resolve("control/storage-layout.json"), Map.of("version", 1));
         var transport = new SshTransport(config, root.resolve(".transport")) {
@@ -77,7 +117,7 @@ class SshWorkloadTest {
         };
         assertEquals(0, new SshWorkloadExecutor(config, root, recovery, _ -> {}).run(work, () -> false).exitCode());
         assertTrue(Files.exists(work.output().resolve("remote-acknowledged.json")));
-        RemoteStorageMaintenance.maintain(root, root, config, () -> false);
+        RemoteStorageMaintenance.maintain(root, root, () -> false);
         assertEquals("RELEASED", AutoLlmFileUtil.read(root.resolve("storage/remote-retention.json"), Map.class).get("status"));
         assertTrue(Files.exists(remoteJob.resolve("job.json")));
         assertFalse(Files.exists(Path.of(job.root()).resolve("output with spaces/literal.txt")));

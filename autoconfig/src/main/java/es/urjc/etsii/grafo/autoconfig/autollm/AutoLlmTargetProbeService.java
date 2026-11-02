@@ -15,7 +15,7 @@ public class AutoLlmTargetProbeService implements AutoCloseable {
     }
     public record Target(TargetStatus status, WorkloadProtocol.Host host, AutoLlmFailureUtil.Failure problem) {}
     public record Probe(String id, String createdAt, ProbeStatus status, Map<String,Target> targets) {}
-    private record Saved(Probe probe, long pid, String processStartedAt) {}
+    private record Saved(int version, Probe probe, long pid, String processStartedAt) {}
     private static final int PARALLEL_TARGETS = 4;
     private final Path root;
     private final AutoLlmExecutionService workloads;
@@ -32,9 +32,14 @@ public class AutoLlmTargetProbeService implements AutoCloseable {
         if (!id.matches("[a-f0-9-]{36}")) throw new IllegalArgumentException("Invalid target probe id");
         return root.resolve(id);
     }
-    private void save(Probe probe) { AutoLlmFileUtil.write(directory(probe.id()).resolve("probe.json"), new Saved(probe, pid, processStartedAt)); }
+    private void save(Probe probe) { AutoLlmFileUtil.write(directory(probe.id()).resolve("probe.json"), new Saved(7, probe, pid, processStartedAt)); }
+    public synchronized boolean selectedActive() {
+        for (String id : active.keySet()) if (AutoLlmCleanup.requested(directory(id))) return true;
+        return false;
+    }
     public synchronized Probe start(AutoLlmConfig config) {
         if (closed) throw new IllegalStateException("Target preflight is shutting down");
+        config = AutoLlmNormalization.normalize(config);
         var errors = AutoLlmExecutionService.validate(config);
         if (!errors.isEmpty()) throw new IllegalArgumentException(String.join("; ", errors));
         var definitions = new LinkedHashMap<String,AutoLlmConfig>();
@@ -43,13 +48,17 @@ public class AutoLlmTargetProbeService implements AutoCloseable {
         var targets = new LinkedHashMap<String,Target>();
         for (String id : definitions.keySet()) targets.put(id, new Target(TargetStatus.QUEUED, null, null));
         var probe = new Probe(UUID.randomUUID().toString(), Instant.now().toString(), ProbeStatus.RUNNING, Collections.unmodifiableMap(targets));
+        OwnershipManifest.directory(root.getParent(), "workspace", root.getParent().toString());
+        OwnershipManifest.directory(directory(probe.id()), "probe", directory(probe.id()).toString());
         save(probe); active.put(probe.id(), probe);
+        var normalized = config;
         for (var entry : definitions.entrySet()) executor.execute(() -> run(probe.id(), entry.getKey(), entry.getValue(),
-                config.execution().target() == AutoLlmConfig.Target.SSH && entry.getKey().equals(config.execution().ssh().screeningServerId()) ? "" : null));
+                normalized.execution().target() == AutoLlmConfig.Target.SSH && entry.getKey().equals(normalized.execution().ssh().screeningServerId()) ? "" : null));
         return probe;
     }
     protected WorkloadProtocol.Host inspect(AutoLlmConfig config, Path directory, String selectorPython) {
-        return workloads.inspect(config, directory, selectorPython);
+        try { return workloads.inspect(config, directory, selectorPython); }
+        finally { ExecutionOwner.releaseIfPresent(directory); }
     }
     private void run(String probeId, String targetId, AutoLlmConfig config, String selectorPython) {
         if (!update(probeId, targetId, new Target(TargetStatus.RUNNING, null, null))) return;
@@ -86,6 +95,7 @@ public class AutoLlmTargetProbeService implements AutoCloseable {
         Path file = directory(id).resolve("probe.json");
         if (!Files.isRegularFile(file)) throw new NoSuchElementException("Target probe unavailable: " + id);
         var saved = AutoLlmFileUtil.read(file, Saved.class);
+        if (saved.version() != 7) throw new IllegalStateException("Historical preflight requires its matching controller");
         if (saved.probe().status() == ProbeStatus.RUNNING) {
             boolean alive = ProcessHandle.of(saved.pid()).filter(ProcessHandle::isAlive)
                     .flatMap(process -> process.info().startInstant()).map(Instant::toString).orElse("").equals(saved.processStartedAt());

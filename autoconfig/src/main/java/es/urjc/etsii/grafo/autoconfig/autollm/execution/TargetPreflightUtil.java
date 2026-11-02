@@ -17,10 +17,13 @@ public final class TargetPreflightUtil {
             input.readInt(); input.readUnsignedShort(); return input.readUnsignedShort() - 44;
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
+    public static Map<String,String> hostIdentity() {
+        var identity = new LinkedHashMap<>(ScreeningFileUtil.host()); identity.put("workerId", WorkerRegistry.system().status().workerId()); return identity;
+    }
     public static WorkloadProtocol.Host identity(AutoLlmConfig config, Path root, List<Prerequisite> checks) throws IOException {
         var os = java.lang.management.ManagementFactory.getOperatingSystemMXBean();
         long memory = os instanceof com.sun.management.OperatingSystemMXBean extended ? extended.getTotalMemorySize() : -1;
-        return new WorkloadProtocol.Host(WorkloadProtocol.VERSION, ScreeningFileUtil.host(), config.execution().workers(),
+        return new WorkloadProtocol.Host(WorkloadProtocol.VERSION, hostIdentity(), config.execution().workers(),
                 ConcurrencyUtil.resolveWorkerCount(config.execution().workers(), Runtime.getRuntime().availableProcessors()), Runtime.getRuntime().maxMemory(),
                 memory, Files.getFileStore(root).getUsableSpace(), checks);
     }
@@ -42,6 +45,7 @@ public final class TargetPreflightUtil {
         return commands(config, selectorPython).size() * (CHECK_TIMEOUT_MILLIS + CHECK_GRACE_MILLIS) + 30_000;
     }
     public static WorkloadProtocol.Host inspect(AutoLlmConfig config, Path root, AutoLlmProcessRunner processes, String selectorPython) throws IOException {
+        WorkerRegistry.system().verifyLocks();
         Files.createDirectories(root);
         var commands = commands(config, selectorPython);
         String build = config.project().buildCommand().getFirst();

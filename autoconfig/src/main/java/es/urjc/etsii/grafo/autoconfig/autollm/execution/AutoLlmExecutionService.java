@@ -11,6 +11,7 @@ import java.util.function.*;
 
 /** Execution dispatch and explicit control/data path mapping; Codex and Git editing stay local. */
 public final class AutoLlmExecutionService {
+    public record LocalJob(String id, ExecutionOwner owner, List<String> command, String cwd) {}
     private final AutoLlmProcessRunner processes;
     public AutoLlmExecutionService(AutoLlmProcessRunner processes) { this.processes = processes; }
 
@@ -64,14 +65,23 @@ public final class AutoLlmExecutionService {
         return host;
     }
     private WorkloadProtocol.Host inspect(AutoLlmConfig config, Path root, String selectorPython, boolean qualification) {
+        var owner = ExecutionOwner.waitFor(config, root);
         if (config.execution().target() == AutoLlmConfig.Target.LOCAL) {
-            try { return TargetPreflightUtil.inspect(config, root, processes, selectorPython); } catch (IOException e) { throw new UncheckedIOException(e); }
+            String id = "preflight-" + UUID.randomUUID();
+            WorkerRegistry.system().submit(owner.lease(), root.toString(), id, previous -> WorkerRegistry.ProcessIdentity.of(ProcessHandle.current()));
+            try {
+                var host = TargetPreflightUtil.inspect(config, root, processes, selectorPython);
+                return host;
+            } catch (IOException e) { throw new UncheckedIOException(e); }
+            finally {
+                WorkerRegistry.system().finishPreflight(owner.lease(), root.toString(), id);
+            }
         }
         var errors = validate(config, !Files.exists(root.resolve(".transport/runner.json")));
         if (!errors.isEmpty()) throw new IllegalArgumentException(String.join("; ", errors));
         var transport = new SshTransport(config, root.resolve(".transport")); transport.bootstrap();
         Path saved = root.resolve("execution-target.json");
-        var host = AutoLlmFileUtil.JSON.readValue(transport.call(qualification ? "probe" : "identity", WorkloadPathUtil.remoteRoot(config, root), selectorPython, config), WorkloadProtocol.Host.class);
+        var host = AutoLlmFileUtil.JSON.readValue(transport.call(qualification ? "probe" : "identity", WorkloadPathUtil.remoteRoot(config, root), selectorPython, qualification ? new RemoteWorkloadMain.ProbeRequest(config, owner.lease()) : config), WorkloadProtocol.Host.class);
         if (host.version() != WorkloadProtocol.VERSION) throw new IllegalStateException("Remote runner protocol mismatch");
         if (Files.exists(saved)) {
             var previous = AutoLlmFileUtil.read(saved, WorkloadProtocol.Host.class);
@@ -88,21 +98,23 @@ public final class AutoLlmExecutionService {
         return (Files.exists(file) ? AutoLlmFileUtil.read(file, WorkloadProtocol.Host.class) : probe(config, root)).effectiveWorkers();
     }
     public void cancelOutstanding(AutoLlmConfig config, Path directory, Consumer<Map<String,Object>> observer) {
+        directory = AutoLlmNormalization.localPath(directory);
         for (Path descriptor : AutoLlmFileUtil.ownedFiles(directory, "remote-job.json")) {
-            if (Files.exists(descriptor.getParent().resolve("collection-completed.json"))) continue;
+            if (Files.exists(descriptor.getParent().resolve("collection-completed.json")) || Files.exists(descriptor.getParent().resolve("collection-discarded.json"))) continue;
             var job = AutoLlmFileUtil.read(descriptor, WorkloadProtocol.Job.class);
-            Path root = descriptor.getParent();
-            for (int i = 0; i < Path.of(job.output()).getNameCount(); i++) root = root.getParent();
-            if (root == null || !root.startsWith(directory) || !root.resolve(job.output()).normalize().equals(descriptor.getParent())) throw new ExecutionTargetException("Saved job output does not match its owned directory");
-            try { run(config, root, List.of("reattach"), root.resolve(job.cwd()), descriptor.getParent(), null, List.of(), job.timeoutMillis(), job.plannedMillis(), job.watchEvaluations(), job.startupMillis(), () -> true, observer); }
+            var owner = ExecutionOwner.of(job);
+            Path root = Path.of(owner.localRoot());
+            if (!root.startsWith(directory) || !root.resolve(job.output()).normalize().equals(descriptor.getParent())) throw new ExecutionTargetException("Saved job output does not match its owned directory");
+            try { run(owner.config(), root, List.of("reattach"), root.resolve(job.cwd()), descriptor.getParent(), null, List.of(), job.timeoutMillis(), job.plannedMillis(), job.watchEvaluations(), job.startupMillis(), () -> true, observer); }
             catch (RuntimeException e) {
-                if (Thread.currentThread().isInterrupted() || !Files.exists(descriptor.getParent().resolve("collection-completed.json"))) throw e;
+                if (Thread.currentThread().isInterrupted() || !Files.exists(descriptor.getParent().resolve("collection-completed.json")) && !Files.exists(descriptor.getParent().resolve("collection-discarded.json"))) throw e;
                 // Completed or cancelled jobs are reconciled even when their workload failed.
             }
         }
     }
     public AutoLlmConfig stageInputs(AutoLlmConfig config, Path root) {
         if (config.execution().target() == AutoLlmConfig.Target.LOCAL) return config;
+        root = AutoLlmNormalization.localPath(root);
         try {
             var manifest = new LinkedHashMap<String,Map<String,String>>();
             var paths = new ArrayList<String>();
@@ -126,9 +138,47 @@ public final class AutoLlmExecutionService {
 
     public AutoLlmProcessRunner.Result run(AutoLlmConfig config, Path root, List<String> command, Path cwd, Path output, Path source,
             List<Path> collect, long timeout, long planned, boolean watch, long startup, BooleanSupplier cancelled, Consumer<Map<String,Object>> observer) {
+        Path originalRoot = root.toAbsolutePath().normalize(); root = AutoLlmNormalization.localPath(root);
+        var canonicalCommand = new ArrayList<String>();
+        for (String argument : command) canonicalCommand.add(WorkloadPathUtil.argument(argument, originalRoot, root.toString()));
+        command = canonicalCommand; cwd = AutoLlmNormalization.localPath(cwd); output = AutoLlmNormalization.localPath(output);
+        if (source != null) source = AutoLlmNormalization.localPath(source);
+        var canonicalCollect = new ArrayList<Path>(); for (Path path : collect) canonicalCollect.add(AutoLlmNormalization.localPath(path)); collect = canonicalCollect;
         if (cancelled.getAsBoolean() && !Files.exists(output.resolve("remote-job.json"))) throw new java.util.concurrent.CancellationException("Cancelled before starting a workload");
-        if (config.execution().target() == AutoLlmConfig.Target.LOCAL) return new LocalWorkloadExecutor(processes).run(
-                new AutoLlmWorkloadExecutor.Workload(command, cwd, output, Map.of(), List.of(), List.of(), timeout, planned, config.execution().watchdogGraceMillis(), watch, startup), cancelled);
+        if (Files.isRegularFile(output.resolve("remote-job.json"))) {
+            var saved = ExecutionOwner.of(AutoLlmFileUtil.read(output.resolve("remote-job.json"), WorkloadProtocol.Job.class));
+            config = saved.config(); root = Path.of(saved.localRoot());
+        }
+        var owner = ExecutionOwner.waitFor(config, root);
+        if (config.execution().target() == AutoLlmConfig.Target.LOCAL) {
+            AutoLlmFileUtil.write(output.resolve("execution-owner.json"), owner);
+            Path saved = output.resolve("local-job.json"), resultFile = output.resolve("workload-result.json");
+            LocalJob job = Files.isRegularFile(saved) ? AutoLlmFileUtil.read(saved, LocalJob.class) : null;
+            boolean reuse = false;
+            if (job != null && job.owner().lease().equals(owner.lease())) {
+                if (!Files.exists(resultFile) && !Files.exists(output.resolve("process-terminated.json")))
+                    throw new IllegalStateException("Uncertain local submission requires reconciliation: " + saved);
+                AutoLlmProcessRunner.requireTerminated(output);
+                if (Files.exists(resultFile)) {
+                    var previous = AutoLlmFileUtil.read(resultFile, LocalWorkloadExecutor.Completed.class);
+                    reuse = previous.command().equals(command) && previous.cwd().equals(cwd.toString())
+                            && (!Files.exists(output.resolve("collection-completed.json")) || previous.result().exitCode() == 0 || previous.result().plannedDeadline());
+                }
+            }
+            if (!reuse) job = new LocalJob(UUID.randomUUID().toString(), owner, command, cwd.toString());
+            String id = job.id(); AutoLlmFileUtil.write(saved, job);
+            WorkerRegistry.system().submit(owner.lease(), root.toString(), id, previous -> WorkerRegistry.ProcessIdentity.of(ProcessHandle.current()));
+            try {
+                return new LocalWorkloadExecutor(processes).run(
+                        new AutoLlmWorkloadExecutor.Workload(command, cwd, output, Map.of(), List.of(), List.of(), timeout, planned, config.execution().watchdogGraceMillis(), watch, startup), cancelled);
+            } finally {
+                if (Files.isRegularFile(output.resolve("collection-completed.json"))
+                        || Files.isRegularFile(output.resolve("process-terminated.json")) && !Files.exists(resultFile)) {
+                    AutoLlmProcessRunner.requireTerminated(output);
+                    WorkerRegistry.system().complete(owner.lease(), root.toString(), id);
+                }
+            }
+        }
         try {
             Path statusFile = output.resolve("remote-status.json"), requestFile = output.resolve("remote-job.json");
             if (Files.exists(statusFile) && Files.exists(requestFile)) {
@@ -252,11 +302,12 @@ public final class AutoLlmExecutionService {
     }
     public static UnaryOperator<String> localPaths(AutoLlmConfig config, Path root) {
         if (config.execution().target() == AutoLlmConfig.Target.LOCAL) return UnaryOperator.identity();
+        Path canonicalRoot = AutoLlmNormalization.localPath(root);
         String remote = WorkloadPathUtil.remoteRoot(config, root);
         var originals = new HashMap<String,String>();
         for (var input : stagedInputs(root).entrySet()) originals.put(input.getValue().get("path"), input.getKey());
         return path -> {
-            String local = WorkloadPathUtil.translate(path, remote, root.toString());
+            String local = WorkloadPathUtil.translate(path, remote, canonicalRoot.toString());
             return originals.getOrDefault(local, local);
         };
     }

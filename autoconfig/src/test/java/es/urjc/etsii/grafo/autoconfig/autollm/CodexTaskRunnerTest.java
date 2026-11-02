@@ -52,6 +52,7 @@ class CodexTaskRunnerTest {
         var owner = AutoLlmFileUtil.read(output.resolve("owner.json"), java.util.Map.class);
         var command = assertInstanceOf(java.util.List.class, owner.get("command"));
         assertEquals(expectedPrompt, command.getLast());
+        if (config.codex().model() != null) assertEquals(config.codex().model(), command.get(command.indexOf("--model") + 1));
         assertFalse(ProcessHandle.of(((Number) owner.get("pid")).longValue()).map(ProcessHandle::isAlive).orElse(false));
         if (outcome.equals("success")) {
             Path resumed = temp.resolve("resumed-attempt");

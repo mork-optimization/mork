@@ -25,9 +25,38 @@ public class AutoLlmController {
         this.artifact = new org.springframework.boot.system.ApplicationHome().getSource();
         this.artifactSha256 = artifact != null && artifact.isFile() ? AutoLlmFileUtil.hash(artifact.toPath()) : null;
     }
+    @ExceptionHandler(AutoLlmNormalization.ApprovalMismatch.class)
+    public org.springframework.http.ResponseEntity<?> approvalMismatch(AutoLlmNormalization.ApprovalMismatch error) {
+        return org.springframework.http.ResponseEntity.status(409).body(Map.of("code", error.code, "message", error.getMessage(), "differences", error.differences));
+    }
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private es.urjc.etsii.grafo.autoconfig.screening.ScreeningJobService screenings;
+    @PostMapping("/cleanup/plan") public Object cleanupPlan(@RequestBody AutoLlmCleanup.Selection selection) {
+        requireMode(); return new AutoLlmCleanup(store).plan(selection);
+    }
+    @GetMapping("/cleanup/status") public Object cleanupStatus(@RequestParam String digest) { return new AutoLlmCleanup(store).status(digest); }
+    @PostMapping("/cleanup/apply") public Object cleanupApply(@RequestBody Map<String,String> request) {
+        requireMode(); var cleanup = new AutoLlmCleanup(store);
+        if (cleanup.status(request.get("digest")).status().equals("SUCCEEDED")) return cleanup.status(request.get("digest"));
+        var scope = cleanup.selected(request.get("digest")); cleanup.requestCancellation(request.get("digest"));
+        String campaign = service.active(), screening = screenings == null ? null : screenings.active();
+        if (campaign != null && AutoLlmCleanup.requested(store.directory(campaign))) service.cancel(campaign);
+        if (screening != null && AutoLlmCleanup.requested(store.root().resolve("screenings").resolve(screening))) screenings.cancel(screening);
+        campaign = service.active(); screening = screenings == null ? null : screenings.active();
+        boolean idle = (campaign == null || !AutoLlmCleanup.requested(store.directory(campaign))) && !service.hasSelectedTargetProbes()
+                && (screening == null || !AutoLlmCleanup.requested(store.root().resolve("screenings").resolve(screening)));
+        if (idle && scope.shutdown()) return cleanup.launchFinalizer(request.get("digest"), service.defaults());
+        return cleanup.apply(request.get("digest"), idle);
+    }
+    @PostMapping("/worker/status") public Object workerStatus(@RequestBody es.urjc.etsii.grafo.autoconfig.autollm.execution.ExecutionOwner owner) {
+        return owner.remote() ? AutoLlmFileUtil.JSON.readTree(owner.call("worker-status", Map.of())) : es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkerRegistry.system().status();
+    }
+    @PostMapping("/worker/release") public Object workerRelease(@RequestBody es.urjc.etsii.grafo.autoconfig.autollm.execution.ExecutionOwner owner) {
+        requireMode(); owner.release(); return Map.of("released", true);
+    }
     @GetMapping("/capabilities") public Map<String,Object> capabilities() {
         var result = new LinkedHashMap<String,Object>();
-        result.put("mode", mode.mode().name()); result.put("apiVersion", 6); result.put("checkpointVersion", AutoLlmCampaign.SCHEMA_VERSION);
+        result.put("mode", mode.mode().name()); result.put("apiVersion", 7); result.put("checkpointVersion", AutoLlmCampaign.SCHEMA_VERSION);
         result.put("runnerProtocol", es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol.VERSION);
         result.put("minimumJavaFeature", es.urjc.etsii.grafo.autoconfig.autollm.execution.TargetPreflightUtil.minimumJavaFeature());
         result.put("workspace", store.root().toString()); result.put("pid", ProcessHandle.current().pid());
@@ -36,12 +65,13 @@ public class AutoLlmController {
         result.put("artifact", artifact == null ? null : artifact.getAbsolutePath());
         result.put("artifactSha256", artifactSha256);
         result.put("baseUrl", "http://127.0.0.1:" + environment.getProperty("local.server.port", environment.getProperty("server.port", "8080")));
-        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL", "RECOVERY_ACTIONS", "FILE_TAIL_PREVIEWS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION"));
+        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL", "RECOVERY_ACTIONS", "FILE_TAIL_PREVIEWS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKER_LEASES", "SCOPED_CLEANUP"));
         return result;
     }
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
-    public void saveSession() { AutoLlmFileUtil.write(store.root().resolve("session.json"), capabilities()); }
-    @PostMapping("/effective-config") public Object effectiveConfig(@RequestBody AutoLlmConfig config) { return AutoLlmSummaryUtil.summarize(config, null, Map.of(), config.trials()); }
+    public void saveSession() { es.urjc.etsii.grafo.autoconfig.autollm.execution.OwnershipManifest.directory(store.root(), "workspace", store.root().toString()); AutoLlmFileUtil.write(store.root().resolve("session.json"), capabilities()); }
+    @PostMapping("/effective-config") public Object effectiveConfig(@RequestBody AutoLlmConfig config) { var normalized = AutoLlmNormalization.normalize(config);
+        return Map.of("configuration", normalized, "errors", service.validate(normalized), "summary", AutoLlmSummaryUtil.summarize(normalized, null, Map.of(), normalized.trials()), "digest", AutoLlmFileUtil.canonicalHash(normalized)); }
     @GetMapping("/campaigns/{id}/storage") public AutoLlmStorageReport.Report storage(@PathVariable String id) {
         store.load(id);
         return AutoLlmStorageReport.inspect(store.directory(id));
@@ -183,7 +213,12 @@ public class AutoLlmController {
                 if (Files.exists(remote)) progress.put("remote", AutoLlmFileUtil.read(remote, Object.class));
                 if (attempt.stage.generation()) progress.put("generation", CodexProgressUtil.refresh(directory));
                 for (String name : List.of("execution/tuning-progress.json", "pilot/execution/tuning-progress.json", "execution/tuning-status.json", "probe/execution/probes.json")) {
-                    if (Files.exists(directory.resolve(name))) { progress.put("workload", AutoLlmFileUtil.read(directory.resolve(name), Object.class)); try { progress.put("workloadUpdatedAt", Files.getLastModifiedTime(directory.resolve(name)).toInstant().toString()); } catch (java.io.IOException e) { throw new java.io.UncheckedIOException(e); } break; }
+                    if (Files.exists(directory.resolve(name))) {
+                        var value = AutoLlmFileUtil.read(directory.resolve(name), tools.jackson.databind.JsonNode.class);
+                        var observed = EvaluationProgress.observe(directory.resolve(name), value);
+                        progress.put("workload", value); progress.put("evaluationProgress", observed);
+                        progress.put("workloadUpdatedAt", observed.lastMeaningfulChange()); break;
+                    }
                 }
             }
             return progress;
@@ -206,45 +241,34 @@ public class AutoLlmController {
             rows.add(new TrialObservation(t.number, t.targetId, t.status, t.nextStage, t.repairTurns, t.status.terminal() ? null : t.problem, details));
         }
         var targets = new LinkedHashMap<String,Object>();
-        for (var e : c.targets.entrySet()) targets.put(e.getKey(), Map.of("status", e.getValue().status, "ready", e.getValue().baselineReady, "draining", e.getValue().draining));
+        for (var e : c.targets.entrySet()) targets.put(e.getKey(), Map.of("status", e.getValue().status, "ready", e.getValue().baselineReady, "draining", e.getValue().draining, "qualification", e.getValue().getQualification(), "availability", e.getValue().getAvailability(), "health", e.getValue().getHealth()));
         return new Observation(id, c.status, java.time.Instant.now().toString(), rows, targets, service.recovery(id), errors, !errors.isEmpty(), c.approvedProposal, c.approvedAt, c.proposedTrials != null || !c.reviewedTargets.equals(c.approvedTargets));
     }
     @GetMapping("/campaigns/{id}/trials/{number}/remote-inspection") public Object inspectRemote(@PathVariable String id, @PathVariable int number,
-            @RequestParam(defaultValue = "10000") long timeoutMillis, @RequestParam(required = false) String assignmentId) {
+            @RequestParam(defaultValue = "10000") long timeoutMillis, @RequestParam(required = false) String assignmentId,
+            @RequestParam(defaultValue = "false") boolean allAssignments) {
+        if (assignmentId != null && allAssignments) throw new IllegalArgumentException("Select one assignment or all assignments");
         if (timeoutMillis < 100 || timeoutMillis > 30000) throw new IllegalArgumentException("Inspection timeout must be between 100 and 30000 ms");
-        var c = store.load(id);
-        for (var trial : c.trials) if (trial.number == number) {
-            var assignment = trial.assignment();
-            if (assignmentId != null) {
-                assignment = null;
-                for (var candidate : trial.assignments) if (candidate.id.equals(assignmentId)) { assignment = candidate; break; }
-                if (assignment == null) throw new NoSuchElementException("Unknown assignment " + assignmentId);
+        var campaign = store.load(id); var results = new ArrayList<Object>(); long deadline = System.nanoTime() + timeoutMillis * 1_000_000;
+        for (var trial : campaign.trials) if (trial.number == number) {
+            boolean found = false;
+            for (var assignment : trial.assignments) {
+                if (!allAssignments && !assignment.id.equals(assignmentId == null ? trial.activeAssignmentId : assignmentId)) continue;
+                found = true;
+                for (Path file : AutoLlmFileUtil.ownedFiles(store.directory(id).resolve(assignment.directory), "remote-job.json")) {
+                    var job = AutoLlmFileUtil.read(file, es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol.Job.class);
+                    var owner = es.urjc.etsii.grafo.autoconfig.autollm.execution.ExecutionOwner.of(job);
+                    var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor();
+                    var future = executor.submit(() -> { var transport = owner.transport(); transport.bootstrap(); return AutoLlmFileUtil.JSON.readTree(transport.call("inspect", owner.executionRoot(), job.id(), Map.of())); });
+                    try {
+                        var inspection = future.get(Math.max(1, deadline - System.nanoTime()), java.util.concurrent.TimeUnit.NANOSECONDS);
+                        results.add(Map.of("assignmentId", assignment.id, "workerId", owner.lease().workerId(), "host", owner.config().execution().ssh().onlyServer().host(), "inspection", inspection));
+                    } catch (Exception e) { future.cancel(true); return Map.of("partial", true, "jobs", results, "error", e.toString()); }
+                    finally { executor.shutdownNow(); }
+                }
             }
-            Path root = store.directory(id).resolve(assignment == null ? trial.directory : assignment.directory);
-            Path configFile = root.resolve("control/config.json");
-            if (!Files.isRegularFile(configFile)) throw new IllegalStateException("Trial has no saved execution context");
-            var config = AutoLlmFileUtil.read(configFile, AutoLlmConfig.class);
-            if (config.execution().target() != AutoLlmConfig.Target.SSH) throw new IllegalStateException("Trial has no resolved SSH context");
-            var descriptors = AutoLlmFileUtil.ownedFiles(root, "remote-job.json");
-            var pending = new ArrayList<Path>();
-            for (Path descriptor : descriptors) if (!Files.isRegularFile(descriptor.getParent().resolve("collection-completed.json"))) pending.add(descriptor);
-            if (pending.isEmpty() && !descriptors.isEmpty()) pending.add(descriptors.getLast());
-            var results = java.util.Collections.synchronizedList(new ArrayList<Object>());
-            try (var executor = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
-                var future = executor.submit(() -> {
-                    var transport = new es.urjc.etsii.grafo.autoconfig.autollm.execution.SshTransport(config, root.resolve(".transport"));
-                    transport.bootstrap();
-                    for (Path descriptor : pending) {
-                        var job = AutoLlmFileUtil.read(descriptor, es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol.Job.class);
-                        results.add(AutoLlmFileUtil.JSON.readTree(transport.call("inspect", job.root(), job.id(), Map.of())));
-                    }
-                });
-                try { future.get(timeoutMillis, java.util.concurrent.TimeUnit.MILLISECONDS); }
-                catch (java.util.concurrent.TimeoutException e) { future.cancel(true); return Map.of("partial", true, "jobs", List.copyOf(results), "error", "Remote inspection deadline expired"); }
-                catch (InterruptedException e) { future.cancel(true); Thread.currentThread().interrupt(); throw new java.util.concurrent.CancellationException("Inspection interrupted"); }
-                catch (java.util.concurrent.ExecutionException e) { return Map.of("partial", true, "jobs", List.copyOf(results), "error", e.getCause().toString()); }
-            }
-            return Map.of("partial", false, "jobs", List.copyOf(results));
+            if (!found && assignmentId != null) throw new NoSuchElementException("Unknown assignment " + assignmentId);
+            return Map.of("partial", false, "jobs", results);
         }
         throw new NoSuchElementException("Trial unavailable");
     }
@@ -262,7 +286,16 @@ public class AutoLlmController {
             @RequestParam int attempt, @RequestParam(defaultValue = "0") long cursor) {
         for (var trial : store.status(id).trials) if (trial.number == number) for (var candidate : trial.attempts) if (candidate.number == attempt && candidate.stage.generation()) {
             Path directory = store.directory(id).resolve(candidate.directory); CodexProgressUtil.refresh(directory);
-            return AutoLlmLogUtil.read(directory.resolve("activity.jsonl"), cursor, 65536);
+            Path file = directory.resolve("activity.jsonl");
+            if (cursor == -1 && AutoLlmEvidenceFiles.exists(file)) {
+                try {
+                    long start = Math.max(0, AutoLlmEvidenceFiles.attributes(file).size() - 65536);
+                    var page = AutoLlmLogUtil.read(file, start, 65536);
+                    String text = page.text(); if (start > 0) { int newline = text.indexOf('\n'); text = newline < 0 ? "" : text.substring(newline + 1); }
+                    return new AutoLlmLogUtil.Page(start, page.nextCursor(), text, page.more(), false);
+                } catch (java.io.IOException e) { throw new java.io.UncheckedIOException(e); }
+            }
+            return AutoLlmLogUtil.read(file, Math.max(0, cursor), 65536);
         }
         throw new NoSuchElementException("Generation attempt unavailable");
     }

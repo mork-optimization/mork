@@ -42,8 +42,9 @@ public final class AutoLlmRecoveryUtil {
             var target = campaign.targets.get(trial.targetId);
             boolean local = trial.targetId == null && trial.nextStage.ordinal() <= AutoLlmCampaign.Stage.PREPARATION.ordinal();
             if (reason == null && !local && (target == null || target.status == TargetStatus.REMOVED)) reason = "The trial has no available assigned server";
-            if (reason == null && (busy.contains(trial.targetId) || busy.contains("$trial-" + trial.number))) reason = "The assigned server already has an active controller workload";
             String failReason = reason;
+            if (failReason == null && (busy.contains("$trial-" + trial.number) || busy.contains(trial.targetId) && target != null && (target.assignedTrial == null || Objects.equals(target.assignedTrial, trial.number)))) failReason = "This trial still has an active controller workload";
+            if (reason == null && (busy.contains(trial.targetId) || busy.contains("$trial-" + trial.number))) reason = "The assigned server already has an active controller workload";
             if (failReason == null && target != null && !target.baselineReady) failReason = "The trial's server must remain qualified";
             if (failReason == null && (uncollected.contains(trial.targetId) || uncollected.contains("$trial-" + trial.number))) failReason = "Reconcile remote jobs and collect their evidence before failing the trial";
             String trialResumeReason = reason;

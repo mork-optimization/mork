@@ -23,6 +23,7 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
         this.config = config; this.root = root; this.transport = transport; this.observer = observer;
     }
     @Override public AutoLlmProcessRunner.Result run(Workload work, BooleanSupplier cancelled) {
+        if (!Files.isRegularFile(root.resolve("execution-owner.json"))) ExecutionOwner.waitFor(config, root);
         String remote = WorkloadPathUtil.remoteRoot(config, root);
         Path descriptor = work.output().resolve("remote-job.json");
         Path campaign = CampaignAssetStore.campaign(root);
@@ -57,7 +58,7 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                 var reset = new ArrayList<>(work.reset()); reset.add(name);
                 job = new Job(VERSION, id, remote, AutoLlmFileUtil.hash(archive), layers, command, root.relativize(work.cwd()).toString().replace('\\', '/'), name, work.collect(), reset,
                         config.execution().ssh().onlyServer().environment(), Files.exists(root.resolve("execution-target.json")) ? AutoLlmFileUtil.read(root.resolve("execution-target.json"), Host.class).identity() : Map.of(),
-                        work.timeoutMillis(), work.plannedMillis(), work.graceMillis(), work.watchEvaluations(), work.startupMillis(), campaign != null);
+                        work.timeoutMillis(), work.plannedMillis(), work.graceMillis(), work.watchEvaluations(), work.startupMillis(), campaign != null, ExecutionOwner.read(root));
                 AutoLlmFileUtil.write(descriptor, job); // durable identity before any uncertain remote submission
             }
             if (!remote.equals(job.root())) throw new ExecutionTargetException("Remote workspace changed; reconcile the original job before configuring another target");
@@ -67,6 +68,7 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                 if (saved.version() != 1 || !job.id().equals(saved.jobId())) throw new IOException("Invalid local collection receipt");
                 if (!Files.isRegularFile(work.output().resolve("remote-acknowledged.json"))) RemoteCampaignStorage.verifyCollection(root, saved);
                 acknowledge(work.output(), job, saved, false);
+                transport.bootstrap(); transport.call("job-collected", remote, job.id(), Map.of());
                 publish(work.output(), job, saved.state().status().name(), saved.state().failure());
                 return completed(saved.state(), work.output());
             }
@@ -126,12 +128,21 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                     }
                     for (var entry : page.snapshots().entrySet()) {
                         // Read a complete JSON snapshot before atomically exposing it to the local API.
-                        try { AutoLlmFileUtil.write(WorkloadPathUtil.inside(root, entry.getKey()), AutoLlmFileUtil.JSON.readTree(entry.getValue())); }
+                        try {
+                            Path snapshot = WorkloadPathUtil.inside(root, entry.getKey());
+                            var value = AutoLlmFileUtil.JSON.readTree(entry.getValue());
+                            if (!Files.isRegularFile(snapshot) || !value.equals(AutoLlmFileUtil.JSON.readTree(Files.readString(snapshot)))) AutoLlmFileUtil.write(snapshot, value);
+                        }
                         catch (RuntimeException ignored) { /* A remote producer may be replacing its snapshot; retry next poll. */ }
                     }
                     state = page.state();
                     lastSynchronizedAt = Instant.now().toString();
                     if (state.archiveSha256() != null) {
+                        if (AutoLlmCleanup.requested(root)) {
+                            transport.call("job-collected", remote, job.id(), Map.of());
+                            AutoLlmFileUtil.write(work.output().resolve("collection-discarded.json"), Map.of("jobId", job.id(), "reason", "Reviewed complete cleanup"));
+                            throw new CancellationException("Cleanup confirmed termination and discarded disposable results");
+                        }
                         publish(work.output(), job, cancellationSent ? "CANCELLATION_PENDING" : "COLLECTING", null);
                         long downloadStart = System.nanoTime();
                         Path archive = work.output().resolve("remote-result.zip"); transport.download(remote, job.id(), archive);
@@ -150,6 +161,7 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
                             AutoLlmFileUtil.write(collection, receipt); RemoteCampaignStorage.force(collection);
                             acknowledge(work.output(), job, receipt, true);
                         } else AutoLlmFileUtil.write(collection, Map.of("jobId", job.id(), "archiveSha256", state.archiveSha256(), "archiveBytes", archiveBytes, "downloadMillis", downloadMillis, "collectionMillis", (System.nanoTime() - downloadStart) / 1_000_000));
+                        transport.call("job-collected", remote, job.id(), Map.of());
                         Files.delete(archive);
                         disconnectedAt = null; nextRetryAt = null; connectionFailures = 0;
                         publish(work.output(), job, state.status().name(), state.failure());
@@ -207,7 +219,8 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
         values.put("connectionRetries", connectionRetries);
         values.put("remoteRoot", WorkloadPathUtil.remoteRoot(config, root)); values.put("requestedWorkers", config.execution().workers());
         values.put("updatedAt", Instant.now().toString()); values.put("failure", failure);
-        values.put("lastSynchronizedAt", lastSynchronizedAt);
+        values.put("lastSynchronizedAt", lastSynchronizedAt); values.put("lastContactAt", lastSynchronizedAt);
+        values.put("assignmentId", job.owner().assignment()); values.put("workerId", job.owner().lease().workerId()); values.put("lease", job.owner().lease());
         values.put("disconnectedAt", disconnectedAt == null ? null : disconnectedAt.toString());
         values.put("nextRetryAt", nextRetryAt == null ? null : nextRetryAt.toString());
         values.put("consecutiveFailures", connectionFailures);

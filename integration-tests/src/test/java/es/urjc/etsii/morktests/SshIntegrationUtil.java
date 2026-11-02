@@ -35,7 +35,13 @@ final class SshIntegrationUtil implements AutoCloseable {
         try (var jar = new JarOutputStream(Files.newOutputStream(runner), manifest)) { /* Fixture dependencies stay on the loopback host. */ }
         Path python = Path.of("../example-tsptw/venv/bin/python3").toAbsolutePath().normalize();
         assumeTrue(Files.isExecutable(python), "Prepare the instance-selector Python environment for SSH integration");
-        ssh = new AutoLlmConfig.Ssh("server", runner.toString(), List.of(new AutoLlmConfig.Server("server", "mork-integration", directory.resolve("workloads").toString(), Path.of(System.getProperty("java.home"), "bin/java").toString(),
+        Path registry = directory.getParent().resolve("worker-registry");
+        new es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkerRegistry(registry).provision();
+        Path workerJava = directory.resolve("worker-java");
+        Files.writeString(workerJava, "#!/bin/sh\nexec " + es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadPathUtil.quote(Path.of(System.getProperty("java.home"), "bin/java").toString())
+                + " " + es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadPathUtil.quote("-Dmork.test.workerRegistry=" + registry) + " \"$@\"\n");
+        assertTrue(workerJava.toFile().setExecutable(true));
+        ssh = new AutoLlmConfig.Ssh("server", runner.toString(), List.of(new AutoLlmConfig.Server("server", "mork-integration", directory.resolve("workloads").toString(), workerJava.toString(),
                 Map.of("PATH", System.getenv("PATH"), "MORK_SELECTOR_PYTHON", python.toString(), "MPLCONFIGDIR", directory.resolve("matplotlib").toString()), client.toString(), null, null)), null);
     }
     private static void run(List<String> command) throws Exception {

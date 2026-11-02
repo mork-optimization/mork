@@ -46,9 +46,9 @@
             <label>Probe duration (milliseconds)<input type="number" min="1" [value]="config.preparation.probeDurationMillis" (change)="update('preparation.probeDurationMillis', $event, true)" /></label>
             <label>Pilot duration (milliseconds)<input type="number" min="1" [value]="config.preparation.pilotDurationMillis" (change)="update('preparation.pilotDurationMillis', $event, true)" /></label>
             <label>Repair turns<input type="number" min="0" [value]="config.preparation.maxRepairs" (change)="update('preparation.maxRepairs', $event, true)" /></label>
-            <label>Codex model (optional)<input [value]="config.codex.model ?? ''" (change)="update('codex.model', $event)" /></label>
+            <label>Generation model (required before approval)<input [value]="config.codex.model ?? ''" (change)="update('codex.model', $event)" /></label>
             <label>Concurrent Codex sessions<input type="number" min="1" [value]="config.codex.maxConcurrentSessions" (change)="update('codex.maxConcurrentSessions', $event, true)" /></label>
-            <label>Reasoning effort (optional)<input [value]="config.codex.reasoningEffort ?? ''" (change)="update('codex.reasoningEffort', $event)" /></label>
+            <label>Reasoning effort (blank uses Codex default)<input [value]="config.codex.reasoningEffort ?? ''" (change)="update('codex.reasoningEffort', $event)" /></label>
             <label>Custom prompt file (optional)<input [value]="config.codex.promptFile ?? ''" (change)="update('codex.promptFile', $event)" /></label>
           </div>
           <label>Prompt override (optional)<textarea rows="6" [value]="config.codex.prompt ?? ''" (change)="update('codex.prompt', $event)"></textarea></label>
@@ -80,7 +80,7 @@
           @if (progress.phase === 'CONFIRMATIONS' && progress.confirmationsTotal) { <mat-progress-bar mode="determinate" [value]="100 * progress.confirmationsCompleted / progress.confirmationsTotal" /> }
         }
         @if (job.problem; as problem) { <p class="error">{{ problem.category }} · {{ problem.message }}</p><p>{{ problem.recovery }}</p> }
-        @if (job.activity?.remote; as remote) { <p>Remote job {{ remote.jobId }} · {{ remote.status }} · Last sync: {{ remote.lastSynchronizedAt | date:'mediumTime' }}</p> }
+        @if (job.activity?.remote; as remote) { <p>Remote job {{ remote.jobId }} · {{ remote.status }} · Last contact: {{ remote.lastSynchronizedAt | date:'mediumTime' }}</p> }
         <div class="actions">
           @if (['DRAFT', 'INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION'].includes(job.status)) { <button mat-button [disabled]="!!store.active() || !!store.activeScreening() || store.busy()" (click)="store.screeningAction('resume')">Resume preparation</button> }
           @if (store.activeScreening() === job.id || job.status === 'NEEDS_ATTENTION') { <button mat-button [disabled]="store.busy()" (click)="store.screeningAction('cancel')">Cancel preparation</button> }
@@ -100,8 +100,24 @@
   <label>Saved campaign<select [value]="store.selectedId()" (change)="store.select($any($event.target).value)">
     <option value="">Select campaign</option>@for (campaign of store.campaigns(); track campaign.id) { <option [value]="campaign.id">{{ campaign.createdAt | date:'short' }} — {{ campaign.status }} — {{ campaign.id }}</option> }
   </select></label>
+  @if (store.approvalDifferences().length) {
+    <mat-card><mat-card-content><h3>Proposal changed</h3>
+      <table><thead><tr><th>Field</th><th>Reviewed</th><th>Current</th></tr></thead><tbody>
+      @for (difference of store.approvalDifferences(); track difference.path) { <tr><td>{{ difference.path }}</td><td>{{ difference.reviewed | json }}</td><td>{{ difference.current | json }}</td></tr> }
+      </tbody></table>
+    </mat-card-content></mat-card>
+  }
   @if (store.campaign(); as campaign) {
     <mat-card><mat-card-content>
+      <details><summary>Complete cleanup</summary>
+        <p>Review owned directories, worker resources and native transcripts before deleting this campaign.</p>
+        <button mat-button [disabled]="store.busy()" (click)="store.reviewCleanup()">Plan cleanup</button>
+        @if (store.cleanupPlan(); as plan) {
+          <pre>{{ plan | json }}</pre>
+          <button mat-button [disabled]="store.busy()" (click)="store.applyCleanup()">Apply reviewed cleanup</button>
+        }
+        @if (store.cleanupReceipt(); as receipt) { <pre>{{ receipt | json }}</pre> }
+      </details>
       <div class="actions"><strong>{{ campaign.status }} · {{ store.completed() }}/{{ campaign.trials.length }} trials finished</strong>
         @if (store.active() === campaign.id) { <button mat-button [disabled]="campaign.status === 'CANCELLATION_PENDING'" (click)="store.action('cancel')">Cancel campaign</button> }
         @if (['INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION', 'WAITING_FOR_TARGETS'].includes(campaign.status) && !store.active()) { <button mat-flat-button [disabled]="store.busy() || !store.recovery()?.resumeCampaign?.allowed" [title]="store.recovery()?.resumeCampaign?.reason || store.recovery()?.resumeCampaign?.effect || ''" (click)="store.action('resume')">Resume from checkpoints</button> }
@@ -118,6 +134,8 @@
       </div>
       @if (store.proposal(); as proposal) {
         <h2>Review campaign before launch</h2>
+        <h3>Generation model</h3>
+        <p [class.error]="!proposal.generation.ready">{{ proposal.generation.approvalLine }}</p>
         <p>Check the testing instances, trivial exclusions and effective settings. To change settings, edit the configuration and prepare a revised draft.</p>
         <details open><summary>Testing instances ({{ proposal.testing.length }})</summary><pre>{{ proposal.testing | json }}</pre></details>
         <details><summary>Training membership</summary><pre>{{ proposal.training | json }}</pre></details>
@@ -129,7 +147,7 @@
           <textarea aria-label="Revised dataset selection" [value]="datasetEdit()" (input)="datasetEdit.set($any($event.target).value)"></textarea>
           <button mat-button [disabled]="store.busy() || !datasetEdit()" (click)="store.reviseDataset(datasetEdit())">Validate revised dataset</button>
         </details>
-        <button mat-flat-button [disabled]="store.busy()" (click)="store.approveAndStart()">{{ store.active() === campaign.id ? 'Approve campaign amendment' : 'Approve this campaign and launch' }}</button>
+        <button mat-flat-button [disabled]="store.busy() || !proposal.generation.ready" (click)="store.approveAndStart()">{{ store.active() === campaign.id ? 'Approve campaign amendment' : 'Approve this campaign and launch' }}</button>
       }
       @if (store.active() === campaign.id) {
         <details><summary>Review a campaign amendment</summary>
@@ -146,8 +164,10 @@
       <div class="target-grid">
         @for (target of store.targets(); track target.id) {
           <article class="target-card"><h3>{{ target.id }} · {{ target.status }}</h3>
+            <p>Qualification: {{ target.qualification || 'UNQUALIFIED' }} · Availability: {{ target.availability || 'UNKNOWN' }} · Host health: {{ target.health || 'UNKNOWN' }}</p>
             <p>{{ target.definition.host || 'Local' }} · Trial {{ target.assignedTrial ?? '—' }} · Workers {{ target.host?.effectiveWorkers ?? 'Pending qualification' }}</p>
-            @if (target.remote; as remote) { <p>{{ remote.status }} · Last sync {{ remote.lastSynchronizedAt | date:'mediumTime' }} @if (['BUSY', 'QUALIFYING'].includes(target.status) && store.targetStale(remote.lastSynchronizedAt)) { <strong class="error">Status is stale</strong> }</p> }
+            @if (target.remote; as remote) { <p>{{ remote.status }} · Last contact {{ remote.lastSynchronizedAt | date:'mediumTime' }} @if (['BUSY', 'QUALIFYING'].includes(target.status) && store.targetStale(remote.lastSynchronizedAt)) { <strong class="error">Status is stale</strong> }</p> }
+            @if (target.remote?.lease; as lease) { <p>Reservation: {{ lease.workerId }} · Owner {{ lease.controller }} · Assignment {{ lease.assignment || lease.operation }}</p> }
             @if (target.problem; as problem) { <p class="error">{{ problem.category }} · {{ problem.message }}</p><p>{{ problem.recovery }}</p> }
             @if (campaign.config.execution.target === 'SSH' && target.status !== 'REMOVED') {
               @let recovery = store.recovery()?.targets?.[target.id];

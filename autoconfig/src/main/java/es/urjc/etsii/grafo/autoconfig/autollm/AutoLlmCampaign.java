@@ -8,7 +8,7 @@ import java.util.Map;
 
 /** Versioned JSON checkpoint. Mutations are serialized by the campaign service/store. */
 public class AutoLlmCampaign {
-    public static final int SCHEMA_VERSION = 6;
+    public static final int SCHEMA_VERSION = 7;
     public enum CampaignStatus {
         DRAFT, RUNNING, WAITING_FOR_REMOTE, WAITING_FOR_TARGETS, CANCELLATION_PENDING,
         INTERRUPTED, NEEDS_ATTENTION, CANCELLED, SUCCEEDED, COMPLETED_WITH_FAILURES;
@@ -23,7 +23,7 @@ public class AutoLlmCampaign {
     }
     public enum TargetStatus { REGISTERED, VALIDATED, QUALIFYING, READY, BUSY, DRAINING, NEEDS_ATTENTION, REMOVED }
     public enum TrialStatus {
-        PENDING, WAITING_FOR_TARGET, LOCAL_PREPARATION, STARTING, WAITING_FOR_GENERATION, GENERATION, REPAIR, METADATA_RECONCILIATION,
+        PENDING, WAITING_FOR_TARGET, WAITING_FOR_WORKER, LOCAL_PREPARATION, STARTING, WAITING_FOR_GENERATION, GENERATION, REPAIR, METADATA_RECONCILIATION,
         PREPARATION, TUNING, WINNER_EXPORT, COMPARISON, WAITING_FOR_QUOTA, WAITING_FOR_CAPACITY, WAITING_FOR_REMOTE,
         INTERRUPTED, BLOCKED, SUCCEEDED, FAILED;
         public boolean terminal() { return this == SUCCEEDED || this == FAILED; }
@@ -118,6 +118,18 @@ public class AutoLlmCampaign {
         public Map<String, String> versions = Map.of();
         public AutoLlmFailureUtil.Failure problem;
 
+        @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public String getQualification() { return baselineReady ? "QUALIFIED" : status == TargetStatus.QUALIFYING ? "QUALIFYING" : "UNQUALIFIED"; }
+        @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public String getHealth() { return problem != null && problem.category() == AutoLlmFailureUtil.Category.INFRASTRUCTURE ? "UNHEALTHY" : baselineReady ? "HEALTHY" : "UNKNOWN"; }
+        @com.fasterxml.jackson.annotation.JsonProperty(access = com.fasterxml.jackson.annotation.JsonProperty.Access.READ_ONLY)
+        public String getAvailability() {
+            if (remote == null || !(remote.get("lastSynchronizedAt") instanceof String contact)) return "UNKNOWN";
+            try { if (java.time.Duration.between(java.time.Instant.parse(contact), java.time.Instant.now()).toSeconds() > 30) return "UNKNOWN"; }
+            catch (RuntimeException e) { return "UNKNOWN"; }
+            if ("BUSY".equals(remote.get("availability"))) return "BUSY";
+            return remote.get("lease") != null ? "RESERVED" : "UNKNOWN";
+        }
         public void resume(boolean requalify, long revision) {
             if (requalify) baselineReady = false;
             draining = false; problem = null; this.revision = revision;

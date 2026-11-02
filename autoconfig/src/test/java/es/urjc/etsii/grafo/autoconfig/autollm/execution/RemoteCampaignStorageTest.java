@@ -20,7 +20,7 @@ class RemoteCampaignStorageTest {
         WorkloadArchiveUtil.pack(directory.resolve("input.zip"), Map.of("source/code", root.resolve("source/code")));
         WorkloadArchiveUtil.pack(directory.resolve("result.zip"), Map.of("output/events.jsonl", root.resolve("output/events.jsonl")));
         job = new Job(VERSION, id, root.toString(), AutoLlmFileUtil.hash(directory.resolve("input.zip")), List.of(), List.of("unused"), "source", "output",
-                List.of(), List.of(), Map.of(), Map.of(), 100, 0, 10, false, 0, true);
+                List.of(), List.of(), Map.of(), Map.of(), 100, 0, 10, false, 0, true, null);
         AutoLlmFileUtil.write(directory.resolve("job.json"), job);
         String hash = AutoLlmFileUtil.hash(directory.resolve("result.zip"));
         AutoLlmFileUtil.write(directory.resolve("state.json"), new State(id, JobStatus.SUCCEEDED, new AutoLlmProcessRunner.Result(0, false, 1), null, hash));

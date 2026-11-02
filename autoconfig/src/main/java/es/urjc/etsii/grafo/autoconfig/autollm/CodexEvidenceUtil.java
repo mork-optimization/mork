@@ -95,6 +95,11 @@ public final class CodexEvidenceUtil {
             boolean complete = before.known();
             if (!before.known()) notes.add("Pre-attempt baseline is absent; token deltas are unavailable");
             for (var session : sessions(Path.of(before.codexHome()), checkout, thread)) {
+                Path operation = es.urjc.etsii.grafo.autoconfig.autollm.execution.CampaignAssetStore.campaign(checkout);
+                if (operation != null && Files.exists(operation.resolve(".mork-owned-v7.json"))) {
+                    if (session.cwd() == null || !Path.of(session.cwd()).toAbsolutePath().normalize().startsWith(operation)) throw new ArchiveException("Native session workspace ownership is ambiguous", null);
+                    es.urjc.etsii.grafo.autoconfig.autollm.execution.OwnershipManifest.transcript(session.path(), session.id(), Path.of(session.cwd()), operation.toString());
+                }
                 Path copy = output.resolve("conversations/" + session.id() + ".jsonl");
                 Files.createDirectories(copy.getParent());
                 String hash = AutoLlmFileUtil.hash(session.path());

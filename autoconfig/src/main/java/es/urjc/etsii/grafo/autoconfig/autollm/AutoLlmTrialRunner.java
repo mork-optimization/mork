@@ -53,7 +53,10 @@ public final class AutoLlmTrialRunner {
     private synchronized void publish(AutoLlmExecutionContext campaign) { listener.state(campaign.snapshot()); }
     private void event(String kind, Object detail) { listener.event(kind, detail); }
     public AutoLlmExecutionContext.Snapshot snapshot() { return model.snapshot(); }
-    public void prepare(boolean metadataOnly) { prepareBaseline(model, metadataOnly); }
+    public void prepare(boolean metadataOnly) {
+        try { prepareBaseline(model, metadataOnly); }
+        finally { if (!AutoLlmCampaignStore.hasUncollectedJobs(executionRoot)) ExecutionOwner.releaseIfPresent(executionRoot); }
+    }
     public String endpoint() {
         if (model.config.execution().target() == AutoLlmConfig.Target.LOCAL) return "local";
         var server = model.config.execution().ssh().onlyServer();
@@ -73,7 +76,7 @@ public final class AutoLlmTrialRunner {
             return java.net.InetAddress.getByName(host).getHostAddress() + ":" + port;
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
-    public void cancelOutstanding() { workloads.cancelOutstanding(model.config, executionRoot, state -> remoteState(model, state)); }
+    public void cancelOutstanding() { workloads.cancelOutstanding(model.config, executionRoot, state -> remoteState(model, state)); ExecutionOwner.releaseIfPresent(executionRoot); }
     public void reconcile() {
         processes.reconcile(executionRoot);
         if (model.trial != null) {
@@ -86,6 +89,16 @@ public final class AutoLlmTrialRunner {
         var c = model; var t = c.trial;
         c.problem = null;
         try {
+            // Unassigned generation stays concurrent; its managed local workloads reserve on submission.
+            while (!localOnly) {
+                try { ExecutionOwner.reserve(c.config, executionRoot); break; }
+                catch (WorkerRegistry.Busy busy) {
+                    t.status = TrialStatus.WAITING_FOR_WORKER;
+                    c.remote = Map.of("availability", "BUSY", "lease", busy.owner.lease(), "workerId", busy.owner.workerId(), "lastSynchronizedAt", busy.owner.observedAt(), "lastContactAt", busy.owner.observedAt()); publish(c);
+                    if (cancelled()) throw new CancellationException();
+                    try { Thread.sleep(2000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException(); }
+                }
+            }
             reconcile();
             if (c.config.execution().target() == AutoLlmConfig.Target.SSH) workloads.identity(c.config, executionRoot);
             if (t.problem != null && t.problem.code().equals("ArchiveException")) throw new AutoLlmFailureUtil.StageException(t.problem, null);
@@ -124,12 +137,16 @@ public final class AutoLlmTrialRunner {
             for (var a : t.attempts) if (a.status == AttemptStatus.RUNNING) { a.status = AttemptStatus.INTERRUPTED; a.finishedAt = Instant.now().toString(); }
             if (t.status.terminal() && !cancelled()) {
                 try (var permit = es.urjc.etsii.grafo.util.ConcurrencyUtil.acquirePermit(buildPermits, this::cancelled)) {
-                    if (!localOnly || t.assignments.isEmpty()) RemoteStorageMaintenance.maintain(c.campaignRoot, executionRoot, c.config, this::cancelled);
+                    if (!localOnly || t.assignments.isEmpty()) RemoteStorageMaintenance.maintain(c.campaignRoot, executionRoot, this::cancelled);
                     AutoLlmArtifactRebuild.maintain(c.campaignRoot, executionRoot, t, c.config, processes, this::cancelled);
                     AutoLlmCheckoutRetirement.maintainTrial(c.campaignRoot, executionRoot, t, c.config, c.baselineCommit, c.versions, processes, this::cancelled);
                     AutoLlmEvidenceFiles.compact(c.campaignRoot, executionRoot, t);
                 } catch (CancellationException ignored) { /* Completed measurements remain completed; the executable is retained. */ }
                 catch (IOException | RuntimeException failure) { event("storage-maintenance-failed", Map.of("trial", t.number, "reason", failure.toString())); }
+            }
+            if (!AutoLlmCampaignStore.hasUncollectedJobs(executionRoot)) {
+                try { ExecutionOwner.releaseIfPresent(executionRoot); }
+                catch (RuntimeException failure) { event("lease-release-pending", Map.of("reason", failure.toString())); }
             }
             publish(c);
         }

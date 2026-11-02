@@ -6,17 +6,49 @@ import { AutoLlmStore } from './autollm-store';
 describe('AutoLLM campaign lifecycle store', () => {
   const config = {} as AutoLlmConfig;
   const campaign = { id: 'campaign', status: 'RUNNING', config, trials: [{ number: 1, status: 'GENERATION' }, { number: 2, status: 'PENDING' }] } as AutoLlmCampaign;
-  let client: { proposal: ReturnType<typeof vi.fn>; approve: ReturnType<typeof vi.fn>; curves: ReturnType<typeof vi.fn>; probeTarget: ReturnType<typeof vi.fn>; targetProbe: ReturnType<typeof vi.fn>; recovery: ReturnType<typeof vi.fn>; resumeTrial: ReturnType<typeof vi.fn>; failTrial: ReturnType<typeof vi.fn>; targetAction: ReturnType<typeof vi.fn>; screeningAction: ReturnType<typeof vi.fn>; screeningReview: ReturnType<typeof vi.fn>; screenings: ReturnType<typeof vi.fn>; summary: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; preview: ReturnType<typeof vi.fn> };
+  let client: { cleanupPlan: ReturnType<typeof vi.fn>; cleanupApply: ReturnType<typeof vi.fn>; proposal: ReturnType<typeof vi.fn>; approve: ReturnType<typeof vi.fn>; curves: ReturnType<typeof vi.fn>; probeTarget: ReturnType<typeof vi.fn>; targetProbe: ReturnType<typeof vi.fn>; recovery: ReturnType<typeof vi.fn>; resumeTrial: ReturnType<typeof vi.fn>; failTrial: ReturnType<typeof vi.fn>; targetAction: ReturnType<typeof vi.fn>; screeningAction: ReturnType<typeof vi.fn>; screeningReview: ReturnType<typeof vi.fn>; screenings: ReturnType<typeof vi.fn>; summary: ReturnType<typeof vi.fn>; activity: ReturnType<typeof vi.fn>; defaults: ReturnType<typeof vi.fn>; list: ReturnType<typeof vi.fn>; progress: ReturnType<typeof vi.fn>; comparison: ReturnType<typeof vi.fn>; validate: ReturnType<typeof vi.fn>; create: ReturnType<typeof vi.fn>; baselineCheck: ReturnType<typeof vi.fn>; action: ReturnType<typeof vi.fn>; preview: ReturnType<typeof vi.fn> };
   let store: AutoLlmStore;
   beforeEach(() => {
     vi.useFakeTimers();
-    client = { proposal: vi.fn().mockResolvedValue({ digest: "reviewed", testing: [], training: [] }), approve: vi.fn().mockResolvedValue({}), curves: vi.fn().mockResolvedValue({ curves: [], sampled: true }), probeTarget: vi.fn().mockResolvedValue({ id: 'probe', status: 'RUNNING', targets: {} }), targetProbe: vi.fn().mockResolvedValue({ id: 'probe', status: 'SUCCEEDED', targets: { local: { status: 'SUCCEEDED' } } }), recovery: vi.fn().mockResolvedValue({ trials: {}, targets: {}, resumeCampaign: { allowed: false, reason: 'Already running', effect: '' } }), resumeTrial: vi.fn().mockResolvedValue(campaign), failTrial: vi.fn().mockResolvedValue(campaign), targetAction: vi.fn().mockResolvedValue(campaign), screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true, ready: true, qualifiedTargets: ['a'], failedTargets: [] }), action: vi.fn().mockResolvedValue(campaign), preview: vi.fn().mockResolvedValue({ text: '', lineCount: 0, sizeBytes: 0, truncated: false, byteLimited: false }) };
+    client = { cleanupPlan: vi.fn(), cleanupApply: vi.fn(), proposal: vi.fn().mockResolvedValue({ digest: "reviewed", generation: { ready: true }, testing: [], training: [] }), approve: vi.fn().mockResolvedValue({}), curves: vi.fn().mockResolvedValue({ curves: [], sampled: true }), probeTarget: vi.fn().mockResolvedValue({ id: 'probe', status: 'RUNNING', targets: {} }), targetProbe: vi.fn().mockResolvedValue({ id: 'probe', status: 'SUCCEEDED', targets: { local: { status: 'SUCCEEDED' } } }), recovery: vi.fn().mockResolvedValue({ trials: {}, targets: {}, resumeCampaign: { allowed: false, reason: 'Already running', effect: '' } }), resumeTrial: vi.fn().mockResolvedValue(campaign), failTrial: vi.fn().mockResolvedValue(campaign), targetAction: vi.fn().mockResolvedValue(campaign), screeningAction: vi.fn(), screeningReview: vi.fn(), screenings: vi.fn().mockResolvedValue({ active: '', jobs: [] }), summary: vi.fn().mockResolvedValue({}), activity: vi.fn(), defaults: vi.fn().mockResolvedValue(config), list: vi.fn().mockResolvedValue({ active: campaign.id, campaigns: [campaign] }), progress: vi.fn().mockResolvedValue({ status: 'GENERATION' }), comparison: vi.fn().mockResolvedValue({ status: 'NOT_STARTED' }), validate: vi.fn().mockResolvedValue({ valid: true, errors: [] }), create: vi.fn().mockResolvedValue(campaign), baselineCheck: vi.fn().mockResolvedValue({ parameters: 10, maxParameters: 299, withinLimit: true, ready: true, qualifiedTargets: ['a'], failedTargets: [] }), action: vi.fn().mockResolvedValue(campaign), preview: vi.fn().mockResolvedValue({ text: '', lineCount: 0, sizeBytes: 0, truncated: false, byteLimited: false }) };
     TestBed.configureTestingModule({ providers: [AutoLlmStore, { provide: AutoLlmClient, useValue: client }] });
     store = TestBed.inject(AutoLlmStore);
+  });
+  it('does not approve a proposal with an unselected generation model', async () => {
+    store.proposal.set({ digest: 'reviewed', generation: { ready: false, approvalLine: 'Set codex.model before approval' } } as never);
+    await store.approveAndStart();
+    expect(client.approve).not.toHaveBeenCalled(); expect(client.action).not.toHaveBeenCalled();
+    expect(store.error()).toContain('Set codex.model');
   });
   afterEach(() => { TestBed.resetTestingModule(); vi.useRealTimers(); });
   const instance = (id: string, repetitions = 1) => ({ instanceId: id, instance: `/remote/${id}`, counts: { SOTA: { SUCCEEDED: repetitions }, IraceProposal: { SUCCEEDED: repetitions } } });
   const curves = (id: string) => ['SOTA', 'IraceProposal'].map(algorithm => ({ instance: `/remote/${id}`, instanceId: id, algorithm, iteration: '0', curves: { Cost: [{ instant: 0, value: 10 }] } }));
+  it('applies only the reviewed cleanup digest and preserves pending receipts', async () => {
+    store.selectedId.set(campaign.id);
+    client.cleanupPlan.mockResolvedValue({ digest: 'reviewed', selection: { kind: 'campaign', id: campaign.id } });
+    client.cleanupApply.mockResolvedValue({ digest: 'reviewed', status: 'PENDING', completed: [], pending: { worker: 'offline' } });
+    await store.reviewCleanup(); await store.applyCleanup();
+    expect(client.cleanupApply).toHaveBeenCalledExactlyOnceWith('reviewed');
+    expect(store.cleanupReceipt()?.status).toBe('PENDING');
+    store.selectedId.set('different'); await store.applyCleanup();
+    expect(client.cleanupApply).toHaveBeenCalledTimes(1);
+  });
+  it('keeps a newly selected campaign when an earlier cleanup completes', async () => {
+    store.selectedId.set(campaign.id); store.campaigns.set([campaign, { ...campaign, id: 'different' }]);
+    store.cleanupPlan.set({ digest: 'reviewed', selection: { kind: 'campaign', id: campaign.id } } as never);
+    let resolve!: (value: unknown) => void;
+    client.cleanupApply.mockImplementation(() => new Promise(done => { resolve = done; }));
+    const pending = store.applyCleanup(); store.selectedId.set('different');
+    resolve({ digest: 'reviewed', status: 'SUCCEEDED', completed: [], pending: {} }); await pending;
+    expect(store.selectedId()).toBe('different'); expect(store.campaigns().map(value => value.id)).toEqual(['different']);
+  });
+  it('shows approval field differences without starting a changed proposal', async () => {
+    store.selectedId.set(campaign.id); store.proposal.set({ digest: 'reviewed', generation: { ready: true } } as never);
+    const differences = [{ path: 'configuration.seed', reviewed: 1, current: 2 }];
+    client.approve.mockRejectedValue({ error: { message: 'PROPOSAL_CHANGED', differences } });
+    await store.approveAndStart();
+    expect(store.approvalDifferences()).toEqual(differences); expect(client.action).not.toHaveBeenCalled();
+  });
   it('loads both algorithms for the first instance and refreshes only when its counts change', async () => {
     client.comparison.mockResolvedValue({ instances: [instance('one'), instance('two')] });
     client.curves.mockResolvedValue({ curves: curves('one'), sampled: true });

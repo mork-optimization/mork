@@ -35,10 +35,11 @@ public class AutoLlmCampaignService {
         this.targetProbes = new AutoLlmTargetProbeService(store, processes);
     }
     public AutoLlmConfig defaults() {
-        return defaults.withPaths(defaults.trainingPath() == null ? instances.getPath("irace") : defaults.trainingPath(),
-                defaults.comparisonPath() == null ? instances.getPath("autollm-comparison") : defaults.comparisonPath());
+        return AutoLlmNormalization.normalize(defaults.withPaths(defaults.trainingPath() == null ? instances.getPath("irace") : defaults.trainingPath(),
+                defaults.comparisonPath() == null ? instances.getPath("autollm-comparison") : defaults.comparisonPath()));
     }
     public List<String> validate(AutoLlmConfig c) {
+        c = AutoLlmNormalization.normalize(c);
         var errors = new ArrayList<String>();
         if (c.trials() < 1 || c.trials() > 10000) errors.add("Trials must be between 1 and 10000");
         if (c.maxParameters() < 1 || c.maxParameters() >= 300) errors.add("Parameter cap must be between 1 and 299");
@@ -47,7 +48,7 @@ public class AutoLlmCampaignService {
         if (c.tuning().ignoreInitialMillis() < 0 || c.tuning().intervalDurationMillis() <= 0 || c.comparison().timeLimitMillis() < 0) errors.add("Invalid algorithm time horizon");
         if (c.codex().maxConcurrentSessions() < 1) errors.add("Concurrent Codex sessions must be positive");
         errors.addAll(AutoLlmExecutionService.validate(c));
-        if (!Path.of(c.workspace()).toAbsolutePath().normalize().equals(store.root())) errors.add("Workspace is fixed by backend configuration");
+        if (!AutoLlmNormalization.localPath(Path.of(c.workspace())).equals(store.root())) errors.add("Workspace is fixed by backend configuration");
         Path repo = Path.of(c.project().repository()).toAbsolutePath().normalize();
         errors.addAll(AutoLlmConfigUtil.projectErrors(c));
         for (String value : Arrays.asList(c.sotaFile(), c.trainingPath(), c.comparisonPath())) if (value == null || value.isBlank()) errors.add("SOTA, training, and comparison paths are required");
@@ -58,6 +59,8 @@ public class AutoLlmCampaignService {
         return errors;
     }
     private AutoLlmCampaign createInternal(AutoLlmConfig requested) {
+        if (AutoLlmCleanup.requested(store.root())) throw new IllegalStateException("Workspace cleanup is pending");
+        requested = AutoLlmNormalization.normalize(requested);
         var errors = validate(requested); if (!errors.isEmpty()) throw new IllegalArgumentException(String.join("; ", errors));
         var c = new AutoLlmCampaign(); c.id = UUID.randomUUID().toString(); c.createdAt = Instant.now().toString();
         Path directory = store.directory(c.id); Path repo = Path.of(requested.project().repository()).toAbsolutePath().normalize();
@@ -66,6 +69,8 @@ public class AutoLlmCampaignService {
             var sota = codec.parse(Files.readString(resolve(repo, requested.sotaFile())));
             var seeds = new LinkedHashSet<ComponentSpec>(); seeds.add(sota);
             if (requested.initialConfigurationsFile() != null && !requested.initialConfigurationsFile().isBlank()) seeds.addAll(codec.parseList(Files.readString(resolve(repo, requested.initialConfigurationsFile()))));
+            OwnershipManifest.directory(store.root(), "workspace", store.root().toString());
+            OwnershipManifest.directory(directory, "campaign", directory.toString());
             Files.createDirectories(directory.resolve("control"));
             AutoLlmFileUtil.write(directory.resolve("control/storage-layout.json"), Map.of("version", 1, "sources", "commit-and-patch"));
             var instancePaths = new LinkedHashMap<String,String>();
@@ -98,6 +103,10 @@ public class AutoLlmCampaignService {
             Path proposal = resolve(repo, requested.trainingPath()).getParent();
             if (Files.isRegularFile(proposal.resolve("proposal.json")) && Files.isRegularFile(proposal.getParent().resolve("remote-screening.json")))
                 c.screeningPath = proposal.getParent().toString();
+            if (c.screeningPath != null) {
+                Path dependency = Path.of(c.screeningPath);
+                for (var resource : OwnershipManifest.resources()) if (resource.kind().equals("screening") && dependency.startsWith(Path.of(resource.path()))) OwnershipManifest.reference(Path.of(resource.path()), directory.toString());
+            }
             registerInitial(c); store.save(c); AutoLlmFileUtil.write(directory.resolve("control/config.json"), c.config); return c;
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
@@ -133,6 +142,7 @@ public class AutoLlmCampaignService {
     public AutoLlmCampaign create(AutoLlmConfig config) { return invoke(() -> createInternal(config)); }
     public String active() { return active; }
     private void register(AutoLlmCampaign c, AutoLlmConfig.Server server) {
+        server = AutoLlmNormalization.normalize(c.config.forServer(server)).execution().ssh().onlyServer();
         AutoLlmPoolUtil.requireId(server.id());
         var existing = c.targets.get(server.id());
         if (existing != null) {
@@ -201,8 +211,21 @@ public class AutoLlmCampaignService {
         try { AutoLlmFileUtil.verifySources(root, AutoLlmFileUtil.read(root.resolve("control/canonical-hashes.json"), new TypeReference<>() {})); }
         catch (RuntimeException e) { throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INTEGRITY, "CANONICAL_INPUT_CHANGED", e.getMessage(), root.resolve("control/canonical-hashes.json")); }
     }
+    public record GenerationSettings(String model, String reasoningEffort, boolean ready, String approvalLine) {
+        public static GenerationSettings from(AutoLlmConfig config) {
+            String model = AutoLlmNormalization.optional(config.codex().model());
+            String effort = AutoLlmNormalization.optional(config.codex().reasoningEffort());
+            String line = "Generation and repairs: " + (model == null ? "model NOT SELECTED; set codex.model before approval" : "model " + model + " (campaign setting)")
+                    + "; reasoning effort " + (effort == null ? "Codex default (not pinned)" : effort + " (campaign setting)")
+                    + ". Provider comes from Codex configuration; resumed sessions retain their observed provider. No automatic model fallback.";
+            return new GenerationSettings(model, effort, model != null, line);
+        }
+        public void requireReady() {
+            if (!ready) throw new IllegalStateException("Set codex.model explicitly and review the revised proposal before approval or launch; the Codex CLI default is not pinned by the campaign.");
+        }
+    }
     public record Proposal(String digest, AutoLlmConfig configuration, List<String> training, List<String> testing,
-                           Object screening, Map<String,Object> targets, String approvedDigest, AutoLlmStorageEstimate.Estimate storage) {}
+                           Object screening, Map<String,Object> targets, String approvedDigest, AutoLlmStorageEstimate.Estimate storage, GenerationSettings generation) {}
     private Proposal proposalInternal(AutoLlmCampaign c) {
         if (c.baselineCommit == null) throw new IllegalStateException("Run the baseline check before reviewing the campaign");
         verifyCanonical(c);
@@ -235,13 +258,18 @@ public class AutoLlmCampaignService {
         if (Files.isRegularFile(selection)) screening = Map.of("screening", screening, "selection", AutoLlmFileUtil.read(selection, Object.class));
         var evidence = new TreeMap<String,Object>();
         var scope = new TreeMap<String,Object>();
-        for (var e : c.targets.entrySet()) if (e.getValue().status != TargetStatus.REMOVED) scope.put(e.getKey(), Map.of("definition", e.getValue().definition, "selected", c.reviewedTargets.contains(e.getKey()), "artifactSha256", e.getValue().baselineArtifactSha256 == null ? "" : e.getValue().baselineArtifactSha256));
-        var proposedConfig = c.proposedTrials == null ? c.config : c.config.withTrials(c.proposedTrials);
+        for (var e : c.targets.entrySet()) if (e.getValue().status != TargetStatus.REMOVED) scope.put(e.getKey(), Map.of("definition", e.getValue().definition, "selected", c.reviewedTargets.contains(e.getKey()), "artifactSha256", e.getValue().baselineArtifactSha256 == null ? "" : e.getValue().baselineArtifactSha256, "allocation", e.getValue().host == null ? Map.of() : Map.of("identity", e.getValue().host.identity(), "workers", e.getValue().host.effectiveWorkers())));
+        var proposedConfig = AutoLlmNormalization.normalize(c.proposedTrials == null ? c.config : c.config.withTrials(c.proposedTrials));
         evidence.put("configuration", proposedConfig); evidence.put("targets", scope); evidence.put("screening", screening);
         evidence.put("canonical", AutoLlmFileUtil.read(store.directory(c.id).resolve("control/canonical-hashes.json"), Object.class));
-        evidence.put("prompt", c.prompt);
+        evidence.put("prompt", c.prompt); evidence.put("training", training); evidence.put("testing", testing);
+        evidence.put("source", c.baselineCommit);
+        Path seeds = store.directory(c.id).resolve("control/seeds.json");
+        if (Files.isRegularFile(seeds)) evidence.put("seeds", AutoLlmFileUtil.read(seeds, Object.class));
         String digest = AutoLlmFileUtil.canonicalHash(evidence);
-        var proposal = new Proposal(digest, proposedConfig, training, testing, screening, targets, c.approvedProposal, AutoLlmStorageEstimate.estimate(c, store.directory(c.id), proposedConfig));
+        Path snapshot = store.directory(c.id).resolve("control/proposals/" + digest + ".json");
+        if (!Files.exists(snapshot)) AutoLlmFileUtil.write(snapshot, evidence);
+        var proposal = new Proposal(digest, proposedConfig, training, testing, screening, targets, c.approvedProposal, AutoLlmStorageEstimate.estimate(c, store.directory(c.id), proposedConfig), GenerationSettings.from(proposedConfig));
         AutoLlmFileUtil.write(store.directory(c.id).resolve("control/campaign-proposal.json"), proposal);
         return proposal;
     }
@@ -282,8 +310,13 @@ public class AutoLlmCampaignService {
         return invoke(() -> {
             var c = id.equals(active) ? current : store.load(id);
             if (c.status != CampaignStatus.DRAFT && !id.equals(active)) throw new IllegalStateException("Campaign approval requires an idle draft or an active amendment");
+            if (digest == null || !digest.matches("[a-f0-9]{64}") || !Files.isRegularFile(store.directory(id).resolve("control/proposals/" + digest + ".json")))
+                throw new AutoLlmNormalization.ApprovalMismatch("UNKNOWN_PROPOSAL_DIGEST", List.of());
             var p = proposalInternal(c);
-            if (!p.digest().equals(digest)) throw new IllegalStateException("Proposal changed; review the new effective configuration and instance lists");
+            if (!p.digest().equals(digest)) throw new AutoLlmNormalization.ApprovalMismatch("PROPOSAL_CHANGED", AutoLlmNormalization.diff(
+                    AutoLlmFileUtil.read(store.directory(id).resolve("control/proposals/" + digest + ".json"), Object.class),
+                    AutoLlmFileUtil.read(store.directory(id).resolve("control/proposals/" + p.digest() + ".json"), Object.class)));
+            p.generation().requireReady();
             if (c.config.execution().target() == AutoLlmConfig.Target.SSH && !c.localPreparation.baselineReady) throw new IllegalStateException("Local preparation prerequisites are not qualified; inspect the baseline check");
             if (c.reviewedTargets.isEmpty()) throw new IllegalStateException("Select at least one server");
             for (String target : c.reviewedTargets) {
@@ -397,6 +430,7 @@ public class AutoLlmCampaignService {
                 }
             }
             var approved = proposalInternal(c);
+            approved.generation().requireReady();
             if (c.approvedProposal == null || !c.approvedProposal.equals(approved.digest()))
                 throw new IllegalStateException("Review and approve the current campaign proposal before launch/resume");
             if (!resume) for (var e : c.targets.entrySet()) e.getValue().draining = !c.approvedTargets.contains(e.getKey());
@@ -667,7 +701,7 @@ public class AutoLlmCampaignService {
                     }
                 }
                 boolean infrastructure = result.problem != null && result.problem.category() == AutoLlmFailureUtil.Category.INFRASTRUCTURE;
-                if (outstanding || infrastructure || result.status == TrialStatus.BLOCKED) { target.status = TargetStatus.NEEDS_ATTENTION; target.problem = result.problem; }
+                if (outstanding || infrastructure) { target.status = TargetStatus.NEEDS_ATTENTION; target.problem = result.problem; }
                 else target.status = target.draining ? TargetStatus.DRAINING : TargetStatus.READY;
                 save(); reportAsync(false); dispatch();
             }); return null;
@@ -712,7 +746,7 @@ public class AutoLlmCampaignService {
                     if (assignment.config == null) continue;
                     Path directory = root.resolve(assignment.directory);
                     var config = assignment.config;
-                    RemoteStorageMaintenance.maintain(root, directory, config, () -> false);
+                    RemoteStorageMaintenance.maintain(root, directory, () -> false);
                     if (retryTrials) AutoLlmArtifactRebuild.maintain(root, directory, trial, config, processes, () -> false);
                     AutoLlmCheckoutRetirement.maintainTrial(root, directory, trial, config, campaign.baselineCommit, campaign.versions, processes, () -> false);
                     AutoLlmEvidenceFiles.compact(root, directory, trial);
@@ -725,7 +759,7 @@ public class AutoLlmCampaignService {
             }
             for (var target : campaign.targets.values()) if (target.directory != null) {
                 var config = target.resolvedConfig == null ? campaign.config : target.resolvedConfig;
-                RemoteStorageMaintenance.maintain(root, root.resolve(target.directory), config, () -> false);
+                RemoteStorageMaintenance.maintain(root, root.resolve(target.directory), () -> false);
             }
             AutoLlmCheckoutRetirement.maintainCampaign(root, campaign, processes, () -> false);
         } catch (IOException | RuntimeException failure) { store.event(campaign.id, "storage-maintenance-failed", Map.of("reason", failure.toString())); }
@@ -798,6 +832,7 @@ public class AutoLlmCampaignService {
 
     private static String read(Path path) { try { return Files.readString(path); } catch (IOException e) { throw new UncheckedIOException(e); } }
     public AutoLlmTargetProbeService.Probe probeTarget(AutoLlmConfig config) { return targetProbes.start(config); }
+    public boolean hasSelectedTargetProbes() { return targetProbes.selectedActive(); }
     public AutoLlmTargetProbeService.Probe targetProbe(String id) { return targetProbes.load(id); }
     public AutoLlmCampaign addTarget(String id, String targetId, AutoLlmConfig.Server server) {
         return invoke(() -> {
@@ -895,7 +930,7 @@ public class AutoLlmCampaignService {
         recoveryInternal(c).trials().get(number).fail().requireAllowed();
         var target = trial.targetId == null ? null : requireTarget(c, trial.targetId);
         trial.status = TrialStatus.FAILED;
-        if (target != null) { target.assignedTrial = null; target.problem = null; target.status = target.draining ? TargetStatus.DRAINING : TargetStatus.READY; }
+        if (target != null && (target.assignedTrial == null || target.assignedTrial == number)) { target.assignedTrial = null; target.problem = null; target.status = target.draining ? TargetStatus.DRAINING : TargetStatus.READY; }
         store.event(c.id, "trial-failed-by-operator", Map.of("trial", number, "targetId", trial.targetId == null ? "local-preparation" : trial.targetId, "reason", reason.strip()));
         if (c == current) { save(); reportAsync(false); dispatch(); }
         else store.save(c);

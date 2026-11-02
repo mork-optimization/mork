@@ -31,7 +31,7 @@ class AutoLlmPoolTest {
         Path input = temp.resolve("input.txt"); Files.writeString(input, "same payload");
         Path runner = temp.resolve("runner.jar"); Files.writeString(runner, "fixture");
         var definitions = new ArrayList<AutoLlmConfig.Server>(); for (String id : ids) definitions.add(server(id));
-        var config = new AutoLlmConfig(null, temp.toString(), trials, null, null, null, null, input.toString(), input.toString(), null, null, null, null,
+        var config = new AutoLlmConfig(null, temp.toString(), trials, null, null, null, null, input.toString(), input.toString(), new AutoLlmConfig.Codex(null, null, null, "fixture-model", null, null), null, null, null,
                 new AutoLlmConfig.Execution(2, null, null, null, null, null, null, null, null, AutoLlmConfig.Target.SSH, new AutoLlmConfig.Ssh(ids[0], runner.toString(), definitions, null)));
         store = new AutoLlmCampaignStore(config); campaign = new AutoLlmCampaign(); campaign.id = UUID.randomUUID().toString(); campaign.createdAt = "2026-10-22"; campaign.config = config; campaign.baselineCommit = "fixed";
         for (String id : ids) { var t = new AutoLlmCampaign.TargetState(); t.definition = server(id); t.directory = "targets/" + id; t.revision = ++campaign.poolRevision; t.baselineReady = true; t.resolvedConfig = config.forServer(t.definition); campaign.targets.put(id, t); }
@@ -184,6 +184,52 @@ class AutoLlmPoolTest {
             assertEquals("SUCCEEDED", store.load(campaign.id).status.name());
         } finally { service.close(); }
     }
+    @Test void approvalRequiresAnExplicitModelAndReviewsModelAndReasoningChanges() throws Exception {
+        setup(1, "a");
+        try {
+            var config = AutoLlmFileUtil.JSON.valueToTree(campaign.config);
+            var codex = (tools.jackson.databind.node.ObjectNode) config.path("codex");
+            codex.putNull("model"); campaign.config = AutoLlmFileUtil.JSON.treeToValue(config, AutoLlmConfig.class); store.save(campaign);
+            var implicit = service.proposal(campaign.id);
+            assertFalse(implicit.generation().ready()); assertNull(implicit.generation().model());
+            assertTrue(implicit.generation().approvalLine().contains("NOT SELECTED"));
+            assertTrue(assertThrows(IllegalStateException.class, () -> service.approve(campaign.id, implicit.digest())).getMessage().contains("codex.model"));
+            campaign.approvedProposal = implicit.digest(); store.save(campaign);
+            assertThrows(IllegalStateException.class, () -> service.start(campaign.id, false, Set.of()));
+            codex.put("model", "chosen-model"); campaign.config = AutoLlmFileUtil.JSON.treeToValue(config, AutoLlmConfig.class); store.save(campaign);
+            var explicit = service.proposal(campaign.id);
+            assertTrue(explicit.generation().ready()); assertEquals("chosen-model", explicit.generation().model());
+            assertTrue(explicit.generation().approvalLine().contains("reasoning effort Codex default (not pinned)"));
+            service.approve(campaign.id, explicit.digest());
+            codex.put("model", "different-model"); codex.put("reasoningEffort", "high");
+            campaign.config = AutoLlmFileUtil.JSON.treeToValue(config, AutoLlmConfig.class); store.save(campaign);
+            var changed = service.proposal(campaign.id);
+            assertEquals("high", changed.generation().reasoningEffort()); assertTrue(changed.generation().approvalLine().contains("high (campaign setting)"));
+            var failure = assertThrows(AutoLlmNormalization.ApprovalMismatch.class, () -> service.approve(campaign.id, explicit.digest()));
+            var paths = new HashSet<String>(); for (var difference : failure.differences) paths.add(difference.path());
+            assertEquals(Set.of("configuration.codex.model", "configuration.codex.reasoningEffort"), paths);
+        } finally { service.close(); }
+    }
+    @Test void approvalReportsExactBudgetSeedDatasetAndWorkerChanges() throws Exception {
+        setup(1, "a", "b");
+        try {
+            String digest = service.proposal(campaign.id).digest();
+            var unknown = assertThrows(AutoLlmNormalization.ApprovalMismatch.class, () -> service.approve(campaign.id, "0".repeat(64)));
+            assertEquals("UNKNOWN_PROPOSAL_DIGEST", unknown.code); assertTrue(unknown.differences.isEmpty());
+            var changed = AutoLlmFileUtil.JSON.valueToTree(campaign.config);
+            ((tools.jackson.databind.node.ObjectNode) changed.path("tuning")).put("evaluations", 42);
+            campaign.config = AutoLlmFileUtil.JSON.treeToValue(changed, AutoLlmConfig.class);
+            campaign.reviewedTargets.remove("b"); store.save(campaign);
+            AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/seeds.json"), List.of(Map.of("seed", 17)));
+            Path input = temp.resolve("new-input.txt"); Files.writeString(input, "second identity");
+            campaign.config = campaign.config.withPaths(input.toString(), input.toString()); store.save(campaign);
+            var failure = assertThrows(AutoLlmNormalization.ApprovalMismatch.class, () -> service.approve(campaign.id, digest));
+            assertEquals("PROPOSAL_CHANGED", failure.code);
+            var paths = new HashSet<String>(); for (var difference : failure.differences) paths.add(difference.path());
+            assertTrue(paths.containsAll(Set.of("configuration.tuning.evaluations", "seeds[0]", "training[0]", "testing[0]", "targets.b.selected")), paths.toString());
+            assertTrue(Files.isRegularFile(store.directory(campaign.id).resolve("control/proposals/" + digest + ".json")));
+        } finally { service.close(); }
+    }
     @Test void pendingCancellationCannotBeResumedWhenRecoveryReportsItUnavailable() throws Exception {
         setup(1, "a"); campaign.status = AutoLlmCampaign.CampaignStatus.CANCELLATION_PENDING; store.save(campaign);
         try {
@@ -248,15 +294,15 @@ class AutoLlmPoolTest {
     }
     @Test void runsTwoTrialsConcurrentlyAndIsolatesOneTargetsFailure() throws Exception {
         setup(3, "a", "b"); var entered = new CountDownLatch(2); var finish = new CountDownLatch(1);
-        executions.put("a", (model, stop) -> { entered.countDown(); assertTrue(finish.await(10, TimeUnit.SECONDS)); throw new IllegalStateException("host lost"); });
+        executions.put("a", (model, stop) -> { entered.countDown(); assertTrue(finish.await(10, TimeUnit.SECONDS)); if (model.trial.number == 1) throw new IllegalStateException("Unattributed build failure"); model.trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED; });
         executions.put("b", (model, stop) -> { entered.countDown(); assertTrue(finish.await(10, TimeUnit.SECONDS)); model.trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED; });
         try {
             service.start(campaign.id, false, java.util.Set.of()); assertTrue(entered.await(10, TimeUnit.SECONDS), "Both targets must enter before either finishes");
             var active = store.load(campaign.id); assertEquals("a", active.trials.get(0).targetId); assertEquals("b", active.trials.get(1).targetId);
             finish.countDown(); await(() -> service.active() == null);
             var result = store.load(campaign.id); assertEquals("NEEDS_ATTENTION", result.status.name()); assertEquals("BLOCKED", result.trials.get(0).status.name());
-            assertEquals("SUCCEEDED", result.trials.get(2).status.name()); assertEquals("b", result.trials.get(2).targetId); assertEquals(103, result.trials.get(2).tuningSeed);
-            assertEquals("NEEDS_ATTENTION", result.targets.get("a").status.name()); assertEquals(0, result.trials.get(0).repairTurns);
+            assertEquals("SUCCEEDED", result.trials.get(2).status.name()); assertTrue(Set.of("a", "b").contains(result.trials.get(2).targetId)); assertEquals(103, result.trials.get(2).tuningSeed);
+            assertEquals("READY", result.targets.get("a").status.name()); assertEquals("HEALTHY", result.targets.get("a").getHealth()); assertEquals(0, result.trials.get(0).repairTurns);
         } finally { finish.countDown(); service.close(); }
     }
     @Test void enrollsWhileBusyAndDrainsWithoutMovingTheAssignedTrial() throws Exception {
@@ -276,21 +322,22 @@ class AutoLlmPoolTest {
     }
     @ParameterizedTest @ValueSource(booleans = {false, true})
     void operatorCanFailAReconciledBlockedTrialAndReleaseItsTarget(boolean drained) throws Exception {
-        setup(3, "a", "b"); var finish = new CountDownLatch(1); var nextTrial = new CountDownLatch(1);
+        setup(3, "a", "b"); var finish = new CountDownLatch(1); var nextTrial = new CountDownLatch(1); var entered = new CountDownLatch(1); var allowFailure = new CountDownLatch(1);
         var problem = new AutoLlmFailureUtil.Failure(AutoLlmFailureUtil.Category.UNKNOWN, "IRACE_SAMPLING_FAILED",
                 "IRACE exhausted model sampling", List.of("runner.R.stderr.log"), false, "Inspect the sampler");
         executions.put("a", (model, stop) -> {
             var trial = model.trial;
-            if (trial.number == 1) { trial.status = AutoLlmCampaign.TrialStatus.BLOCKED; trial.problem = problem; trial.failure = "Original R failure"; return; }
+            if (trial.number == 1) { entered.countDown(); assertTrue(allowFailure.await(10, TimeUnit.SECONDS)); trial.status = AutoLlmCampaign.TrialStatus.BLOCKED; trial.problem = problem; trial.failure = "Original R failure"; return; }
             nextTrial.countDown(); assertTrue(finish.await(10, TimeUnit.SECONDS)); trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED;
         });
         executions.put("b", (model, stop) -> { assertTrue(finish.await(10, TimeUnit.SECONDS)); model.trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED; });
         try {
             service.start(campaign.id, false, java.util.Set.of());
-            await(() -> store.load(campaign.id).targets.get("a").status == AutoLlmCampaign.TargetStatus.NEEDS_ATTENTION);
+            assertTrue(entered.await(10, TimeUnit.SECONDS)); if (drained) service.drainTarget(campaign.id, "a", false); allowFailure.countDown();
+            await(() -> store.load(campaign.id).trials.getFirst().status == AutoLlmCampaign.TrialStatus.BLOCKED);
             assertThrows(IllegalArgumentException.class, () -> service.failTrial(campaign.id, 1, " "));
             assertThrows(IllegalStateException.class, () -> service.failTrial(campaign.id, 2, "Running trial"));
-            Path evidence = store.directory(campaign.id).resolve("targets/a/trials/001/error.log");
+            Path evidence = store.directory(campaign.id).resolve(store.load(campaign.id).trials.getFirst().executionDirectory()).resolve("error.log");
             Files.createDirectories(evidence.getParent()); Files.writeString(evidence, "Original evidence");
             Path remote = evidence.getParent().resolve("remote-job.json"); Files.writeString(remote, "{}");
             assertThrows(IllegalStateException.class, () -> service.failTrial(campaign.id, 1, "Sampling exhausted"));
@@ -319,7 +366,7 @@ class AutoLlmPoolTest {
             finish.countDown(); await(() -> service.active() == null);
             assertEquals("COMPLETED_WITH_FAILURES", store.load(campaign.id).status.name());
             assertEquals("FAILED", service.failTrial(campaign.id, 1, "Repeated after completion").trials.getFirst().status.name());
-        } finally { finish.countDown(); service.close(); }
+        } finally { allowFailure.countDown(); finish.countDown(); service.close(); }
     }
     @Test void duplicateResolvedEndpointCannotStartASecondWorkload() throws Exception {
         setup(1, "a"); var entered = new CountDownLatch(1); var finish = new CountDownLatch(1);
@@ -344,7 +391,7 @@ class AutoLlmPoolTest {
         executions.put("b", (model, stop) -> { assertTrue(finish.await(10, TimeUnit.SECONDS)); model.trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED; });
         try {
             service.start(campaign.id, false, java.util.Set.of());
-            await(() -> store.load(campaign.id).targets.get("a").status == AutoLlmCampaign.TargetStatus.NEEDS_ATTENTION);
+            await(() -> store.load(campaign.id).trials.getFirst().status == AutoLlmCampaign.TrialStatus.BLOCKED);
             assertTrue(service.recovery(campaign.id).trials().get(1).resume().allowed());
             assertFalse(service.recovery(campaign.id).trials().get(2).resume().allowed());
             if (requalify) service.requalifyTarget(campaign.id, "a"); else service.resumeTrial(campaign.id, 1);

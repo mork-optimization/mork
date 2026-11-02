@@ -14,9 +14,13 @@ public class AutoLlmCampaignStore {
     private final Path root;
     private final Map<Path, CachedHash> hashes = new java.util.concurrent.ConcurrentHashMap<>();
     private record CachedHash(long size, long modified, String hash) {}
-    public AutoLlmCampaignStore(AutoLlmConfig config) { this.root = Path.of(config.workspace()).toAbsolutePath().normalize(); }
+    public AutoLlmCampaignStore(AutoLlmConfig config) { this.root = AutoLlmNormalization.localPath(Path.of(config.workspace())); }
     public Path root() { return root; }
     public synchronized void requireReservation(String id) {
+        if (AutoLlmCleanup.requested(root.resolve(id))) throw new IllegalStateException("Cleanup is pending; new execution is disabled");
+        verifyReservation(id);
+    }
+    private void verifyReservation(String id) {
         Path file = root.resolve("operation-reservation.json");
         if (Files.exists(file)) {
             String owner = (String) AutoLlmFileUtil.read(file, Map.class).get("id");
@@ -57,12 +61,14 @@ public class AutoLlmCampaignStore {
         }
     }
     public synchronized void releaseReservation(String id, Path directory) {
-        requireReservation(id);
+        verifyReservation(id);
         if (hasUncollectedJobs(directory)) return;
         try { Files.deleteIfExists(root.resolve("operation-reservation.json")); } catch (IOException e) { throw new UncheckedIOException(e); }
     }
     public static boolean hasUncollectedJobs(Path directory) {
-        for (Path path : AutoLlmFileUtil.ownedFiles(directory, "remote-job.json")) if (!Files.exists(path.getParent().resolve("collection-completed.json"))) return true;
+        for (Path path : AutoLlmFileUtil.ownedFiles(directory, "remote-job.json")) if (!Files.exists(path.getParent().resolve("collection-completed.json")) && !Files.exists(path.getParent().resolve("collection-discarded.json"))) return true;
+        for (Path path : AutoLlmFileUtil.ownedFiles(directory, "local-job.json")) if (Files.exists(path.getParent().resolve("workload-result.json"))
+                && !Files.exists(path.getParent().resolve("collection-completed.json")) && !Files.exists(path.getParent().resolve("collection-discarded.json"))) return true;
         return false;
     }
     public Path directory(String id) {

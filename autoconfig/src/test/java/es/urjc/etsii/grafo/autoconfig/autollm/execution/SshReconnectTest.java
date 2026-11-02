@@ -15,6 +15,13 @@ import static org.mockito.Mockito.*;
 
 class SshReconnectTest {
     @TempDir Path root;
+    @org.junit.jupiter.api.BeforeEach void saveOwner() { saveOwner(root); }
+    private void saveOwner(Path directory) {
+        var config = config();
+        var lease = new WorkerRegistry.Lease("fixture-worker", "fixture-controller", directory.toString(), null, UUID.randomUUID().toString(), 1);
+        AutoLlmFileUtil.write(directory.resolve("execution-owner.json"), new ExecutionOwner(WorkloadProtocol.VERSION, "fixture", null,
+                directory.toAbsolutePath().toString(), WorkloadPathUtil.remoteRoot(config, directory), config, lease));
+    }
     private AutoLlmConfig config() {
         var defaults = AutoLlmConfig.defaults();
         var server = new AutoLlmConfig.Server("test", "unused", "/work", "java", Map.of(), null, null, null);
@@ -55,7 +62,7 @@ class SshReconnectTest {
         doThrow(new ExecutionTargetException("fixture stops before remote IO")).when(transport).bootstrap();
         String previous = null;
         for (String number : List.of("001", "002")) {
-            Path trial = root.resolve("trials/" + number), output = trial.resolve("check");
+            Path trial = root.resolve("trials/" + number), output = trial.resolve("check"); saveOwner(trial);
             String name = "baseline/source/target/project.jar";
             var work = new AutoLlmWorkloadExecutor.Workload(List.of("unused"), trial, output,
                     Map.of(name, jar), List.of(), List.of(), 1000, 0, 100, false, 1000);

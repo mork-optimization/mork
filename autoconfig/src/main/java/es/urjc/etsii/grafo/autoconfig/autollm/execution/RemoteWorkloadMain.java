@@ -15,6 +15,8 @@ import static es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol.
 
 /** SSH entry point. No Spring context, dashboard, model classes or credentials are required. */
 public final class RemoteWorkloadMain {
+    public record DeleteRequest(OwnershipManifest.Resource resource, Set<String> references) {}
+    public record ProbeRequest(AutoLlmConfig config, WorkerRegistry.Lease lease) {}
     private RemoteWorkloadMain() {}
     public static void main(String[] args) throws Exception {
         try { execute(args); }
@@ -24,10 +26,51 @@ public final class RemoteWorkloadMain {
         if (args.length < 2) throw new IllegalArgumentException("Expected action and absolute workspace");
         Path root = Path.of(args[1]).toAbsolutePath().normalize();
         if (!Path.of(args[1]).isAbsolute()) throw new IllegalArgumentException("Workspace must be absolute");
-        if (!Set.of("inspect", "storage").contains(args[0])) Files.createDirectories(root);
+        if (!Set.of("inspect", "storage", "cleanup-owned", "cleanup-ack", "cleanup-progress", "worker-status", "lease-release", "lease-validate", "lease-acquire", "ownership-plan", "ownership-release").contains(args[0])) Files.createDirectories(root);
         String id = args.length > 2 ? args[2] : "";
         switch (args[0]) {
             case "identify" -> print(Map.of("version", VERSION, "sha256", AutoLlmFileUtil.hash(Path.of(System.getProperty("java.class.path"))), "features", List.of("CAMPAIGN_ASSETS", "COLLECTION_ACK", "STORAGE_OBSERVATION")));
+            case "cleanup-finish" -> AutoLlmCleanup.finish(Path.of(id));
+            case "ownership-register" -> {
+                var request = AutoLlmFileUtil.JSON.readTree(System.in.readAllBytes());
+                OwnershipManifest.directory(WorkloadPathUtil.remoteCampaign(root), "remote-campaign", request.path("reference").asString());
+                print(OwnershipManifest.directory(root, "execution", request.path("reference").asString()));
+            }
+            case "ownership-release" -> { OwnershipManifest.removeReferences(AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), new TypeReference<Set<String>>() {})); print(Map.of("accepted", true)); }
+            case "ownership-plan" -> {
+                var resources = new ArrayList<OwnershipManifest.Resource>();
+                for (var resource : OwnershipManifest.resources()) if (resource.path().equals(root.toString()) || resource.path().equals(WorkloadPathUtil.remoteCampaign(root).toString())) resources.add(resource);
+                print(resources);
+            }
+            case "cleanup-progress" -> print(Map.of("phase", OwnershipManifest.deletionPhase(AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), OwnershipManifest.Resource.class))));
+            case "cleanup-ack" -> { OwnershipManifest.acknowledgeDeletion(AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), OwnershipManifest.Resource.class)); print(Map.of("accepted", true)); }
+            case "cleanup-owned" -> {
+                var request = AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), DeleteRequest.class);
+                if (!request.resource().path().equals(root.toString())) throw new IllegalArgumentException("Cleanup root mismatch");
+                OwnershipManifest.delete(request.resource(), request.references()); print(Map.of("deleted", true));
+            }
+            case "worker-init" -> print(WorkerRegistry.system().provision());
+            case "worker-status" -> print(WorkerRegistry.system().status());
+            case "lease-acquire" -> {
+                var lease = AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), WorkerRegistry.Lease.class);
+                try { print(WorkerRegistry.system().acquire(lease)); }
+                catch (WorkerRegistry.Busy busy) { print(Map.of("busy", busy.owner)); }
+            }
+            case "lease-validate", "lease-release" -> {
+                var lease = AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), WorkerRegistry.Lease.class);
+                if (args[0].equals("lease-release")) WorkerRegistry.system().release(lease); else WorkerRegistry.system().validate(lease);
+                print(Map.of("accepted", true));
+            }
+            case "job-collected" -> {
+                Path collected = jobDirectory(root, id).resolve("collected.json");
+                if (Files.isRegularFile(collected)) { print(Map.of("accepted", true)); break; }
+                Job job = AutoLlmFileUtil.read(jobDirectory(root, id).resolve("job.json"), Job.class);
+                if (state(root, id).status().inProgress()) throw new IllegalStateException("Job still active");
+                AutoLlmProcessRunner.requireTerminated(WorkloadPathUtil.inside(root, job.output()));
+                WorkerRegistry.system().complete(ExecutionOwner.of(job).lease(), root.toString(), id);
+                AutoLlmFileUtil.write(collected, Map.of("jobId", id));
+                print(Map.of("accepted", true));
+            }
             case "identity" -> {
                 var config = AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), AutoLlmConfig.class);
                 print(TargetPreflightUtil.identity(config, root, List.of()));
@@ -46,10 +89,13 @@ public final class RemoteWorkloadMain {
             case "acknowledge" -> print(RemoteCampaignStorage.acknowledge(root, id, AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), RemoteCampaignStorage.Acknowledgement.class)));
             case "retire" -> print(RemoteCampaignStorage.retire(root));
             case "probe" -> {
-                try (var channel = FileChannel.open(WorkloadPathUtil.workspace(root).resolve("execution.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.tryLock()) {
-                if (lock == null) throw new IllegalStateException("Another remote workload owns this workspace; wait before preflight");
-                var config = AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), AutoLlmConfig.class);
-                print(TargetPreflightUtil.inspect(config, root, new AutoLlmProcessRunner(), args.length > 2 ? id : null));
+                var request = AutoLlmFileUtil.JSON.readValue(System.in.readAllBytes(), ProbeRequest.class);
+                WorkerRegistry.system().validate(request.lease());
+                String probeId = "preflight-" + UUID.randomUUID();
+                WorkerRegistry.system().submit(request.lease(), root.toString(), probeId, previous -> WorkerRegistry.ProcessIdentity.of(ProcessHandle.current()));
+                try { print(TargetPreflightUtil.inspect(request.config(), root, new AutoLlmProcessRunner(), args.length > 2 ? id : null)); }
+                finally {
+                    WorkerRegistry.system().finishPreflight(request.lease(), root.toString(), probeId);
                 }
             }
             case "put" -> {
@@ -96,7 +142,7 @@ public final class RemoteWorkloadMain {
         if (Files.isRegularFile(descriptor)) {
             Job job = AutoLlmFileUtil.read(descriptor, Job.class);
             result.put("identityMatches", job.id().equals(id) && job.root().equals(root.toString()));
-            result.put("hostMatches", job.expectedHost().isEmpty() || job.expectedHost().equals(ScreeningFileUtil.host()));
+            result.put("hostMatches", job.expectedHost().isEmpty() || job.expectedHost().equals(TargetPreflightUtil.hostIdentity()));
             for (String name : List.of("owner.json", "execution/terminal.json", "execution/tuning-progress.json")) {
                 Path file = WorkloadPathUtil.inside(root, job.output()).resolve(name);
                 if (Files.isRegularFile(file)) {
@@ -129,6 +175,7 @@ public final class RemoteWorkloadMain {
             if (!Files.isRegularFile(saved) || !requested.equals(AutoLlmFileUtil.read(saved, Job.class))) throw new IllegalStateException("Cannot submit new work to a retired owner");
             print(state(root, id)); return;
         }
+        WorkerRegistry.system().validate(ExecutionOwner.of(requested).lease());
         WorkloadPathUtil.inside(root, requested.cwd()); WorkloadPathUtil.inside(root, requested.output());
         for (String path : requested.collect()) WorkloadPathUtil.inside(root, path);
         for (String path : requested.layers()) if (!(requested.managedStorage() ? RemoteCampaignStorage.shared(path) : path.matches("\\.layers/[a-f0-9]{64}\\.zip"))) throw new IllegalArgumentException("Invalid input layer");
@@ -148,9 +195,21 @@ public final class RemoteWorkloadMain {
             }
             State current = state(root, id);
             if (current.status() == JobStatus.SUBMITTED && !Files.exists(directory.resolve("started.json"))) {
-                var command = new ArrayList<>(List.of("nohup")); command.addAll(selfCommand()); command.addAll(List.of("supervise", root.toString(), id));
-                new ProcessBuilder(command).directory(root.toFile()).redirectInput(ProcessBuilder.Redirect.from(new File("/dev/null")))
-                        .redirectOutput(directory.resolve("supervisor.log").toFile()).redirectErrorStream(true).start();
+                WorkerRegistry.system().submit(requested.owner().lease(), root.toString(), id, previous -> {
+                    if (previous != null) {
+                        if (previous.process() != null && previous.process().alive()) return previous.process();
+                        throw new IllegalStateException("Submission outcome uncertain; reconcile saved process identity before retrying");
+                    }
+                    var command = new ArrayList<>(selfCommand()); command.addAll(List.of("supervise", root.toString(), id));
+                    try {
+                        var process = new ProcessBuilder(command).directory(root.toFile())
+                                .redirectOutput(directory.resolve("supervisor.log").toFile()).redirectErrorStream(true).start();
+                        process.getOutputStream().close();
+                        var identity = WorkerRegistry.ProcessIdentity.of(process.toHandle());
+                        AutoLlmFileUtil.write(directory.resolve("spawned.json"), identity);
+                        return identity;
+                    } catch (IOException e) { throw new UncheckedIOException(e); }
+                });
             }
         }
         print(state(root, id));
@@ -158,6 +217,7 @@ public final class RemoteWorkloadMain {
     }
     private static List<String> selfCommand() {
         var result = new ArrayList<>(List.of(Path.of(System.getProperty("java.home"), "bin/java").toString()));
+        if (System.getProperty("mork.test.workerRegistry") != null) result.add("-Dmork.test.workerRegistry=" + System.getProperty("mork.test.workerRegistry"));
         File source = new ApplicationHome(RemoteWorkloadMain.class).getSource();
         if (source != null && source.isFile()) result.addAll(List.of("-jar", source.toString()));
         else result.addAll(List.of("-cp", System.getProperty("java.class.path"), RemoteWorkloadMain.class.getName()));
@@ -171,9 +231,9 @@ public final class RemoteWorkloadMain {
             AutoLlmFileUtil.write(directory.resolve("started.json"), Map.of("pid", ProcessHandle.current().pid(), "start", ProcessHandle.current().info().startInstant().orElseThrow().toString()));
             Job job = AutoLlmFileUtil.read(directory.resolve("job.json"), Job.class);
             AutoLlmProcessRunner.Result result = null; String failure = null; JobStatus outcome = JobStatus.FAILED;
-            try (var workspace = FileChannel.open(WorkloadPathUtil.workspace(root).resolve("execution.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var ownership = workspace.tryLock()) {
-                if (ownership == null) throw new IllegalStateException("Another remote measurement owns this workspace");
-                if (!job.expectedHost().isEmpty() && !job.expectedHost().equals(ScreeningFileUtil.host())) throw new ExecutionTargetException("Execution host or allocation changed; prepare and review a new dataset");
+            try {
+                WorkerRegistry.system().validate(ExecutionOwner.of(job).lease());
+                if (!job.expectedHost().isEmpty() && !job.expectedHost().equals(TargetPreflightUtil.hostIdentity())) throw new ExecutionTargetException("Execution host or allocation changed; prepare and review a new dataset");
                 if (!job.inputSha256().equals(AutoLlmFileUtil.hash(directory.resolve("input.zip")))) throw new IllegalStateException("Frozen job input changed");
                 for (String path : job.reset()) WorkloadArchiveUtil.deleteTree(WorkloadPathUtil.inside(root, path));
                 for (String layer : job.layers()) {
@@ -270,7 +330,10 @@ public final class RemoteWorkloadMain {
                     collectResult(root, id, job, AutoLlmFileUtil.read(completed, State.class));
                     return AutoLlmFileUtil.read(file, State.class);
                 }
-                new AutoLlmProcessRunner().reconcile(WorkloadPathUtil.inside(root, job.output()));
+                Path output = WorkloadPathUtil.inside(root, job.output());
+                if (!Files.isRegularFile(output.resolve("process-terminated.json")))
+                    throw new IllegalStateException("Supervisor crashed without confirmed child termination; reservation retained");
+                new AutoLlmProcessRunner().reconcile(output);
                 var files = new TreeMap<String,Path>(); WorkloadArchiveUtil.addTree(files, root, WorkloadPathUtil.inside(root, job.output()), false);
                 WorkloadArchiveUtil.pack(directory.resolve("result.zip"), files);
                 state = new State(id, JobStatus.INTERRUPTED, null, "Remote supervisor exited before completion", AutoLlmFileUtil.hash(directory.resolve("result.zip")));

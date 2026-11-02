@@ -78,7 +78,10 @@ public final class CodexProgressUtil {
     }
     private static void activity(Path output, String type, String text, Progress progress) {
         progress.lastActivityAt = Instant.now().toString();
-        AutoLlmFileUtil.append(output.resolve("activity.jsonl"), Map.of("timestamp", progress.lastActivityAt, "type", type,
-                "text", text.length() > 4000 ? text.substring(0, 4000) + "\n… Full output is in stdout.log." : text));
+        var event = new LinkedHashMap<String,Object>(); event.put("timestamp", progress.lastActivityAt); event.put("type", type); event.put("text", text);
+        while (AutoLlmFileUtil.JSON.writeValueAsBytes(event).length > 4096) {
+            text = text.substring(0, text.length() / 2); event.put("text", text + "\n[truncated; full output is in stdout.log]"); event.put("truncated", true);
+        }
+        AutoLlmFileUtil.append(output.resolve("activity.jsonl"), event);
     }
 }

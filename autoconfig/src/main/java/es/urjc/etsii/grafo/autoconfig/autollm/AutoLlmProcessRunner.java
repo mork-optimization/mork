@@ -18,10 +18,12 @@ public class AutoLlmProcessRunner {
                       long graceMillis, BooleanSupplier cancelled, boolean watchEvaluations, long startupMillis) {
         try {
             Files.createDirectories(output);
+            Files.deleteIfExists(output.resolve("process-terminated.json"));
             var process = new ProcessBuilder(command).directory(cwd.toFile())
                     .redirectOutput(output.resolve("stdout.log").toFile()).redirectError(output.resolve("stderr.log").toFile()).start();
             long begin = System.currentTimeMillis();
             boolean planned = false;
+            var children = new LinkedHashMap<Long,ProcessHandle>();
             try {
                 process.getOutputStream().close();
                 var start = process.info().startInstant().map(Instant::toString).orElse("");
@@ -30,8 +32,9 @@ public class AutoLlmProcessRunner {
                 AutoLlmFileUtil.write(output.resolve("owner.json"), Map.of("pid", process.pid(), "start", start, "command", command,
                         "executionTarget", Boolean.getBoolean("mork.execution.remote") ? "SSH" : "LOCAL"));
                 while (!process.waitFor(100, TimeUnit.MILLISECONDS)) {
+                    for (var child : process.descendants().toList()) children.put(child.pid(), child);
                     if (Files.exists(output.resolve("codex-launch.json"))) CodexProgressUtil.refresh(output);
-                    if (cancelled.getAsBoolean() || Thread.currentThread().isInterrupted()) throw new CancellationException("Campaign cancelled");
+                    if (cancelled.getAsBoolean() || AutoLlmCleanup.requested(output) || Thread.currentThread().isInterrupted()) throw new CancellationException("Campaign cancelled");
                     long now = System.currentTimeMillis();
                     if (now - begin > timeoutMillis) throw new IllegalStateException("Stage exceeded its hard timeout");
                     if (watchEvaluations) checkDeadlines(output.resolve("execution/active.json"), now, graceMillis);
@@ -52,13 +55,20 @@ public class AutoLlmProcessRunner {
                 }
                 if (Files.exists(output.resolve("codex-launch.json"))) CodexProgressUtil.refresh(output);
                 AutoLlmFileUtil.unfinished(output, "FAILED", "Child exited with unfinished evaluations");
+                if (process.exitValue() != 0) BuildDiagnostics.capture(cwd, output);
                 return new Result(process.exitValue(), planned, System.currentTimeMillis() - begin);
             } catch (RuntimeException | InterruptedException failure) {
                 stop(process.toHandle());
                 try { AutoLlmFileUtil.unfinished(output, failure instanceof CancellationException || failure instanceof InterruptedException ? "INTERRUPTED" : "FAILED", failure.toString()); }
                 catch (RuntimeException recordingFailure) { failure.addSuppressed(recordingFailure); }
                 throw failure;
-            } finally { if (process.isAlive()) stop(process.toHandle()); }
+            } finally {
+                if (process.isAlive()) stop(process.toHandle());
+                for (var child : children.values()) if (child.isAlive()) stop(child);
+                if (process.isAlive()) throw new IllegalStateException("Process termination is unconfirmed");
+                for (var child : children.values()) if (child.isAlive()) throw new IllegalStateException("Child termination is unconfirmed");
+                AutoLlmFileUtil.write(output.resolve("process-terminated.json"), Map.of("pid", process.pid(), "confirmedAt", Instant.now().toString()));
+            }
         } catch (IOException e) { throw new UncheckedIOException(e); }
         catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Campaign interrupted"); }
     }
@@ -75,6 +85,19 @@ public class AutoLlmProcessRunner {
                 throw AutoLlmFailureUtil.error(phase.equals("RUNNING") ? AutoLlmFailureUtil.Category.COMPONENT : AutoLlmFailureUtil.Category.UNKNOWN,
                         "EVALUATION_TIMEOUT", "Hung evaluation " + entry.getKey() + " in phase " + phase, file);
             }
+        }
+    }
+    /** A dead parent alone does not establish that its children stopped. */
+    public static void requireTerminated(Path root) {
+        for (Path file : AutoLlmFileUtil.ownedFiles(root, "owner.json")) {
+            var owner = AutoLlmFileUtil.read(file, Map.class);
+            if (!(owner.get("pid") instanceof Number pid)) continue;
+            if (ProcessHandle.of(pid.longValue()).filter(ProcessHandle::isAlive).isPresent())
+                throw new IllegalStateException("Live or reused process blocks completion: " + file);
+            Path proof = file.resolveSibling("process-terminated.json");
+            if (!Files.isRegularFile(proof) || AutoLlmFileUtil.read(proof, Map.class).get("pid") == null
+                    || ((Number) AutoLlmFileUtil.read(proof, Map.class).get("pid")).longValue() != pid.longValue())
+                throw new IllegalStateException("Process-tree termination is unconfirmed: " + file);
         }
     }
     public void reconcile(Path campaign) {

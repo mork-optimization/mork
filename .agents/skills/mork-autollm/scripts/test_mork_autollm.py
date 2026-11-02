@@ -22,7 +22,7 @@ class OperatorClientTest(unittest.TestCase):
             code, text, request = self.cli(["storage", "--campaign", "saved"], [result])
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(text), result)
-            request.assert_called_once_with("http://localhost", "/campaigns/saved/storage", timeout=120)
+            request.assert_called_once_with("http://localhost", "/campaigns/saved/storage", timeout=120, output=None)
             code, text, request = self.cli(["storage", "--campaign", "saved", "--maintain"], [result])
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(text), result)
@@ -35,16 +35,17 @@ class OperatorClientTest(unittest.TestCase):
                     client.main(["--workspace", self.root, "--url", "http://localhost", "storage", "--campaign", "saved", "--maintain", "--timeout", "19"])
             request.assert_called_once_with("http://localhost", "/campaigns/saved/storage/maintain", {}, timeout=19)
 
-    def test_campaign_proposal_prints_single_storage_line_and_preserves_json(self):
+    def test_campaign_proposal_prints_generation_and_storage_and_preserves_json(self):
         with tempfile.TemporaryDirectory() as self.root:
             line = "Storage (additional peak estimate): controller 1–4 GiB / 2 GiB free. WARNING: may not fit."
-            value = {"digest": "a" * 64, "storage": {"approvalLine": line}}
+            generation = "Generation and repairs: model chosen-model (campaign setting); reasoning effort Codex default (not pinned)."
+            value = {"digest": "a" * 64, "generation": {"approvalLine": generation}, "storage": {"approvalLine": line}}
             errors = io.StringIO()
             with contextlib.redirect_stderr(errors):
                 code, text, request = self.cli(["campaign", "proposal", "--id", "saved"], [value])
             self.assertEqual(code, 0)
             self.assertEqual(json.loads(text), value)
-            self.assertEqual(errors.getvalue(), line + "\n")
+            self.assertEqual(errors.getvalue(), generation + "\n" + line + "\n")
             errors = io.StringIO()
             with contextlib.redirect_stderr(errors):
                 _, text, _ = self.cli(["--json", "campaign", "proposal", "--id", "saved"], [value])
@@ -76,9 +77,10 @@ class OperatorClientTest(unittest.TestCase):
             overrides.write_text(json.dumps({"execution": {"workers": 32, "ssh": {"host": "server", "configFile": None}}}))
             args = SimpleNamespace(overrides=overrides, output=root / "remote.yml", spring=True, workspace=root)
             defaults = {"workspace": str(root), "execution": {"workers": -1, "ssh": {"javaExecutable": "java", "configFile": None}}}
-            with patch.object(client, "request", side_effect=[defaults, {"trials": 10}]):
+            with patch.object(client, "request", side_effect=[defaults, {"configuration": {"workspace": str(root), "execution": {"workers": 32, "ssh": {"javaExecutable": "java"}}, "canonicalFromServer": True}}]):
                 result = client.configuration(args, "http://localhost")
             config = json.loads(Path(result["configurationPath"]).read_text())["autollm"]
+            self.assertTrue(config["canonicalFromServer"])
             self.assertEqual(config["execution"]["workers"], 32)
             self.assertNotIn("configFile", config["execution"]["ssh"])
             self.assertEqual(config["execution"]["ssh"]["javaExecutable"], "java")
@@ -88,7 +90,7 @@ class OperatorClientTest(unittest.TestCase):
         with patch.object(client, "request", return_value={"mode": "AUTOLLM", "apiVersion": 1}):
             with self.assertRaisesRegex(RuntimeError, "capabilities"):
                 client.capabilities("http://localhost")
-        info = {"mode": "AUTOLLM", "apiVersion": 6, "checkpointVersion": 6, "runnerProtocol": 6, "workspace": "/other", "features": list(client.FEATURES)}
+        info = {"mode": "AUTOLLM", "apiVersion": 7, "checkpointVersion": 7, "runnerProtocol": 7, "workspace": "/other", "features": list(client.FEATURES)}
         with patch.object(client, "request", return_value=info):
             with self.assertRaisesRegex(RuntimeError, "workspace"):
                 client.capabilities("http://localhost", "/requested")
@@ -99,7 +101,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"frozen executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url="http://localhost")
-            info = {"mode": "AUTOLLM", "apiVersion": 6, "checkpointVersion": 6, "runnerProtocol": 6, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            info = {"mode": "AUTOLLM", "apiVersion": 7, "checkpointVersion": 7, "runnerProtocol": 7, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             with patch.object(client, "request", return_value=info), patch.object(client.subprocess, "Popen") as launch:
                 self.assertEqual(client.backend(args), info)
                 launch.assert_not_called()
@@ -123,7 +125,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url=None, java="java", port=0, timeout=10)
-            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 6, "checkpointVersion": 6, "runnerProtocol": 6, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 7, "checkpointVersion": 7, "runnerProtocol": 7, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             launching = dict(ready, mode="STARTING")
             with patch.object(client, "request", side_effect=[RuntimeError("offline"), launching, ready]), patch.object(client.socket, "socket") as socket, patch.object(client.subprocess, "Popen") as launch, patch.object(client.time, "sleep"):
                 socket.return_value.__enter__.return_value.getsockname.return_value = ("127.0.0.1", 18081)
@@ -404,7 +406,7 @@ class OperatorClientTest(unittest.TestCase):
             self.assertEqual(client.watch_activity("http://localhost", "saved", (1, 2), cursors, deadline), ([], True))
         with patch.object(client, "request", return_value=dict(empty, nextCursor=0)) as request:
             client.watch_activity("http://localhost", "saved", (1, 3), cursors, deadline)
-        self.assertIn("attempt=3&cursor=0", request.call_args.args[1])
+        self.assertIn("attempt=3&cursor=-1", request.call_args.args[1])
         cursors[(1, 2)]["partial"] = "discard me"
         with patch.object(client, "request", return_value=dict(empty, text=event, reset=True)):
             events, caught_up = client.watch_activity("http://localhost", "saved", (1, 2), cursors, deadline)
@@ -494,6 +496,84 @@ class OperatorClientTest(unittest.TestCase):
         self.assertEqual(sources, [(1,1),(2,1)])
         self.assertIn("server=b:BUSY", client.watch_line(snapshot))
 
+
+
+class CampaignV7OutputTest(unittest.TestCase):
+    def test_large_response_streams_and_interrupted_write_preserves_destination(self):
+        import io
+        class Response(io.BytesIO):
+            def read(self, size=-1):
+                self.assert_size(size)
+                return super().read(size)
+            def assert_size(self, size):
+                if size != 65536:
+                    raise AssertionError(f"Unbounded read: {size}")
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "large.json"
+            payload = b'{"data":"' + b'x' * 3_000_000 + b'"}'
+            with patch.object(client, "urlopen", return_value=Response(payload)):
+                receipt = client.request("http://localhost", "/campaigns/id", output=path)
+            self.assertTrue(receipt["streamed"])
+            self.assertEqual(payload, path.read_bytes())
+            class Interrupted(Response):
+                def read(self, size=-1):
+                    if self.tell() > 0:
+                        raise OSError("interrupted transfer")
+                    return super().read(size)
+            with patch.object(client, "urlopen", return_value=Interrupted(payload)):
+                with self.assertRaises(RuntimeError):
+                    client.request("http://localhost", "/campaigns/id", output=path)
+            self.assertEqual(payload, path.read_bytes())
+            self.assertEqual([path], list(Path(directory).iterdir()))
+
+    def test_activity_bound_counts_encoded_bytes(self):
+        for text in ('é' * 10000, '\\"' * 10000):
+            event = client.bounded_activity({"type": "activity", "event": {"text": text}})
+            self.assertLessEqual(len(json.dumps(event, ensure_ascii=False).encode()), 4096)
+            self.assertTrue(event["event"]["truncated"])
+
+    def test_screening_status_and_progress_retry_details(self):
+        args = SimpleNamespace(campaign=None, screening="screening-id", timeout=3)
+        with patch.object(client, "request", return_value={"id": "screening-id", "status": "RUNNING"}) as request:
+            result = client.status(args, "http://localhost")
+        self.assertEqual(result["screening"]["id"], "screening-id")
+        self.assertNotIn("Campaign none", client.status_table(result))
+        self.assertEqual(request.call_args.args[1], "/screenings/screening-id")
+        value = {"baseUrl": "localhost", "checkedAt": "now", "campaign": {"id": "id", "status": "RUNNING", "trials": [{"number": 1, "status": "WAITING_FOR_CAPACITY"}]},
+                 "progress": {"1": {"capacityWait": {"retries": 2, "nextRetryAt": "soon", "deadline": "later"}, "quotaRetryAt": "tomorrow"}}, "partial": False, "errors": {}}
+        self.assertIn("retry 2 at soon", client.status_table(value))
+        self.assertIn("tomorrow", client.status_table(value))
+
+    def test_cleanup_status_survives_controller_shutdown(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory).resolve() / "removed-workspace"
+            key = client.hashlib.sha256(json.dumps(str(workspace)).encode()).hexdigest()
+            receipts = workspace.parent / ".mork-cleanup" / key
+            digest = "a" * 64
+            receipt = {"digest": digest, "status": "PENDING", "completed": [], "pending": {"host": "offline"}}
+            client.write_json(receipts / (digest + ".receipt.json"), receipt)
+            args = SimpleNamespace(command="cleanup", action="status", digest=digest, workspace=str(workspace))
+            self.assertEqual(receipt, client.cleanup_local(args))
+            args.digest = "../escape"
+            with self.assertRaises(Exception):
+                client.cleanup_local(args)
+
+    def test_remote_assignments_stream_directly_to_combined_output(self):
+        import io
+        class Response(io.BytesIO):
+            def read(self, size=-1):
+                if size != 65536:
+                    raise AssertionError("Unbounded response read")
+                return super().read(size)
+        with tempfile.TemporaryDirectory() as directory:
+            path = Path(directory) / "remote.json"
+            args = SimpleNamespace(command="remote", campaign="campaign", trial=[1, 2], timeout=10,
+                                   assignment=None, all_assignments=True, response_output=str(path))
+            payload = b'{"jobs":"' + b'x' * 3_000_000 + b'"}'
+            with patch.object(client, "urlopen", side_effect=lambda *a, **k: Response(payload)):
+                result = client.operator(args, "http://localhost")
+            self.assertTrue(result["streamed"])
+            self.assertEqual({"1", "2"}, set(json.loads(path.read_text())))
 
 if __name__ == "__main__":
     unittest.main()

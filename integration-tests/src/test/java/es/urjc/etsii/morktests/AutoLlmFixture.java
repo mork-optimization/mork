@@ -39,7 +39,8 @@ public class AutoLlmFixture {
             System.out.println(json.writeValueAsString(Map.of("type", "item.started", "item", Map.of("type", "command_execution", "command", "metadata-check")))); System.out.flush();
             Path log = checkout.resolve("helper.log");
             var process = new ProcessBuilder("python3", helper.toString()).redirectErrorStream(true).redirectOutput(log.toFile()).start();
-            if (!process.waitFor(120, java.util.concurrent.TimeUnit.SECONDS)) { process.destroyForcibly(); throw new IllegalStateException("Metadata helper timed out"); }
+            // Alias-backed workers serialize whole assignments, including collection.
+            if (!process.waitFor(540, java.util.concurrent.TimeUnit.SECONDS)) { process.destroyForcibly(); throw new IllegalStateException("Metadata helper timed out"); }
             System.out.println(json.writeValueAsString(Map.of("type", "item.completed", "item", Map.of("type", "command_execution", "command", "metadata-check", "aggregated_output", Files.readString(log)))));
             if (process.exitValue() != 0) throw new IllegalStateException("Local preparation metadata helper failed");
         }

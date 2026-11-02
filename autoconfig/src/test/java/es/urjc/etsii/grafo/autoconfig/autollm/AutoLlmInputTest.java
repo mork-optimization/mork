@@ -95,7 +95,8 @@ class AutoLlmInputTest {
         var localPaths = AutoLlmExecutionService.localPaths(config, root);
         var remoteTokens = new ArrayList<String>();
         for (String token : inputs) {
-            String translated = WorkloadPathUtil.translate(staged.get(token).get("path"), root.toString(), remote);
+            String translated = WorkloadPathUtil.translate(staged.get(token).get("path"), AutoLlmNormalization.localPath(root).toString(), remote);
+            assertTrue(translated.startsWith(remote + "/"));
             remoteTokens.add(translated);
             assertEquals(token, localPaths.apply(translated));
         }

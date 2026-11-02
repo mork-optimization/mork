@@ -6,15 +6,16 @@ import java.nio.file.Path;
 public final class WorkloadPathUtil {
     private WorkloadPathUtil() {}
     public static String remoteRoot(AutoLlmConfig config, Path root) {
+        if (java.nio.file.Files.isRegularFile(root.resolve("execution-owner.json"))) return ExecutionOwner.read(root).executionRoot();
         Path context = root.resolve("execution-context.json");
         if (java.nio.file.Files.exists(context)) {
             var identity = es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmFileUtil.read(context, java.util.Map.class);
-            Path remote = Path.of(config.execution().ssh().onlyServer().workspace(), "campaigns", (String) identity.get("campaignId"), "targets", (String) identity.get("targetId"));
-            if (identity.containsKey("trial")) remote = remote.resolve("trials/" + identity.get("trial"));
-            if (identity.containsKey("assignment")) remote = remote.resolve("assignments/" + identity.get("assignment"));
-            return remote.normalize().toString();
+            String remote = config.execution().ssh().onlyServer().workspace().replaceAll("/+$", "") + "/campaigns/" + identity.get("campaignId") + "/targets/" + identity.get("targetId");
+            if (identity.containsKey("trial")) remote += "/trials/" + identity.get("trial");
+            if (identity.containsKey("assignment")) remote += "/assignments/" + identity.get("assignment");
+            return remote;
         }
-        return Path.of(config.execution().ssh().onlyServer().workspace(), "campaigns", root.getFileName().toString()).normalize().toString();
+        return config.execution().ssh().onlyServer().workspace().replaceAll("/+$", "") + "/campaigns/" + root.getFileName();
     }
     public static Path remoteCampaign(Path root) {
         Path workspace = workspace(root);
@@ -22,7 +23,7 @@ public final class WorkloadPathUtil {
         if (!root.startsWith(campaigns) || root.getNameCount() <= campaigns.getNameCount()) throw new IllegalArgumentException("Invalid campaign namespace");
         return campaigns.resolve(campaigns.relativize(root).getName(0));
     }
-    /** Both v3 screening roots and target roots share the server workspace's measurement lock. */
+    /** Locate the transport workspace; measurement coordination uses the host registry. */
     public static Path workspace(Path root) {
         if (root.getParent() != null && root.getParent().getFileName().toString().equals("assignments")) root = root.getParent().getParent();
         if (root.getParent() != null && root.getParent().getFileName().toString().equals("trials")) root = root.getParent().getParent();

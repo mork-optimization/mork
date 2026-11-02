@@ -6,6 +6,8 @@ from datetime import datetime, timezone
 import hashlib
 import json
 import math
+import tempfile
+import contextlib
 import os
 from pathlib import Path
 import socket
@@ -17,15 +19,23 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 import zipfile
 
-FEATURES = {"SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION"}
+FEATURES = {"SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKER_LEASES", "SCOPED_CLEANUP"}
 
 
-def request(base, path, body=None, timeout=30, method=None, maximum_bytes=2_000_000):
+def request(base, path, body=None, timeout=30, method=None, maximum_bytes=2_000_000, output=None):
     req = Request(base.rstrip("/") + "/api/autollm" + path,
                   data=None if body is None else json.dumps(body).encode(),
                   headers={"Content-Type": "application/json"}, method=method)
     try:
         with urlopen(req, timeout=timeout) as response:
+            if output:
+                with atomic_output(output, binary=True) as target:
+                    while True:
+                        chunk = response.read(65536)
+                        if not chunk:
+                            break
+                        target.write(chunk)
+                return {"output": str(Path(output).resolve()), "streamed": True}
             if maximum_bytes is None:
                 return json.load(response)
             data = response.read(maximum_bytes + 1)
@@ -35,7 +45,8 @@ def request(base, path, body=None, timeout=30, method=None, maximum_bytes=2_000_
     except HTTPError as error:
         message = error.read(16384).decode(errors="replace")
         try:
-            message = json.loads(message).get("message", message)
+            detail = json.loads(message)
+            message = json.dumps(detail, ensure_ascii=False) if detail.get("differences") else detail.get("message", message)
         except (ValueError, AttributeError):
             pass
         raise RuntimeError(f"HTTP {error.code}: {message}") from error
@@ -44,6 +55,22 @@ def request(base, path, body=None, timeout=30, method=None, maximum_bytes=2_000_
         if body is not None or method in ("PUT", "POST", "DELETE"):
             message += ". The backend may have accepted it; inspect saved work before retrying."
         raise RuntimeError(message) from error
+
+
+@contextlib.contextmanager
+def atomic_output(path, binary=False):
+    path = Path(path).resolve()
+    path.parent.mkdir(parents=True, exist_ok=True)
+    descriptor, temporary = tempfile.mkstemp(prefix="." + path.name + ".", dir=path.parent)
+    try:
+        with os.fdopen(descriptor, "wb" if binary else "w", **({} if binary else {"encoding": "utf-8"})) as target:
+            yield target
+            target.flush()
+            os.fsync(target.fileno())
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
 
 
 def clean(value):
@@ -85,7 +112,7 @@ def capabilities(base, workspace=None, jar=None, cwd=None):
 
 
 def check_capabilities(info, workspace=None, jar=None, cwd=None):
-    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 6 or info.get("checkpointVersion") != 6 or info.get("runnerProtocol") != 6 or not FEATURES.issubset(info.get("features", [])):
+    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 7 or info.get("checkpointVersion") != 7 or info.get("runnerProtocol") != 7 or not FEATURES.issubset(info.get("features", [])):
         raise RuntimeError("Backend lacks required AutoLLM capabilities; use the matching rebuilt executable")
     if workspace and Path(info["workspace"]).resolve() != Path(workspace).resolve():
         raise RuntimeError("Backend workspace does not match")
@@ -174,8 +201,10 @@ def configuration(args, base):
         raise RuntimeError("Configuration workspace differs from the connected backend")
     if args.spring and Path(args.output).suffix not in (".yml", ".yaml"):
         raise RuntimeError("Spring configuration output must end in .yml or .yaml")
+    effective = request(base, "/effective-config", value)
+    value = effective["configuration"]
     path = write_json(args.output, {"autollm": value} if args.spring else value)
-    return {"configurationPath": path, "effective": request(base, "/effective-config", value)}
+    return {"configurationPath": path, "effective": effective}
 
 
 def read_object(path):
@@ -212,7 +241,7 @@ def wait_target_probe(base, probe, deadline):
 def lifecycle(args, base):
     root = "/campaigns" if args.command == "campaign" else "/screenings"
     if args.action == "list":
-        return request(base, root)
+        return request(base, root, output=getattr(args, "response_output", None))
     if args.action == "probe-status":
         return request(base, "/targets/probes/" + quote(args.id, safe=""), timeout=args.timeout)
     if args.action in ("validate", "probe", "create"):
@@ -232,7 +261,7 @@ def lifecycle(args, base):
     if args.command == "campaign" and args.action == "proposal" and args.target:
         return request(base, path + "/proposal", {"targets": args.target}, timeout=args.timeout)
     if args.action in ("get", "review", "summary", "recovery", "proposal"):
-        return request(base, path if args.action == "get" else path + "/" + args.action, timeout=args.timeout)
+        return request(base, path if args.action == "get" else path + "/" + args.action, timeout=args.timeout, output=getattr(args, "response_output", None))
     if args.action == "dataset": return request(base, path + "/dataset", read_object(args.selection), method="PUT", timeout=args.timeout)
     if args.action == "edit": return request(base, path + "/draft", read_configuration(args), method="PUT", timeout=args.timeout)
     body = ({"digest": args.proposal_sha256}) if args.action == "approve" else {}
@@ -245,7 +274,7 @@ def lifecycle(args, base):
 def target(args, base):
     root = f"/campaigns/{quote(args.campaign, safe='')}/targets"
     if args.action == "list":
-        return request(base, root)
+        return request(base, root, output=getattr(args, "response_output", None))
     path = root + "/" + quote(args.id, safe="")
     if args.action == "add":
         server = read_object(args.server)
@@ -343,9 +372,9 @@ def watch_snapshot(base, kind, identifier, deadline):
     return snapshot, sources
 
 
-def watch_activity(base, identifier, source, cursors, deadline):
+def watch_activity(base, identifier, source, cursors, deadline, history=False):
     trial, attempt = source
-    state = cursors.setdefault(source, {"cursor": 0, "partial": ""})
+    state = cursors.setdefault(source, {"cursor": 0 if history else -1, "partial": ""})
     events = []
     for _ in range(4):
         query = urlencode({"attempt": attempt, "cursor": state["cursor"]})
@@ -424,9 +453,23 @@ def watch_line(snapshot):
     return " | ".join(parts)
 
 
+def bounded_activity(event):
+    if len(json.dumps(event, ensure_ascii=False).encode()) <= 4096:
+        return event
+    excerpt = json.dumps(event.get("event", event), ensure_ascii=False).encode()[:3000].decode(errors="ignore")
+    result = {"type": "activity", "trial": event.get("trial"), "attempt": event.get("attempt"),
+              "event": {"text": excerpt + " [event truncated to 4 KiB]", "truncated": True}}
+    while len(json.dumps(result, ensure_ascii=False).encode()) > 4096:
+        excerpt = excerpt[:len(excerpt) // 2]
+        result["event"]["text"] = excerpt + " [event truncated to 4 KiB]"
+    return result
+
+
 def watch_output(args, value):
     if args.json:
         print(json.dumps(value, ensure_ascii=False), flush=True)
+    elif value["type"] == "activity-truncated":
+        print(value["message"], flush=True)
     elif value["type"] == "status":
         print(watch_line(value), flush=True)
     elif value["type"] == "activity":
@@ -442,6 +485,7 @@ def watch(args, base):
     deadline = time.monotonic() + args.timeout
     kind, identifier = watch_owner(args, base, deadline)
     cursors = {}
+    displayed = 0
     stopped = {"DRAFT", "NEEDS_ATTENTION", "INTERRUPTED", "CANCELLED", "FAILED", "SUCCEEDED",
                "COMPLETED_WITH_FAILURES", "READY_FOR_REVIEW"}
     while True:
@@ -449,7 +493,7 @@ def watch(args, base):
         events, caught_up = [], True
         for source in dict.fromkeys([*(sources or []), *cursors]):
             try:
-                batch, complete = watch_activity(base, identifier, source, cursors, deadline)
+                batch, complete = watch_activity(base, identifier, source, cursors, deadline, getattr(args, "history", False))
             except (RuntimeError, OSError, ValueError) as error:
                 snapshot.setdefault("activityErrors", {})[f"{source[0]}/{source[1]}"] = str(error)
                 caught_up = False
@@ -460,10 +504,19 @@ def watch(args, base):
                 del cursors[source]
         snapshot["activityCaughtUp"] = caught_up
         watch_output(args, snapshot)
+        limited = False
         for event in events:
+            if not getattr(args, "unlimited_output", False):
+                event = bounded_activity(event)
+                size = len(json.dumps(event, ensure_ascii=False).encode()) + 1
+                if displayed + size > 256 * 1024:
+                    watch_output(args, {"type": "activity-truncated", "message": "Activity display reached 256 KiB; use --history and --unlimited-output for full output."})
+                    limited = True
+                    break
+                displayed += size
             watch_output(args, event)
-        reason = None
-        if args.once:
+        reason = "activity-limit" if limited else None
+        if args.once and not limited:
             reason = "once"
         elif snapshot["status"] in stopped and caught_up:
             reason = "status"
@@ -477,6 +530,11 @@ def watch(args, base):
 
 
 def status(args, base):
+    if getattr(args, "screening", None):
+        if args.campaign:
+            raise ValueError("Select campaign or screening, not both")
+        value = request(base, "/screenings/" + quote(args.screening, safe=""), timeout=args.timeout)
+        return {"baseUrl": base, "checkedAt": datetime.now(timezone.utc).isoformat(), "screening": value, "partial": False, "errors": {}}
     selected = args.campaign
     if not selected:
         saved = Path(args.workspace) / "campaign-session.json"
@@ -494,10 +552,25 @@ def status(args, base):
 
 
 def status_table(value):
+    if value.get("screening"):
+        screening = value["screening"]
+        progress = screening.get("progress") or {}
+        lines = [f"Checked {value['checkedAt']} | {value['baseUrl']}", f"Screening {screening.get('id')}: {screening.get('status')}"]
+        if progress.get("phase"):
+            lines.append("Phase: " + progress["phase"])
+        for stage in ("initial", "confirmations"):
+            if stage + "Total" in progress:
+                lines.append(f"{stage}: {progress.get(stage + 'Completed', '?')}/{progress[stage + 'Total']}")
+        observation = screening.get("progressObservation") or {}
+        if observation.get("lastMeaningfulChange"):
+            lines.append("Last progress: " + observation["lastMeaningfulChange"])
+        if screening.get("problem"):
+            lines.append("Problem: " + str(screening["problem"]))
+        return "\n".join(lines)
     campaign = value.get("campaign") or {}
     lines = [f"Checked {value['checkedAt']} | {value['baseUrl']}",
              f"Campaign {campaign.get('id', 'none')}: {campaign.get('status', 'none')}" + (" | PARTIAL STATUS" if value["partial"] else "")]
-    rows = [["TRIAL", "SERVER", "STATE / STAGE", "TUNING BUDGET", "ELAPSED", "LAST SYNC / ACTIVITY"]]
+    rows = [["TRIAL", "SERVER", "STATE / STAGE", "TUNING BUDGET", "ELAPSED", "LAST CONTACT", "LAST PROGRESS"]]
     for trial in campaign.get("trials", []):
         number = str(trial["number"])
         progress = value.get("progress", {}).get(number) or {}
@@ -514,7 +587,7 @@ def status_table(value):
         if number in value.get("progressErrors", {}):
             state += " (unavailable)"
         rows.append([number, trial.get("targetId") or "Unassigned", state, budget_text, elapsed,
-                     remote.get("lastSynchronizedAt") or generation.get("lastActivityAt") or "—"])
+                     remote.get("lastContactAt") or remote.get("lastSynchronizedAt") or "—", progress.get("workloadUpdatedAt") or generation.get("lastActivityAt") or "—"])
     widths = [max(len(row[index]) for row in rows) for index in range(len(rows[0]))]
     lines.extend("  ".join(cell.ljust(widths[index]) for index, cell in enumerate(row)) for row in rows)
     for trial in campaign.get("trials", []):
@@ -523,11 +596,16 @@ def status_table(value):
         problem = progress.get("problem") or trial.get("problem")
         if problem:
             lines.append(f"Trial {number}: {problem.get('category')}/{problem.get('code')}: {str(problem.get('message', ''))[:1000]}")
-        if trial.get("capacityWait"):
-            wait = trial["capacityWait"]
+        lease = (progress.get("remote") or {}).get("lease") or {}
+        if lease:
+            lines.append(f"Trial {number}: worker={lease.get('workerId', 'unknown')} reservationOwner={lease.get('controller', 'unknown')} operation={lease.get('operation', 'unknown')}")
+        if progress.get("capacityWait"):
+            wait = progress["capacityWait"]
             lines.append(f"Trial {number}: model capacity retry {wait['retries']} at {wait['nextRetryAt']}; deadline {wait['deadline']}")
-        if trial.get("quotaRetryAt"):
-            lines.append(f"Trial {number}: quota retry after {trial['quotaRetryAt']}")
+        if progress.get("quotaRetryAt"):
+            lines.append(f"Trial {number}: quota retry after {progress['quotaRetryAt']}")
+    for identifier, worker in campaign.get("targets", {}).items():
+        lines.append(f"Worker {identifier}: qualification={worker.get('qualification', 'UNKNOWN')} availability={worker.get('availability', 'UNKNOWN')} health={worker.get('health', 'UNKNOWN')}")
     for key, error in value.get("progressErrors", {}).items():
         lines.append(f"Trial {key} progress unavailable: {error[:1000]}")
     for key, error in value["errors"].items():
@@ -595,7 +673,7 @@ def diagnose(args, base):
     output = Path(args.output).resolve(); output.parent.mkdir(parents=True, exist_ok=True)
     total, included, evidence, log_tails, omitted = 0, 0, 0, 0, 0
     errors = {}
-    evidence_names = {"failure.json", "dependency-differences.json", "dependencies.json", "probes.json", "check.json", "remote-status.json", "remote-job.json", "codex-progress.json", "terminal.json"}
+    evidence_names = {"build-diagnostics.json", "failure.json", "dependency-differences.json", "dependencies.json", "probes.json", "check.json", "remote-status.json", "remote-job.json", "codex-progress.json", "terminal.json"}
     with zipfile.ZipFile(output, "w", zipfile.ZIP_DEFLATED) as archive:
         def save(name, data):
             nonlocal total
@@ -616,7 +694,7 @@ def diagnose(args, base):
                 save_json(name, request(base, path, timeout=args.timeout, maximum_bytes=2_000_000))
             except (RuntimeError, OSError, ValueError) as error:
                 errors[name] = str(error)[:1000]
-        candidates = sorted(artifacts, key=lambda artifact: (Path(artifact["path"]).name != "failure.json", not artifact["path"].endswith("stderr.log"), artifact["path"]))
+        candidates = sorted(artifacts, key=lambda artifact: (Path(artifact["path"]).name not in ("failure.json", "build-diagnostics.json"), not artifact["path"].endswith("stderr.log"), artifact["path"]))
         for artifact in candidates:
             path = artifact["path"]
             is_log = path.endswith((".log", ".jsonl", ".txt"))
@@ -736,20 +814,37 @@ def operator(args, base):
     if args.command == "storage":
         timeout = args.timeout if args.timeout is not None else 3600 if args.maintain else 120
         if args.maintain: return request(base, root + "/storage/maintain", {}, timeout=timeout)
-        return request(base, root + "/storage", timeout=timeout)
+        return request(base, root + "/storage", timeout=timeout, output=getattr(args, "response_output", None))
     if args.command == "remote":
         deadline = time.monotonic() + args.timeout
-        def inspect(number):
+        def inspect(number, output=None):
             try:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0: raise RuntimeError("Inspection deadline expired")
-                return number, request(base, root + f"/trials/{number}/remote-inspection?" + urlencode({"timeoutMillis": min(30000, max(100, int(remaining * 1000)))}), timeout=remaining)
+                return number, request(base, root + f"/trials/{number}/remote-inspection?" + urlencode({"timeoutMillis": min(30000, max(100, int(remaining * 1000))), **({"assignmentId": args.assignment} if args.assignment else {}), "allAssignments": str(args.all_assignments).lower()}), timeout=remaining, **({"output": output} if output else {}))
             except (RuntimeError, OSError, ValueError) as error: return number, {"error": str(error)}
+        if getattr(args, "response_output", None):
+            with tempfile.TemporaryDirectory(prefix="mork-remote-response-") as temporary, atomic_output(args.response_output, binary=True) as destination:
+                destination.write(b"{")
+                for index, number in enumerate(args.trial):
+                    part = Path(temporary) / "response.json"
+                    _, value = inspect(number, part)
+                    if index:
+                        destination.write(b",")
+                    destination.write(json.dumps(str(number)).encode() + b":")
+                    if value.get("streamed"):
+                        with open(part, "rb") as source:
+                            for chunk in iter(lambda: source.read(65536), b""):
+                                destination.write(chunk)
+                    else:
+                        destination.write(json.dumps(value).encode())
+                destination.write(b"}\n")
+            return {"output": str(Path(args.response_output).resolve()), "streamed": True}
         with ThreadPoolExecutor(max_workers=4) as pool: return dict(pool.map(inspect, args.trial))
     if args.command == "recover": return request(base, root + "/recover", {"trials": args.trial}, timeout=args.timeout)
     query = {"objective": args.objective, "mode": args.mode, "ranking": args.ranking}
     if args.trial: query["trials"] = ",".join(map(str, args.trial))
-    value = request(base, root + "/comparison?" + urlencode(query), timeout=args.timeout)
+    value = request(base, root + "/comparison?" + urlencode(query), timeout=args.timeout, output=getattr(args, "response_output", None) if args.format == "json" else None)
     if args.format == "json": return value
     rows = [["Trial", "Server", "Mean improvement %", "Wins", "Ties", "Losses", "Undefined percentages"]]
     if args.instances:
@@ -774,6 +869,45 @@ def operator(args, base):
             print(value["rankingMethod"])
             for rank in value["ranking"]: print(f'Trial {rank["trial"]}: {rank["meanImprovementPercent"]:.6g}%')
     return None
+
+
+def cleanup(args, base):
+    if args.action == "plan":
+        return request(base, "/cleanup/plan", {"kind": args.kind, "id": args.id, "export": args.export,
+                       "shutdown": args.shutdown, "retainReceipt": args.retain_receipt}, timeout=args.timeout, output=getattr(args, "response_output", None))
+    if args.action == "status":
+        return request(base, "/cleanup/status?" + urlencode({"digest": args.digest}), timeout=args.timeout)
+    return request(base, "/cleanup/apply", {"digest": args.digest}, timeout=args.timeout)
+
+
+def cleanup_local(args):
+    """Read external receipts and resume an already-authorized shutdown helper."""
+    if args.command != "cleanup" or args.action == "plan":
+        return None
+    digest = reviewed_sha256(args.digest)
+    workspace = Path(args.workspace).resolve()
+    key = hashlib.sha256(json.dumps(str(workspace), ensure_ascii=False, separators=(",", ":")).encode()).hexdigest()
+    directory = workspace.parent / ".mork-cleanup" / key
+    receipt_path, plan_path = directory / (digest + ".receipt.json"), directory / (digest + ".plan.json")
+    receipt = read_object(receipt_path) if receipt_path.is_file() else {"digest": digest, "status": "PLANNED" if plan_path.is_file() else "UNKNOWN", "completed": [], "pending": {}}
+    if args.action == "status" or receipt["status"] == "SUCCEEDED":
+        return receipt
+    finalizer_path = directory / (digest + ".finalizer.json")
+    if not finalizer_path.is_file():
+        return None
+    plan, finalizer = read_object(plan_path), read_object(finalizer_path)
+    if plan.get("workspace") != str(workspace) or not plan.get("selection", {}).get("shutdown"):
+        raise RuntimeError("Saved helper is not authorized for this workspace shutdown")
+    if fingerprint(finalizer["runner"]) != finalizer["sha256"]:
+        raise RuntimeError("Saved cleanup helper artifact changed")
+    command = ["java", "-jar", finalizer["runner"], "cleanup-finish", str(workspace), str(plan_path)]
+    options = {"start_new_session": True} if os.name != "nt" else {"creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP}
+    subprocess.Popen(command, cwd=directory, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, **options)
+    return {**receipt, "status": "PENDING", "pending": {"helper": "Cleanup helper started; inspect cleanup status"}}
+
+
+def worker(args, base):
+    return request(base, "/worker/" + args.action, read_object(args.owner), timeout=args.timeout, output=getattr(args, "response_output", None))
 
 
 def mutation_receipt(value, operation):
@@ -804,8 +938,9 @@ def main(argv=None):
     config.add_argument("--output", required=True)
     config.add_argument("--spring", action="store_true", help="Write JSON-compatible Spring YAML")
     state = commands.add_parser("status")
-    state.add_argument("--campaign")
-    state.add_argument("--screening")
+    selectors = state.add_mutually_exclusive_group()
+    selectors.add_argument("--campaign")
+    selectors.add_argument("--screening")
     state.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
     state.add_argument("--timeout", type=positive_seconds, default=10, help="Read deadline in seconds; unavailable sections remain explicitly unknown")
     storage = commands.add_parser("storage", help="Read campaign storage; use --maintain explicitly to retry completed-campaign cleanup")
@@ -867,6 +1002,8 @@ def main(argv=None):
     owner.add_argument("--screening")
     monitor.add_argument("--interval", type=positive_seconds, default=2)
     monitor.add_argument("--timeout", type=positive_seconds, default=300)
+    monitor.add_argument("--history", action="store_true", help="Start at the beginning instead of a recent tail")
+    monitor.add_argument("--unlimited-output", action="store_true", help="Remove activity event and invocation display limits")
     monitor.add_argument("--once", action="store_true", help="Read one bounded status/activity batch")
     monitor.add_argument("--json", action="store_true", help="Emit newline-delimited JSON status and activity events")
     for name in ("remote", "recover", "compare"):
@@ -874,14 +1011,50 @@ def main(argv=None):
         action.add_argument("--campaign", required=True)
         action.add_argument("--trial", action="append", type=bounded_integer(1, 2**31 - 1), required=name != "compare")
         action.add_argument("--timeout", type=positive_seconds, default=30)
+        if name == "remote":
+            assignments = action.add_mutually_exclusive_group()
+            assignments.add_argument("--assignment")
+            assignments.add_argument("--all-assignments", action="store_true")
         if name == "compare":
             action.add_argument("--instances", action="store_true", help="Include per-instance measurements")
             action.add_argument("--ranking", choices=("NONE", "COMMON_SOTA"), default="NONE")
             action.add_argument("--objective", required=True)
             action.add_argument("--mode", choices=("MINIMIZE", "MAXIMIZE"), default="MINIMIZE")
             action.add_argument("--format", choices=("text", "markdown", "csv", "json"), default="text")
+    cleaning = commands.add_parser("cleanup", help="Plan and apply complete owned-resource deletion")
+    actions = cleaning.add_subparsers(dest="action", required=True)
+    for name in ("plan", "apply", "status"):
+        action = actions.add_parser(name)
+        action.add_argument("--timeout", type=positive_seconds, default=30)
+        if name == "plan":
+            action.add_argument("--kind", choices=("campaign", "screening", "probe", "workspace"), required=True)
+            action.add_argument("--id")
+            action.add_argument("--export")
+            action.add_argument("--shutdown", action="store_true")
+            action.add_argument("--retain-receipt", action="store_true")
+        else:
+            action.add_argument("--digest", required=True)
+    workers = commands.add_parser("worker")
+    actions = workers.add_subparsers(dest="action", required=True)
+    for name in ("status", "release"):
+        action = actions.add_parser(name)
+        action.add_argument("--owner", required=True, help="Saved execution-owner.json")
+        action.add_argument("--timeout", type=positive_seconds, default=30)
+    def response_options(current):
+        children = [a for a in current._actions if isinstance(a, argparse._SubParsersAction)]
+        if children:
+            for child in children[0].choices.values():
+                response_options(child)
+        elif "--output" not in current._option_string_actions:
+            current.add_argument("--output", dest="response_output", help="Write response atomically to FILE; watch/log files contain their streaming output")
+        else:
+            current.add_argument("--response-output", dest="response_output", help="Write the command response atomically to FILE")
+    response_options(parser)
     args = parser.parse_args(argv)
-    if args.command == "backend":
+    local_cleanup = cleanup_local(args)
+    if local_cleanup is not None:
+        result = local_cleanup
+    elif args.command == "backend":
         if args.action == "status": result = backend_status(args)
         else:
             if args.action == "restart":
@@ -894,10 +1067,28 @@ def main(argv=None):
     else:
         base = base_url(args)
         capabilities(base, args.workspace)
-        result = {"config": configuration, "status": status, "logs": logs, "diagnose": diagnose,
-                  "campaign": lifecycle, "screening": lifecycle, "watch": watch, "target": target, "trial": trial, "remote": operator, "recover": operator, "compare": operator, "storage": operator, "source": operator, "artifact": operator}[args.command](args, base)
+        operation = {"cleanup": cleanup, "worker": worker, "config": configuration, "status": status, "logs": logs, "diagnose": diagnose,
+                  "campaign": lifecycle, "screening": lifecycle, "watch": watch, "target": target, "trial": trial, "remote": operator, "recover": operator, "compare": operator, "storage": operator, "source": operator, "artifact": operator}[args.command]
+        if args.response_output and (args.command in ("watch", "logs") or args.command == "compare" and args.format != "json"):
+            with atomic_output(args.response_output) as output_stream, contextlib.redirect_stdout(output_stream):
+                result = operation(args, base)
+                if result is not None:
+                    print(json.dumps(result, ensure_ascii=False))
+            result = {"output": str(Path(args.response_output).resolve()), "streamed": True}
+        else:
+            result = operation(args, base)
+    if result is not None and args.response_output:
+        if not result.get("streamed"):
+            with atomic_output(args.response_output) as output_stream:
+                json.dump(result, output_stream, ensure_ascii=False)
+                output_stream.write("\n")
+        print(json.dumps({"output": str(Path(args.response_output).resolve())}))
+        return 0
     if result is not None:
         if args.command == "campaign" and getattr(args, "action", "") == "proposal" and not args.json:
+            generation_line = result.get("generation", {}).get("approvalLine")
+            if generation_line:
+                print(generation_line, file=sys.stderr)
             storage_line = result.get("storage", {}).get("approvalLine")
             if storage_line:
                 print(storage_line, file=sys.stderr)

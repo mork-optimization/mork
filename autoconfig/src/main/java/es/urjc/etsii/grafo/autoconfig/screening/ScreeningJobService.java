@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.screening;
 
 import es.urjc.etsii.grafo.autoconfig.autollm.*;
+import es.urjc.etsii.grafo.autoconfig.autollm.execution.OwnershipManifest;
 import es.urjc.etsii.grafo.autoconfig.autollm.execution.AutoLlmExecutionService;
 import es.urjc.etsii.grafo.config.*;
 import jakarta.annotation.*;
@@ -29,13 +30,14 @@ public class ScreeningJobService {
     }
     public record Request(AutoLlmConfig config, InstanceScreeningConfig settings, String inputPath, Double trainingFraction) {}
     public static class Job {
-        public int version = 6;
+        public int version = 7;
         public String id, createdAt, mirror;
         public ScreeningStatus status = ScreeningStatus.DRAFT;
         public Request request;
         public AutoLlmConfig executionConfig;
         public Map<String,Object> activity;
         public Object progress;
+        public EvaluationProgress.Observation progressObservation;
         public AutoLlmFailureUtil.Failure problem;
     }
     private final AutoLlmCampaignStore campaigns;
@@ -58,8 +60,12 @@ public class ScreeningJobService {
     public Job load(String id) {
         Path file = directory(id).resolve("job.json"); if (!Files.exists(file)) throw new NoSuchElementException("Screening job unavailable");
         Job job = AutoLlmFileUtil.read(file, Job.class);
-        if (job.version != 6) throw new IllegalStateException("Use a fresh screening workspace");
-        if (job.mirror != null && Files.exists(Path.of(job.mirror).resolve("proposal/screening-progress.json"))) job.progress = AutoLlmFileUtil.read(Path.of(job.mirror).resolve("proposal/screening-progress.json"), Object.class);
+        if (job.version != 7) throw new IllegalStateException("Use a fresh screening workspace");
+        if (job.mirror != null && Files.exists(Path.of(job.mirror).resolve("proposal/screening-progress.json"))) {
+            Path progress = Path.of(job.mirror).resolve("proposal/screening-progress.json");
+            job.progress = AutoLlmFileUtil.read(progress, Object.class);
+            job.progressObservation = EvaluationProgress.observe(progress, AutoLlmFileUtil.JSON.valueToTree(job.progress));
+        }
         return job;
     }
     public List<Job> list() {
@@ -75,9 +81,10 @@ public class ScreeningJobService {
     }
     public synchronized Job create(Request request) {
         if (request == null || request.config() == null || request.settings() == null) throw new IllegalArgumentException("Screening configuration and settings are required");
-        var errors = AutoLlmExecutionService.validate(request.config()); errors.addAll(AutoLlmConfigUtil.projectErrors(request.config()));
+        var config = AutoLlmNormalization.normalize(request.config());
+        var errors = AutoLlmExecutionService.validate(config); errors.addAll(AutoLlmConfigUtil.projectErrors(config));
         if (!errors.isEmpty()) throw new IllegalArgumentException(String.join("; ", errors));
-        var config = request.config(); Path repo = Path.of(config.project().repository()).toAbsolutePath().normalize();
+        Path repo = Path.of(config.project().repository()).toAbsolutePath().normalize();
         if (!Path.of(config.workspace()).toAbsolutePath().normalize().equals(campaigns.root())) throw new IllegalArgumentException("Workspace is fixed by backend configuration");
         if (request.inputPath() == null || !Files.exists(repo.resolve(request.inputPath()))) throw new IllegalArgumentException("Original input pool does not exist");
         String sota = request.settings().sotaFile() == null ? config.sotaFile() : request.settings().sotaFile();
@@ -85,6 +92,8 @@ public class ScreeningJobService {
         double fraction = request.trainingFraction() == null ? 0.15 : request.trainingFraction();
         if (!Double.isFinite(fraction) || fraction <= 0 || fraction >= 1) throw new IllegalArgumentException("Training fraction must be between zero and one");
         var job = new Job(); job.id = UUID.randomUUID().toString(); job.createdAt = Instant.now().toString();
+        OwnershipManifest.directory(campaigns.root(), "workspace", campaigns.root().toString());
+        OwnershipManifest.directory(directory(job.id), "screening", directory(job.id).toString());
         var selected = request.settings();
         var settings = new InstanceScreeningConfig(repo.resolve(sota).toString(), directory(job.id).resolve("evidence").toString(), selected.thresholdMillis(), selected.candidateMultiplier(), selected.horizonMillis(), selected.confirmationRuns(), selected.fastFraction(), selected.python(), selected.warmupRepetitions(), selected.warmupMillis(), null);
         job.request = new Request(config, settings, repo.resolve(request.inputPath()).toString(), fraction);
