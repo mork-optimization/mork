@@ -1,6 +1,9 @@
 import { Injectable, signal } from '@angular/core';
 
 export type MonitorPanelId =
+  | 'autollm-active'
+  | 'autollm-issues'
+  | 'autollm-results'
   | 'evaluation-health'
   | 'evaluation-cost'
   | 'elite-evolution'
@@ -26,6 +29,12 @@ export const STANDARD_PANELS: readonly { readonly id: MonitorPanelId; readonly l
   { id: 'normal-best', label: 'Best score across repetitions' },
   { id: 'normal-distribution', label: 'Score distribution' },
   { id: 'normal-runtime', label: 'Score versus runtime' },
+];
+
+export const AUTOLLM_PANELS: readonly { readonly id: MonitorPanelId; readonly label: string }[] = [
+  { id: 'autollm-active', label: 'Active trials' },
+  { id: 'autollm-issues', label: 'Needs attention' },
+  { id: 'autollm-results', label: 'Comparison outcomes' },
 ];
 
 const STORAGE_KEY = 'mork.autoconfig.panelPreferences.v1';
@@ -85,7 +94,9 @@ export class PanelPreferences {
         return;
       }
       const stored = JSON.parse(raw) as Partial<StoredPreferences>;
-      const validIds = new Set([...TUNING_PANELS, ...STANDARD_PANELS].map((panel) => panel.id));
+      const validIds = new Set(
+        [...TUNING_PANELS, ...STANDARD_PANELS, ...AUTOLLM_PANELS].map((panel) => panel.id),
+      );
       this.hiddenSignal.set(
         new Set((stored.hidden ?? []).filter((panelId) => validIds.has(panelId))),
       );

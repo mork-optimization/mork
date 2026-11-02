@@ -180,30 +180,103 @@ let server,
   autollmMode = false,
   comparisonPoll = 0;
 const recoveryMutations = [];
-const comparisonPaths = [0, 1].map(index => `/home/ubuntu/mork-autollm/campaigns/comparison-fixture/data/comparison/0000000${index}/n250w200.00${index + 1}.txt`);
-const fixtureLogLines = Array.from({ length: 10000 }, (_, index) => `Log line ${index + 1}: experiment output`);
+const comparisonPaths = [0, 1].map(
+  (index) =>
+    `/home/ubuntu/mork-autollm/campaigns/comparison-fixture/data/comparison/0000000${index}/n250w200.00${index + 1}.txt`,
+);
+const fixtureLogLines = Array.from(
+  { length: 10000 },
+  (_, index) => `Log line ${index + 1}: experiment output`,
+);
 const fixtureLog = fixtureLogLines.join('\n') + '\n';
 const comparisonConfig = {
-  project: { repository: '/fixture', ref: 'fixed', buildCommand: ['./mvnw', 'verify'], artifact: 'project.jar', runArguments: [] },
-  workspace: '/fixture/work', trials: 1, seed: 1234, maxParameters: 299, sotaFile: '/sota.json', initialConfigurationsFile: null, trainingPath: '/train.index', comparisonPath: '/test.index',
-  codex: { executable: 'codex', maxConcurrentSessions: 1 }, preparation: { probeDurationMillis: 1000, pilotDurationMillis: 1000, maxRepairs: 1 },
-  tuning: { evaluations: 10000, ignoreInitialMillis: 10000, intervalDurationMillis: 50000, logScaleArea: true },
-  comparison: { repetitions: 30, timeLimitMillis: 10000 }, execution: { target: 'LOCAL', workers: 16, heap: '2g' },
+  project: {
+    repository: '/fixture',
+    ref: 'fixed',
+    buildCommand: ['./mvnw', 'verify'],
+    artifact: 'project.jar',
+    runArguments: [],
+  },
+  workspace: '/fixture/work',
+  trials: 1,
+  seed: 1234,
+  maxParameters: 299,
+  sotaFile: '/sota.json',
+  initialConfigurationsFile: null,
+  trainingPath: '/train.index',
+  comparisonPath: '/test.index',
+  codex: { executable: 'codex', model: 'fixture-model', maxConcurrentSessions: 1 },
+  preparation: { probeDurationMillis: 1000, pilotDurationMillis: 1000, maxRepairs: 1 },
+  tuning: {
+    evaluations: 10000,
+    ignoreInitialMillis: 10000,
+    intervalDurationMillis: 50000,
+    logScaleArea: true,
+  },
+  comparison: { repetitions: 30, timeLimitMillis: 10000 },
+  execution: { target: 'LOCAL', workers: 16, heap: '2g' },
 };
 const approvalMutations = [];
 const comparisonCampaign = {
-  id: 'comparison-fixture', status: 'RUNNING', createdAt: new Date().toISOString(), config: comparisonConfig, versions: {}, poolRevision: 1, targets: {},
-  trials: [{ number: 1, status: 'COMPARISON', tuningSeed: 1234, repairTurns: 0, attempts: [] }],
+  id: 'comparison-fixture',
+  status: 'RUNNING',
+  createdAt: new Date().toISOString(),
+  config: comparisonConfig,
+  versions: {},
+  poolRevision: 1,
+  targets: {},
+  trials: [
+    {
+      number: 1,
+      status: 'COMPARISON',
+      tuningSeed: 1234,
+      repairTurns: 0,
+      attempts: [],
+      winner: { algorithm: 'GeneratedNew', parameter: 4 },
+    },
+  ],
 };
+function compactCampaign() {
+  return {
+    ...comparisonCampaign,
+    failure: null,
+    trials: comparisonCampaign.trials.map((trial) => ({
+      ...trial,
+      winner: null,
+      failure: null,
+      attempts: trial.attempts.map((attempt) => ({
+        ...attempt,
+        failure: null,
+        codexEvidence: null,
+      })),
+    })),
+  };
+}
 const comparisonCurves = [];
 for (const [instanceIndex, instance] of comparisonPaths.entries()) {
   for (const [algorithmIndex, algorithm] of ['SOTA', 'IraceProposal'].entries()) {
     for (let iteration = 0; iteration < 30; iteration++) {
-      const final = 865 + iteration * .03 + algorithmIndex * .07 + instanceIndex * 40;
-      comparisonCurves.push({ instance, instanceId: `instance-${instanceIndex}`, algorithm, iteration: String(iteration), curves: {
-        Cost: [{ instant: 0, value: 940 + iteration }, { instant: 20e6, value: 900 + iteration * .1 }, { instant: 100e6, value: 880 + iteration * .1 }, { instant: 600e6, value: final + 2 }, { instant: 1500e6, value: final + .1 }, { instant: 2200e6, value: final }],
-        Signed: [{ instant: 0, value: 0 }, { instant: 100e6, value: -1 - iteration }],
-      } });
+      const final = 865 + iteration * 0.03 + algorithmIndex * 0.07 + instanceIndex * 40;
+      comparisonCurves.push({
+        instance,
+        instanceId: `instance-${instanceIndex}`,
+        algorithm,
+        iteration: String(iteration),
+        curves: {
+          Cost: [
+            { instant: 0, value: 940 + iteration },
+            { instant: 20e6, value: 900 + iteration * 0.1 },
+            { instant: 100e6, value: 880 + iteration * 0.1 },
+            { instant: 600e6, value: final + 2 },
+            { instant: 1500e6, value: final + 0.1 },
+            { instant: 2200e6, value: final },
+          ],
+          Signed: [
+            { instant: 0, value: 0 },
+            { instant: 100e6, value: -1 - iteration },
+          ],
+        },
+      });
     }
   }
 }
@@ -245,40 +318,151 @@ if (!process.env.MORK_MONITOR_URL) {
     else if (autollmMode && url.pathname.startsWith('/api/autollm/')) {
       const path = url.pathname.slice('/api/autollm/'.length);
       if (path === 'defaults') body = comparisonConfig;
-      else if (path === 'campaigns') body = { active: comparisonCampaign.status === 'DRAFT' ? '' : comparisonCampaign.id, campaigns: [comparisonCampaign] };
-      else if (path.endsWith('/proposal')) body = { digest: 'reviewed-campaign', configuration: comparisonConfig, training: [comparisonPaths[0]], testing: comparisonPaths, screening: { excluded: { 'trivial.txt': 'SOTA reaches its best within the trivial threshold' } }, targets: { local: { selected: true, ready: true } } };
+      else if (path === 'campaigns')
+        body = {
+          active: comparisonCampaign.status === 'DRAFT' ? '' : comparisonCampaign.id,
+          campaigns: [compactCampaign()],
+        };
+      else if (path === 'campaigns/comparison-fixture') body = comparisonCampaign;
+      else if (path === 'campaigns/comparison-fixture/status') body = compactCampaign();
+      else if (path.endsWith('/proposal'))
+        body = {
+          digest: 'reviewed-campaign',
+          configuration: comparisonConfig,
+          generation: {
+            model: 'fixture-model',
+            reasoningEffort: null,
+            ready: true,
+            approvalLine: 'Model: fixture-model',
+          },
+          training: [comparisonPaths[0]],
+          testing: comparisonPaths,
+          screening: {
+            excluded: { 'trivial.txt': 'SOTA reaches its best within the trivial threshold' },
+          },
+          targets: { local: { selected: true, ready: true } },
+        };
       else if (request.method === 'POST' && path.endsWith('/approve')) {
-        let payload = ''; for await (const chunk of request) payload += chunk;
-        approvalMutations.push({ action: 'approve', body: JSON.parse(payload) }); body = { digest: 'reviewed-campaign' };
-      }
-      else if (request.method === 'POST' && path.endsWith('/start')) {
-        approvalMutations.push({ action: 'start' }); comparisonCampaign.status = 'RUNNING';
+        let payload = '';
+        for await (const chunk of request) payload += chunk;
+        approvalMutations.push({ action: 'approve', body: JSON.parse(payload) });
+        body = { digest: 'reviewed-campaign' };
+      } else if (request.method === 'POST' && path.endsWith('/start')) {
+        approvalMutations.push({ action: 'start' });
+        comparisonCampaign.status = 'RUNNING';
         body = { id: comparisonCampaign.id, status: 'RUNNING', operation: 'start', accepted: true };
-      }
-      else if (path === 'screenings') body = { active: '', jobs: [] };
+      } else if (path === 'screenings') body = { active: '', jobs: [] };
       else if (path.endsWith('/recovery')) {
-        const action = allowed => ({ allowed, reason: allowed ? null : 'Work is already active', effect: 'Preserve saved evidence and checkpoints' });
-        body = { resumeCampaign: action(false), targets: {}, trials: Object.fromEntries(comparisonCampaign.trials.map(trial => [trial.number, { resume: action(trial.status === 'BLOCKED'), fail: action(trial.status === 'BLOCKED') }])) };
+        const action = (allowed) => ({
+          allowed,
+          reason: allowed ? null : 'Work is already active',
+          effect: 'Preserve saved evidence and checkpoints',
+        });
+        body = {
+          resumeCampaign: action(false),
+          targets: {},
+          trials: Object.fromEntries(
+            comparisonCampaign.trials.map((trial) => [
+              trial.number,
+              {
+                resume: action(trial.status === 'BLOCKED'),
+                fail: action(trial.status === 'BLOCKED'),
+              },
+            ]),
+          ),
+        };
       } else if (request.method === 'POST' && /\/trials\/2\/(fail|resume)$/.test(path)) {
-        let payload = ''; for await (const chunk of request) payload += chunk;
+        let payload = '';
+        for await (const chunk of request) payload += chunk;
         recoveryMutations.push({ path, body: JSON.parse(payload || '{}') });
         comparisonCampaign.trials[1].status = path.endsWith('/fail') ? 'FAILED' : 'STARTING';
-        body = comparisonCampaign;
-      }
-      else if (path.endsWith('/progress')) body = { status: 'COMPARISON', infrastructureRetries: 0, repairTurns: 0 };
-      else if (path.endsWith('/comparison')) body = { counts: { SOTA: { SUCCEEDED: 60 }, IraceProposal: { SUCCEEDED: 60 } }, pollCount: ++comparisonPoll, instances: comparisonPaths.map((instance, index) => ({ instance, instanceId: `instance-${index}`, counts: { SOTA: { SUCCEEDED: 30 }, IraceProposal: { SUCCEEDED: 30 } } })) };
-      else if (path.endsWith('/curves')) body = { sampled: true, curves: comparisonCurves.filter(row => row.instanceId === url.searchParams.get('instanceId')) };
-      else if (path.endsWith('/artifacts')) body = [{ path: 'attempt/stdout.log', size: Buffer.byteLength(fixtureLog), sha256: 'fixture' }];
+        body = {
+          id: comparisonCampaign.id,
+          status: comparisonCampaign.status,
+          operation: path.endsWith('/fail') ? 'failTrial' : 'resumeTrial',
+          accepted: true,
+        };
+      } else if (path.endsWith('/progress'))
+        body = { status: 'COMPARISON', infrastructureRetries: 0, repairTurns: 0 };
+      else if (path === 'campaigns/comparison-fixture/comparison') {
+        const measurement = (mean) => ({
+          objective: { count: 30, mean, median: mean, best: mean - 1, standardDeviation: 1 },
+          executionTimeMillis: { mean: 1000 },
+          timeToOwnBestMillis: { mean: 500 },
+        });
+        body = {
+          campaignId: comparisonCampaign.id,
+          objective: url.searchParams.get('objective'),
+          mode: url.searchParams.get('mode'),
+          checkedAt: new Date().toISOString(),
+          reference: 'Host-matched SOTA; equal instance weights',
+          ranking: [],
+          rankingMethod: 'NONE',
+          excluded: {},
+          trials: [
+            {
+              trial: 1,
+              targetId: 'local',
+              repetitions: 30,
+              journal: 'events.jsonl',
+              wins: 2,
+              ties: 0,
+              losses: 0,
+              undefinedPercentages: 0,
+              meanImprovementPercent: 5,
+              instances: comparisonPaths.map((instance, index) => ({
+                instance,
+                instanceId: `instance-${index}`,
+                sota: measurement(100),
+                proposal: measurement(95),
+                difference: -5,
+                improvementPercent: 5,
+                outcome: 'WIN',
+              })),
+            },
+          ],
+        };
+      } else if (path.endsWith('/comparison'))
+        body = {
+          counts: { SOTA: { SUCCEEDED: 60 }, IraceProposal: { SUCCEEDED: 60 } },
+          pollCount: ++comparisonPoll,
+          instances: comparisonPaths.map((instance, index) => ({
+            instance,
+            instanceId: `instance-${index}`,
+            counts: { SOTA: { SUCCEEDED: 30 }, IraceProposal: { SUCCEEDED: 30 } },
+          })),
+        };
+      else if (path.endsWith('/curves'))
+        body = {
+          sampled: true,
+          curves: comparisonCurves.filter(
+            (row) => row.instanceId === url.searchParams.get('instanceId'),
+          ),
+        };
+      else if (path.endsWith('/artifacts'))
+        body = [
+          { path: 'attempt/stdout.log', size: Buffer.byteLength(fixtureLog), sha256: 'fixture' },
+        ];
       else if (path.endsWith('/preview')) {
         const lines = Number(url.searchParams.get('lines'));
-        body = { text: fixtureLogLines.slice(-lines).join('\n') + '\n', lineCount: lines, sizeBytes: Buffer.byteLength(fixtureLog), truncated: true, byteLimited: false };
+        body = {
+          text: fixtureLogLines.slice(-lines).join('\n') + '\n',
+          lineCount: lines,
+          sizeBytes: Buffer.byteLength(fixtureLog),
+          truncated: true,
+          byteLimited: false,
+        };
       } else if (path.endsWith('/artifact')) {
-        response.writeHead(200, { 'Content-Type': 'application/octet-stream', 'Content-Disposition': 'attachment; filename="stdout.log"' }).end(fixtureLog);
+        response
+          .writeHead(200, {
+            'Content-Type': 'application/octet-stream',
+            'Content-Disposition': 'attachment; filename="stdout.log"',
+          })
+          .end(fixtureLog);
         return;
-      }
-      else body = [];
-    }
-    else if (url.pathname === '/lastevent') body = { eventLogId: 'browser-log', lastEventId: head };
+      } else body = [];
+    } else if (url.pathname === '/lastevent')
+      body = { eventLogId: 'browser-log', lastEventId: head };
     else if (url.pathname === '/events')
       body = {
         eventLogId: 'browser-log',
@@ -654,102 +838,325 @@ try {
   );
   if (server) {
     autollmMode = true;
-    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false });
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1100,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
     await send('Page.navigate', { url: address });
-    await waitFor(`document.querySelector('.comparison-controls') && document.querySelectorAll('.highcharts-series-group .highcharts-graph').length === 60`);
+    await waitFor(`document.querySelector('app-autollm-dashboard main > mat-tab-group')`);
+    assert.equal(
+      await evaluate(`document.querySelector('.campaign-picker select').value`),
+      comparisonCampaign.id,
+      'selected campaign label follows dynamic options',
+    );
+    await writeFile(
+      join(artifacts, 'autollm-overview.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
+    await clickText('main > mat-tab-group > mat-tab-header [role=tab]', 'Trials');
+    await waitFor(`document.querySelector('.trial-table button')`);
+    assert.equal(
+      await evaluate(`document.querySelector('.trial-table').textContent.includes('Tuning seed')`),
+      false,
+    );
+    await clickText('.trial-table button', 'Open trial');
+    await waitFor(`document.querySelector('.trial-inspector')`);
+    await clickText('.trial-inspector [role=tab]', 'Algorithm');
+    await waitFor(
+      `document.querySelector('.trial-inspector').textContent.includes('GeneratedNew')`,
+    );
+    await clickText('.trial-inspector [role=tab]', 'Results');
+    await waitFor(
+      `document.querySelector('.comparison-controls') && document.querySelectorAll('.highcharts-series-group .highcharts-graph').length === 60`,
+    );
     const controls = `document.querySelectorAll('.comparison-controls select')`;
-    assert.deepEqual(await evaluate(`Array.from(${controls}[0].options).map(option => option.textContent.trim())`), ['00000000/n250w200.001.txt', '00000001/n250w200.002.txt']);
+    assert.deepEqual(
+      await evaluate(`Array.from(${controls}[0].options).map(option => option.textContent.trim())`),
+      ['00000000/n250w200.001.txt', '00000001/n250w200.002.txt'],
+    );
     assert.equal(await evaluate(`${controls}[0].options[1].value`), 'instance-1');
     assert.equal(await evaluate(`${controls}[0].options[1].title`), comparisonPaths[1]);
-    assert.deepEqual(await evaluate(`Array.from(document.querySelectorAll('.highcharts-legend-item text')).map(el => el.textContent)`), ['SOTA', 'IraceProposal']);
-    assert.equal(await evaluate(`Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-graph')).every(el => !el.getAttribute('stroke-dasharray') || el.getAttribute('stroke-dasharray') === 'none')`), true, 'all repetitions use solid lines');
-    assert.equal(await evaluate(`Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-series.highcharts-line-series')).every(el => Number(el.getAttribute('opacity')) > 0 && Number(el.getAttribute('opacity')) < 1)`), true, 'repetition strokes are translucent');
-    assert.equal(await evaluate(`new Set(Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-graph')).map(el => el.getAttribute('stroke'))).size`), 12, 'blue and orange/red shade families');
+    assert.deepEqual(
+      await evaluate(
+        `Array.from(document.querySelectorAll('.highcharts-legend-item text')).map(el => el.textContent)`,
+      ),
+      ['SOTA', 'IraceProposal'],
+    );
+    assert.equal(
+      await evaluate(
+        `Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-graph')).every(el => !el.getAttribute('stroke-dasharray') || el.getAttribute('stroke-dasharray') === 'none')`,
+      ),
+      true,
+      'all repetitions use solid lines',
+    );
+    assert.equal(
+      await evaluate(
+        `Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-series.highcharts-line-series')).every(el => Number(el.getAttribute('opacity')) > 0 && Number(el.getAttribute('opacity')) < 1)`,
+      ),
+      true,
+      'repetition strokes are translucent',
+    );
+    assert.equal(
+      await evaluate(
+        `new Set(Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-graph')).map(el => el.getAttribute('stroke'))).size`,
+      ),
+      12,
+      'blue and orange/red shade families',
+    );
 
-    await evaluate(`document.querySelector('.highcharts-legend-item').dispatchEvent(new MouseEvent('click', {bubbles: true}))`);
-    await waitFor(`Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-series.highcharts-line-series')).filter(el => getComputedStyle(el).visibility !== 'hidden').length === 30`);
-    await evaluate(`document.querySelector('.highcharts-legend-item').dispatchEvent(new MouseEvent('click', {bubbles: true}))`);
-    await waitFor(`Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-series.highcharts-line-series')).filter(el => getComputedStyle(el).visibility !== 'hidden').length === 60`);
+    await evaluate(
+      `document.querySelector('.highcharts-legend-item').dispatchEvent(new MouseEvent('click', {bubbles: true}))`,
+    );
+    await waitFor(
+      `Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-series.highcharts-line-series')).filter(el => getComputedStyle(el).visibility !== 'hidden').length === 30`,
+    );
+    await evaluate(
+      `document.querySelector('.highcharts-legend-item').dispatchEvent(new MouseEvent('click', {bubbles: true}))`,
+    );
+    await waitFor(
+      `Array.from(document.querySelectorAll('.highcharts-series-group .highcharts-series.highcharts-line-series')).filter(el => getComputedStyle(el).visibility !== 'hidden').length === 60`,
+    );
 
-    const chartHeight = await evaluate(`document.querySelector('.highcharts-root').getBoundingClientRect().height`);
-    await evaluate(`${controls}[3].value='760'; ${controls}[3].dispatchEvent(new Event('change', {bubbles:true}))`);
-    await waitFor(`document.querySelector('.highcharts-root').getBoundingClientRect().height > ${chartHeight + 200}`);
+    const chartHeight = await evaluate(
+      `document.querySelector('.highcharts-root').getBoundingClientRect().height`,
+    );
+    await evaluate(
+      `${controls}[3].value='760'; ${controls}[3].dispatchEvent(new Event('change', {bubbles:true}))`,
+    );
+    await waitFor(
+      `document.querySelector('.highcharts-root').getBoundingClientRect().height > ${chartHeight + 200}`,
+    );
     await evaluate(`document.querySelector('app-dashboard-chart').style.height='900px'`);
-    await waitFor(`document.querySelector('.highcharts-root').getBoundingClientRect().height > 880`);
-    assert.equal(await evaluate(`getComputedStyle(document.querySelector('app-dashboard-chart')).resize`), 'vertical');
+    await waitFor(
+      `document.querySelector('.highcharts-root').getBoundingClientRect().height > 880`,
+    );
+    assert.equal(
+      await evaluate(`getComputedStyle(document.querySelector('app-dashboard-chart')).resize`),
+      'vertical',
+    );
 
     await evaluate(`document.querySelector('app-dashboard-chart').scrollIntoView({block:'start'})`);
-    const plot = await evaluate(`(()=>{const r=document.querySelector('.highcharts-plot-background').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}})()`);
-    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: plot.x + plot.width * .2, y: plot.y + plot.height * .2 });
-    await send('Input.dispatchMouseEvent', { type: 'mousePressed', button: 'left', buttons: 1, clickCount: 1, x: plot.x + plot.width * .2, y: plot.y + plot.height * .2 });
-    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', buttons: 1, x: plot.x + plot.width * .8, y: plot.y + plot.height * .8 });
-    await send('Input.dispatchMouseEvent', { type: 'mouseReleased', button: 'left', buttons: 0, clickCount: 1, x: plot.x + plot.width * .8, y: plot.y + plot.height * .8 });
+    const plot = await evaluate(
+      `(()=>{const r=document.querySelector('.highcharts-plot-background').getBoundingClientRect();return {x:r.x,y:r.y,width:r.width,height:r.height}})()`,
+    );
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      x: plot.x + plot.width * 0.2,
+      y: plot.y + plot.height * 0.2,
+    });
+    await send('Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      button: 'left',
+      buttons: 1,
+      clickCount: 1,
+      x: plot.x + plot.width * 0.2,
+      y: plot.y + plot.height * 0.2,
+    });
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseMoved',
+      buttons: 1,
+      x: plot.x + plot.width * 0.8,
+      y: plot.y + plot.height * 0.8,
+    });
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased',
+      button: 'left',
+      buttons: 0,
+      clickCount: 1,
+      x: plot.x + plot.width * 0.8,
+      y: plot.y + plot.height * 0.8,
+    });
     await waitFor(`document.querySelector('.highcharts-reset-zoom')`);
     const pollAtZoom = comparisonPoll;
-    await waitFor(`JSON.parse(Array.from(document.querySelectorAll('details')).find(el => el.querySelector('summary')?.textContent === 'Comparison results').querySelector('pre').textContent).pollCount > ${pollAtZoom}`);
-    assert.equal(await evaluate(`!!document.querySelector('.highcharts-reset-zoom')`), true, 'polling preserves the zoom');
-    await evaluate(`${controls}[0].value='instance-1'; ${controls}[0].dispatchEvent(new Event('change', {bubbles:true}))`);
+    await waitFor(
+      `JSON.parse(Array.from(document.querySelectorAll('details')).find(el => el.querySelector('summary')?.textContent === 'Raw comparison data').querySelector('pre').textContent).pollCount > ${pollAtZoom}`,
+    );
+    assert.equal(
+      await evaluate(`!!document.querySelector('.highcharts-reset-zoom')`),
+      true,
+      'polling preserves the zoom',
+    );
+    await evaluate(
+      `${controls}[0].value='instance-1'; ${controls}[0].dispatchEvent(new Event('change', {bubbles:true}))`,
+    );
     await waitFor(`!document.querySelector('.highcharts-reset-zoom')`);
-    await evaluate(`${controls}[2].value='logarithmic'; ${controls}[2].dispatchEvent(new Event('change', {bubbles:true}))`);
-    await waitFor(`${controls}[2].value === 'logarithmic' && document.querySelectorAll('.highcharts-series-group .highcharts-graph').length === 60`);
-    await evaluate(`${controls}[1].value='Signed'; ${controls}[1].dispatchEvent(new Event('change', {bubbles:true}))`);
+    await evaluate(
+      `${controls}[2].value='logarithmic'; ${controls}[2].dispatchEvent(new Event('change', {bubbles:true}))`,
+    );
+    await waitFor(
+      `${controls}[2].value === 'logarithmic' && document.querySelectorAll('.highcharts-series-group .highcharts-graph').length === 60`,
+    );
+    await evaluate(
+      `${controls}[1].value='Signed'; ${controls}[1].dispatchEvent(new Event('change', {bubbles:true}))`,
+    );
     await waitFor(`${controls}[2].value === 'linear' && ${controls}[2].options[1].disabled`);
-    await evaluate(`${controls}[1].value='Cost'; ${controls}[1].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[0].value='instance-0'; ${controls}[0].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[2].value='linear'; ${controls}[2].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[3].value='520'; ${controls}[3].dispatchEvent(new Event('change', {bubbles:true}))`);
-    await waitFor(`document.querySelector('.highcharts-root').getBoundingClientRect().height < 530`);
-    await evaluate(`document.querySelector('.comparison-controls').scrollIntoView({block:'start'})`);
-    await writeFile(join(artifacts, 'autollm-comparison.png'), Buffer.from((await send('Page.captureScreenshot')).data, 'base64'));
+    await evaluate(
+      `${controls}[1].value='Cost'; ${controls}[1].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[0].value='instance-0'; ${controls}[0].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[2].value='linear'; ${controls}[2].dispatchEvent(new Event('change', {bubbles:true})); ${controls}[3].value='520'; ${controls}[3].dispatchEvent(new Event('change', {bubbles:true}))`,
+    );
+    await waitFor(
+      `document.querySelector('.highcharts-root').getBoundingClientRect().height < 530`,
+    );
+    await evaluate(
+      `document.querySelector('.comparison-controls').scrollIntoView({block:'start'})`,
+    );
+    await writeFile(
+      join(artifacts, 'autollm-comparison.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
 
-    await send('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true });
-    await waitFor(`Math.abs(document.querySelector('highcharts-chart').clientWidth - document.querySelector('.highcharts-root').getBoundingClientRect().width) < 2`);
-    assert.equal(await evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1'), true, 'comparison controls fit a mobile viewport');
-    await writeFile(join(artifacts, 'autollm-mobile.png'), Buffer.from((await send('Page.captureScreenshot')).data, 'base64'));
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    });
+    await waitFor(
+      `Math.abs(document.querySelector('highcharts-chart').clientWidth - document.querySelector('.highcharts-root').getBoundingClientRect().width) < 2`,
+    );
+    assert.equal(
+      await evaluate('document.documentElement.scrollWidth <= window.innerWidth + 1'),
+      true,
+      'comparison controls fit a mobile viewport',
+    );
+    await writeFile(
+      join(artifacts, 'autollm-mobile.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
 
-    await send('Emulation.setDeviceMetricsOverride', { width: 1440, height: 1100, deviceScaleFactor: 1, mobile: false });
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1100,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
+    await clickText('main > mat-tab-group > mat-tab-header [role=tab]', 'Artifacts');
+    await waitFor(`document.querySelector('.artifact button')`);
     await clickText('button', 'Refresh artifacts');
     await waitFor(`document.querySelector('.artifact button')`);
     await clickText('.artifact button', 'Preview tail');
     await waitFor(`document.querySelector('.logs')?.textContent.includes('Log line 10000:')`);
-    assert.equal(await evaluate(`document.querySelector('.logs').textContent.split('\\n').filter(Boolean).length`), 500);
-    assert.equal(await evaluate(`document.querySelector('.logs').textContent.startsWith('Log line 9501:')`), true);
-    await evaluate(`const limit=document.querySelector('.log-preview select'); limit.value='100'; limit.dispatchEvent(new Event('change',{bubbles:true}))`);
+    assert.equal(
+      await evaluate(
+        `document.querySelector('.logs').textContent.split('\\n').filter(Boolean).length`,
+      ),
+      500,
+    );
+    assert.equal(
+      await evaluate(`document.querySelector('.logs').textContent.startsWith('Log line 9501:')`),
+      true,
+    );
+    await evaluate(
+      `const limit=document.querySelector('.log-preview select'); limit.value='100'; limit.dispatchEvent(new Event('change',{bubbles:true}))`,
+    );
     await waitFor(`document.querySelector('.logs')?.textContent.startsWith('Log line 9901:')`);
-    assert.equal(await evaluate(`document.querySelector('.logs').textContent.split('\\n').filter(Boolean).length`), 100);
+    assert.equal(
+      await evaluate(
+        `document.querySelector('.logs').textContent.split('\\n').filter(Boolean).length`,
+      ),
+      100,
+    );
     const downloadUrl = await evaluate(`document.querySelector('.log-preview a[download]').href`);
     const fullLog = await fetch(downloadUrl);
     assert.match(fullLog.headers.get('content-disposition'), /attachment/);
     assert.equal(await fullLog.text(), fixtureLog, 'download contains the full 10,000-line log');
     await evaluate(`document.querySelector('.log-preview').scrollIntoView({block:'start'})`);
-    await writeFile(join(artifacts, 'autollm-log-preview.png'), Buffer.from((await send('Page.captureScreenshot')).data, 'base64'));
+    await writeFile(
+      join(artifacts, 'autollm-log-preview.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
     await clickText('.log-preview button', 'Close preview');
     await waitFor(`!document.querySelector('.log-preview')`);
 
-    comparisonCampaign.trials.push({ number: 2, status: 'BLOCKED', tuningSeed: 5678, repairTurns: 0, attempts: [] });
-    await waitFor(`Array.from(document.querySelectorAll('tr')).some(row=>row.cells[0]?.textContent==='2')`);
-    await evaluate(`Array.from(document.querySelectorAll('tr')).find(row=>row.cells[0]?.textContent==='2').querySelector('button').click()`);
+    await clickText('main > mat-tab-group > mat-tab-header [role=tab]', 'Trials');
+    comparisonCampaign.trials.push({
+      number: 2,
+      status: 'BLOCKED',
+      tuningSeed: 5678,
+      repairTurns: 0,
+      attempts: [],
+    });
+    await waitFor(
+      `Array.from(document.querySelectorAll('tr')).some(row=>row.cells[0]?.textContent.trim()==='2')`,
+    );
+    await evaluate(
+      `Array.from(document.querySelectorAll('tr')).find(row=>row.cells[0]?.textContent.trim()==='2').querySelector('button').click()`,
+    );
     await waitFor(`document.querySelector('.trial-recovery')`);
-    assert.equal(await evaluate(`document.querySelectorAll('.trial-recovery button')[1].disabled`), true, 'ending a trial requires an operator reason');
-    await evaluate(`const reason=document.querySelector('.trial-recovery textarea');reason.value='Sampling exhausted';reason.dispatchEvent(new Event('input',{bubbles:true}))`);
+    assert.equal(
+      await evaluate(`document.querySelectorAll('.trial-recovery button')[1].disabled`),
+      true,
+      'ending a trial requires an operator reason',
+    );
+    await evaluate(
+      `const reason=document.querySelector('.trial-recovery textarea');reason.value='Sampling exhausted';reason.dispatchEvent(new Event('input',{bubbles:true}))`,
+    );
     await waitFor(`!document.querySelectorAll('.trial-recovery button')[1].disabled`);
     await clickText('.trial-recovery button', 'Mark trial failed and continue');
     await waitFor(`!document.querySelector('.trial-recovery')`);
-    assert.deepEqual(recoveryMutations[0], { path: 'campaigns/comparison-fixture/trials/2/fail', body: { reason: 'Sampling exhausted' } });
+    assert.deepEqual(recoveryMutations[0], {
+      path: 'campaigns/comparison-fixture/trials/2/fail',
+      body: { reason: 'Sampling exhausted' },
+    });
     comparisonCampaign.trials[1].status = 'BLOCKED';
     await waitFor(`document.querySelector('.trial-recovery')`);
     await clickText('.trial-recovery button', 'Resume existing work');
     await waitFor(`!document.querySelector('.trial-recovery')`);
     assert.equal(recoveryMutations[1].path, 'campaigns/comparison-fixture/trials/2/resume');
+    comparisonCampaign.trials[0].status = 'SUCCEEDED';
+    await clickText('main > mat-tab-group > mat-tab-header [role=tab]', 'Results');
+    await waitFor(`document.querySelector('input[list="comparison-objectives"]')`);
+    await evaluate(
+      `const objective=document.querySelector('input[list="comparison-objectives"]'); objective.value='Cost'; objective.dispatchEvent(new Event('input',{bubbles:true})); const direction=document.querySelector('main > mat-tab-group select'); direction.value='MINIMIZE'; direction.dispatchEvent(new Event('change',{bubbles:true}))`,
+    );
+    await clickText('button', 'Compare');
+    await waitFor(`document.querySelector('main > mat-tab-group').textContent.includes('5%')`);
+    await writeFile(
+      join(artifacts, 'autollm-results.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
     comparisonCampaign.status = 'DRAFT';
     await send('Page.navigate', { url: address });
-    await waitFor(`Array.from(document.querySelectorAll('button')).some(button=>button.textContent.includes('Review campaign with all servers'))`);
+    await waitFor(
+      `Array.from(document.querySelectorAll('button')).some(button=>button.textContent.includes('Review campaign with all servers'))`,
+    );
     assert.equal(approvalMutations.length, 0, 'loading a draft never launches it');
+    await clickText('button', 'New campaign');
+    await waitFor(`document.querySelector('mat-stepper')`);
+    await waitFor(`document.querySelectorAll('mat-step-header').length === 5`);
+    await clickText('mat-step-header .mat-step-text-label', 'Budget');
+    await evaluate(`document.querySelector('mat-stepper').scrollIntoView({block:'start'})`);
+    await writeFile(
+      join(artifacts, 'autollm-setup.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
+    assert.equal(approvalMutations.length, 0, 'setup navigation never launches a campaign');
+    await evaluate(
+      `const saved=document.querySelector('.campaign-picker select'); saved.value='comparison-fixture'; saved.dispatchEvent(new Event('change',{bubbles:true}))`,
+    );
+    await waitFor(
+      `Array.from(document.querySelectorAll('button')).some(button=>button.textContent.includes('Review campaign with all servers'))`,
+    );
+
     await clickText('button', 'Review campaign with all servers');
     await waitFor(`document.body.textContent.includes('Review campaign before launch')`);
-    assert.equal(await evaluate(`document.body.textContent.includes('trivial.txt') && document.body.textContent.includes('Effective campaign configuration')`), true);
-    await writeFile(join(artifacts, 'autollm-campaign-approval.png'), Buffer.from((await send('Page.captureScreenshot')).data, 'base64'));
+    assert.equal(
+      await evaluate(
+        `document.body.textContent.includes('trivial.txt') && document.body.textContent.includes('Effective campaign configuration')`,
+      ),
+      true,
+    );
+    await writeFile(
+      join(artifacts, 'autollm-campaign-approval.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
     await clickText('button', 'Approve this campaign and launch');
     await waitFor(`!document.body.textContent.includes('Review campaign before launch')`);
-    assert.deepEqual(approvalMutations, [{ action: 'approve', body: { digest: 'reviewed-campaign' } }, { action: 'start' }]);
-
+    assert.deepEqual(approvalMutations, [
+      { action: 'approve', body: { digest: 'reviewed-campaign' } },
+      { action: 'start' },
+    ]);
   }
   assert.deepEqual(errors, [], 'browser runtime errors');
   console.log(

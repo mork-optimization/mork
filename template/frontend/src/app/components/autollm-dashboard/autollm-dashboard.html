@@ -1,300 +1,2305 @@
+@let campaign = store.campaign();
+<mat-toolbar class="topbar"
+  ><span class="brand"><img src="favicon.svg" alt="" /> Mork AutoLLM</span
+  ><span class="spacer"></span
+  ><mat-chip-set aria-label="Connection state"
+    ><mat-chip>{{
+      store.connectionError()
+        ? 'Connection problem'
+        : store.lastUpdated()
+          ? 'Connected'
+          : 'Connecting'
+    }}</mat-chip></mat-chip-set
+  ><button mat-button (click)="newCampaign()" [disabled]="store.busy() || !!store.active()">
+    New campaign
+  </button></mat-toolbar
+>
 <main>
-  <header><img src="favicon.svg" alt="Mork" /><div><h1>AutoLLM campaigns</h1><p>Generate components, tune algorithms, and compare each independent proposal against SOTA.</p></div></header>
-  @if (store.error()) { <p class="error" role="alert">{{ store.error() }}</p> }
-  @if (store.connectionError()) { <p class="error" role="alert">{{ store.connectionError() }}</p> }
-  @if (store.config(); as config) {
-    <mat-card><mat-card-content>
-      <details [open]="!store.campaign()"><summary>Configure a campaign</summary>
-        <fieldset [disabled]="!!store.active() || store.busy()">
-          <div class="fields">
-            <label>Where should the actual workloads run?<select [value]="executionChoice()" (change)="executionTarget($event)"><option value="" disabled>Select execution location</option><option value="LOCAL">Locally on this computer</option><option value="SSH">Configure SSH servers</option></select></label>
-            @if (config.execution.target === 'SSH') {
-              <label>Screening server<select [value]="config.execution.ssh?.screeningServerId" (change)="update('execution.ssh.screeningServerId', $event)">@for (server of config.execution.ssh?.servers ?? []; track $index) { <option [value]="server.id">{{ server.id }}</option> }</select></label>
-              <label>Local remote-runner JAR<input [value]="config.execution.ssh?.runnerArtifact ?? ''" (change)="update('execution.ssh.runnerArtifact', $event)" /></label>
-              @for (server of config.execution.ssh?.servers ?? []; track $index; let i = $index) {
-                <fieldset class="server-definition"><legend>Server {{ i + 1 }}</legend>
-                  <label>ID<input [value]="server.id" (change)="update('execution.ssh.servers.' + i + '.id', $event)" /></label>
-                  <label>SSH host or alias<input [value]="server.host" (change)="update('execution.ssh.servers.' + i + '.host', $event)" /></label>
-                  <label>Remote workspace<input [value]="server.workspace" (change)="update('execution.ssh.servers.' + i + '.workspace', $event)" /></label>
-                  <label>Java executable<input [value]="server.javaExecutable" (change)="update('execution.ssh.servers.' + i + '.javaExecutable', $event)" /></label>
-                  <label>Workers override (blank inherits)<input type="number" [value]="server.workers ?? ''" (change)="update('execution.ssh.servers.' + i + '.workers', $event, true)" /></label>
-                  <label>Heap override (blank inherits)<input [value]="server.heap ?? ''" (change)="update('execution.ssh.servers.' + i + '.heap', $event)" /></label>
-                  <button mat-button (click)="removeServer(i)">Remove from configuration</button>
-                </fieldset>
-              }
-              <button mat-button (click)="addServer()">Add server</button>
-            }
-            <label>Baseline repository<input [value]="config.project.repository" (change)="update('project.repository', $event)" /></label>
-            <label>Git ref<input [value]="config.project.ref" (change)="update('project.ref', $event)" /></label>
-            <label>Build command (JSON arguments)<input [value]="config.project.buildCommand | json" (change)="buildCommand($event)" /></label>
-            <label>Built JAR path<input [value]="config.project.artifact" (change)="update('project.artifact', $event)" /></label>
-            <label>SOTA component JSON<input [value]="config.sotaFile ?? ''" (change)="update('sotaFile', $event)" /></label>
-            <label>Additional seeds (optional)<input [value]="config.initialConfigurationsFile ?? ''" (change)="update('initialConfigurationsFile', $event)" /></label>
-            <label>Training instances<input [value]="config.trainingPath ?? ''" (change)="update('trainingPath', $event)" /></label>
-            <label>Comparison instances<input [value]="config.comparisonPath ?? ''" (change)="update('comparisonPath', $event)" /></label>
-            <label>Independent trials<input type="number" min="1" [value]="config.trials" (change)="update('trials', $event, true)" /></label>
-            <label>Local preparation builds<input type="number" min="1" [value]="config.preparation.localBuilds ?? 2" (change)="update('preparation.localBuilds', $event, true)" /></label>
-            <label>Prepared trials waiting for a server<input type="number" min="1" [value]="config.preparation.readyQueueSize ?? 4" (change)="update('preparation.readyQueueSize', $event, true)" /></label>
-            <label>Local preparation workers<input type="number" min="1" [value]="config.preparation.localWorkers ?? 1" (change)="update('preparation.localWorkers', $event, true)" /></label>
-            <label>Local preparation heap<input [value]="config.preparation.localHeap ?? '2g'" (change)="update('preparation.localHeap', $event)" /></label>
-            <label>Campaign seed<input type="number" [value]="config.seed" (change)="update('seed', $event, true)" /></label>
-            <label>Parameter limit<input type="number" min="1" max="299" [value]="config.maxParameters" (change)="update('maxParameters', $event, true)" /></label>
-            <label>Workers<select [value]="config.execution.workers < 1 ? 'AUTO' : 'CUSTOM'" (change)="workerMode($event)"><option value="AUTO">Auto: half the available processors on the execution host</option><option value="CUSTOM">Set worker count</option></select></label>
-            @if (config.execution.workers > 0) { <label>Worker count<input type="number" min="1" [value]="config.execution.workers" (change)="update('execution.workers', $event, true)" /></label> }
-            <label>Main evaluations<input type="number" min="1" [value]="config.tuning.evaluations" (change)="update('tuning.evaluations', $event, true)" /></label>
-            <label>Comparison repetitions<input type="number" min="1" [value]="config.comparison.repetitions" (change)="update('comparison.repetitions', $event, true)" /></label>
-            <label>Probe duration (milliseconds)<input type="number" min="1" [value]="config.preparation.probeDurationMillis" (change)="update('preparation.probeDurationMillis', $event, true)" /></label>
-            <label>Pilot duration (milliseconds)<input type="number" min="1" [value]="config.preparation.pilotDurationMillis" (change)="update('preparation.pilotDurationMillis', $event, true)" /></label>
-            <label>Repair turns<input type="number" min="0" [value]="config.preparation.maxRepairs" (change)="update('preparation.maxRepairs', $event, true)" /></label>
-            <label>Generation model (required before approval)<input [value]="config.codex.model ?? ''" (change)="update('codex.model', $event)" /></label>
-            <label>Concurrent Codex sessions<input type="number" min="1" [value]="config.codex.maxConcurrentSessions" (change)="update('codex.maxConcurrentSessions', $event, true)" /></label>
-            <label>Reasoning effort (blank uses Codex default)<input [value]="config.codex.reasoningEffort ?? ''" (change)="update('codex.reasoningEffort', $event)" /></label>
-            <label>Custom prompt file (optional)<input [value]="config.codex.promptFile ?? ''" (change)="update('codex.promptFile', $event)" /></label>
-          </div>
-          <label>Prompt override (optional)<textarea rows="6" [value]="config.codex.prompt ?? ''" (change)="update('codex.prompt', $event)"></textarea></label>
-          <details><summary>All settings, including time budgets and timeouts</summary><textarea rows="16" [value]="config | json" (change)="advanced($event)"></textarea></details>
-        </fieldset>
-        <p>Each trial starts from the same baseline. Both comparison algorithms restart within their time budget. Ablation is disabled.</p>
-        <p class="budget-summary">{{ config.trials }} trials · {{ config.tuning.evaluations | number }} tuning evaluations per trial at {{ (config.tuning.ignoreInitialMillis + config.tuning.intervalDurationMillis) / 1000 }} seconds · {{ config.comparison.repetitions }} paired comparison repetitions at {{ config.comparison.timeLimitMillis > 0 ? (config.comparison.timeLimitMillis / 1000) + ' seconds' : 'application time limits (resolved during baseline check)' }} · {{ config.preparation.probeDurationMillis / 60000 }} minute probe budget · {{ config.preparation.pilotDurationMillis / 60000 }} minute pilot · {{ config.preparation.maxRepairs }} component repairs per trial.</p>
-        @if (store.summary()) { <details open><summary>Resolved budgets and workload estimate</summary><pre>{{ store.summary() | json }}</pre></details> }
-        <details><summary>Prepare a screened dataset</summary>
-          <div class="fields"><label>Full original input pool<input [value]="originalPool()" (input)="originalPool.set($any($event.target).value)" /></label>
-            <label>Training fraction<input type="number" min="0.01" max="0.99" step="0.01" [value]="trainingFraction()" (input)="trainingFraction.set(+$any($event.target).value)" /></label></div>
-          <p>Screening uses one sequential worker. Review the completed screening evidence together with campaign settings before launch. Testing includes all retained instances, including training. Campaign approval covers reuse by qualified servers; measurement provenance remains tied to the screening server.</p>
-          <button mat-button [disabled]="!executionChoice() || !originalPool() || !!store.active() || !!store.activeScreening() || store.busy()" (click)="store.createScreening(originalPool(), trainingFraction())">Prepare dataset</button>
-        </details>
-        <button mat-button [disabled]="!executionChoice() || !!store.active() || store.busy()" (click)="store.probeTarget()">Check execution host</button>
-        @if (store.targetStatus()) { <pre>{{ store.targetStatus() | json }}</pre> }
-        <button mat-flat-button [disabled]="!executionChoice() || !!store.active() || !!store.activeScreening() || store.busy()" (click)="store.prepareCampaign()">Prepare campaign for review</button>
-      </details>
-    </mat-card-content></mat-card>
-  }
-  @if (store.screenings().length) {
-    <mat-card><mat-card-content><h2>Dataset preparation</h2>
-      <label>Saved screening<select [value]="store.selectedScreening()" (change)="store.selectScreening($any($event.target).value)">@for (job of store.screenings(); track job.id) { <option [value]="job.id">{{ job.createdAt | date:'short' }} · {{ job.status }} · {{ job.id }}</option> }</select></label>
-      @if (store.screening(); as job) {
-        <p>{{ job.status }} · {{ job.progress?.phase || job.activity?.phase || 'Waiting to start' }}</p>
-        @if (job.progress; as progress) {
-          <p>Initial measurements: {{ progress.initialCompleted }}/{{ progress.initialTotal }} · Confirmations: {{ progress.confirmationsCompleted }}/{{ progress.confirmationsTotal }} · Last activity: {{ progress.updatedAt | date:'mediumTime' }}</p>
-          @if (progress.phase === 'INITIAL' && progress.initialTotal) { <mat-progress-bar mode="determinate" [value]="100 * progress.initialCompleted / progress.initialTotal" /> }
-          @if (progress.phase === 'CONFIRMATIONS' && progress.confirmationsTotal) { <mat-progress-bar mode="determinate" [value]="100 * progress.confirmationsCompleted / progress.confirmationsTotal" /> }
+  <div class="campaign-picker">
+    <mat-form-field appearance="outline" subscriptSizing="dynamic"
+      ><mat-label>Saved campaign</mat-label
+      ><select
+        matNativeControl
+        [disabled]="store.busy()"
+        [ngModel]="store.selectedId()"
+        (change)="selectCampaign($any($event.target).value)"
+      >
+        <option value="" disabled>Select campaign</option>
+        @for (item of store.campaigns(); track item.id) {
+          <option [value]="item.id">
+            {{ item.createdAt | date: 'short' }} · {{ label(item.status) }} ·
+            {{ item.id.slice(0, 8) }}
+          </option>
         }
-        @if (job.problem; as problem) { <p class="error">{{ problem.category }} · {{ problem.message }}</p><p>{{ problem.recovery }}</p> }
-        @if (job.activity?.remote; as remote) { <p>Remote job {{ remote.jobId }} · {{ remote.status }} · Last contact: {{ remote.lastSynchronizedAt | date:'mediumTime' }}</p> }
-        <div class="actions">
-          @if (['DRAFT', 'INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION'].includes(job.status)) { <button mat-button [disabled]="!!store.active() || !!store.activeScreening() || store.busy()" (click)="store.screeningAction('resume')">Resume preparation</button> }
-          @if (store.activeScreening() === job.id || job.status === 'NEEDS_ATTENTION') { <button mat-button [disabled]="store.busy()" (click)="store.screeningAction('cancel')">Cancel preparation</button> }
-          @if (['READY_FOR_REVIEW'].includes(job.status)) { <button mat-button [disabled]="store.busy()" (click)="store.reviewScreening()">Review proposal</button> }
-          @if (['READY_FOR_REVIEW'].includes(job.status)) { <button mat-button (click)="store.useSelection()">Use proposed selection</button> }
-        </div>
-      }
-      @if (store.review(); as review) {
-        <pre class="screening-report">{{ review.report }}</pre>
-        <p>Reviewed proposal SHA-256: {{ review.proposalSha256 }}</p>
-        <div class="actions">@for (name of ['instances.csv', 'proposed-retained.index', 'proposed-train.index', 'proposed-test.index', 'manifest.json']; track name) { <a [href]="store.screeningArtifactUrl(review.artifactPrefix + '/' + name)">{{ name }}</a> }</div>
-        <details><summary>All instance decisions</summary><table><thead><tr><th>Instance</th><th>Decision</th><th>Fast confirmations</th><th>Reason</th></tr></thead><tbody>@for (decision of review.proposal.instances; track decision.instance) { <tr><td>{{ decision.instance }}</td><td>{{ decision.classification }}</td><td>{{ decision.fastHits }}/{{ decision.confirmations }}</td><td>{{ decision.reason }}</td></tr> }</tbody></table></details>
-
-      }
-    </mat-card-content></mat-card>
+      </select></mat-form-field
+    >
+    @if (campaign) {
+      <button mat-stroked-button (click)="openSettings()">Settings &amp; dataset</button>
+    }
+  </div>
+  @if (store.error()) {
+    <p class="error-banner" role="alert">{{ store.error() }}</p>
   }
-  <label>Saved campaign<select [value]="store.selectedId()" (change)="store.select($any($event.target).value)">
-    <option value="">Select campaign</option>@for (campaign of store.campaigns(); track campaign.id) { <option [value]="campaign.id">{{ campaign.createdAt | date:'short' }} — {{ campaign.status }} — {{ campaign.id }}</option> }
-  </select></label>
-  @if (store.approvalDifferences().length) {
-    <mat-card><mat-card-content><h3>Proposal changed</h3>
-      <table><thead><tr><th>Field</th><th>Reviewed</th><th>Current</th></tr></thead><tbody>
-      @for (difference of store.approvalDifferences(); track difference.path) { <tr><td>{{ difference.path }}</td><td>{{ difference.reviewed | json }}</td><td>{{ difference.current | json }}</td></tr> }
-      </tbody></table>
-    </mat-card-content></mat-card>
+  @if (store.connectionError()) {
+    <p class="error-banner" role="alert">
+      Connection problem · showing last known data. {{ store.connectionError() }}
+      <button mat-button (click)="store.retryNow()">Retry now</button>
+    </p>
   }
-  @if (store.campaign(); as campaign) {
-    <mat-card><mat-card-content>
-      <details><summary>Complete cleanup</summary>
-        <p>Review owned directories, worker resources and native transcripts before deleting this campaign.</p>
-        <button mat-button [disabled]="store.busy()" (click)="store.reviewCleanup()">Plan cleanup</button>
-        @if (store.cleanupPlan(); as plan) {
-          <pre>{{ plan | json }}</pre>
-          <button mat-button [disabled]="store.busy()" (click)="store.applyCleanup()">Apply reviewed cleanup</button>
-        }
-        @if (store.cleanupReceipt(); as receipt) { <pre>{{ receipt | json }}</pre> }
-      </details>
-      <div class="actions"><strong>{{ campaign.status }} · {{ store.completed() }}/{{ campaign.trials.length }} trials finished</strong>
-        @if (store.active() === campaign.id) { <button mat-button [disabled]="campaign.status === 'CANCELLATION_PENDING'" (click)="store.action('cancel')">Cancel campaign</button> }
-        @if (['INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION', 'WAITING_FOR_TARGETS'].includes(campaign.status) && !store.active()) { <button mat-flat-button [disabled]="store.busy() || !store.recovery()?.resumeCampaign?.allowed" [title]="store.recovery()?.resumeCampaign?.reason || store.recovery()?.resumeCampaign?.effect || ''" (click)="store.action('resume')">Resume from checkpoints</button> }
-        @if (campaign.status === 'NEEDS_ATTENTION') { <button mat-button [disabled]="store.busy()" (click)="store.action('cancel')">Reconcile and cancel remote work</button> }
-        @if (campaign.status === 'DRAFT' && !store.active()) {
-          <button mat-button [disabled]="store.busy()" (click)="store.saveDraftChanges()">Save edited configuration</button>
-          <button mat-flat-button (click)="store.reviewProposal()">Review campaign with all servers</button>
-          @for (target of store.targets(); track target.id) {
-            <label><input type="checkbox" [checked]="store.startTargets().includes(target.id)" [disabled]="!!target.problem || !(target.baselineReady || target.status === 'VALIDATED')" (change)="store.toggleStartTarget(target.id, $any($event.target).checked)"> {{ target.id }}</label>
+  @if (store.busy()) {
+    <p role="status">Applying operation…</p>
+  }
+  @if (settingsOpen() || !campaign) {
+    <mat-card appearance="outlined"
+      ><mat-card-content
+        ><div class="section-heading">
+          <h2>{{ campaign ? 'Campaign settings' : 'New campaign' }}</h2>
+          @if (campaign) {
+            <button mat-button (click)="settingsOpen.set(false)">Close settings</button>
           }
-          <button mat-button [disabled]="!store.startTargets().length" (click)="store.reviewProposal(store.startTargets())">Review campaign with selected servers</button>
-        }
-        @if (campaign.status !== 'DRAFT' && !store.active()) { <button mat-button [disabled]="store.busy()" (click)="store.action('report')">Regenerate reports</button> }
-      </div>
-      @if (store.proposal(); as proposal) {
-        <h2>Review campaign before launch</h2>
-        <h3>Generation model</h3>
-        <p [class.error]="!proposal.generation.ready">{{ proposal.generation.approvalLine }}</p>
-        <p>Check the testing instances, trivial exclusions and effective settings. To change settings, edit the configuration and prepare a revised draft.</p>
-        <details open><summary>Testing instances ({{ proposal.testing.length }})</summary><pre>{{ proposal.testing | json }}</pre></details>
-        <details><summary>Training membership</summary><pre>{{ proposal.training | json }}</pre></details>
-        <details open><summary>Screening decisions and exclusions</summary><pre>{{ proposal.screening | json }}</pre></details>
-        <details open><summary>Selected servers and readiness</summary><pre>{{ proposal.targets | json }}</pre></details>
-        <details open><summary>Effective campaign configuration</summary><pre>{{ proposal.configuration | json }}</pre></details>
-        <details><summary>Edit testing, training and exclusions</summary>
-          <p>Provide training and testing lists and an excluded object mapping every ignored instance to its reason. Testing and exclusions must cover the original pool.</p>
-          <textarea aria-label="Revised dataset selection" [value]="datasetEdit()" (input)="datasetEdit.set($any($event.target).value)"></textarea>
-          <button mat-button [disabled]="store.busy() || !datasetEdit()" (click)="store.reviseDataset(datasetEdit())">Validate revised dataset</button>
-        </details>
-        <button mat-flat-button [disabled]="store.busy() || !proposal.generation.ready" (click)="store.approveAndStart()">{{ store.active() === campaign.id ? 'Approve campaign amendment' : 'Approve this campaign and launch' }}</button>
-      }
-      @if (store.active() === campaign.id) {
-        <details><summary>Review a campaign amendment</summary>
-          <label>Total trials<input type="number" [min]="campaign.trials.length" max="10000" [value]="amendedTrials()" (input)="amendedTrials.set(+$any($event.target).value)" /></label>
-          <button mat-button [disabled]="store.busy()" (click)="store.amendTrials(amendedTrials())">Propose trial count</button>
-          <button mat-button [disabled]="store.busy()" (click)="store.reviewProposal()">Review enrolled servers</button>
-        </details>
-      }
-      <mat-progress-bar mode="determinate" [value]="100 * store.completed() / campaign.trials.length" />
-      @if (store.recoveryError()) { <p class="error">Recovery actions unavailable: {{ store.recoveryError() }}</p> }
-      @if (!store.active() && store.recovery(); as recovery) { <p>{{ recovery.resumeCampaign.reason || recovery.resumeCampaign.effect }}</p> }
-      <h2>Servers · pool revision {{ campaign.poolRevision }}</h2>
-      <p>Each server runs one trial at a time. SOTA and proposal measurements stay paired on that server; reports are grouped by server.</p>
-      <div class="target-grid">
-        @for (target of store.targets(); track target.id) {
-          <article class="target-card"><h3>{{ target.id }} · {{ target.status }}</h3>
-            <p>Qualification: {{ target.qualification || 'UNQUALIFIED' }} · Availability: {{ target.availability || 'UNKNOWN' }} · Host health: {{ target.health || 'UNKNOWN' }}</p>
-            <p>{{ target.definition.host || 'Local' }} · Trial {{ target.assignedTrial ?? '—' }} · Workers {{ target.host?.effectiveWorkers ?? 'Pending qualification' }}</p>
-            @if (target.remote; as remote) { <p>{{ remote.status }} · Last contact {{ remote.lastSynchronizedAt | date:'mediumTime' }} @if (['BUSY', 'QUALIFYING'].includes(target.status) && store.targetStale(remote.lastSynchronizedAt)) { <strong class="error">Status is stale</strong> }</p> }
-            @if (target.remote?.lease; as lease) { <p>Reservation: {{ lease.workerId }} · Owner {{ lease.controller }} · Assignment {{ lease.assignment || lease.operation }}</p> }
-            @if (target.problem; as problem) { <p class="error">{{ problem.category }} · {{ problem.message }}</p><p>{{ problem.recovery }}</p> }
-            @if (campaign.config.execution.target === 'SSH' && target.status !== 'REMOVED') {
-              @let recovery = store.recovery()?.targets?.[target.id];
-              <button mat-button [disabled]="store.busy() || target.draining" (click)="store.targetAction(target.id, 'drain')">Drain</button>
-              <button mat-button [disabled]="store.busy() || !recovery?.resume?.allowed" [title]="recovery?.resume?.reason || recovery?.resume?.effect || ''" (click)="store.targetAction(target.id, 'resume')">Resume server</button>
-              <button mat-button [disabled]="store.busy() || !recovery?.requalify?.allowed" [title]="recovery?.requalify?.reason || recovery?.requalify?.effect || ''" (click)="store.targetAction(target.id, 'requalify')">Requalify server</button>
-              @if (recovery) { <p>{{ recovery.resume.reason || recovery.resume.effect }}</p>@if (recovery.requalify.allowed || recovery.requalify.reason !== recovery.resume.reason) { <p>{{ recovery.requalify.reason || recovery.requalify.effect }}</p> } }
-              <button mat-button [disabled]="store.busy() || !!target.assignedTrial || target.status === 'QUALIFYING'" (click)="store.targetAction(target.id, 'remove')">Remove idle server</button>
-            }
-          </article>
-        }
-      </div>
-      @if (campaign.config.execution.target === 'SSH' && !['SUCCEEDED', 'COMPLETED_WITH_FAILURES'].includes(campaign.status)) {
-        <details><summary>Add a server to this campaign</summary><p>New servers qualify automatically while the campaign is active. Existing trial assignments stay on their original server.</p>
-          <label>Server definition (JSON)<textarea rows="5" [value]="newTarget()" (input)="newTarget.set($any($event.target).value)"></textarea></label>
-          <button mat-button [disabled]="store.busy()" (click)="enrollTarget()">Register server</button>
-        </details>
-      }
-      @for (trial of store.activeTrials(); track trial.number) {
-        <p class="active-trial">Trial {{ trial.number }} · {{ trial.targetId }} · {{ store.activeProgress()[trial.number]?.progress?.substage || trial.status }}
-          @if (store.activeProgress()[trial.number]?.stale) { <strong class="error">Progress unavailable; showing last update</strong> }
-          @if (store.activeProgress()[trial.number]?.progress?.generation; as generation) { · {{ generation.state }} · {{ generation.commandsCompleted }}/{{ generation.commandsStarted }} commands }
-          <button mat-button (click)="store.selectTrial(trial.number)">Inspect</button>
-        </p>
-      }
-      @if (campaign.codexUsage; as usage) {
-        <p class="codex-usage">Codex token usage · {{ usage.status }} · Input: {{ usage.tokens.inputTokens === null ? 'Unknown' : (usage.tokens.inputTokens | number) }} · Output: {{ usage.tokens.outputTokens === null ? 'Unknown' : (usage.tokens.outputTokens | number) }} · Total: {{ usage.tokens.totalTokens === null ? 'Unknown' : (usage.tokens.totalTokens | number) }}</p>
-        <p>{{ usage.completeAttempts }}/{{ usage.attempts }} attempts have complete usage; {{ usage.partialAttempts }} partial, {{ usage.unavailableAttempts }} unavailable. Includes repairs and failed or interrupted attempts. @if (usage.status === 'PARTIAL') { Known totals may be incomplete. }</p>
-      } @else { <p class="codex-usage">Codex token usage · UNAVAILABLE</p> }
-      @if (campaign.failure) { <pre class="error">{{ campaign.failure }}</pre> }
-      @if (campaign.problem; as problem) { <p class="error">{{ problem.category }} · {{ problem.code }} · {{ problem.message }}</p><p>{{ problem.recovery }}</p> }
-      @if (campaign.reportFailure) { <details><summary>Report export failed</summary><pre class="error">{{ campaign.reportFailure }}</pre></details> }
-      <table><thead><tr><th>Trial</th><th>Server</th><th>Stage / outcome</th><th>Tuning seed</th><th>Repairs</th><th>Inspect</th></tr></thead><tbody>
-        @for (trial of campaign.trials; track trial.number) { <tr><td>{{ trial.number }}</td><td>{{ trial.targetId || 'Unassigned' }}</td><td>{{ trial.status }}</td><td>{{ trial.tuningSeed }}</td><td>{{ trial.repairTurns }}</td><td><button mat-button (click)="store.selectTrial(trial.number)">Open trial</button></td></tr> }
-      </tbody></table>
-    </mat-card-content></mat-card>
-    @if (store.trial(); as trial) {
-      <mat-card><mat-card-content><h2>Trial {{ trial.number }} · {{ trial.status }}</h2>
-        @if (['BLOCKED', 'INTERRUPTED'].includes(trial.status)) {
-          <fieldset class="trial-recovery"><legend>Recover trial {{ trial.number }}</legend>
-            @if (store.trialRecovery(); as recovery) {
-              <p>{{ recovery.resume.reason || recovery.resume.effect }}</p>
-              <button mat-button [disabled]="store.busy() || !recovery.resume.allowed" (click)="store.resumeTrial()">Resume existing work</button>
-              <p>{{ recovery.fail.reason || recovery.fail.effect }}</p>
-              <label>Reason for marking this trial failed<textarea rows="2" [value]="failureReason()" (input)="failureReason.set($any($event.target).value)"></textarea></label>
-              <button mat-button [disabled]="store.busy() || !recovery.fail.allowed || !failureReason().trim()" (click)="store.failTrial(failureReason())">Mark trial failed and continue</button>
-            } @else { <p>Recovery availability is loading or unavailable. {{ store.recoveryError() }}</p> }
+        </div>
+        @if (store.config(); as config) {
+          <fieldset
+            [disabled]="
+              !!store.active() || store.busy() || (!!campaign && campaign.status !== 'DRAFT')
+            "
+          >
+            <mat-stepper orientation="vertical" #setupStepper>
+              <ng-template matStepperIcon="edit" let-index="index"
+                ><span>{{ index + 1 }}</span></ng-template
+              >
+              <ng-template matStepperIcon="done" let-index="index"
+                ><span>{{ index + 1 }}</span></ng-template
+              >
+              <mat-step label="Project"
+                ><div class="fields">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Baseline repository</mat-label
+                    ><input
+                      matInput
+                      [value]="config.project.repository"
+                      (change)="update('project.repository', $event)"
+                  /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Git ref</mat-label
+                    ><input
+                      matInput
+                      [value]="config.project.ref"
+                      (change)="update('project.ref', $event)"
+                  /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Built JAR path</mat-label
+                    ><input
+                      matInput
+                      [value]="config.project.artifact"
+                      (change)="update('project.artifact', $event)"
+                  /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Generation model</mat-label
+                    ><input
+                      matInput
+                      [value]="config.codex.model ?? ''"
+                      (change)="update('codex.model', $event)"
+                  /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Reasoning effort (blank uses Codex default)</mat-label
+                    ><input
+                      matInput
+                      [value]="config.codex.reasoningEffort ?? ''"
+                      (change)="update('codex.reasoningEffort', $event)"
+                  /></mat-form-field>
+                  <details>
+                    <summary>Build and prompt options</summary>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                      ><mat-label>Build command (JSON arguments)</mat-label
+                      ><input
+                        matInput
+                        [value]="config.project.buildCommand | json"
+                        (change)="buildCommand($event)"
+                    /></mat-form-field>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                      ><mat-label>Custom prompt file (optional)</mat-label
+                      ><input
+                        matInput
+                        [value]="config.codex.promptFile ?? ''"
+                        (change)="update('codex.promptFile', $event)"
+                    /></mat-form-field>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                      ><mat-label>Prompt override (optional)</mat-label
+                      ><textarea
+                        matInput
+                        rows="6"
+                        [value]="config.codex.prompt ?? ''"
+                        (change)="update('codex.prompt', $event)"
+                      ></textarea>
+                    </mat-form-field>
+                  </details>
+                </div>
+                <div class="actions">
+                  <button mat-stroked-button matStepperNext>Continue</button>
+                </div></mat-step
+              >
+              <mat-step label="Dataset"
+                ><div class="fields">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>SOTA component JSON</mat-label
+                    ><input
+                      matInput
+                      [value]="config.sotaFile ?? ''"
+                      (change)="update('sotaFile', $event)"
+                  /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Training instances</mat-label
+                    ><input
+                      matInput
+                      [value]="config.trainingPath ?? ''"
+                      (change)="update('trainingPath', $event)"
+                  /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Comparison instances</mat-label
+                    ><input
+                      matInput
+                      [value]="config.comparisonPath ?? ''"
+                      (change)="update('comparisonPath', $event)"
+                  /></mat-form-field>
+                  <details>
+                    <summary>Prepare a screened dataset</summary>
+                    <div class="fields">
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                        ><mat-label>Full original input pool</mat-label
+                        ><input
+                          matInput
+                          [value]="originalPool()"
+                          (input)="originalPool.set($any($event.target).value)"
+                      /></mat-form-field>
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                        ><mat-label>Training fraction</mat-label
+                        ><input
+                          matInput
+                          type="number"
+                          min="0.01"
+                          max="0.99"
+                          step="0.01"
+                          [value]="trainingFraction()"
+                          (input)="trainingFraction.set(+$any($event.target).value)"
+                      /></mat-form-field>
+                    </div>
+                    <p>
+                      Screening uses one sequential worker. Review the completed screening evidence
+                      together with campaign settings before launch. Testing includes all retained
+                      instances, including training. Campaign approval covers reuse by qualified
+                      servers; measurement provenance remains tied to the screening server.
+                    </p>
+                    <button
+                      mat-button
+                      [disabled]="
+                        !executionChoice() ||
+                        !originalPool() ||
+                        !!store.active() ||
+                        !!store.activeScreening() ||
+                        store.busy()
+                      "
+                      (click)="store.createScreening(originalPool(), trainingFraction())"
+                    >
+                      Prepare dataset
+                    </button>
+                  </details>
+                </div>
+                <div class="actions">
+                  <button mat-button matStepperPrevious>Back</button
+                  ><button mat-stroked-button matStepperNext>Continue</button>
+                </div></mat-step
+              >
+              <mat-step label="Budget"
+                ><div class="fields">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Independent trials</mat-label
+                    ><input
+                      matInput
+                      type="number"
+                      min="1"
+                      [value]="config.trials"
+                      (change)="update('trials', $event, true)"
+                  /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Main evaluations</mat-label
+                    ><input
+                      matInput
+                      type="number"
+                      min="1"
+                      [value]="config.tuning.evaluations"
+                      (change)="update('tuning.evaluations', $event, true)"
+                  /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Comparison repetitions</mat-label
+                    ><input
+                      matInput
+                      type="number"
+                      min="1"
+                      [value]="config.comparison.repetitions"
+                      (change)="update('comparison.repetitions', $event, true)" /></mat-form-field
+                  ><mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Ignored initial time (seconds)</mat-label
+                    ><input
+                      matInput
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      [value]="config.tuning.ignoreInitialMillis / 1000"
+                      (change)="duration('tuning.ignoreInitialMillis', $event)"
+                  /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Measured tuning interval (seconds)</mat-label
+                    ><input
+                      matInput
+                      type="number"
+                      min="0.001"
+                      step="0.1"
+                      [value]="config.tuning.intervalDurationMillis / 1000"
+                      (change)="duration('tuning.intervalDurationMillis', $event)"
+                  /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Comparison time (seconds; 0 = auto)</mat-label
+                    ><input
+                      matInput
+                      type="number"
+                      min="0"
+                      step="0.1"
+                      [value]="config.comparison.timeLimitMillis / 1000"
+                      (change)="duration('comparison.timeLimitMillis', $event)"
+                  /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Probe duration (seconds)</mat-label
+                    ><input
+                      matInput
+                      type="number"
+                      min="0.001"
+                      step="0.1"
+                      [value]="config.preparation.probeDurationMillis / 1000"
+                      (change)="duration('preparation.probeDurationMillis', $event)"
+                  /></mat-form-field>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Pilot duration (seconds)</mat-label
+                    ><input
+                      matInput
+                      type="number"
+                      min="0.001"
+                      step="0.1"
+                      [value]="config.preparation.pilotDurationMillis / 1000"
+                      (change)="duration('preparation.pilotDurationMillis', $event)"
+                  /></mat-form-field>
+                  <details>
+                    <summary>Advanced budget and reproducibility</summary>
+                    <div class="fields">
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                        ><mat-label>Campaign seed</mat-label
+                        ><input
+                          matInput
+                          type="number"
+                          [value]="config.seed"
+                          (change)="update('seed', $event, true)"
+                      /></mat-form-field>
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                        ><mat-label>Initial configurations file (optional)</mat-label
+                        ><input
+                          matInput
+                          [value]="config.initialConfigurationsFile ?? ''"
+                          (change)="update('initialConfigurationsFile', $event)"
+                      /></mat-form-field>
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                        ><mat-label>Parameter limit</mat-label
+                        ><input
+                          matInput
+                          type="number"
+                          min="1"
+                          max="299"
+                          [value]="config.maxParameters"
+                          (change)="update('maxParameters', $event, true)"
+                      /></mat-form-field>
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                        ><mat-label>Repair turns</mat-label
+                        ><input
+                          matInput
+                          type="number"
+                          min="0"
+                          [value]="config.preparation.maxRepairs"
+                          (change)="update('preparation.maxRepairs', $event, true)"
+                      /></mat-form-field>
+                    </div>
+                  </details>
+                </div>
+                <div class="actions">
+                  <button mat-button matStepperPrevious>Back</button
+                  ><button mat-stroked-button matStepperNext>Continue</button>
+                </div></mat-step
+              >
+              <mat-step label="Execution"
+                ><div class="fields">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Where should the actual workloads run?</mat-label
+                    ><select
+                      matNativeControl
+                      [ngModel]="executionChoice()"
+                      (change)="executionTarget($event)"
+                    >
+                      <option value="" disabled>Select execution location</option>
+                      <option value="LOCAL">Locally on this computer</option>
+                      <option value="SSH">Configure SSH servers</option>
+                    </select></mat-form-field
+                  >
+                  @if (config.execution.target === 'SSH') {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                      ><mat-label>Screening server</mat-label
+                      ><select
+                        matNativeControl
+                        [ngModel]="config.execution.ssh?.screeningServerId"
+                        (change)="update('execution.ssh.screeningServerId', $event)"
+                      >
+                        @for (server of config.execution.ssh?.servers ?? []; track $index) {
+                          <option [value]="server.id">{{ server.id }}</option>
+                        }
+                      </select></mat-form-field
+                    >
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                      ><mat-label>Local remote-runner JAR</mat-label
+                      ><input
+                        matInput
+                        [value]="config.execution.ssh?.runnerArtifact ?? ''"
+                        (change)="update('execution.ssh.runnerArtifact', $event)"
+                    /></mat-form-field>
+                    @for (
+                      server of config.execution.ssh?.servers ?? [];
+                      track $index;
+                      let i = $index
+                    ) {
+                      <fieldset class="server-definition">
+                        <legend>Server {{ i + 1 }}</legend>
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                          ><mat-label>ID</mat-label
+                          ><input
+                            matInput
+                            [value]="server.id"
+                            (change)="update('execution.ssh.servers.' + i + '.id', $event)"
+                        /></mat-form-field>
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                          ><mat-label>SSH host or alias</mat-label
+                          ><input
+                            matInput
+                            [value]="server.host"
+                            (change)="update('execution.ssh.servers.' + i + '.host', $event)"
+                        /></mat-form-field>
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                          ><mat-label>Remote workspace</mat-label
+                          ><input
+                            matInput
+                            [value]="server.workspace"
+                            (change)="update('execution.ssh.servers.' + i + '.workspace', $event)"
+                        /></mat-form-field>
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                          ><mat-label>Java executable</mat-label
+                          ><input
+                            matInput
+                            [value]="server.javaExecutable"
+                            (change)="
+                              update('execution.ssh.servers.' + i + '.javaExecutable', $event)
+                            "
+                        /></mat-form-field>
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                          ><mat-label>Workers override (blank inherits)</mat-label
+                          ><input
+                            matInput
+                            type="number"
+                            [value]="server.workers ?? ''"
+                            (change)="
+                              update('execution.ssh.servers.' + i + '.workers', $event, true)
+                            "
+                        /></mat-form-field>
+                        <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                          ><mat-label>Heap override (blank inherits)</mat-label
+                          ><input
+                            matInput
+                            [value]="server.heap ?? ''"
+                            (change)="update('execution.ssh.servers.' + i + '.heap', $event)"
+                        /></mat-form-field>
+                        <button mat-button (click)="removeServer(i)">
+                          Remove from configuration
+                        </button>
+                      </fieldset>
+                    }
+                    <button mat-button (click)="addServer()">Add server</button>
+                  }
+
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Workers</mat-label
+                    ><select
+                      matNativeControl
+                      [ngModel]="config.execution.workers < 1 ? 'AUTO' : 'CUSTOM'"
+                      (change)="workerMode($event)"
+                    >
+                      <option value="AUTO">
+                        Auto: half the available processors on the execution host
+                      </option>
+                      <option value="CUSTOM">Set worker count</option>
+                    </select></mat-form-field
+                  >
+                  @if (config.execution.workers > 0) {
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                      ><mat-label>Worker count</mat-label
+                      ><input
+                        matInput
+                        type="number"
+                        min="1"
+                        [value]="config.execution.workers"
+                        (change)="update('execution.workers', $event, true)"
+                    /></mat-form-field>
+                  }
+                  <details>
+                    <summary>Preparation and concurrency</summary>
+                    <div class="fields">
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                        ><mat-label>Local preparation builds</mat-label
+                        ><input
+                          matInput
+                          type="number"
+                          min="1"
+                          [value]="config.preparation.localBuilds ?? 2"
+                          (change)="update('preparation.localBuilds', $event, true)"
+                      /></mat-form-field>
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                        ><mat-label>Prepared trials waiting for a server</mat-label
+                        ><input
+                          matInput
+                          type="number"
+                          min="1"
+                          [value]="config.preparation.readyQueueSize ?? 4"
+                          (change)="update('preparation.readyQueueSize', $event, true)"
+                      /></mat-form-field>
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                        ><mat-label>Local preparation workers</mat-label
+                        ><input
+                          matInput
+                          type="number"
+                          min="1"
+                          [value]="config.preparation.localWorkers ?? 1"
+                          (change)="update('preparation.localWorkers', $event, true)"
+                      /></mat-form-field>
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                        ><mat-label>Local preparation heap</mat-label
+                        ><input
+                          matInput
+                          [value]="config.preparation.localHeap ?? '2g'"
+                          (change)="update('preparation.localHeap', $event)"
+                      /></mat-form-field>
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                        ><mat-label>Concurrent Codex sessions</mat-label
+                        ><input
+                          matInput
+                          type="number"
+                          min="1"
+                          [value]="config.codex.maxConcurrentSessions"
+                          (change)="update('codex.maxConcurrentSessions', $event, true)"
+                      /></mat-form-field>
+                    </div>
+                  </details>
+                  <button
+                    mat-stroked-button
+                    [disabled]="!executionChoice() || !!store.active() || store.busy()"
+                    (click)="store.probeTarget()"
+                  >
+                    Check execution host
+                  </button>
+                  @if (store.targetStatus(); as target) {
+                    <p role="status">Host check: {{ label($any(target)['status']) }}</p>
+                    <details>
+                      <summary>Host check details</summary>
+                      <pre>{{ target | json }}</pre>
+                    </details>
+                  }
+                </div>
+                <div class="actions">
+                  <button mat-button matStepperPrevious>Back</button
+                  ><button mat-stroked-button matStepperNext>Continue</button>
+                </div></mat-step
+              >
+              <mat-step label="Review"
+                ><div class="fields">
+                  <dl class="facts">
+                    <dt>Trials</dt>
+                    <dd>{{ config.trials }}</dd>
+                    <dt>Generation model</dt>
+                    <dd>{{ config.codex.model || 'Choose a model before approval' }}</dd>
+                    <dt>Tuning</dt>
+                    <dd>
+                      {{ config.tuning.evaluations | number }} evaluations per trial ·
+                      {{
+                        (config.tuning.ignoreInitialMillis + config.tuning.intervalDurationMillis) /
+                          1000
+                      }}
+                      s per evaluation
+                    </dd>
+                    <dt>Comparison</dt>
+                    <dd>
+                      {{ config.comparison.repetitions }} paired repetitions ·
+                      {{
+                        config.comparison.timeLimitMillis > 0
+                          ? config.comparison.timeLimitMillis / 1000 + ' s'
+                          : 'application time limits'
+                      }}
+                    </dd>
+                    <dt>Execution</dt>
+                    <dd>{{ label(config.execution.target) }}</dd>
+                  </dl>
+                  <p>
+                    Each trial starts from the same baseline. Both algorithms restart within their
+                    comparison budget. Ablation is disabled.
+                  </p>
+                  <details>
+                    <summary>All settings, including timeouts (JSON)</summary>
+                    <textarea
+                      aria-label="All campaign settings"
+                      rows="16"
+                      [value]="config | json"
+                      (change)="advanced($event)"
+                    ></textarea>
+                  </details>
+                  @if (campaign?.status === 'DRAFT') {
+                    <button
+                      mat-flat-button
+                      [disabled]="store.busy()"
+                      (click)="store.saveDraftChanges()"
+                    >
+                      Save edited configuration
+                    </button>
+                  } @else {
+                    <button
+                      mat-flat-button
+                      [disabled]="
+                        !executionChoice() ||
+                        !!store.active() ||
+                        !!store.activeScreening() ||
+                        store.busy()
+                      "
+                      (click)="store.prepareCampaign()"
+                    >
+                      Prepare campaign for review
+                    </button>
+                  }
+                  @if (store.summary()) {
+                    <details>
+                      <summary>Resolved budgets and workload estimate</summary>
+                      <pre>{{ store.summary() | json }}</pre>
+                    </details>
+                  }
+                </div>
+                <div class="actions">
+                  <button mat-button matStepperPrevious>Back</button>
+                </div></mat-step
+              >
+            </mat-stepper>
           </fieldset>
         }
-        @if (trial.capacityWait; as wait) {
-          <p>Model capacity wait: retry {{ wait.retries }} at {{ wait.nextRetryAt | date:'medium' }}; deadline {{ wait.deadline | date:'medium' }}. {{ wait.diagnostic }}</p>
+        @if (store.screenings().length) {
+          <mat-card
+            ><mat-card-content
+              ><h2>Dataset preparation</h2>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                ><mat-label>Saved screening</mat-label
+                ><select
+                  matNativeControl
+                  [ngModel]="store.selectedScreening()"
+                  (change)="store.selectScreening($any($event.target).value)"
+                >
+                  @for (job of store.screenings(); track job.id) {
+                    <option [value]="job.id">
+                      {{ job.createdAt | date: 'short' }} · {{ job.status }} · {{ job.id }}
+                    </option>
+                  }
+                </select></mat-form-field
+              >
+              @if (store.screening(); as job) {
+                <p>
+                  {{ job.status }} ·
+                  {{ job.progress?.phase || job.activity?.phase || 'Waiting to start' }}
+                </p>
+                @if (job.progress; as progress) {
+                  <p>
+                    Initial measurements: {{ progress.initialCompleted }}/{{
+                      progress.initialTotal
+                    }}
+                    · Confirmations: {{ progress.confirmationsCompleted }}/{{
+                      progress.confirmationsTotal
+                    }}
+                    · Last activity: {{ progress.updatedAt | date: 'mediumTime' }}
+                  </p>
+                  @if (progress.phase === 'INITIAL' && progress.initialTotal) {
+                    <mat-progress-bar
+                      mode="determinate"
+                      [value]="(100 * progress.initialCompleted) / progress.initialTotal"
+                    />
+                  }
+                  @if (progress.phase === 'CONFIRMATIONS' && progress.confirmationsTotal) {
+                    <mat-progress-bar
+                      mode="determinate"
+                      [value]="
+                        (100 * progress.confirmationsCompleted) / progress.confirmationsTotal
+                      "
+                    />
+                  }
+                }
+                @if (job.problem; as problem) {
+                  <p class="error">{{ problem.category }} · {{ problem.message }}</p>
+                  <p>{{ problem.recovery }}</p>
+                }
+                @if (job.activity?.remote; as remote) {
+                  <p>
+                    Remote job {{ remote.jobId }} · {{ remote.status }} · Last contact:
+                    {{ remote.lastContactAt || remote.lastSynchronizedAt | date: 'mediumTime' }}
+                  </p>
+                }
+                <div class="actions">
+                  @if (
+                    ['DRAFT', 'INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION'].includes(job.status)
+                  ) {
+                    <button
+                      mat-button
+                      [disabled]="!!store.active() || !!store.activeScreening() || store.busy()"
+                      (click)="store.screeningAction('resume')"
+                    >
+                      Resume preparation
+                    </button>
+                  }
+                  @if (store.activeScreening() === job.id || job.status === 'NEEDS_ATTENTION') {
+                    <button
+                      mat-button
+                      [disabled]="store.busy()"
+                      (click)="store.screeningAction('cancel')"
+                    >
+                      Cancel preparation
+                    </button>
+                  }
+                  @if (['READY_FOR_REVIEW'].includes(job.status)) {
+                    <button mat-button [disabled]="store.busy()" (click)="store.reviewScreening()">
+                      Review proposal
+                    </button>
+                  }
+                  @if (['READY_FOR_REVIEW'].includes(job.status)) {
+                    <button mat-button (click)="store.useSelection()">
+                      Use proposed selection
+                    </button>
+                  }
+                </div>
+              }
+              @if (store.review(); as review) {
+                <pre class="screening-report">{{ review.report }}</pre>
+                <p>Reviewed proposal SHA-256: {{ review.proposalSha256 }}</p>
+                <div class="actions">
+                  @for (
+                    name of [
+                      'instances.csv',
+                      'proposed-retained.index',
+                      'proposed-train.index',
+                      'proposed-test.index',
+                      'manifest.json',
+                    ];
+                    track name
+                  ) {
+                    <a [href]="store.screeningArtifactUrl(review.artifactPrefix + '/' + name)">{{
+                      name
+                    }}</a>
+                  }
+                </div>
+                <details>
+                  <summary>All instance decisions</summary>
+                  <mat-form-field appearance="outline"
+                    ><mat-label>Search instance decisions</mat-label
+                    ><input
+                      matInput
+                      [value]="decisionSearch()"
+                      (input)="decisionSearch.set($any($event.target).value); decisionPage.set(0)"
+                  /></mat-form-field>
+                  <div class="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Instance</th>
+                          <th>Decision</th>
+                          <th>Fast confirmations</th>
+                          <th>Reason</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (decision of decisionRows(); track decision.instance) {
+                          <tr>
+                            <td>{{ decision.instance }}</td>
+                            <td>{{ decision.classification }}</td>
+                            <td>{{ decision.fastHits }}/{{ decision.confirmations }}</td>
+                            <td>{{ decision.reason }}</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                  <mat-paginator
+                    [length]="filteredDecisions().length"
+                    [pageSize]="25"
+                    [pageIndex]="effectiveDecisionPage()"
+                    (page)="decisionPage.set($event.pageIndex)"
+                    aria-label="Instance decision pages"
+                  />
+                </details>
+              }</mat-card-content
+          ></mat-card>
+        }</mat-card-content
+    ></mat-card>
+  }
+  @if (store.proposal(); as proposal) {
+    <mat-card appearance="outlined" class="proposal"
+      ><mat-card-content>
+        <h2>Review campaign before launch</h2>
+        <p [class.error]="!proposal.generation.ready">{{ proposal.generation.approvalLine }}</p>
+        <div class="metrics">
+          <div>
+            <span>Testing instances</span><strong>{{ proposal.testing.length }}</strong>
+          </div>
+          <div>
+            <span>Training instances</span><strong>{{ proposal.training.length }}</strong>
+          </div>
+          <div>
+            <span>Independent trials</span><strong>{{ proposal.configuration.trials }}</strong>
+          </div>
+          <div>
+            <span>Evaluations per trial</span
+            ><strong>{{ proposal.configuration.tuning.evaluations | number }}</strong>
+          </div>
+        </div>
+        <p>
+          Testing includes training instances. These comparisons are not a held-out test of
+          generalization. Review exclusions and effective settings before launch.
+        </p>
+        <details>
+          <summary>Testing and training membership</summary>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic"
+            ><mat-label>Search instances</mat-label
+            ><input
+              matInput
+              [value]="datasetSearch()"
+              (input)="datasetSearch.set($any($event.target).value)"
+          /></mat-form-field>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Instance</th>
+                  <th>Training</th>
+                  <th>Testing</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (instance of proposalInstances(); track instance.path) {
+                  <tr>
+                    <td>{{ instance.path }}</td>
+                    <td>{{ instance.training ? 'Yes' : 'No' }}</td>
+                    <td>{{ instance.testing ? 'Yes' : 'No' }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <p>
+            Showing up to 100 matches. Full membership is included in the effective configuration
+            details below.
+          </p>
+        </details>
+        <details>
+          <summary>Screening decisions and exclusions</summary>
+          <mat-form-field appearance="outline"
+            ><mat-label>Search exclusions</mat-label
+            ><input
+              matInput
+              [value]="datasetSearch()"
+              (input)="datasetSearch.set($any($event.target).value)"
+          /></mat-form-field>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>Excluded instance</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (exclusion of proposalExclusions().slice(0, 100); track exclusion[0]) {
+                  <tr>
+                    <td>{{ exclusion[0] }}</td>
+                    <td>{{ exclusion[1] }}</td>
+                  </tr>
+                } @empty {
+                  <tr>
+                    <td colspan="2">No matching exclusions.</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <p>
+            {{ proposalExclusions().length }} matches; showing up to 100. Full decisions remain
+            available below.
+          </p>
+          <details>
+            <summary>All screening evidence (JSON)</summary>
+            <pre>{{ proposal.screening | json }}</pre>
+          </details>
+        </details>
+        <h3>Selected servers and readiness</h3>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Server</th>
+                <th>Host</th>
+                <th>Selected</th>
+                <th>Ready</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (target of proposalTargets(); track target[0]) {
+                <tr>
+                  <td>{{ target[0] }}</td>
+                  <td>{{ target[1].definition?.host || 'Local' }}</td>
+                  <td>{{ target[1].selected ? 'Yes' : 'No' }}</td>
+                  <td>
+                    {{ target[1].ready ? 'Ready' : 'Not ready'
+                    }}{{ target[1].draining ? ' · Draining' : '' }}
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+        <details>
+          <summary>Effective campaign configuration and full membership</summary>
+          <pre>{{ proposal.configuration | json }}</pre>
+          <pre>{{ proposal.testing | json }}</pre>
+          <pre>{{ proposal.training | json }}</pre>
+        </details>
+        <details>
+          <summary>Edit testing, training and exclusions</summary>
+          <p>
+            Provide training and testing lists and an excluded object mapping every ignored instance
+            to its reason. Testing and exclusions must cover the original pool.
+          </p>
+          <textarea
+            aria-label="Revised dataset selection"
+            [value]="datasetEdit()"
+            (input)="datasetEdit.set($any($event.target).value)"
+          ></textarea
+          ><button
+            mat-button
+            [disabled]="store.busy() || !datasetEdit()"
+            (click)="store.reviseDataset(datasetEdit())"
+          >
+            Validate revised dataset
+          </button>
+        </details>
+        <button
+          mat-flat-button
+          [disabled]="store.busy() || !proposal.generation.ready"
+          (click)="store.approveAndStart()"
+        >
+          {{
+            store.active() === campaign?.id
+              ? 'Approve campaign amendment'
+              : 'Approve this campaign and launch'
+          }}
+        </button>
+      </mat-card-content></mat-card
+    >
+  }
+  @if (store.approvalDifferences().length) {
+    <mat-card appearance="outlined"
+      ><mat-card-content
+        ><h2>Proposal changed</h2>
+        <div class="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Field</th>
+                <th>Reviewed</th>
+                <th>Current</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (difference of store.approvalDifferences(); track difference.path) {
+                <tr>
+                  <td>{{ difference.path }}</td>
+                  <td>{{ difference.reviewed | json }}</td>
+                  <td>{{ difference.current | json }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div></mat-card-content
+      ></mat-card
+    >
+  }
+  @if (campaign) {
+    <mat-card appearance="outlined" class="status-card"
+      ><mat-card-content>
+        <div class="section-heading">
+          <div>
+            <span class="eyebrow">Campaign · {{ campaign.id.slice(0, 8) }}</span>
+            <h1>{{ label(campaign.status) }}</h1>
+          </div>
+          <span class="muted">Created {{ campaign.createdAt | date: 'medium' }}</span>
+        </div>
+        <div class="metrics">
+          <div>
+            <span>Finished</span
+            ><strong>{{ store.completed() }} / {{ campaign.trials.length }}</strong>
+          </div>
+          <div>
+            <span>Active</span><strong>{{ runningCount() }}</strong>
+          </div>
+          <div>
+            <span>Succeeded</span><strong>{{ succeededCount() }}</strong>
+          </div>
+          <div>
+            <span>Failed</span><strong>{{ failedCount() }}</strong>
+          </div>
+          <div>
+            <span>Needs attention</span><strong>{{ issueTrials().length }}</strong>
+          </div>
+          <div>
+            <span>Execution elapsed</span><strong>{{ campaignDuration() }}</strong>
+          </div>
+        </div>
+        <mat-progress-bar
+          mode="determinate"
+          [value]="percent(store.completed(), campaign.trials.length)"
+          aria-label="Finished trials"
+        />
+        <p class="muted">
+          {{ store.completed() }}/{{ campaign.trials.length }} trials finished, including failures.
+          This is a count of outcomes, not a time estimate.
+          @if (store.lastUpdated(); as updated) {
+            Last refreshed {{ updated | date: 'mediumTime' }}.
+          }
+        </p>
+        <div class="actions">
+          @if (store.active() === campaign.id) {
+            <button
+              mat-button
+              [disabled]="store.busy() || campaign.status === 'CANCELLATION_PENDING'"
+              (click)="store.action('cancel')"
+            >
+              Cancel campaign
+            </button>
+          }
+          @if (
+            ['INTERRUPTED', 'CANCELLED', 'NEEDS_ATTENTION', 'WAITING_FOR_TARGETS'].includes(
+              campaign.status
+            ) && !store.active()
+          ) {
+            <button
+              mat-flat-button
+              [disabled]="store.busy() || !store.recovery()?.resumeCampaign?.allowed"
+              [title]="
+                store.recovery()?.resumeCampaign?.reason ||
+                store.recovery()?.resumeCampaign?.effect ||
+                ''
+              "
+              (click)="store.action('resume')"
+            >
+              Resume from checkpoints
+            </button>
+          }
+          @if (campaign.status === 'NEEDS_ATTENTION') {
+            <button mat-button [disabled]="store.busy()" (click)="store.action('cancel')">
+              Reconcile and cancel remote work
+            </button>
+          }
+          @if (campaign.status === 'DRAFT' && !store.active()) {
+            <button mat-button [disabled]="store.busy()" (click)="openSettings()">
+              Edit configuration
+            </button>
+            <button
+              mat-flat-button
+              [disabled]="store.busy() || draftDirty()"
+              (click)="store.reviewProposal()"
+            >
+              Review campaign with all servers
+            </button>
+            @for (target of store.targets(); track target.id) {
+              <label
+                ><input
+                  type="checkbox"
+                  [checked]="store.startTargets().includes(target.id)"
+                  [disabled]="
+                    !!target.problem || !(target.baselineReady || target.status === 'VALIDATED')
+                  "
+                  (change)="store.toggleStartTarget(target.id, $any($event.target).checked)"
+                />
+                {{ target.id }}</label
+              >
+            }
+            <button
+              mat-button
+              [disabled]="store.busy() || draftDirty() || !store.startTargets().length"
+              (click)="store.reviewProposal(store.startTargets())"
+            >
+              Review campaign with selected servers
+            </button>
+            @if (draftDirty()) {
+              <p class="muted">
+                Save edited configuration in Settings before reviewing this campaign.
+              </p>
+            }
+          }
+          @if (campaign.status !== 'DRAFT' && !store.active()) {
+            <button mat-button [disabled]="store.busy()" (click)="store.action('report')">
+              Regenerate reports
+            </button>
+          }
+        </div>
+
+        @if (store.recoveryError()) {
+          <p class="error">Recovery actions unavailable: {{ store.recoveryError() }}</p>
         }
-        @if (trial.quotaRetryAt) { <p>Waiting for Codex quota. Automatic retry after {{ trial.quotaRetryAt | date:'medium' }}.</p> }
-        @if (store.progress(); as progress) { <p>{{ progress.substage || progress.status }} · {{ (progress.elapsedMillis || 0) / 1000 | number:'1.0-0' }} seconds · Infrastructure retries: {{ progress.infrastructureRetries || 0 }} · Component repairs: {{ trial.repairTurns }}</p> }
-        @if (store.progress()?.modelSelection; as selection) {
-          <p>Model: {{ selection.resolvedModel || 'Unknown' }} · Provider: {{ selection.resolvedProvider || 'Unknown' }} · Requested model: {{ selection.requestedModel || 'CLI default' }}</p>
+        @if (campaign.problem; as problem) {
+          <p class="error" role="alert">{{ problem.message }}</p>
+          <p>{{ problem.recovery }}</p>
         }
-        @if (store.generation(); as generation) {
-          <p>Generation: {{ generation.state }} · Session: {{ generation.threadId || 'Waiting for session event' }} · Last activity: {{ generation.lastActivityAt ? (generation.lastActivityAt | date:'mediumTime') : 'No events received' }}</p>
-          <p>Turns started: {{ generation.turns }} · Commands: {{ generation.commandsCompleted }} completed / {{ generation.commandsStarted }} started · Edit events: {{ generation.edits }} · Assistant messages: {{ generation.messages }}</p>
-          @if (generation.usage) { <p>Reported usage: {{ generation.usage | json }}</p> }
-          <p>These are observed CLI events. Component repair turns are counted separately; model iteration totals are unavailable.</p>
-        }
-        @if (store.conversationAttempt(); as attempt) {
-          <details open class="conversation"><summary>Conversation · {{ attempt.stage }} attempt {{ attempt.number }} · {{ attempt.status }}</summary>
-            <div class="activity-feed" aria-live="polite">@for (event of store.activity(); track $index) { <article><small>{{ event.timestamp | date:'mediumTime' }} · {{ event.type }}</small><pre>{{ event.text }}</pre></article> } @empty { <p>Waiting for conversation events. Raw stdout and stderr remain available below.</p> }</div>
-            <button mat-button (click)="store.selectLog(attempt.directory + '/stdout.log')">Raw stdout</button><button mat-button (click)="store.selectLog(attempt.directory + '/stderr.log')">Raw stderr</button>
+        @if (campaign.reportFailure) {
+          <details>
+            <summary>Report export failed</summary>
+            <pre>{{ campaign.reportFailure }}</pre>
           </details>
         }
-        @if (trial.codexUsage; as usage) { <p>Trial token usage · {{ usage.status }} · Input: {{ usage.tokens.inputTokens === null ? 'Unknown' : (usage.tokens.inputTokens | number) }} · Output: {{ usage.tokens.outputTokens === null ? 'Unknown' : (usage.tokens.outputTokens | number) }}</p> }
-        @if (store.tuning(); as tuning) { <p>{{ tuning.phase }} · {{ tuning.budget.used }}/{{ tuning.budget.maximum }} evaluations · {{ tuning.evaluations.succeeded }} succeeded · {{ tuning.evaluations.rejected }} rejected · {{ tuning.evaluations.failed }} failed</p><mat-progress-bar mode="determinate" [value]="100 * tuning.budget.used / tuning.budget.maximum" /> }
-        @if (trial.failure) { <pre class="error">{{ trial.failure }}</pre> }
-        @for (attempt of trial.attempts; track attempt.number) {
-          <div class="attempt"><span>{{ attempt.stage }} · {{ attempt.status }} · {{ attempt.startedAt | date:'short' }}</span>
-            <button mat-button (click)="store.selectLog(attempt.directory + (['PREPARATION'].includes(attempt.stage) ? '/build' : '') + '/stdout.log')">View log</button>
-            @if (['GENERATION', 'REPAIR'].includes(attempt.stage)) { <button mat-button (click)="store.watchGeneration(attempt.number)">View conversation</button> }
-            @if (attempt.codexEvidence; as evidence) {
-              <span>Conversation: {{ evidence.status }} · Usage: {{ evidence.usage.status }}</span>
-              @for (conversation of evidence.conversations; track conversation.threadId) { <a [href]="store.artifactUrl(attempt.directory + '/' + conversation.path)">Download conversation {{ conversation.threadId }}</a> }
-            }
-            @if (attempt.failure) { <details><summary>Failure details</summary><pre>{{ attempt.failure }}</pre></details> }
+      </mat-card-content></mat-card
+    >
+    <mat-tab-group
+      [selectedIndex]="tab()"
+      (selectedIndexChange)="selectTab($event)"
+      animationDuration="0ms"
+    >
+      <mat-tab label="Overview"
+        ><ng-template matTabContent>
+          <div class="overview-actions">
+            <p class="muted">Progress and outcomes across independent proposals</p>
+            <button mat-button [matMenuTriggerFor]="panelMenu">Panels</button
+            ><mat-menu #panelMenu="matMenu">
+              @for (panel of panels; track panel.id) {
+                <button
+                  mat-menu-item
+                  (click)="
+                    preferences.isHidden(panel.id)
+                      ? preferences.show(panel.id)
+                      : preferences.hide(panel.id)
+                  "
+                >
+                  {{ preferences.isHidden(panel.id) ? 'Show' : 'Hide' }} {{ panel.label }}
+                </button>
+              }
+            </mat-menu>
           </div>
-        }
-        @if (trial.winner) { <h3>First-ranked proposal: components and parameters</h3><p>Generated algorithm components end in New.</p><pre>{{ trial.winner | json }}</pre> }
-        @if (store.comparison()) { <details open><summary>Comparison results</summary><pre>{{ store.comparison() | json }}</pre></details> }
-        @if (instances().length) {
-          <div class="fields comparison-controls">
-            <label>Convergence instance<select [value]="store.curveInstance()" [title]="activeInstance()?.instance ?? ''" (change)="store.selectCurveInstance($any($event.target).value)">@for (instance of instances(); track instance.instanceId) { <option [value]="instance.instanceId" [title]="instance.instance">{{ instanceLabels().get(instance.instance) }}</option> }</select></label>
-            <label>Objective<select [value]="activeObjective()" (change)="selectedObjective.set($any($event.target).value)">@for (objective of objectives(); track objective) { <option [value]="objective">{{ objective }}</option> }</select></label>
-            <label>Y-axis scale<select [value]="effectiveYAxisScale()" (change)="yAxisScale.set($any($event.target).value)"><option value="linear">Linear</option><option value="logarithmic" [disabled]="!canLogYAxis()">Logarithmic</option></select></label>
-            <label>Chart height<select [value]="chartHeight()" (change)="chartHeight.set(+$any($event.target).value)"><option value="520">Standard</option><option value="760">Tall</option><option value="1000">Extra tall</option></select></label>
-          </div>
-          <p>All available repetitions for this instance, sampled to at most 256 points per curve. Full data is available in the comparison journal.</p>
-          @for (count of curveCounts(); track count.algorithm) { <p>{{ count.algorithm }}: {{ count.succeeded }}/{{ campaign.config.comparison.repetitions }} repetitions completed@if (count.failed) { · {{ count.failed }} failed }</p> }
-          @if (store.curvesLoading()) { <p role="status">Loading saved curves…</p> }
-          @if (store.curvesError()) { <p role="alert" class="error">{{ store.curvesError() }} <button mat-button (click)="store.refreshCurves()">Retry loading curves</button></p> }
-          @if (!store.curvesLoading() && !store.curvesError() && !selectedCurves().length) { <p>No successful comparison curves available for this instance.</p> }
-          @if (selectedCurves().length) {
-            <p class="chart-help">Drag a rectangle to zoom, Shift-drag to pan, or resize from the bottom-right corner. Click an algorithm in the legend to show or hide all its repetitions.</p>
-            @if (!canLogYAxis()) { <p class="chart-help">Logarithmic scale requires positive objective values; this selection uses a linear scale.</p> }
-            <app-dashboard-chart [model]="curveChart()" [resizable]="true" [style.height.px]="chartHeight()" aria-label="Comparison convergence chart" />
+          <div class="overview-grid">
+            <app-monitor-panel panelId="autollm-active" title="Active trials">
+              @for (trial of store.activeTrials(); track trial.number) {
+                <div class="active-row">
+                  <div>
+                    <strong>Trial {{ trial.number }}</strong>
+                    <p>
+                      {{
+                        label(
+                          store.activeProgress()[trial.number]?.progress?.substage || trial.status
+                        )
+                      }}
+                      · {{ trial.targetId || 'Awaiting assignment' }}
+                    </p>
+                    @if (store.activeProgress()[trial.number]?.stale) {
+                      <p class="error">Progress unavailable; showing last update</p>
+                    }
+                  </div>
+                  <button mat-button (click)="openTrial(trial.number)">Inspect</button>
+                </div>
+              } @empty {
+                <p class="empty-state">No trials are currently active.</p>
+              }
+            </app-monitor-panel>
+            <app-monitor-panel panelId="autollm-issues" title="Needs attention">
+              @for (trial of issueTrials(); track trial.number) {
+                <div class="active-row">
+                  <div>
+                    <strong>Trial {{ trial.number }} · {{ label(trial.status) }}</strong>
+                    <p>
+                      {{
+                        trial.problem?.message ||
+                          'Inspect the saved evidence and available recovery actions.'
+                      }}
+                    </p>
+                  </div>
+                  <button mat-button (click)="openTrial(trial.number)">Inspect</button>
+                </div>
+              } @empty {
+                <p class="empty-state">No trials need attention.</p>
+              }
+            </app-monitor-panel>
+            <app-monitor-panel panelId="autollm-results" title="Comparison outcomes"
+              ><p>
+                {{ succeededCount() }} completed trials are available for comparison with SOTA.
+              </p>
+              @if (store.results(); as results) {
+                <p>
+                  {{ results.objective }} · {{ label(results.mode) }} ·
+                  {{ results.trials.length }} complete comparisons
+                </p>
+                <p>{{ results.reference }}</p>
+              } @else {
+                <p class="muted">
+                  Execution success does not imply improvement. Choose an objective and direction in
+                  Results to compare proposals.
+                </p>
+              }
+              <button mat-stroked-button (click)="selectTab(2)">
+                Compare results
+              </button></app-monitor-panel
+            >
+          </div></ng-template
+        ></mat-tab
+      >
+      <mat-tab label="Trials"
+        ><ng-template matTabContent>
+          <mat-card appearance="outlined"
+            ><mat-card-content
+              ><h2>Trials</h2>
+              <div class="filters">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                  ><mat-label>Search trial or server</mat-label
+                  ><input
+                    matInput
+                    [value]="trialSearch()"
+                    (input)="
+                      trialSearch.set($any($event.target).value); trialPage.set(0)
+                    " /></mat-form-field
+                ><mat-form-field appearance="outline" subscriptSizing="dynamic"
+                  ><mat-label>Outcome</mat-label
+                  ><select
+                    matNativeControl
+                    [ngModel]="trialFilter()"
+                    (change)="trialFilter.set($any($event.target).value); trialPage.set(0)"
+                  >
+                    <option value="all">All trials</option>
+                    <option value="active">Active</option>
+                    <option value="attention">Needs attention</option>
+                    <option value="SUCCEEDED">Succeeded</option>
+                    <option value="FAILED">Failed</option>
+                    <option value="PENDING">Pending</option>
+                  </select></mat-form-field
+                ><mat-form-field appearance="outline" subscriptSizing="dynamic"
+                  ><mat-label>Sort</mat-label
+                  ><select
+                    matNativeControl
+                    [ngModel]="trialSort()"
+                    (change)="trialSort.set($any($event.target).value); trialPage.set(0)"
+                  >
+                    <option value="number">Trial number</option>
+                    <option value="status">Stage / outcome</option>
+                    <option value="duration">Longest duration</option>
+                  </select></mat-form-field
+                >
+              </div>
+              <div class="table-scroll">
+                <table class="trial-table">
+                  <caption class="sr-only">
+                    Campaign trials
+                  </caption>
+                  <thead>
+                    <tr>
+                      <th>Trial</th>
+                      @if (campaign.config.execution.target === 'SSH') {
+                        <th>Server</th>
+                      }
+                      <th>Stage / outcome</th>
+                      <th>Progress</th>
+                      <th>Comparison vs SOTA</th>
+                      <th>Duration</th>
+                      <th>Issues</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (trial of trialRows(); track trial.number) {
+                      <tr
+                        [class.selected]="
+                          store.inspecting() && store.selectedTrial() === trial.number
+                        "
+                      >
+                        <td>{{ trial.number }}</td>
+                        @if (campaign.config.execution.target === 'SSH') {
+                          <td>{{ trial.targetId || 'Unassigned' }}</td>
+                        }
+                        <td>
+                          <span
+                            class="status"
+                            [class.failure]="
+                              trial.status === 'FAILED' || trial.status === 'BLOCKED'
+                            "
+                            >{{ label(trial.status) }}</span
+                          >
+                        </td>
+                        <td>{{ trialProgress(trial) }}</td>
+                        <td>{{ comparisonLabel(trial.number) }}</td>
+                        <td>{{ durationLabel(trialDuration(trial)) }}</td>
+                        <td>
+                          {{
+                            trial.problem
+                              ? label(trial.problem.category)
+                              : trial.status === 'FAILED'
+                                ? 'Failed'
+                                : '—'
+                          }}
+                        </td>
+                        <td>
+                          <button mat-button (click)="openTrial(trial.number)">Open trial</button>
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="8">No trials match these filters.</td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <mat-paginator
+                [length]="filteredTrials().length"
+                [pageSize]="25"
+                [pageIndex]="effectiveTrialPage()"
+                (page)="trialPage.set($event.pageIndex)"
+                aria-label="Trial pages"
+              /> </mat-card-content
+          ></mat-card>
+          @if (store.inspecting()) {
+            <ng-container *ngTemplateOutlet="inspector" />
+          }</ng-template
+      ></mat-tab>
+      <mat-tab label="Results"
+        ><ng-template matTabContent>
+          <mat-card appearance="outlined"
+            ><mat-card-content
+              ><h2>Proposal versus SOTA</h2>
+              <p>
+                Choose the measured objective and its direction. Each proposal is compared with SOTA
+                measured on the same server; instances have equal weight. Trials with incomplete
+                comparisons are excluded.
+              </p>
+              <div class="filters">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                  ><mat-label>Objective name</mat-label
+                  ><input
+                    matInput
+                    [value]="resultObjective()"
+                    (input)="resultObjective.set($any($event.target).value)"
+                    list="comparison-objectives" /></mat-form-field
+                ><datalist id="comparison-objectives">
+                  @for (objective of objectives(); track objective) {
+                    <option [value]="objective"></option>
+                  }</datalist
+                ><mat-form-field appearance="outline" subscriptSizing="dynamic"
+                  ><mat-label>Direction</mat-label
+                  ><select
+                    matNativeControl
+                    [ngModel]="resultMode()"
+                    (change)="resultMode.set($any($event.target).value)"
+                  >
+                    <option value="">Choose direction</option>
+                    <option value="MINIMIZE">Minimize</option>
+                    <option value="MAXIMIZE">Maximize</option>
+                  </select></mat-form-field
+                ><button
+                  mat-flat-button
+                  [disabled]="!resultObjective().trim() || !resultMode() || store.resultsLoading()"
+                  (click)="compareResults()"
+                >
+                  Compare</button
+                ><button
+                  mat-button
+                  [disabled]="!store.resultObjective() || store.resultsLoading()"
+                  (click)="store.refreshResults(true)"
+                >
+                  Refresh
+                </button>
+              </div>
+              @if (store.resultsLoading()) {
+                <p role="status">Loading comparisons…</p>
+              }
+              @if (store.resultsError()) {
+                <p class="error" role="alert">
+                  {{ store.resultsError() }} · Previous results may be stale.
+                </p>
+              }
+              @if (store.results(); as results) {
+                <p>
+                  <strong>{{ results.objective }} · {{ label(results.mode) }}</strong> ·
+                  {{ results.trials.length }}/{{ campaign.trials.length }} complete comparisons ·
+                  Updated {{ results.checkedAt | date: 'mediumTime' }}
+                </p>
+                <div class="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Trial</th>
+                        <th>Server</th>
+                        <th>Wins / ties / losses</th>
+                        <th>Mean improvement</th>
+                        <th>Coverage</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (run of results.trials; track run.trial) {
+                        <tr>
+                          <td>{{ run.trial }}</td>
+                          <td>{{ run.targetId || 'Local' }}</td>
+                          <td>{{ run.wins }} / {{ run.ties }} / {{ run.losses }}</td>
+                          <td>
+                            {{
+                              run.meanImprovementPercent === null
+                                ? 'Undefined (zero reference)'
+                                : (run.meanImprovementPercent | number: '1.0-2') + '%'
+                            }}
+                          </td>
+                          <td>
+                            {{ run.instances.length }} instances · {{ run.repetitions }} repetitions
+                          </td>
+                          <td>
+                            <button mat-button (click)="openTrial(run.trial, 1)">
+                              Inspect results
+                            </button>
+                          </td>
+                        </tr>
+                      } @empty {
+                        <tr>
+                          <td colspan="6">No complete comparisons for this objective yet.</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                <p class="muted">
+                  Positive percentages mean improvement. Wins and ties describe measured means, not
+                  statistical significance. Trials are not globally ranked.
+                </p>
+                @for (exclusion of resultExclusions(); track exclusion[0]) {
+                  <p class="muted">Trial {{ exclusion[0] }}: {{ exclusion[1] }}</p>
+                }
+              } @else {
+                <p class="empty-state">
+                  Select an objective and direction to load exact comparison statistics.
+                </p>
+              }
+            </mat-card-content></mat-card
+          >
+        </ng-template></mat-tab
+      >
+      <mat-tab label="Infrastructure"
+        ><ng-template matTabContent
+          ><mat-card appearance="outlined"
+            ><mat-card-content>
+              <h2>Execution servers</h2>
+              <p class="muted">Pool revision {{ campaign.poolRevision }}</p>
+              <p>
+                Each server runs one trial at a time. SOTA and proposal measurements stay paired on
+                that server; reports are grouped by server.
+              </p>
+              <div class="target-grid">
+                @for (target of store.targets(); track target.id) {
+                  <article class="target-card">
+                    <h3>{{ target.id }} · {{ label(target.status) }}</h3>
+                    <p>
+                      Qualification: {{ label(target.qualification || 'UNQUALIFIED') }} ·
+                      Availability: {{ label(target.availability || 'UNKNOWN') }} · Host health:
+                      {{ label(target.health || 'UNKNOWN') }}
+                    </p>
+                    <p>
+                      {{ target.definition.host || 'Local' }} · Trial
+                      {{ target.assignedTrial ?? '—' }} · Workers
+                      {{ target.host?.effectiveWorkers ?? 'Pending qualification' }}
+                    </p>
+                    @if (target.remote; as remote) {
+                      <p>
+                        {{ remote.status }} · Last contact
+                        {{ remote.lastContactAt || remote.lastSynchronizedAt | date: 'mediumTime' }}
+                        @if (
+                          ['BUSY', 'QUALIFYING'].includes(target.status) &&
+                          store.targetStale(remote.lastContactAt || remote.lastSynchronizedAt)
+                        ) {
+                          <strong class="error">Status is stale</strong>
+                        }
+                      </p>
+                    }
+                    @if (target.remote?.lease; as lease) {
+                      <details>
+                        <summary>Worker reservation</summary>
+                        <p>
+                          Reservation: {{ lease.workerId }} · Owner {{ lease.controller }} ·
+                          Assignment {{ lease.assignment || lease.operation }}
+                        </p>
+                      </details>
+                    }
+                    @if (target.problem; as problem) {
+                      <p class="error">{{ problem.category }} · {{ problem.message }}</p>
+                      <p>{{ problem.recovery }}</p>
+                    }
+                    @if (
+                      campaign.config.execution.target === 'SSH' && target.status !== 'REMOVED'
+                    ) {
+                      @let recovery = store.recovery()?.targets?.[target.id];
+                      <button
+                        mat-button
+                        [disabled]="store.busy() || target.draining"
+                        (click)="store.targetAction(target.id, 'drain')"
+                      >
+                        Drain
+                      </button>
+                      <button
+                        mat-button
+                        [disabled]="store.busy() || !recovery?.resume?.allowed"
+                        [title]="recovery?.resume?.reason || recovery?.resume?.effect || ''"
+                        (click)="store.targetAction(target.id, 'resume')"
+                      >
+                        Resume server
+                      </button>
+                      <button
+                        mat-button
+                        [disabled]="store.busy() || !recovery?.requalify?.allowed"
+                        [title]="recovery?.requalify?.reason || recovery?.requalify?.effect || ''"
+                        (click)="store.targetAction(target.id, 'requalify')"
+                      >
+                        Requalify server
+                      </button>
+                      @if (recovery) {
+                        <p>{{ recovery.resume.reason || recovery.resume.effect }}</p>
+                        @if (
+                          recovery.requalify.allowed ||
+                          recovery.requalify.reason !== recovery.resume.reason
+                        ) {
+                          <p>{{ recovery.requalify.reason || recovery.requalify.effect }}</p>
+                        }
+                      }
+                      <button
+                        mat-button
+                        [disabled]="
+                          store.busy() || !!target.assignedTrial || target.status === 'QUALIFYING'
+                        "
+                        (click)="store.targetAction(target.id, 'remove')"
+                      >
+                        Remove idle server
+                      </button>
+                    }
+                  </article>
+                }
+              </div>
+              @if (
+                campaign.config.execution.target === 'SSH' &&
+                !['SUCCEEDED', 'COMPLETED_WITH_FAILURES'].includes(campaign.status)
+              ) {
+                <details>
+                  <summary>Add a server to this campaign</summary>
+                  <p>
+                    New servers qualify automatically while the campaign is active. Existing trial
+                    assignments stay on their original server.
+                  </p>
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Server definition (JSON)</mat-label
+                    ><textarea
+                      matInput
+                      rows="5"
+                      [value]="newTarget()"
+                      (input)="newTarget.set($any($event.target).value)"
+                    ></textarea>
+                  </mat-form-field>
+                  <button mat-button [disabled]="store.busy()" (click)="enrollTarget()">
+                    Register server
+                  </button>
+                </details>
+              }
+            </mat-card-content></mat-card
+          ></ng-template
+        ></mat-tab
+      >
+      <mat-tab label="Artifacts"
+        ><ng-template matTabContent
+          ><mat-card appearance="outlined"
+            ><mat-card-content
+              ><div class="section-heading">
+                <h2>Saved data and artifacts</h2>
+                <button
+                  mat-button
+                  (click)="store.refreshArtifacts()"
+                  [disabled]="store.artifactsLoading()"
+                >
+                  Refresh artifacts
+                </button>
+              </div>
+              <div class="filters">
+                <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                  ><mat-label>Search files</mat-label
+                  ><input
+                    matInput
+                    [value]="artifactSearch()"
+                    (input)="
+                      artifactSearch.set($any($event.target).value); artifactPage.set(0)
+                    " /></mat-form-field
+                ><mat-form-field appearance="outline" subscriptSizing="dynamic"
+                  ><mat-label>File type</mat-label
+                  ><select
+                    matNativeControl
+                    [ngModel]="artifactType()"
+                    (change)="artifactType.set($any($event.target).value); artifactPage.set(0)"
+                  >
+                    <option value="all">All files</option>
+                    <option value="Reports">Reports</option>
+                    <option value="Logs">Logs</option>
+                    <option value="Conversations">Conversations</option>
+                    <option value="Source">Source</option>
+                    <option value="Data">Data and configuration</option>
+                  </select></mat-form-field
+                ><mat-form-field appearance="outline" subscriptSizing="dynamic"
+                  ><mat-label>Trial</mat-label
+                  ><select
+                    matNativeControl
+                    [ngModel]="artifactTrial()"
+                    (change)="artifactTrial.set($any($event.target).value); artifactPage.set(0)"
+                  >
+                    <option value="">Whole campaign</option>
+                    @for (trial of campaign.trials; track trial.number) {
+                      <option [value]="trial.number">Trial {{ trial.number }}</option>
+                    }
+                  </select></mat-form-field
+                >
+              </div>
+              @if (store.artifactsLoading()) {
+                <p role="status">Loading files…</p>
+              }
+              @if (store.artifactsError()) {
+                <p class="error" role="alert">{{ store.artifactsError() }}</p>
+              }
+              <div class="table-scroll">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>File</th>
+                      <th>Type</th>
+                      <th>Size</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (artifact of artifactRows(); track artifact.path) {
+                      <tr class="artifact">
+                        <td>
+                          <a
+                            [href]="store.artifactUrl(artifact.path)"
+                            download
+                            [title]="artifact.path"
+                            >{{ fileName(artifact.path) }}</a
+                          >
+                          <details>
+                            <summary>Path and checksum</summary>
+                            <p>{{ artifact.path }}</p>
+                            <code>{{ artifact.sha256 || 'Checksum not requested' }}</code>
+                          </details>
+                        </td>
+                        <td>{{ fileType(artifact.path) }}</td>
+                        <td>{{ fileSize(artifact.size) }}</td>
+                        <td>
+                          @if (canPreviewFile(artifact.path)) {
+                            <button mat-button (click)="openLog(artifact.path)">
+                              Preview tail
+                            </button>
+                          }
+                        </td>
+                      </tr>
+                    } @empty {
+                      <tr>
+                        <td colspan="4">
+                          {{
+                            store.artifactsLoading()
+                              ? 'Loading files…'
+                              : 'No files match these filters.'
+                          }}
+                        </td>
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
+              <mat-paginator
+                [length]="filteredArtifacts().length"
+                [pageSize]="25"
+                [pageIndex]="effectiveArtifactPage()"
+                (page)="artifactPage.set($event.pageIndex)"
+                aria-label="Artifact pages"
+              />
+              <details>
+                <summary>Frozen campaign settings and versions</summary>
+                <pre>{{ campaign.config | json }}</pre>
+                <pre>{{ campaign.versions | json }}</pre>
+              </details>
+              <details>
+                <summary>Complete cleanup</summary>
+                <p>
+                  Review owned directories, worker resources and native transcripts before deleting
+                  this campaign.
+                </p>
+                <button mat-button [disabled]="store.busy()" (click)="store.reviewCleanup()">
+                  Plan cleanup
+                </button>
+                @if (store.cleanupPlan(); as plan) {
+                  <p>
+                    {{ plan.delete.length }} owned paths · {{ plan.remote.length }} remote
+                    operations · {{ plan.blockers.length }} blockers
+                  </p>
+                  <details>
+                    <summary>Review every deletion and retained resource</summary>
+                    <pre>{{ plan | json }}</pre>
+                  </details>
+                  <button
+                    mat-button
+                    [disabled]="store.busy() || plan.blockers.length > 0"
+                    (click)="store.applyCleanup()"
+                  >
+                    Apply reviewed cleanup
+                  </button>
+                }
+                @if (store.cleanupReceipt(); as receipt) {
+                  <pre>{{ receipt | json }}</pre>
+                }
+              </details>
+            </mat-card-content></mat-card
+          ></ng-template
+        ></mat-tab
+      >
+    </mat-tab-group>
+    @if (settingsOpen()) {
+      <mat-card appearance="outlined"
+        ><mat-card-content>
+          @if (store.active() === campaign.id) {
+            <details>
+              <summary>Review a campaign amendment</summary>
+              <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                ><mat-label>Total trials</mat-label
+                ><input
+                  matInput
+                  type="number"
+                  [min]="campaign.trials.length"
+                  max="10000"
+                  [value]="amendedTrials()"
+                  (input)="amendedTrials.set(+$any($event.target).value)"
+              /></mat-form-field>
+              <button
+                mat-button
+                [disabled]="store.busy()"
+                (click)="store.amendTrials(amendedTrials())"
+              >
+                Propose trial count
+              </button>
+              <button mat-button [disabled]="store.busy()" (click)="store.reviewProposal()">
+                Review enrolled servers
+              </button>
+            </details>
           }
-        }
-      </mat-card-content></mat-card>
+          @if (campaign.codexUsage; as usage) {
+            <p class="codex-usage">
+              Codex token usage · {{ usage.status }} · Input:
+              {{
+                usage.tokens.inputTokens === null ? 'Unknown' : (usage.tokens.inputTokens | number)
+              }}
+              · Output:
+              {{
+                usage.tokens.outputTokens === null
+                  ? 'Unknown'
+                  : (usage.tokens.outputTokens | number)
+              }}
+              · Total:
+              {{
+                usage.tokens.totalTokens === null ? 'Unknown' : (usage.tokens.totalTokens | number)
+              }}
+            </p>
+            <p>
+              {{ usage.completeAttempts }}/{{ usage.attempts }} attempts have complete usage;
+              {{ usage.partialAttempts }} partial, {{ usage.unavailableAttempts }} unavailable.
+              Includes repairs and failed or interrupted attempts.
+              @if (usage.status === 'PARTIAL') {
+                Known totals may be incomplete.
+              }
+            </p>
+          } @else {
+            <p class="codex-usage">Codex token usage · UNAVAILABLE</p>
+          }
+        </mat-card-content></mat-card
+      >
     }
-    @if (store.logPath()) {
-      <mat-card class="log-preview"><mat-card-content>
-        <h2>{{ store.logPath() }}</h2>
+  }
+  @if (store.logPath()) {
+    <mat-card class="log-preview"
+      ><mat-card-content>
+        <h2 tabindex="-1">{{ store.logPath() }}</h2>
         <div class="actions">
-          <label>Last lines<select [value]="store.logLines()" (change)="store.setLogLines(+$any($event.target).value)"><option value="100">100</option><option value="500">500</option><option value="1000">1,000</option></select></label>
-          <label class="follow-log"><input type="checkbox" [checked]="store.logFollow()" (change)="store.logFollow.set($any($event.target).checked)" />Follow latest</label>
-          <button mat-button (click)="store.refreshLog()" [disabled]="store.logLoading()">Refresh preview</button>
+          <mat-form-field appearance="outline" subscriptSizing="dynamic"
+            ><mat-label>Last lines</mat-label
+            ><select
+              matNativeControl
+              [ngModel]="store.logLines()"
+              (change)="store.setLogLines(+$any($event.target).value)"
+            >
+              <option value="100">100</option>
+              <option value="500">500</option>
+              <option value="1000">1,000</option>
+            </select></mat-form-field
+          >
+          <label class="follow-log"
+            ><input
+              type="checkbox"
+              [checked]="store.logFollow()"
+              (change)="store.logFollow.set($any($event.target).checked)"
+            />Follow latest</label
+          >
+          <button mat-button (click)="store.refreshLog()" [disabled]="store.logLoading()">
+            Refresh preview
+          </button>
           <a mat-button [href]="store.artifactUrl(store.logPath())" download>Download full file</a>
           <button mat-button (click)="store.selectLog('')">Close preview</button>
         </div>
         <p>Preview of up to the last {{ store.logLines() | number }} lines, limited to 256 KiB.</p>
-        @if (store.logLoading()) { <p role="status">Loading latest lines…</p> }
-        @if (store.logError()) { <p role="alert" class="error">{{ store.logError() }}</p> }
+        @if (store.logLoading()) {
+          <p role="status">Loading latest lines…</p>
+        }
+        @if (store.logError()) {
+          <p role="alert" class="error">{{ store.logError() }}</p>
+        }
         @if (store.logPreview(); as preview) {
-          <p>{{ preview.lineCount | number }} lines shown · {{ preview.sizeBytes | number }} bytes in the full file.@if (preview.truncated) { Earlier content is omitted. }@if (preview.byteLimited) { Preview shortened by the 256 KiB byte limit. }</p>
+          <p>
+            {{ preview.lineCount | number }} lines shown · {{ preview.sizeBytes | number }} bytes in
+            the full file.
+            @if (preview.truncated) {
+              Earlier content is omitted.
+            }
+            @if (preview.byteLimited) {
+              Preview shortened by the 256 KiB byte limit.
+            }
+          </p>
           <pre class="logs">{{ preview.text }}</pre>
         }
-      </mat-card-content></mat-card>
-    }
-    <mat-card><mat-card-content><div class="actions"><h2>Saved data and artifacts</h2><button mat-button (click)="store.refreshArtifacts()">Refresh artifacts</button></div>
-      @for (artifact of store.artifacts(); track artifact.path) { <div class="artifact"><a [href]="store.artifactUrl(artifact.path)" download [title]="'Download full file: ' + artifact.path">{{ artifact.path }}</a><span>{{ artifact.size }} bytes</span>@if (canPreviewFile(artifact.path)) { <button mat-button (click)="store.selectLog(artifact.path)">Preview tail</button> }</div> }
-      <details><summary>Frozen campaign settings and versions</summary><pre>{{ campaign.config | json }}</pre><pre>{{ campaign.versions | json }}</pre></details>
-    </mat-card-content></mat-card>
+      </mat-card-content></mat-card
+    >
   }
 </main>
+<ng-template #inspector>
+  @if (store.trial(); as trial) {
+    <mat-card appearance="outlined" class="trial-inspector"
+      ><mat-card-content
+        ><div class="section-heading">
+          <div>
+            <span class="eyebrow">Trial inspector</span>
+            <h2 tabindex="-1">Trial {{ trial.number }} · {{ label(trial.status) }}</h2>
+          </div>
+          <button mat-button (click)="closeTrial()">Close trial</button>
+        </div>
+        @if (store.detailLoading()) {
+          <p role="status">Loading saved evidence…</p>
+        }
+        @if (store.detailError()) {
+          <p class="error" role="alert">
+            Saved evidence may be stale: {{ store.detailError() }}
+            <button mat-button (click)="store.refreshDetail(true)">Retry details</button>
+          </p>
+        }
+        <mat-tab-group
+          [selectedIndex]="detailTab()"
+          (selectedIndexChange)="detailTab.set($event); saveLocation()"
+          animationDuration="0ms"
+        >
+          <mat-tab label="Summary"
+            ><ng-template matTabContent>
+              <ol class="stage-timeline" aria-label="Trial stages">
+                @for (stage of stages; track stage) {
+                  <li [class.current]="trialStage(trial) === stage">
+                    <span>{{ label(stage) }}</span
+                    ><small>{{ stageState(trial, stage) }}</small>
+                  </li>
+                }
+              </ol>
+              @if (['BLOCKED', 'INTERRUPTED'].includes(trial.status)) {
+                <fieldset class="trial-recovery">
+                  <legend>Recover trial {{ trial.number }}</legend>
+                  @if (store.trialRecovery(); as recovery) {
+                    <p>{{ recovery.resume.reason || recovery.resume.effect }}</p>
+                    <button
+                      mat-button
+                      [disabled]="store.busy() || !recovery.resume.allowed"
+                      (click)="store.resumeTrial()"
+                    >
+                      Resume existing work
+                    </button>
+                    <p>{{ recovery.fail.reason || recovery.fail.effect }}</p>
+                    <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                      ><mat-label>Reason for marking this trial failed</mat-label
+                      ><textarea
+                        matInput
+                        rows="2"
+                        [value]="failureReason()"
+                        (input)="failureReason.set($any($event.target).value)"
+                      ></textarea>
+                    </mat-form-field>
+                    <button
+                      mat-button
+                      [disabled]="store.busy() || !recovery.fail.allowed || !failureReason().trim()"
+                      (click)="store.failTrial(failureReason())"
+                    >
+                      Mark trial failed and continue
+                    </button>
+                  } @else {
+                    <p>
+                      Recovery availability is loading or unavailable. {{ store.recoveryError() }}
+                    </p>
+                  }
+                </fieldset>
+              }
+              @if (trial.capacityWait; as wait) {
+                <p>
+                  Model capacity wait: retry {{ wait.retries }} at
+                  {{ wait.nextRetryAt | date: 'medium' }}; deadline
+                  {{ wait.deadline | date: 'medium' }}. {{ wait.diagnostic }}
+                </p>
+              }
+              @if (trial.quotaRetryAt) {
+                <p>
+                  Waiting for Codex quota. Automatic retry after
+                  {{ trial.quotaRetryAt | date: 'medium' }}.
+                </p>
+              }
+
+              @if (store.progressError()) {
+                <p class="error" role="alert">
+                  {{ store.progressError() }}
+                  <button mat-button (click)="store.retryNow()">Retry progress</button>
+                </p>
+              }
+              @if (store.progress(); as progress) {
+                <p>
+                  Current stage: {{ label(progress.substage || progress.status) }} ·
+                  {{ durationLabel(progress.elapsedMillis ?? 0) }}
+                </p>
+              }
+              @if (store.tuning(); as tuning) {
+                <p>
+                  {{ label(tuning.phase) }} · {{ tuning.budget.used }}/{{
+                    tuning.budget.maximum
+                  }}
+                  evaluations · {{ tuning.evaluations.succeeded }} succeeded ·
+                  {{ tuning.evaluations.rejected }} rejected ·
+                  {{ tuning.evaluations.failed }} failed
+                </p>
+                <mat-progress-bar
+                  mode="determinate"
+                  [value]="percent(tuning.budget.used, tuning.budget.maximum)"
+                  aria-label="Trial evaluation budget"
+                />
+              }
+              @if (trial.problem; as problem) {
+                <p class="error">{{ problem.message }}</p>
+                <p>{{ problem.recovery }}</p>
+              }
+            </ng-template></mat-tab
+          >
+          <mat-tab label="Results"
+            ><ng-template matTabContent>
+              @if (selectedResult(); as run) {
+                <h3>{{ store.results()?.objective }} · {{ label(store.results()?.mode) }}</h3>
+                <p>
+                  {{ run.wins }} wins · {{ run.ties }} ties · {{ run.losses }} losses ·
+                  {{ run.repetitions }} paired repetitions per instance
+                </p>
+                <mat-form-field appearance="outline"
+                  ><mat-label>Search comparison instances</mat-label
+                  ><input
+                    matInput
+                    [value]="resultInstanceSearch()"
+                    (input)="
+                      resultInstanceSearch.set($any($event.target).value); resultInstancePage.set(0)
+                    "
+                /></mat-form-field>
+                <div class="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Instance</th>
+                        <th>SOTA mean ± SD</th>
+                        <th>Proposal mean ± SD</th>
+                        <th>Improvement</th>
+                        <th>Outcome</th>
+                        <th></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (row of resultInstanceRows(); track row.instanceId) {
+                        <tr>
+                          <td [title]="row.instance">{{ fileName(row.instance) }}</td>
+                          <td>
+                            {{ row.sota.objective.mean | number: '1.0-4' }} ±
+                            {{ row.sota.objective.standardDeviation | number: '1.0-4' }}
+                          </td>
+                          <td>
+                            {{ row.proposal.objective.mean | number: '1.0-4' }} ±
+                            {{ row.proposal.objective.standardDeviation | number: '1.0-4' }}
+                          </td>
+                          <td>
+                            {{
+                              row.improvementPercent === null
+                                ? 'Undefined'
+                                : (row.improvementPercent | number: '1.0-2') + '%'
+                            }}
+                          </td>
+                          <td>{{ label(row.outcome) }}</td>
+                          <td>
+                            <button mat-button (click)="store.selectCurveInstance(row.instanceId)">
+                              View curves
+                            </button>
+                          </td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                <mat-paginator
+                  [length]="filteredResultInstances().length"
+                  [pageSize]="25"
+                  [pageIndex]="effectiveResultPage()"
+                  (page)="resultInstancePage.set($event.pageIndex)"
+                  aria-label="Comparison instance pages"
+                />
+              } @else {
+                <p>
+                  Campaign-level comparison statistics are available from the Results tab after
+                  selecting an objective and direction.
+                </p>
+              }
+              @if (store.comparisonError()) {
+                <p class="error" role="alert">
+                  Comparison unavailable; showing last known data. {{ store.comparisonError() }}
+                  <button mat-button (click)="store.retryNow()">Retry comparison</button>
+                </p>
+              }
+              @if (store.comparisonUpdated(); as updated) {
+                <p class="muted">Comparison refreshed {{ updated | date: 'mediumTime' }}</p>
+              }
+              @if (instances().length) {
+                <div class="fields comparison-controls">
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Convergence instance</mat-label
+                    ><select
+                      matNativeControl
+                      [ngModel]="store.curveInstance()"
+                      [title]="activeInstance()?.instance ?? ''"
+                      (change)="store.selectCurveInstance($any($event.target).value)"
+                    >
+                      @for (instance of instances(); track instance.instanceId) {
+                        <option [value]="instance.instanceId" [title]="instance.instance">
+                          {{ instanceLabels().get(instance.instance) }}
+                        </option>
+                      }
+                    </select></mat-form-field
+                  >
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Objective</mat-label
+                    ><select
+                      matNativeControl
+                      [ngModel]="activeObjective()"
+                      (change)="selectedObjective.set($any($event.target).value)"
+                    >
+                      @for (objective of objectives(); track objective) {
+                        <option [value]="objective">{{ objective }}</option>
+                      }
+                    </select></mat-form-field
+                  >
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Y-axis scale</mat-label
+                    ><select
+                      matNativeControl
+                      [ngModel]="effectiveYAxisScale()"
+                      (change)="yAxisScale.set($any($event.target).value)"
+                    >
+                      <option value="linear">Linear</option>
+                      <option value="logarithmic" [disabled]="!canLogYAxis()">Logarithmic</option>
+                    </select></mat-form-field
+                  >
+                  <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                    ><mat-label>Chart height</mat-label
+                    ><select
+                      matNativeControl
+                      [ngModel]="chartHeight()"
+                      (change)="chartHeight.set(+$any($event.target).value)"
+                    >
+                      <option value="520">Standard</option>
+                      <option value="760">Tall</option>
+                      <option value="1000">Extra tall</option>
+                    </select></mat-form-field
+                  >
+                </div>
+                <p>
+                  All available repetitions for this instance, sampled to at most 256 points per
+                  curve. Full data is available in the comparison journal.
+                </p>
+                @for (count of curveCounts(); track count.algorithm) {
+                  <p>
+                    {{ count.algorithm }}: {{ count.succeeded }}/{{
+                      store.campaign()!.config.comparison.repetitions
+                    }}
+                    repetitions completed
+                    @if (count.failed) {
+                      · {{ count.failed }} failed
+                    }
+                  </p>
+                }
+                @if (store.curvesLoading()) {
+                  <p role="status">Loading saved curves…</p>
+                }
+                @if (store.curvesError()) {
+                  <p role="alert" class="error">
+                    {{ store.curvesError() }}
+                    <button mat-button (click)="store.refreshCurves()">Retry loading curves</button>
+                  </p>
+                }
+                @if (!store.curvesLoading() && !store.curvesError() && !selectedCurves().length) {
+                  <p>No successful comparison curves available for this instance.</p>
+                }
+                @if (selectedCurves().length) {
+                  <p class="chart-help">
+                    Drag a rectangle to zoom, Shift-drag to pan, or resize from the bottom-right
+                    corner. Click an algorithm in the legend to show or hide all its repetitions.
+                  </p>
+                  @if (!canLogYAxis()) {
+                    <p class="chart-help">
+                      Logarithmic scale requires positive objective values; this selection uses a
+                      linear scale.
+                    </p>
+                  }
+                  <app-dashboard-chart
+                    [model]="curveChart()"
+                    [resizable]="true"
+                    [style.height.px]="chartHeight()"
+                    aria-label="Comparison convergence chart"
+                  />
+                }
+              }
+
+              <details>
+                <summary>Raw comparison data</summary>
+                <pre>{{ store.comparison() | json }}</pre>
+              </details>
+            </ng-template></mat-tab
+          >
+          <mat-tab label="Algorithm"
+            ><ng-template matTabContent>
+              @if (trial.winner) {
+                <div class="section-heading">
+                  <h3>First-ranked proposal: components and parameters</h3>
+                  <button mat-stroked-button (click)="downloadAlgorithm()">
+                    Download algorithm
+                  </button>
+                </div>
+                <p>Generated algorithm components end in New.</p>
+                <div class="table-scroll">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Component / parameter</th>
+                        <th>Value</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      @for (entry of algorithmEntries(); track entry.path) {
+                        <tr>
+                          <td>{{ entry.path }}</td>
+                          <td>{{ entry.value }}</td>
+                        </tr>
+                      }
+                    </tbody>
+                  </table>
+                </div>
+                <details>
+                  <summary>Algorithm JSON</summary>
+                  <pre>{{ trial.winner | json }}</pre>
+                </details>
+              } @else {
+                <p class="empty-state">The selected algorithm is available after winner export.</p>
+              }
+            </ng-template></mat-tab
+          >
+          <mat-tab label="Activity"
+            ><ng-template matTabContent>
+              @if (store.conversationAttempt(); as attempt) {
+                <details open class="conversation">
+                  <summary>
+                    Conversation · {{ attempt.stage }} attempt {{ attempt.number }} ·
+                    {{ attempt.status }}
+                  </summary>
+                  <div class="activity-feed" aria-live="polite">
+                    @for (event of store.activity(); track $index) {
+                      <article>
+                        <small>{{ event.timestamp | date: 'mediumTime' }} · {{ event.type }}</small>
+                        <pre>{{ event.text }}</pre>
+                      </article>
+                    } @empty {
+                      <p>
+                        Waiting for conversation events. Raw stdout and stderr remain available
+                        below.
+                      </p>
+                    }
+                  </div>
+                  <button mat-button (click)="openLog(attempt.directory + '/stdout.log')">
+                    Raw stdout</button
+                  ><button mat-button (click)="openLog(attempt.directory + '/stderr.log')">
+                    Raw stderr
+                  </button>
+                </details>
+              }
+              @for (attempt of trial.attempts; track attempt.number) {
+                <div class="attempt">
+                  <span
+                    >{{ attempt.stage }} · {{ attempt.status }} ·
+                    {{ attempt.startedAt | date: 'short' }}</span
+                  >
+                  <button
+                    mat-button
+                    (click)="
+                      openLog(
+                        attempt.directory +
+                          (['PREPARATION', 'LOCAL_PREPARATION'].includes(attempt.stage)
+                            ? '/build'
+                            : '') +
+                          '/stdout.log'
+                      )
+                    "
+                  >
+                    View log
+                  </button>
+                  @if (['GENERATION', 'REPAIR'].includes(attempt.stage)) {
+                    <button mat-button (click)="store.watchGeneration(attempt.number)">
+                      View conversation
+                    </button>
+                  }
+                  @if (attempt.codexEvidence; as evidence) {
+                    <span
+                      >Conversation: {{ evidence.status }} · Usage:
+                      {{ evidence.usage.status }}</span
+                    >
+                    @for (conversation of evidence.conversations; track conversation.threadId) {
+                      <a [href]="store.artifactUrl(attempt.directory + '/' + conversation.path)"
+                        >Download conversation {{ conversation.threadId }}</a
+                      >
+                    }
+                  }
+                  @if (attempt.failure) {
+                    <details>
+                      <summary>Failure details</summary>
+                      <pre>{{ attempt.failure }}</pre>
+                    </details>
+                  }
+                </div>
+              }
+            </ng-template></mat-tab
+          >
+          <mat-tab label="Diagnostics"
+            ><ng-template matTabContent>
+              <dl class="facts">
+                <dt>Pilot seed</dt>
+                <dd>{{ trial.pilotSeed }}</dd>
+                <dt>Tuning seed</dt>
+                <dd>{{ trial.tuningSeed }}</dd>
+                <dt>Comparison seed</dt>
+                <dd>{{ trial.comparisonSeed }}</dd>
+                <dt>Component repairs</dt>
+                <dd>{{ trial.repairTurns }}</dd>
+                <dt>Infrastructure retries</dt>
+                <dd>{{ trial.infrastructureRetries ?? 0 }}</dd>
+                <dt>Server</dt>
+                <dd>{{ trial.targetId || 'Unassigned' }}</dd>
+              </dl>
+              @if (store.progress()?.modelSelection; as selection) {
+                <p>
+                  Model: {{ selection.resolvedModel || 'Unknown' }} · Provider:
+                  {{ selection.resolvedProvider || 'Unknown' }} · Requested model:
+                  {{ selection.requestedModel || 'CLI default' }}
+                </p>
+              }
+              @if (store.generation(); as generation) {
+                <p>
+                  Generation: {{ generation.state }} · Session:
+                  {{ generation.threadId || 'Waiting for session event' }} · Last activity:
+                  {{
+                    generation.lastActivityAt
+                      ? (generation.lastActivityAt | date: 'mediumTime')
+                      : 'No events received'
+                  }}
+                </p>
+                <p>
+                  Turns started: {{ generation.turns }} · Commands:
+                  {{ generation.commandsCompleted }} completed /
+                  {{ generation.commandsStarted }} started · Edit events: {{ generation.edits }} ·
+                  Assistant messages: {{ generation.messages }}
+                </p>
+                @if (generation.usage) {
+                  <p>Reported usage: {{ generation.usage | json }}</p>
+                }
+                <p>
+                  These are observed CLI events. Component repair turns are counted separately;
+                  model iteration totals are unavailable.
+                </p>
+              }
+
+              @if (trial.codexUsage; as usage) {
+                <details>
+                  <summary>Trial token usage · {{ label(usage.status) }}</summary>
+                  <pre>{{ usage | json }}</pre>
+                </details>
+              }
+              @if (trial.failure) {
+                <details open>
+                  <summary>Failure details</summary>
+                  <pre>{{ trial.failure }}</pre>
+                </details>
+              }
+              <details>
+                <summary>Campaign provenance and failure evidence</summary>
+                <dl class="facts">
+                  <dt>Baseline commit</dt>
+                  <dd>{{ store.detail()?.baselineCommit || 'Unavailable' }}</dd>
+                  <dt>Campaign ID</dt>
+                  <dd>{{ store.selectedId() }}</dd>
+                </dl>
+                <pre>{{ store.detail()?.versions | json }}</pre>
+                @if (store.detail()?.failure) {
+                  <pre class="error">{{ store.detail()?.failure }}</pre>
+                }
+                <details>
+                  <summary>Frozen generation prompt</summary>
+                  <pre>{{ store.detail()?.prompt || 'Unavailable' }}</pre>
+                </details>
+              </details>
+              <details>
+                <summary>Complete trial record</summary>
+                <pre>{{ trial | json }}</pre>
+              </details>
+              <button mat-stroked-button (click)="showTrialArtifacts(trial.number)">
+                Browse trial artifacts
+              </button>
+            </ng-template></mat-tab
+          ></mat-tab-group
+        >
+      </mat-card-content></mat-card
+    >
+  }
+</ng-template>

@@ -5,6 +5,7 @@ backend's execution mode:
 
 - Standard experiments use the backend-authoritative REST/STOMP dashboard.
 - Coordinator `--irace` and `--autoconfig` runs an specific panel.
+- AutoLLM campaigns use a campaign summary, task-focused tabs, and a trial inspector.
 - Worker processes show a lightweight role notice because the coordinator owns the run-wide monitoring state.
 - Instance-property/selection utilities show a utility notice, not an experiment monitor.
 
@@ -92,3 +93,15 @@ canonical automatic component trees, so their monitor omits this tab.
 
 The tuning monitor is read-only. It intentionally provides no start, stop, or experiment-control actions and does
 not collect worker telemetry. See `docs/features/autoconfig-rest-api.md` for the exact polling contract.
+
+## AutoLLM campaign dashboard
+
+AutoLLM uses the same Material toolbar, cards, tabs and persistent panel preferences as the other monitors. Overview shows active trials, issues and comparison coverage. Trials supports search, outcome filters, sorting and pagination. Opening a trial preserves those filters and exposes Summary, Results, Algorithm, Activity and Diagnostics; seeds and raw evidence live in Diagnostics. Campaign/trial/tab selections can be shared through the URL fragment.
+
+Results requests the campaign comparison endpoint with an explicitly chosen objective and minimize/maximize direction. It shows host-matched SOTA comparisons, per-instance wins/ties/losses, coverage, exclusions and mean improvement. It does not rank trials across hosts. Zero references retain undefined percentages, and descriptive wins do not imply statistical significance. The inspector combines paginated per-instance statistics with existing sampled convergence curves.
+
+Infrastructure retains qualification, availability, health, worker reservations and backend-controlled recovery actions. Artifacts load on entry and support filename/type/trial filters, pagination, bounded previews and complete downloads. Reviewed campaign cleanup remains in Artifacts and keeps its backend digest and blocker checks.
+
+New campaign and Settings & dataset use Project, Dataset, Budget, Execution and Review steps. Common durations are edited in seconds and converted to the API's milliseconds; advanced JSON retains every setting. Draft review includes the generation-model requirement, server readiness, membership and exclusions before explicit approval. Training membership remains included in testing and is identified as such.
+
+Status polling stays lightweight. Opening an inspector separately retrieves the full campaign evidence, cached until the status/attempt signature changes; compact polls do not erase winners, failures or archived conversation links. Mutations return typed receipts followed by an authoritative status read. Selection changes invalidate in-flight evidence, results and artifact reads, and each detail section exposes read errors without discarding its last known data.
