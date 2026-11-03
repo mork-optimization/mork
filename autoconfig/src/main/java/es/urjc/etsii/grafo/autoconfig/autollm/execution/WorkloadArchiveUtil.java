@@ -146,9 +146,26 @@ public final class WorkloadArchiveUtil {
         return manifest;
     }
     public static void deleteTree(Path path) throws IOException {
-        if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return;
-        try (var paths = Files.walk(path)) {
-            for (Path item : paths.sorted(Comparator.reverseOrder()).toList()) Files.delete(item);
+        for (int attempt = 0; attempt < 3; attempt++) {
+            if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return;
+            try {
+                Files.walkFileTree(path, new SimpleFileVisitor<>() {
+                    @Override public FileVisitResult visitFile(Path file, java.nio.file.attribute.BasicFileAttributes attributes) throws IOException {
+                        Files.deleteIfExists(file); return FileVisitResult.CONTINUE;
+                    }
+                    @Override public FileVisitResult visitFileFailed(Path file, IOException error) throws IOException {
+                        if (error instanceof NoSuchFileException) return FileVisitResult.CONTINUE;
+                        throw error;
+                    }
+                    @Override public FileVisitResult postVisitDirectory(Path directory, IOException error) throws IOException {
+                        if (error != null) throw error;
+                        Files.deleteIfExists(directory); return FileVisitResult.CONTINUE;
+                    }
+                });
+                return;
+            } catch (DirectoryNotEmptyException error) {
+                if (attempt == 2) throw error;
+            }
         }
     }
     private static int mode(Path path) throws IOException {

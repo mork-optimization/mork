@@ -344,7 +344,8 @@ class SshWorkloadTest {
                         state -> { if ("WAITING_FOR_WORKSPACE".equals(state.get("status"))) waiting.countDown(); });
                 var second = threads.submit(() -> secondExecutor.run(secondWork, cancelSecond::get));
                 if (separateWorkspace) {
-                    assertEquals(0, second.get(15, TimeUnit.SECONDS).exitCode()); assertFalse(first.isDone());
+                    // Allow remote setup and evidence collection in addition to the fixture's runtime.
+                    assertEquals(0, second.get(60, TimeUnit.SECONDS).exitCode()); assertFalse(first.isDone());
                 } else {
                     assertTrue(waiting.await(15, TimeUnit.SECONDS)); assertFalse(second.isDone());
                     assertFalse(Files.exists(secondWork.output().resolve("literal.txt")));

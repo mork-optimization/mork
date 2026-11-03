@@ -195,7 +195,7 @@ public final class AutoLlmFileUtil {
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
     public static boolean excluded(String name) {
-        return name.startsWith(".git/") || name.contains("/.git/") || name.contains("/target/") || name.startsWith("target/") || name.contains("node_modules/");
+        return name.equals(".DS_Store") || name.endsWith("/.DS_Store") || name.startsWith(".git/") || name.contains("/.git/") || name.contains("/target/") || name.startsWith("target/") || name.contains("node_modules/");
     }
     public static Path inside(Path root, String relative) {
         Path result = root.resolve(relative).normalize();

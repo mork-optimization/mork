@@ -10,7 +10,7 @@ import java.util.*;
 /** Portable commit-plus-patch snapshots, including recursive submodules and raw worktree bytes. */
 public final class GitPatchSnapshot {
     private GitPatchSnapshot() {}
-    private static final Set<String> CACHES = Set.of(".git", "target", "node_modules", ".codex", ".mork-metadata");
+    private static final Set<String> CACHES = Set.of(".git", "target", "node_modules", ".codex", ".mork-metadata", ".DS_Store");
     public record FileIdentity(String mode, String object, String sha256, String link, boolean raw) {}
     public record Submodule(String snapshot, String commit, String manifestSha256) {}
     public record Manifest(int version, String commit, String tree, String bundleSha256, String patchSha256,
@@ -143,6 +143,8 @@ public final class GitPatchSnapshot {
     }
     private static void verifyFiles(Path source, Manifest manifest) throws IOException {
         for (var entry : manifest.files().entrySet()) {
+            // Older snapshots can contain Finder metadata, which is not a build input.
+            if (Path.of(entry.getKey()).getFileName().toString().equals(".DS_Store")) continue;
             Path file = WorkloadPathUtil.inside(source, entry.getKey()); var identity = entry.getValue();
             if (identity.link() != null) {
                 if (!Files.isSymbolicLink(file) || !Files.readSymbolicLink(file).toString().equals(identity.link())) throw new IOException("Source link mismatch: " + entry.getKey());

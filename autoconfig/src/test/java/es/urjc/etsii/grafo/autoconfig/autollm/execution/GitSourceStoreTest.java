@@ -98,6 +98,42 @@ class GitSourceStoreTest {
         assertEquals("ignored build input", Files.readString(root.resolve("restored/required.input")));
         assertFalse(Files.exists(root.resolve("restored/target")));
     }
+    @Test void finderMetadataCanChangeDuringCaptureWithoutChangingBuildInputs() throws Exception {
+        Path repository = root.resolve("finder-source"); String commit = initialize(repository);
+        Files.createDirectories(repository.resolve("src"));
+        Files.writeString(repository.resolve("src/input.txt"), "required build input");
+        Files.writeString(repository.resolve(".DS_Store"), "folder metadata before capture");
+        Files.writeString(repository.resolve("src/.DS_Store"), "nested folder metadata");
+        Path logs = root.resolve("logs"), snapshot = root.resolve("snapshot");
+        Path bundle = GitSourceStore.bundle(root.resolve("store"), repository, commit, logs, this::command);
+        GitSourceStore.Command changingMetadata = (args, cwd, output) -> {
+            command(args, cwd, output);
+            if (args.contains("write-tree")) {
+                assertDoesNotThrow(() -> Files.writeString(repository.resolve(".DS_Store"), "Finder updated folder metadata"));
+                assertDoesNotThrow(() -> Files.writeString(repository.resolve("src/.DS_Store"), "Finder updated nested metadata"));
+            }
+        };
+        var manifest = GitPatchSnapshot.capture(bundle, commit, repository, snapshot, changingMetadata);
+        assertFalse(manifest.files().containsKey(".DS_Store"));
+        assertFalse(manifest.files().containsKey("src/.DS_Store"));
+        var hashes = AutoLlmFileUtil.sourceHashes(repository);
+        assertTrue(hashes.containsKey("src/input.txt"));
+        assertFalse(hashes.containsKey("src/.DS_Store"));
+        Path restored = root.resolve("restored");
+        GitPatchSnapshot.restore(bundle, snapshot, restored, this::command);
+        assertEquals("required build input", Files.readString(restored.resolve("src/input.txt")));
+    }
+    @Test void changingProgramSourceDuringCaptureStillFailsVerification() throws Exception {
+        Path repository = root.resolve("changing-source"); String commit = initialize(repository);
+        Path logs = root.resolve("logs");
+        Path bundle = GitSourceStore.bundle(root.resolve("store"), repository, commit, logs, this::command);
+        GitSourceStore.Command changingSource = (args, cwd, output) -> {
+            command(args, cwd, output);
+            if (args.contains("write-tree")) assertDoesNotThrow(() -> Files.writeString(repository.resolve("file.txt"), "changed program input"));
+        };
+        var failure = assertThrows(java.io.IOException.class, () -> GitPatchSnapshot.capture(bundle, commit, repository, root.resolve("snapshot"), changingSource));
+        assertTrue(failure.getMessage().contains("Source bytes changed: file.txt"), failure.getMessage());
+    }
     @Test void restoresDirtySubmodulesAfterOriginalRepositoriesDisappear() throws Exception {
         Path child = root.resolve("child"), repository = root.resolve("parent"), logs = root.resolve("logs");
         Path grandchild = root.resolve("grandchild"); initialize(grandchild);
