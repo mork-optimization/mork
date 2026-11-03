@@ -18,7 +18,7 @@ public abstract class SolutionDistance<S extends Solution<S, I>, I extends Insta
      * Calculate distances between given solutions
      * @param sa first solution
      * @param sb second solution
-     * @return distance matrix with distances between any two solutions
+     * @return distance between the two given solutions
      */
     public abstract double distances(S sa, S sb);
 

@@ -16,7 +16,7 @@ public final class RefSet<S extends Solution<S, I>, I extends Instance> {
 
     public RefSet(S[] solutions, int bestSize, int diversitySize) {
         if(solutions.length != bestSize + diversitySize){
-            throw new IllegalArgumentException("Size mismatch: expeted %s == %s + %s".formatted(solutions.length, bestSize, diversitySize));
+            throw new IllegalArgumentException("Size mismatch: expected %s == %s + %s".formatted(solutions.length, bestSize, diversitySize));
         }
 
         this.solutions = solutions;
