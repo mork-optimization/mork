@@ -1,0 +1,2 @@
+# Normalize third-party license text copied verbatim by the frontend build.
+template/src/main/resources/static/3rdpartylicenses.txt text eol=lf
