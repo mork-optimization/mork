@@ -1473,14 +1473,8 @@
                           }
                         </p>
                       }
-                      @if (target.remote?.lease; as lease) {
-                        <details>
-                          <summary>Worker reservation</summary>
-                          <p>
-                            Reservation: {{ lease.workerId }} · Owner {{ lease.controller }} ·
-                            Assignment {{ lease.assignment || lease.operation }}
-                          </p>
-                        </details>
+                      @if (target.remote?.workspaceId; as workspaceId) {
+                        <p>Execution workspace: {{ workspaceId }} · {{ target.remote.status }}</p>
                       }
                       @if (target.problem; as problem) {
                         <p class="error">{{ problem.category }} · {{ problem.message }}</p>

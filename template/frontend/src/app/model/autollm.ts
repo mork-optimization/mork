@@ -21,7 +21,7 @@ export type AutoLlmTargetStatus =
 export type AutoLlmTrialStatus =
   | 'PENDING'
   | 'WAITING_FOR_TARGET'
-  | 'WAITING_FOR_WORKER'
+  | 'WAITING_FOR_WORKSPACE'
   | 'LOCAL_PREPARATION'
   | 'STARTING'
   | 'WAITING_FOR_GENERATION'
@@ -83,7 +83,7 @@ export interface AutoLlmTarget {
   revision: number;
   draining: boolean;
   qualification?: 'QUALIFIED' | 'QUALIFYING' | 'UNQUALIFIED';
-  availability?: 'RESERVED' | 'UNKNOWN';
+  availability?: 'BUSY' | 'UNKNOWN';
   health?: 'HEALTHY' | 'UNHEALTHY' | 'UNKNOWN';
   assignedTrial: number | null;
   baselineReady: boolean;
@@ -247,9 +247,8 @@ export interface AutoLlmCampaign {
     updatedAt: string;
     lastSynchronizedAt?: string | null;
     lastContactAt?: string | null;
-    workerId?: string;
+    workspaceId?: string;
     assignmentId?: string | null;
-    lease?: WorkerLease;
     failure: string | null;
   } | null;
 }
@@ -388,14 +387,6 @@ export interface AutoLlmComparison {
   [key: string]: unknown;
 }
 
-export interface WorkerLease {
-  workerId: string;
-  controller: string;
-  operation: string;
-  assignment: string | null;
-  token: string;
-  generation: number;
-}
 export interface EffectiveConfiguration {
   configuration: AutoLlmConfig;
   errors: string[];

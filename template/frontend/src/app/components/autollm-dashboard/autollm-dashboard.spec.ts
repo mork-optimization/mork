@@ -30,7 +30,18 @@ class ChartStub {
 }
 
 describe('AutoLLM dashboard', () => {
+  let originalScrollIntoView: PropertyDescriptor | undefined;
   beforeEach(async () => {
+    // jsdom has no layout or scrolling implementation.
+    originalScrollIntoView = Object.getOwnPropertyDescriptor(
+      HTMLElement.prototype,
+      'scrollIntoView',
+    );
+    Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
+      configurable: true,
+      writable: true,
+      value: vi.fn(),
+    });
     window.history.replaceState(null, '', window.location.pathname);
     localStorage.clear();
     const trial = {
@@ -154,7 +165,15 @@ describe('AutoLLM dashboard', () => {
       })
       .compileComponents();
   });
-  afterEach(() => TestBed.resetTestingModule());
+  afterEach(() => {
+    try {
+      TestBed.resetTestingModule();
+    } finally {
+      if (originalScrollIntoView)
+        Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', originalScrollIntoView);
+      else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
+    }
+  });
   function configuration(): AutoLlmConfig {
     return {
       project: {
