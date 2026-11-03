@@ -18,9 +18,8 @@ class SshReconnectTest {
     @org.junit.jupiter.api.BeforeEach void saveOwner() { saveOwner(root); }
     private void saveOwner(Path directory) {
         var config = config();
-        var lease = new WorkerRegistry.Lease("fixture-worker", "fixture-controller", directory.toString(), null, UUID.randomUUID().toString(), 1);
         AutoLlmFileUtil.write(directory.resolve("execution-owner.json"), new ExecutionOwner(WorkloadProtocol.VERSION, "fixture", null,
-                directory.toAbsolutePath().toString(), WorkloadPathUtil.remoteRoot(config, directory), config, lease));
+                directory.toAbsolutePath().toString(), WorkloadPathUtil.remoteRoot(config, directory), config, "fixture-controller", "fixture-workspace"));
     }
     private AutoLlmConfig config() {
         var defaults = AutoLlmConfig.defaults();

@@ -6,14 +6,14 @@ import java.util.Map;
 
 /** Versioned, file-based protocol; workload arguments never pass through a shell. */
 public final class WorkloadProtocol {
-    public static final int VERSION = 7;
+    public static final int VERSION = 8;
     private WorkloadProtocol() {}
     public record Job(int version, String id, String root, String inputSha256, List<String> layers, List<String> command, String cwd, String output,
                       List<String> collect, List<String> reset, Map<String,String> environment, Map<String,String> expectedHost,
                       long timeoutMillis, long plannedMillis, long graceMillis, boolean watchEvaluations, long startupMillis, boolean managedStorage, ExecutionOwner owner) {}
     public enum JobStatus {
-        NOT_FOUND, SUBMITTED, RUNNING, COLLECTING, SUCCEEDED, FAILED, CANCELLED, HOST_CHANGED, INTERRUPTED;
-        public boolean inProgress() { return this == SUBMITTED || this == RUNNING || this == COLLECTING; }
+        NOT_FOUND, WAITING_FOR_WORKSPACE, SUBMITTED, RUNNING, COLLECTING, SUCCEEDED, FAILED, CANCELLED, HOST_CHANGED, INTERRUPTED;
+        public boolean inProgress() { return this == WAITING_FOR_WORKSPACE || this == SUBMITTED || this == RUNNING || this == COLLECTING; }
     }
     public record State(String id, JobStatus status, AutoLlmProcessRunner.Result result, String failure, String archiveSha256) {}
     public record Host(int version, Map<String,String> identity, int requestedWorkers, int effectiveWorkers, long maxMemoryBytes,

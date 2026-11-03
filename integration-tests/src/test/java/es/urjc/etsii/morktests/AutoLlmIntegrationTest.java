@@ -34,9 +34,7 @@ class AutoLlmIntegrationTest {
         Path codex = temp.resolve("codex-fixture");
         Files.writeString(codex, "#!/bin/sh\nexec '" + java.replace("'", "'\\''") + "' -cp '" + cp.replace("'", "'\\''") + "' " + AutoLlmFixture.class.getName() + " \"$@\"\n"); assertTrue(codex.toFile().setExecutable(true));
         Path workspace = temp.resolve("campaigns"), parentExecution = temp.resolve("parent/execution");
-        Path registry = temp.resolve("worker-registry");
-        new es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkerRegistry(registry).provision();
-        var command = List.of(java, "-Dmork.test.workerRegistry=" + registry, "-Dmork.execution.directory=" + parentExecution, "-cp", cp, "es.urjc.etsii.grafo.autoconfigtests.Main", "--autollm", "--server.port=0", "--server.address=0.0.0.0", "--whitelist=ACITestWhitelist", "--solver.benchmark=false", "--instances.preload=false", "--instances.path.default=" + repo.resolve("training.index"), "--autollm.workspace=" + workspace);
+        var command = List.of(java, "-Dmork.execution.directory=" + parentExecution, "-cp", cp, "es.urjc.etsii.grafo.autoconfigtests.Main", "--autollm", "--server.port=0", "--server.address=0.0.0.0", "--whitelist=ACITestWhitelist", "--solver.benchmark=false", "--instances.preload=false", "--instances.path.default=" + repo.resolve("training.index"), "--autollm.workspace=" + workspace);
         var parentBuilder = new ProcessBuilder(command).directory(temp.toFile()).redirectErrorStream(true).redirectOutput(temp.resolve("parent.log").toFile());
         parentBuilder.environment().put("CODEX_HOME", temp.resolve("codex-home").toString());
         var parent = parentBuilder.start();
@@ -59,7 +57,7 @@ class AutoLlmIntegrationTest {
                         new AutoLlmConfig.Execution(32, 5000L, 600_000L, 30_000L, 30_000L, 30_000L, 300_000L, 180_000L, "256m", AutoLlmConfig.Target.SSH, pool));
             }
             var capabilities = get(client, base + "/capabilities");
-            assertEquals(7, capabilities.path("apiVersion").asInt()); assertEquals(7, capabilities.path("checkpointVersion").asInt());
+            assertEquals(8, capabilities.path("apiVersion").asInt()); assertEquals(8, capabilities.path("checkpointVersion").asInt());
             assertTrue(Files.exists(workspace.resolve("session.json")));
             var probe = request(client, base + "/targets/probe", AutoLlmFileUtil.JSON.writeValueAsString(settings));
             assertEquals("RUNNING", probe.path("status").asString()); String probeId = probe.path("id").asString();
@@ -186,13 +184,13 @@ class AutoLlmIntegrationTest {
             assertTrue(Files.exists(root.resolve("reports/llm-usage.json"))); assertTrue(Files.exists(root.resolve(trial.directory).resolve("llm-usage.json")));
             if (remote) {
                 assertEquals(2, campaign.targets.size()); assertEquals(2, campaign.trials.size());
-                var assignedTargets = new HashSet<String>(); var workerIds = new HashSet<String>(); var assignmentIds = new HashSet<String>();
+                var assignedTargets = new HashSet<String>(); var workspaceIds = new HashSet<String>(); var assignmentIds = new HashSet<String>();
                 for (var completed : campaign.trials) {
                     assignedTargets.add(completed.targetId); assertEquals("SUCCEEDED", completed.status.name(), completed.failure);
                     assertTrue(Files.exists(root.resolve("reports/targets/" + completed.targetId + "/campaign.xlsx")));
                     assertTrue(completed.outputDirectory(AutoLlmCampaign.Stage.COMPARISON).startsWith(completed.directory + "/"));
                     var descriptor = AutoLlmFileUtil.JSON.readTree(read(root.resolve(completed.outputDirectory(AutoLlmCampaign.Stage.COMPARISON)).resolve("remote-job.json")));
-                    workerIds.add(descriptor.path("owner").path("lease").path("workerId").asString());
+                    workspaceIds.add(descriptor.path("owner").path("workspaceId").asString());
                     assignmentIds.add(descriptor.path("owner").path("assignment").asString());
                     assertTrue(descriptor.path("root").asString().endsWith("/campaigns/" + id + "/targets/" + completed.targetId + "/trials/" + completed.number + "/assignments/" + completed.assignment().id));
                 }
@@ -200,9 +198,9 @@ class AutoLlmIntegrationTest {
                 for (var completed : campaign.trials) generationIntervals.add(completed.attempts.getFirst());
                 generationIntervals.sort(Comparator.comparing(value -> value.startedAt));
                 assertTrue(Instant.parse(generationIntervals.get(1).startedAt).isBefore(Instant.parse(generationIntervals.get(0).finishedAt)), "Two Codex sessions must allow generation to overlap");
-                // Both aliases are one physical worker; after serialization either qualified alias may be reused.
+                // Aliases on one machine use independent configured workspaces.
                 assertFalse(assignedTargets.isEmpty()); assertTrue(Set.of("server", "second").containsAll(assignedTargets));
-                assertEquals(1, workerIds.size()); assertFalse(workerIds.contains(null)); assertEquals(2, assignmentIds.size());
+                assertEquals(assignedTargets.size(), workspaceIds.size()); assertFalse(workspaceIds.contains(null)); assertEquals(2, assignmentIds.size());
                 assertFalse(Files.exists(root.resolve("reports/campaign.xlsx")));
                 assertEquals(32, campaign.targets.get("server").host.effectiveWorkers());
                 assertEquals(8, campaign.targets.get("second").host.effectiveWorkers());

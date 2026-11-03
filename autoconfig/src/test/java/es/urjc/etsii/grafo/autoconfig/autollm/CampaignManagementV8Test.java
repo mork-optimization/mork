@@ -9,10 +9,24 @@ import java.util.*;
 import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-class CampaignManagementV7Test {
+class CampaignManagementV8Test {
     @TempDir Path temporary;
     private AutoLlmConfig config(String json) { return AutoLlmFileUtil.JSON.readValue(json, AutoLlmConfig.class); }
-    private WorkerRegistry.Lease intent(String operation) { return new WorkerRegistry.Lease(null, "controller", operation, "assignment", UUID.randomUUID().toString(), 0); }
+
+    @Test void workspaceLocksAreAutomaticAndIndependent() throws Exception {
+        Path a = temporary.resolve("a"), b = temporary.resolve("b");
+        assertNotEquals(WorkspaceState.identity(a), WorkspaceState.identity(b));
+        try (var first = WorkspaceState.acquire(a, () -> false, () -> {});
+             var second = WorkspaceState.acquire(b, () -> false, () -> {});
+             var pool = Executors.newVirtualThreadPerTaskExecutor()) {
+            var cancelled = new java.util.concurrent.atomic.AtomicBoolean();
+            var waiting = new CountDownLatch(1);
+            var contender = pool.submit(() -> { try (var lock = WorkspaceState.acquire(a, cancelled::get, waiting::countDown)) { return true; } });
+            assertTrue(waiting.await(5, TimeUnit.SECONDS)); assertFalse(contender.isDone()); cancelled.set(true);
+            assertThrows(ExecutionException.class, () -> contender.get(5, TimeUnit.SECONDS));
+        }
+        try (var next = WorkspaceState.acquire(a, () -> false, () -> {})) { assertTrue(next.lock().isValid()); }
+    }
     @Test void canonicalDefaultsReconnectHeapPathsAndInheritedWorkersAreEquivalent() throws Exception {
         String repo = temporary.toRealPath().toString().replace('\\', '/');
         var omitted = config("""
@@ -30,76 +44,58 @@ class CampaignManagementV7Test {
         var paths = new ArrayList<String>(); for (var difference : diff) paths.add(difference.path());
         assertEquals(List.of("budget", "seeds[0]", "seeds[1]"), paths);
     }
-    @Test void hostWideLeaseSurvivesDisconnectAndRejectsStaleAndUnknownSubmissions() throws Exception {
-        var first = WorkerRegistry.system(); var second = new WorkerRegistry(first.directory());
-        var request = intent("workspace-a/assignment"); var lease = first.acquire(request);
-        assertEquals(lease, second.acquire(request));
-        assertThrows(WorkerRegistry.Busy.class, () -> second.acquire(intent("workspace-b/assignment")));
-        first.submit(lease, "/owned/a", "job", previous -> { assertNull(previous); return null; });
-        assertThrows(IllegalStateException.class, () -> second.release(lease));
-        assertThrows(WorkerRegistry.Busy.class, () -> new WorkerRegistry(first.directory()).acquire(intent("after-crash")));
-        first.complete(lease, "/owned/a", "job"); first.release(lease);
-        assertThrows(IllegalStateException.class, () -> first.acquire(request));
-        var next = second.acquire(intent("workspace-b/assignment")); assertEquals(lease.generation() + 1, next.generation());
-        assertEquals(lease.workerId(), next.workerId());
-        assertThrows(IllegalStateException.class, () -> first.submit(lease, "/owned/a", "stale", previous -> null));
+
+
+
+
+    @Test void workspaceLedgersCannotClaimAnotherWorkspacesResources() throws Exception {
+        Path a = temporary.toRealPath().resolve("a"), b = temporary.toRealPath().resolve("b");
+        var first = new OwnershipManifest(a); var second = new OwnershipManifest(b);
+        Path operation = a.resolve("campaign"); var owned = first.directory(operation, "campaign", operation.toString());
+        assertThrows(IllegalStateException.class, () -> second.directory(operation, "campaign", b.toString()));
+        Path transcript = temporary.resolve("session.jsonl");
+        Files.writeString(transcript, AutoLlmFileUtil.JSON.writeValueAsString(Map.of("type", "session_meta", "payload", Map.of("id", "session", "cwd", operation.toString()))) + "\n");
+        first.transcript(transcript, "session", operation, operation.toString());
+        assertThrows(IllegalStateException.class, () -> second.transcript(transcript, "session", operation, b.toString()));
+        assertTrue(second.resources().isEmpty()); assertEquals(2, first.resources().size()); OwnershipManifest.verify(owned);
     }
-    @Test void cleanupOfAnUnacquiredReservationNeverReleasesAnotherController() throws Exception {
-        var active = WorkerRegistry.system().acquire(intent("other-controller"));
-        Path workspace = temporary.toRealPath().resolve("workspace");
-        var configuration = AutoLlmFileUtil.JSON.convertValue(Map.of("workspace", workspace.toString()), AutoLlmConfig.class);
-        var store = new AutoLlmCampaignStore(configuration); String id = UUID.randomUUID().toString(); Path campaign = store.directory(id);
-        OwnershipManifest.directory(campaign, "campaign", campaign.toString());
-        assertThrows(WorkerRegistry.Busy.class, () -> ExecutionOwner.reserve(configuration, campaign.resolve("assignment")));
-        var cleanup = new AutoLlmCleanup(store); var plan = cleanup.plan(new AutoLlmCleanup.Selection("campaign", id, null, false, true));
-        assertEquals("SUCCEEDED", cleanup.apply(plan.digest(), true).status());
-        assertEquals(active, WorkerRegistry.system().status().lease());
-    }
-    @Test void simultaneousRegistryClientsCannotOverlapAndMissingRegistryFails() throws Exception {
-        assertThrows(IllegalStateException.class, () -> new WorkerRegistry(temporary.resolve("unprovisioned")).status());
-        try (var pool = Executors.newVirtualThreadPerTaskExecutor()) {
-            var start = new CountDownLatch(1); var successes = new java.util.concurrent.atomic.AtomicInteger();
-            var futures = new ArrayList<Future<?>>();
-            for (int i = 0; i < 16; i++) {
-                String op = "op-" + i;
-                futures.add(pool.submit(() -> { start.await(); try { WorkerRegistry.system().acquire(intent(op)); successes.incrementAndGet(); } catch (WorkerRegistry.Busy expected) {} return null; }));
-            }
-            start.countDown(); for (var future : futures) future.get(5, TimeUnit.SECONDS);
-            assertEquals(1, successes.get());
-        }
-    }
-    @Test void registryChecksFilesystemLocksAcrossProcesses() { WorkerRegistry.system().verifyLocks(); }
-    public static class LeaseProcess {
-        public static void main(String[] args) {
-            var registry = new WorkerRegistry(Path.of(args[0]));
-            try {
-                var lease = registry.acquire(new WorkerRegistry.Lease(null, args[1], args[1], null, UUID.randomUUID().toString(), 0));
-                System.out.print(lease.workerId());
-            } catch (WorkerRegistry.Busy busy) { System.out.print(busy.owner.workerId()); System.exit(3); }
-        }
-    }
-    @Test void independentControllerProcessesAndAliasesUseOneReservation() throws Exception {
-        Path a = temporary.resolve("a"), b = temporary.resolve("b"); Files.createDirectories(a); Files.createDirectories(b);
-        String javaExecutable = Path.of(System.getProperty("java.home"), "bin/java").toString();
-        String cp = System.getProperty("java.class.path");
-        var first = new ProcessBuilder(javaExecutable, "-cp", cp, LeaseProcess.class.getName(), WorkerRegistry.system().directory().toString(), "alias-a").directory(a.toFile()).redirectErrorStream(true).start();
-        assertTrue(first.waitFor(10, TimeUnit.SECONDS)); String worker = new String(first.getInputStream().readAllBytes()); assertEquals(0, first.exitValue(), worker);
-        var second = new ProcessBuilder(javaExecutable, "-cp", cp, LeaseProcess.class.getName(), WorkerRegistry.system().directory().toString(), "alias-b").directory(b.toFile()).redirectErrorStream(true).start();
-        assertTrue(second.waitFor(10, TimeUnit.SECONDS)); assertEquals(worker, new String(second.getInputStream().readAllBytes())); assertEquals(3, second.exitValue());
-        assertNotNull(WorkerRegistry.system().status().lease(), "Controller exit must not release worker ownership");
+    @Test void externalScreeningReferencesSurviveOwnerWorkspaceCleanupUntilTheConsumerIsDeleted() throws Exception {
+        Path a = temporary.toRealPath().resolve("consumer"), b = temporary.toRealPath().resolve("provider");
+        var consumer = new OwnershipManifest(a); var provider = new OwnershipManifest(b);
+        consumer.directory(a, "workspace", a.toString()); provider.directory(b, "workspace", b.toString());
+        String campaignId = UUID.randomUUID().toString(); Path campaign = a.resolve(campaignId);
+        consumer.directory(campaign, "campaign", campaign.toString());
+        Path screening = b.resolve("screenings/" + UUID.randomUUID()), execution = screening.resolve("evidence");
+        provider.directory(screening, "screening", screening.toString()); provider.directory(execution, "execution", execution.toString());
+        Path disposable = b.resolve(UUID.randomUUID().toString()); provider.directory(disposable, "campaign", disposable.toString());
+        consumer.screeningDependency(execution, campaign);
+        var ownerCleanup = new AutoLlmCleanup(new AutoLlmCampaignStore(config("{\"workspace\":\"" + b.toString().replace('\\', '/') + "\"}")));
+        var ownerPlan = ownerCleanup.plan(new AutoLlmCleanup.Selection("workspace", null, null, false, true));
+        assertTrue(ownerPlan.blockers().isEmpty(), ownerPlan.blockers().toString());
+        assertTrue(ownerPlan.retain().containsKey(screening.toString())); assertTrue(ownerPlan.retain().containsKey(execution.toString()));
+        assertEquals("SUCCEEDED", ownerCleanup.apply(ownerPlan.digest(), true).status());
+        assertFalse(Files.exists(disposable)); assertTrue(Files.exists(execution)); assertFalse(provider.resources().isEmpty());
+        var consumerCleanup = new AutoLlmCleanup(new AutoLlmCampaignStore(config("{\"workspace\":\"" + a.toString().replace('\\', '/') + "\"}")));
+        var consumerPlan = consumerCleanup.plan(new AutoLlmCleanup.Selection("campaign", campaignId, null, false, true));
+        assertEquals(1, consumerPlan.dependencies().size()); assertTrue(consumerPlan.retain().containsKey(screening.toString()));
+        assertEquals("SUCCEEDED", consumerCleanup.apply(consumerPlan.digest(), true).status()); assertTrue(Files.exists(execution));
+        var finalPlan = ownerCleanup.plan(new AutoLlmCleanup.Selection("workspace", null, null, false, true));
+        assertTrue(finalPlan.blockers().isEmpty(), finalPlan.blockers().toString());
+        var receipt = ownerCleanup.apply(finalPlan.digest(), true);
+        assertEquals("SUCCEEDED", receipt.status(), receipt.toString()); assertFalse(Files.exists(b));
     }
     @Test void cleanupDeletesCompleteOwnedDirectoryAndNativeTranscriptWithoutExport() throws Exception {
         Path workspace = temporary.toRealPath().resolve("workspace");
         var store = new AutoLlmCampaignStore(AutoLlmFileUtil.JSON.convertValue(Map.of("workspace", workspace.toString()), AutoLlmConfig.class));
         String id = UUID.randomUUID().toString(); Path campaign = store.directory(id);
-        OwnershipManifest.directory(workspace, "workspace", workspace.toString());
-        OwnershipManifest.directory(campaign, "campaign", campaign.toString());
+        new OwnershipManifest(workspace).directory(workspace, "workspace", workspace.toString());
+        new OwnershipManifest(workspace).directory(campaign, "campaign", campaign.toString());
         Files.writeString(campaign.resolve("generated.txt"), "generated after inventory");
         Path dataset = temporary.resolve("dataset"); Files.writeString(dataset, "original");
         Files.createSymbolicLink(campaign.resolve("dataset-link"), dataset);
         Path transcript = temporary.toRealPath().resolve("session.jsonl"); String session = UUID.randomUUID().toString();
         Files.writeString(transcript, AutoLlmFileUtil.JSON.writeValueAsString(Map.of("type", "session_meta", "payload", Map.of("id", session, "cwd", campaign.toString()))) + "\n");
-        OwnershipManifest.transcript(transcript, session, campaign, campaign.toString());
+        new OwnershipManifest(workspace).transcript(transcript, session, campaign, campaign.toString());
         var cleanup = new AutoLlmCleanup(store); var plan = cleanup.plan(new AutoLlmCleanup.Selection("campaign", id, null, false, false));
         Files.writeString(campaign.resolve("later-file"), "also owned");
         var result = cleanup.apply(plan.digest(), true);
@@ -110,9 +106,9 @@ class CampaignManagementV7Test {
         Path workspace = temporary.toRealPath().resolve("workspace");
         var store = new AutoLlmCampaignStore(AutoLlmFileUtil.JSON.convertValue(Map.of("workspace", workspace.toString()), AutoLlmConfig.class));
         String id = UUID.randomUUID().toString(); Path campaign = store.directory(id); Path screening = workspace.resolve("screenings/" + UUID.randomUUID());
-        OwnershipManifest.directory(campaign, "campaign", campaign.toString());
-        OwnershipManifest.directory(screening, "screening", screening.toString());
-        OwnershipManifest.reference(screening, campaign.toString()); OwnershipManifest.reference(screening, "/other-workspace/campaign");
+        new OwnershipManifest(workspace).directory(campaign, "campaign", campaign.toString());
+        new OwnershipManifest(workspace).directory(screening, "screening", screening.toString());
+        new OwnershipManifest(workspace).reference(screening, campaign.toString()); new OwnershipManifest(workspace).reference(screening, "/other-workspace/campaign");
         var cleanup = new AutoLlmCleanup(store); var plan = cleanup.plan(new AutoLlmCleanup.Selection("campaign", id, null, false, true));
         assertTrue(plan.retain().containsKey(screening.toString()));
         Files.move(campaign, campaign.resolveSibling("original")); Files.createDirectories(campaign); Files.writeString(campaign.resolve("unrelated"), "do not delete");
@@ -124,7 +120,7 @@ class CampaignManagementV7Test {
     @Test void interruptedDeletionResumesAndChangedReferencesRequireNewReview() throws Exception {
         Path workspace = temporary.toRealPath().resolve("workspace"); var store = new AutoLlmCampaignStore(AutoLlmFileUtil.JSON.convertValue(Map.of("workspace", workspace.toString()), AutoLlmConfig.class));
         String id = UUID.randomUUID().toString(); Path campaign = store.directory(id);
-        OwnershipManifest.directory(campaign, "campaign", campaign.toString());
+        new OwnershipManifest(workspace).directory(campaign, "campaign", campaign.toString());
         store.reserve(id);
         AutoLlmFileUtil.write(workspace.resolve("campaign-session.json"), Map.of("campaignId", id));
         var cleanup = new AutoLlmCleanup(store); var plan = cleanup.plan(new AutoLlmCleanup.Selection("campaign", id, null, false, true));
@@ -134,17 +130,17 @@ class CampaignManagementV7Test {
         assertFalse(Files.exists(workspace.resolve("campaign-session.json")));
         assertEquals("SUCCEEDED", cleanup.apply(plan.digest(), true).status());
         String next = UUID.randomUUID().toString(); Path other = store.directory(next);
-        OwnershipManifest.directory(other, "campaign", other.toString());
+        new OwnershipManifest(workspace).directory(other, "campaign", other.toString());
         var reviewed = cleanup.plan(new AutoLlmCleanup.Selection("campaign", next, null, false, true));
-        OwnershipManifest.reference(other, "/other-owner");
+        new OwnershipManifest(workspace).reference(other, "/other-owner");
         assertEquals("PENDING", cleanup.apply(reviewed.digest(), true).status()); assertTrue(Files.exists(other));
     }
     @Test void controllerCleanupDoesNotCancelOrWaitForAnUnrelatedCampaign() throws Exception {
         Path workspace = temporary.toRealPath().resolve("workspace");
         var store = new AutoLlmCampaignStore(AutoLlmFileUtil.JSON.convertValue(Map.of("workspace", workspace.toString()), AutoLlmConfig.class));
         String selected = UUID.randomUUID().toString(), active = UUID.randomUUID().toString();
-        OwnershipManifest.directory(store.directory(selected), "campaign", store.directory(selected).toString());
-        OwnershipManifest.directory(store.directory(active), "campaign", store.directory(active).toString());
+        new OwnershipManifest(workspace).directory(store.directory(selected), "campaign", store.directory(selected).toString());
+        new OwnershipManifest(workspace).directory(store.directory(active), "campaign", store.directory(active).toString());
         store.reserve(active);
         var service = org.mockito.Mockito.mock(AutoLlmCampaignService.class);
         org.mockito.Mockito.when(service.active()).thenReturn(active);
@@ -161,24 +157,25 @@ class CampaignManagementV7Test {
     @Test void workspaceCleanupIncludesStandaloneOperationsAndResumesLostDeletionReceipt() throws Exception {
         Path workspace = temporary.toRealPath().resolve("workspace");
         var store = new AutoLlmCampaignStore(AutoLlmFileUtil.JSON.convertValue(Map.of("workspace", workspace.toString()), AutoLlmConfig.class));
-        OwnershipManifest.directory(workspace, "workspace", workspace.toString());
+        new OwnershipManifest(workspace).directory(workspace, "workspace", workspace.toString());
         Path screening = workspace.resolve("screenings/" + UUID.randomUUID()), probe = workspace.resolve("target-probes/" + UUID.randomUUID());
-        var first = OwnershipManifest.directory(screening, "screening", screening.toString());
-        OwnershipManifest.directory(probe, "probe", probe.toString());
+        var first = new OwnershipManifest(workspace).directory(screening, "screening", screening.toString());
+        new OwnershipManifest(workspace).directory(probe, "probe", probe.toString());
         var cleanup = new AutoLlmCleanup(store); var plan = cleanup.plan(new AutoLlmCleanup.Selection("workspace", null, null, false, true));
         assertTrue(plan.blockers().isEmpty(), plan.blockers().toString());
-        OwnershipManifest.delete(first, plan.references()); // Host committed deletion; controller receipt was lost.
-        assertEquals("SUCCEEDED", cleanup.apply(plan.digest(), true).status()); assertFalse(Files.exists(workspace));
-        assertTrue(OwnershipManifest.resources().isEmpty());
+        new OwnershipManifest(workspace).delete(first, plan.references()); // Host committed deletion; controller receipt was lost.
+        var receipt = cleanup.apply(plan.digest(), true);
+        assertEquals("SUCCEEDED", receipt.status(), receipt.toString()); assertFalse(Files.exists(workspace));
+        assertTrue(new OwnershipManifest(workspace).resources().isEmpty());
     }
     @Test void assignmentCreatedAfterReviewRequiresAnotherCleanupPlan() throws Exception {
         Path workspace = temporary.toRealPath().resolve("workspace");
         var store = new AutoLlmCampaignStore(AutoLlmFileUtil.JSON.convertValue(Map.of("workspace", workspace.toString()), AutoLlmConfig.class));
         String id = UUID.randomUUID().toString(); Path campaign = store.directory(id);
-        OwnershipManifest.directory(campaign, "campaign", campaign.toString());
+        new OwnershipManifest(workspace).directory(campaign, "campaign", campaign.toString());
         var cleanup = new AutoLlmCleanup(store); var plan = cleanup.plan(new AutoLlmCleanup.Selection("campaign", id, null, false, true));
         Path assignment = campaign.resolve("trials/001/assignments/new");
-        OwnershipManifest.directory(assignment, "execution", assignment.toString());
+        new OwnershipManifest(workspace).directory(assignment, "execution", assignment.toString());
         assertEquals("PENDING", cleanup.apply(plan.digest(), true).status()); assertTrue(Files.exists(assignment));
         assertThrows(IllegalStateException.class, () -> cleanup.requestCancellation(plan.digest()));
     }
@@ -193,10 +190,9 @@ class CampaignManagementV7Test {
     }
     public static class CleanupControllerProcess {
         public static void main(String[] args) throws Exception {
-            System.setProperty("mork.test.workerRegistry", args[1]);
             Path workspace = Path.of(args[0]);
             var config = AutoLlmFileUtil.JSON.convertValue(Map.of("workspace", workspace.toString()), AutoLlmConfig.class);
-            OwnershipManifest.directory(workspace, "workspace", workspace.toString());
+            new OwnershipManifest(workspace).directory(workspace, "workspace", workspace.toString());
             try (var channel = java.nio.channels.FileChannel.open(workspace.resolve("execution.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE);
                  var lock = channel.lock()) {
                 var plan = new AutoLlmCleanup(new AutoLlmCampaignStore(config)).plan(new AutoLlmCleanup.Selection("workspace", null, null, true, true));
@@ -208,7 +204,7 @@ class CampaignManagementV7Test {
     @Test void externalFinalizerStopsExactControllerAndDeletesAfterItsFileLocksClose() throws Exception {
         Path workspace = temporary.toRealPath().resolve("workspace"), pointer = temporary.resolve("reviewed.json");
         String javaExecutable = Path.of(System.getProperty("java.home"), "bin/java").toString();
-        String cp = System.getProperty("java.class.path"); Path registry = WorkerRegistry.system().directory();
+        String cp = System.getProperty("java.class.path"); Path registry = temporary.resolve("helper-tools");
         var controller = new ProcessBuilder(javaExecutable, "-cp", cp, CleanupControllerProcess.class.getName(), workspace.toString(), registry.toString(), pointer.toString())
                 .redirectErrorStream(true).redirectOutput(temporary.resolve("controller.log").toFile()).start();
         Process helper = null;
@@ -225,7 +221,7 @@ class CampaignManagementV7Test {
             manifest.getMainAttributes().put(java.util.jar.Attributes.Name.CLASS_PATH, String.join(" ", entries));
             try (var jar = new java.util.jar.JarOutputStream(Files.newOutputStream(runner), manifest)) { }
             AutoLlmFileUtil.write(receipts.resolve(plan.digest() + ".finalizer.json"), new AutoLlmCleanup.Finalizer(runner.toString(), AutoLlmFileUtil.hash(runner), null));
-            helper = new ProcessBuilder(javaExecutable, "-Dmork.test.workerRegistry=" + registry, "-jar", runner.toString(), "cleanup-finish", workspace.toString(), planFile.toString())
+            helper = new ProcessBuilder(javaExecutable, "-jar", runner.toString(), "cleanup-finish", workspace.toString(), planFile.toString())
                     .redirectErrorStream(true).redirectOutput(temporary.resolve("helper.log").toFile()).start();
             assertTrue(helper.waitFor(30, TimeUnit.SECONDS)); assertEquals(0, helper.exitValue(), Files.readString(temporary.resolve("helper.log")));
             assertTrue(controller.waitFor(5, TimeUnit.SECONDS)); assertFalse(Files.exists(workspace));
@@ -235,9 +231,9 @@ class CampaignManagementV7Test {
     }
     @Test void busyHealthyWorkerAndStaleAvailabilityRemainSeparate() {
         var target = new AutoLlmCampaign.TargetState(); target.baselineReady = true;
-        target.remote = Map.of("availability", "BUSY", "lastSynchronizedAt", Instant.now().toString());
+        target.remote = Map.of("status", "WAITING_FOR_WORKSPACE", "lastSynchronizedAt", Instant.now().toString());
         assertEquals("HEALTHY", target.getHealth()); assertEquals("QUALIFIED", target.getQualification()); assertEquals("BUSY", target.getAvailability());
-        target.remote = Map.of("availability", "BUSY", "lastSynchronizedAt", Instant.now().minusSeconds(60).toString());
+        target.remote = Map.of("status", "WAITING_FOR_WORKSPACE", "lastSynchronizedAt", Instant.now().minusSeconds(60).toString());
         assertEquals("UNKNOWN", target.getAvailability()); assertEquals("HEALTHY", target.getHealth());
     }
     @Test void progressIgnoresPollingAndDiagnosticsDoNotInventAttribution() throws Exception {

@@ -54,8 +54,7 @@ public final class AutoLlmTrialRunner {
     private void event(String kind, Object detail) { listener.event(kind, detail); }
     public AutoLlmExecutionContext.Snapshot snapshot() { return model.snapshot(); }
     public void prepare(boolean metadataOnly) {
-        try { prepareBaseline(model, metadataOnly); }
-        finally { if (!AutoLlmCampaignStore.hasUncollectedJobs(executionRoot)) ExecutionOwner.releaseIfPresent(executionRoot); }
+        prepareBaseline(model, metadataOnly);
     }
     public String endpoint() {
         if (model.config.execution().target() == AutoLlmConfig.Target.LOCAL) return "local";
@@ -76,7 +75,7 @@ public final class AutoLlmTrialRunner {
             return java.net.InetAddress.getByName(host).getHostAddress() + ":" + port;
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
-    public void cancelOutstanding() { workloads.cancelOutstanding(model.config, executionRoot, state -> remoteState(model, state)); ExecutionOwner.releaseIfPresent(executionRoot); }
+    public void cancelOutstanding() { workloads.cancelOutstanding(model.config, executionRoot, state -> remoteState(model, state)); }
     public void reconcile() {
         processes.reconcile(executionRoot);
         if (model.trial != null) {
@@ -89,16 +88,7 @@ public final class AutoLlmTrialRunner {
         var c = model; var t = c.trial;
         c.problem = null;
         try {
-            // Unassigned generation stays concurrent; its managed local workloads reserve on submission.
-            while (!localOnly) {
-                try { ExecutionOwner.reserve(c.config, executionRoot); break; }
-                catch (WorkerRegistry.Busy busy) {
-                    t.status = TrialStatus.WAITING_FOR_WORKER;
-                    c.remote = Map.of("availability", "BUSY", "lease", busy.owner.lease(), "workerId", busy.owner.workerId(), "lastSynchronizedAt", busy.owner.observedAt(), "lastContactAt", busy.owner.observedAt()); publish(c);
-                    if (cancelled()) throw new CancellationException();
-                    try { Thread.sleep(2000); } catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException(); }
-                }
-            }
+            if (!localOnly) ExecutionOwner.prepare(c.config, executionRoot);
             reconcile();
             if (c.config.execution().target() == AutoLlmConfig.Target.SSH) workloads.identity(c.config, executionRoot);
             if (t.problem != null && t.problem.code().equals("ArchiveException")) throw new AutoLlmFailureUtil.StageException(t.problem, null);
@@ -143,10 +133,6 @@ public final class AutoLlmTrialRunner {
                     AutoLlmEvidenceFiles.compact(c.campaignRoot, executionRoot, t);
                 } catch (CancellationException ignored) { /* Completed measurements remain completed; the executable is retained. */ }
                 catch (IOException | RuntimeException failure) { event("storage-maintenance-failed", Map.of("trial", t.number, "reason", failure.toString())); }
-            }
-            if (!AutoLlmCampaignStore.hasUncollectedJobs(executionRoot)) {
-                try { ExecutionOwner.releaseIfPresent(executionRoot); }
-                catch (RuntimeException failure) { event("lease-release-pending", Map.of("reason", failure.toString())); }
             }
             publish(c);
         }
@@ -578,7 +564,17 @@ public final class AutoLlmTrialRunner {
         if (Files.exists(failure)) return new AutoLlmFailureUtil.StageException(AutoLlmFileUtil.read(failure, AutoLlmFailureUtil.Failure.class), null);
         return AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.UNKNOWN, "CHILD_FAILED", message, output);
     }
+    private TrialStatus beforeWorkspaceWait;
     private void remoteState(AutoLlmExecutionContext campaign, Map<String,Object> state) {
+        if (campaign.trial != null) {
+            if ("WAITING_FOR_WORKSPACE".equals(state.get("status"))) {
+                if (campaign.trial.status != TrialStatus.WAITING_FOR_WORKSPACE) beforeWorkspaceWait = campaign.trial.status;
+                campaign.trial.status = TrialStatus.WAITING_FOR_WORKSPACE;
+            } else if (campaign.trial.status == TrialStatus.WAITING_FOR_WORKSPACE && beforeWorkspaceWait != null) {
+                campaign.trial.status = beforeWorkspaceWait;
+                beforeWorkspaceWait = null;
+            }
+        }
         campaign.remote = state;
         if (campaign.trial != null && state.get("jobId") instanceof String job && state.get("connectionRetries") instanceof Number retries)
             campaign.trial.connectionRetries.merge(job, retries.intValue(), Math::max);

@@ -19,7 +19,7 @@ from urllib.parse import quote, urlencode
 from urllib.request import Request, urlopen
 import zipfile
 
-FEATURES = {"SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKER_LEASES", "SCOPED_CLEANUP"}
+FEATURES = {"SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKSPACE_LOCKS", "SCOPED_CLEANUP"}
 
 
 def request(base, path, body=None, timeout=30, method=None, maximum_bytes=2_000_000, output=None):
@@ -112,7 +112,7 @@ def capabilities(base, workspace=None, jar=None, cwd=None):
 
 
 def check_capabilities(info, workspace=None, jar=None, cwd=None):
-    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 7 or info.get("checkpointVersion") != 7 or info.get("runnerProtocol") != 7 or not FEATURES.issubset(info.get("features", [])):
+    if info.get("mode") != "AUTOLLM" or info.get("apiVersion") != 8 or info.get("checkpointVersion") != 8 or info.get("runnerProtocol") != 8 or not FEATURES.issubset(info.get("features", [])):
         raise RuntimeError("Backend lacks required AutoLLM capabilities; use the matching rebuilt executable")
     if workspace and Path(info["workspace"]).resolve() != Path(workspace).resolve():
         raise RuntimeError("Backend workspace does not match")
@@ -596,9 +596,9 @@ def status_table(value):
         problem = progress.get("problem") or trial.get("problem")
         if problem:
             lines.append(f"Trial {number}: {problem.get('category')}/{problem.get('code')}: {str(problem.get('message', ''))[:1000]}")
-        lease = (progress.get("remote") or {}).get("lease") or {}
-        if lease:
-            lines.append(f"Trial {number}: worker={lease.get('workerId', 'unknown')} reservationOwner={lease.get('controller', 'unknown')} operation={lease.get('operation', 'unknown')}")
+        remote = progress.get("remote") or {}
+        if remote.get("workspaceId"):
+            lines.append(f"Trial {number}: workspace={remote['workspaceId']} status={remote.get('status', 'UNKNOWN')}")
         if progress.get("capacityWait"):
             wait = progress["capacityWait"]
             lines.append(f"Trial {number}: model capacity retry {wait['retries']} at {wait['nextRetryAt']}; deadline {wait['deadline']}")
@@ -906,9 +906,6 @@ def cleanup_local(args):
     return {**receipt, "status": "PENDING", "pending": {"helper": "Cleanup helper started; inspect cleanup status"}}
 
 
-def worker(args, base):
-    return request(base, "/worker/" + args.action, read_object(args.owner), timeout=args.timeout, output=getattr(args, "response_output", None))
-
 
 def mutation_receipt(value, operation):
     if not isinstance(value, dict) or "id" not in value or "trials" not in value: return value
@@ -1034,12 +1031,6 @@ def main(argv=None):
             action.add_argument("--retain-receipt", action="store_true")
         else:
             action.add_argument("--digest", required=True)
-    workers = commands.add_parser("worker")
-    actions = workers.add_subparsers(dest="action", required=True)
-    for name in ("status", "release"):
-        action = actions.add_parser(name)
-        action.add_argument("--owner", required=True, help="Saved execution-owner.json")
-        action.add_argument("--timeout", type=positive_seconds, default=30)
     def response_options(current):
         children = [a for a in current._actions if isinstance(a, argparse._SubParsersAction)]
         if children:
@@ -1067,7 +1058,7 @@ def main(argv=None):
     else:
         base = base_url(args)
         capabilities(base, args.workspace)
-        operation = {"cleanup": cleanup, "worker": worker, "config": configuration, "status": status, "logs": logs, "diagnose": diagnose,
+        operation = {"cleanup": cleanup, "config": configuration, "status": status, "logs": logs, "diagnose": diagnose,
                   "campaign": lifecycle, "screening": lifecycle, "watch": watch, "target": target, "trial": trial, "remote": operator, "recover": operator, "compare": operator, "storage": operator, "source": operator, "artifact": operator}[args.command]
         if args.response_output and (args.command in ("watch", "logs") or args.command == "compare" and args.format != "json"):
             with atomic_output(args.response_output) as output_stream, contextlib.redirect_stdout(output_stream):

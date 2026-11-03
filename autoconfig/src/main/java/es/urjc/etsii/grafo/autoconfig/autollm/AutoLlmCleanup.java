@@ -8,14 +8,14 @@ import java.util.*;
 /** Reviewed, resumable deletion. Receipts live beside the workspace, never inside a deletion unit. */
 public final class AutoLlmCleanup {
     public record Selection(String kind, String id, String export, boolean shutdown, boolean retainReceipt) {}
-    public record OwnedProcess(String evidence, WorkerRegistry.ProcessIdentity identity) {}
+    public record OwnedProcess(String evidence, ProcessIdentity identity) {}
     public record Remote(ExecutionOwner owner, OwnershipManifest.Resource resource, List<WorkloadProtocol.Job> jobs) {}
     public record Plan(String digest, String workspace, Selection selection, Set<String> references,
                        List<OwnershipManifest.Resource> delete, Map<String,String> retain, List<Remote> remote,
-                       List<String> blockers, List<OwnedProcess> processes, WorkerRegistry.ProcessIdentity controller) {
+                       List<String> blockers, List<OwnedProcess> processes, ProcessIdentity controller, List<OwnershipManifest.Dependency> dependencies) {
         public Plan { references = Collections.unmodifiableSortedSet(new TreeSet<>(references)); }
     }
-    public record Finalizer(String runner, String sha256, WorkerRegistry.ProcessIdentity process) {}
+    public record Finalizer(String runner, String sha256, ProcessIdentity process) {}
     public record Receipt(String digest, String status, Set<String> completed, Map<String,String> pending) {}
     private final AutoLlmCampaignStore store;
     private final Path receipts;
@@ -31,7 +31,7 @@ public final class AutoLlmCleanup {
             case "screening" -> store.root().resolve("screenings").resolve(validId(selection.id()));
             default -> store.root().resolve("target-probes").resolve(validId(selection.id()));
         };
-        var resources = OwnershipManifest.resources(); var refs = new LinkedHashSet<String>(); var blockers = new ArrayList<String>();
+        var resources = new OwnershipManifest(store.root()).resources(); var refs = new LinkedHashSet<String>(); var blockers = new ArrayList<String>();
         refs.add(selected.toString());
         for (var resource : resources) if (Path.of(resource.path()).startsWith(selected)) refs.add(resource.path());
         // Include exclusively associated preparation/screening roots, retaining shared dependencies.
@@ -44,15 +44,22 @@ public final class AutoLlmCleanup {
             }
         } while (changed);
         var delete = new ArrayList<OwnershipManifest.Resource>(); var retain = new LinkedHashMap<String,String>();
-        for (var resource : resources) if (!Collections.disjoint(resource.references(), refs)) {
+        for (var resource : resources) if (Path.of(resource.path()).startsWith(selected) || !Collections.disjoint(resource.references(), refs)) {
             if (refs.containsAll(resource.references())) { OwnershipManifest.verify(resource); delete.add(resource); }
             else retain.put(resource.path(), "Shared references: " + resource.references());
         }
+        // Retain both ancestors and descendants of a shared directory as one deletion unit.
+        var shared = new ArrayList<String>(retain.keySet());
         for (var resource : new ArrayList<>(delete)) {
-            for (String kept : new ArrayList<>(retain.keySet())) if (Path.of(kept).startsWith(Path.of(resource.path()))) {
-                delete.remove(resource); retain.put(resource.path(), "Contains shared resource " + kept); break;
+            for (String kept : shared) {
+                Path path = Path.of(resource.path()), sharedPath = Path.of(kept);
+                if (sharedPath.startsWith(path) || path.startsWith(sharedPath)) {
+                    delete.remove(resource); retain.put(resource.path(), "Shares owned directory " + kept); break;
+                }
             }
         }
+        var dependencies = dependencies(delete);
+        for (var dependency : dependencies) retain.put(dependency.path(), "External screening owned by workspace " + dependency.workspace());
         if (selection.kind().equals("workspace") && Files.isDirectory(selected)) {
             try (var entries = Files.newDirectoryStream(selected)) {
                 for (Path entry : entries) {
@@ -67,14 +74,14 @@ public final class AutoLlmCleanup {
                         }
                         continue;
                     }
-                    if (Set.of(".mork-owned-v7.json", "session.json", "backend-launch.json", "backend.log", "campaign-session.json", "screening-session.json", "operation-reservation.json", "execution.lock", "cleanup-requested.json", "screenings", "target-probes").contains(name)) continue;
+                    if (Set.of(".mork", ".mork-owned-v8.json", "session.json", "backend-launch.json", "backend.log", "campaign-session.json", "screening-session.json", "operation-reservation.json", "execution.lock", "cleanup-requested.json", "screenings", "target-probes").contains(name)) continue;
                     boolean registered = false;
                     for (var resource : resources) if (!resource.kind().equals("workspace") && Path.of(resource.path()).equals(entry)) registered = true;
                     if (!registered) blockers.add("Unregistered workspace resource: " + entry);
                 }
             } catch (IOException e) { throw new UncheckedIOException(e); }
         }
-        if (delete.isEmpty()) blockers.add("No version-7 ownership manifest for selected scope");
+        if (delete.isEmpty()) blockers.add("No version-8 ownership manifest for selected scope");
         var remote = new ArrayList<Remote>(); var seen = new HashSet<String>(); var remoteUnits = new HashSet<String>();
         for (var resource : delete) {
             if (resource.sessionId() != null || resource.kind().equals("workspace")) continue;
@@ -86,31 +93,25 @@ public final class AutoLlmCleanup {
                 var jobs = new ArrayList<WorkloadProtocol.Job>();
                 for (Path job : AutoLlmFileUtil.ownedFiles(Path.of(owner.localRoot()), "remote-job.json")) jobs.add(AutoLlmFileUtil.read(job, WorkloadProtocol.Job.class));
                 try {
-                    if (owner.lease().workerId() == null) {
-                        var status = AutoLlmFileUtil.JSON.readValue(owner.call("worker-status", Map.of()), WorkerRegistry.Status.class);
-                        var lease = owner.lease();
-                        owner = new ExecutionOwner(owner.version(), owner.operation(), owner.assignment(), owner.localRoot(), owner.executionRoot(), owner.config(),
-                                new WorkerRegistry.Lease(status.workerId(), lease.controller(), lease.operation(), lease.assignment(), lease.token(), lease.generation()));
-                    }
-                    var units = AutoLlmFileUtil.JSON.readValue(owner.call("ownership-plan", Map.of()), new tools.jackson.core.type.TypeReference<List<OwnershipManifest.Resource>>() {});
-                    for (var unit : units) if (remoteUnits.add(owner.lease().workerId() + ":" + unit.path())) remote.add(new Remote(owner, unit, unit.path().equals(owner.executionRoot()) ? jobs : List.of()));
-                    remote.add(new Remote(owner, null, units.isEmpty() ? jobs : List.of()));
+                    var inventory = AutoLlmFileUtil.JSON.readValue(owner.call("ownership-plan", Map.of()), ExecutionOwner.Inventory.class);
+                    if (owner.workspaceId() != null && !owner.workspaceId().equals(inventory.workspaceId())) throw new IllegalStateException("Remote workspace identity changed");
+                    owner = new ExecutionOwner(owner.version(), owner.operation(), owner.assignment(), owner.localRoot(), owner.executionRoot(), owner.config(), owner.controllerWorkspaceId(), inventory.workspaceId());
+                    for (var unit : inventory.resources()) if (remoteUnits.add(owner.workspaceId() + ":" + unit.path())) remote.add(new Remote(owner, unit, unit.path().equals(owner.executionRoot()) ? jobs : List.of()));
                 } catch (RuntimeException e) {
                     Path cached = Path.of(owner.localRoot()).resolve("remote-assets.json");
                     if (!Files.isRegularFile(cached)) blockers.add("Missing remote asset ownership: " + owner.localRoot());
                     else {
-                        var units = AutoLlmFileUtil.read(cached, new tools.jackson.core.type.TypeReference<List<OwnershipManifest.Resource>>() {});
-                        for (var unit : units) if (remoteUnits.add(owner.lease().workerId() + ":" + unit.path())) remote.add(new Remote(owner, unit, unit.path().equals(owner.executionRoot()) ? jobs : List.of()));
-                        remote.add(new Remote(owner, null, List.of()));
+                        var inventory = AutoLlmFileUtil.read(cached, ExecutionOwner.Inventory.class);
+                        for (var unit : inventory.resources()) if (remoteUnits.add(owner.workspaceId() + ":" + unit.path())) remote.add(new Remote(owner, unit, unit.path().equals(owner.executionRoot()) ? jobs : List.of()));
                     }
-                    blockers.add("Unreachable worker ownership: " + owner.lease().workerId() + ": " + e.getMessage());
+                    blockers.add("Unreachable worker ownership: " + owner.workspaceId() + ": " + e.getMessage());
                 }
                 refs.add(owner.reference());
             }
         }
         remote.sort(Comparator.comparingInt((Remote unit) -> unit.resource() == null ? -1 : Path.of(unit.resource().path()).getNameCount()).reversed());
         for (var unit : new ArrayList<>(remote)) if (unit.resource() != null && !refs.containsAll(unit.resource().references())) {
-            remote.remove(unit); retain.put(unit.owner().lease().workerId() + ":" + unit.resource().path(), "Shared worker references: " + unit.resource().references());
+            remote.remove(unit); retain.put(unit.owner().workspaceId() + ":" + unit.resource().path(), "Shared worker references: " + unit.resource().references());
         }
         if (selection.export() != null) {
             Path export = AutoLlmNormalization.localPath(Path.of(selection.export()));
@@ -132,11 +133,11 @@ public final class AutoLlmCleanup {
             for (Path evidence : AutoLlmFileUtil.ownedFiles(Path.of(resource.path()), "owner.json")) if (processFiles.add(evidence)) {
                 var saved = AutoLlmFileUtil.read(evidence, Map.class);
                 if (!"SSH".equals(saved.get("executionTarget")) && saved.get("pid") instanceof Number pid && saved.get("start") instanceof String start)
-                    processes.add(new OwnedProcess(evidence.toString(), new WorkerRegistry.ProcessIdentity(pid.longValue(), start)));
+                    processes.add(new OwnedProcess(evidence.toString(), new ProcessIdentity(pid.longValue(), start)));
             }
-        var controller = WorkerRegistry.ProcessIdentity.of(ProcessHandle.current());
-        var unsigned = new Plan(null, store.root().toString(), selection, refs, delete, retain, remote, blockers, processes, controller);
-        var plan = new Plan(AutoLlmFileUtil.canonicalHash(unsigned), unsigned.workspace(), selection, refs, delete, retain, remote, blockers, processes, controller);
+        var controller = ProcessIdentity.of(ProcessHandle.current());
+        var unsigned = new Plan(null, store.root().toString(), selection, refs, delete, retain, remote, blockers, processes, controller, dependencies);
+        var plan = new Plan(AutoLlmFileUtil.canonicalHash(unsigned), unsigned.workspace(), selection, refs, delete, retain, remote, blockers, processes, controller, dependencies);
         AutoLlmFileUtil.write(receipts.resolve(plan.digest() + ".plan.json"), plan); return plan;
     }
     private static String validId(String id) { if (id == null || !id.matches("[a-f0-9-]{36}")) throw new IllegalArgumentException("Invalid operation ID"); return id; }
@@ -148,7 +149,7 @@ public final class AutoLlmCleanup {
         var plan = reviewed(digest);
         var scopeProblems = scopeProblems(plan, status(digest).completed());
         if (!scopeProblems.isEmpty()) throw new IllegalStateException("Cleanup scope changed before cancellation: " + scopeProblems);
-        for (var resource : plan.delete()) if (resource.sessionId() == null && OwnershipManifest.deletionPhase(resource).equals("OWNED")
+        for (var resource : plan.delete()) if (resource.sessionId() == null && new OwnershipManifest(store.root()).deletionPhase(resource).equals("OWNED")
                 && !status(digest).completed().contains(resource.path())) {
             OwnershipManifest.verify(resource);
             AutoLlmFileUtil.write(Path.of(resource.path()).resolve("cleanup-requested.json"), Map.of("digest", digest));
@@ -170,13 +171,21 @@ public final class AutoLlmCleanup {
     private Plan reviewed(String digest) {
         var plan = AutoLlmFileUtil.read(file(digest, ".plan.json"), Plan.class);
         if (!plan.workspace().equals(store.root().toString())) throw new IllegalArgumentException("Cleanup belongs to another workspace");
-        var signed = new Plan(null, plan.workspace(), plan.selection(), plan.references(), plan.delete(), plan.retain(), plan.remote(), plan.blockers(), plan.processes(), plan.controller());
+        var signed = new Plan(null, plan.workspace(), plan.selection(), plan.references(), plan.delete(), plan.retain(), plan.remote(), plan.blockers(), plan.processes(), plan.controller(), plan.dependencies());
         if (!AutoLlmFileUtil.canonicalHash(signed).equals(digest)) throw new IllegalStateException("Cleanup plan was changed");
         return plan;
     }
+    private static List<OwnershipManifest.Dependency> dependencies(List<OwnershipManifest.Resource> resources) {
+        var result = new LinkedHashSet<OwnershipManifest.Dependency>();
+        for (var resource : resources) if (resource.sessionId() == null) {
+            for (var file : AutoLlmFileUtil.ownedFiles(Path.of(resource.path()), "external-dependencies.json")) result.addAll(OwnershipManifest.dependencies(file));
+        }
+        return List.copyOf(result);
+    }
     private Map<String,String> scopeProblems(Plan plan, Set<String> completed) {
         var pending = new LinkedHashMap<String,String>();
-        for (var resource : OwnershipManifest.resources()) {
+        for (var dependency : dependencies(plan.delete())) if (!plan.dependencies().contains(dependency)) pending.put("scope", "External dependencies changed; create a new cleanup plan");
+        for (var resource : new OwnershipManifest(store.root()).resources()) {
             boolean insideBoundary = false;
             for (var boundary : plan.delete()) if (boundary.sessionId() == null && Path.of(resource.path()).startsWith(Path.of(boundary.path()))) insideBoundary = true;
             if (!insideBoundary && Collections.disjoint(resource.references(), plan.references())) continue;
@@ -187,7 +196,7 @@ public final class AutoLlmCleanup {
             if (remoteResource) continue;
             if (!plan.delete().contains(resource)) pending.put("scope", "Ownership or references changed; create a new cleanup plan");
         }
-        for (var resource : plan.delete()) if (!completed.contains(resource.path()) && OwnershipManifest.deletionPhase(resource).equals("OWNED")) {
+        for (var resource : plan.delete()) if (!completed.contains(resource.path()) && new OwnershipManifest(store.root()).deletionPhase(resource).equals("OWNED")) {
             try { OwnershipManifest.verify(resource); }
             catch (RuntimeException e) { pending.put(resource.path(), "Ownership boundary changed; create a new plan: " + e.getMessage()); }
         }
@@ -207,7 +216,7 @@ public final class AutoLlmCleanup {
     public synchronized Receipt launchFinalizer(String digest, AutoLlmConfig config) {
         var plan = reviewed(digest);
         if (!plan.selection().shutdown() || !plan.selection().kind().equals("workspace") || !plan.blockers().isEmpty()) throw new IllegalStateException("Shutdown requires an unblocked complete-workspace plan");
-        if (!plan.controller().equals(WorkerRegistry.ProcessIdentity.of(ProcessHandle.current()))) throw new IllegalStateException("Controller process identity changed");
+        if (!plan.controller().equals(ProcessIdentity.of(ProcessHandle.current()))) throw new IllegalStateException("Controller process identity changed");
         var check = apply(digest, true);
         if (!check.pending().equals(Map.of("controller", "Waiting for external finalizer"))) return check;
         Path launch = file(digest, ".finalizer.json");
@@ -217,14 +226,13 @@ public final class AutoLlmCleanup {
         }
         try {
             Path source = SshTransport.runnerArtifact(config);
-            Path runner = WorkerRegistry.system().directory().resolve("tools/" + AutoLlmFileUtil.hash(source) + ".jar");
+            Path runner = receipts.resolve("tools/" + AutoLlmFileUtil.hash(source) + ".jar");
             Files.createDirectories(runner.getParent()); if (!Files.exists(runner)) Files.copy(source, runner);
             var command = new ArrayList<>(List.of(Path.of(System.getProperty("java.home"), "bin/java").toString()));
-            if (System.getProperty("mork.test.workerRegistry") != null) command.add("-Dmork.test.workerRegistry=" + System.getProperty("mork.test.workerRegistry"));
             command.addAll(List.of("-jar", runner.toString(), "cleanup-finish", store.root().toString(), file(digest, ".plan.json").toString()));
             AutoLlmFileUtil.write(launch, new Finalizer(runner.toString(), AutoLlmFileUtil.hash(runner), null));
             var process = new ProcessBuilder(command).directory(receipts.toFile()).redirectOutput(ProcessBuilder.Redirect.DISCARD).redirectError(ProcessBuilder.Redirect.DISCARD).start();
-            process.getOutputStream().close(); AutoLlmFileUtil.write(launch, new Finalizer(runner.toString(), AutoLlmFileUtil.hash(runner), WorkerRegistry.ProcessIdentity.of(process.toHandle())));
+            process.getOutputStream().close(); AutoLlmFileUtil.write(launch, new Finalizer(runner.toString(), AutoLlmFileUtil.hash(runner), ProcessIdentity.of(process.toHandle())));
             return save(digest, status(digest).completed(), Map.of("controller", "External finalizer started"));
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
@@ -233,25 +241,25 @@ public final class AutoLlmCleanup {
         var config = new AutoLlmConfig(null, plan.workspace(), null, null, null, null, null, null, null, null, null, null, null, null);
         var cleanup = new AutoLlmCleanup(new AutoLlmCampaignStore(config));
         if (!plan.selection().shutdown() || !plan.selection().kind().equals("workspace")) throw new IllegalStateException("Finalizer scope does not authorize shutdown");
-        Path lockPath = WorkerRegistry.system().directory().resolve("cleanup-locks/" + plan.digest() + ".lock");
+        Path lockPath = cleanup.receipts.resolve("cleanup-locks/" + plan.digest() + ".lock");
         Files.createDirectories(lockPath.getParent());
         try (var channel = java.nio.channels.FileChannel.open(lockPath, StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.tryLock()) {
         if (lock == null) return;
         var launch = cleanup.file(plan.digest(), ".finalizer.json");
         var saved = AutoLlmFileUtil.read(launch, Finalizer.class);
         if (!saved.sha256().equals(AutoLlmFileUtil.hash(Path.of(saved.runner())))) throw new IllegalStateException("Cleanup helper artifact changed");
-        AutoLlmFileUtil.write(launch, new Finalizer(saved.runner(), saved.sha256(), WorkerRegistry.ProcessIdentity.of(ProcessHandle.current())));
+        AutoLlmFileUtil.write(launch, new Finalizer(saved.runner(), saved.sha256(), ProcessIdentity.of(ProcessHandle.current())));
         cleanup.reviewed(plan.digest());
         var recordedProcess = ProcessHandle.of(plan.controller().pid());
         if (recordedProcess.isPresent() && recordedProcess.get().isAlive()
-                && !plan.controller().equals(WorkerRegistry.ProcessIdentity.of(recordedProcess.get()))) throw new IllegalStateException("Controller PID was reused");
+                && !plan.controller().equals(ProcessIdentity.of(recordedProcess.get()))) throw new IllegalStateException("Controller PID was reused");
         var check = cleanup.apply(plan.digest(), true);
         if (!check.pending().isEmpty() && !check.pending().equals(Map.of("controller", "Waiting for external finalizer")))
             throw new IllegalStateException("Cleanup scope changed before shutdown: " + check.pending());
         if (check.status().equals("SUCCEEDED")) return;
         var controller = ProcessHandle.of(plan.controller().pid());
         if (controller.isPresent() && controller.get().isAlive()) {
-            if (!plan.controller().equals(WorkerRegistry.ProcessIdentity.of(controller.get()))) throw new IllegalStateException("Controller PID was reused");
+            if (!plan.controller().equals(ProcessIdentity.of(controller.get()))) throw new IllegalStateException("Controller PID was reused");
             controller.get().destroy(); controller.get().onExit().get(30, java.util.concurrent.TimeUnit.SECONDS);
         }
         cleanup.apply(plan.digest(), true);
@@ -269,26 +277,8 @@ public final class AutoLlmCleanup {
             } catch (Exception e) { pending.put("export", e.toString()); return save(digest, completed, pending); }
         }
         for (var remote : plan.remote()) {
-            String key = remote.owner().lease().workerId() + ":" + (remote.resource() == null ? "lease:" + remote.owner().lease().token() : remote.resource().path());
+            String key = remote.owner().workspaceId() + ":" + remote.resource().path();
             try {
-                if (remote.resource() == null) {
-                    if (!completed.contains(key)) {
-                        var transport = remote.owner().transport(); transport.bootstrap();
-                        var current = AutoLlmFileUtil.JSON.readValue(transport.call("ownership-plan", remote.owner().executionRoot(), null, Map.of()), new tools.jackson.core.type.TypeReference<List<OwnershipManifest.Resource>>() {});
-                        for (var resource : current) {
-                            boolean reviewed = plan.retain().containsKey(remote.owner().lease().workerId() + ":" + resource.path());
-                            for (var unit : plan.remote()) if (resource.equals(unit.resource())) reviewed = true;
-                            if (!reviewed) throw new IllegalStateException("Remote ownership changed; create a new cleanup plan");
-                        }
-                        for (var job : remote.jobs()) {
-                            var state = AutoLlmFileUtil.JSON.readValue(transport.call("status", job.root(), job.id(), Map.of()), WorkloadProtocol.State.class);
-                            if (state.status().inProgress()) { transport.call("cancel", job.root(), job.id(), Map.of()); throw new IllegalStateException("Cancellation pending: " + job.id()); }
-                            transport.call("job-collected", job.root(), job.id(), Map.of());
-                        }
-                        remote.owner().release(); completed.add(key); save(digest, completed, Map.of("deletion", "Pending"));
-                    }
-                    continue;
-                }
                 if (completed.contains(key)) { var acknowledged = remote.owner().transport(); acknowledged.bootstrap(); acknowledged.call("cleanup-ack", remote.resource().path(), null, remote.resource()); continue; }
                 var owner = remote.owner(); var transport = owner.transport(); transport.bootstrap();
                 var progress = AutoLlmFileUtil.JSON.readTree(transport.call("cleanup-progress", remote.resource().path(), null, remote.resource()));
@@ -307,7 +297,6 @@ public final class AutoLlmCleanup {
                     // Explicit discard acknowledges termination without downloading disposable archives.
                     transport.call("job-collected", job.root(), job.id(), Map.of());
                 }
-                owner.release();
                 transport.call("cleanup-owned", remote.resource().path(), null, new RemoteWorkloadMain.DeleteRequest(remote.resource(), plan.references()));
                 completed.add(key); save(digest, completed, Map.of("deletion", "Pending"));
                 transport.call("cleanup-ack", remote.resource().path(), null, remote.resource());
@@ -315,16 +304,17 @@ public final class AutoLlmCleanup {
         }
         if (!pending.isEmpty()) return save(digest, completed, pending);
         var reconciledWorkers = new HashSet<String>();
-        for (var remote : plan.remote()) if (!Objects.equals(remote.owner().lease().workerId(), WorkerRegistry.system().status().workerId()) && reconciledWorkers.add(remote.owner().lease().workerId())) {
+        for (var remote : plan.remote()) if (!Objects.equals(remote.owner().workspaceId(), WorkspaceState.identity(store.root())) && reconciledWorkers.add(remote.owner().workspaceId())) {
             try { remote.owner().call("ownership-release", plan.references()); }
-            catch (RuntimeException e) { pending.put(remote.owner().lease().workerId(), e.toString()); }
+            catch (RuntimeException e) { pending.put(remote.owner().workspaceId(), e.toString()); }
         }
         if (!pending.isEmpty()) return save(digest, completed, pending);
+        for (var resource : plan.delete()) if (resource.path().equals(store.root().toString())) new OwnershipManifest(store.root()).handoff();
         // Delete deepest resources first. The workspace boundary, if selected, is last.
         var local = new ArrayList<>(plan.delete()); local.sort(Comparator.comparingInt((OwnershipManifest.Resource r) -> Path.of(r.path()).getNameCount()).reversed());
         for (var resource : local) {
             try {
-                if (completed.contains(resource.path())) { OwnershipManifest.acknowledgeDeletion(resource); continue; }
+                if (completed.contains(resource.path())) { new OwnershipManifest(store.root()).acknowledgeDeletion(resource); continue; }
                 if (resource.sessionId() == null) {
                     new AutoLlmProcessRunner().reconcile(Path.of(resource.path()));
                     for (Path ownerFile : AutoLlmFileUtil.ownedFiles(Path.of(resource.path()), "owner.json")) {
@@ -336,18 +326,11 @@ public final class AutoLlmCleanup {
                     }
                     for (Path jobFile : AutoLlmFileUtil.ownedFiles(Path.of(resource.path()), "local-job.json")) {
                         var job = AutoLlmFileUtil.read(jobFile, AutoLlmExecutionService.LocalJob.class);
-                        if (!WorkerRegistry.system().released(job.owner().lease())) {
-                            AutoLlmProcessRunner.requireTerminated(jobFile.getParent());
-                            WorkerRegistry.system().complete(job.owner().lease(), job.owner().localRoot(), job.id());
-                        }
-                    }
-                    for (Path ownerFile : AutoLlmFileUtil.ownedFiles(Path.of(resource.path()), "execution-owner.json")) {
-                        var owner = AutoLlmFileUtil.read(ownerFile, ExecutionOwner.class);
-                        if (!owner.remote()) owner.release();
+                        AutoLlmProcessRunner.requireTerminated(jobFile.getParent());
                     }
                 }
-                OwnershipManifest.delete(resource, plan.references()); completed.add(resource.path()); save(digest, completed, Map.of("deletion", "Pending"));
-                OwnershipManifest.acknowledgeDeletion(resource);
+                new OwnershipManifest(store.root()).delete(resource, plan.references()); completed.add(resource.path()); save(digest, completed, Map.of("deletion", "Pending"));
+                new OwnershipManifest(store.root()).acknowledgeDeletion(resource);
             } catch (Exception e) { pending.put(resource.path(), e.toString()); break; }
         }
         if (pending.isEmpty()) {
@@ -360,11 +343,13 @@ public final class AutoLlmCleanup {
                     if (id == null || !id.matches("[a-f0-9-]{36}")) continue;
                     if (completed.contains(store.root().resolve(id).toString()) || completed.contains(store.root().resolve("screenings").resolve(id).toString())) Files.delete(file);
                 }
-                OwnershipManifest.removeReferences(plan.references());
-            } catch (IOException e) { pending.put("journals", e.toString()); }
+                for (var dependency : plan.dependencies()) OwnershipManifest.releaseDependency(dependency);
+                new OwnershipManifest(store.root()).removeReferences(plan.references());
+            } catch (IOException | RuntimeException e) { pending.put("journals", e.toString()); }
         }
         var result = save(digest, completed, pending);
         if (pending.isEmpty()) {
+            if (plan.selection().kind().equals("workspace")) new OwnershipManifest(store.root()).finishHandoff();
             try (var files = Files.newDirectoryStream(receipts, "*.plan.json")) {
                 for (Path file : files) {
                     var previous = AutoLlmFileUtil.read(file, Plan.class);

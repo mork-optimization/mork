@@ -69,8 +69,8 @@ public class AutoLlmCampaignService {
             var sota = codec.parse(Files.readString(resolve(repo, requested.sotaFile())));
             var seeds = new LinkedHashSet<ComponentSpec>(); seeds.add(sota);
             if (requested.initialConfigurationsFile() != null && !requested.initialConfigurationsFile().isBlank()) seeds.addAll(codec.parseList(Files.readString(resolve(repo, requested.initialConfigurationsFile()))));
-            OwnershipManifest.directory(store.root(), "workspace", store.root().toString());
-            OwnershipManifest.directory(directory, "campaign", directory.toString());
+            new OwnershipManifest(store.root()).directory(store.root(), "workspace", store.root().toString());
+            new OwnershipManifest(store.root()).directory(directory, "campaign", directory.toString());
             Files.createDirectories(directory.resolve("control"));
             AutoLlmFileUtil.write(directory.resolve("control/storage-layout.json"), Map.of("version", 1, "sources", "commit-and-patch"));
             var instancePaths = new LinkedHashMap<String,String>();
@@ -105,7 +105,7 @@ public class AutoLlmCampaignService {
                 c.screeningPath = proposal.getParent().toString();
             if (c.screeningPath != null) {
                 Path dependency = Path.of(c.screeningPath);
-                for (var resource : OwnershipManifest.resources()) if (resource.kind().equals("screening") && dependency.startsWith(Path.of(resource.path()))) OwnershipManifest.reference(Path.of(resource.path()), directory.toString());
+                new OwnershipManifest(store.root()).screeningDependency(dependency, directory);
             }
             registerInitial(c); store.save(c); AutoLlmFileUtil.write(directory.resolve("control/config.json"), c.config); return c;
         } catch (IOException e) { throw new UncheckedIOException(e); }

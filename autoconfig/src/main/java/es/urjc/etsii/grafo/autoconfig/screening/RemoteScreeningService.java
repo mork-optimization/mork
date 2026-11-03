@@ -28,7 +28,7 @@ public final class RemoteScreeningService {
         Path output = Path.of(settings.output()).toAbsolutePath().normalize(); Files.createDirectories(output);
         String key = AutoLlmFileUtil.hash(new ByteArrayInputStream(output.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8))).substring(0, 24);
         Path root = output.resolve(config.execution().target().name().toLowerCase(Locale.ROOT) + "-" + key); Files.createDirectories(root);
-        try {
+
         Path preparedFile = root.resolve("remote-screening.json");
         Path artifact;
         Preparation preparation;
@@ -128,7 +128,7 @@ public final class RemoteScreeningService {
             System.out.println(Files.readString(root.resolve("proposal/report.md")));
             System.out.println("Reviewed proposal SHA-256: " + AutoLlmFileUtil.hash(root.resolve("proposal/proposal.json")));
         }
-        } finally { if (!AutoLlmCampaignStore.hasUncollectedJobs(root)) ExecutionOwner.releaseIfPresent(root); }
+
     }
     private void command(List<String> command, Path cwd, Path output) {
         var result = processes.run(command, cwd, output, 300000, 0, 1000, cancelled, false, 0);

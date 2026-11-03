@@ -90,7 +90,7 @@ class OperatorClientTest(unittest.TestCase):
         with patch.object(client, "request", return_value={"mode": "AUTOLLM", "apiVersion": 1}):
             with self.assertRaisesRegex(RuntimeError, "capabilities"):
                 client.capabilities("http://localhost")
-        info = {"mode": "AUTOLLM", "apiVersion": 7, "checkpointVersion": 7, "runnerProtocol": 7, "workspace": "/other", "features": list(client.FEATURES)}
+        info = {"mode": "AUTOLLM", "apiVersion": 8, "checkpointVersion": 8, "runnerProtocol": 8, "workspace": "/other", "features": list(client.FEATURES)}
         with patch.object(client, "request", return_value=info):
             with self.assertRaisesRegex(RuntimeError, "workspace"):
                 client.capabilities("http://localhost", "/requested")
@@ -101,7 +101,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"frozen executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url="http://localhost")
-            info = {"mode": "AUTOLLM", "apiVersion": 7, "checkpointVersion": 7, "runnerProtocol": 7, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            info = {"mode": "AUTOLLM", "apiVersion": 8, "checkpointVersion": 8, "runnerProtocol": 8, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             with patch.object(client, "request", return_value=info), patch.object(client.subprocess, "Popen") as launch:
                 self.assertEqual(client.backend(args), info)
                 launch.assert_not_called()
@@ -125,7 +125,7 @@ class OperatorClientTest(unittest.TestCase):
             jar = root / "app.jar"
             jar.write_bytes(b"executable")
             args = SimpleNamespace(workspace=root, jar=jar, cwd=root, url=None, java="java", port=0, timeout=10)
-            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 7, "checkpointVersion": 7, "runnerProtocol": 7, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
+            ready = {"pid": 12345, "mode": "AUTOLLM", "apiVersion": 8, "checkpointVersion": 8, "runnerProtocol": 8, "workspace": str(root), "workingDirectory": str(root), "features": list(client.FEATURES), "artifactSha256": client.fingerprint(jar)}
             launching = dict(ready, mode="STARTING")
             with patch.object(client, "request", side_effect=[RuntimeError("offline"), launching, ready]), patch.object(client.socket, "socket") as socket, patch.object(client.subprocess, "Popen") as launch, patch.object(client.time, "sleep"):
                 socket.return_value.__enter__.return_value.getsockname.return_value = ("127.0.0.1", 18081)
@@ -498,7 +498,7 @@ class OperatorClientTest(unittest.TestCase):
 
 
 
-class CampaignV7OutputTest(unittest.TestCase):
+class CampaignV8OutputTest(unittest.TestCase):
     def test_large_response_streams_and_interrupted_write_preserves_destination(self):
         import io
         class Response(io.BytesIO):

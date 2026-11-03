@@ -30,7 +30,7 @@ public class ScreeningJobService {
     }
     public record Request(AutoLlmConfig config, InstanceScreeningConfig settings, String inputPath, Double trainingFraction) {}
     public static class Job {
-        public int version = 7;
+        public int version = 8;
         public String id, createdAt, mirror;
         public ScreeningStatus status = ScreeningStatus.DRAFT;
         public Request request;
@@ -60,7 +60,7 @@ public class ScreeningJobService {
     public Job load(String id) {
         Path file = directory(id).resolve("job.json"); if (!Files.exists(file)) throw new NoSuchElementException("Screening job unavailable");
         Job job = AutoLlmFileUtil.read(file, Job.class);
-        if (job.version != 7) throw new IllegalStateException("Use a fresh screening workspace");
+        if (job.version != 8) throw new IllegalStateException("Use a fresh screening workspace");
         if (job.mirror != null && Files.exists(Path.of(job.mirror).resolve("proposal/screening-progress.json"))) {
             Path progress = Path.of(job.mirror).resolve("proposal/screening-progress.json");
             job.progress = AutoLlmFileUtil.read(progress, Object.class);
@@ -92,8 +92,8 @@ public class ScreeningJobService {
         double fraction = request.trainingFraction() == null ? 0.15 : request.trainingFraction();
         if (!Double.isFinite(fraction) || fraction <= 0 || fraction >= 1) throw new IllegalArgumentException("Training fraction must be between zero and one");
         var job = new Job(); job.id = UUID.randomUUID().toString(); job.createdAt = Instant.now().toString();
-        OwnershipManifest.directory(campaigns.root(), "workspace", campaigns.root().toString());
-        OwnershipManifest.directory(directory(job.id), "screening", directory(job.id).toString());
+        new OwnershipManifest(campaigns.root()).directory(campaigns.root(), "workspace", campaigns.root().toString());
+        new OwnershipManifest(campaigns.root()).directory(directory(job.id), "screening", directory(job.id).toString());
         var selected = request.settings();
         var settings = new InstanceScreeningConfig(repo.resolve(sota).toString(), directory(job.id).resolve("evidence").toString(), selected.thresholdMillis(), selected.candidateMultiplier(), selected.horizonMillis(), selected.confirmationRuns(), selected.fastFraction(), selected.python(), selected.warmupRepetitions(), selected.warmupMillis(), null);
         job.request = new Request(config, settings, repo.resolve(request.inputPath()).toString(), fraction);

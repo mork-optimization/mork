@@ -21,7 +21,7 @@ public final class RemoteStorageMaintenance {
                 var job = AutoLlmFileUtil.read(descriptor, WorkloadProtocol.Job.class);
                 if (!job.managedStorage()) continue;
                 if (cancelled.getAsBoolean()) return;
-                var owner = ExecutionOwner.of(job); roots.put(owner.lease().workerId() + ":" + job.root(), owner);
+                var owner = ExecutionOwner.of(job); roots.put(owner.workspaceId() + ":" + job.root(), owner);
                 var transport = owner.transport(); transport.bootstrap();
                 Path acknowledged = descriptor.resolveSibling("remote-acknowledged.json");
                 if (Files.isRegularFile(acknowledged)) continue;

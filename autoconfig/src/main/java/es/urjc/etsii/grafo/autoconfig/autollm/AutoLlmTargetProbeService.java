@@ -10,8 +10,8 @@ import java.util.concurrent.*;
 public class AutoLlmTargetProbeService implements AutoCloseable {
     public enum ProbeStatus { RUNNING, SUCCEEDED, COMPLETED_WITH_FAILURES, INTERRUPTED }
     public enum TargetStatus {
-        QUEUED, RUNNING, FAILED, SUCCEEDED, INTERRUPTED;
-        public boolean pending() { return this == QUEUED || this == RUNNING; }
+        QUEUED, WAITING_FOR_WORKSPACE, RUNNING, FAILED, SUCCEEDED, INTERRUPTED;
+        public boolean pending() { return this == QUEUED || this == WAITING_FOR_WORKSPACE || this == RUNNING; }
     }
     public record Target(TargetStatus status, WorkloadProtocol.Host host, AutoLlmFailureUtil.Failure problem) {}
     public record Probe(String id, String createdAt, ProbeStatus status, Map<String,Target> targets) {}
@@ -32,7 +32,7 @@ public class AutoLlmTargetProbeService implements AutoCloseable {
         if (!id.matches("[a-f0-9-]{36}")) throw new IllegalArgumentException("Invalid target probe id");
         return root.resolve(id);
     }
-    private void save(Probe probe) { AutoLlmFileUtil.write(directory(probe.id()).resolve("probe.json"), new Saved(7, probe, pid, processStartedAt)); }
+    private void save(Probe probe) { AutoLlmFileUtil.write(directory(probe.id()).resolve("probe.json"), new Saved(8, probe, pid, processStartedAt)); }
     public synchronized boolean selectedActive() {
         for (String id : active.keySet()) if (AutoLlmCleanup.requested(directory(id))) return true;
         return false;
@@ -48,8 +48,8 @@ public class AutoLlmTargetProbeService implements AutoCloseable {
         var targets = new LinkedHashMap<String,Target>();
         for (String id : definitions.keySet()) targets.put(id, new Target(TargetStatus.QUEUED, null, null));
         var probe = new Probe(UUID.randomUUID().toString(), Instant.now().toString(), ProbeStatus.RUNNING, Collections.unmodifiableMap(targets));
-        OwnershipManifest.directory(root.getParent(), "workspace", root.getParent().toString());
-        OwnershipManifest.directory(directory(probe.id()), "probe", directory(probe.id()).toString());
+        new OwnershipManifest(root.getParent()).directory(root.getParent(), "workspace", root.getParent().toString());
+        new OwnershipManifest(root.getParent()).directory(directory(probe.id()), "probe", directory(probe.id()).toString());
         save(probe); active.put(probe.id(), probe);
         var normalized = config;
         for (var entry : definitions.entrySet()) executor.execute(() -> run(probe.id(), entry.getKey(), entry.getValue(),
@@ -57,8 +57,7 @@ public class AutoLlmTargetProbeService implements AutoCloseable {
         return probe;
     }
     protected WorkloadProtocol.Host inspect(AutoLlmConfig config, Path directory, String selectorPython) {
-        try { return workloads.inspect(config, directory, selectorPython); }
-        finally { ExecutionOwner.releaseIfPresent(directory); }
+        return workloads.inspect(config, directory, selectorPython);
     }
     private void run(String probeId, String targetId, AutoLlmConfig config, String selectorPython) {
         if (!update(probeId, targetId, new Target(TargetStatus.RUNNING, null, null))) return;
@@ -66,7 +65,15 @@ public class AutoLlmTargetProbeService implements AutoCloseable {
         Target result;
         try {
             AutoLlmFileUtil.write(directory.resolve("execution-context.json"), AutoLlmPoolUtil.identity(probeId, targetId));
-            var host = inspect(config, directory, selectorPython);
+            WorkloadProtocol.Host host;
+            if (config.execution().target() == AutoLlmConfig.Target.LOCAL) {
+                try (var lock = WorkspaceState.execute(root.getParent(), directory,
+                        () -> Thread.currentThread().isInterrupted() || AutoLlmCleanup.requested(directory),
+                        () -> update(probeId, targetId, new Target(TargetStatus.WAITING_FOR_WORKSPACE, null, null)))) {
+                    update(probeId, targetId, new Target(TargetStatus.RUNNING, null, null));
+                    host = inspect(config, directory, selectorPython);
+                } catch (java.io.IOException e) { throw new java.io.UncheckedIOException(e); }
+            } else host = inspect(config, directory, selectorPython);
             boolean failed = false;
             for (var check : host.prerequisites()) failed |= check.status() == TargetPreflightUtil.PrerequisiteStatus.FAILED;
             result = new Target(failed ? TargetStatus.FAILED : TargetStatus.SUCCEEDED, host, null);
@@ -95,7 +102,7 @@ public class AutoLlmTargetProbeService implements AutoCloseable {
         Path file = directory(id).resolve("probe.json");
         if (!Files.isRegularFile(file)) throw new NoSuchElementException("Target probe unavailable: " + id);
         var saved = AutoLlmFileUtil.read(file, Saved.class);
-        if (saved.version() != 7) throw new IllegalStateException("Historical preflight requires its matching controller");
+        if (saved.version() != 8) throw new IllegalStateException("Historical preflight requires its matching controller");
         if (saved.probe().status() == ProbeStatus.RUNNING) {
             boolean alive = ProcessHandle.of(saved.pid()).filter(ProcessHandle::isAlive)
                     .flatMap(process -> process.info().startInstant()).map(Instant::toString).orElse("").equals(saved.processStartedAt());

@@ -38,6 +38,7 @@ public final class RemoteWorkloadFixture {
             AutoLlmFileUtil.write(output.resolve("execution/active.json"), Map.of("hung", Map.of("deadline", System.currentTimeMillis() + 100, "phase", "RUNNING")));
             while (true) Thread.sleep(100);
         }
+        if (args[0].equals("hold")) while (true) Thread.sleep(100);
         if (args[0].equals("wait")) Thread.sleep(20000);
         System.out.println("fixture complete");
         AutoLlmFileUtil.write(output.resolve("execution/terminal.json"), Map.of("outcome", "SUCCEEDED"));

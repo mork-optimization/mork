@@ -13,8 +13,8 @@ from urllib.request import urlopen
 import zipfile
 
 
-@unittest.skipUnless(os.environ.get("MORK_AUTOLLM_TEST_JAR") and os.environ.get("MORK_AUTOLLM_TEST_CWD") and os.environ.get("MORK_AUTOLLM_TEST_RUNNER"),
-                     "Set MORK_AUTOLLM_TEST_JAR, MORK_AUTOLLM_TEST_CWD and MORK_AUTOLLM_TEST_RUNNER for the packaged-backend smoke test")
+@unittest.skipUnless(os.environ.get("MORK_AUTOLLM_TEST_JAR") and os.environ.get("MORK_AUTOLLM_TEST_CWD"),
+                     "Set MORK_AUTOLLM_TEST_JAR, MORK_AUTOLLM_TEST_CWD for the packaged-backend smoke test")
 class PackagedBackendTest(unittest.TestCase):
     def test_owned_backend_lifecycle_watch_diagnostics_and_dashboard(self):
         jar = Path(os.environ["MORK_AUTOLLM_TEST_JAR"]).resolve()
@@ -23,14 +23,10 @@ class PackagedBackendTest(unittest.TestCase):
         helper = Path(__file__).with_name("mork_autollm.py")
         with tempfile.TemporaryDirectory(prefix="mork-autollm-client-smoke-") as temporary:
             workspace = Path(temporary) / "controller"; workspace.mkdir()
-            registry = Path(temporary) / "worker-registry"
-            environment = dict(os.environ, JAVA_TOOL_OPTIONS="-Dmork.test.workerRegistry=" + str(registry))
-            subprocess.run(["java", "-jar", os.environ["MORK_AUTOLLM_TEST_RUNNER"], "worker-init", str(registry)],
-                           env=environment, check=True, capture_output=True, timeout=30)
             command = [sys.executable, "-B", str(helper), "--workspace", str(workspace), "--json"]
 
             def run(*arguments):
-                result = subprocess.run([*command, *arguments], capture_output=True, text=True, timeout=120, env=environment)
+                result = subprocess.run([*command, *arguments], capture_output=True, text=True, timeout=120)
                 log = workspace / "backend.log"
                 details = log.read_text(errors="replace")[-12000:] if result.returncode and log.exists() else ""
                 self.assertEqual(result.returncode, 0, result.stderr + "\n" + result.stdout + "\n" + details)
@@ -40,7 +36,7 @@ class PackagedBackendTest(unittest.TestCase):
                 backend = json.loads(run("backend", "start", "--jar", str(jar), "--cwd", str(cwd), "--port", "0", "--timeout", "90"))
                 again = json.loads(run("backend", "start", "--jar", str(jar), "--cwd", str(cwd), "--port", "0"))
                 self.assertEqual(again["pid"], backend["pid"])
-                self.assertEqual(backend["apiVersion"], 7)
+                self.assertEqual(backend["apiVersion"], 8)
                 sota, instance = workspace / "sota.json", workspace / "fixture.txt"
                 sota.write_text('{"$component":"DraftOnlyFixture"}')
                 instance.write_text("draft input; no workload consumes this fixture\n")

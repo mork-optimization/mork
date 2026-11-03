@@ -47,10 +47,10 @@ class SshWorkloadTest {
         manifest.getMainAttributes().put(Attributes.Name.CLASS_PATH, String.join(" ", classpath));
         try (var jar = new JarOutputStream(Files.newOutputStream(runner), manifest)) { /* Manifest delegates to this fixture's compiled classes. */ }
         Path workerJava = temp.resolve("worker-java");
-        Files.writeString(workerJava, "#!/bin/sh\nexec " + WorkloadPathUtil.quote(java) + " " + WorkloadPathUtil.quote("-Dmork.test.workerRegistry=" + WorkerRegistry.system().directory()) + " \"$@\"\n");
+        Files.writeString(workerJava, "#!/bin/sh\nexec " + WorkloadPathUtil.quote(java) + " \"$@\"\n");
         assertTrue(workerJava.toFile().setExecutable(true));
         var defaults = AutoLlmConfig.defaults();
-        config = new AutoLlmConfig(defaults.project(), defaults.workspace(), 1, 1234L, 299, null, null, null, null, defaults.codex(), defaults.preparation(), defaults.tuning(), defaults.comparison(),
+        config = new AutoLlmConfig(defaults.project(), temp.resolve("controller").toString(), 1, 1234L, 299, null, null, null, null, defaults.codex(), defaults.preparation(), defaults.tuning(), defaults.comparison(),
                 new AutoLlmConfig.Execution(32, 100L, 30000L, 30000L, 5000L, 5000L, 30000L, 30000L, "128m", AutoLlmConfig.Target.SSH,
                         new AutoLlmConfig.Ssh("fixture", runner.toString(), List.of(new AutoLlmConfig.Server("fixture", "mork-fixture", temp.resolve("remote workspace").toString(), workerJava.toString(), Map.of(), ssh.toString(), null, null)), new AutoLlmConfig.Reconnect(10L, 40L, 200L))));
         root = temp.resolve("local mirror").toAbsolutePath(); Files.createDirectories(root);
@@ -61,8 +61,8 @@ class SshWorkloadTest {
         ((tools.jackson.databind.node.ObjectNode) tree).put("workspace", temp.toRealPath().resolve("managed-workspace").toString());
         config = AutoLlmFileUtil.JSON.treeToValue(tree, AutoLlmConfig.class);
         var store = new AutoLlmCampaignStore(config); String campaignId = UUID.randomUUID().toString(); Path campaign = store.directory(campaignId);
-        OwnershipManifest.directory(store.root(), "workspace", store.root().toString());
-        OwnershipManifest.directory(campaign, "campaign", campaign.toString());
+        new OwnershipManifest(store.root()).directory(store.root(), "workspace", store.root().toString());
+        new OwnershipManifest(store.root()).directory(campaign, "campaign", campaign.toString());
         var jobs = new ArrayList<WorkloadProtocol.Job>();
         Path ssh = Path.of(config.execution().ssh().onlyServer().configFile());
         Files.writeString(ssh, Files.readString(ssh).replace("Host mork-fixture", "Host mork-fixture alias-two"));
@@ -77,9 +77,9 @@ class SshWorkloadTest {
             var work = workload("success", assignment);
             assertEquals(0, new SshWorkloadExecutor(config, root, new SshTransport(config, root.resolve(".transport")), state -> {}).run(work, () -> false).exitCode());
             var job = AutoLlmFileUtil.read(work.output().resolve("remote-job.json"), WorkloadProtocol.Job.class); jobs.add(job);
-            ExecutionOwner.of(job).release();
+
         }
-        assertEquals(jobs.getFirst().owner().lease().workerId(), jobs.getLast().owner().lease().workerId());
+        assertEquals(jobs.getFirst().owner().workspaceId(), jobs.getLast().owner().workspaceId());
         assertEquals("mork-fixture", jobs.getFirst().owner().config().execution().ssh().onlyServer().host());
         assertEquals("alias-two", jobs.getLast().owner().config().execution().ssh().onlyServer().host());
         for (var job : jobs) {
@@ -91,7 +91,17 @@ class SshWorkloadTest {
         var receipt = cleanup.apply(plan.digest(), true); assertEquals("SUCCEEDED", receipt.status(), receipt.toString());
         assertFalse(Files.exists(campaign));
         for (var job : jobs) assertFalse(Files.exists(Path.of(job.root())));
-        assertNull(WorkerRegistry.system().status().lease());
+    }
+    @Test void interruptedOwnerRegistrationRetainsItsEndpointAndReusesTheRemoteIdentity() throws Exception {
+        var owner = ExecutionOwner.prepare(config, root);
+        var resource = AutoLlmFileUtil.read(root.resolve("remote-resource.json"), OwnershipManifest.Resource.class);
+        // Registration committed remotely, but the controller retained only its pre-request intent.
+        AutoLlmFileUtil.write(root.resolve("execution-owner.json"), new ExecutionOwner(owner.version(), owner.operation(), owner.assignment(),
+                owner.localRoot(), owner.executionRoot(), owner.config(), owner.controllerWorkspaceId(), null));
+        Files.delete(root.resolve("remote-assets.json"));
+        assertEquals(0, new SshWorkloadExecutor(config, root, new SshTransport(config, root.resolve(".transport")), state -> {}).run(workload("success", "reconnected registration"), () -> false).exitCode());
+        assertEquals(owner, ExecutionOwner.read(root));
+        assertEquals(resource, AutoLlmFileUtil.read(root.resolve("remote-resource.json"), OwnershipManifest.Resource.class));
     }
     @Test void lostAcknowledgementReplyRejoinsCollectedJobWithoutDownloadingOrExecutingAgain() throws Exception {
         AutoLlmFileUtil.write(root.resolve("control/storage-layout.json"), Map.of("version", 1));
@@ -312,6 +322,40 @@ class SshWorkloadTest {
             assertEquals("CANCELLED", AutoLlmFileUtil.JSON.readTree(Files.readString(root.resolve("output with spaces/remote-status.json"))).path("status").asString());
         }
     }
+    @ParameterizedTest @ValueSource(booleans = {false, true})
+    void separateControllersContendOnlyWhenTheyUseTheSameWorkspace(boolean separateWorkspace) throws Exception {
+        var firstConfig = config; Path firstRoot = root; var firstWork = workload("hold", "first controller");
+        var firstExecutor = new SshWorkloadExecutor(firstConfig, firstRoot, new SshTransport(firstConfig, firstRoot.resolve(".transport")), state -> {});
+        var cancelFirst = new AtomicBoolean(); var cancelSecond = new AtomicBoolean();
+        try (var threads = Executors.newFixedThreadPool(2)) {
+            var first = threads.submit(() -> firstExecutor.run(firstWork, cancelFirst::get));
+            try {
+                awaitReady();
+                root = temp.resolve("second controller"); Files.createDirectories(root);
+                var changed = AutoLlmFileUtil.JSON.valueToTree(config);
+                ((tools.jackson.databind.node.ObjectNode) changed).put("workspace", root.toString());
+                if (separateWorkspace) {
+                    ((tools.jackson.databind.node.ObjectNode) changed.path("execution").path("ssh").path("servers").get(0))
+                            .put("workspace", temp.resolve("independent worker workspace").toString());
+                }
+                config = AutoLlmFileUtil.JSON.treeToValue(changed, AutoLlmConfig.class);
+                var secondWork = workload("success", "second controller"); var waiting = new CountDownLatch(1);
+                var secondExecutor = new SshWorkloadExecutor(config, root, new SshTransport(config, root.resolve(".transport")),
+                        state -> { if ("WAITING_FOR_WORKSPACE".equals(state.get("status"))) waiting.countDown(); });
+                var second = threads.submit(() -> secondExecutor.run(secondWork, cancelSecond::get));
+                if (separateWorkspace) {
+                    assertEquals(0, second.get(15, TimeUnit.SECONDS).exitCode()); assertFalse(first.isDone());
+                } else {
+                    assertTrue(waiting.await(15, TimeUnit.SECONDS)); assertFalse(second.isDone());
+                    assertFalse(Files.exists(secondWork.output().resolve("literal.txt")));
+                    cancelSecond.set(true);
+                    assertInstanceOf(CancellationException.class, assertThrows(ExecutionException.class, () -> second.get(15, TimeUnit.SECONDS)).getCause());
+                    assertFalse(first.isDone());
+                }
+            } finally { cancelFirst.set(true); cancelSecond.set(true); }
+            assertInstanceOf(CancellationException.class, assertThrows(ExecutionException.class, () -> first.get(15, TimeUnit.SECONDS)).getCause());
+        }
+    }
     @Test void aNewControllerReattachesToTheLiveJobRatherThanLaunchingAnother() throws Exception {
         var transport = new SshTransport(config, temp.resolve("transport"));
         var executor = new SshWorkloadExecutor(config, root, transport, state -> {});
@@ -420,7 +464,7 @@ class SshWorkloadTest {
         Path output = root.resolve("output with spaces"); String remote = WorkloadPathUtil.remoteRoot(config, root);
         // Classpath is shared only by this loopback fixture; the production runner is a standalone attached JAR.
         var command = List.of(java, "-cp", System.getProperty("java.class.path"), RemoteWorkloadFixture.class.getName(), mode, remote + "/output with spaces", literal);
-        return new AutoLlmWorkloadExecutor.Workload(command, root, output, Map.of(), List.of(), List.of(), 30000, 0, 100, true, 5000);
+        return new AutoLlmWorkloadExecutor.Workload(command, root, output, Map.of(), List.of(), List.of(), mode.equals("hold") ? 90000 : 30000, 0, 100, true, 5000);
     }
     private void run(List<String> command) throws Exception {
         var process = new ProcessBuilder(command).redirectErrorStream(true).start(); String output = new String(process.getInputStream().readAllBytes());

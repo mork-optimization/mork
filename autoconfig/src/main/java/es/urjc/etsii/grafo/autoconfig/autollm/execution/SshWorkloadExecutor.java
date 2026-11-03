@@ -23,7 +23,7 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
         this.config = config; this.root = root; this.transport = transport; this.observer = observer;
     }
     @Override public AutoLlmProcessRunner.Result run(Workload work, BooleanSupplier cancelled) {
-        if (!Files.isRegularFile(root.resolve("execution-owner.json"))) ExecutionOwner.waitFor(config, root);
+        if (!Files.isRegularFile(root.resolve("execution-owner.json")) || ExecutionOwner.read(root).workspaceId() == null) ExecutionOwner.prepare(config, root);
         String remote = WorkloadPathUtil.remoteRoot(config, root);
         Path descriptor = work.output().resolve("remote-job.json");
         Path campaign = CampaignAssetStore.campaign(root);
@@ -220,7 +220,7 @@ public final class SshWorkloadExecutor implements AutoLlmWorkloadExecutor {
         values.put("remoteRoot", WorkloadPathUtil.remoteRoot(config, root)); values.put("requestedWorkers", config.execution().workers());
         values.put("updatedAt", Instant.now().toString()); values.put("failure", failure);
         values.put("lastSynchronizedAt", lastSynchronizedAt); values.put("lastContactAt", lastSynchronizedAt);
-        values.put("assignmentId", job.owner().assignment()); values.put("workerId", job.owner().lease().workerId()); values.put("lease", job.owner().lease());
+        values.put("assignmentId", job.owner().assignment()); values.put("workspaceId", job.owner().workspaceId());
         values.put("disconnectedAt", disconnectedAt == null ? null : disconnectedAt.toString());
         values.put("nextRetryAt", nextRetryAt == null ? null : nextRetryAt.toString());
         values.put("consecutiveFailures", connectionFailures);

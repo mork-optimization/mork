@@ -411,6 +411,12 @@ export interface CleanupSelection {
   shutdown?: boolean;
   retainReceipt?: boolean;
 }
+export interface CleanupDependency {
+  workspace: string;
+  path: string;
+  token: string;
+  reference: string;
+}
 export interface CleanupPlan {
   digest: string;
   workspace: string;
@@ -418,6 +424,7 @@ export interface CleanupPlan {
   delete: unknown[];
   retain: Record<string, string>;
   remote: unknown[];
+  dependencies: CleanupDependency[];
   blockers: string[];
   processes: { evidence: string; identity: { pid: number; start: string } }[];
 }

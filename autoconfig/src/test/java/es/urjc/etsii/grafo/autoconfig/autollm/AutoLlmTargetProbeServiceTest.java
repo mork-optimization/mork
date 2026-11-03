@@ -53,6 +53,27 @@ class AutoLlmTargetProbeServiceTest {
             } finally { finish.countDown(); }
         }
     }
+    @Test void localPreflightWaitsForTheExistingWorkspaceOperation() throws Exception {
+        var config = new AutoLlmConfig(null, temp.toString(), null, null, null, null, null, null, null, null, null, null, null, null);
+        var store = new AutoLlmCampaignStore(config); var inspected = new AtomicBoolean();
+        try (var service = new AutoLlmTargetProbeService(store, mock(AutoLlmProcessRunner.class)) {
+            @Override protected WorkloadProtocol.Host inspect(AutoLlmConfig c, Path root, String python) {
+                inspected.set(true); return new WorkloadProtocol.Host(WorkloadProtocol.VERSION, Map.of(), 1, 1, 1, 1, 1, List.of());
+            }
+        }) {
+            AutoLlmTargetProbeService.Probe probe;
+            try (var operation = store.lock()) {
+                probe = service.start(config);
+                long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+                while (service.load(probe.id()).targets().get("local").status() != AutoLlmTargetProbeService.TargetStatus.WAITING_FOR_WORKSPACE
+                        && System.nanoTime() < deadline) Thread.sleep(10);
+                assertEquals(AutoLlmTargetProbeService.TargetStatus.WAITING_FOR_WORKSPACE, service.load(probe.id()).targets().get("local").status());
+                assertFalse(inspected.get());
+            }
+            assertEquals(AutoLlmTargetProbeService.ProbeStatus.SUCCEEDED, finished(service, probe.id()).status());
+            assertTrue(inspected.get());
+        }
+    }
     @Test void shutdownSealsQueuedAndRunningTargetsAsInterrupted() throws Exception {
         var config = pool(); var store = new AutoLlmCampaignStore(config); var entered = new CountDownLatch(1);
         var service = new AutoLlmTargetProbeService(store, mock(AutoLlmProcessRunner.class)) {

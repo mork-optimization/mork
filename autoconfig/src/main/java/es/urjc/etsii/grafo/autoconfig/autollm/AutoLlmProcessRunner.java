@@ -18,9 +18,19 @@ public class AutoLlmProcessRunner {
                       long graceMillis, BooleanSupplier cancelled, boolean watchEvaluations, long startupMillis) {
         try {
             Files.createDirectories(output);
+            requireTerminated(output);
+            Files.deleteIfExists(output.resolve("owner.json"));
             Files.deleteIfExists(output.resolve("process-terminated.json"));
-            var process = new ProcessBuilder(command).directory(cwd.toFile())
-                    .redirectOutput(output.resolve("stdout.log").toFile()).redirectError(output.resolve("stderr.log").toFile()).start();
+            String submission = UUID.randomUUID().toString();
+            AutoLlmFileUtil.write(output.resolve("process-intent.json"), Map.of("submission", submission));
+            Process process;
+            try {
+                process = new ProcessBuilder(command).directory(cwd.toFile())
+                        .redirectOutput(output.resolve("stdout.log").toFile()).redirectError(output.resolve("stderr.log").toFile()).start();
+            } catch (IOException failure) {
+                AutoLlmFileUtil.write(output.resolve("process-terminated.json"), Map.of("submission", submission, "notStarted", true));
+                throw failure;
+            }
             long begin = System.currentTimeMillis();
             boolean planned = false;
             var children = new LinkedHashMap<Long,ProcessHandle>();
@@ -67,7 +77,7 @@ public class AutoLlmProcessRunner {
                 for (var child : children.values()) if (child.isAlive()) stop(child);
                 if (process.isAlive()) throw new IllegalStateException("Process termination is unconfirmed");
                 for (var child : children.values()) if (child.isAlive()) throw new IllegalStateException("Child termination is unconfirmed");
-                AutoLlmFileUtil.write(output.resolve("process-terminated.json"), Map.of("pid", process.pid(), "confirmedAt", Instant.now().toString()));
+                AutoLlmFileUtil.write(output.resolve("process-terminated.json"), Map.of("pid", process.pid(), "submission", submission, "confirmedAt", Instant.now().toString()));
             }
         } catch (IOException e) { throw new UncheckedIOException(e); }
         catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Campaign interrupted"); }
@@ -89,6 +99,13 @@ public class AutoLlmProcessRunner {
     }
     /** A dead parent alone does not establish that its children stopped. */
     public static void requireTerminated(Path root) {
+        for (Path intent : AutoLlmFileUtil.ownedFiles(root, "process-intent.json")) {
+            Path proof = intent.resolveSibling("process-terminated.json");
+            String submission = Objects.toString(AutoLlmFileUtil.read(intent, Map.class).get("submission"), "");
+            if (submission.isEmpty() || !Files.isRegularFile(proof)
+                    || !submission.equals(AutoLlmFileUtil.read(proof, Map.class).get("submission")))
+                throw new IllegalStateException("Process submission is unreconciled: " + intent);
+        }
         for (Path file : AutoLlmFileUtil.ownedFiles(root, "owner.json")) {
             var owner = AutoLlmFileUtil.read(file, Map.class);
             if (!(owner.get("pid") instanceof Number pid)) continue;

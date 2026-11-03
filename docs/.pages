@@ -1,4 +1,6 @@
 nav:
     - README.md
     - quickstart
-    - ...
+    - API reference: apidocs/index.html
+    # Keep generated Javadoc license pages out of the guide navigation.
+    - ... | regex=^(?!apidocs$).*

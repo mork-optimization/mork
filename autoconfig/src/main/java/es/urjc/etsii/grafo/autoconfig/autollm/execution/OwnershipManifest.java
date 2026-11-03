@@ -9,31 +9,73 @@ import java.util.*;
 import java.util.function.Function;
 import tools.jackson.core.type.TypeReference;
 
-/** Host-wide reference ledger. Deletion authority is a recorded identity, never a path prefix alone. */
+/** Workspace reference ledger. Deletion authority is a recorded identity, never a path prefix alone. */
 public final class OwnershipManifest {
     public record Resource(String path, String token, String fileKey, String kind, String sessionId, String sessionCwd, Set<String> references) {
         public Resource { references = Collections.unmodifiableSortedSet(new TreeSet<>(references)); }
     }
-    private static final String MARKER = ".mork-owned-v7.json";
-    private OwnershipManifest() {}
-    private static synchronized <T> T transaction(Function<Map<String,Resource>,T> operation) {
-        Path root = WorkerRegistry.system().directory(); WorkerRegistry.system().status();
-        try (var channel = FileChannel.open(root.resolve("resources.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.lock()) {
-            Path file = root.resolve("resources.json");
-            Map<String,Resource> resources = Files.isRegularFile(file) ? AutoLlmFileUtil.read(file, new TypeReference<>() {}) : new LinkedHashMap<>();
-            T value = operation.apply(resources); WorkerRegistry.durable(file, resources); return value;
+    public record Dependency(String workspace, String path, String token, String reference) {}
+    private static final String MARKER = ".mork-owned-v8.json";
+    private final Path workspace;
+    public OwnershipManifest(Path workspace) { this.workspace = workspace; }
+    private Path handoffPath() {
+        Path root = es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmNormalization.localPath(workspace);
+        return root.getParent().resolve(".mork-cleanup/" + AutoLlmFileUtil.canonicalHash(root.toString()) + "/ownership-handoff");
+    }
+    private Path metadata() {
+        return Files.isRegularFile(handoffPath().resolve("resources.json")) ? handoffPath()
+                : es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmNormalization.localPath(workspace).resolve(".mork");
+    }
+    public void handoff() {
+        transaction(resources -> {
+            if (metadata().equals(handoffPath())) return null;
+            Path staging = handoffPath().resolveSibling("ownership-handoff.pending");
+            try {
+                Files.createDirectories(staging);
+                AutoLlmFileUtil.write(staging.resolve("resources.json"), resources);
+                Path deleted = metadata().resolve("deleted");
+                if (Files.isDirectory(deleted)) {
+                    Files.createDirectories(staging.resolve("deleted"));
+                    try (var paths = Files.list(deleted)) {
+                        for (var file : paths.toList()) Files.copy(file, staging.resolve("deleted").resolve(file.getFileName()), StandardCopyOption.REPLACE_EXISTING);
+                    }
+                }
+                Files.move(staging, handoffPath(), StandardCopyOption.ATOMIC_MOVE);
+            } catch (IOException e) { throw new UncheckedIOException(e); }
+            return null;
+        });
+    }
+    public void finishHandoff() {
+        if (!Files.isDirectory(handoffPath())) return;
+        try (var paths = Files.walk(handoffPath())) {
+            var ordered = new ArrayList<Path>(); for (var it = paths.iterator(); it.hasNext();) ordered.add(it.next());
+            ordered.sort(Comparator.reverseOrder()); for (Path path : ordered) Files.delete(path);
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
-    public static Resource directory(Path directory, String kind, String reference) {
+    private <T> T transaction(Function<Map<String,Resource>,T> operation) { synchronized (OwnershipManifest.class) {
+        Path root = metadata();
+        try { Files.createDirectories(root); } catch (IOException e) { throw new UncheckedIOException(e); }
+        try (var channel = FileChannel.open(root.resolve("resources.lock"), StandardOpenOption.CREATE, StandardOpenOption.WRITE); var lock = channel.lock()) {
+            if (!root.equals(metadata())) return transaction(operation);
+            Path file = root.resolve("resources.json");
+            Map<String,Resource> resources = Files.isRegularFile(file) ? AutoLlmFileUtil.read(file, new TypeReference<>() {}) : new LinkedHashMap<>();
+            T value = operation.apply(resources); AutoLlmFileUtil.write(file, resources); return value;
+        } catch (IOException e) { throw new UncheckedIOException(e); }
+    } }
+    private void requireOpen() {
+        if (metadata().equals(handoffPath())) throw new IllegalStateException("Workspace cleanup is in progress");
+    }
+    public Resource directory(Path directory, String kind, String reference) {
         Path path = es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmNormalization.localPath(directory);
         return transaction(resources -> {
+            requireOpen();
             Resource existing = resources.get(path.toString());
             try {
                 if (existing == null) {
                     Files.createDirectories(path); boundary(path);
                     if (Files.exists(path.resolve(MARKER))) throw new IllegalStateException("Unregistered ownership marker: " + path);
                     String token = UUID.randomUUID().toString();
-                    AutoLlmFileUtil.write(path.resolve(MARKER), Map.of("token", token));
+                    AutoLlmFileUtil.write(path.resolve(MARKER), Map.of("token", token, "workspace", es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmNormalization.localPath(workspace).toString()));
                     existing = new Resource(path.toString(), token, key(path), kind, null, null, Set.of());
                 } else { if (!deletionPhase(existing).equals("OWNED")) throw new IllegalStateException("Resource deletion is in progress"); verify(existing); }
                 var refs = new LinkedHashSet<>(existing.references()); refs.add(reference);
@@ -42,8 +84,12 @@ public final class OwnershipManifest {
             } catch (IOException e) { throw new UncheckedIOException(e); }
         });
     }
-    public static void transcript(Path file, String sessionId, Path cwd, String reference) {
+    public void transcript(Path file, String sessionId, Path cwd, String reference) {
+        if (!es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmNormalization.localPath(cwd).startsWith(
+                es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmNormalization.localPath(workspace)))
+            throw new IllegalStateException("Native session belongs to a different workspace");
         transaction(resources -> {
+            requireOpen();
             try {
                 Path path = es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmNormalization.localPath(file); boundary(path); verifySession(path, sessionId, cwd.toString());
                 var previous = resources.get(path.toString()); var refs = new LinkedHashSet<String>();
@@ -54,7 +100,7 @@ public final class OwnershipManifest {
             } catch (IOException e) { throw new UncheckedIOException(e); }
         });
     }
-    public static void removeReferences(Set<String> selected) {
+    public void removeReferences(Set<String> selected) {
         transaction(resources -> {
             for (var entry : resources.entrySet()) {
                 var r = entry.getValue(); var refs = new LinkedHashSet<>(r.references()); refs.removeAll(selected);
@@ -63,13 +109,56 @@ public final class OwnershipManifest {
             return null;
         });
     }
-    public static List<Resource> resources() { return transaction(resources -> List.copyOf(resources.values())); }
-    public static void reference(Path resource, String reference) {
+    public List<Resource> resources() { return Files.isRegularFile(metadata().resolve("resources.json")) ? transaction(resources -> List.copyOf(resources.values())) : List.of(); }
+    public void reference(Path resource, String reference) {
         transaction(resources -> {
+            requireOpen();
             var previous = resources.get(es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmNormalization.localPath(resource).toString());
             if (previous == null) throw new IllegalStateException("Dependency has no ownership record: " + resource);
             verify(previous); var refs = new LinkedHashSet<>(previous.references()); refs.add(reference);
             resources.put(previous.path(), new Resource(previous.path(), previous.token(), previous.fileKey(), previous.kind(), previous.sessionId(), previous.sessionCwd(), refs)); return null;
+        });
+    }
+    /** Register with the resource's own workspace; no host-global catalog is needed. */
+    public void screeningDependency(Path source, Path consumer) {
+        source = es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmNormalization.localPath(source);
+        for (Path parent = source; parent != null; parent = parent.getParent()) {
+            Path marker = parent.resolve(MARKER);
+            if (!Files.isRegularFile(marker)) continue;
+            var identity = AutoLlmFileUtil.read(marker, Map.class);
+            if (!(identity.get("workspace") instanceof String ownerWorkspace)) throw new IllegalStateException("Missing dependency ownership: " + marker);
+            var owner = new OwnershipManifest(Path.of(ownerWorkspace));
+            for (var resource : owner.resources()) if (resource.kind().equals("screening") && source.startsWith(Path.of(resource.path()))) {
+                verify(resource);
+                if (!ownerWorkspace.equals(es.urjc.etsii.grafo.autoconfig.autollm.AutoLlmNormalization.localPath(workspace).toString())) {
+                    var dependency = new Dependency(ownerWorkspace, resource.path(), resource.token(), consumer.toString());
+                    Path journal = consumer.resolve("external-dependencies.json");
+                    transaction(resources -> {
+                        requireOpen();
+                        var dependencies = new ArrayList<>(dependencies(journal));
+                        if (!dependencies.contains(dependency)) dependencies.add(dependency);
+                        AutoLlmFileUtil.write(journal, dependencies); return null;
+                    });
+                }
+                owner.reference(Path.of(resource.path()), consumer.toString());
+                return;
+            }
+        }
+    }
+    public static List<Dependency> dependencies(Path file) {
+        return Files.isRegularFile(file) ? AutoLlmFileUtil.read(file, new TypeReference<>() {}) : List.of();
+    }
+    public static void releaseDependency(Dependency dependency) {
+        var owner = new OwnershipManifest(Path.of(dependency.workspace()));
+        if (!Files.isRegularFile(owner.metadata().resolve("resources.json"))) return;
+        owner.transaction(resources -> {
+            var resource = resources.get(dependency.path());
+            if (resource == null) return null; // A previous release and owner cleanup already completed.
+            if (!resource.token().equals(dependency.token())) throw new IllegalStateException("Dependency ownership changed: " + dependency.path());
+            verify(resource);
+            var references = new LinkedHashSet<>(resource.references()); references.remove(dependency.reference());
+            resources.put(resource.path(), new Resource(resource.path(), resource.token(), resource.fileKey(), resource.kind(), resource.sessionId(), resource.sessionCwd(), references));
+            return null;
         });
     }
     private static String key(Path path) throws IOException {
@@ -100,24 +189,24 @@ public final class OwnershipManifest {
                 throw new IOException("Ownership marker changed: " + path);
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
-    public static String deletionPhase(Resource resource) {
-        Path file = WorkerRegistry.system().directory().resolve("deleted/" + AutoLlmFileUtil.canonicalHash(List.of(resource.path(), resource.token())) + ".json");
+    public String deletionPhase(Resource resource) {
+        Path file = metadata().resolve("deleted/" + AutoLlmFileUtil.canonicalHash(List.of(resource.path(), resource.token())) + ".json");
         if (Files.isRegularFile(file)) return "DELETED";
         if (Files.isRegularFile(file.resolveSibling(file.getFileName() + ".intent"))) return "DELETING";
         return "OWNED";
     }
-    public static void acknowledgeDeletion(Resource resource) {
+    public void acknowledgeDeletion(Resource resource) {
         transaction(resources -> {
-            Path file = WorkerRegistry.system().directory().resolve("deleted/" + AutoLlmFileUtil.canonicalHash(List.of(resource.path(), resource.token())) + ".json");
+            Path file = metadata().resolve("deleted/" + AutoLlmFileUtil.canonicalHash(List.of(resource.path(), resource.token())) + ".json");
             try { Files.deleteIfExists(file); Files.deleteIfExists(file.resolveSibling(file.getFileName() + ".intent")); }
             catch (IOException e) { throw new UncheckedIOException(e); }
             return null;
         });
     }
-    public static void delete(Resource reviewed, Set<String> selected) {
+    public void delete(Resource reviewed, Set<String> selected) {
         transaction(resources -> {
             var current = resources.get(reviewed.path());
-            Path tombstone = WorkerRegistry.system().directory().resolve("deleted/" + AutoLlmFileUtil.canonicalHash(List.of(reviewed.path(), reviewed.token())) + ".json");
+            Path tombstone = metadata().resolve("deleted/" + AutoLlmFileUtil.canonicalHash(List.of(reviewed.path(), reviewed.token())) + ".json");
             if (current == null && Files.isRegularFile(tombstone)) return null;
             if (current == null || !current.equals(reviewed) || !selected.containsAll(current.references())) throw new IllegalStateException("Cleanup scope changed; create a new plan");
             Path intent = tombstone.resolveSibling(tombstone.getFileName() + ".intent");

@@ -23,7 +23,7 @@ public final class WorkloadPathUtil {
         if (!root.startsWith(campaigns) || root.getNameCount() <= campaigns.getNameCount()) throw new IllegalArgumentException("Invalid campaign namespace");
         return campaigns.resolve(campaigns.relativize(root).getName(0));
     }
-    /** Locate the transport workspace; measurement coordination uses the host registry. */
+    /** Locate the transport workspace; measurement coordination uses its execution.lock. */
     public static Path workspace(Path root) {
         if (root.getParent() != null && root.getParent().getFileName().toString().equals("assignments")) root = root.getParent().getParent();
         if (root.getParent() != null && root.getParent().getFileName().toString().equals("trials")) root = root.getParent().getParent();

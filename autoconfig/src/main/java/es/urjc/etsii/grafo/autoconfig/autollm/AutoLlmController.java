@@ -48,15 +48,9 @@ public class AutoLlmController {
         if (idle && scope.shutdown()) return cleanup.launchFinalizer(request.get("digest"), service.defaults());
         return cleanup.apply(request.get("digest"), idle);
     }
-    @PostMapping("/worker/status") public Object workerStatus(@RequestBody es.urjc.etsii.grafo.autoconfig.autollm.execution.ExecutionOwner owner) {
-        return owner.remote() ? AutoLlmFileUtil.JSON.readTree(owner.call("worker-status", Map.of())) : es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkerRegistry.system().status();
-    }
-    @PostMapping("/worker/release") public Object workerRelease(@RequestBody es.urjc.etsii.grafo.autoconfig.autollm.execution.ExecutionOwner owner) {
-        requireMode(); owner.release(); return Map.of("released", true);
-    }
     @GetMapping("/capabilities") public Map<String,Object> capabilities() {
         var result = new LinkedHashMap<String,Object>();
-        result.put("mode", mode.mode().name()); result.put("apiVersion", 7); result.put("checkpointVersion", AutoLlmCampaign.SCHEMA_VERSION);
+        result.put("mode", mode.mode().name()); result.put("apiVersion", 8); result.put("checkpointVersion", AutoLlmCampaign.SCHEMA_VERSION);
         result.put("runnerProtocol", es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkloadProtocol.VERSION);
         result.put("minimumJavaFeature", es.urjc.etsii.grafo.autoconfig.autollm.execution.TargetPreflightUtil.minimumJavaFeature());
         result.put("workspace", store.root().toString()); result.put("pid", ProcessHandle.current().pid());
@@ -65,7 +59,7 @@ public class AutoLlmController {
         result.put("artifact", artifact == null ? null : artifact.getAbsolutePath());
         result.put("artifactSha256", artifactSha256);
         result.put("baseUrl", "http://127.0.0.1:" + environment.getProperty("local.server.port", environment.getProperty("server.port", "8080")));
-        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL", "RECOVERY_ACTIONS", "FILE_TAIL_PREVIEWS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKER_LEASES", "SCOPED_CLEANUP"));
+        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL", "RECOVERY_ACTIONS", "FILE_TAIL_PREVIEWS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKSPACE_LOCKS", "SCOPED_CLEANUP"));
         return result;
     }
     /** Ordered objective definitions, shared with the experiment monitor. */
@@ -77,7 +71,7 @@ public class AutoLlmController {
         return result;
     }
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
-    public void saveSession() { es.urjc.etsii.grafo.autoconfig.autollm.execution.OwnershipManifest.directory(store.root(), "workspace", store.root().toString()); AutoLlmFileUtil.write(store.root().resolve("session.json"), capabilities()); }
+    public void saveSession() { new es.urjc.etsii.grafo.autoconfig.autollm.execution.OwnershipManifest(store.root()).directory(store.root(), "workspace", store.root().toString()); AutoLlmFileUtil.write(store.root().resolve("session.json"), capabilities()); }
     @PostMapping("/effective-config") public Object effectiveConfig(@RequestBody AutoLlmConfig config) { var normalized = AutoLlmNormalization.normalize(config);
         return Map.of("configuration", normalized, "errors", service.validate(normalized), "summary", AutoLlmSummaryUtil.summarize(normalized, null, Map.of(), normalized.trials()), "digest", AutoLlmFileUtil.canonicalHash(normalized)); }
     @GetMapping("/campaigns/{id}/storage") public AutoLlmStorageReport.Report storage(@PathVariable String id) {
@@ -270,7 +264,7 @@ public class AutoLlmController {
                     var future = executor.submit(() -> { var transport = owner.transport(); transport.bootstrap(); return AutoLlmFileUtil.JSON.readTree(transport.call("inspect", owner.executionRoot(), job.id(), Map.of())); });
                     try {
                         var inspection = future.get(Math.max(1, deadline - System.nanoTime()), java.util.concurrent.TimeUnit.NANOSECONDS);
-                        results.add(Map.of("assignmentId", assignment.id, "workerId", owner.lease().workerId(), "host", owner.config().execution().ssh().onlyServer().host(), "inspection", inspection));
+                        results.add(Map.of("assignmentId", assignment.id, "workspaceId", owner.workspaceId(), "host", owner.config().execution().ssh().onlyServer().host(), "inspection", inspection));
                     } catch (Exception e) { future.cancel(true); return Map.of("partial", true, "jobs", results, "error", e.toString()); }
                     finally { executor.shutdownNow(); }
                 }

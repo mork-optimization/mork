@@ -44,13 +44,14 @@ time-stats/
 
 venv
 
-docs/apidocs
 /solutions*
 /results*
 /log*
 log.txt
 .benchmark
-**/docs
-!/docs/
+# Generated Javadoc only; documentation source directories must remain trackable.
+**/docs/apidocs/
+**/docs/javadoc/
 /example-graphs/instances/
-site/
+/site/
+/published-site/

@@ -65,23 +65,17 @@ public final class AutoLlmExecutionService {
         return host;
     }
     private WorkloadProtocol.Host inspect(AutoLlmConfig config, Path root, String selectorPython, boolean qualification) {
-        var owner = ExecutionOwner.waitFor(config, root);
+        ExecutionOwner.prepare(config, root);
         if (config.execution().target() == AutoLlmConfig.Target.LOCAL) {
-            String id = "preflight-" + UUID.randomUUID();
-            WorkerRegistry.system().submit(owner.lease(), root.toString(), id, previous -> WorkerRegistry.ProcessIdentity.of(ProcessHandle.current()));
             try {
-                var host = TargetPreflightUtil.inspect(config, root, processes, selectorPython);
-                return host;
+                return TargetPreflightUtil.inspect(config, root, processes, selectorPython);
             } catch (IOException e) { throw new UncheckedIOException(e); }
-            finally {
-                WorkerRegistry.system().finishPreflight(owner.lease(), root.toString(), id);
-            }
         }
         var errors = validate(config, !Files.exists(root.resolve(".transport/runner.json")));
         if (!errors.isEmpty()) throw new IllegalArgumentException(String.join("; ", errors));
         var transport = new SshTransport(config, root.resolve(".transport")); transport.bootstrap();
         Path saved = root.resolve("execution-target.json");
-        var host = AutoLlmFileUtil.JSON.readValue(transport.call(qualification ? "probe" : "identity", WorkloadPathUtil.remoteRoot(config, root), selectorPython, qualification ? new RemoteWorkloadMain.ProbeRequest(config, owner.lease()) : config), WorkloadProtocol.Host.class);
+        var host = AutoLlmFileUtil.JSON.readValue(transport.call(qualification ? "probe" : "identity", WorkloadPathUtil.remoteRoot(config, root), selectorPython, config), WorkloadProtocol.Host.class);
         if (host.version() != WorkloadProtocol.VERSION) throw new IllegalStateException("Remote runner protocol mismatch");
         if (Files.exists(saved)) {
             var previous = AutoLlmFileUtil.read(saved, WorkloadProtocol.Host.class);
@@ -149,13 +143,13 @@ public final class AutoLlmExecutionService {
             var saved = ExecutionOwner.of(AutoLlmFileUtil.read(output.resolve("remote-job.json"), WorkloadProtocol.Job.class));
             config = saved.config(); root = Path.of(saved.localRoot());
         }
-        var owner = ExecutionOwner.waitFor(config, root);
+        var owner = ExecutionOwner.prepare(config, root);
         if (config.execution().target() == AutoLlmConfig.Target.LOCAL) {
             AutoLlmFileUtil.write(output.resolve("execution-owner.json"), owner);
             Path saved = output.resolve("local-job.json"), resultFile = output.resolve("workload-result.json");
             LocalJob job = Files.isRegularFile(saved) ? AutoLlmFileUtil.read(saved, LocalJob.class) : null;
             boolean reuse = false;
-            if (job != null && job.owner().lease().equals(owner.lease())) {
+            if (job != null && job.owner().equals(owner)) {
                 if (!Files.exists(resultFile) && !Files.exists(output.resolve("process-terminated.json")))
                     throw new IllegalStateException("Uncertain local submission requires reconciliation: " + saved);
                 AutoLlmProcessRunner.requireTerminated(output);
@@ -166,8 +160,7 @@ public final class AutoLlmExecutionService {
                 }
             }
             if (!reuse) job = new LocalJob(UUID.randomUUID().toString(), owner, command, cwd.toString());
-            String id = job.id(); AutoLlmFileUtil.write(saved, job);
-            WorkerRegistry.system().submit(owner.lease(), root.toString(), id, previous -> WorkerRegistry.ProcessIdentity.of(ProcessHandle.current()));
+            AutoLlmFileUtil.write(saved, job);
             try {
                 return new LocalWorkloadExecutor(processes).run(
                         new AutoLlmWorkloadExecutor.Workload(command, cwd, output, Map.of(), List.of(), List.of(), timeout, planned, config.execution().watchdogGraceMillis(), watch, startup), cancelled);
@@ -175,7 +168,6 @@ public final class AutoLlmExecutionService {
                 if (Files.isRegularFile(output.resolve("collection-completed.json"))
                         || Files.isRegularFile(output.resolve("process-terminated.json")) && !Files.exists(resultFile)) {
                     AutoLlmProcessRunner.requireTerminated(output);
-                    WorkerRegistry.system().complete(owner.lease(), root.toString(), id);
                 }
             }
         }

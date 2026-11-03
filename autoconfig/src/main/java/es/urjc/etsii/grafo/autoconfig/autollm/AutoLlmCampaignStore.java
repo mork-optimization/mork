@@ -161,6 +161,8 @@ public class AutoLlmCampaignStore {
             FileLock lock;
             try { lock = channel.tryLock(); } catch (java.nio.channels.OverlappingFileLockException e) { channel.close(); throw new IllegalStateException("Another campaign is active", e); }
             if (lock == null) { channel.close(); throw new IllegalStateException("Another campaign is active"); }
+            try { es.urjc.etsii.grafo.autoconfig.autollm.execution.WorkspaceState.reconcileActivity(root); }
+            catch (IOException | RuntimeException e) { lock.release(); channel.close(); throw e; }
             return new ExecutionLock(channel, lock);
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
