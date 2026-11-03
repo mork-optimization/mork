@@ -620,6 +620,21 @@ public class AutoLlmCampaignService {
         if (cancelled) { cancelJobs(); return; }
         try { verifyCanonical(current); }
         catch (RuntimeException e) { current.problem = AutoLlmFailureUtil.describe(e, store.directory(current.id)); current.failure = ExceptionUtil.stacktrace(e); cancelled = true; save(); cancelJobs(); return; }
+        AutoLlmAssignmentPolicy.refreshPins(current, store.directory(current.id));
+        for (var trial : current.trials) if (AutoLlmAssignmentPolicy.queued(trial)
+                && AutoLlmLocalRecovery.hasUnconfirmed(store.directory(current.id).resolve(trial.directory))) {
+            trial.status = TrialStatus.BLOCKED;
+            trial.problem = AutoLlmFailureUtil.describe(AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE,
+                    "LOCAL_TERMINATION_UNKNOWN", "Inspect and reconcile the exact local job before resuming", store.directory(current.id).resolve(trial.directory)), store.directory(current.id));
+        }
+        // Rejoin tuning/comparison ownership before an earlier numbered preparation
+        // can occupy the same controller slot and wait behind that detached job.
+        for (var trial : current.trials) if (AutoLlmAssignmentPolicy.queued(trial) && AutoLlmAssignmentPolicy.retained(trial)
+                && !jobs.containsKey(trial.targetId) && current.approvedTargets.contains(trial.targetId)) {
+            var target = current.targets.get(trial.targetId);
+            if (target != null && target.baselineReady && target.status != TargetStatus.REMOVED) launch(trial.targetId, trial);
+        }
+        rebalancePreparation();
         if (current.config.execution().target() == AutoLlmConfig.Target.LOCAL) current.localPreparation = current.targets.get("local");
         if (!current.localPreparation.baselineReady) {
             if (current.config.execution().target() != AutoLlmConfig.Target.LOCAL && !jobs.containsKey(PREPARATION_TARGET) && current.localPreparation.problem == null) qualify(PREPARATION_TARGET, false, new CompletableFuture<>());
@@ -631,7 +646,7 @@ public class AutoLlmCampaignService {
         for (var t : current.trials) if (t.status == TrialStatus.WAITING_FOR_TARGET && t.nextStage == AutoLlmCampaign.Stage.PREPARATION) waiting++;
         if (current.localPreparation.baselineReady) for (var t : current.trials) {
             if (preparing >= current.config.codex().maxConcurrentSessions() + current.config.preparation().localBuilds() || preparing + waiting >= current.config.preparation().readyQueueSize() + available) break;
-            if (!AutoLlmCampaignStore.hasUncollectedJobs(store.directory(current.id).resolve(t.directory)) && !jobs.containsKey("$trial-" + t.number) && (t.status == TrialStatus.PENDING || t.status == TrialStatus.WAITING_FOR_TARGET) && t.nextStage.ordinal() < AutoLlmCampaign.Stage.PREPARATION.ordinal()) { try { launchLocal(t); preparing++; } catch (RuntimeException e) { t.status = TrialStatus.BLOCKED; t.problem = AutoLlmFailureUtil.describe(e, store.directory(current.id).resolve(t.directory)); save(); } }
+            if (!AutoLlmLocalRecovery.hasUnconfirmed(store.directory(current.id).resolve(t.directory)) && !jobs.containsKey("$trial-" + t.number) && AutoLlmAssignmentPolicy.queued(t) && t.nextStage.ordinal() < AutoLlmCampaign.Stage.PREPARATION.ordinal()) { try { launchLocal(t); preparing++; } catch (RuntimeException e) { t.status = TrialStatus.BLOCKED; t.problem = AutoLlmFailureUtil.describe(e, store.directory(current.id).resolve(t.directory)); save(); } }
         }
         for (var entry : current.targets.entrySet()) {
             String id = entry.getKey(); var target = entry.getValue();
@@ -639,7 +654,7 @@ public class AutoLlmCampaignService {
             AutoLlmCampaign.Trial trial = null;
             try {
                 if (!target.baselineReady) { qualify(id, false, new CompletableFuture<>()); continue; }
-                for (var candidate : current.trials) if ((candidate.status == TrialStatus.PENDING || candidate.status == TrialStatus.WAITING_FOR_TARGET) && candidate.nextStage.ordinal() >= AutoLlmCampaign.Stage.PREPARATION.ordinal() && id.equals(candidate.targetId)) { trial = candidate; break; }
+                for (var candidate : current.trials) if (AutoLlmAssignmentPolicy.queued(candidate) && !jobs.containsKey("$reconcile-" + candidate.number) && (candidate.assignment() == null || !candidate.assignment().releasePending) && candidate.nextStage.ordinal() >= AutoLlmCampaign.Stage.PREPARATION.ordinal() && id.equals(candidate.targetId)) { trial = candidate; break; }
                 if (trial == null) for (var candidate : current.trials) if ((candidate.status == TrialStatus.WAITING_FOR_TARGET || candidate.status == TrialStatus.PENDING) && candidate.nextStage == AutoLlmCampaign.Stage.PREPARATION && candidate.targetId == null) { trial = candidate; break; }
                 if (trial != null && current.approvedTargets.contains(id)) launch(id, trial);
             } catch (RuntimeException e) {
@@ -649,6 +664,62 @@ public class AutoLlmCampaignService {
             }
         }
         settle();
+    }
+    private boolean available(String id) {
+        var target = current.targets.get(id);
+        return target != null && current.approvedTargets.contains(id) && !jobs.containsKey(id) && !target.draining
+                && target.baselineReady && target.problem == null && target.status != TargetStatus.REMOVED && target.status != TargetStatus.NEEDS_ATTENTION;
+    }
+    private boolean trialBusy(AutoLlmCampaign.Trial trial) {
+        var target = current.targets.get(trial.targetId);
+        return jobs.containsKey("$trial-" + trial.number) || jobs.containsKey("$reconcile-" + trial.number)
+                || jobs.containsKey(trial.targetId) && target != null && Objects.equals(target.assignedTrial, trial.number);
+    }
+    private void rebalancePreparation() {
+        for (var trial : current.trials) {
+            if (!AutoLlmAssignmentPolicy.queued(trial) || !AutoLlmAssignmentPolicy.movable(trial) || trialBusy(trial)) continue;
+            if (!trial.assignment().releasePending && available(trial.targetId)) continue;
+            boolean free = false;
+            for (String id : current.approvedTargets) if (!id.equals(trial.targetId) && available(id)) { free = true; break; }
+            if (!free && !trial.assignment().releasePending) continue;
+            Path root = store.directory(current.id).resolve(trial.directory);
+            if (AutoLlmLocalRecovery.hasUnconfirmed(root)) continue;
+            if (!AutoLlmCampaignStore.hasUncollectedJobs(root)) { releasePreparation(trial); continue; }
+            // Persist intent before network I/O. A restart repeats reconciliation of
+            // these exact identities, never launches the old assignment afresh.
+            trial.assignment().releasePending = true;
+            String key = "$reconcile-" + trial.number, token = UUID.randomUUID().toString();
+            var model = executionModel(current, trial.targetId, trial);
+            var runner = runner(model, store.directory(current.id).resolve(trial.executionDirectory()), new AutoLlmTrialRunner.Listener() {
+                public void state(AutoLlmExecutionContext.Snapshot snapshot) {}
+                public void event(String kind, Object detail) {}
+            }, () -> cancelled, sessions);
+            var future = new FutureTask<Void>(() -> {
+                Throwable failure = null; try { runner.reconcilePreparation(); } catch (Throwable e) { failure = e; }
+                var error = failure;
+                enqueue(() -> {
+                    if (!owns(key, token)) return;
+                    jobs.remove(key);
+                    if (error == null && !AutoLlmCampaignStore.hasUncollectedJobs(root)) releasePreparation(trial);
+                    else {
+                        trial.status = TrialStatus.BLOCKED;
+                        trial.problem = AutoLlmFailureUtil.describe(error == null ? new ExecutionTargetException("Assignment still has unresolved jobs") : error, root);
+                    }
+                    save(); dispatch();
+                }); return null;
+            });
+            jobs.put(key, new Running(token, runner, future)); save(); workers.execute(future);
+        }
+    }
+    private void releasePreparation(AutoLlmCampaign.Trial trial) {
+        if (!AutoLlmAssignmentPolicy.movable(trial) || AutoLlmCampaignStore.hasUncollectedJobs(store.directory(current.id).resolve(trial.directory)))
+            throw new IllegalStateException("Assignment cannot be released before reconciliation");
+        var assignment = trial.assignment(); assignment.released = true; assignment.releasePending = false;
+        store.event(current.id, "preparation-assignment-released", Map.of("trial", trial.number, "assignment", assignment.id, "target", assignment.targetId));
+        trial.activeAssignmentId = null; trial.targetId = null;
+        trial.outputs.remove(AutoLlmCampaign.Stage.PREPARATION);
+        trial.nextStage = AutoLlmCampaign.Stage.PREPARATION; trial.status = TrialStatus.WAITING_FOR_TARGET;
+        save();
     }
     private void launchLocal(AutoLlmCampaign.Trial trial) {
         trial.status = TrialStatus.STARTING;
@@ -886,17 +957,52 @@ public class AutoLlmCampaignService {
         return invoke(() -> recoveryInternal(id.equals(active) ? current : store.load(id)));
     }
     private AutoLlmRecoveryUtil.Recovery recoveryInternal(AutoLlmCampaign campaign) {
+        AutoLlmAssignmentPolicy.refreshPins(campaign, store.directory(campaign.id));
         var busy = new HashSet<String>(); if (campaign == current) busy.addAll(jobs.keySet()); var uncollected = new HashSet<String>();
+        var unknownLocal = new HashSet<String>();
         for (var entry : campaign.targets.entrySet()) {
             if (campaign == current && jobs.containsKey(entry.getKey())) busy.add(entry.getKey());
             if (!busy.contains(entry.getKey()) && AutoLlmCampaignStore.hasUncollectedJobs(store.directory(campaign.id).resolve(entry.getValue().directory))) uncollected.add(entry.getKey());
         }
         for (var t : campaign.trials) if (t.directory != null && AutoLlmCampaignStore.hasUncollectedJobs(store.directory(campaign.id).resolve(t.directory))) {
             uncollected.add("$trial-" + t.number); if (t.targetId != null) uncollected.add(t.targetId);
+            if (AutoLlmLocalRecovery.hasUnconfirmed(store.directory(campaign.id).resolve(t.directory))) unknownLocal.add("$trial-" + t.number);
         }
         String blocked = closing || campaign == current && (cancelled || checkingBaseline) ? "Controller is shutting down, cancelling, or checking the baseline" : null;
         try { store.requireReservation(campaign.id); } catch (IllegalStateException e) { blocked = e.getMessage(); }
-        return AutoLlmRecoveryUtil.describe(campaign, active, busy, uncollected, blocked);
+        return AutoLlmRecoveryUtil.describe(campaign, active, busy, uncollected, unknownLocal, blocked);
+    }
+    public List<AutoLlmLocalRecovery.Job> localJobs(String id, int number) {
+        return invoke(() -> {
+            var campaign = id.equals(active) ? current : store.load(id);
+            return AutoLlmLocalRecovery.inspect(store.directory(id).resolve(requireTrial(campaign, number).directory));
+        });
+    }
+    private AutoLlmCampaign.Trial requireTrial(AutoLlmCampaign campaign, int number) {
+        for (var trial : campaign.trials) if (trial.number == number) return trial;
+        throw new NoSuchElementException("Unknown trial " + number);
+    }
+    public AutoLlmLocalRecovery.Receipt reconcileLocal(String id, int number, String jobId, AutoLlmLocalRecovery.Confirmation request) {
+        return invoke(() -> {
+            if (id.equals(active)) return reconcileLocal(current, number, jobId, request);
+            if (active != null) throw new IllegalStateException("Another campaign is active");
+            store.requireReservation(id);
+            try (var lock = store.lock()) { return reconcileLocal(store.load(id), number, jobId, request); }
+        });
+    }
+    private AutoLlmLocalRecovery.Receipt reconcileLocal(AutoLlmCampaign campaign, int number, String jobId, AutoLlmLocalRecovery.Confirmation request) {
+        var trial = requireTrial(campaign, number);
+        Path root = store.directory(campaign.id).resolve(trial.directory);
+        // An identical retry may finish retiring the mailbox after a crash between
+        // the assertion receipt and response writes, but must still have no runner.
+        boolean alreadyConfirmed = false;
+        for (var job : AutoLlmLocalRecovery.inspect(root)) if (job.id().equals(jobId) && job.state().equals("OPERATOR_CONFIRMED")) alreadyConfirmed = true;
+        if (!alreadyConfirmed) recoveryInternal(campaign).trials().get(number).reconcileLocal().requireAllowed();
+        else if (closing || campaign == current && (cancelled || trialBusy(trial)) || !trial.status.recoverable()
+                || trial.targetId != null || trial.nextStage.ordinal() >= AutoLlmCampaign.Stage.TUNING.ordinal()) throw new IllegalStateException("Trial recovery is busy or past local preparation");
+        var receipt = AutoLlmLocalRecovery.confirm(root, jobId, request);
+        store.event(campaign.id, "local-job-reconciled-by-operator", Map.of("trial", number, "receipt", receipt));
+        store.save(campaign); return receipt;
     }
     public AutoLlmCampaign resumeTrial(String id, int number) {
         return invoke(() -> {
@@ -908,7 +1014,7 @@ public class AutoLlmCampaignService {
             for (var candidate : current.trials) if (candidate.number == number) { trial = candidate; break; }
             var target = trial.targetId == null ? null : requireTarget(current, trial.targetId);
             trial.queueForResume();
-            if (target != null) target.resume(false, ++current.poolRevision);
+            if (target != null && target.status != TargetStatus.REMOVED && !jobs.containsKey(trial.targetId)) target.resume(false, ++current.poolRevision);
             store.event(id, "trial-resumed-by-operator", Map.of("trial", number, "targetId", trial.targetId == null ? "local-preparation" : trial.targetId));
             save(); dispatch(); return current.copy();
         });
@@ -1003,8 +1109,10 @@ public class AutoLlmCampaignService {
     }
     @PreDestroy public void close() {
         closing = true;
+        var stopping = new CopyOnWriteArrayList<AutoLlmTrialRunner>();
         try {
             coordinator.submit(() -> {
+                for (var job : jobs.values()) { stopping.add(job.runner); job.runner.shutdown(); }
                 if (current != null) {
                     current.status = CampaignStatus.INTERRUPTED;
                     for (var trial : current.trials) if (trial.status.inProgress()) trial.status = TrialStatus.INTERRUPTED;
@@ -1013,16 +1121,21 @@ public class AutoLlmCampaignService {
             }).get(5, TimeUnit.SECONDS);
         } catch (Exception ignored) { /* OS ownership is released when the controller exits. */ }
         workers.shutdownNow(); reporting.shutdown(); coordinator.shutdown();
-        var lock = ownership; ownership = null;
-        Runnable relinquish = () -> {
-            try { workers.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS); reporting.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS); }
-            catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
-            if (lock != null) lock.detach();
-        };
+        boolean interrupted = Thread.interrupted();
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
         try {
-            if (workers.awaitTermination(5, TimeUnit.SECONDS) && reporting.awaitTermination(5, TimeUnit.SECONDS)) relinquish.run();
-            else Thread.ofVirtual().name("autollm-shutdown").start(relinquish);
-        } catch (InterruptedException e) { Thread.currentThread().interrupt(); Thread.ofVirtual().name("autollm-shutdown").start(relinquish); }
+            for (var executor : List.of(workers, reporting, coordinator)) while (!executor.isTerminated() && System.nanoTime() < deadline) {
+                try { executor.awaitTermination(Math.max(1, deadline - System.nanoTime()), TimeUnit.NANOSECONDS); }
+                catch (InterruptedException e) { interrupted = true; }
+            }
+            // No daemon-thread handoff: bridge checks and process receipts are part
+            // of worker completion. If shutdown is uncertain retain the OS lease.
+            boolean metadataStopped = true;
+            for (var runner : stopping) metadataStopped &= runner.awaitShutdown(deadline);
+            if (workers.isTerminated() && reporting.isTerminated() && coordinator.isTerminated() && metadataStopped && ownership != null) {
+                ownership.detach(); ownership = null;
+            }
+        } finally { if (interrupted) Thread.currentThread().interrupt(); }
         targetProbes.close();
     }
 }

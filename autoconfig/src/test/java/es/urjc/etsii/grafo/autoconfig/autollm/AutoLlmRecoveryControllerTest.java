@@ -15,7 +15,7 @@ class AutoLlmRecoveryControllerTest {
         var service = mock(AutoLlmCampaignService.class); var mode = mock(MonitorModeState.class);
         when(mode.mode()).thenReturn(MonitorModeState.Mode.AUTOLLM);
         var allowed = AutoLlmRecoveryUtil.action(null, "Preserve saved evidence");
-        when(service.recovery("saved")).thenReturn(new AutoLlmRecoveryUtil.Recovery(allowed, Map.of(9, new AutoLlmRecoveryUtil.TrialActions(allowed, allowed)), Map.of()));
+        when(service.recovery("saved")).thenReturn(new AutoLlmRecoveryUtil.Recovery(allowed, Map.of(9, new AutoLlmRecoveryUtil.TrialActions(allowed, allowed, allowed)), Map.of()));
         var campaign = new AutoLlmCampaign(); campaign.id = "saved"; campaign.status = AutoLlmCampaign.CampaignStatus.RUNNING;
         when(service.failTrial(anyString(), anyInt(), anyString())).thenReturn(campaign);
         when(service.resumeTrial(anyString(), anyInt())).thenReturn(campaign); when(service.requalifyTarget(anyString(), anyString())).thenReturn(campaign);
@@ -25,6 +25,11 @@ class AutoLlmRecoveryControllerTest {
         mvc.perform(post(base + "/trials/9/fail").contentType(MediaType.APPLICATION_JSON).content("{\"reason\":\"Sampling exhausted\"}")).andExpect(status().isOk());
         mvc.perform(post(base + "/trials/3/resume")).andExpect(status().isOk());
         mvc.perform(post(base + "/targets/worker-a/requalify")).andExpect(status().isOk());
+        mvc.perform(get(base + "/trials/9/local-jobs")).andExpect(status().isOk());
+        mvc.perform(post(base + "/trials/9/local-jobs/exact-job/reconcile").contentType(MediaType.APPLICATION_JSON)
+                .content("{\"submission\":\"exact-submission\",\"confirmStopped\":true,\"reason\":\"Inspected host\"}")).andExpect(status().isOk());
+        verify(service).localJobs("saved", 9);
+        verify(service).reconcileLocal("saved", 9, "exact-job", new AutoLlmLocalRecovery.Confirmation("exact-submission", true, "Inspected host"));
         verify(service).failTrial("saved", 9, "Sampling exhausted"); verify(service).resumeTrial("saved", 3); verify(service).requalifyTarget("saved", "worker-a");
         verify(service, never()).start(anyString(), anyBoolean(), anySet());
         when(mode.mode()).thenReturn(MonitorModeState.Mode.STANDARD);

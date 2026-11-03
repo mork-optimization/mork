@@ -3,7 +3,7 @@ package es.urjc.etsii.grafo.autoconfig.autollm;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.Map;
-import java.util.concurrent.CancellationException;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 /** File requests let a sandboxed local Codex turn ask the controller for a remote metadata check. */
@@ -18,6 +18,7 @@ final class GenerationMetadataBridge implements AutoCloseable {
         this.thread = Thread.ofVirtual().name("autollm-metadata").start(this::watch);
     }
     private void watch() {
+        boolean interrupted = false;
         try {
             while (!closed && !Thread.currentThread().isInterrupted()) {
                 Files.createDirectories(queue); Files.createDirectories(durable);
@@ -35,23 +36,41 @@ final class GenerationMetadataBridge implements AutoCloseable {
                             var options = new java.util.HashMap<>(AutoLlmFileUtil.read(request, new tools.jackson.core.type.TypeReference<Map<String,String>>() {}));
                             options.put("requestId", name.substring(0, 32));
                             try { result = Map.of("result", check.apply(options)); }
-                            catch (RuntimeException e) { result = Map.of("error", e.toString(), "failure", AutoLlmFailureUtil.describe(e, durable)); }
+                            catch (RuntimeException e) {
+                                interrupted |= Thread.interrupted();
+                                result = Map.of("error", e.toString(), "failure", AutoLlmFailureUtil.describe(e, durable));
+                            }
                             AutoLlmFileUtil.write(saved, result);
                         }
                         Files.createDirectories(queue);
                         AutoLlmFileUtil.write(response, result);
-                        if (closed) break;
+                        if (closed || interrupted) break;
                     }
                 } catch (NoSuchFileException ignored) { /* Editable mailbox was removed; durable requests/results remain owned. */ }
+                if (interrupted) break;
                 Thread.sleep(100);
             }
         } catch (InterruptedException e) { Thread.currentThread().interrupt(); }
         catch (IOException e) { AutoLlmFileUtil.write(queue.resolve("bridge-error.json"), Map.of("error", e.toString())); }
+        finally { if (interrupted) Thread.currentThread().interrupt(); }
+    }
+    boolean owns(Thread candidate) { return thread == candidate; }
+    void interrupt() { if (!closed) { closed = true; thread.interrupt(); } }
+    boolean awaitStopped(long deadline) {
+        // The caller is commonly interrupted already. Still allow the check to stop its
+        // process tree and durably record the interrupted response before returning.
+        boolean interrupted = Thread.interrupted();
+        try {
+            while (thread.isAlive() && System.nanoTime() < deadline) {
+                try { thread.join(Math.max(1, TimeUnit.NANOSECONDS.toMillis(deadline - System.nanoTime()))); }
+                catch (InterruptedException e) { interrupted = true; thread.interrupt(); }
+            }
+            return !thread.isAlive();
+        } finally { if (interrupted) Thread.currentThread().interrupt(); }
     }
     @Override public void close() {
-        closed = true;
-        thread.interrupt();
-        try { thread.join(2000); }
-        catch (InterruptedException e) { thread.interrupt(); Thread.currentThread().interrupt(); throw new CancellationException("Metadata bridge detached during shutdown"); }
+        interrupt();
+        if (!awaitStopped(System.nanoTime() + TimeUnit.SECONDS.toNanos(15)))
+            throw new IllegalStateException("Metadata check shutdown is unconfirmed; reconcile its saved local job");
     }
 }

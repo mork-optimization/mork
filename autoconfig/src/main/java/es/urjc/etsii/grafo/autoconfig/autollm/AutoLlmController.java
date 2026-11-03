@@ -59,7 +59,7 @@ public class AutoLlmController {
         result.put("artifact", artifact == null ? null : artifact.getAbsolutePath());
         result.put("artifactSha256", artifactSha256);
         result.put("baseUrl", "http://127.0.0.1:" + environment.getProperty("local.server.port", environment.getProperty("server.port", "8080")));
-        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL", "RECOVERY_ACTIONS", "FILE_TAIL_PREVIEWS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKSPACE_LOCKS", "SCOPED_CLEANUP"));
+        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL", "RECOVERY_ACTIONS", "FILE_TAIL_PREVIEWS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKSPACE_LOCKS", "SCOPED_CLEANUP", "LOCAL_JOB_RECOVERY"));
         return result;
     }
     /** Ordered objective definitions, shared with the experiment monitor. */
@@ -159,6 +159,10 @@ public class AutoLlmController {
     @PostMapping("/campaigns/{id}/trials/{number}/fail") public Receipt failTrial(@PathVariable String id, @PathVariable int number, @RequestBody Map<String,String> request) { requireMode(); return receipt(service.failTrial(id, number, request.get("reason")), "failTrial", number); }
     @GetMapping("/campaigns/{id}/recovery") public AutoLlmRecoveryUtil.Recovery recovery(@PathVariable String id) { return service.recovery(id); }
     @PostMapping("/campaigns/{id}/trials/{number}/resume") public Receipt resumeTrial(@PathVariable String id, @PathVariable int number) { requireMode(); return receipt(service.resumeTrial(id, number), "resumeTrial", number); }
+    @GetMapping("/campaigns/{id}/trials/{number}/local-jobs") public Object localJobs(@PathVariable String id, @PathVariable int number) { return service.localJobs(id, number); }
+    @PostMapping("/campaigns/{id}/trials/{number}/local-jobs/{jobId}/reconcile") public Object reconcileLocal(@PathVariable String id, @PathVariable int number, @PathVariable String jobId, @RequestBody AutoLlmLocalRecovery.Confirmation request) {
+        requireMode(); return service.reconcileLocal(id, number, jobId, request);
+    }
     @PostMapping("/campaigns/{id}/report") public Receipt report(@PathVariable String id) { requireMode(); return receipt(service.report(id), "report", null); }
     @GetMapping("/campaigns/{id}/targets") public Object targets(@PathVariable String id) { var c = store.load(id); return Map.of("poolRevision", c.poolRevision, "targets", c.targets); }
     @PutMapping("/campaigns/{id}/targets/{targetId}") public Receipt addTarget(@PathVariable String id, @PathVariable String targetId, @RequestBody AutoLlmConfig.Server server) { requireMode(); return receipt(service.addTarget(id, targetId, server), "addTarget", null); }

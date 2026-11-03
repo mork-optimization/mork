@@ -11,6 +11,28 @@ import static org.junit.jupiter.api.Assertions.*;
 
 class GenerationMetadataBridgeTest {
     @TempDir Path source;
+    @Test void interruptedCallerWaitsForMetadataCleanupAndDurableResponse() throws Exception {
+        var entered = new java.util.concurrent.CountDownLatch(1);
+        var cleaned = new java.util.concurrent.atomic.AtomicBoolean();
+        String key = UUID.randomUUID().toString().replace("-", "");
+        var bridge = new GenerationMetadataBridge(source, source.resolve("durable"), ignored -> {
+            entered.countDown();
+            try { Thread.sleep(10000); }
+            catch (InterruptedException e) {
+                try { Thread.sleep(100); } catch (InterruptedException ignoredAgain) { throw new AssertionError(ignoredAgain); }
+                cleaned.set(true); throw new java.util.concurrent.CancellationException("check interrupted after cleanup");
+            }
+            throw new AssertionError("Expected bridge shutdown");
+        });
+        Path queue = source.resolve(".mork-metadata"); Files.createDirectories(queue);
+        Files.writeString(queue.resolve(key + ".request.json"), "{}");
+        assertTrue(entered.await(5, TimeUnit.SECONDS));
+        Thread.currentThread().interrupt();
+        try { bridge.close(); assertTrue(Thread.currentThread().isInterrupted()); }
+        finally { Thread.interrupted(); }
+        assertTrue(cleaned.get());
+        assertTrue(Files.readString(source.resolve("durable/" + key + ".result.json")).contains("check interrupted after cleanup"));
+    }
     @Test void wrappedComponentFailureReturnsRepairDiagnosticsToTheActiveConversation() throws Exception {
         var failure = AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "INVALID_COMPONENT_DEFINITION", "invalid generated range", source);
         try (var bridge = new GenerationMetadataBridge(source, source.resolve("durable"), ignored -> {

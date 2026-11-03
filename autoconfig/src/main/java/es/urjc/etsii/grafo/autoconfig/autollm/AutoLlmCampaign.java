@@ -159,10 +159,10 @@ public class AutoLlmCampaign {
         public long poolRevision;
         public AutoLlmConfig config;
         public WorkloadProtocol.Host host;
-        public boolean pinned, released;
+        public boolean pinned, released, releasePending;
         public Assignment copy() {
             var a = new Assignment(); a.id = id; a.targetId = targetId; a.directory = directory;
-            a.poolRevision = poolRevision; a.config = config; a.host = host; a.pinned = pinned; a.released = released; return a;
+            a.poolRevision = poolRevision; a.config = config; a.host = host; a.pinned = pinned; a.released = released; a.releasePending = releasePending; return a;
         }
     }
     public static class Trial {

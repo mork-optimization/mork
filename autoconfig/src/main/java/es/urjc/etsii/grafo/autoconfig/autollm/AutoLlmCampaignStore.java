@@ -67,8 +67,11 @@ public class AutoLlmCampaignStore {
     }
     public static boolean hasUncollectedJobs(Path directory) {
         for (Path path : AutoLlmFileUtil.ownedFiles(directory, "remote-job.json")) if (!Files.exists(path.getParent().resolve("collection-completed.json")) && !Files.exists(path.getParent().resolve("collection-discarded.json"))) return true;
-        for (Path path : AutoLlmFileUtil.ownedFiles(directory, "local-job.json")) if (Files.exists(path.getParent().resolve("workload-result.json"))
-                && !Files.exists(path.getParent().resolve("collection-completed.json")) && !Files.exists(path.getParent().resolve("collection-discarded.json"))) return true;
+        for (Path path : AutoLlmFileUtil.ownedFiles(directory, "local-job.json")) {
+            Path output = path.getParent();
+            if (AutoLlmLocalRecovery.unconfirmed(output) || Files.exists(output.resolve("workload-result.json"))
+                    && !Files.exists(output.resolve("collection-completed.json")) && !Files.exists(output.resolve("collection-discarded.json"))) return true;
+        }
         return false;
     }
     public Path directory(String id) {

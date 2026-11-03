@@ -88,6 +88,10 @@ class AutoLlmPreparationBudgetTest {
         var trial = new AutoLlmCampaign.Trial();
         trial.number = 1; trial.directory = ".";
         trial.nextStage = AutoLlmCampaign.Stage.PREPARATION;
+        var retired = new AutoLlmCampaign.Attempt(); retired.number = 1; retired.assignmentId = "retired-assignment";
+        retired.stage = AutoLlmCampaign.AttemptStage.PREPARATION; retired.status = AutoLlmCampaign.AttemptStatus.INTERRUPTED;
+        retired.directory = "old-assignment/attempts/001-preparation"; trial.attempts.add(retired);
+        AutoLlmFileUtil.write(root.resolve(retired.directory).resolve("build/workload-result.json"), Map.of("retainedEvidence", true));
         campaign.trials.add(trial);
         var observedProbeTimeout = new AtomicLong(-1);
         var observedPilotBudget = new AtomicLong(-1);
@@ -139,5 +143,8 @@ class AutoLlmPreparationBudgetTest {
         assertEquals(probeMillis + startupMillis, observedProbeTimeout.get());
         assertEquals(pilotMillis, observedPilotBudget.get());
         assertNotNull(trial.artifact());
+        assertEquals(AutoLlmCampaign.AttemptStatus.INTERRUPTED, retired.status);
+        assertNotEquals(retired.directory, trial.outputDirectory(AutoLlmCampaign.Stage.PREPARATION));
+        assertTrue(Files.readString(root.resolve(retired.directory).resolve("build/workload-result.json")).contains("retainedEvidence"));
     }
 }

@@ -442,7 +442,7 @@ public class AutoconfigRunState {
             }
             long remaining = Math.max(0, maximumBudget - used);
             if (remaining != progress.remainingBudget()) {
-                log.warn(
+                git log.warn(
                         "Mork and IRACE disagree on remaining budget: Mork={}, IRACE={}",
                         remaining,
                         progress.remainingBudget()

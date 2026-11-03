@@ -170,6 +170,43 @@ class OperatorClientTest(unittest.TestCase):
         _, _, request = self.cli(["target", "requalify", "--campaign", "saved", "--id", "a"], [{}])
         self.assertEqual(request.call_args.args[1:], ("/campaigns/saved/targets/a/requalify", {}))
 
+    def test_local_reconciliation_sends_exact_job_submission_and_explicit_assertion_once(self):
+        self.root = "/work"
+        _, _, request = self.cli(["trial", "local-jobs", "--campaign", "saved", "--number", "9"], [[]])
+        request.assert_called_once_with("http://localhost", "/campaigns/saved/trials/9/local-jobs", timeout=30)
+        args = ["trial", "reconcile-local", "--campaign", "saved", "--number", "9", "--job", "job", "--submission", "submission", "--confirm-stopped", "--reason", " Host inspected "]
+        _, _, request = self.cli(args, [{}])
+        request.assert_called_once_with("http://localhost", "/campaigns/saved/trials/9/local-jobs/job/reconcile",
+                                        {"submission": "submission", "confirmStopped": True, "reason": "Host inspected"}, timeout=30)
+        with patch.object(client, "capabilities"), patch.object(client, "request", side_effect=RuntimeError("response lost")) as request:
+            with self.assertRaisesRegex(RuntimeError, "response lost"):
+                client.main(["--workspace", self.root, "--url", "http://localhost"] + args)
+        self.assertEqual(request.call_count, 1)
+
+    def test_local_job_inventory_can_be_saved_as_a_json_array(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            output = Path(self.root) / "local-jobs.json"
+            jobs = [{"id": "job", "submission": "submission", "state": "TERMINATION_UNKNOWN"}]
+            code, _, _ = self.cli(["trial", "local-jobs", "--campaign", "saved", "--number", "9", "--output", str(output)], [jobs])
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(output.read_text()), jobs)
+
+    def test_collection_maintenance_scopes_the_saved_assignment_and_never_resubmits(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            directory = Path(self.root) / "campaign/trials/003/assignments/saved"
+            directory.mkdir(parents=True)
+            descriptor = directory / "remote-job.json"
+            descriptor.write_text(json.dumps({"id": "job", "owner": {"operation": "campaign", "assignment": "saved"}}))
+            campaign = {"trials": [{"number": 3, "status": "BLOCKED", "activeAssignmentId": "saved", "assignments": [{"id": "saved", "directory": "trials/003/assignments/saved"}]}]}
+            args = ["trial", "repair-collection", "--campaign", "campaign", "--number", "3", "--job", "job", "--runner", str(Path(self.root) / "runner.jar")]
+            with patch.object(client.subprocess, "run", return_value=SimpleNamespace(returncode=0, stdout='{"state":{"status":"CANCELLED"}}', stderr="")) as process:
+                code, _, request = self.cli(args, [campaign])
+                self.assertEqual(code, 0)
+                self.assertEqual(request.call_count, 1)
+                command = process.call_args.args[0]
+                self.assertEqual(command[3:5], ["repair-collection", str(descriptor.resolve())])
+                self.assertEqual(process.call_count, 1)
+
     def test_default_logs_use_only_a_tail_and_follow_resumes_at_the_utf8_cursor(self):
         self.root = "/work"
         page = {"text": "recent α", "nextCursor": 123, "truncated": True, "lineCount": 1}

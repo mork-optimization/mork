@@ -42,6 +42,9 @@ public final class AutoLlmTrialRunner {
         capacityClock = clock; capacityRandom = random; capacitySleep = sleep;
     }
     private boolean localOnly;
+    private volatile boolean shuttingDown;
+    private volatile Thread metadataThread;
+    private volatile GenerationMetadataBridge metadataBridge;
     public void prepareTrialLocally() { localOnly = true; execute(); }
     private final ReentrantLock metadataLock = new ReentrantLock();
     public AutoLlmTrialRunner(AutoLlmExecutionContext model, Path root, AutoLlmProcessRunner processes, CodexTaskRunner codex,
@@ -49,7 +52,26 @@ public final class AutoLlmTrialRunner {
         this.model = model; this.executionRoot = root; this.processes = processes; this.codex = codex;
         this.workloads = new AutoLlmExecutionService(processes); this.listener = listener; this.stop = stop; this.sessions = sessions;
     }
-    private boolean cancelled() { return stop.getAsBoolean(); }
+    private boolean cancelled() { return shuttingDown || stop.getAsBoolean(); }
+    public void shutdown() {
+        shuttingDown = true;
+        var bridge = metadataBridge; if (bridge != null) bridge.interrupt();
+        var thread = metadataThread; if (thread != null && (bridge == null || !bridge.owns(thread))) thread.interrupt();
+    }
+    public boolean awaitShutdown(long deadline) {
+        boolean interrupted = Thread.interrupted();
+        try {
+            boolean locked = false;
+            while (!locked && System.nanoTime() < deadline) {
+                try { locked = metadataLock.tryLock(Math.max(1, deadline - System.nanoTime()), TimeUnit.NANOSECONDS); }
+                catch (InterruptedException e) { interrupted = true; }
+            }
+            if (!locked) return false;
+            metadataLock.unlock();
+            var bridge = metadataBridge;
+            return bridge == null || bridge.awaitStopped(deadline);
+        } finally { if (interrupted) Thread.currentThread().interrupt(); }
+    }
     private synchronized void publish(AutoLlmExecutionContext campaign) { listener.state(campaign.snapshot()); }
     private void event(String kind, Object detail) { listener.event(kind, detail); }
     public AutoLlmExecutionContext.Snapshot snapshot() { return model.snapshot(); }
@@ -76,6 +98,10 @@ public final class AutoLlmTrialRunner {
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }
     public void cancelOutstanding() { workloads.cancelOutstanding(model.config, executionRoot, state -> remoteState(model, state)); }
+    public void reconcilePreparation() {
+        if (!AutoLlmAssignmentPolicy.movable(model.trial)) throw new IllegalStateException("Tuned assignments cannot be released");
+        workloads.reconcilePreparation(executionRoot, this::cancelled, state -> remoteState(model, state));
+    }
     public void reconcile() {
         processes.reconcile(executionRoot);
         if (model.trial != null) {
@@ -273,7 +299,9 @@ public final class AutoLlmTrialRunner {
     private AutoLlmCampaign.Attempt attempt(AutoLlmExecutionContext c, AutoLlmCampaign.Trial t, AttemptStage stage) {
         if (!t.attempts.isEmpty()) {
             var previous = t.attempts.getLast();
-            if (previous.stage == stage && previous.status == AttemptStatus.INTERRUPTED) {
+            if (previous.stage == stage && previous.status == AttemptStatus.INTERRUPTED
+                    && model.path(previous.directory).startsWith(executionRoot)
+                    && Objects.equals(previous.assignmentId, t.assignment() != null && executionRoot.equals(c.path(t.assignment().directory)) ? t.activeAssignmentId : null)) {
                 Path directory = model.path(previous.directory);
                 if (!AutoLlmFileUtil.ownedFiles(directory, "remote-job.json").isEmpty() || !AutoLlmFileUtil.ownedFiles(directory, "workload-result.json").isEmpty() || !AutoLlmFileUtil.ownedFiles(directory, "collection-failure.json").isEmpty()) { previous.status = AttemptStatus.RUNNING; previous.finishedAt = null; previous.failure = null; previous.problem = null; t.status = stage.trialStatus(); publish(c); event("attempt-rejoined", Map.of("directory", previous.directory)); return previous; }
             }
@@ -339,6 +367,7 @@ public final class AutoLlmTrialRunner {
                     if (t.failure != null && t.problem != null && t.problem.category() == AutoLlmFailureUtil.Category.COMPONENT) prompt += "\nRepair feedback:\n" + t.failure + "\nInspect the previous verification logs under " + root.resolve("attempts");
                     CodexTaskRunner.Result result;
                     try (var bridge = new GenerationMetadataBridge(source, root.resolve("metadata-requests"), options -> metadataCheck(c.id, t.number, options.get("blacklist"), options.get("requestId")))) {
+                        metadataBridge = bridge;
                         result = codex.run(c.config, source, dir, prompt, t.threadId, () -> cancelled() || c.problem != null);
                     }
                     try {
@@ -621,6 +650,8 @@ public final class AutoLlmTrialRunner {
         if (blacklist != null && !blacklist.matches("[A-Za-z_$][A-Za-z0-9_.$]*")) throw new IllegalArgumentException("Invalid blacklist component name");
         if (!metadataLock.tryLock()) throw new IllegalStateException("A metadata check is already running");
         try {
+            metadataThread = Thread.currentThread();
+            if (shuttingDown) throw new CancellationException("Metadata check interrupted by controller shutdown");
             if (!id.equals(model.id)) throw new IllegalArgumentException("Campaign mismatch");
             var campaign = model;
             var trial = campaign.trial;
@@ -635,10 +666,11 @@ public final class AutoLlmTrialRunner {
                 child(campaign, probe, source.resolve(campaign.config.project().artifact()), output.resolve("check"), "--autollm-check", 0, campaign.config.execution().searchSpaceTimeoutMillis(), List.of());
                 return Map.of("directory", output.toString(), "check", AutoLlmFileUtil.read(output.resolve("check/execution/check.json"), Object.class));
             } catch (RuntimeException e) {
+                if (e instanceof CancellationException) throw e;
                 var problem = AutoLlmFailureUtil.describe(e, output);
-                if (!(e instanceof CancellationException) && problem.category() != AutoLlmFailureUtil.Category.COMPONENT) { campaign.problem = problem; trial.problem = problem; publish(campaign); }
+                if (problem.category() != AutoLlmFailureUtil.Category.COMPONENT) { campaign.problem = problem; trial.problem = problem; publish(campaign); }
                 throw e;
             }
-        } finally { metadataLock.unlock(); }
+        } finally { metadataThread = null; metadataLock.unlock(); }
     }
 }

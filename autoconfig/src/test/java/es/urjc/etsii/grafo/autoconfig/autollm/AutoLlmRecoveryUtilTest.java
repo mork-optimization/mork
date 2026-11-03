@@ -13,21 +13,39 @@ class AutoLlmRecoveryUtilTest {
         return c;
     }
     @Test void uncollectedRemoteJobsCanBeResumedButCannotBeFailedOrRequalified() {
-        var recovery = AutoLlmRecoveryUtil.describe(campaign(), "saved", Set.of(), Set.of("a"), null);
+        var recovery = AutoLlmRecoveryUtil.describe(campaign(), "saved", Set.of(), Set.of("a"), Set.of(), null);
         assertTrue(recovery.trials().get(1).resume().allowed());
         assertFalse(recovery.trials().get(1).fail().allowed());
         assertFalse(recovery.targets().get("a").requalify().allowed());
         assertTrue(recovery.trials().get(1).fail().reason().contains("collect"));
     }
     @Test void activeWorkBlocksEveryConflictingRecovery() {
-        var recovery = AutoLlmRecoveryUtil.describe(campaign(), "saved", Set.of("a"), Set.of(), null);
+        var recovery = AutoLlmRecoveryUtil.describe(campaign(), "saved", Set.of("a"), Set.of(), Set.of(), null);
         assertFalse(recovery.trials().get(1).resume().allowed()); assertFalse(recovery.trials().get(1).fail().allowed());
         assertFalse(recovery.targets().get("a").requalify().allowed());
         assertThrows(IllegalStateException.class, () -> recovery.targets().get("a").resume().requireAllowed());
     }
+    @Test void movablePreparationCanResumeWhileAnotherTrialTunesOnItsOldHost() {
+        var c = campaign(); var trial = c.trials.getFirst();
+        trial.nextStage = AutoLlmCampaign.Stage.PREPARATION;
+        var assignment = new AutoLlmCampaign.Assignment(); assignment.id = "prep"; assignment.targetId = "a";
+        trial.assignments.add(assignment); trial.activeAssignmentId = assignment.id;
+        c.targets.get("a").assignedTrial = 2;
+        var recovery = AutoLlmRecoveryUtil.describe(c, "saved", Set.of("a"), Set.of(), Set.of(), null);
+        assertTrue(recovery.trials().get(1).resume().allowed());
+        assignment.pinned = true;
+        assertFalse(AutoLlmRecoveryUtil.describe(c, "saved", Set.of("a"), Set.of(), Set.of(), null).trials().get(1).resume().allowed());
+    }
+    @Test void unknownLocalTerminationRequiresReconciliationInsteadOfResumeOrFailure() {
+        var c = campaign(); c.trials.getFirst().targetId = null;
+        var recovery = AutoLlmRecoveryUtil.describe(c, "saved", new HashSet<>(), Set.of("$trial-1"), Set.of("$trial-1"), null);
+        assertFalse(recovery.trials().get(1).resume().allowed());
+        assertFalse(recovery.trials().get(1).fail().allowed());
+        assertTrue(recovery.trials().get(1).reconcileLocal().allowed());
+    }
     @Test void stoppedCampaignRequiresExplicitResumeButCanRecordAReconciledFailure() {
         var c = campaign(); c.status = AutoLlmCampaign.CampaignStatus.INTERRUPTED; c.targets.get("a").draining = true;
-        var recovery = AutoLlmRecoveryUtil.describe(c, null, Set.of(), Set.of(), null);
+        var recovery = AutoLlmRecoveryUtil.describe(c, null, Set.of(), Set.of(), Set.of(), null);
         assertTrue(recovery.resumeCampaign().allowed()); assertFalse(recovery.trials().get(1).resume().allowed());
         assertTrue(recovery.trials().get(1).fail().allowed());
         assertTrue(recovery.trials().get(1).fail().effect().contains("remains drained"));
@@ -35,12 +53,12 @@ class AutoLlmRecoveryUtilTest {
     }
     @Test void unqualifiedRemovedAndOtherOwnedOperationsHaveSpecificReasons() {
         var c = campaign(); c.targets.get("a").baselineReady = false;
-        var recovery = AutoLlmRecoveryUtil.describe(c, "saved", Set.of(), Set.of(), null);
+        var recovery = AutoLlmRecoveryUtil.describe(c, "saved", Set.of(), Set.of(), Set.of(), null);
         assertTrue(recovery.trials().get(1).resume().reason().contains("Requalify"));
         assertTrue(recovery.targets().get("a").requalify().allowed());
         c.targets.get("a").status = AutoLlmCampaign.TargetStatus.REMOVED;
-        assertFalse(AutoLlmRecoveryUtil.describe(c, "saved", Set.of(), Set.of(), null).targets().get("a").resume().allowed());
-        assertEquals("Another campaign is active", AutoLlmRecoveryUtil.describe(c, "other", Set.of(), Set.of(), null).trials().get(1).fail().reason());
-        assertEquals("Screening owns workspace", AutoLlmRecoveryUtil.describe(c, null, Set.of(), Set.of(), "Screening owns workspace").resumeCampaign().reason());
+        assertFalse(AutoLlmRecoveryUtil.describe(c, "saved", Set.of(), Set.of(), Set.of(), null).targets().get("a").resume().allowed());
+        assertEquals("Another campaign is active", AutoLlmRecoveryUtil.describe(c, "other", Set.of(), Set.of(), Set.of(), null).trials().get(1).fail().reason());
+        assertEquals("Screening owns workspace", AutoLlmRecoveryUtil.describe(c, null, Set.of(), Set.of(), Set.of(), "Screening owns workspace").resumeCampaign().reason());
     }
 }

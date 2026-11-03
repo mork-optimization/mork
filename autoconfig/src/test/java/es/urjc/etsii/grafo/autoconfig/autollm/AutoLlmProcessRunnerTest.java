@@ -105,6 +105,23 @@ class AutoLlmProcessRunnerTest {
             Thread.interrupted();
         }
     }
+    @Test void waitsForKnownDescendantsBeforeWritingTerminationReceipt() throws Exception {
+        when(info.startInstant()).thenReturn(Optional.of(Instant.now()));
+        var child = mock(ProcessHandle.class); var childAlive = new AtomicBoolean(true);
+        var exited = new CompletableFuture<ProcessHandle>();
+        when(child.pid()).thenReturn(456L); when(child.info()).thenReturn(info);
+        when(child.isAlive()).thenAnswer(_ -> childAlive.get()); when(child.onExit()).thenReturn(exited);
+        when(child.destroyForcibly()).thenAnswer(_ -> { childAlive.set(false); exited.complete(child); return true; });
+        when(process.descendants()).thenAnswer(_ -> Stream.of(child));
+        when(process.waitFor(anyLong(), any(TimeUnit.class))).thenReturn(false).thenThrow(new InterruptedException());
+        try {
+            assertThrows(CancellationException.class, this::run);
+            assertTrue(Thread.currentThread().isInterrupted()); assertFalse(childAlive.get());
+            assertTrue(Files.exists(temp.resolve("step/process-children.json")));
+            assertTrue(Files.exists(temp.resolve("step/process-terminated.json")));
+            verify(child).destroyForcibly();
+        } finally { Thread.interrupted(); }
+    }
 
     private AutoLlmProcessRunner.Result run() {
         try (var builders = mockConstruction(ProcessBuilder.class, withSettings().defaultAnswer(RETURNS_SELF),

@@ -22,6 +22,9 @@ public final class RemoteWorkloadMain {
         catch (Exception e) { e.printStackTrace(System.err); System.exit(2); }
     }
     private static void execute(String[] args) throws Exception {
+        if (args.length == 3 && args[0].equals("repair-collection")) {
+            print(RemoteCollectionRecovery.repair(Path.of(args[1]), Path.of(args[2]))); return;
+        }
         if (args.length < 2) throw new IllegalArgumentException("Expected action and absolute workspace");
         Path root = AutoLlmNormalization.localPath(Path.of(args[1]));
         if (!Path.of(args[1]).isAbsolute()) throw new IllegalArgumentException("Workspace must be absolute");
@@ -262,7 +265,8 @@ public final class RemoteWorkloadMain {
             DirectoryArchiveUtil.archive(WorkloadPathUtil.inside(root, job.output()).resolve("solutions"));
             WorkloadArchiveUtil.addTree(files, root, WorkloadPathUtil.inside(root, job.output()), false);
             for (String path : job.collect()) WorkloadArchiveUtil.addTree(files, root, WorkloadPathUtil.inside(root, path), false);
-            if (!job.reset().isEmpty()) try (var paths = Files.walk(WorkloadPathUtil.inside(root, job.cwd()))) {
+            // A queued job can be cancelled before input installation creates cwd.
+            if (!job.reset().isEmpty() && (completed.status() == JobStatus.SUCCEEDED || Files.isDirectory(WorkloadPathUtil.inside(root, job.cwd())))) try (var paths = Files.walk(WorkloadPathUtil.inside(root, job.cwd()))) {
                 for (Path path : paths.toList()) if (Files.isDirectory(path) && path.getFileName().toString().equals("surefire-reports")) WorkloadArchiveUtil.addTree(files, root, path, false);
             }
             markRemoteOwners(files);

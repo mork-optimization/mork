@@ -372,6 +372,57 @@ class SshWorkloadTest {
         assertEquals(id, AutoLlmFileUtil.JSON.readTree(Files.readString(root.resolve("output with spaces/remote-job.json"))).path("id").asString());
         assertFalse(ProcessHandle.of(pid).map(ProcessHandle::isAlive).orElse(false));
     }
+    @Test void queuedPreparationCanBeCollectedWithoutCancellingTheWorkspaceOwner() throws Exception {
+        var firstRoot = root; var firstConfig = config; var firstWork = workload("hold", "tuning owner");
+        var cancelFirst = new AtomicBoolean(); var detached = new CountDownLatch(1);
+        try (var threads = Executors.newVirtualThreadPerTaskExecutor()) {
+            var first = threads.submit(() -> new SshWorkloadExecutor(firstConfig, firstRoot, new SshTransport(firstConfig, firstRoot.resolve(".transport")), _ -> {}).run(firstWork, cancelFirst::get));
+            try {
+                awaitReady();
+                root = temp.resolve("queued preparation"); Files.createDirectories(root);
+                var original = workload("success", "preparation");
+                // Cancellation can precede installation of the build's source tree.
+                var secondWork = new AutoLlmWorkloadExecutor.Workload(original.command(), root.resolve("source"), original.output(), original.inputs(),
+                        original.collect(), original.reset(), original.timeoutMillis(), original.plannedMillis(), original.graceMillis(), original.watchEvaluations(), original.startupMillis());
+                var waiting = new CountDownLatch(1);
+                var second = threads.submit(() -> {
+                    try { return new SshWorkloadExecutor(config, root, new SshTransport(config, root.resolve(".transport")), state -> {
+                        if ("WAITING_FOR_WORKSPACE".equals(state.get("status"))) waiting.countDown();
+                    }).run(secondWork, () -> false); }
+                    finally { detached.countDown(); }
+                });
+                assertTrue(waiting.await(30, TimeUnit.SECONDS)); second.cancel(true); assertTrue(detached.await(10, TimeUnit.SECONDS));
+                String descriptor = Files.readString(secondWork.output().resolve("remote-job.json"));
+                new AutoLlmExecutionService(new AutoLlmProcessRunner()).reconcilePreparation(root, () -> false, _ -> {});
+                assertFalse(first.isDone());
+                assertTrue(Files.isRegularFile(secondWork.output().resolve("collection-completed.json")));
+                assertEquals(descriptor, Files.readString(secondWork.output().resolve("remote-job.json")));
+                assertEquals("CANCELLED", AutoLlmFileUtil.JSON.readTree(Files.readString(secondWork.output().resolve("remote-status.json"))).path("status").asString());
+                var job = AutoLlmFileUtil.read(secondWork.output().resolve("remote-job.json"), WorkloadProtocol.Job.class);
+                AutoLlmFileUtil.write(Path.of(job.root()).resolve(".jobs/" + job.id() + "/state.json"),
+                        new WorkloadProtocol.State(job.id(), WorkloadProtocol.JobStatus.COLLECTING, null, "Retained collection from a legacy supervisor", null));
+                var receipt = AutoLlmFileUtil.JSON.valueToTree(RemoteCollectionRecovery.repair(secondWork.output().resolve("remote-job.json"), SshTransport.runnerArtifact(config)));
+                assertEquals("CANCELLED", receipt.path("state").path("status").asString());
+                assertFalse(first.isDone()); assertEquals(descriptor, Files.readString(secondWork.output().resolve("remote-job.json")));
+            } finally { cancelFirst.set(true); }
+            assertInstanceOf(CancellationException.class, assertThrows(ExecutionException.class, () -> first.get(30, TimeUnit.SECONDS)).getCause());
+        }
+    }
+    @Test void preparationReconciliationJoinsRunningWorkWithoutResubmittingIt() throws Exception {
+        var work = workload("wait", "running preparation"); var detached = new CountDownLatch(1);
+        try (var threads = Executors.newVirtualThreadPerTaskExecutor()) {
+            var first = threads.submit(() -> {
+                try { return new SshWorkloadExecutor(config, root, new SshTransport(config, root.resolve(".transport")), _ -> {}).run(work, () -> false); }
+                finally { detached.countDown(); }
+            });
+            awaitReady(); first.cancel(true); assertTrue(detached.await(10, TimeUnit.SECONDS));
+            String descriptor = Files.readString(work.output().resolve("remote-job.json"));
+            new AutoLlmExecutionService(new AutoLlmProcessRunner()).reconcilePreparation(root, () -> false, _ -> {});
+            assertEquals(descriptor, Files.readString(work.output().resolve("remote-job.json")));
+            assertEquals("SUCCEEDED", AutoLlmFileUtil.JSON.readTree(Files.readString(work.output().resolve("remote-status.json"))).path("status").asString());
+            assertTrue(Files.isRegularFile(work.output().resolve("collection-completed.json")));
+        }
+    }
     @Test void aCancelledFixedStageCanRestartWithItsOldEvidencePreserved() throws Exception {
         var service = new AutoLlmExecutionService(new AutoLlmProcessRunner()); var cancelled = new AtomicBoolean();
         var work = workload("wait", "before cancellation");

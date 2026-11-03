@@ -106,6 +106,26 @@ public final class AutoLlmExecutionService {
             }
         }
     }
+    /** Reconcile preparation only: join running work, cancel queued work, and collect both. */
+    public void reconcilePreparation(Path directory, BooleanSupplier cancelled, Consumer<Map<String,Object>> observer) {
+        directory = AutoLlmNormalization.localPath(directory);
+        for (Path descriptor : AutoLlmFileUtil.ownedFiles(directory, "remote-job.json")) {
+            Path output = descriptor.getParent();
+            if (Files.exists(output.resolve("collection-completed.json")) || Files.exists(output.resolve("collection-discarded.json"))) continue;
+            var job = AutoLlmFileUtil.read(descriptor, WorkloadProtocol.Job.class);
+            var owner = ExecutionOwner.of(job);
+            Path root = Path.of(owner.localRoot());
+            if (!root.equals(directory) || !root.resolve(job.output()).normalize().equals(output)) throw new ExecutionTargetException("Preparation job ownership mismatch");
+            var transport = owner.transport(); transport.bootstrap();
+            var state = AutoLlmFileUtil.JSON.readValue(transport.call("status", job.root(), job.id(), Map.of()), WorkloadProtocol.State.class);
+            if (state.status() == WorkloadProtocol.JobStatus.NOT_FOUND) throw new ExecutionTargetException("Preparation submission is unknown; retain its assignment");
+            boolean queued = state.status() == WorkloadProtocol.JobStatus.WAITING_FOR_WORKSPACE;
+            try { run(owner.config(), root, List.of("reattach"), root.resolve(job.cwd()), output, null, List.of(), job.timeoutMillis(), job.plannedMillis(), job.watchEvaluations(), job.startupMillis(), () -> queued || cancelled.getAsBoolean(), observer); }
+            catch (RuntimeException e) {
+                if (Thread.currentThread().isInterrupted() || !Files.exists(output.resolve("collection-completed.json"))) throw e;
+            }
+        }
+    }
     public AutoLlmConfig stageInputs(AutoLlmConfig config, Path root) {
         if (config.execution().target() == AutoLlmConfig.Target.LOCAL) return config;
         root = AutoLlmNormalization.localPath(root);
@@ -150,8 +170,10 @@ public final class AutoLlmExecutionService {
             LocalJob job = Files.isRegularFile(saved) ? AutoLlmFileUtil.read(saved, LocalJob.class) : null;
             boolean reuse = false;
             if (job != null && job.owner().equals(owner)) {
+                if (AutoLlmLocalRecovery.operatorConfirmed(output)) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE,
+                        "METADATA_REQUEST_RETIRED", "This metadata request was retired; use a fresh request ID", output);
                 if (!Files.exists(resultFile) && !Files.exists(output.resolve("process-terminated.json")))
-                    throw new IllegalStateException("Uncertain local submission requires reconciliation: " + saved);
+                    throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.INFRASTRUCTURE, "LOCAL_TERMINATION_UNKNOWN", "Uncertain local submission requires reconciliation: " + saved, output);
                 AutoLlmProcessRunner.requireTerminated(output);
                 if (Files.exists(resultFile)) {
                     var previous = AutoLlmFileUtil.read(resultFile, LocalWorkloadExecutor.Completed.class);

@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.autollm;
 
 import es.urjc.etsii.grafo.config.InstanceConfiguration;
+import es.urjc.etsii.grafo.autoconfig.autollm.execution.ExecutionTargetException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -18,6 +19,7 @@ class AutoLlmPoolTest {
     @FunctionalInterface interface Execution { void run(AutoLlmExecutionContext model, BooleanSupplier stop) throws Exception; }
     private final Map<String, Execution> executions = new ConcurrentHashMap<>();
     private final Map<String, String> endpoints = new ConcurrentHashMap<>();
+    private Execution reconciliation = (model, stop) -> {};
     private Execution preparation = (model, stop) -> {
         model.trial.nextStage = AutoLlmCampaign.Stage.PREPARATION;
         model.trial.status = AutoLlmCampaign.TrialStatus.WAITING_FOR_TARGET;
@@ -58,6 +60,7 @@ class AutoLlmPoolTest {
             @Override protected AutoLlmTrialRunner runner(AutoLlmExecutionContext model, Path root, AutoLlmTrialRunner.Listener listener, BooleanSupplier stop, Semaphore sessions) {
                 String id = model.trial == null ? root.getFileName().toString() : model.trial.targetId; var runner = mock(AutoLlmTrialRunner.class);
                 when(runner.snapshot()).thenAnswer(_ -> model.snapshot());
+                when(runner.awaitShutdown(anyLong())).thenReturn(true);
                 when(runner.endpoint()).thenAnswer(_ -> endpoints.getOrDefault(id, id));
                 doAnswer(_ -> {
                     AutoLlmFileUtil.write(root.resolve("baseline/components.json"), List.of("Original"));
@@ -72,6 +75,7 @@ class AutoLlmPoolTest {
                     executions.get(id).run(model, stop); return null;
                 }).when(runner).execute();
                 doAnswer(_ -> { localPreparations.incrementAndGet(); preparation.run(model, stop); return null; }).when(runner).prepareTrialLocally();
+                doAnswer(_ -> { reconciliation.run(model, stop); return null; }).when(runner).reconcilePreparation();
                 return runner;
             }
         };
@@ -82,6 +86,92 @@ class AutoLlmPoolTest {
         long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
         while (!condition.getAsBoolean() && System.nanoTime() < end) Thread.sleep(10);
         assertTrue(condition.getAsBoolean(), () -> AutoLlmFileUtil.JSON.writeValueAsString(store.load(campaign.id)));
+    }
+    private AutoLlmCampaign.Assignment savedAssignment(int number, String target) {
+        var trial = campaign.trials.get(number - 1); trial.targetId = target;
+        var assignment = new AutoLlmCampaign.Assignment(); assignment.id = UUID.randomUUID().toString(); assignment.targetId = target;
+        assignment.config = campaign.targets.get(target).resolvedConfig;
+        assignment.directory = trial.directory + "/assignments/" + assignment.id;
+        trial.assignments.add(assignment); trial.activeAssignmentId = assignment.id;
+        trial.status = AutoLlmCampaign.TrialStatus.INTERRUPTED;
+        return assignment;
+    }
+    @Test void unknownLocalSubmissionBlocksDispatchAndCanBeAuditedWhileCampaignIsStopped() throws Exception {
+        setup(1, "a");
+        var trial = campaign.trials.getFirst(); trial.nextStage = AutoLlmCampaign.Stage.GENERATION;
+        Path root = store.directory(campaign.id).resolve(trial.directory);
+        Path output = root.resolve("metadata/0123456789abcdef0123456789abcdef/build");
+        var owner = new es.urjc.etsii.grafo.autoconfig.autollm.execution.ExecutionOwner(8, campaign.id, null,
+                root.toString(), root.toString(), campaign.config.localPreparation(), "controller", "controller");
+        AutoLlmFileUtil.write(output.resolve("local-job.json"), new es.urjc.etsii.grafo.autoconfig.autollm.execution.AutoLlmExecutionService.LocalJob("job", owner, List.of("fixture"), root.resolve("source").toString()));
+        AutoLlmFileUtil.write(output.resolve("process-intent.json"), Map.of("submission", "submission"));
+        AutoLlmFileUtil.write(output.resolve("owner.json"), Map.of("pid", Long.MAX_VALUE, "executionTarget", "LOCAL"));
+        campaign.status = AutoLlmCampaign.CampaignStatus.INTERRUPTED; store.save(campaign);
+        try {
+            service.start(campaign.id, true, Set.of()); await(() -> service.active() == null);
+            assertEquals(0, localPreparations.get());
+            assertEquals(AutoLlmCampaign.TrialStatus.BLOCKED, store.load(campaign.id).trials.getFirst().status);
+            assertTrue(service.recovery(campaign.id).trials().get(1).reconcileLocal().allowed());
+            var request = new AutoLlmLocalRecovery.Confirmation("submission", true, "Inspected owned processes and host inventory");
+            var receipt = service.reconcileLocal(campaign.id, 1, "job", request);
+            assertEquals(receipt, service.reconcileLocal(campaign.id, 1, "job", request));
+            assertFalse(AutoLlmCampaignStore.hasUncollectedJobs(root));
+            assertEquals(0, localPreparations.get()); assertNull(service.active());
+        } finally { service.close(); }
+    }
+    @ParameterizedTest @ValueSource(booleans = {false, true})
+    void reconnectsTuningBeforeEarlierPreparationAndRevalidatesOnFreeHost(boolean outstanding) throws Exception {
+        setup(2, "a", "b");
+        var prep = savedAssignment(1, "a"); var tuning = savedAssignment(2, "a");
+        campaign.trials.get(1).nextStage = AutoLlmCampaign.Stage.TUNING;
+        // Simulate a crash after the durable pin but before the campaign checkpoint.
+        AutoLlmFileUtil.write(store.directory(campaign.id).resolve(tuning.directory).resolve("control/assignment-pinned.json"), Map.of("assignmentId", tuning.id));
+        var local = new AutoLlmCampaign.StageOutput("trials/001/attempts/002-local-preparation", null);
+        campaign.trials.getFirst().outputs.put(AutoLlmCampaign.Stage.LOCAL_PREPARATION, local);
+        Path job = store.directory(campaign.id).resolve(prep.directory).resolve("attempts/003-preparation/build/remote-job.json");
+        if (outstanding) AutoLlmFileUtil.write(job, Map.of("id", "queued"));
+        var joined = new CountDownLatch(1); var release = new CountDownLatch(1); var migrated = new CountDownLatch(1);
+        executions.put("a", (model, stop) -> {
+            assertEquals(2, model.trial.number); assertEquals(tuning.id, model.trial.activeAssignmentId);
+            assertTrue(model.trial.assignment().pinned); joined.countDown(); assertTrue(release.await(10, TimeUnit.SECONDS));
+            model.trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED;
+        });
+        reconciliation = (model, stop) -> {
+            assertTrue(joined.await(5, TimeUnit.SECONDS)); assertEquals(prep.id, model.trial.activeAssignmentId);
+            AutoLlmFileUtil.write(job.resolveSibling("collection-completed.json"), Map.of("jobId", "queued"));
+        };
+        executions.put("b", (model, stop) -> {
+            assertEquals(1, model.trial.number); assertNotEquals(prep.id, model.trial.activeAssignmentId);
+            assertEquals(AutoLlmCampaign.Stage.PREPARATION, model.trial.nextStage);
+            assertEquals(local, model.trial.outputs.get(AutoLlmCampaign.Stage.LOCAL_PREPARATION));
+            assertEquals(101, model.trial.tuningSeed); assertTrue(model.trial.assignments.getFirst().released);
+            migrated.countDown(); model.trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED;
+        });
+        campaign.status = AutoLlmCampaign.CampaignStatus.INTERRUPTED; store.save(campaign);
+        try {
+            service.start(campaign.id, true, Set.of());
+            assertTrue(joined.await(10, TimeUnit.SECONDS)); assertTrue(migrated.await(10, TimeUnit.SECONDS));
+            release.countDown(); await(() -> service.active() == null);
+            assertEquals(2, store.load(campaign.id).trials.getFirst().assignments.size());
+        } finally { release.countDown(); service.close(); }
+    }
+    @Test void unresolvedPreparationKeepsItsIdentityAndDoesNotBlockOtherFreeHosts() throws Exception {
+        setup(2, "a", "b");
+        var assignment = savedAssignment(1, "a");
+        campaign.targets.get("a").draining = true;
+        AutoLlmFileUtil.write(store.directory(campaign.id).resolve(assignment.directory).resolve("build/remote-job.json"), Map.of("id", "offline"));
+        var reconciling = new CountDownLatch(1); var finish = new CountDownLatch(1); var independent = new CountDownLatch(1);
+        reconciliation = (model, stop) -> { reconciling.countDown(); assertTrue(finish.await(10, TimeUnit.SECONDS)); throw new ExecutionTargetException("Offline; ownership unknown"); };
+        executions.put("a", (model, stop) -> fail("Drained server must not receive new work"));
+        executions.put("b", (model, stop) -> { assertEquals(2, model.trial.number); independent.countDown(); model.trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED; });
+        campaign.status = AutoLlmCampaign.CampaignStatus.INTERRUPTED; store.save(campaign);
+        try {
+            service.start(campaign.id, true, Set.of()); assertTrue(reconciling.await(10, TimeUnit.SECONDS)); assertTrue(independent.await(10, TimeUnit.SECONDS));
+            finish.countDown(); await(() -> service.active() == null);
+            var trial = store.load(campaign.id).trials.getFirst();
+            assertEquals(assignment.id, trial.activeAssignmentId); assertFalse(trial.assignment().released);
+            assertTrue(trial.assignment().releasePending); assertEquals(AutoLlmCampaign.TrialStatus.BLOCKED, trial.status);
+        } finally { finish.countDown(); service.close(); }
     }
     @ParameterizedTest @ValueSource(ints = {16, 32})
     void repairedTrialGetsIndependentAssignmentIdentityAndPreservesSeeds(int secondWorkers) throws Exception {

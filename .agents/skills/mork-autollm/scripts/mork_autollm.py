@@ -288,6 +288,42 @@ def target(args, base):
 
 def trial(args, base):
     root = f"/campaigns/{quote(args.campaign, safe='')}"
+    if args.action == "repair-collection":
+        campaign = request(base, root, timeout=args.timeout)
+        saved = next((t for t in campaign["trials"] if t["number"] == args.number), None)
+        if saved is None or saved["status"] not in ("BLOCKED", "INTERRUPTED"):
+            raise RuntimeError("Collection maintenance requires a blocked or interrupted trial")
+        assignment_id = args.assignment or saved["activeAssignmentId"]
+        assignment = next((a for a in saved["assignments"] if a["id"] == assignment_id), None)
+        if assignment is None:
+            raise RuntimeError("Unknown saved assignment")
+        campaign_root = Path(args.workspace).resolve() / args.campaign
+        directory = (campaign_root / assignment["directory"]).resolve()
+        if not directory.is_relative_to(campaign_root):
+            raise RuntimeError("Assignment directory is outside the campaign")
+        descriptors = []
+        for path in directory.rglob("remote-job.json"):
+            if any(part in ("source", ".git", ".transport", ".transfer") for part in path.relative_to(directory).parts):
+                continue
+            job = read_object(path)
+            if job["id"] == args.job and job["owner"]["operation"] == args.campaign and job["owner"]["assignment"] == assignment_id:
+                descriptors.append(path)
+        if len(descriptors) != 1:
+            raise RuntimeError("Expected one exact saved job in this assignment")
+        runner = Path(args.runner).resolve()
+        command = ["java", "-jar", str(runner), "repair-collection", str(descriptors[0]), str(runner)]
+        try:
+            result = subprocess.run(command, capture_output=True, text=True, timeout=args.timeout)
+        except subprocess.TimeoutExpired as error:
+            raise RuntimeError("Collection maintenance response is uncertain; inspect the saved maintenance receipt and remote job before retrying") from error
+        if result.returncode:
+            raise RuntimeError(f"Collection maintenance failed; inspect saved evidence before retrying: {result.stderr[-4096:]}")
+        return json.loads(result.stdout)
+    if args.action == "local-jobs":
+        return request(base, root + f"/trials/{args.number}/local-jobs", timeout=args.timeout)
+    if args.action == "reconcile-local":
+        return request(base, root + f"/trials/{args.number}/local-jobs/{quote(args.job, safe='')}/reconcile",
+                       {"submission": args.submission, "confirmStopped": args.confirm_stopped, "reason": args.reason.strip()}, timeout=args.timeout)
     if args.action == "actions":
         recovery = request(base, root + "/recovery", timeout=args.timeout)
         actions = recovery["trials"].get(str(args.number))
@@ -986,13 +1022,22 @@ def main(argv=None):
             action.add_argument("--server", required=True, help="JSON file containing one complete server definition")
     trials = commands.add_parser("trial", help="Inspect availability or recover an explicitly selected saved trial")
     actions = trials.add_subparsers(dest="action", required=True)
-    for name in ("actions", "resume", "fail"):
+    for name in ("actions", "resume", "fail", "local-jobs", "reconcile-local", "repair-collection"):
         action = actions.add_parser(name)
         action.add_argument("--campaign", required=True)
         action.add_argument("--number", required=True, type=bounded_integer(1, 2**31 - 1))
         action.add_argument("--timeout", type=positive_seconds, default=30)
-        if name == "fail":
+        if name in ("fail", "reconcile-local"):
             action.add_argument("--reason", required=True, type=nonblank)
+        if name == "reconcile-local":
+            action.add_argument("--job", required=True, type=nonblank)
+            action.add_argument("--submission", required=True, type=nonblank)
+            action.add_argument("--confirm-stopped", required=True, action="store_true",
+                                help="Assert after host inspection that this exact local process tree has stopped")
+        if name == "repair-collection":
+            action.add_argument("--job", required=True, type=nonblank)
+            action.add_argument("--assignment", type=nonblank)
+            action.add_argument("--runner", required=True, help="Compatible version-8 maintenance runner; preserves saved workload configuration")
     monitor = commands.add_parser("watch", help="Follow current progress and readable generation activity without changing work")
     owner = monitor.add_mutually_exclusive_group()
     owner.add_argument("--campaign")
@@ -1069,7 +1114,7 @@ def main(argv=None):
         else:
             result = operation(args, base)
     if result is not None and args.response_output:
-        if not result.get("streamed"):
+        if not isinstance(result, dict) or not result.get("streamed"):
             with atomic_output(args.response_output) as output_stream:
                 json.dump(result, output_stream, ensure_ascii=False)
                 output_stream.write("\n")
