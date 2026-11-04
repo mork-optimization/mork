@@ -106,18 +106,13 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
 
     private final InstanceManager<I> instanceManager;
     private final BenchmarkService benchmark;
-    private final ThreadLocal<List<String>> cachedReportInputs = new ThreadLocal<>();
-    private final ThreadLocal<BenchmarkReport> cachedReportMetadata = new ThreadLocal<>();
 
     /** Explicit inputs and execution metadata for offline reports; never infer these from the reporting host. */
-    public void serializeCachedResults(String name, List<WorkUnitResult<S, I>> results, List<String> inputs, Path output, BenchmarkReport metadata) {
+    public void serializeCachedResults(List<WorkUnitResult<S, I>> results, List<String> inputs, Path output, BenchmarkReport metadata) {
         Objects.requireNonNull(metadata);
         try { java.nio.file.Files.createDirectories(output.toAbsolutePath().getParent()); }
         catch (IOException e) { throw new java.io.UncheckedIOException(e); }
-        cachedReportInputs.set(List.copyOf(inputs));
-        cachedReportMetadata.set(metadata);
-        try { serializeResults(name, results, output); }
-        finally { cachedReportInputs.remove(); cachedReportMetadata.remove(); }
+        writeWorkbook(results, List.copyOf(inputs), output, metadata);
     }
 
     /**
@@ -143,13 +138,21 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     }
 
     /** {@inheritDoc} */
+    @Override
     public void _serializeResults(String experimentName, List<WorkUnitResult<S, I>> results, Path p) {
+        // Only resolve configured inputs when their properties will be exported.
+        List<String> inputs = config.isInstanceSheetEnabled() && !Instance.getUniquePropertiesKeys().isEmpty()
+                ? instanceManager.getInstanceSolveOrder(experimentName) : List.of();
+        writeWorkbook(results, inputs, p, benchmark.report());
+    }
+
+    private void writeWorkbook(List<WorkUnitResult<S, I>> results, List<String> inputs, Path p, BenchmarkReport metadata) {
         log.debug("Exporting result data to XLSX...");
 
         File f = p.toFile();
 
         try {
-            Object[][] instancePropertyData = prepareInstancePropertyData(experimentName);
+            Object[][] instancePropertyData = prepareInstancePropertyData(inputs);
             String[] customProperties = getCustomPropertyHeaders(results);
             String[] headers = getRawHeaders(customProperties);
             Object[][] rawData = buildRawSheetData(maximizing, results, referenceResultProviders, headers, customProperties);
@@ -180,7 +183,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
                     // Check and fill instance sheet if appropiate
                     fillInstanceSheet(excelBook, instancePropertyData);
 
-                    fillOtherDataSheet(otherDataSheet);
+                    fillOtherDataSheet(otherDataSheet, metadata);
 
                     writeRawSheetData(rawSheet, rawData);
 
@@ -208,9 +211,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         }
     }
 
-    private void fillOtherDataSheet(XSSFSheet sheet) {
-        var metadata = cachedReportMetadata.get();
-        if (metadata == null) metadata = benchmark.report();
+    private void fillOtherDataSheet(XSSFSheet sheet, BenchmarkReport metadata) {
         writeCell(sheet.createRow(0).createCell(0), "System properties", CType.VALUE);
         int row = 1;
         for (var entry : new TreeMap<>(metadata.environment()).entrySet()) {
@@ -290,7 +291,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         log.debug("Instance sheet created");
     }
 
-    private Object[][] prepareInstancePropertyData(String expName) {
+    private Object[][] prepareInstancePropertyData(List<String> inputs) {
         if(!this.config.isInstanceSheetEnabled()){
             return new Object[0][];
         }
@@ -301,17 +302,16 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             log.debug("Instance sheet enabled, but no data available, skipping");
             return new Object[][]{{"Instance sheet is enabled but no properties found for any instance, remember to define properties using Instance::setProperty. If you do not want to use this feature, set serializers.xlsx.instance-sheet-enabled to false"}};
         }
-        return getInstancePropertyData(expName, keys);
+        return getInstancePropertyData(inputs, keys);
     }
 
-    private Object[][] getInstancePropertyData(String expName, String[] keys) {
+    private Object[][] getInstancePropertyData(List<String> inputs, String[] keys) {
         List<Object[]> properties = new ArrayList<>();
         Object[] header = new Object[keys.length + 1];
         header[0] = "Instance name";
         System.arraycopy(keys, 0, header, 1, keys.length);
         properties.add(header);
-        var inputs = cachedReportInputs.get();
-        for (String path : inputs == null ? instanceManager.getInstanceSolveOrder(expName) : inputs) {
+        for (String path : inputs) {
             var instance = instanceManager.getInstance(path);
             Object[] row = new Object[keys.length+1];
             row[0] = instance.getId();

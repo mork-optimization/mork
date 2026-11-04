@@ -108,9 +108,11 @@ public class ExcelSerializerTest {
             }
         }
         org.mockito.Mockito.when(service.report()).thenReturn(new BenchmarkReport(BenchmarkReport.Status.REUSED, environment, measured, "Reused"));
+        org.mockito.Mockito.clearInvocations(service);
         Path offline = temp.resolve("offline.xlsx");
-        excel.serializeCachedResults("offline", List.of(), List.of(), offline,
+        excel.serializeCachedResults(List.of(), List.of(), offline,
                 BenchmarkReport.notRecorded(Map.of("hostname", "remote-execution-host")));
+        org.mockito.Mockito.verifyNoInteractions(service);
         var values = otherData(offline);
         Assertions.assertEquals("NOT_RECORDED", values.get("Benchmark status"));
         Assertions.assertEquals("Not recorded", values.get("Benchmark details"));
@@ -293,7 +295,7 @@ public class ExcelSerializerTest {
     }
 
     @Test
-    void cachedReportsUseTheirOwnInputsAndRestoreNormalInstanceScope(@TempDir Path temp) throws IOException {
+    void cachedReportsUseTheirOwnInputsWithoutChangingNormalInstanceScope(@TempDir Path temp) throws IOException {
         var original = new TestInstance("original"); original.setProperty("scope", "default");
         var target = new TestInstance("target"); target.setProperty("scope", "campaign");
         @SuppressWarnings("unchecked") var manager = (InstanceManager<TestInstance>) org.mockito.Mockito.mock(InstanceManager.class);
@@ -301,14 +303,14 @@ public class ExcelSerializerTest {
         org.mockito.Mockito.when(manager.getInstance("original")).thenReturn(original);
         org.mockito.Mockito.when(manager.getInstance("target")).thenReturn(target);
         var excel = initExcel(Optional.empty(), temp, List.of(), manager);
-        excel.serializeCachedResults("cached", List.of(), List.of("target"), temp.resolve("target/cached.xlsx"), BenchmarkReport.notRecorded(Map.of()));
+        excel.serializeCachedResults(List.of(), List.of("target"), temp.resolve("target/cached.xlsx"), BenchmarkReport.notRecorded(Map.of()));
+        org.mockito.Mockito.verify(manager, org.mockito.Mockito.never()).getInstanceSolveOrder(org.mockito.ArgumentMatchers.anyString());
         excel.serializeResults("normal", List.of(), temp.resolve("normal.xlsx"));
         try (var cached = new XSSFWorkbook(Files.newInputStream(temp.resolve("target/cached.xlsx")));
              var normal = new XSSFWorkbook(Files.newInputStream(temp.resolve("normal.xlsx")))) {
             Assertions.assertEquals("target", cached.getSheet(ExcelSerializer.INSTANCE_SHEET).getRow(1).getCell(0).getStringCellValue());
             Assertions.assertEquals("original", normal.getSheet(ExcelSerializer.INSTANCE_SHEET).getRow(1).getCell(0).getStringCellValue());
         }
-        org.mockito.Mockito.verify(manager, org.mockito.Mockito.never()).getInstanceSolveOrder("cached");
     }
 
     @Test

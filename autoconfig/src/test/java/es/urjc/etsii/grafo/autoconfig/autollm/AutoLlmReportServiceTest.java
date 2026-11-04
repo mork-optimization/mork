@@ -31,7 +31,7 @@ class AutoLlmReportServiceTest {
         var config = AutoLlmConfig.defaults().withPaths(input.toString(), input.toString());
         var campaign = new AutoLlmCampaign(); campaign.id = UUID.randomUUID().toString(); campaign.config = config;
         var captured = new LinkedHashMap<Path,List<WorkUnitResult>>(); var excel = mock(ExcelSerializer.class);
-        doAnswer(call -> { captured.put(call.getArgument(3), call.getArgument(1)); return null; }).when(excel).serializeCachedResults(anyString(), anyList(), anyList(), any(Path.class), any(es.urjc.etsii.grafo.benchmark.BenchmarkReport.class));
+        doAnswer(call -> { captured.put(call.getArgument(2), call.getArgument(0)); return null; }).when(excel).serializeCachedResults(anyList(), anyList(), any(Path.class), any(es.urjc.etsii.grafo.benchmark.BenchmarkReport.class));
         for (String id : List.of("a", "b")) {
             String trialDirectory = "trials/%03d".formatted(campaign.trials.size() + 1);
             var target = new AutoLlmCampaign.TargetState(); target.directory = "targets/" + id; target.resolvedConfig = config;

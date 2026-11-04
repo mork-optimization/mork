@@ -58,11 +58,9 @@ public class AutoLlmReportService<S extends Solution<S,I>, I extends Instance> {
         } catch (IOException e) { throw new UncheckedIOException(e); }
         AutoLlmFileUtil.write(root.resolve("reports/summary.json"), Map.of("campaignId", campaign.id, "status", campaign.status, "trials", counts, "measuredRows", measuredRows[0], "poolRevision", campaign.poolRevision, "targets", campaign.targets));
         for (var entry : grouped.entrySet()) {
-            var target = campaign.targets.get(entry.getKey());
-            String name = "autollm-" + campaign.id + "-" + entry.getKey();
             var inputs = new LinkedHashSet<String>();
             for (var result : entry.getValue()) inputs.add(result.instancePath());
-            excel.serializeCachedResults(name, entry.getValue(), List.copyOf(inputs), root.resolve("reports/targets/" + entry.getKey() + "/campaign.xlsx"), BenchmarkReport.notRecorded(Map.of()));
+            excel.serializeCachedResults(entry.getValue(), List.copyOf(inputs), root.resolve("reports/targets/" + entry.getKey() + "/campaign.xlsx"), BenchmarkReport.notRecorded(Map.of()));
         }
     }
 }
