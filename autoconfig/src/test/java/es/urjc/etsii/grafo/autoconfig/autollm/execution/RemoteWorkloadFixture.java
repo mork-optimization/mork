@@ -39,7 +39,7 @@ public final class RemoteWorkloadFixture {
             while (true) Thread.sleep(100);
         }
         if (args[0].equals("hold")) while (true) Thread.sleep(100);
-        if (args[0].equals("wait")) Thread.sleep(20000);
+        if (args[0].equals("wait")) while (!Files.exists(output.resolve("finish"))) Thread.sleep(25);
         System.out.println("fixture complete");
         AutoLlmFileUtil.write(output.resolve("execution/terminal.json"), Map.of("outcome", "SUCCEEDED"));
     }

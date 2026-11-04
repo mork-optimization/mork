@@ -42,6 +42,11 @@ class AutoLlmQuotaWaitTest {
                     }
                     public void event(String kind, Object detail) { }
                 }, cancel::get, permits);
+        var releaseWait = new CountDownLatch(1);
+        runner.waitTiming(java.time.Clock.systemUTC(), () -> 0, millis -> {
+            try { assertTrue(releaseWait.await(5, TimeUnit.SECONDS), "Test must release the provider wait"); }
+            catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Provider wait interrupted"); }
+        });
         var task = new FutureTask<Void>(() -> { runner.execute(); return null; });
         Thread worker = Thread.ofVirtual().start(task);
         try {
@@ -50,14 +55,14 @@ class AutoLlmQuotaWaitTest {
             assertEquals("WAITING_FOR_QUOTA", saved.status.name()); assertEquals(trial.quotaRetryAt, saved.quotaRetryAt);
             assertEquals(trial.threadId, saved.threadId); assertTrue(saved.repairPending);
             assertEquals(1, permits.availablePermits());
-            if (interrupt) worker.interrupt(); else cancel.set(true);
+            if (interrupt) worker.interrupt(); else { cancel.set(true); releaseWait.countDown(); }
             task.get(5, TimeUnit.SECONDS);
             saved = runner.snapshot().trial();
             assertEquals("INTERRUPTED", saved.status.name()); assertEquals(trial.quotaRetryAt, saved.quotaRetryAt);
             assertTrue(saved.repairPending); assertEquals(0, saved.repairTurns); assertEquals(0, saved.infrastructureRetries);
             verify(codex, never()).run(any(), any(), any(), any(), any(), any());
         } finally {
-            cancel.set(true); worker.interrupt(); task.get(5, TimeUnit.SECONDS);
+            cancel.set(true); releaseWait.countDown(); worker.interrupt(); task.get(5, TimeUnit.SECONDS);
         }
     }
 }

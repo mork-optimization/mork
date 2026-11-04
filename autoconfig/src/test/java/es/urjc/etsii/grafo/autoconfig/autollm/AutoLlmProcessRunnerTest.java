@@ -108,10 +108,12 @@ class AutoLlmProcessRunnerTest {
     @Test void waitsForKnownDescendantsBeforeWritingTerminationReceipt() throws Exception {
         when(info.startInstant()).thenReturn(Optional.of(Instant.now()));
         var child = mock(ProcessHandle.class); var childAlive = new AtomicBoolean(true);
-        var exited = new CompletableFuture<ProcessHandle>();
+        @SuppressWarnings("unchecked")
+        CompletableFuture<ProcessHandle> exited = mock(CompletableFuture.class);
+        when(exited.get(anyLong(), any(TimeUnit.class))).thenThrow(new java.util.concurrent.TimeoutException("Simulated grace period elapsed"));
         when(child.pid()).thenReturn(456L); when(child.info()).thenReturn(info);
         when(child.isAlive()).thenAnswer(_ -> childAlive.get()); when(child.onExit()).thenReturn(exited);
-        when(child.destroyForcibly()).thenAnswer(_ -> { childAlive.set(false); exited.complete(child); return true; });
+        when(child.destroyForcibly()).thenAnswer(_ -> { childAlive.set(false); return true; });
         when(process.descendants()).thenAnswer(_ -> Stream.of(child));
         when(process.waitFor(anyLong(), any(TimeUnit.class))).thenReturn(false).thenThrow(new InterruptedException());
         try {

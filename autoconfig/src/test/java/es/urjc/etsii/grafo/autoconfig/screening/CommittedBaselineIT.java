@@ -8,7 +8,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
-class CommittedBaselineTest {
+class CommittedBaselineIT {
     @TempDir Path temp;
     void command(List<String> args, Path cwd, Path logs) {
         try {

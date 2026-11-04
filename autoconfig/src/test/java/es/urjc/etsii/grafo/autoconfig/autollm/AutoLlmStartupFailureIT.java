@@ -12,7 +12,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-class AutoLlmStartupFailureTest {
+class AutoLlmStartupFailureIT {
     @TempDir Path temp;
 
     @Test

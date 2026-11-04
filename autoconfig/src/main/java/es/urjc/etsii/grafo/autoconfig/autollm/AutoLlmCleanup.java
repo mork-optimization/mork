@@ -317,17 +317,7 @@ public final class AutoLlmCleanup {
                 if (completed.contains(resource.path())) { new OwnershipManifest(store.root()).acknowledgeDeletion(resource); continue; }
                 if (resource.sessionId() == null) {
                     new AutoLlmProcessRunner().reconcile(Path.of(resource.path()));
-                    for (Path ownerFile : AutoLlmFileUtil.ownedFiles(Path.of(resource.path()), "owner.json")) {
-                        var identity = AutoLlmFileUtil.JSON.readTree(Files.readString(ownerFile));
-                        if ("SSH".equals(identity.path("executionTarget").asString())) continue;
-                        var pid = identity.path("pid").asLong(); var start = identity.path("start").asString();
-                        var process = ProcessHandle.of(pid);
-                        if (process.isPresent() && process.get().isAlive()) throw new IllegalStateException("Live or reused PID blocks cleanup: " + pid + " " + start);
-                    }
-                    for (Path jobFile : AutoLlmFileUtil.ownedFiles(Path.of(resource.path()), "local-job.json")) {
-                        var job = AutoLlmFileUtil.read(jobFile, AutoLlmExecutionService.LocalJob.class);
-                        AutoLlmProcessRunner.requireTerminated(jobFile.getParent());
-                    }
+                    AutoLlmProcessRunner.requireTerminated(Path.of(resource.path()), true);
                 }
                 new OwnershipManifest(store.root()).delete(resource, plan.references()); completed.add(resource.path()); save(digest, completed, Map.of("deletion", "Pending"));
                 new OwnershipManifest(store.root()).acknowledgeDeletion(resource);

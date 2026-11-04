@@ -1,13 +1,11 @@
 package es.urjc.etsii.morktests;
 
 import es.urjc.etsii.grafo.autoconfig.autollm.*;
-import es.urjc.etsii.grafo.autoconfig.autollm.execution.RemoteWorkloadMain;
-import java.io.File;
+import java.io.IOException;
 import java.net.*;
 import java.nio.file.*;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
-import java.util.jar.*;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
@@ -25,14 +23,25 @@ final class SshIntegrationUtil implements AutoCloseable {
         int port; try (var socket = new ServerSocket(0, 1, InetAddress.getLoopbackAddress())) { port = socket.getLocalPort(); }
         Path daemon = directory.resolve("sshd_config"), known = directory.resolve("known_hosts"), client = directory.resolve("ssh_config");
         Files.writeString(daemon, "Port " + port + "\nListenAddress 127.0.0.1\nHostKey " + host + "\nPidFile " + directory.resolve("pid") + "\nAuthorizedKeysFile " + key + ".pub\nStrictModes no\nUsePAM no\nPasswordAuthentication no\nKbdInteractiveAuthentication no\n");
-        server = new ProcessBuilder(sshd.toString(), "-D", "-e", "-f", daemon.toString()).redirectErrorStream(true).redirectOutput(directory.resolve("sshd.log").toFile()).start(); Thread.sleep(200);
-        if (!server.isAlive()) { server.destroyForcibly(); assumeTrue(false, "sshd unavailable: " + Files.readString(directory.resolve("sshd.log"))); }
+        server = new ProcessBuilder(sshd.toString(), "-D", "-e", "-f", daemon.toString()).redirectErrorStream(true).redirectOutput(directory.resolve("sshd.log").toFile()).start();
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        boolean listening = false;
+        while (server.isAlive() && System.nanoTime() < deadline) {
+            try (var socket = new Socket()) {
+                socket.connect(new InetSocketAddress(InetAddress.getLoopbackAddress(), port), 100);
+                listening = true; break;
+            } catch (IOException starting) { Thread.sleep(20); }
+        }
+        if (!listening) { server.destroyForcibly(); fail("sshd did not start: " + Files.readString(directory.resolve("sshd.log"))); }
         Files.writeString(known, "[127.0.0.1]:" + port + " " + Files.readString(Path.of(host + ".pub")));
         Files.writeString(client, "Host mork-integration\n HostName 127.0.0.1\n Port " + port + "\n User " + System.getProperty("user.name") + "\n IdentityFile " + key + "\n IdentitiesOnly yes\n StrictHostKeyChecking yes\n UserKnownHostsFile " + known + "\n");
-        Path runner = directory.resolve("runner.jar"); var manifest = new Manifest(); manifest.getMainAttributes().put(Attributes.Name.MANIFEST_VERSION, "1.0"); manifest.getMainAttributes().put(Attributes.Name.MAIN_CLASS, RemoteWorkloadMain.class.getName());
-        var paths = new ArrayList<String>(); for (String item : System.getProperty("java.class.path").split(File.pathSeparator)) paths.add(Path.of(item).toAbsolutePath().toUri().toString());
-        manifest.getMainAttributes().put(Attributes.Name.CLASS_PATH, String.join(" ", paths));
-        try (var jar = new JarOutputStream(Files.newOutputStream(runner), manifest)) { /* Fixture dependencies stay on the loopback host. */ }
+        // Failsafe runs after packaging: exercise the real standalone runner, including supervisor relaunch.
+        var runners = new ArrayList<Path>();
+        try (var jars = Files.newDirectoryStream(Path.of("../autoconfig/target"), "*-remote-runner.jar")) {
+            for (Path jar : jars) runners.add(jar.toAbsolutePath().normalize());
+        }
+        assertEquals(1, runners.size(), "Package autoconfig before running SSH integration");
+        Path runner = runners.getFirst();
         Path python = Path.of("../example-tsptw/venv/bin/python3").toAbsolutePath().normalize();
         assumeTrue(Files.isExecutable(python), "Prepare the instance-selector Python environment for SSH integration");
         Path workerJava = directory.resolve("worker-java");

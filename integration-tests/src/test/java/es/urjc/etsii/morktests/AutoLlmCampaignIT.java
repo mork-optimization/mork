@@ -14,7 +14,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
-class AutoLlmIntegrationTest {
+class AutoLlmCampaignIT {
     @TempDir(cleanup = org.junit.jupiter.api.io.CleanupMode.ON_SUCCESS) Path temp;
     @Test void realMorkAndIraceCompleteCampaignThroughHttpApi() throws Exception { campaign(false); }
     @Test void remoteScreeningAndMorkCampaignCompleteThroughSsh() throws Exception { campaign(true); }

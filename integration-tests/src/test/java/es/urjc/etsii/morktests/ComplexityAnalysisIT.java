@@ -1,6 +1,5 @@
 package es.urjc.etsii.morktests;
 
-import es.urjc.etsii.grafo.util.ConcurrencyUtil;
 import org.apache.commons.io.FileUtils;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeAll;
@@ -12,15 +11,14 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Duration;
-import java.util.concurrent.TimeUnit;
 
 import static es.urjc.etsii.grafo.orchestrator.InstanceSelector.DEFAULT_OUTPUT_PATH;
 import static es.urjc.etsii.morktests.TestUtils.deleteGeneratedFiles;
 import static es.urjc.etsii.morktests.TestUtils.runJavaProcess;
 
-public class ComplexityAnalysisTest {
+public class ComplexityAnalysisIT {
 
-    private final Logger log = org.slf4j.LoggerFactory.getLogger(ComplexityAnalysisTest.class);
+    private final Logger log = org.slf4j.LoggerFactory.getLogger(ComplexityAnalysisIT.class);
     private static final Path propertiesPath = Path.of(DEFAULT_OUTPUT_PATH);
 
     @BeforeAll
@@ -49,9 +47,6 @@ public class ComplexityAnalysisTest {
         Assertions.assertEquals(0, exit);
         Assertions.assertTrue(Files.exists(Path.of("solutions")));
         // TODO call python script to analyze results automatically
-
-        // Sleep for 5 seconds to allow the webserver to be stopped
-        ConcurrencyUtil.sleep(5, TimeUnit.SECONDS);
 
         deleteGeneratedFiles(propertiesPath, Path.of("results"), Path.of("solutions"));
     }

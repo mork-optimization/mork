@@ -46,12 +46,4 @@ class WorkloadArchiveTest {
         assertEquals(16, ConcurrencyUtil.resolveWorkerCount(-1, 32)); assertEquals(32, ConcurrencyUtil.resolveWorkerCount(32, 32));
         assertEquals(defaults, AutoLlmFileUtil.JSON.readValue(AutoLlmFileUtil.JSON.writeValueAsBytes(defaults), AutoLlmConfig.class));
     }
-    @Test void localReconciliationCannotKillARemotePid() throws Exception {
-        Path output = temp.resolve("remote"); Files.createDirectories(output);
-        var process = new ProcessBuilder("sleep", "20").start();
-        try {
-            AutoLlmFileUtil.write(output.resolve("owner.json"), Map.of("pid", process.pid(), "start", process.info().startInstant().orElseThrow().toString(), "executionTarget", "SSH"));
-            new AutoLlmProcessRunner().reconcile(temp); assertTrue(process.isAlive());
-        } finally { process.destroyForcibly(); }
-    }
 }

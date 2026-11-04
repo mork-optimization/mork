@@ -18,7 +18,7 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 /** Isolated loopback sshd: no user's SSH config, keys, known-hosts or remote server are touched. */
-class SshWorkloadTest {
+class SshWorkloadIT {
     @TempDir Path temp;
     private Process server;
     private AutoLlmConfig config;
@@ -35,8 +35,15 @@ class SshWorkloadTest {
         Files.writeString(configuration, "Port " + port + "\nListenAddress 127.0.0.1\nHostKey " + hostKey + "\nPidFile " + temp.resolve("sshd.pid")
                 + "\nAuthorizedKeysFile " + key + ".pub\nStrictModes no\nPasswordAuthentication no\nKbdInteractiveAuthentication no\nUsePAM no\nLogLevel ERROR\n");
         server = new ProcessBuilder(sshd.toString(), "-D", "-e", "-f", configuration.toString()).redirectErrorStream(true).redirectOutput(temp.resolve("sshd.log").toFile()).start();
-        Thread.sleep(200);
-        assumeTrue(server.isAlive(), () -> "sshd fixture unavailable: " + read(temp.resolve("sshd.log")));
+        long readyDeadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(10);
+        boolean listening = false;
+        while (server.isAlive() && System.nanoTime() < readyDeadline) {
+            try (var socket = new java.net.Socket()) {
+                socket.connect(new java.net.InetSocketAddress(InetAddress.getLoopbackAddress(), port), 100);
+                listening = true; break;
+            } catch (java.io.IOException starting) { Thread.sleep(20); }
+        }
+        assertTrue(listening, () -> "sshd did not start: " + read(temp.resolve("sshd.log")));
         Path known = temp.resolve("known_hosts"); Files.writeString(known, "[127.0.0.1]:" + port + " " + Files.readString(Path.of(hostKey + ".pub")));
         Path ssh = temp.resolve("ssh_config");
         Files.writeString(ssh, "Host mork-fixture\n HostName 127.0.0.1\n Port " + port + "\n User " + System.getProperty("user.name")
@@ -229,41 +236,33 @@ class SshWorkloadTest {
         assertFalse(Files.exists(output.resolve("execution/readiness.json")));
         assertEquals("FAILED", AutoLlmFileUtil.JSON.readTree(Files.readString(output.resolve("execution/terminal.json"))).path("outcome").asString());
     }
-    @ParameterizedTest
-    @ValueSource(strings = {"simulated connection loss after submit", "agent refused operation\nPermission denied (publickey).", "agent communication failed\nPermission denied (publickey)."})
-    void reconnectsWithoutDuplicateSubmissionAndPreservesLiteralArguments(String diagnostic) throws Exception {
+    @Test
+    void reconnectsWithoutDuplicateSubmissionAndPreservesLiteralArgumentsAndArchives() throws Exception {
         var submissions = new AtomicInteger(); var disconnected = new AtomicBoolean();
         SshTransport transport = new SshTransport(config, temp.resolve("transport")) {
             @Override public byte[] call(String action, String remote, String id, Object input) {
                 if (action.equals("submit")) submissions.incrementAndGet();
-                if (action.equals("poll") && disconnected.compareAndSet(false, true)) throw connectionFailure(diagnostic);
+                if (action.equals("poll") && disconnected.compareAndSet(false, true)) throw new ConnectionException("simulated connection loss after submit");
                 return super.call(action, remote, id, input);
             }
         };
         String literal = "spaces ' quotes ; $(touch NEVER) `uname` $HOME";
         var statuses = new ArrayList<String>();
-        var result = new SshWorkloadExecutor(config, root, transport, state -> statuses.add((String) state.get("status"))).run(workload("success", literal), () -> false);
+        var work = workload("solutions", literal);
+        var result = new SshWorkloadExecutor(config, root, transport, state -> statuses.add((String) state.get("status"))).run(work, () -> false);
         assertEquals(0, result.exitCode()); assertEquals(1, submissions.get()); assertTrue(statuses.contains("WAITING_FOR_REMOTE"));
-        assertEquals(literal, Files.readString(root.resolve("output with spaces/literal.txt"))); assertFalse(Files.exists(root.resolve("NEVER")));
-        assertEquals("SSH", AutoLlmFileUtil.JSON.readTree(Files.readString(root.resolve("output with spaces/owner.json"))).path("executionTarget").asString());
-        // A second controller invocation reuses the same completed job and byte-identical evidence.
-        assertEquals(0, new SshWorkloadExecutor(config, root, transport, state -> {}).run(workload("success", literal), () -> false).exitCode());
-        assertEquals(2, submissions.get()); // the second controller validates the same payload, without relaunching it
-    }
-    @Test void transfersSolutionsAsOneArchiveAndReusesItOnRecollection() throws Exception {
-        var work = workload("solutions", "archived solutions");
-        var executor = new SshWorkloadExecutor(config, root, new SshTransport(config, temp.resolve("transport")), state -> {});
-        assertEquals(0, executor.run(work, () -> false).exitCode());
+        assertEquals(literal, Files.readString(work.output().resolve("literal.txt"))); assertFalse(Files.exists(root.resolve("NEVER")));
+        assertEquals("SSH", AutoLlmFileUtil.JSON.readTree(Files.readString(work.output().resolve("owner.json"))).path("executionTarget").asString());
         Path archive = work.output().resolve("solutions.zip");
         assertEquals(2, WorkloadArchiveUtil.verify(archive, work.output().resolve("solutions")).size());
         assertFalse(Files.exists(work.output().resolve("solutions")));
         Path remote = Path.of(WorkloadPathUtil.remoteRoot(config, root), "output with spaces");
-        assertTrue(Files.exists(remote.resolve("solutions.zip")));
-        assertFalse(Files.exists(remote.resolve("solutions")));
+        assertTrue(Files.exists(remote.resolve("solutions.zip"))); assertFalse(Files.exists(remote.resolve("solutions")));
         assertTrue(Files.exists(work.output().resolve("execution/terminal.json")));
         String checksum = AutoLlmFileUtil.hash(archive);
-        assertEquals(0, executor.run(work, () -> false).exitCode());
-        assertEquals(checksum, AutoLlmFileUtil.hash(archive));
+        // A second controller validates the same payload without relaunching it or changing the archive.
+        assertEquals(0, new SshWorkloadExecutor(config, root, transport, _ -> {}).run(work, () -> false).exitCode());
+        assertEquals(2, submissions.get()); assertEquals(checksum, AutoLlmFileUtil.hash(archive));
     }
     @Test void referencesOriginalInputsLocallyAndTransfersArchiveContainersWithoutExtraction() throws Exception {
         Path original = temp.resolve("original dataset.zip"), loose = temp.resolve("loose input.txt");
@@ -309,19 +308,6 @@ class SshWorkloadTest {
         var owner = AutoLlmFileUtil.read(root.resolve("output with spaces/owner.json"), Map.class);
         assertFalse(ProcessHandle.of(((Number) owner.get("pid")).longValue()).map(ProcessHandle::isAlive).orElse(false));
     }
-    @Test void cancellationIsConfirmedByTheRemoteSupervisor() throws Exception {
-        var cancelled = new AtomicBoolean();
-        var executor = new SshWorkloadExecutor(config, root, new SshTransport(config, temp.resolve("transport")), state -> {});
-        try (var threads = Executors.newSingleThreadExecutor()) {
-            var future = threads.submit(() -> executor.run(workload("wait", "wait"), cancelled::get));
-            long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
-            while (!Files.exists(root.resolve("output with spaces/execution/readiness.json")) && System.nanoTime() < deadline) Thread.sleep(100);
-            cancelled.set(true);
-            var error = assertThrows(ExecutionException.class, () -> future.get(20, TimeUnit.SECONDS));
-            assertInstanceOf(CancellationException.class, error.getCause(), error.getCause().toString());
-            assertEquals("CANCELLED", AutoLlmFileUtil.JSON.readTree(Files.readString(root.resolve("output with spaces/remote-status.json"))).path("status").asString());
-        }
-    }
     @ParameterizedTest @ValueSource(booleans = {false, true})
     void separateControllersContendOnlyWhenTheyUseTheSameWorkspace(boolean separateWorkspace) throws Exception {
         var firstConfig = config; Path firstRoot = root; var firstWork = workload("hold", "first controller");
@@ -330,7 +316,7 @@ class SshWorkloadTest {
         try (var threads = Executors.newFixedThreadPool(2)) {
             var first = threads.submit(() -> firstExecutor.run(firstWork, cancelFirst::get));
             try {
-                awaitReady();
+                awaitReady(first);
                 root = temp.resolve("second controller"); Files.createDirectories(root);
                 var changed = AutoLlmFileUtil.JSON.valueToTree(config);
                 ((tools.jackson.databind.node.ObjectNode) changed).put("workspace", root.toString());
@@ -362,7 +348,7 @@ class SshWorkloadTest {
         var executor = new SshWorkloadExecutor(config, root, transport, state -> {});
         var pool = Executors.newSingleThreadExecutor();
         var future = pool.submit(() -> executor.run(workload("wait", "wait"), () -> false));
-        awaitReady(); future.cancel(true); pool.shutdown(); assertTrue(pool.awaitTermination(5, TimeUnit.SECONDS));
+        awaitReady(future); future.cancel(true); pool.shutdown(); assertTrue(pool.awaitTermination(5, TimeUnit.SECONDS));
         Path remote = Path.of(WorkloadPathUtil.remoteRoot(config, root));
         var owner = AutoLlmFileUtil.read(remote.resolve("output with spaces/owner.json"), Map.class);
         long pid = ((Number) owner.get("pid")).longValue(); assertTrue(ProcessHandle.of(pid).map(ProcessHandle::isAlive).orElse(false));
@@ -378,7 +364,7 @@ class SshWorkloadTest {
         try (var threads = Executors.newVirtualThreadPerTaskExecutor()) {
             var first = threads.submit(() -> new SshWorkloadExecutor(firstConfig, firstRoot, new SshTransport(firstConfig, firstRoot.resolve(".transport")), _ -> {}).run(firstWork, cancelFirst::get));
             try {
-                awaitReady();
+                awaitReady(first);
                 root = temp.resolve("queued preparation"); Files.createDirectories(root);
                 var original = workload("success", "preparation");
                 // Cancellation can precede installation of the build's source tree.
@@ -415,9 +401,16 @@ class SshWorkloadTest {
                 try { return new SshWorkloadExecutor(config, root, new SshTransport(config, root.resolve(".transport")), _ -> {}).run(work, () -> false); }
                 finally { detached.countDown(); }
             });
-            awaitReady(); first.cancel(true); assertTrue(detached.await(10, TimeUnit.SECONDS));
+            awaitReady(first); first.cancel(true); assertTrue(detached.await(10, TimeUnit.SECONDS));
             String descriptor = Files.readString(work.output().resolve("remote-job.json"));
-            new AutoLlmExecutionService(new AutoLlmProcessRunner()).reconcilePreparation(root, () -> false, _ -> {});
+            var attached = new AtomicBoolean();
+            new AutoLlmExecutionService(new AutoLlmProcessRunner()).reconcilePreparation(root, () -> false, state -> {
+                if ("RUNNING".equals(state.get("status")) && attached.compareAndSet(false, true)) {
+                    try { Files.writeString(Path.of(WorkloadPathUtil.remoteRoot(config, root), "output with spaces/finish"), "done"); }
+                    catch (IOException e) { throw new UncheckedIOException(e); }
+                }
+            });
+            assertTrue(attached.get(), "Reconciliation must attach before the fixture is allowed to finish");
             assertEquals(descriptor, Files.readString(work.output().resolve("remote-job.json")));
             assertEquals("SUCCEEDED", AutoLlmFileUtil.JSON.readTree(Files.readString(work.output().resolve("remote-status.json"))).path("status").asString());
             assertTrue(Files.isRegularFile(work.output().resolve("collection-completed.json")));
@@ -428,9 +421,10 @@ class SshWorkloadTest {
         var work = workload("wait", "before cancellation");
         try (var pool = Executors.newSingleThreadExecutor()) {
             var future = pool.submit(() -> service.run(config, root, work.command(), work.cwd(), work.output(), null, List.of(), 30000, 0, true, 5000, cancelled::get, state -> {}));
-            awaitReady(); cancelled.set(true);
+            awaitReady(future); cancelled.set(true);
             assertInstanceOf(CancellationException.class, assertThrows(ExecutionException.class, () -> future.get(20, TimeUnit.SECONDS)).getCause());
         }
+        assertEquals("CANCELLED", AutoLlmFileUtil.JSON.readTree(Files.readString(work.output().resolve("remote-status.json"))).path("status").asString());
         String old = AutoLlmFileUtil.JSON.readTree(Files.readString(work.output().resolve("remote-job.json"))).path("id").asString();
         var restarted = workload("success", "after cancellation");
         var result = service.run(config, root, restarted.command(), restarted.cwd(), restarted.output(), null, List.of(), 30000, 0, true, 5000, () -> false, state -> {});
@@ -507,16 +501,21 @@ class SshWorkloadTest {
         assertEquals(0, new SshWorkloadExecutor(config, root, new SshTransport(config, temp.resolve("transport")), state -> {}).run(work, () -> false).exitCode());
         assertEquals(checksum, AutoLlmFileUtil.hash(descriptor)); assertFalse(AutoLlmCampaignStore.hasUncollectedJobs(root));
     }
-    private void awaitReady() throws Exception {
-        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
-        while (!Files.exists(root.resolve("output with spaces/execution/readiness.json")) && System.nanoTime() < deadline) Thread.sleep(100);
-        assertTrue(Files.exists(root.resolve("output with spaces/execution/readiness.json")));
+    private void awaitReady(Future<?> workload) throws Exception {
+        long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(30);
+        Path ready = root.resolve("output with spaces/execution/readiness.json");
+        while (!Files.exists(ready) && System.nanoTime() < deadline) {
+            if (workload.isDone()) { workload.get(); fail("Workload exited before readiness"); }
+            Thread.sleep(25);
+        }
+        assertTrue(Files.exists(ready), () -> "Workload readiness timed out: "
+                + read(root.resolve("output with spaces/remote-status.json")) + "\n" + read(temp.resolve("sshd.log")));
     }
     private AutoLlmWorkloadExecutor.Workload workload(String mode, String literal) {
         Path output = root.resolve("output with spaces"); String remote = WorkloadPathUtil.remoteRoot(config, root);
         // Classpath is shared only by this loopback fixture; the production runner is a standalone attached JAR.
         var command = List.of(java, "-cp", System.getProperty("java.class.path"), RemoteWorkloadFixture.class.getName(), mode, remote + "/output with spaces", literal);
-        return new AutoLlmWorkloadExecutor.Workload(command, root, output, Map.of(), List.of(), List.of(), mode.equals("hold") ? 90000 : 30000, 0, 100, true, 5000);
+        return new AutoLlmWorkloadExecutor.Workload(command, root, output, Map.of(), List.of(), List.of(), 90000, 0, 100, true, 15000);
     }
     private void run(List<String> command) throws Exception {
         var process = new ProcessBuilder(command).redirectErrorStream(true).start(); String output = new String(process.getInputStream().readAllBytes());

@@ -1,5 +1,6 @@
 package es.urjc.etsii.grafo.autoconfig.autollm;
 
+import es.urjc.etsii.grafo.autoconfig.autollm.execution.ProcessIdentity;
 import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.io.UncheckedIOException;
@@ -107,12 +108,17 @@ public class AutoLlmProcessRunner {
     }
     /** A dead parent alone does not establish that its children stopped. */
     public static void requireTerminated(Path root) {
+        requireTerminated(root, false);
+    }
+    /** Controller cleanup checks local processes; remote termination is checked on the owning worker. */
+    static void requireTerminated(Path root, boolean localOnly) {
         boolean interrupted = Thread.interrupted();
-        try { verifyTerminated(root); }
+        try { verifyTerminated(root, localOnly); }
         finally { if (interrupted) Thread.currentThread().interrupt(); }
     }
-    private static void verifyTerminated(Path root) {
+    private static void verifyTerminated(Path root, boolean localOnly) {
         for (Path intent : AutoLlmFileUtil.ownedFiles(root, "process-intent.json")) {
+            if (localOnly && remoteEvidence(intent.getParent())) continue;
             if (AutoLlmLocalRecovery.operatorConfirmed(intent.getParent())) continue;
             Path proof = intent.resolveSibling("process-terminated.json");
             String submission = Objects.toString(AutoLlmFileUtil.read(intent, Map.class).get("submission"), "");
@@ -121,16 +127,37 @@ public class AutoLlmProcessRunner {
                 throw new IllegalStateException("Process submission is unreconciled: " + intent);
         }
         for (Path file : AutoLlmFileUtil.ownedFiles(root, "owner.json")) {
-            if (AutoLlmLocalRecovery.operatorConfirmed(file.getParent())) continue;
+            if (localOnly && remoteEvidence(file.getParent())) continue;
             var owner = AutoLlmFileUtil.read(file, Map.class);
             if (!(owner.get("pid") instanceof Number pid)) continue;
-            if (ProcessHandle.of(pid.longValue()).filter(ProcessHandle::isAlive).isPresent())
-                throw new IllegalStateException("Live or reused process blocks completion: " + file);
+            requireStopped(owner, file);
+            if (AutoLlmLocalRecovery.operatorConfirmed(file.getParent())) continue;
             Path proof = file.resolveSibling("process-terminated.json");
-            if (!Files.isRegularFile(proof) || AutoLlmFileUtil.read(proof, Map.class).get("pid") == null
-                    || ((Number) AutoLlmFileUtil.read(proof, Map.class).get("pid")).longValue() != pid.longValue())
+            if (!Files.isRegularFile(proof)
+                    || !(AutoLlmFileUtil.read(proof, Map.class).get("pid") instanceof Number terminated)
+                    || terminated.longValue() != pid.longValue())
                 throw new IllegalStateException("Process-tree termination is unconfirmed: " + file);
         }
+        for (Path file : AutoLlmFileUtil.ownedFiles(root, "process-children.json")) {
+            if (localOnly && remoteEvidence(file.getParent())) continue;
+            var children = AutoLlmFileUtil.read(file, tools.jackson.databind.JsonNode.class);
+            Path intent = file.resolveSibling("process-intent.json");
+            if (!Files.isRegularFile(intent) || !Objects.equals(children.path("submission").asString(),
+                    AutoLlmFileUtil.read(intent, Map.class).get("submission")))
+                throw new IllegalStateException("Child process submission is unreconciled: " + file);
+            for (var child : children.path("children"))
+                requireStopped(AutoLlmFileUtil.JSON.convertValue(child, Map.class), file);
+        }
+    }
+    private static boolean remoteEvidence(Path output) {
+        Path owner = output.resolve("owner.json");
+        return Files.isRegularFile(owner)
+                && "SSH".equals(AutoLlmFileUtil.read(owner, Map.class).get("executionTarget"));
+    }
+    private static void requireStopped(Map<?,?> process, Path evidence) {
+        if (process.get("pid") instanceof Number pid
+                && new ProcessIdentity(pid.longValue(), Objects.toString(process.get("start"), "")).alive())
+            throw new IllegalStateException("Recorded process is live or its identity is unavailable: " + evidence);
     }
     public void reconcile(Path campaign) {
         if (!Files.isDirectory(campaign)) return;

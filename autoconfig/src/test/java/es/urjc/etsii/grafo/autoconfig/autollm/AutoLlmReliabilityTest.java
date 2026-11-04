@@ -2,6 +2,8 @@ package es.urjc.etsii.grafo.autoconfig.autollm;
 
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.env.MockEnvironment;
 import org.springframework.boot.context.properties.bind.*;
 import java.nio.file.*;
@@ -60,15 +62,29 @@ class AutoLlmReliabilityTest {
         Files.writeString(evidence.resolve("stderr.log"), "[ERROR] /remote/work space/src/main/java/ConstructiveNew.java:[1,2] syntax error\n");
         assertEquals(AutoLlmFailureUtil.Category.COMPONENT, AutoLlmFailureUtil.buildFailure(source, baseline, evidence, "Remote compilation failed", path -> path.replace("/remote/work space", source.toString())).failure().category());
     }
-    @Test void newTestFailuresAreRepairableButMixedFrameworkFailuresPause() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"surefire-reports", "failsafe-reports"})
+    void newTestFailuresAreRepairableButMixedFrameworkFailuresPause(String reportDirectory) throws Exception {
         Path source = temp.resolve("trial"), baseline = temp.resolve("baseline"), output = temp.resolve("build");
         Files.createDirectories(source.resolve("module/src/test/java/project")); Files.createDirectories(output);
         Files.writeString(source.resolve("module/src/test/java/project/ConstructiveNewTest.java"), "class ConstructiveNewTest {}");
-        Path reports = source.resolve("module/target/surefire-reports"); Files.createDirectories(reports);
+        Path reports = source.resolve("module/target/" + reportDirectory); Files.createDirectories(reports);
         Files.writeString(reports.resolve("project.ConstructiveNewTest.txt"), "Tests run: 1, Failures: 1 <<< FAILURE!");
-        assertEquals(AutoLlmFailureUtil.Category.COMPONENT, AutoLlmFailureUtil.buildFailure(source, baseline, output, "Test failed", path -> path).failure().category());
-        Files.writeString(reports.resolve("framework.MonitoringTest.txt"), "Tests run: 1, Failures: 1 <<< FAILURE!");
-        assertEquals(AutoLlmFailureUtil.Category.UNKNOWN, AutoLlmFailureUtil.buildFailure(source, baseline, output, "Tests failed", path -> path).failure().category());
+        var candidate = AutoLlmFailureUtil.buildFailure(source, baseline, output, "Test failed", path -> path).failure();
+        assertEquals(AutoLlmFailureUtil.Category.COMPONENT, candidate.category());
+        assertEquals("GENERATED_TEST", candidate.code());
+        assertTrue(candidate.message().contains("project.ConstructiveNewTest"));
+        Path frameworkReports = source.resolve("framework/target/" + (reportDirectory.equals("surefire-reports") ? "failsafe-reports" : "surefire-reports"));
+        Files.createDirectories(frameworkReports);
+        Files.writeString(frameworkReports.resolve("framework.MonitoringTest.txt"), """
+                Tests run: 1, Failures: 1 <<< FAILURE!
+                framework.MonitoringTest.updates -- Time elapsed: 0.1 s <<< FAILURE!
+                """);
+        var mixed = AutoLlmFailureUtil.buildFailure(source, baseline, output, "Tests failed", path -> path).failure();
+        assertEquals(AutoLlmFailureUtil.Category.UNKNOWN, mixed.category());
+        assertEquals("BUILD_FAILED", mixed.code());
+        assertTrue(mixed.message().contains("project.ConstructiveNewTest"));
+        assertTrue(mixed.message().contains("framework.MonitoringTest.updates"));
     }
     @Test void unresolvedJobsReserveWorkspaceUntilCollectionAndIgnoreEditableClone() throws Exception {
         var settings = new AutoLlmConfig(null, temp.toString(), null, null, null, null, null, null, null, null, null, null, null, null);

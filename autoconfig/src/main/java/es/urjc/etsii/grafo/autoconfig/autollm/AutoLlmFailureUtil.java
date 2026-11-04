@@ -8,7 +8,6 @@ import java.lang.reflect.Modifier;
 import java.nio.file.*;
 import java.io.*;
 import java.util.*;
-import java.util.regex.Pattern;
 
 /** Positive attribution is required before asking an LLM to repair a candidate. */
 public final class AutoLlmFailureUtil {
@@ -73,11 +72,10 @@ public final class AutoLlmFailureUtil {
     public static StageException buildFailure(Path source, Path baseline, Path output, String message, java.util.function.UnaryOperator<String> localPath) {
         // Compiler diagnostics must name an added/changed project source. Test-suite and
         // dependency failures without that evidence are deliberately left unclassified.
-        var pattern = Pattern.compile("^\\s*(?:\\[ERROR]\\s*)?(.+?\\.java):\\[?[0-9]+", Pattern.MULTILINE);
         for (String log : List.of("stdout.log", "stderr.log")) {
             Path file = output.resolve(log);
             if (!AutoLlmEvidenceFiles.exists(file)) continue;
-            var matcher = pattern.matcher(tail(file, 262144));
+            var matcher = BuildDiagnostics.COMPILER_ERROR.matcher(tail(file, 262144));
             while (matcher.find()) {
                 Path changed = source.resolve(localPath.apply(matcher.group(1).trim())).normalize();
                 if (!changed.startsWith(source) || !Files.isRegularFile(changed)) continue;
@@ -87,16 +85,21 @@ public final class AutoLlmFailureUtil {
             }
         }
         boolean candidateTests = false, unknownTests = false;
+        var failures = new LinkedHashSet<String>();
         try (var paths = Files.walk(source)) {
-            for (Path report : paths.toList()) if (Files.isRegularFile(report) && report.getParent().getFileName().toString().equals("surefire-reports") && report.getFileName().toString().endsWith(".txt")) {
+            for (var iterator = paths.iterator(); iterator.hasNext();) {
+                Path report = iterator.next();
+                if (!Files.isRegularFile(report) || !BuildDiagnostics.isTestReport(report)) continue;
                 String contents = tail(report, 262144);
-                if (!contents.contains("<<< FAILURE!") && !contents.contains("<<< ERROR!")) continue;
+                if (!BuildDiagnostics.hasTestFailure(contents)) continue;
+                if (failures.size() < 5) failures.add(BuildDiagnostics.testFailureSummary(contents, report.toString()));
                 String name = report.getFileName().toString().replaceFirst("\\.txt$", "").split("\\$", 2)[0].replace('.', '/');
                 Path test = report.getParent().getParent().getParent().resolve("src/test/java/" + name + ".java");
                 if (Files.isRegularFile(test) && !Files.exists(baseline.resolve(source.relativize(test)))) candidateTests = true;
                 else unknownTests = true;
             }
         } catch (IOException e) { throw new UncheckedIOException(e); }
+        if (!failures.isEmpty()) message += "; " + String.join("; ", failures);
         if (candidateTests && !unknownTests) return error(Category.COMPONENT, "GENERATED_TEST", message, output);
         return error(Category.UNKNOWN, "BUILD_FAILED", message + "; failure was not attributable to a changed component", output);
     }

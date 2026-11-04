@@ -11,6 +11,8 @@ import { DashboardChart } from '../dashboard-chart/dashboard-chart';
 import { ChartViewModel } from '../../model/dashboard';
 import { AutoLlmStore } from '../../store/autollm-store';
 import { AutoLlmDashboard } from './autollm-dashboard';
+import { AutoLlmTimeline } from '../autollm-timeline/autollm-timeline';
+import { timedAttempt, timedTrial, timingEpoch } from '../../testing/autollm-timing-fixture';
 import {
   AutoLlmComparison,
   ComparisonInstance,
@@ -31,7 +33,9 @@ class ChartStub {
 
 describe('AutoLLM dashboard', () => {
   let originalScrollIntoView: PropertyDescriptor | undefined;
+  let scrollTo: ReturnType<typeof vi.spyOn>;
   beforeEach(async () => {
+    scrollTo = vi.spyOn(window, 'scrollTo').mockImplementation(() => {});
     // jsdom has no layout or scrolling implementation.
     originalScrollIntoView = Object.getOwnPropertyDescriptor(
       HTMLElement.prototype,
@@ -85,7 +89,12 @@ describe('AutoLLM dashboard', () => {
       refreshDetail: vi.fn(),
       refreshSummary: vi.fn(),
       refreshArtifacts: vi.fn(),
-      selectTrial: vi.fn(),
+      selectTrial: vi.fn((number: number) => {
+        store.selectedTrial.set(number);
+        store.inspecting.set(true);
+      }),
+      select: vi.fn(),
+      watchGeneration: vi.fn(),
       cleanupPlan: signal(null),
       cleanupReceipt: signal(null),
       approvalDifferences: signal([]),
@@ -163,16 +172,197 @@ describe('AutoLLM dashboard', () => {
         remove: { imports: [DashboardChart] },
         add: { imports: [ChartStub] },
       })
+      .overrideComponent(AutoLlmTimeline, {
+        remove: { imports: [DashboardChart] },
+        add: { imports: [ChartStub] },
+      })
       .compileComponents();
   });
   afterEach(() => {
     try {
       TestBed.resetTestingModule();
     } finally {
+      scrollTo.mockRestore();
       if (originalScrollIntoView)
         Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', originalScrollIntoView);
       else Reflect.deleteProperty(HTMLElement.prototype, 'scrollIntoView');
     }
+  });
+  it('opens the selected timeline attempt in stage evidence and links to its activity', async () => {
+    const fixture = TestBed.createComponent(AutoLlmDashboard);
+    const store = TestBed.inject(AutoLlmStore);
+    const trial = timedTrial([
+      timedAttempt(1, 'GENERATION', 0, 10),
+      timedAttempt(2, 'REPAIR', 20, 30),
+    ]);
+    (store.trial as WritableSignal<AutoLlmTrial | null>).set(trial);
+    store.now.set(timingEpoch + 30000);
+    store.inspecting.set(true);
+    fixture.componentInstance.openTimedAttempt({ trial: 1, attempt: 2, stage: 'GENERATION' });
+    await fixture.whenStable();
+    expect(store.selectTrial).toHaveBeenCalledWith(1);
+    expect(
+      fixture.nativeElement.querySelector('.stage-evidence .selected-row').textContent,
+    ).toContain('Repair');
+    expect(fixture.nativeElement.querySelector('.stage-timeline').textContent).toContain('20s');
+    fixture.nativeElement.querySelector('.stage-evidence .selected-row button').click();
+    await fixture.whenStable();
+    expect(store.watchGeneration).toHaveBeenCalledWith(2);
+    expect(fixture.componentInstance.detailTab()).toBe(3);
+    expect(fixture.nativeElement.querySelector('.attempt.selected-row').textContent).toContain(
+      'REPAIR',
+    );
+  });
+  it('freezes stage durations at the last successful status update when polling is stale', () => {
+    const fixture = TestBed.createComponent(AutoLlmDashboard);
+    const store = TestBed.inject(AutoLlmStore);
+    (store.trial as WritableSignal<AutoLlmTrial | null>).set(
+      timedTrial([timedAttempt(1, 'TUNING', 0, null)], { status: 'TUNING' }),
+    );
+    store.lastUpdated.set(timingEpoch + 10000);
+    store.now.set(timingEpoch + 60000);
+    expect(fixture.componentInstance.stageSummaries()[3].duration).toBe(10000);
+  });
+  it('preserves timeline controls through inspection, history navigation and reloading a selected attempt', async () => {
+    const store = TestBed.inject(AutoLlmStore);
+    const trials = Array.from({ length: 60 }, (_, i) =>
+      timedTrial([timedAttempt(1, 'GENERATION', 0, 10), timedAttempt(2, 'TUNING', 10, 20)], {
+        number: i + 1,
+        targetId: 'worker-b',
+      }),
+    );
+    const campaign = { ...store.campaign()!, trials };
+    (store.campaign as WritableSignal<AutoLlmCampaign | null>).set(campaign);
+    store.campaigns.set([campaign]);
+    store.selectTrial = vi.fn((number) => {
+      store.selectedTrial.set(number);
+      store.inspecting.set(true);
+      (store.trial as WritableSignal<AutoLlmTrial | null>).set(
+        trials.find((trial) => trial.number === number)!,
+      );
+    });
+    const fixture = TestBed.createComponent(AutoLlmDashboard),
+      dashboard = fixture.componentInstance;
+    await fixture.whenStable();
+    const settings = {
+      mode: 'clock' as const,
+      sort: 'TUNING',
+      search: 'worker-b',
+      page: 1,
+      outcome: 'all' as const,
+    };
+    dashboard.setTimelineSettings(settings);
+    const timelineUrl = window.location.hash;
+    dashboard.openTimedAttempt({ trial: 38, stage: 'TUNING', attempt: 2 });
+    await fixture.whenStable();
+    const attemptUrl = window.location.hash;
+    expect(attemptUrl).toContain('attempt=2');
+    expect(attemptUrl).toContain('stage=TUNING');
+    dashboard.closeTrial();
+    await fixture.whenStable();
+    expect(dashboard.timelineSettings()).toEqual(settings);
+    expect(fixture.nativeElement.querySelector('app-autollm-timeline select').value).toBe('clock');
+    expect(fixture.nativeElement.querySelector('app-autollm-timeline input').value).toBe(
+      'worker-b',
+    );
+    for (const hash of [attemptUrl, timelineUrl, attemptUrl]) {
+      window.history.replaceState(null, '', hash);
+      window.dispatchEvent(new PopStateEvent('popstate'));
+      await fixture.whenStable();
+      expect(store.inspecting()).toBe(hash === attemptUrl);
+      expect(dashboard.timelineSettings()).toEqual(settings);
+    }
+    expect(dashboard.selectedStage()).toBe('TUNING');
+    expect(dashboard.selectedAttempt()).toBe(2);
+    fixture.destroy();
+    const reloaded = TestBed.createComponent(AutoLlmDashboard);
+    await reloaded.whenStable();
+    expect(reloaded.componentInstance.timelineSettings()).toEqual(settings);
+    expect(reloaded.componentInstance.selectedAttempt()).toBe(2);
+    expect(
+      reloaded.nativeElement.querySelector('.stage-evidence .selected-row').textContent,
+    ).toContain('20');
+  });
+  it('uses overview counts to filter the timeline and keeps it ahead of collapsed details', async () => {
+    const store = TestBed.inject(AutoLlmStore);
+    (store.campaign as WritableSignal<AutoLlmCampaign | null>).update((c) =>
+      c
+        ? {
+            ...c,
+            trials: [
+              timedTrial([], { number: 1, status: 'WAITING_FOR_GENERATION' }),
+              timedTrial([], { number: 2, status: 'BLOCKED' }),
+              timedTrial([], { number: 3, status: 'SUCCEEDED' }),
+            ],
+          }
+        : c,
+    );
+    const fixture = TestBed.createComponent(AutoLlmDashboard);
+    await fixture.whenStable();
+    const dashboard = fixture.componentInstance;
+    expect(dashboard.runningCount()).toBe(1);
+    const buttons = [
+      ...fixture.nativeElement.querySelectorAll('.summary-counts button'),
+    ] as HTMLButtonElement[];
+    buttons.find((button) => button.textContent!.trim().startsWith('Needs attention'))!.click();
+    await fixture.whenStable();
+    expect(dashboard.timelineSettings().outcome).toBe('attention');
+    expect(fixture.nativeElement.querySelector('app-autollm-timeline tbody').textContent).toContain(
+      'Open trial 2',
+    );
+    expect(
+      fixture.nativeElement.querySelector('app-autollm-timeline tbody').textContent,
+    ).not.toContain('Open trial 1');
+    expect(fixture.nativeElement.querySelector('.overview-details').open).toBe(false);
+    const timeline = fixture.nativeElement.querySelector('app-autollm-timeline');
+    expect(
+      timeline.compareDocumentPosition(fixture.nativeElement.querySelector('.overview-details')) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+  it('distinguishes a quota wait from a blocked trial and exposes server review without mutation', async () => {
+    const store = TestBed.inject(AutoLlmStore);
+    store.active.set('campaign');
+    store.lastUpdated.set(timingEpoch);
+    const trial = timedTrial([timedAttempt(1, 'GENERATION', -10, 0, 'QUOTA_LIMIT')], {
+      status: 'WAITING_FOR_QUOTA',
+      quotaRetryAt: new Date(timingEpoch + 180000).toISOString(),
+    });
+    (store.trial as WritableSignal<AutoLlmTrial | null>).set(trial);
+    store.inspecting.set(true);
+    const fixture = TestBed.createComponent(AutoLlmDashboard);
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.trial-notice.waiting').textContent).toContain(
+      'Automatic retry in 3m',
+    );
+    expect(fixture.nativeElement.querySelector('.stage-timeline li.waiting')).not.toBeNull();
+    expect(fixture.nativeElement.querySelector('.trial-recovery')).toBeNull();
+    (store.trial as WritableSignal<AutoLlmTrial | null>).set({
+      ...trial,
+      status: 'BLOCKED',
+      targetId: 'worker-b',
+      problem: {
+        category: 'INFRASTRUCTURE',
+        code: 'SSH',
+        message: 'SSH authentication failed',
+        recovery: 'Check credentials',
+        retryable: false,
+        evidence: [],
+      },
+    });
+    await fixture.whenStable();
+    expect(fixture.nativeElement.querySelector('.trial-notice.attention').textContent).toContain(
+      'SSH authentication failed',
+    );
+    expect(fixture.nativeElement.querySelector('.trial-recovery').open).toBe(false);
+    const review = [...fixture.nativeElement.querySelectorAll('.trial-notice button')].find(
+      (button: any) => button.textContent.includes('Review server'),
+    ) as HTMLButtonElement;
+    review.click();
+    await fixture.whenStable();
+    expect(fixture.componentInstance.tab()).toBe(3);
+    expect(fixture.componentInstance.selectedTarget()).toBe('worker-b');
+    expect(store.inspecting()).toBe(false);
   });
   function configuration(): AutoLlmConfig {
     return {

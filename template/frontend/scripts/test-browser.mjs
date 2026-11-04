@@ -231,7 +231,24 @@ const comparisonCampaign = {
       status: 'COMPARISON',
       tuningSeed: 1234,
       repairTurns: 0,
-      attempts: [],
+      attempts: [
+        ['GENERATION', 0, 10, 'SUCCEEDED'],
+        ['LOCAL_PREPARATION', 10, 20, 'FAILED'],
+        ['REPAIR', 25, 35, 'SUCCEEDED'],
+        ['LOCAL_PREPARATION', 35, 45, 'SUCCEEDED'],
+        ['PREPARATION', 45, 60, 'SUCCEEDED'],
+        ['TUNING', 60, 160, 'SUCCEEDED'],
+        ['WINNER_EXPORT', 160, 165, 'SUCCEEDED'],
+        ['COMPARISON', 165, null, 'RUNNING'],
+      ].map(([stage, start, end, status], index) => ({
+        number: index + 1,
+        stage,
+        status,
+        directory: `attempt-${index + 1}`,
+        failure: null,
+        startedAt: new Date(Date.now() - 180000 + start * 1000).toISOString(),
+        finishedAt: end === null ? null : new Date(Date.now() - 180000 + end * 1000).toISOString(),
+      })),
       winner: { algorithm: 'GeneratedNew', parameter: 4 },
     },
   ],
@@ -852,10 +869,136 @@ try {
       comparisonCampaign.id,
       'selected campaign label follows dynamic options',
     );
+    await waitFor(
+      `document.querySelectorAll('app-autollm-timeline .highcharts-xrange-series .highcharts-partfill-original').length >= 9`,
+    );
+    assert.equal(await evaluate(`document.querySelector('.overview-details').open`), false);
+    assert.equal(
+      await evaluate(
+        `document.querySelector('app-autollm-timeline').getBoundingClientRect().top < document.querySelector('.overview-details').getBoundingClientRect().top`,
+      ),
+      true,
+      'timeline precedes secondary overview panels',
+    );
+    await evaluate(
+      `Array.from(document.querySelectorAll('.summary-counts button')).find(button => button.textContent.trim().startsWith('Active')).click()`,
+    );
+    await waitFor(`location.hash.includes('outcome=active')`);
+    await evaluate(
+      `(() => {const select = document.querySelector('app-autollm-timeline select'); select.value = 'clock'; select.dispatchEvent(new Event('change', {bubbles:true}));})()`,
+    );
+    await waitFor(
+      `document.querySelector('app-autollm-timeline .highcharts-xaxis .highcharts-axis-title')?.textContent === 'Campaign clock (UTC)'`,
+    );
+    await evaluate(
+      `(() => {const select = document.querySelector('app-autollm-timeline select'); select.value = 'elapsed'; select.dispatchEvent(new Event('change', {bubbles:true}));})()`,
+    );
+    await waitFor(
+      `document.querySelector('app-autollm-timeline .highcharts-xaxis .highcharts-axis-title')?.textContent.includes('Elapsed')`,
+    );
+    await evaluate(`(() => {
+      const selects = document.querySelectorAll('app-autollm-timeline select');
+      selects[0].value = 'clock'; selects[0].dispatchEvent(new Event('change', {bubbles:true}));
+      selects[1].value = 'TUNING'; selects[1].dispatchEvent(new Event('change', {bubbles:true}));
+      const search = document.querySelector('app-autollm-timeline input'); search.value = '1'; search.dispatchEvent(new Event('input', {bubbles:true}));
+    })()`);
+    await waitFor(
+      `location.hash.includes('axis=clock') && location.hash.includes('sort=TUNING') && location.hash.includes('search=1')`,
+    );
     await writeFile(
       join(artifacts, 'autollm-overview.png'),
       Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
     );
+    await evaluate(
+      `document.querySelector('app-autollm-timeline').scrollIntoView({block:'start'})`,
+    );
+    await writeFile(
+      join(artifacts, 'autollm-timeline.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
+    const segment = await evaluate(
+      `(() => {const r = document.querySelector('app-autollm-timeline .highcharts-partfill-original[fill="#1565c0"]').getBoundingClientRect(); return {x:r.x + r.width/2, y:r.y + r.height/2};})()`,
+    );
+    await send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...segment });
+    await send('Input.dispatchMouseEvent', {
+      type: 'mousePressed',
+      button: 'left',
+      buttons: 1,
+      clickCount: 1,
+      ...segment,
+    });
+    await send('Input.dispatchMouseEvent', {
+      type: 'mouseReleased',
+      button: 'left',
+      buttons: 0,
+      clickCount: 1,
+      ...segment,
+    });
+    await waitFor(
+      `document.querySelector('.stage-evidence .selected-row')?.textContent.includes('Inspect attempt 1')`,
+    );
+    assert.equal(
+      await evaluate(
+        `location.hash.includes('stage=GENERATION') && location.hash.includes('attempt=1')`,
+      ),
+      true,
+    );
+    await evaluate(`history.back()`);
+    await waitFor(
+      `document.querySelector('app-autollm-timeline select')?.value === 'clock' && !document.querySelector('.trial-inspector')`,
+    );
+    assert.equal(await evaluate(`document.querySelector('app-autollm-timeline input').value`), '1');
+    assert.equal(
+      await evaluate(`document.querySelectorAll('app-autollm-timeline select')[1].value`),
+      'TUNING',
+    );
+    await evaluate(`history.forward()`);
+    await waitFor(
+      `document.querySelector('.stage-evidence .selected-row')?.textContent.includes('Inspect attempt 1')`,
+    );
+    await send('Page.reload');
+    await waitFor(
+      `document.querySelector('.stage-evidence .selected-row')?.textContent.includes('Inspect attempt 1')`,
+    );
+    await clickText('button', 'Back to campaign');
+    await waitFor(
+      `document.querySelector('app-autollm-timeline .highcharts-xrange-series .highcharts-partfill-original')`,
+    );
+    assert.equal(await evaluate(`document.querySelector('app-autollm-timeline input').value`), '1');
+    assert.equal(
+      await evaluate(`document.querySelectorAll('app-autollm-timeline select')[1].value`),
+      'TUNING',
+    );
+    await evaluate(
+      `Array.from(document.querySelectorAll('.summary-counts button')).find(button => button.textContent.trim().startsWith('All trials')).click()`,
+    );
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    });
+    await evaluate(
+      `document.querySelector('app-autollm-timeline').scrollIntoView({block:'start'})`,
+    );
+    await waitFor(
+      `document.querySelector('app-autollm-timeline .highcharts-container').getBoundingClientRect().width <= 390`,
+    );
+    assert.equal(
+      await evaluate(`document.documentElement.scrollWidth <= innerWidth + 1`),
+      true,
+      'timeline fits a mobile viewport',
+    );
+    await writeFile(
+      join(artifacts, 'autollm-timeline-mobile.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1100,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
     await clickText('main > mat-tab-group > mat-tab-header [role=tab]', 'Trials');
     await waitFor(`document.querySelector('.trial-table button')`);
     assert.equal(
@@ -864,6 +1007,40 @@ try {
     );
     await clickText('.trial-table button', 'Open trial');
     await waitFor(`document.querySelector('.trial-inspector')`);
+    await waitFor(`document.querySelectorAll('.stage-timeline li').length === 6`);
+    await evaluate(
+      `Array.from(document.querySelectorAll('.stage-timeline button')).find(button => button.textContent.includes('Generation')).click()`,
+    );
+    await waitFor(`document.querySelectorAll('.stage-evidence tbody tr').length === 2`);
+    assert.equal(
+      await evaluate(`document.querySelectorAll('.stage-timeline [aria-current="step"]').length`),
+      1,
+    );
+    await writeFile(
+      join(artifacts, 'autollm-trial-stages.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    });
+    assert.equal(
+      await evaluate(`document.documentElement.scrollWidth <= innerWidth + 1`),
+      true,
+      'stage indicator fits a mobile viewport',
+    );
+    await writeFile(
+      join(artifacts, 'autollm-trial-stages-mobile.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1100,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
     assert.equal(
       await evaluate(`!!document.querySelector('.trial-table')`),
       false,
@@ -1079,10 +1256,21 @@ try {
     await clickText('main > mat-tab-group > mat-tab-header [role=tab]', 'Trials');
     comparisonCampaign.trials.push({
       number: 2,
-      status: 'BLOCKED',
+      status: 'WAITING_FOR_QUOTA',
       tuningSeed: 5678,
       repairTurns: 0,
-      attempts: [],
+      quotaRetryAt: new Date(Date.now() + 180000).toISOString(),
+      attempts: [
+        {
+          number: 1,
+          stage: 'GENERATION',
+          status: 'QUOTA_LIMIT',
+          directory: 'trial-2/attempt-1',
+          failure: null,
+          startedAt: new Date(Date.now() - 60000).toISOString(),
+          finishedAt: new Date().toISOString(),
+        },
+      ],
     });
     await waitFor(
       `Array.from(document.querySelectorAll('tr')).some(row=>row.cells[0]?.textContent.trim()==='2')`,
@@ -1090,7 +1278,35 @@ try {
     await evaluate(
       `Array.from(document.querySelectorAll('tr')).find(row=>row.cells[0]?.textContent.trim()==='2').querySelector('button').click()`,
     );
-    await waitFor(`document.querySelector('.trial-recovery')`);
+    await waitFor(
+      `document.querySelector('.trial-notice.waiting')?.textContent.includes('Automatic retry in')`,
+    );
+    assert.equal(await evaluate(`!!document.querySelector('.stage-timeline li.waiting')`), true);
+    assert.equal(await evaluate(`!!document.querySelector('.trial-recovery')`), false);
+    await writeFile(
+      join(artifacts, 'autollm-automatic-wait.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
+    comparisonCampaign.trials[1].status = 'BLOCKED';
+    comparisonCampaign.trials[1].problem = {
+      category: 'INFRASTRUCTURE',
+      code: 'SSH',
+      message: 'SSH authentication failed',
+      recovery: 'Check server credentials before resuming.',
+      evidence: [],
+      retryable: false,
+    };
+    await waitFor(
+      `document.querySelector('.trial-notice.attention')?.textContent.includes('SSH authentication failed') && document.querySelector('.trial-recovery')`,
+    );
+    assert.equal(await evaluate(`document.querySelector('.trial-recovery').open`), false);
+    await writeFile(
+      join(artifacts, 'autollm-action-required.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
+    await evaluate(
+      `document.querySelector('.trial-recovery summary').click(); document.querySelector('.fail-trial-options summary').click()`,
+    );
     assert.equal(
       await evaluate(`document.querySelectorAll('.trial-recovery button')[1].disabled`),
       true,
@@ -1108,6 +1324,7 @@ try {
     });
     comparisonCampaign.trials[1].status = 'BLOCKED';
     await waitFor(`document.querySelector('.trial-recovery')`);
+    await evaluate(`document.querySelector('.trial-recovery summary').click()`);
     await clickText('.trial-recovery button', 'Resume existing work');
     await waitFor(`!document.querySelector('.trial-recovery')`);
     assert.equal(recoveryMutations[1].path, 'campaigns/comparison-fixture/trials/2/resume');

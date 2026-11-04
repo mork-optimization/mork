@@ -8,6 +8,7 @@ import {
   signal,
   afterNextRender,
   Injector,
+  DestroyRef,
 } from '@angular/core';
 import { MatButtonModule } from '@angular/material/button';
 import { MatCardModule } from '@angular/material/card';
@@ -27,6 +28,25 @@ import { AutoLlmStore } from '../../store/autollm-store';
 import { AutoLlmConfig, AutoLlmTrial, DatasetSelection } from '../../model/autollm';
 import { AutoLlmDatasetEditor } from '../autollm-editors/dataset-editor';
 import { AutoLlmServerEditor } from '../autollm-editors/server-editor';
+import { AutoLlmTimeline } from '../autollm-timeline/autollm-timeline';
+import {
+  AttemptSelection,
+  TrialStage,
+  timingDuration,
+  trialStages,
+  trialTiming,
+  stageOf,
+} from '../../util/autollm-timing';
+import {
+  autoLlmLocation,
+  readAutoLlmLocation,
+  defaultTimelineSettings,
+  matchesTrialFilter,
+  TimelineSettings,
+  TrialFilter,
+} from '../../util/autollm-navigation';
+import { trialNotice } from '../../util/autollm-notice';
+import { AutoLlmTrialNotice } from '../autollm-trial-notice/autollm-trial-notice';
 import { DashboardChart } from '../dashboard-chart/dashboard-chart';
 import { ChartViewModel } from '../../model/dashboard';
 import { ComparisonChartUtil, ComparisonYAxisScale } from '../../util/comparison-chart-util';
@@ -36,6 +56,8 @@ import { FilePreviewUtil } from '../../util/file-preview-util';
 @Component({
   selector: 'app-autollm-dashboard',
   imports: [
+    AutoLlmTrialNotice,
+    AutoLlmTimeline,
     AutoLlmDatasetEditor,
     AutoLlmServerEditor,
     JsonPipe,
@@ -63,6 +85,11 @@ import { FilePreviewUtil } from '../../util/file-preview-util';
 })
 export class AutoLlmDashboard {
   private readonly injector = inject(Injector);
+  private navigationReady = false;
+  private restoringLocation = false;
+  private campaignScrollY: number | null = null;
+  readonly timelineSettings = signal(defaultTimelineSettings());
+  readonly selectedTarget = signal('');
   readonly decisionSearch = signal('');
   readonly decisionPage = signal(0);
   readonly resultInstanceSearch = signal('');
@@ -81,16 +108,31 @@ export class AutoLlmDashboard {
   readonly artifactTrial = signal('');
   readonly artifactPage = signal(0);
   readonly datasetSearch = signal('');
-  readonly stages = [
-    'GENERATION',
-    'LOCAL_PREPARATION',
-    'PREPARATION',
-    'TUNING',
-    'WINNER_EXPORT',
-    'COMPARISON',
-  ];
+  readonly timingDuration = timingDuration;
+  readonly selectedStage = signal<TrialStage | null>(null);
+  readonly selectedAttempt = signal<number | null>(null);
+  readonly timingNow = computed(() => this.store.lastUpdated() ?? this.store.now());
+  readonly stageSummaries = computed(() =>
+    this.store.trial() ? trialStages(this.store.trial()!, this.timingNow()) : [],
+  );
+  readonly inspectedStage = computed(() =>
+    this.stageSummaries().find((stage) => stage.id === this.selectedStage()),
+  );
+  readonly attemptTimings = computed(() =>
+    this.store.trial() ? trialTiming(this.store.trial()!, this.timingNow()).intervals : [],
+  );
   readonly canPreviewFile = FilePreviewUtil.canPreview;
   readonly store = inject(AutoLlmStore);
+  readonly notice = computed(() =>
+    this.store.trial()
+      ? trialNotice(
+          this.store.trial()!,
+          this.store.active() === this.store.selectedId(),
+          this.timingNow(),
+          !!this.store.connectionError(),
+        )
+      : null,
+  );
   readonly amendedTrials = signal(10);
   readonly datasetDirty = signal(false);
   readonly failureReason = signal('');
@@ -138,14 +180,15 @@ export class AutoLlmDashboard {
     ),
   );
   readonly issueTrials = computed(() =>
-    (this.store.campaign()?.trials ?? []).filter((t) =>
-      ['BLOCKED', 'INTERRUPTED', 'FAILED'].includes(t.status),
-    ),
+    (this.store.campaign()?.trials ?? []).filter((trial) => matchesTrialFilter(trial, 'attention')),
   );
-  readonly runningCount = computed(
+  readonly activeOverviewTrials = computed(() =>
+    (this.store.campaign()?.trials ?? []).filter((trial) => matchesTrialFilter(trial, 'active')),
+  );
+  readonly runningCount = computed(() => this.activeOverviewTrials().length);
+  readonly pendingCount = computed(
     () =>
-      this.store.activeTrials().filter((t) => !['BLOCKED', 'INTERRUPTED'].includes(t.status))
-        .length,
+      (this.store.campaign()?.trials ?? []).filter((trial) => trial.status === 'PENDING').length,
   );
   readonly succeededCount = computed(
     () => this.store.campaign()?.trials.filter((t) => t.status === 'SUCCEEDED').length ?? 0,
@@ -159,9 +202,7 @@ export class AutoLlmDashboard {
     const rows = (this.store.campaign()?.trials ?? []).filter((t) => {
       if (!`${t.number} ${t.targetId ?? ''} ${this.label(t.status)}`.toLowerCase().includes(search))
         return false;
-      if (filter === 'active') return !['PENDING', 'SUCCEEDED', 'FAILED'].includes(t.status);
-      if (filter === 'attention') return ['BLOCKED', 'INTERRUPTED', 'FAILED'].includes(t.status);
-      return filter === 'all' || filter === t.status;
+      return matchesTrialFilter(t, filter);
     });
     const sort = this.trialSort();
     return rows.sort((a, b) =>
@@ -422,20 +463,22 @@ export class AutoLlmDashboard {
       this.store.selectedTrial();
       this.failureReason.set('');
     });
-    const route = new URLSearchParams(window.location.hash.slice(1));
+    const onLocationChange = () => {
+      if (this.navigationReady) this.restoreLocation();
+    };
+    window.addEventListener('popstate', onLocationChange);
+    window.addEventListener('hashchange', onLocationChange);
+    const destroyRef = inject(DestroyRef);
+    destroyRef.onDestroy(() => {
+      window.removeEventListener('popstate', onLocationChange);
+      window.removeEventListener('hashchange', onLocationChange);
+    });
     void this.store.start().then(() => {
-      const campaign = route.get('campaign');
-      if (campaign && this.store.campaigns().some((c) => c.id === campaign))
-        this.store.select(campaign);
-      if (this.store.campaign())
-        this.executionChoice.set(this.store.campaign()!.config.execution.target ?? '');
-      const tab = Number(route.get('tab') ?? 0);
-      if (route.has('tab') && Number.isInteger(tab) && tab >= 0 && tab <= 4) this.selectTab(tab);
-      const trial = Number(route.get('trial'));
-      if (trial && this.store.campaign()?.trials.some((t) => t.number === trial)) {
-        const detail = Number(route.get('detail') ?? 0);
-        this.openTrial(trial, Number.isInteger(detail) && detail >= 0 && detail <= 4 ? detail : 0);
-      }
+      if (destroyRef.destroyed) return;
+      this.navigationReady = true;
+      if (window.location.hash) this.restoreLocation();
+      else this.saveLocation();
+      this.executionChoice.set(this.store.campaign()?.config.execution.target ?? '');
     });
   }
   label(value: string | null | undefined): string {
@@ -456,21 +499,15 @@ export class AutoLlmDashboard {
       : `${minutes}m ${Math.floor(millis / 1000) % 60}s`;
   }
   trialDuration(trial: AutoLlmTrial): number {
-    const attempts = trial.attempts ?? [];
-    if (!attempts.length) return 0;
-    const start = Math.min(...attempts.map((a) => Date.parse(a.startedAt)));
-    const end = Math.max(
-      ...attempts.map((a) => (a.finishedAt ? Date.parse(a.finishedAt) : this.store.now())),
-    );
-    return Math.max(0, end - start);
+    return trialTiming(trial, this.timingNow()).elapsed ?? 0;
   }
   campaignDuration(): string {
-    const attempts = (this.store.campaign()?.trials ?? []).flatMap((t) => t.attempts ?? []);
-    if (!attempts.length) return '—';
-    const start = Math.min(...attempts.map((a) => Date.parse(a.startedAt)));
-    const end = Math.max(
-      ...attempts.map((a) => (a.finishedAt ? Date.parse(a.finishedAt) : this.store.now())),
-    );
+    const timings = (this.store.campaign()?.trials ?? [])
+      .map((trial) => trialTiming(trial, this.timingNow()))
+      .filter((timing) => timing.start !== null && timing.end !== null);
+    if (!timings.length) return '—';
+    const start = Math.min(...timings.map((timing) => timing.start!));
+    const end = Math.max(...timings.map((timing) => timing.end!));
     return this.durationLabel(end - start);
   }
   trialProgress(trial: AutoLlmTrial): string {
@@ -491,15 +528,32 @@ export class AutoLlmDashboard {
       ? 'Undefined percentage'
       : `${run.meanImprovementPercent.toFixed(2)}% · ${results!.objective}`;
   }
-  trialStage(trial: AutoLlmTrial): string {
-    const stage = trial.attempts?.at(-1)?.stage ?? trial.status;
-    return stage === 'REPAIR' ? 'GENERATION' : stage;
+  attemptDuration(number: number): string {
+    const interval = this.attemptTimings().find((interval) => interval.attempt.number === number);
+    return timingDuration(interval ? interval.end - interval.start : null);
   }
-  stageState(trial: AutoLlmTrial, stage: string): string {
-    const attempt = trial.attempts
-      ?.filter((a) => a.stage === stage || (stage === 'GENERATION' && a.stage === 'REPAIR'))
-      .at(-1);
-    return attempt ? this.label(attempt.status) : 'Not started';
+  openTimedAttempt(selection: AttemptSelection): void {
+    this.openTrial(selection.trial, 0, false);
+    this.selectedStage.set(selection.stage);
+    this.selectedAttempt.set(selection.attempt);
+    this.saveLocation(true);
+  }
+  selectStage(stage: TrialStage): void {
+    this.selectedStage.set(stage);
+    this.selectedAttempt.set(null);
+    this.saveLocation(true);
+  }
+  selectDetailTab(index: number): void {
+    if (index === this.detailTab()) return;
+    this.detailTab.set(index);
+    this.saveLocation(true);
+  }
+  inspectAttemptActivity(number: number, generation: boolean): void {
+    this.selectedAttempt.set(number);
+    if (generation) this.store.watchGeneration(number);
+    this.detailTab.set(3);
+    this.saveLocation(true);
+    this.focusPanel('.trial-inspector');
   }
   fileName(path: string): string {
     return path.split('/').at(-1) ?? path;
@@ -525,10 +579,14 @@ export class AutoLlmDashboard {
     this.trialSearch.set('');
     this.trialFilter.set('all');
     this.trialPage.set(0);
+    this.trialSort.set('number');
+    this.timelineSettings.set(defaultTimelineSettings());
+    this.selectedTarget.set('');
+    this.campaignScrollY = null;
     this.artifactTrial.set('');
     this.artifactPage.set(0);
     this.executionChoice.set(this.store.config()?.execution.target ?? '');
-    this.saveLocation();
+    this.saveLocation(true);
   }
   async newCampaign(): Promise<void> {
     await this.store.newCampaign();
@@ -536,7 +594,7 @@ export class AutoLlmDashboard {
     this.executionChoice.set('');
     this.settingsOpen.set(true);
     this.tab.set(0);
-    this.saveLocation();
+    this.saveLocation(true);
   }
   openSettings(): void {
     this.closeTrial();
@@ -544,17 +602,21 @@ export class AutoLlmDashboard {
     void this.store.refreshSummary();
   }
   selectTab(index: number): void {
+    if (index === this.tab() && !this.store.inspecting()) return;
     this.store.inspecting.set(false);
     this.tab.set(index);
     if (index === 4 && !this.store.artifactsLoaded()) void this.store.refreshArtifacts();
-    this.saveLocation();
+    this.saveLocation(true);
   }
-  openTrial(number: number, detail = 0): void {
+  openTrial(number: number, detail = 0, navigate = true): void {
+    if (!this.store.inspecting()) this.campaignScrollY = window.scrollY;
+    this.selectedStage.set(null);
+    this.selectedAttempt.set(null);
     this.store.selectTrial(number);
     this.detailTab.set(detail);
     this.settingsOpen.set(false);
     this.resultInstancePage.set(0);
-    this.saveLocation();
+    if (navigate) this.saveLocation(true);
     this.focusPanel('.trial-inspector');
   }
   private focusPanel(selector: string): void {
@@ -562,7 +624,7 @@ export class AutoLlmDashboard {
       () => {
         const panel = document.querySelector<HTMLElement>(selector);
         panel?.scrollIntoView({ block: 'start' });
-        panel?.querySelector<HTMLElement>('h1, h2')?.focus({ preventScroll: true });
+        panel?.querySelector<HTMLElement>('h1, h2, h3')?.focus({ preventScroll: true });
       },
       { injector: this.injector },
     );
@@ -573,8 +635,9 @@ export class AutoLlmDashboard {
   }
   closeTrial(): void {
     this.store.inspecting.set(false);
-    this.saveLocation();
-    this.focusPanel('.status-card');
+    this.saveLocation(true);
+    if (this.campaignScrollY !== null) this.restoreScroll(this.campaignScrollY);
+    else this.focusPanel(this.tab() === 0 ? 'app-autollm-timeline' : '.status-card');
   }
   async reviseDataset(selection: DatasetSelection): Promise<void> {
     await this.store.reviseDataset(selection);
@@ -628,15 +691,97 @@ export class AutoLlmDashboard {
       { injector: this.injector },
     );
   }
-  saveLocation(): void {
-    const params = new URLSearchParams();
-    if (this.store.selectedId()) params.set('campaign', this.store.selectedId());
-    params.set('tab', String(this.tab()));
-    if (this.store.inspecting()) {
-      params.set('trial', String(this.store.selectedTrial()));
-      params.set('detail', String(this.detailTab()));
+  setTimelineSettings(settings: TimelineSettings): void {
+    this.timelineSettings.set(settings);
+    this.saveLocation();
+  }
+  filterOverview(outcome: TrialFilter): void {
+    this.timelineSettings.update((settings) => ({ ...settings, outcome, search: '', page: 0 }));
+    this.store.inspecting.set(false);
+    this.tab.set(0);
+    this.saveLocation(true);
+    this.focusPanel('app-autollm-timeline');
+  }
+  reviewTrialServer(): void {
+    this.selectedTarget.set(this.store.trial()?.targetId ?? '');
+    this.selectTab(3);
+    this.focusPanel('.target-card.selected');
+  }
+  inspectTrialError(): void {
+    const trial = this.store.trial(),
+      attempt = trial?.attempts.at(-1);
+    if (attempt)
+      this.inspectAttemptActivity(attempt.number, ['GENERATION', 'REPAIR'].includes(attempt.stage));
+    else this.selectDetailTab(4);
+  }
+  private restoreScroll(top: number): void {
+    afterNextRender(() => window.scrollTo({ top, behavior: 'instant' }), {
+      injector: this.injector,
+    });
+  }
+  private restoreLocation(): void {
+    this.restoringLocation = true;
+    try {
+      const view = readAutoLlmLocation(window.location.hash);
+      const id = this.store.campaigns().some((c) => c.id === view.campaign)
+        ? view.campaign
+        : this.store.selectedId();
+      if (id !== this.store.selectedId()) this.store.select(id);
+      this.settingsOpen.set(false);
+      this.tab.set(view.tab);
+      this.detailTab.set(view.detail);
+      this.timelineSettings.set(view.timeline);
+      this.trialSearch.set(view.trialSearch);
+      this.trialFilter.set(view.trialFilter);
+      this.trialSort.set(view.trialSort);
+      this.trialPage.set(view.trialPage);
+      this.selectedTarget.set(view.target);
+      const trial = this.store.campaign()?.trials.find((trial) => trial.number === view.trial);
+      if (trial) {
+        if (!this.store.inspecting() || this.store.selectedTrial() !== trial.number)
+          this.store.selectTrial(trial.number);
+        const attempt = trial.attempts.find((attempt) => attempt.number === view.attempt);
+        this.selectedAttempt.set(attempt?.number ?? null);
+        this.selectedStage.set(attempt ? (stageOf(attempt.stage) as TrialStage) : view.stage);
+        if (view.detail === 3 && attempt && ['GENERATION', 'REPAIR'].includes(attempt.stage))
+          this.store.watchGeneration(attempt.number);
+      } else {
+        this.store.inspecting.set(false);
+        this.selectedStage.set(null);
+        this.selectedAttempt.set(null);
+      }
+      if (view.tab === 4 && !this.store.artifactsLoaded()) void this.store.refreshArtifacts();
+      const top = window.history.state?.morkScrollY;
+      if (typeof top === 'number' && Number.isFinite(top)) this.restoreScroll(top);
+    } finally {
+      this.restoringLocation = false;
     }
-    window.history.replaceState(null, '', '#' + params.toString());
+  }
+  saveLocation(push = false): void {
+    if (!this.navigationReady || this.restoringLocation) return;
+    const hash = autoLlmLocation({
+      campaign: this.store.selectedId(),
+      tab: this.tab(),
+      trial: this.store.inspecting() ? this.store.selectedTrial() : null,
+      detail: this.detailTab(),
+      stage: this.selectedStage(),
+      attempt: this.selectedAttempt(),
+      target: this.selectedTarget(),
+      timeline: this.timelineSettings(),
+      trialSearch: this.trialSearch(),
+      trialFilter: this.trialFilter(),
+      trialSort: this.trialSort(),
+      trialPage: this.trialPage(),
+    });
+    if (hash === window.location.hash) return;
+    if (push) {
+      window.history.replaceState(
+        { ...window.history.state, morkScrollY: window.scrollY },
+        '',
+        window.location.href,
+      );
+      window.history.pushState(null, '', hash);
+    } else window.history.replaceState(window.history.state, '', hash);
   }
   downloadAlgorithm(): void {
     const trial = this.store.trial();

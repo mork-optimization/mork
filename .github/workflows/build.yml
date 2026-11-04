@@ -22,7 +22,9 @@ jobs:
           upgrade: 'FALSE'
           cache: 'always'
           packages: |
+            any::irace
             any::httr
+            any::jsonlite
             any::rjson
             any::base64enc
             any::remotes
@@ -101,6 +103,13 @@ jobs:
           java-version: '25'
           distribution: 'graalvm'
           github-token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Prepare SSH and Python integration fixtures
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y openssh-server python3-venv
+          sudo mkdir -p /run/sshd
+          python3 -m venv example-tsptw/venv
+          example-tsptw/venv/bin/python -m pip install -r py-tools/instance-selector/requirements.txt
       - name: Cache SonarCloud packages
         uses: actions/cache@v6
         with:
@@ -118,3 +127,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # Needed to get PR information, if any
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
         run: ./mvnw -B jacoco:prepare-agent verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar
+      - name: Check test discovery and report slow unit tests
+        if: always()
+        run: python3 py-tools/test_durations.py --require-integration
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: |
+            */target/surefire-reports/**
+            */target/failsafe-reports/**

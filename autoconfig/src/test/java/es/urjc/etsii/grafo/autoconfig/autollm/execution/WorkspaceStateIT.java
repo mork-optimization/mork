@@ -8,7 +8,7 @@ import java.util.*;
 import java.util.concurrent.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-class WorkspaceStateTest {
+class WorkspaceStateIT {
     @TempDir Path temporary;
 
     public static class Holder {

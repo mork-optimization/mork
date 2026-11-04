@@ -32,14 +32,14 @@ public final class AutoLlmTrialRunner {
     private final Semaphore sessions;
     private Semaphore buildPermits = new Semaphore(1);
     public void localBuildPermits(Semaphore permits) { buildPermits = permits; }
-    private java.time.Clock capacityClock = java.time.Clock.systemUTC();
+    private java.time.Clock waitClock = java.time.Clock.systemUTC();
     private java.util.function.DoubleSupplier capacityRandom = () -> java.util.concurrent.ThreadLocalRandom.current().nextDouble();
-    private java.util.function.LongConsumer capacitySleep = millis -> {
+    private java.util.function.LongConsumer waitSleep = millis -> {
         try { Thread.sleep(millis); }
-        catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Capacity wait interrupted"); }
+        catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Provider wait interrupted"); }
     };
-    void capacityTiming(java.time.Clock clock, java.util.function.DoubleSupplier random, java.util.function.LongConsumer sleep) {
-        capacityClock = clock; capacityRandom = random; capacitySleep = sleep;
+    void waitTiming(java.time.Clock clock, java.util.function.DoubleSupplier random, java.util.function.LongConsumer sleep) {
+        waitClock = clock; capacityRandom = random; waitSleep = sleep;
     }
     private boolean localOnly;
     private volatile boolean shuttingDown;
@@ -123,7 +123,7 @@ public final class AutoLlmTrialRunner {
                 catch (RuntimeException e) {
                     if (e instanceof CancellationException) throw e;
                     if (e instanceof CodexCapacityUtil.CapacityException capacity) {
-                        t.capacityWait = CodexCapacityUtil.schedule(t.capacityWait, capacity.getMessage(), capacityClock, capacityRandom);
+                        t.capacityWait = CodexCapacityUtil.schedule(t.capacityWait, capacity.getMessage(), waitClock, capacityRandom);
                         t.problem = AutoLlmFailureUtil.describe(e, executionRoot); t.status = TrialStatus.WAITING_FOR_CAPACITY;
                         c.problem = null; publish(c); event("codex-capacity-wait", Map.of("trial", t.number, "wait", t.capacityWait));
                         continue;
@@ -357,7 +357,7 @@ public final class AutoLlmTrialRunner {
                 if (t.threadId != null && !continuation && t.repairTurns >= c.config.preparation().maxRepairs()) throw AutoLlmFailureUtil.error(AutoLlmFailureUtil.Category.COMPONENT, "REPAIRS_EXHAUSTED", "Preparation exhausted repair limit: " + t.failure, root);
                 t.status = TrialStatus.WAITING_FOR_GENERATION; publish(c);
                 try (var permit = es.urjc.etsii.grafo.util.ConcurrencyUtil.acquirePermit(sessions, this::cancelled)) {
-                if (t.capacityWait != null) CodexCapacityUtil.requireBudget(t.capacityWait, capacityClock);
+                if (t.capacityWait != null) CodexCapacityUtil.requireBudget(t.capacityWait, waitClock);
                 var a = attempt(c, t, t.threadId == null || continuation && t.outputDirectory(GENERATION) == null ? AttemptStage.GENERATION : AttemptStage.REPAIR); Path dir = model.path(a.directory);
                 t.repairPending |= t.threadId != null && !continuation;
                 t.resumeTurn = false; publish(c);
@@ -501,10 +501,10 @@ public final class AutoLlmTrialRunner {
         trial.status = TrialStatus.WAITING_FOR_CAPACITY; publish(campaign);
         while (true) {
             if (cancelled() || Thread.currentThread().isInterrupted()) throw new CancellationException("Capacity wait cancelled");
-            CodexCapacityUtil.requireBudget(trial.capacityWait, capacityClock);
-            long remaining = java.time.Duration.between(capacityClock.instant(), Instant.parse(trial.capacityWait.nextRetryAt())).toMillis();
+            CodexCapacityUtil.requireBudget(trial.capacityWait, waitClock);
+            long remaining = java.time.Duration.between(waitClock.instant(), Instant.parse(trial.capacityWait.nextRetryAt())).toMillis();
             if (remaining <= 0) break;
-            capacitySleep.accept(Math.min(1000, remaining));
+            waitSleep.accept(Math.min(1000, remaining));
         }
         trial.problem = null; trial.failure = null; publish(campaign);
         event("codex-capacity-resumed", Map.of("trial", trial.number, "retry", trial.capacityWait.retries()));
@@ -515,10 +515,9 @@ public final class AutoLlmTrialRunner {
         long reset = Instant.parse(trial.quotaRetryAt).toEpochMilli();
         while (true) {
             if (cancelled()) throw new CancellationException("Quota wait cancelled");
-            long remaining = reset - System.currentTimeMillis();
+            long remaining = reset - waitClock.millis();
             if (remaining <= 0) break;
-            try { Thread.sleep(Math.min(1000, remaining)); }
-            catch (InterruptedException e) { Thread.currentThread().interrupt(); throw new CancellationException("Quota wait interrupted"); }
+            waitSleep.accept(Math.min(1000, remaining));
         }
         trial.quotaRetryAt = null; trial.problem = null; trial.failure = null; publish(campaign);
         event("codex-quota-resumed", Map.of("trial", trial.number));

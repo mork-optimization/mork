@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-public class IraceIntegrationTest {
+public class IraceIT {
 
     @ParameterizedTest(name = "index={0}, dynamic port={1}")
     @CsvSource({"false, false", "false, true", "true, false", "true, true"})

@@ -39,7 +39,7 @@ autollm:
   project:
     repository: /absolute/path/to/baseline-project
     ref: HEAD
-    build-command: ["./mvnw", "verify"]
+    build-command: ["./mvnw", "package"]
     artifact: target/project.jar
     # Optional application arguments, including the baseline inventory filter.
     run-arguments: ["--blacklist=MyBlacklist"]
@@ -63,7 +63,7 @@ autollm:
     local-builds: 2
     ready-queue-size: 4
     local-workers: 1
-    local-heap: 2g
+    local-heap: 8g
   tuning:
     evaluations: 10000
     ignore-initial-millis: 10000
@@ -84,7 +84,7 @@ autollm:
     search-space-timeout-millis: 120000
     phase-timeout-millis: 300000
     stage-timeout-millis: 604800000
-    heap: 2g
+    heap: 8g
 ```
 
 Repository-relative paths resolve against `project.repository`; the artifact is relative to the trial clone. Instance inputs support the normal Mork directories, files, archives, and index manifests. Missing training/comparison settings fall back to the application's `instances.path.irace` and `instances.path.autollm-comparison` configuration. Training and comparison may overlap; the overlap is recorded.
@@ -93,7 +93,11 @@ Campaigns and target workspaces retain training/comparison indexes and hash mani
 
 For campaigns prepared with the AutoLLM skill, run [trivial-instance screening](instance-screening.md) on the full original pool before selecting preliminary training inputs. Mork's instance selector chooses the preliminary subset from retained inputs; final testing uses the entire retained pool, including training. Reuse matching screening evidence and proposed indexes; approval applies to the complete campaign. Legacy or missing indexes trigger preparation and review before campaign creation.
 
-For a multi-module repository, configure the build argument array and JAR path explicitly, for example `["./mvnw", "-pl", "example-bmssc", "-am", "verify"]` and `example-bmssc/target/project.jar`. Build commands run in the clone. `run-arguments` supplies project-specific settings; it cannot override campaign-owned seeds, budgets, execution mode, workers, instance paths, or irace settings. A generated blacklist replaces the baseline inventory filter.
+For a multi-module repository, configure the build argument array and JAR path explicitly, for example `["./mvnw", "-pl", "example-bmssc", "-am", "package"]` and `example-bmssc/target/project.jar`. Build commands run in the clone. `run-arguments` supplies project-specific settings; it cannot override campaign-owned seeds, budgets, execution mode, workers, instance paths, or irace settings. A generated blacklist replaces the baseline inventory filter.
+
+The default build command is `./mvnw package`: it runs the fast tests and produces the executable JAR required for metadata checks, probes and tuning. Full framework validation uses `./mvnw verify`, which also runs the `*IT` integration tests through Maven Failsafe, including real SSH, campaign lifecycle, Git, Spring and R scenarios. Validate a framework revision with `verify` before using it as an experiment baseline. `test` alone does not produce the required JAR. Saved campaigns retain their configured build commands and frozen source revisions.
+
+Execution and local preparation each default to an 8 GiB heap (`execution.heap` and `preparation.local-heap`). Explicit campaign and per-server heap settings take precedence over their respective defaults.
 
 The SOTA file contains one [component JSON specification](autoconfig.md), such as:
 
@@ -197,7 +201,7 @@ autollm:
   project:
     repository: /local/path/to/mork
     ref: THE_COMMITTED_BASELINE
-    build-command: ["./mvnw", "-pl", "example-tsptw", "-am", "verify"]
+    build-command: ["./mvnw", "-pl", "example-tsptw", "-am", "package"]
     artifact: example-tsptw/target/tsptw-0.23-SNAPSHOT.jar
   execution:
     target: SSH

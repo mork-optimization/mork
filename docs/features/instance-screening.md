@@ -10,7 +10,7 @@ For programmatic use, `POST /api/autollm/screenings` accepts:
 
 ```json
 {
-  "config": { "project": { "repository": "/absolute/repository", "ref": "COMMIT", "buildCommand": ["./mvnw", "verify"], "artifact": "target/project.jar" }, "workspace": "/absolute/controller-workspace", "sotaFile": "/absolute/sota.json", "execution": { "target": "LOCAL", "workers": 32 } },
+  "config": { "project": { "repository": "/absolute/repository", "ref": "COMMIT", "buildCommand": ["./mvnw", "package"], "artifact": "target/project.jar" }, "workspace": "/absolute/controller-workspace", "sotaFile": "/absolute/sota.json", "execution": { "target": "LOCAL", "workers": 32 } },
   "settings": { "python": "/absolute/selector-venv/bin/python3" },
   "inputPath": "/absolute/full-pool.index",
   "trainingFraction": 0.15

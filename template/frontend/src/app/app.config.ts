@@ -22,6 +22,7 @@ export const appConfig: ApplicationConfig = {
           import('highcharts/esm/modules/boost'),
           import('highcharts/esm/modules/treemap'),
           import('highcharts/esm/modules/sankey'),
+          import('highcharts/esm/modules/xrange'),
           import('highcharts/esm/highcharts-more'),
         ]).then(() => import('highcharts/esm/modules/accessibility')),
       ],

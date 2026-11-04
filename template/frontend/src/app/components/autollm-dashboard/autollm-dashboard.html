@@ -986,43 +986,62 @@
               <span class="eyebrow">Campaign · {{ campaign.id.slice(0, 8) }}</span>
               <h1 tabindex="-1">{{ label(campaign.status) }}</h1>
             </div>
-            <span class="muted">Created {{ campaign.createdAt | date: 'medium' }}</span>
+            @if (store.lastUpdated(); as updated) {
+              <span class="muted">Updated {{ updated | date: 'mediumTime' }}</span>
+            }
           </div>
-          <div class="metrics">
-            <div>
-              <span>Finished</span
-              ><strong>{{ store.completed() }} / {{ campaign.trials.length }}</strong>
-            </div>
-            <div>
-              <span>Active</span><strong>{{ runningCount() }}</strong>
-            </div>
-            <div>
-              <span>Succeeded</span><strong>{{ succeededCount() }}</strong>
-            </div>
-            <div>
-              <span>Failed</span><strong>{{ failedCount() }}</strong>
-            </div>
-            <div>
-              <span>Needs attention</span><strong>{{ issueTrials().length }}</strong>
-            </div>
-            <div>
-              <span>Execution elapsed</span><strong>{{ campaignDuration() }}</strong>
-            </div>
+          <div class="summary-counts" aria-label="Filter timeline by trial outcome">
+            <button
+              mat-stroked-button
+              [attr.aria-pressed]="tab() === 0 && timelineSettings().outcome === 'all'"
+              (click)="filterOverview('all')"
+            >
+              All trials <strong>{{ campaign.trials.length }}</strong>
+            </button>
+            <button
+              mat-stroked-button
+              [attr.aria-pressed]="tab() === 0 && timelineSettings().outcome === 'finished'"
+              (click)="filterOverview('finished')"
+            >
+              Finished <strong>{{ store.completed() }} / {{ campaign.trials.length }}</strong>
+            </button>
+            <button
+              mat-stroked-button
+              [attr.aria-pressed]="tab() === 0 && timelineSettings().outcome === 'active'"
+              (click)="filterOverview('active')"
+            >
+              Active <strong>{{ runningCount() }}</strong>
+            </button>
+            <button
+              mat-stroked-button
+              [attr.aria-pressed]="tab() === 0 && timelineSettings().outcome === 'attention'"
+              (click)="filterOverview('attention')"
+            >
+              Needs attention <strong>{{ issueTrials().length }}</strong>
+            </button>
+            <span class="elapsed-summary"
+              >Elapsed <strong>{{ campaignDuration() }}</strong></span
+            >
           </div>
           <mat-progress-bar
             mode="determinate"
             [value]="percent(store.completed(), campaign.trials.length)"
             aria-label="Finished trials"
           />
-          <p class="muted">
-            {{ store.completed() }}/{{ campaign.trials.length }} trials finished, including
-            failures. This is a count of outcomes, not a time estimate.
-            @if (store.lastUpdated(); as updated) {
-              Last refreshed {{ updated | date: 'mediumTime' }}.
-            }
-          </p>
+          <details class="campaign-outcomes">
+            <summary>
+              Outcomes · {{ succeededCount() }} succeeded · {{ failedCount() }} failed ·
+              {{ pendingCount() }} pending
+            </summary>
+            <p>
+              Created {{ campaign.createdAt | date: 'medium' }}. {{ store.completed() }}/{{
+                campaign.trials.length
+              }}
+              trials finished, including failures. This is a count of outcomes, not a time estimate.
+            </p>
+          </details>
           <div class="actions">
-            @if (!store.proposal()) {
+            @if (!store.proposal() && primaryAction().kind !== 'active') {
               <button
                 mat-flat-button
                 [disabled]="store.busy() || !!primaryAction().reason"
@@ -1124,88 +1143,117 @@
       >
         <mat-tab label="Overview"
           ><ng-template matTabContent>
-            <div class="overview-actions">
-              <p class="muted">Progress and outcomes across independent proposals</p>
-              <button mat-button [matMenuTriggerFor]="panelMenu">Panels</button
-              ><mat-menu #panelMenu="matMenu">
-                @for (panel of panels; track panel.id) {
-                  <button
-                    mat-menu-item
-                    (click)="
-                      preferences.isHidden(panel.id)
-                        ? preferences.show(panel.id)
-                        : preferences.hide(panel.id)
-                    "
-                  >
-                    {{ preferences.isHidden(panel.id) ? 'Show' : 'Hide' }} {{ panel.label }}
-                  </button>
-                }
-              </mat-menu>
+            <div class="overview-actions overview-summary">
+              @if (issueTrials().length) {
+                <button mat-button (click)="filterOverview('attention')">
+                  ! {{ issueTrials().length }} trials need attention
+                </button>
+              } @else {
+                <span class="muted">✓ No trials need attention</span>
+              }
+              <button mat-button (click)="selectTab(2)">
+                {{ store.results()?.trials?.length ?? 0 }} complete comparisons · View results
+              </button>
             </div>
-            <div class="overview-grid">
-              <app-monitor-panel panelId="autollm-active" title="Active trials">
-                @for (trial of store.activeTrials(); track trial.number) {
-                  <div class="active-row">
-                    <div>
-                      <strong>Trial {{ trial.number }}</strong>
-                      <p>
-                        {{
-                          label(
-                            store.activeProgress()[trial.number]?.progress?.substage || trial.status
-                          )
-                        }}
-                        · {{ trial.targetId || 'Awaiting assignment' }}
-                      </p>
-                      @if (store.activeProgress()[trial.number]?.stale) {
-                        <p class="error">Progress unavailable; showing last update</p>
-                      }
-                    </div>
-                    <button mat-button (click)="openTrial(trial.number)">Inspect</button>
-                  </div>
-                } @empty {
-                  <p class="empty-state">No trials are currently active.</p>
+            <app-autollm-timeline
+              [trials]="campaign.trials"
+              [now]="timingNow()"
+              [settings]="timelineSettings()"
+              (settingsChange)="setTimelineSettings($event)"
+              (inspectAttempt)="openTimedAttempt($event)"
+              (inspectTrial)="openTrial($event)"
+            />
+            <details class="overview-details">
+              <summary>Active trials · {{ runningCount() }} · More campaign details</summary>
+              <div class="overview-actions">
+                <p class="muted">Progress and outcomes across independent proposals</p>
+                <button mat-button [matMenuTriggerFor]="panelMenu">Panels</button
+                ><mat-menu #panelMenu="matMenu">
+                  @for (panel of panels; track panel.id) {
+                    <button
+                      mat-menu-item
+                      (click)="
+                        preferences.isHidden(panel.id)
+                          ? preferences.show(panel.id)
+                          : preferences.hide(panel.id)
+                      "
+                    >
+                      {{ preferences.isHidden(panel.id) ? 'Show' : 'Hide' }} {{ panel.label }}
+                    </button>
+                  }
+                </mat-menu>
+              </div>
+              <div class="overview-grid">
+                @if (activeOverviewTrials().length) {
+                  <app-monitor-panel panelId="autollm-active" title="Active trials">
+                    @for (trial of activeOverviewTrials(); track trial.number) {
+                      <div class="active-row">
+                        <div>
+                          <strong>Trial {{ trial.number }}</strong>
+                          <p>
+                            {{
+                              label(
+                                store.activeProgress()[trial.number]?.progress?.substage ||
+                                  trial.status
+                              )
+                            }}
+                            · {{ trial.targetId || 'Awaiting assignment' }}
+                          </p>
+                          @if (store.activeProgress()[trial.number]?.stale) {
+                            <p class="error">Progress unavailable; showing last update</p>
+                          }
+                        </div>
+                        <button mat-button (click)="openTrial(trial.number)">Inspect</button>
+                      </div>
+                    } @empty {
+                      <p class="empty-state">No trials are currently active.</p>
+                    }
+                  </app-monitor-panel>
                 }
-              </app-monitor-panel>
-              <app-monitor-panel panelId="autollm-issues" title="Needs attention">
-                @for (trial of issueTrials(); track trial.number) {
-                  <div class="active-row">
-                    <div>
-                      <strong>Trial {{ trial.number }} · {{ label(trial.status) }}</strong>
-                      <p>
-                        {{
-                          trial.problem?.message ||
-                            'Inspect the saved evidence and available recovery actions.'
-                        }}
-                      </p>
-                    </div>
-                    <button mat-button (click)="openTrial(trial.number)">Inspect</button>
-                  </div>
-                } @empty {
-                  <p class="empty-state">No trials need attention.</p>
+                @if (issueTrials().length) {
+                  <app-monitor-panel panelId="autollm-issues" title="Needs attention">
+                    @for (trial of issueTrials(); track trial.number) {
+                      <div class="active-row">
+                        <div>
+                          <strong>Trial {{ trial.number }} · {{ label(trial.status) }}</strong>
+                          <p>
+                            {{
+                              trial.problem?.message ||
+                                'Inspect the saved evidence and available recovery actions.'
+                            }}
+                          </p>
+                        </div>
+                        <button mat-button (click)="openTrial(trial.number)">Inspect</button>
+                      </div>
+                    } @empty {
+                      <p class="empty-state">No trials need attention.</p>
+                    }
+                  </app-monitor-panel>
                 }
-              </app-monitor-panel>
-              <app-monitor-panel panelId="autollm-results" title="Comparison outcomes"
-                ><p>
-                  {{ succeededCount() }} completed trials are available for comparison with SOTA.
-                </p>
-                @if (store.results(); as results) {
-                  <p>
-                    {{ results.objective }} · {{ label(results.mode) }} ·
-                    {{ results.trials.length }} complete comparisons
+                <app-monitor-panel panelId="autollm-results" title="Comparison outcomes"
+                  ><p>
+                    {{ succeededCount() }} trials completed successfully. Comparison availability is
+                    shown below.
                   </p>
-                  <p>{{ results.reference }}</p>
-                } @else {
-                  <p class="muted">
-                    Execution success does not imply improvement. View host-matched comparisons in
-                    Results to compare proposals.
-                  </p>
-                }
-                <button mat-stroked-button (click)="selectTab(2)">
-                  Compare results
-                </button></app-monitor-panel
-              >
-            </div></ng-template
-          ></mat-tab
+                  @if (store.results(); as results) {
+                    <p>
+                      {{ results.objective }} · {{ label(results.mode) }} ·
+                      {{ results.trials.length }} complete comparisons
+                    </p>
+                    <p>{{ results.reference }}</p>
+                  } @else {
+                    <p class="muted">
+                      Execution success does not imply improvement. View host-matched comparisons in
+                      Results to compare proposals.
+                    </p>
+                  }
+                  <button mat-stroked-button (click)="selectTab(2)">
+                    Compare results
+                  </button></app-monitor-panel
+                >
+              </div>
+            </details>
+          </ng-template></mat-tab
         >
         <mat-tab label="Trials"
           ><ng-template matTabContent>
@@ -1219,16 +1267,19 @@
                       matInput
                       [value]="trialSearch()"
                       (input)="
-                        trialSearch.set($any($event.target).value); trialPage.set(0)
+                        trialSearch.set($any($event.target).value); trialPage.set(0); saveLocation()
                       " /></mat-form-field
                   ><mat-form-field appearance="outline" subscriptSizing="dynamic"
                     ><mat-label>Outcome</mat-label
                     ><select
                       matNativeControl
                       [ngModel]="trialFilter()"
-                      (change)="trialFilter.set($any($event.target).value); trialPage.set(0)"
+                      (change)="
+                        trialFilter.set($any($event.target).value); trialPage.set(0); saveLocation()
+                      "
                     >
                       <option value="all">All trials</option>
+                      <option value="finished">Finished</option>
                       <option value="active">Active</option>
                       <option value="attention">Needs attention</option>
                       <option value="SUCCEEDED">Succeeded</option>
@@ -1240,7 +1291,9 @@
                     ><select
                       matNativeControl
                       [ngModel]="trialSort()"
-                      (change)="trialSort.set($any($event.target).value); trialPage.set(0)"
+                      (change)="
+                        trialSort.set($any($event.target).value); trialPage.set(0); saveLocation()
+                      "
                     >
                       <option value="number">Trial number</option>
                       <option value="status">Stage / outcome</option>
@@ -1282,8 +1335,9 @@
                             <span
                               class="status"
                               [class.failure]="
-                                trial.status === 'FAILED' || trial.status === 'BLOCKED'
+                                ['FAILED', 'BLOCKED', 'INTERRUPTED'].includes(trial.status)
                               "
+                              [class.waiting]="trial.status.startsWith('WAITING_FOR_')"
                               >{{ label(trial.status) }}</span
                             >
                           </td>
@@ -1315,7 +1369,7 @@
                   [length]="filteredTrials().length"
                   [pageSize]="25"
                   [pageIndex]="effectiveTrialPage()"
-                  (page)="trialPage.set($event.pageIndex)"
+                  (page)="trialPage.set($event.pageIndex); saveLocation()"
                   aria-label="Trial pages"
                 /> </mat-card-content
             ></mat-card> </ng-template
@@ -1447,8 +1501,8 @@
                 </p>
                 <div class="target-grid">
                   @for (target of store.targets(); track target.id) {
-                    <article class="target-card">
-                      <h3>{{ target.id }} · {{ label(target.status) }}</h3>
+                    <article class="target-card" [class.selected]="selectedTarget() === target.id">
+                      <h3 tabindex="-1">{{ target.id }} · {{ label(target.status) }}</h3>
                       <p>
                         Qualification: {{ label(target.qualification || 'UNQUALIFIED') }} ·
                         Availability: {{ label(target.availability || 'UNKNOWN') }} · Host health:
@@ -1856,22 +1910,122 @@
         }
         <mat-tab-group
           [selectedIndex]="detailTab()"
-          (selectedIndexChange)="detailTab.set($event); saveLocation()"
+          (selectedIndexChange)="selectDetailTab($event)"
           animationDuration="0ms"
         >
           <mat-tab label="Summary"
             ><ng-template matTabContent>
+              @if (notice(); as notice) {
+                <app-autollm-trial-notice
+                  [notice]="notice"
+                  [trial]="trial"
+                  (reviewServer)="reviewTrialServer()"
+                  (inspectError)="inspectTrialError()"
+                />
+              }
               <ol class="stage-timeline" aria-label="Trial stages">
-                @for (stage of stages; track stage) {
-                  <li [class.current]="trialStage(trial) === stage">
-                    <span>{{ label(stage) }}</span
-                    ><small>{{ stageState(trial, stage) }}</small>
+                @for (stage of stageSummaries(); track stage.id; let index = $index) {
+                  <li
+                    [class.current]="stage.current"
+                    [class.complete]="stage.state === 'complete'"
+                    [class.attention]="stage.state === 'attention'"
+                    [class.waiting]="stage.state === 'waiting'"
+                  >
+                    <button
+                      mat-button
+                      [attr.aria-current]="stage.current ? 'step' : null"
+                      [attr.aria-pressed]="selectedStage() === stage.id"
+                      (click)="selectStage(stage.id)"
+                    >
+                      <span class="stage-number">{{
+                        stage.state === 'complete'
+                          ? '✓'
+                          : stage.state === 'waiting'
+                            ? '◷'
+                            : stage.state === 'attention'
+                              ? '!'
+                              : index + 1
+                      }}</span>
+                      {{ stage.label }}
+                    </button>
+                    <strong>{{ label(stage.statusLabel) }}</strong>
+                    <span>{{
+                      stage.duration === null
+                        ? 'Duration unavailable'
+                        : timingDuration(stage.duration)
+                    }}</span>
+                    @if (stage.attempts.length > 1) {
+                      <small
+                        >{{ stage.attempts.length }} attempts ·
+                        {{ stage.attempts.length - 1 }}
+                        {{
+                          stage.attempts.length === 2 ? 'retry / repair' : 'retries / repairs'
+                        }}</small
+                      >
+                    }
                   </li>
                 }
               </ol>
+              <p class="muted">
+                Stages show workflow progress, not a percentage of time remaining. Durations include
+                all attempts and may include downtime or reconnection.
+              </p>
+              @if (inspectedStage(); as stage) {
+                <section class="stage-evidence" aria-label="Selected stage attempts">
+                  <h3>{{ stage.label }} attempts</h3>
+                  <div class="table-scroll">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Attempt</th>
+                          <th>State</th>
+                          <th>Duration</th>
+                          <th>Started</th>
+                          <th>Finished</th>
+                          <th>Evidence</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        @for (attempt of stage.attempts; track attempt.number) {
+                          <tr [class.selected-row]="selectedAttempt() === attempt.number">
+                            <td>
+                              {{ attempt.number
+                              }}{{ attempt.stage === 'REPAIR' ? ' · Repair' : '' }}
+                            </td>
+                            <td>{{ label(attempt.status) }}</td>
+                            <td>{{ attemptDuration(attempt.number) }}</td>
+                            <td>{{ attempt.startedAt | date: 'medium' }}</td>
+                            <td>
+                              {{
+                                attempt.finishedAt
+                                  ? (attempt.finishedAt | date: 'medium')
+                                  : 'No end recorded'
+                              }}
+                            </td>
+                            <td>
+                              <button
+                                mat-button
+                                (click)="
+                                  inspectAttemptActivity(attempt.number, stage.id === 'GENERATION')
+                                "
+                              >
+                                Inspect attempt {{ attempt.number }}
+                              </button>
+                            </td>
+                          </tr>
+                        } @empty {
+                          <tr>
+                            <td colspan="6">No attempts recorded for this stage.</td>
+                          </tr>
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              }
               @if (['BLOCKED', 'INTERRUPTED'].includes(trial.status)) {
-                <fieldset class="trial-recovery">
-                  <legend>Recover trial {{ trial.number }}</legend>
+                <details class="trial-recovery">
+                  <summary>Recovery options for trial {{ trial.number }}</summary>
                   @if (store.trialRecovery(); as recovery) {
                     <p>{{ recovery.resume.reason || recovery.resume.effect }}</p>
                     <button
@@ -1881,42 +2035,56 @@
                     >
                       Resume existing work
                     </button>
-                    <p>{{ recovery.fail.reason || recovery.fail.effect }}</p>
-                    <mat-form-field appearance="outline" subscriptSizing="dynamic"
-                      ><mat-label>Reason for marking this trial failed</mat-label
-                      ><textarea
-                        matInput
-                        rows="2"
-                        [value]="failureReason()"
-                        (input)="failureReason.set($any($event.target).value)"
-                      ></textarea>
-                    </mat-form-field>
-                    <button
-                      mat-button
-                      [disabled]="store.busy() || !recovery.fail.allowed || !failureReason().trim()"
-                      (click)="store.failTrial(failureReason())"
-                    >
-                      Mark trial failed and continue
-                    </button>
+                    <details class="fail-trial-options">
+                      <summary>Mark this trial failed instead</summary>
+                      <p>{{ recovery.fail.reason || recovery.fail.effect }}</p>
+                      <mat-form-field appearance="outline" subscriptSizing="dynamic"
+                        ><mat-label>Reason for marking this trial failed</mat-label
+                        ><textarea
+                          matInput
+                          rows="2"
+                          [value]="failureReason()"
+                          (input)="failureReason.set($any($event.target).value)"
+                        ></textarea>
+                      </mat-form-field>
+                      <button
+                        mat-button
+                        [disabled]="
+                          store.busy() || !recovery.fail.allowed || !failureReason().trim()
+                        "
+                        (click)="store.failTrial(failureReason())"
+                      >
+                        Mark trial failed and continue
+                      </button>
+                    </details>
                   } @else {
                     <p>
                       Recovery availability is loading or unavailable. {{ store.recoveryError() }}
                     </p>
                   }
-                </fieldset>
+                </details>
               }
-              @if (trial.capacityWait; as wait) {
-                <p>
-                  Model capacity wait: retry {{ wait.retries }} at
-                  {{ wait.nextRetryAt | date: 'medium' }}; deadline
-                  {{ wait.deadline | date: 'medium' }}. {{ wait.diagnostic }}
-                </p>
-              }
-              @if (trial.quotaRetryAt) {
-                <p>
-                  Waiting for Codex quota. Automatic retry after
-                  {{ trial.quotaRetryAt | date: 'medium' }}.
-                </p>
+              @if (notice()?.kind === 'waiting') {
+                <details class="wait-details">
+                  <summary>Wait details and retry history</summary>
+                  @if (trial.capacityWait; as wait) {
+                    <p>
+                      Model capacity wait: retry {{ wait.retries }} at
+                      {{ wait.nextRetryAt | date: 'medium' }}; deadline
+                      {{ wait.deadline | date: 'medium' }}. {{ wait.diagnostic }}
+                    </p>
+                  }
+                  @if (trial.quotaRetryAt) {
+                    <p>
+                      Saved quota retry time:
+                      {{ trial.quotaRetryAt | date: 'medium' }}.
+                    </p>
+                  }
+                  @if (trial.problem; as problem) {
+                    <p>{{ problem.message }}</p>
+                    <p>{{ problem.recovery }}</p>
+                  }
+                </details>
               }
 
               @if (store.progressError()) {
@@ -1946,7 +2114,7 @@
                   aria-label="Trial evaluation budget"
                 />
               }
-              @if (trial.problem; as problem) {
+              @if (!notice() && trial.problem; as problem) {
                 <p class="error">{{ problem.message }}</p>
                 <p>{{ problem.recovery }}</p>
               }
@@ -2205,7 +2373,7 @@
                 </details>
               }
               @for (attempt of trial.attempts; track attempt.number) {
-                <div class="attempt">
+                <div class="attempt" [class.selected-row]="selectedAttempt() === attempt.number">
                   <span
                     >{{ attempt.stage }} · {{ attempt.status }} ·
                     {{ attempt.startedAt | date: 'short' }}</span

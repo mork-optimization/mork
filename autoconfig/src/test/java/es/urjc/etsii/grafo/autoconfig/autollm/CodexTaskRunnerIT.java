@@ -9,7 +9,7 @@ import java.util.concurrent.CancellationException;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.Mockito.*;
 
-class CodexTaskRunnerTest {
+class CodexTaskRunnerIT {
     @TempDir Path temp;
     @ParameterizedTest @ValueSource(strings = {"success", "failure", "timeout", "cancel", "quota", "quota-archive", "capacity", "capacity-archive"})
     void archivesAndAccountsAfterEveryProcessOutcome(String outcome) throws Exception {

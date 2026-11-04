@@ -8,7 +8,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 
-class GitSourceStoreTest {
+class GitSourceStoreIT {
     @TempDir Path root;
     private void command(List<String> args, Path cwd, Path logs) {
         try {

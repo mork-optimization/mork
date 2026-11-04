@@ -191,6 +191,17 @@ export interface CodexUsage {
   unavailableAttempts: number;
 }
 export interface AutoLlmTrial {
+  nextStage?:
+    | 'GENERATION'
+    | 'LOCAL_PREPARATION'
+    | 'PREPARATION'
+    | 'TUNING'
+    | 'WINNER_EXPORT'
+    | 'COMPARISON'
+    | 'COMPLETE';
+  outputs?: Partial<
+    Record<NonNullable<AutoLlmTrial['nextStage']>, { directory: string; artifact?: string | null }>
+  >;
   number: number;
   targetId?: string | null;
   targetRevision?: number;

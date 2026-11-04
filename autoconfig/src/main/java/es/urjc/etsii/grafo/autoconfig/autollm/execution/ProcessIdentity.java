@@ -8,6 +8,7 @@ public record ProcessIdentity(long pid, String start) {
     public boolean alive() {
         var process = ProcessHandle.of(pid);
         if (process.isEmpty() || !process.get().isAlive()) return false;
+        if (start == null || start.isBlank()) return true;
         return process.get().info().startInstant().map(i -> i.toString().equals(start)).orElse(true);
     }
 }

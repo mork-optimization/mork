@@ -25,7 +25,7 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
         public Project {
             repository = repository == null ? "." : repository;
             ref = ref == null ? "HEAD" : ref;
-            buildCommand = buildCommand == null ? List.of("./mvnw", "verify") : List.copyOf(buildCommand);
+            buildCommand = buildCommand == null ? List.of("./mvnw", "package") : List.copyOf(buildCommand);
             artifact = artifact == null ? "target/project.jar" : artifact;
             runArguments = runArguments == null ? List.of() : List.copyOf(runArguments);
         }
@@ -42,7 +42,7 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
             localBuilds = localBuilds == null ? 2 : localBuilds;
             readyQueueSize = readyQueueSize == null ? 4 : readyQueueSize;
             localWorkers = localWorkers == null ? 1 : localWorkers;
-            localHeap = localHeap == null ? "2g" : localHeap;
+            localHeap = localHeap == null ? "8g" : localHeap;
             if (localBuilds < 1 || readyQueueSize < 1 || localWorkers < 1) throw new IllegalArgumentException("Local preparation limits must be positive");
         }
     }
@@ -76,7 +76,7 @@ public record AutoLlmConfig(Project project, String workspace, Integer trials, L
             searchSpaceTimeoutMillis = searchSpaceTimeoutMillis == null ? 120_000L : searchSpaceTimeoutMillis;
             phaseTimeoutMillis = phaseTimeoutMillis == null ? 300_000L : phaseTimeoutMillis;
             stageTimeoutMillis = stageTimeoutMillis == null ? 604_800_000L : stageTimeoutMillis;
-            heap = heap == null ? "2g" : heap;
+            heap = heap == null ? "8g" : heap;
         }
     }
     public enum Target { LOCAL, SSH }

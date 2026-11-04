@@ -7,7 +7,7 @@ import java.nio.file.*;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
 
-class AutoLlmCheckoutRetirementTest {
+class AutoLlmCheckoutRetirementIT {
     @TempDir Path temporary;
     private final AutoLlmProcessRunner processes = new AutoLlmProcessRunner();
     private final AutoLlmConfig config = AutoLlmConfig.defaults();

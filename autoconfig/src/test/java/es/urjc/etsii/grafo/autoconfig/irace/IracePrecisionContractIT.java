@@ -6,7 +6,7 @@ import java.util.concurrent.TimeUnit;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
-class IracePrecisionContractTest {
+class IracePrecisionContractIT {
     @Test void javaPolicyAgreesWithTheInstalledIraceParser() throws Exception {
         Process prerequisite;
         try { prerequisite = new ProcessBuilder("Rscript", "-e", "quit(status=if(requireNamespace('irace',quietly=TRUE)) 0 else 1)").start(); }
