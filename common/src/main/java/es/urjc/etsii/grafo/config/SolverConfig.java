@@ -53,7 +53,7 @@ public class SolverConfig {
     private int nWorkers = -1;
 
     /**
-     * Execute benchmark before starting solver
+     * Reuse or run SciMark in the current JVM before solving. Data is stored in .mork/.benchmark.
      */
     private boolean benchmark = false;
 

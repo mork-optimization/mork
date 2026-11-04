@@ -43,7 +43,7 @@ solver:
   # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
   nWorkers: -1
 
-  # Execute benchmark before starting solver? False to skip benchmark.
+  # Reuse or run SciMark in this JVM before solving; data lives in .mork/.benchmark.
   benchmark: true
 
   # JVM warm-up before measured experiment executions.

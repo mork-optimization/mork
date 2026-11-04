@@ -1,6 +1,7 @@
 package es.urjc.etsii.grafo.autoconfig.autollm;
 
 import es.urjc.etsii.grafo.algorithms.Algorithm;
+import es.urjc.etsii.grafo.benchmark.BenchmarkReport;
 import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.serializers.excel.ExcelSerializer;
@@ -59,8 +60,9 @@ public class AutoLlmReportService<S extends Solution<S,I>, I extends Instance> {
         for (var entry : grouped.entrySet()) {
             var target = campaign.targets.get(entry.getKey());
             String name = "autollm-" + campaign.id + "-" + entry.getKey();
-            var inputs = es.urjc.etsii.grafo.util.InstancePathUtil.list(target.resolvedConfig.comparisonPath());
-            excel.serializeCachedResults(name, entry.getValue(), inputs, root.resolve("reports/targets/" + entry.getKey() + "/campaign.xlsx"));
+            var inputs = new LinkedHashSet<String>();
+            for (var result : entry.getValue()) inputs.add(result.instancePath());
+            excel.serializeCachedResults(name, entry.getValue(), List.copyOf(inputs), root.resolve("reports/targets/" + entry.getKey() + "/campaign.xlsx"), BenchmarkReport.notRecorded(Map.of()));
         }
     }
 }

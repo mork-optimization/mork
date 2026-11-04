@@ -6,6 +6,49 @@ import { AutoLlmClient } from './autollm-client';
 describe('AutoLlmClient file previews', () => {
   afterEach(() => TestBed.resetTestingModule());
 
+  it('reviews and publishes a dataset through separate requests with the exact digest', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const client = TestBed.inject(AutoLlmClient),
+      http = TestBed.inject(HttpTestingController);
+    const configuration = {
+      trainingPath: 'train.index',
+      comparisonPath: 'test.index',
+    } as import('../model/autollm').AutoLlmConfig;
+    const preview = client.previewDataset(configuration, 'Reusable');
+    const read = http.expectOne('http://localhost:8080/api/autollm/datasets/preview');
+    expect(read.request.body).toEqual({ configuration, name: 'Reusable' });
+    read.flush({ digest: 'reviewed' });
+    await preview;
+    const publish = client.publishDataset(configuration, 'Reusable', 'reviewed');
+    const post = http.expectOne('http://localhost:8080/api/autollm/datasets');
+    expect(post.request.body).toEqual({ configuration, name: 'Reusable', digest: 'reviewed' });
+    post.flush({ id: 'saved' });
+    await publish;
+    http.verify();
+  });
+  it('generates once and polls the specific report receipt', async () => {
+    TestBed.configureTestingModule({
+      providers: [provideHttpClient(), provideHttpClientTesting()],
+    });
+    const client = TestBed.inject(AutoLlmClient),
+      http = TestBed.inject(HttpTestingController);
+    const generated = client.generateReport('saved', { objective: 'Cost', mode: 'MINIMIZE' });
+    const post = http.expectOne('http://localhost:8080/api/autollm/campaigns/saved/report');
+    expect(post.request.method).toBe('POST');
+    expect(post.request.body).toEqual({ objective: 'Cost', mode: 'MINIMIZE' });
+    post.flush({ requestId: 'request', state: 'QUEUED' });
+    await expect(generated).resolves.toMatchObject({ state: 'QUEUED' });
+    const read = client.reportStatus('saved', 'request');
+    const get = http.expectOne((r) => r.url.endsWith('/saved/report'));
+    expect(get.request.method).toBe('GET');
+    expect(get.request.params.get('requestId')).toBe('request');
+    get.flush({ state: 'SUCCEEDED', path: 'reports/report.html' });
+    await expect(read).resolves.toMatchObject({ path: 'reports/report.html' });
+    http.verify();
+  });
+
   it('reads the replacement draft after a compact edit receipt', async () => {
     TestBed.configureTestingModule({
       providers: [provideHttpClient(), provideHttpClientTesting()],

@@ -6,7 +6,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule } from '@angular/material/paginator';
 import { DatasetSelection } from '../../model/autollm';
 
-type Membership = 'training' | 'testing' | 'excluded';
+type Membership = 'training' | 'testing' | 'both' | 'excluded';
 interface DatasetRow {
   path: string;
   membership: Membership;
@@ -18,12 +18,12 @@ interface DatasetRow {
   imports: [FormsModule, MatButtonModule, MatFormFieldModule, MatInputModule, MatPaginatorModule],
   template: `
     <p>
-      Training instances are also tested. Every excluded instance needs a reason. Saving creates a
-      revised draft for review.
+      Training and testing may overlap or be disjoint. Every excluded instance needs a reason.
+      Saving creates a revised draft for review.
     </p>
     <p>
       {{ selection().training.length }} training · {{ selection().testing.length }} testing ·
-      {{ rows().length - selection().testing.length }} excluded
+      {{ excludedCount() }} excluded
     </p>
     <mat-form-field appearance="outline"
       ><mat-label>Find dataset instances</mat-label>
@@ -50,7 +50,8 @@ interface DatasetRow {
                     [ngModel]="row.membership"
                     (ngModelChange)="update(row.path, { membership: $event })"
                   >
-                    <option value="training">Training and testing</option>
+                    <option value="training">Training only</option>
+                    <option value="both">Training and testing</option>
                     <option value="testing">Testing only</option>
                     <option value="excluded">Excluded</option>
                   </select>
@@ -172,15 +173,26 @@ export class AutoLlmDatasetEditor {
   readonly page = signal(0);
   readonly json = signal('');
   readonly jsonError = signal('');
+  private readonly order = signal<{ training: string[]; testing: string[] }>({
+    training: [],
+    testing: [],
+  });
+  readonly excludedCount = computed(
+    () => this.rows().filter((row) => row.membership === 'excluded').length,
+  );
   readonly selection = computed<DatasetSelection>(() => {
     const selection: DatasetSelection = { training: [], testing: [], excluded: {} };
-    for (const row of this.rows()) {
-      if (row.membership === 'excluded') selection.excluded[row.path] = row.reason.trim();
-      else {
-        selection.testing.push(row.path);
-        if (row.membership === 'training') selection.training.push(row.path);
-      }
+    for (const kind of ['training', 'testing'] as const) {
+      const members = new Set(
+        this.rows()
+          .filter((row) => row.membership === kind || row.membership === 'both')
+          .map((row) => row.path),
+      );
+      for (const path of [...this.order()[kind], ...members])
+        if (members.delete(path)) selection[kind].push(path);
     }
+    for (const row of this.rows())
+      if (row.membership === 'excluded') selection.excluded[row.path] = row.reason.trim();
     return selection;
   });
   readonly changed = computed(
@@ -208,19 +220,28 @@ export class AutoLlmDatasetEditor {
     this.rows.update((rows) => rows.map((row) => (row.path === path ? { ...row, ...patch } : row)));
   }
   private setRows(selection: DatasetSelection): void {
-    const training = new Set(selection.training);
-    this.rows.set([
-      ...selection.testing.map((path) => ({
+    this.order.set({ training: [...selection.training], testing: [...selection.testing] });
+    const training = new Set(selection.training),
+      testing = new Set(selection.testing);
+    this.rows.set(
+      [
+        ...new Set([
+          ...selection.training,
+          ...selection.testing,
+          ...Object.keys(selection.excluded),
+        ]),
+      ].map((path) => ({
         path,
-        membership: training.has(path) ? ('training' as const) : ('testing' as const),
-        reason: '',
+        membership: training.has(path)
+          ? testing.has(path)
+            ? 'both'
+            : 'training'
+          : testing.has(path)
+            ? 'testing'
+            : 'excluded',
+        reason: selection.excluded[path] ?? '',
       })),
-      ...Object.entries(selection.excluded).map(([path, reason]) => ({
-        path,
-        membership: 'excluded' as const,
-        reason,
-      })),
-    ]);
+    );
   }
   private validate(selection: DatasetSelection): string {
     if (
@@ -235,22 +256,23 @@ export class AutoLlmDatasetEditor {
     const training = new Set(selection.training),
       testing = new Set(selection.testing);
     if (!training.size || !testing.size) return 'Keep at least one training and testing instance.';
-    if (
-      training.size !== selection.training.length ||
-      testing.size !== selection.testing.length ||
-      selection.training.some((path) => !testing.has(path))
-    )
-      return 'Training must be unique and included in testing.';
-    const original = new Set([...this.initial().testing, ...Object.keys(this.initial().excluded)]);
-    const accounted = new Set(testing);
+    if (training.size !== selection.training.length || testing.size !== selection.testing.length)
+      return 'Training and testing must each contain unique instances.';
+    const original = new Set([
+      ...this.initial().training,
+      ...this.initial().testing,
+      ...Object.keys(this.initial().excluded),
+    ]);
+    const accounted = new Set([...training, ...testing]);
     for (const [path, reason] of Object.entries(selection.excluded)) {
       if (typeof reason !== 'string' || !reason.trim())
         return 'Add a reason for every excluded instance.';
-      if (accounted.has(path)) return 'An excluded instance cannot also be tested.';
+      if (accounted.has(path))
+        return 'An excluded instance cannot also be used for training or testing.';
       accounted.add(path);
     }
     if (accounted.size !== original.size || [...accounted].some((path) => !original.has(path)))
-      return 'Keep every original instance in testing or exclusions; new paths cannot be added here.';
+      return 'Keep every original instance in training, testing or exclusions; new paths cannot be added here.';
     return '';
   }
   asJson(): string {

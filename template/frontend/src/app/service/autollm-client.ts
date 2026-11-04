@@ -5,6 +5,8 @@ import { firstValueFrom, timeout } from 'rxjs';
 import { ComparisonCurveRow } from '../util/comparison-chart-util';
 import { environment } from '../../environments/environment';
 import {
+  DatasetEntry,
+  DatasetReview,
   ObjectiveModes,
   DatasetSelection,
   ProposalTarget,
@@ -29,17 +31,47 @@ export class AutoLlmClient {
   private readonly http = inject(HttpClient);
   private readonly destroy = inject(DestroyRef);
   private readonly base = `${environment.apiBaseUrl}/api/autollm`;
-  private get<T>(path: string, params: Record<string, string | number> = {}): Promise<T> {
+  private get<T>(
+    path: string,
+    params: Record<string, string | number> = {},
+    timeoutMillis = 10000,
+  ): Promise<T> {
     return firstValueFrom(
       this.http
         .get<T>(this.base + path, { params })
-        .pipe(timeout(10000), takeUntilDestroyed(this.destroy)),
+        .pipe(timeout(timeoutMillis), takeUntilDestroyed(this.destroy)),
     );
   }
   private post<T>(path: string, body: unknown = {}): Promise<T> {
     return firstValueFrom(
       this.http.post<T>(this.base + path, body).pipe(takeUntilDestroyed(this.destroy)),
     );
+  }
+  datasets(config: AutoLlmConfig): Promise<DatasetEntry[]> {
+    return this.get('/datasets', {
+      repository: config.project.repository,
+      artifact: config.project.artifact,
+    });
+  }
+  dataset(config: AutoLlmConfig, id: string): Promise<DatasetEntry> {
+    return this.get(
+      `/datasets/${encodeURIComponent(id)}`,
+      {
+        repository: config.project.repository,
+        artifact: config.project.artifact,
+      },
+      120000,
+    );
+  }
+  previewDataset(configuration: AutoLlmConfig, name: string): Promise<DatasetReview> {
+    return this.post('/datasets/preview', { configuration, name });
+  }
+  publishDataset(
+    configuration: AutoLlmConfig,
+    name: string,
+    digest: string,
+  ): Promise<DatasetEntry> {
+    return this.post('/datasets', { configuration, name, digest });
   }
   defaults(): Promise<AutoLlmConfig> {
     return this.get('/defaults');
@@ -90,6 +122,8 @@ export class AutoLlmClient {
     training: string[];
     testing: string[];
     screening: ProposalScreening;
+    datasetOrigin?: unknown;
+    overlap?: number;
     targets: Record<string, ProposalTarget>;
   }> {
     return this.post(`/campaigns/${encodeURIComponent(id)}/proposal`, { targets });
@@ -128,13 +162,25 @@ export class AutoLlmClient {
   }
   action(
     id: string,
-    action: 'start' | 'resume' | 'cancel' | 'report',
+    action: 'start' | 'resume' | 'cancel',
     targets: string[] = [],
   ): Promise<CampaignReceipt> {
     return this.post(
       `/campaigns/${encodeURIComponent(id)}/${action}`,
       action === 'start' ? { targets } : {},
     );
+  }
+  reportStatus(
+    id: string,
+    requestId?: string,
+  ): Promise<import('../model/autollm').AutoLlmReportStatus> {
+    return this.get(`/campaigns/${encodeURIComponent(id)}/report`, requestId ? { requestId } : {});
+  }
+  generateReport(
+    id: string,
+    selection: { objective: string; mode: 'MINIMIZE' | 'MAXIMIZE' } | null,
+  ): Promise<import('../model/autollm').AutoLlmReportStatus> {
+    return this.post(`/campaigns/${encodeURIComponent(id)}/report`, selection ?? {});
   }
   addTarget(id: string, server: AutoLlmServer): Promise<CampaignReceipt> {
     return firstValueFrom(

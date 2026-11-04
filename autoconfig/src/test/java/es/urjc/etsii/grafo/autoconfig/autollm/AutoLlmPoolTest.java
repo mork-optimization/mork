@@ -35,7 +35,7 @@ class AutoLlmPoolTest {
         var definitions = new ArrayList<AutoLlmConfig.Server>(); for (String id : ids) definitions.add(server(id));
         var config = new AutoLlmConfig(null, temp.toString(), trials, null, null, null, null, input.toString(), input.toString(), new AutoLlmConfig.Codex(null, null, null, "fixture-model", null, null), null, null, null,
                 new AutoLlmConfig.Execution(2, null, null, null, null, null, null, null, null, AutoLlmConfig.Target.SSH, new AutoLlmConfig.Ssh(ids[0], runner.toString(), definitions, null)));
-        store = new AutoLlmCampaignStore(config); campaign = new AutoLlmCampaign(); campaign.id = UUID.randomUUID().toString(); campaign.createdAt = "2026-10-22"; campaign.config = config; campaign.baselineCommit = "fixed";
+        store = spy(new AutoLlmCampaignStore(config)); campaign = new AutoLlmCampaign(); campaign.id = UUID.randomUUID().toString(); campaign.createdAt = "2026-10-22"; campaign.config = config; campaign.baselineCommit = "fixed";
         for (String id : ids) { var t = new AutoLlmCampaign.TargetState(); t.definition = server(id); t.directory = "targets/" + id; t.revision = ++campaign.poolRevision; t.baselineReady = true; t.resolvedConfig = config.forServer(t.definition); campaign.targets.put(id, t); }
         for (int i = 1; i <= trials; i++) { var trial = new AutoLlmCampaign.Trial(); trial.number = i; trial.directory = "trials/%03d".formatted(i); trial.nextStage = AutoLlmCampaign.Stage.PREPARATION; trial.status = AutoLlmCampaign.TrialStatus.WAITING_FOR_TARGET; trial.tuningSeed = 100L + i; campaign.trials.add(trial); }
         AutoLlmFileUtil.write(store.directory(campaign.id).resolve("control/canonical-hashes.json"), Map.of());
@@ -81,6 +81,18 @@ class AutoLlmPoolTest {
         };
         campaign.reviewedTargets.addAll(campaign.targets.keySet()); campaign.approvedTargets.addAll(campaign.targets.keySet()); store.save(campaign);
         campaign.approvedProposal = service.proposal(campaign.id).digest(); store.save(campaign);
+    }
+    @Test void disjointDatasetsCanBeApprovedAndMembershipChangesInvalidateTheDigest() throws Exception {
+        setup(1, "a");
+        try {
+            Path test = temp.resolve("comparison.txt"); Files.writeString(test, "comparison input");
+            campaign.config = campaign.config.withPaths(campaign.config.trainingPath(), test.toString()); store.save(campaign);
+            var proposal = service.proposal(campaign.id); assertEquals(0, proposal.overlap());
+            service.approve(campaign.id, proposal.digest());
+            var changed = store.load(campaign.id); changed.config = changed.config.withPaths(test.toString(), test.toString()); store.save(changed);
+            assertNotEquals(proposal.digest(), service.proposal(campaign.id).digest());
+            assertThrows(IllegalStateException.class, () -> service.approve(campaign.id, proposal.digest()));
+        } finally { service.close(); }
     }
     private void await(BooleanSupplier condition) throws Exception {
         long end = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
@@ -340,11 +352,11 @@ class AutoLlmPoolTest {
     @Test void reservationFailureDoesNotPublishActiveOrLeakTheWorkspaceLock() throws Exception {
         setup(1, "a");
         try {
-            Files.createDirectory(store.root().resolve("operation-reservation.json.tmp"));
+            doThrow(new java.io.UncheckedIOException(new java.io.IOException("Reservation write failed"))).when(store).reserve(campaign.id);
             assertThrows(java.io.UncheckedIOException.class, () -> service.start(campaign.id, false, Set.of()));
             assertNull(service.active()); assertEquals("DRAFT", store.load(campaign.id).status.name());
             try (var lease = store.lock()) { assertTrue(lease.lock().isValid()); }
-            Files.delete(store.root().resolve("operation-reservation.json.tmp"));
+            doCallRealMethod().when(store).reserve(campaign.id);
             executions.put("a", (model, stop) -> model.trial.status = AutoLlmCampaign.TrialStatus.SUCCEEDED);
             service.start(campaign.id, false, Set.of()); await(() -> service.active() == null);
             assertEquals("SUCCEEDED", store.load(campaign.id).status.name());

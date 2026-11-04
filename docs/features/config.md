@@ -95,7 +95,7 @@ solver:
   # any number between 1 and MAX_INT, or -1 to automatically decide at runtime (available threads / 2)
   nWorkers: -1
 
-  # Execute benchmark before starting solver? False to skip benchmark.
+  # Reuse or run SciMark in this JVM before solving. False skips benchmark access entirely.
   benchmark: true
 
   # JVM warm-up before measured experiment executions.
@@ -174,3 +174,41 @@ errors:
 server:
   port : 8080
 ```
+
+## JVM benchmark
+
+When `solver.benchmark` is enabled, Mork reads `.mork/.benchmark` relative to the
+working directory. A valid measurement is reused; missing, invalid, or incompatible
+data causes a new SciMark measurement. Invalid files are removed before measurement.
+The old working-directory `.benchmark` file is ignored.
+
+SciMark executes synchronously in the current JVM, before solving, using the existing
+single-pass, small-dataset configuration and two-second minimum kernel timing target.
+It uses `solver.seed` converted to a 32-bit integer, as before. No additional warmup,
+repetitions, worker JVM, refresh option, or time limit is introduced. The timing target
+is not a bound on total benchmark duration.
+
+The versioned JSON file stores the effective seed, SciMark version and problem sizes,
+measurement timestamp, individual kernel scores, and composite score. Reuse requires
+matching hostname, CPU model, processor count, operating system, Java/JVM versions,
+maximum heap, and a fingerprint of JVM startup arguments. The arguments themselves
+are not saved, because they can contain credentials. If host identity cannot be
+determined, Mork measures without saving or reusing a file. There is no automatic
+expiry; changes to recorded inputs or environment trigger remeasurement.
+
+Writes use a temporary sibling file and atomic replacement. There are no locks or
+`tmp`/`cache` subdirectories; a project is expected to run once at a time. A storage
+failure still leaves the measured result available for the current report. An
+ordinary benchmark failure is reported as unavailable and solving continues.
+`mvn clean -Pultraclean` removes benchmark data specifically, preserving the other
+contents of `.mork`, including approved datasets and AutoLLM ownership information.
+
+Excel reports use the measurement selected for the execution, including whether it
+was reused, its timestamp, and its per-kernel scores. System information remains
+available when benchmarking is disabled. Offline reports use explicitly supplied
+execution metadata and show **Not recorded** when no measurement was saved with the
+execution; they never substitute a benchmark from the reporting machine.
+
+Scores are approximate MFLOPS for single-threaded numerical Java workloads, not a
+solver-performance guarantee or a conversion factor for experiment runtimes. See
+the [SciMark documentation](https://math.nist.gov/scimark2/about.html).

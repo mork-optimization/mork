@@ -161,8 +161,9 @@ public class AutoLlmProcessRunner {
     }
     public void reconcile(Path campaign) {
         if (!Files.isDirectory(campaign)) return;
-        try (var files = Files.walk(campaign)) {
-            for (Path file : files.toList()) if (file.getFileName().toString().equals("owner.json") && !campaign.relativize(file).toString().replace('\\', '/').contains("/source/")) {
+        try {
+            // Report publication can remove temporary files while recovery scans the same tree.
+            for (Path file : AutoLlmFileUtil.ownedFiles(campaign, "owner.json", Set.of("source"))) {
                 var record = AutoLlmFileUtil.JSON.readTree(Files.readString(file));
                 if ("SSH".equals(record.path("executionTarget").asString()) && !Boolean.getBoolean("mork.execution.remote")) continue;
                 ProcessHandle.of(record.path("pid").longValue()).ifPresent(process -> {

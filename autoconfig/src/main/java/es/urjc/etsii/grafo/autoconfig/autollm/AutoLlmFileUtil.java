@@ -29,11 +29,14 @@ public final class AutoLlmFileUtil {
         return value;
     }
     public static List<Path> ownedFiles(Path root, String filename) {
+        return ownedFiles(root, filename, Set.of("source", ".git", ".transport", ".transfer", ".source-bundles"));
+    }
+    static List<Path> ownedFiles(Path root, String filename, Set<String> excludedDirectories) {
         var result = new ArrayList<Path>(); if (!Files.isDirectory(root)) return result;
         try {
             Files.walkFileTree(root, new SimpleFileVisitor<>() {
                 @Override public FileVisitResult preVisitDirectory(Path directory, java.nio.file.attribute.BasicFileAttributes attributes) {
-                    return !directory.equals(root) && Set.of("source", ".git", ".transport", ".transfer", ".source-bundles").contains(directory.getFileName().toString()) ? FileVisitResult.SKIP_SUBTREE : FileVisitResult.CONTINUE;
+                    return !directory.equals(root) && excludedDirectories.contains(directory.getFileName().toString()) ? FileVisitResult.SKIP_SUBTREE : FileVisitResult.CONTINUE;
                 }
                 @Override public FileVisitResult visitFileFailed(Path path, IOException error) throws IOException {
                     if (error instanceof NoSuchFileException) return FileVisitResult.CONTINUE;
@@ -47,15 +50,18 @@ public final class AutoLlmFileUtil {
         result.sort(Comparator.naturalOrder()); return result;
     }
     public static void write(Path path, Object value) {
+        Path temp = null;
         try {
             Files.createDirectories(path.toAbsolutePath().getParent());
-            Path temp = path.resolveSibling(path.getFileName() + ".tmp");
+            // Recovery and report snapshots can publish the same evidence concurrently.
+            temp = Files.createTempFile(path.toAbsolutePath().getParent(), "." + path.getFileName() + "-", ".tmp");
             try (var output = Files.newOutputStream(temp)) {
                 JSON.writerWithDefaultPrettyPrinter().writeValue(output, value);
             }
             try { Files.move(temp, path, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING); }
             catch (AtomicMoveNotSupportedException e) { Files.move(temp, path, StandardCopyOption.REPLACE_EXISTING); }
         } catch (IOException e) { throw new UncheckedIOException(e); }
+        finally { if (temp != null) try { Files.deleteIfExists(temp); } catch (IOException ignored) { /* Failed temporary evidence is disposable. */ } }
     }
     public static <T> T read(Path path, Class<T> type) {
         try { return JSON.readValue(AutoLlmEvidenceFiles.readString(path), type); }

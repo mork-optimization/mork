@@ -55,3 +55,6 @@ log.txt
 /example-graphs/instances/
 /site/
 /published-site/
+
+# Mork-managed local data (including approved datasets and benchmark measurements)
+.mork/

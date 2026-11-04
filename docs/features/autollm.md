@@ -91,7 +91,27 @@ Repository-relative paths resolve against `project.repository`; the artifact is 
 
 Campaigns and target workspaces retain training/comparison indexes and hash manifests that reference the original inputs. They do not create another loose copy of each instance. Archive members keep their `archive.zip!member` load paths. Membership, manifests and original payloads are checked before recovery and child workloads, so keep the referenced datasets available and unchanged. SSH stages send the required original files or archive containers in verified input layers, with indexes and time-limit keys translated for the remote workspace; local staging does not extract or copy those payloads into each target directory. Existing historical snapshots remain readable through their saved paths.
 
-For campaigns prepared with the AutoLLM skill, run [trivial-instance screening](instance-screening.md) on the full original pool before selecting preliminary training inputs. Mork's instance selector chooses the preliminary subset from retained inputs; final testing uses the entire retained pool, including training. Reuse matching screening evidence and proposed indexes; approval applies to the complete campaign. Legacy or missing indexes trigger preparation and review before campaign creation.
+When both `autollm.training-path` and `autollm.comparison-path` are configured and valid, LOCAL and SSH campaigns use them directly without screening or splitting. Defaults come only from the explicitly named `instances.path.irace` and `instances.path.autollm-comparison` entries, never `instances.path.default`. Membership and ordering are preserved; training and comparison sets may overlap or be disjoint. Missing, empty, duplicate or broken inputs require correction or an explicit preparation action, not an automatic rescreen.
+
+To prepare a new selection, run [trivial-instance screening](instance-screening.md) on the full original pool. The selector chooses training from retained inputs; newly screened testing contains all retained instances, including training. Review the proposed indexes with the campaign settings before launch.
+
+### Approved project dataset library
+
+The dashboard's Dataset step offers **Approved project datasets**. Refresh/select an existing entry, or name the current configured datasets and review their exact membership, checksums and historical screening provenance. **Approve and save selection** publishes only the reviewed digest; it neither creates nor approves a campaign. Changed inputs require another review.
+
+Entries live in `<project.repository>/.mork/datasets/<id>`, scoped by the project's artifact path (module). Each immutable entry owns copies of the selected files/archive containers, relative indexes, original identity aliases, checksums and available historical screening decisions/provenance. No baseline executable or build checkout is retained. Excluded input payloads are not copied. Entries survive campaign/screening/workspace cleanup and have no automatic eviction. Keep this ignored project directory when retaining datasets.
+
+The helper exposes `dataset list|get|preview|publish --config FILE`. Preview/save example:
+
+```text
+dataset preview --config campaign.json --name "TSPTW reviewed selection"
+dataset publish --config campaign.json --name "TSPTW reviewed selection" --digest REVIEWED_SHA256
+dataset get --config campaign.json --id SELECTION_ID
+```
+
+Use the returned `trainingPath` and `comparisonPath` in future configurations. All commands target the connected backend's workspace; the library itself is independent of that workspace. Model, SOTA, budget, host and baseline changes do not force a new selection. Every campaign still builds and validates its own committed baseline; old screening timings describe their original context.
+
+API: `POST /api/autollm/datasets/preview` takes `{configuration, name}` and returns the review/digest; `POST /api/autollm/datasets` takes `{configuration, name, digest}` to publish. `GET /api/autollm/datasets` lists entries and `GET /api/autollm/datasets/{id}` verifies an entry. Both GET routes accept optional `repository` and `artifact` query parameters, defaulting to the controller's configured project. Configuration paths alone remain sufficient; library publication is optional.
 
 For a multi-module repository, configure the build argument array and JAR path explicitly, for example `["./mvnw", "-pl", "example-bmssc", "-am", "package"]` and `example-bmssc/target/project.jar`. Build commands run in the clone. `run-arguments` supplies project-specific settings; it cannot override campaign-owned seeds, budgets, execution mode, workers, instance paths, or irace settings. A generated blacklist replaces the baseline inventory filter.
 
@@ -113,11 +133,11 @@ The optional additional-seed file contains an array of specifications. SOTA is a
 
 ## Review, approval and local preparation
 
-Create a draft and run its baseline check. `GET /campaigns/{id}/proposal` returns a digest, exact training/testing membership, screening decisions (including trivial exclusions and inconclusive inputs), selected servers/readiness and the complete effective configuration. Testing includes training. `POST /campaigns/{id}/proposal` with `{"targets":["server-a"]}` selects an explicit launch subset for review.
+Create a draft and run its baseline check. `GET /campaigns/{id}/proposal` returns a digest, exact training/testing membership, screening decisions (including trivial exclusions and inconclusive inputs), selected servers/readiness and the complete effective configuration. The proposal reports actual training/testing overlap and dataset provenance. `POST /campaigns/{id}/proposal` with `{"targets":["server-a"]}` selects an explicit launch subset for review.
 
 Review these values with the user. Submit the reviewed `digest` to `POST /campaigns/{id}/approve`, then start the campaign. Start/resume verifies the current digest and input provenance. A broad optimization request permits preparation but still requires explicit approval of this concrete proposal. Unchanged recovery/reconnect retains approval. An enrolled server can qualify before an amendment is approved, but receives trials only after approval includes it. `POST /campaigns/{id}/amend-trials` proposes an increased total trial count; it creates no trials until the amended proposal is approved.
 
-`PUT /campaigns/{id}/draft` accepts revised configuration. Settings that require requalification produce a replacement draft while retaining screening evidence. Changes to trial count/seed can retain qualification when other settings match. `PUT /campaigns/{id}/dataset` accepts `training`, `testing` and an `excluded` object mapping ignored instance paths to reasons; testing plus exclusions must account for the complete original pool. Dataset edits create a replacement draft and do not rerun screening. Approval is tied to the exact revision. The dashboard provides prepare, review/edit and approve/launch actions.
+`PUT /campaigns/{id}/draft` accepts revised configuration. Settings that require requalification produce a replacement draft while retaining screening evidence. Changes to trial count/seed can retain qualification when other settings match. `PUT /campaigns/{id}/dataset` accepts `training`, `testing` and an `excluded` object mapping ignored instance paths to reasons; the union of training, testing and exclusions must account for the complete original pool; exclusions must be disjoint from both selected sets. Dataset edits create a replacement draft and do not rerun screening. Approval is tied to the exact revision. The dashboard provides prepare, review/edit and approve/launch actions.
 
 Trial data lives at `trials/<number>/`, independently of server assignment. Generation and local build/metadata preparation proceed while servers are occupied, bounded by Codex permits, `preparation.localBuilds` and ready queue capacity. Local preparation has its own workers/heap. Probes/pilot still execute on the selected measurement host. Pre-tuning component repairs return to local preparation after evidence collection; tuning and later stages retain their target. Resume reuses prepared outputs and saved remote job IDs.
 
@@ -190,7 +210,7 @@ For external VM provisioning, worker dependencies, and reusable images, see [pre
 
 The skill asks whether workloads should run locally or on a pool of configured SSH servers before preflight, builds or screening, unless the choice was already explicit. The controller, source analysis, Codex generation/repairs, authentication, transcripts, dashboard and report analysis stay local in both modes.
 
-In SSH mode, generation and initial build/tests/metadata checks run locally before a server is assigned. Remote build/dependency/metadata validation, probes, pilot, R/irace, winner export and comparisons execute on the assigned Unix/Linux server. Screening and selection run once on the selected screening server. R and the evaluation JVM communicate over remote loopback. A detached supervisor owns each workload and its deadlines; closing SSH does not stop it. The coordinator dispatches one remote trial per server and runs independent trials concurrently. It never splits an irace race across servers. Generation and repairs share a local semaphore, defaulting to two Codex sessions; adjust `codex.max-concurrent-sessions` before campaign approval.
+In SSH mode, generation and initial build/tests/metadata checks run locally before a server is assigned. Remote build/dependency/metadata validation, probes, pilot, R/irace, winner export and comparisons execute on the assigned Unix/Linux server. When explicitly requested, screening and selection run on the selected screening server. R and the evaluation JVM communicate over remote loopback. A detached supervisor owns each workload and its deadlines; closing SSH does not stop it. The coordinator dispatches one remote trial per server and runs independent trials concurrently. It never splits an irace race across servers. Generation and repairs share a local semaphore, defaulting to two Codex sessions; adjust `codex.max-concurrent-sessions` before campaign approval.
 
 Build the attached runner with `./mvnw -pl autoconfig -am package`. The normal dependency JAR retains its purpose; `autoconfig/target/autoconfig-0.23-SNAPSHOT-remote-runner.jar` is the separate executable transferred to the server. Use a committed baseline containing the matching AutoLLM implementation. Every execution server needs compatible Java/build tools, Git and R with `irace`, `httr` and `jsonlite`. Only the screening server needs the selector’s Python dependencies. Codex is required only locally. Preflight reports prerequisites without installing them.
 
@@ -232,7 +252,7 @@ Target diagnostics include resolved executable paths, versions/output, individua
 
 Workers default to `-1`, resolving Mork's `max(1, Runtime.availableProcessors() / 2)` on the execution host, including its resource allocation. Auto on 32 visible processors uses 16 workers; explicit `32` uses 32. Pilot/main evaluations and comparisons use the effective count. Screening retains one sequential warmed worker. Workers share the evaluation JVM's configured heap. Requested/effective counts and host identity are saved as evidence.
 
-Complete [remote screening](instance-screening.md#remote-screening), then configure the local mirror's `proposed-train.index`/`proposed-test.index`. Review this evidence as part of campaign approval. Remote target qualification adopts the screened baseline JAR and verifies reproducibility; local preparation builds its own platform's baseline.
+Configure existing training/comparison datasets or a saved project selection, or explicitly prepare new indexes through [remote screening](instance-screening.md#remote-screening). Review membership and available historical provenance as part of campaign approval. Local and remote target qualification build the selected committed baseline and verify reproducibility independently of the dataset's screening origin.
 
 Create and save a draft ID before calling `POST /api/autollm/campaigns/{id}/baseline-check`. This preparation returns `parameters`, `maxParameters`, `withinLimit` and a `targets` map containing each server’s parameter count, failure, and evidence directory after baseline validation and probes, without pilot or tuning. Read `targets/<id>/baseline-preflight/check/execution/check.json` and review and approve that same draft before launch. During generation/repair, Codex receives a local helper command for preparation builds/tests and metadata checks. It uses a file queue inside the trial clone, requiring neither SSH credentials nor network access in Codex's sandbox; diagnostics are mirrored locally. The controller owns all pilots, tuning and comparisons.
 
@@ -246,9 +266,9 @@ Connection/status/collection retries are bounded to two automatic retries. Persi
 
 ### Pool scheduling and changes
 
-Stable trial seeds are allocated before dispatch. A ready server takes the next unassigned trial, and every stage of that trial remains on its assigned server. Each server independently verifies the pinned commit, screened baseline artifact, rebuilt dependency contents, search-space metadata, frozen input hashes and seed probes before accepting work. Resolved duplicate SSH endpoints are rejected. Per-server worker and heap settings inherit the campaign defaults when absent. SSH control calls use a 60-second deadline and keepalives; artifact transfers retain their longer budget.
+Stable trial seeds are allocated before dispatch. A ready server takes the next unassigned trial, and every stage of that trial remains on its assigned server. Each server independently verifies the pinned commit, built baseline artifact, rebuilt dependency contents, search-space metadata, frozen input hashes and seed probes before accepting work. Resolved duplicate SSH endpoints are rejected. Per-server worker and heap settings inherit the campaign defaults when absent. SSH control calls use a 60-second deadline and keepalives; artifact transfers retain their longer budget.
 
-The reviewed manifest explicitly records `QUALIFIED_SERVER_POOL` reuse. Screening timings and exclusions remain measurements from the original screening host; qualifying another server does not claim that its timings match. The same training/testing indexes are frozen for the pool, with both SOTA and proposal evaluated together on the trial’s assigned host.
+Fresh screening manifests record `QUALIFIED_SERVER_POOL` reuse; supplied datasets and approved library selections do not require screening manifests. Screening timings and exclusions remain measurements from the original screening host; qualifying another server does not claim that its timings match. The same training/testing indexes are frozen for the pool, with both SOTA and proposal evaluated together on the trial’s assigned host.
 
 Add servers with the dashboard or the helper after a campaign starts:
 
@@ -377,6 +397,44 @@ Polling uses `status.json`, which omits prompts, stack traces, winner payloads, 
 
 Cancel stops owned processes and confirms remote evidence collection. Resume preserves completed work, rejoins unresolved SSH jobs, and uses fresh attempts for interrupted work that needs restarting. Completed failed trials stay failed. Campaigns, screening and baseline checks share workspace ownership. Full target qualification, including requalification, refreshes every prerequisite result. Routine trial resume checks the saved host identity and allocation without replacing prerequisite evidence. The SSH preflight deadline covers the sum of all sequential check deadlines, their termination grace, and dispatch/identity overhead.
 
+## Portable campaign report
+
+The campaign dashboard's **Portable campaign report** section generates and downloads `reports/report.html`. It is a self-contained HTML document that opens without a running backend or external assets. Use the browser's Print command to save a PDF; the print layout includes every trial and attempt.
+
+Reports are generated automatically as trials settle and when a campaign finishes, is cancelled, or is interrupted. **Generate/Regenerate report** also works during an active campaign and labels unfinished results as a partial snapshot. Reporting reads saved local evidence, including compacted journals, without contacting workers, loading generated classes, rebuilding executables, invoking Codex, or repeating experiments. Legacy checkpoint formats still require their original controller.
+
+The report includes campaign status counts, recorded execution duration, dataset sizes, hosts and budgets; a trial summary table with gap, wins/ties/losses, generated component names and the irace winner approach; and trial details with the winner specification, generated-component descriptions, stage/attempt timings, preparation substages, partial results and failure evidence. Generation/repair details include token counts and completeness. Aggregate usage deduplicates response identities; cached input and reasoning output are already included in input/output totals. Missing evidence remains unavailable, never zero.
+
+Embedded SVG images show elapsed trial timelines, campaign-clock timelines in UTC, per-trial input/output tokens, and host-matched average gaps and wins/ties/losses. Every trial appears, independent of dashboard filters, zoom or pagination. Figures contain at most 12 trials and retain consistent scales across blocks (performance scales are specific to each host). Images are generated from saved evidence in Java; automatic and CLI reporting need no browser, Angular runtime, network service or additional chart dependency. Numerical tables remain available alongside the figures.
+
+Timeline colors match the dashboard. Repairs belong to Generation and have dashed borders; overlapping attempts occupy separate tracks. Gray gaps have no inferred cause, and running intervals stop at the snapshot time. Summed stage durations can exceed elapsed time and do not measure CPU usage. Invalid or missing intervals remain unavailable. All trials remain visible in performance figures, but only eligible complete comparisons receive plotted values; exclusion reasons are listed separately.
+
+The trial summary includes total tokens and completeness. The token overview and individual trial sections show complete/partial/unavailable attempt coverage. Token bars contain only known input and output counts; labels retain reported totals, which may differ from the bar sum for incomplete evidence. Campaign totals remain the authoritative aggregate, with response identities deduplicated across trials. Generation-versus-repair tables attribute each response to its first recorded attempt, so repeated evidence adds no further tokens. They include failed and interrupted attempts and distinguish recorded repair attempts from charged repair turns.
+
+Failure summaries group historical attempt outcomes by stage, outcome, category and code, with links to affected trials. Interruptions and quota/capacity limits remain distinct from failures. Current trial problems and recorded retry counters are shown separately; resettable infrastructure counters are not presented as reconstructed lifetime totals. Chart layout, offline rendering and PDF printing are checked by the integration/browser suite, outside the default fast tests.
+
+Headline performance uses only successful trials with complete frozen testing membership and all requested repetitions. Wins/ties/losses count trial–instance comparisons against host-matched SOTA means. Percentage gap is `100 * (proposal - SOTA) / abs(SOTA)` for minimization, with the numerator reversed for maximization: negative is better. Instances receive equal weight. A zero SOTA reference makes percentage gap undefined; absolute results and outcomes remain available. Failed/incomplete trials retain their measurements in separate detail sections and do not contribute to headline performance. This report does not rank trials across hosts or claim individual component contributions.
+
+New campaigns record execution start/stop timestamps and objective metadata. Execution elapsed time includes waits and pauses between first launch and final stop, excluding prior screening/draft preparation. Older campaigns without those timestamps show an explicitly approximate attempt span. Summed attempt durations are separate because trials and metadata work may overlap. Preparation timings are controller-observed and can include transfers/waits; missing transitions remain unavailable.
+
+Automatic reporting uses the saved primary objective, or the last explicit reporting selection. If historical metadata cannot establish an objective/direction, the overview is still generated and comparison statistics require a manual selection. Presentation preferences do not change the experiment configuration or approval. Future generation and repair manifests include a `generatedComponents` catalog with qualified class name, role and description; reports reconcile it against the verified inventory. Existing manifests retain their original descriptions, with unavailable or ambiguous mappings identified.
+
+```bash
+python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace WORKSPACE \
+  campaign report --id CAMPAIGN_ID --output campaign-report.html --timeout 120
+
+# Override the presentation objective; both objective and direction are required together.
+python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace WORKSPACE \
+  campaign report --id CAMPAIGN_ID --objective Cost --mode MINIMIZE --output campaign-report.html
+
+python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace WORKSPACE \
+  campaign report-status --id CAMPAIGN_ID --request-id REQUEST_ID
+```
+
+`POST /campaigns/{id}/report` accepts an optional `{ "objective": "Cost", "mode": "MINIMIZE" }` body and returns a queued generation receipt. `GET /campaigns/{id}/report` returns report status, settings, snapshot time, errors and the downloadable artifact path; `requestId` selects a specific receipt. The helper submits once and polls that receipt. A timeout leaves the job running; inspect its receipt rather than resubmitting. Each successful receipt points to its immutable HTML snapshot under `reports/report-jobs/`, while `reports/report.html` contains the latest successful version. This keeps a download tied to its requested objective even when another report is generated. Report generation failures preserve the previous HTML. Existing Excel/JSON export failures are reported separately and do not prevent the portable HTML from being generated. Cleanup waits for selected report writers and suppresses publication once cleanup is requested.
+
+For browser/print regression checks, run `AutoLlmPortableReportIT` through Maven Failsafe, then run `MORK_REPORT_HTML=../../autoconfig/target/portable-report-fixture.html npm run test:browser` from `template/frontend`. This verifies the actual generated HTML offline, escaping, viewport sizing, and PDF printing; it is outside the default fast test suite.
+
 ## Saved evidence
 
 Each UUID directory contains `campaign.json`, append-only campaign events, frozen control files and instance manifests, a revisioned target pool and immutable trial assignments. `targets/<id>/` contains isolated controls, transfers, metadata and baseline evidence; trials use their recorded campaign-relative `directory`. Trial evidence retains a frozen commit-plus-patch source snapshot (source ZIP for legacy campaigns) and hashes, Codex prompts/events/usage/manifest/session ID, build logs, seed/component probes, pilot and main evaluation journals, all encountered configurations, elite history, final elites, irace R data, winner specifications, and comparison output. Completed checkouts may be retired and closed text evidence compressed as described above; their logical evidence remains recoverable.
@@ -415,7 +473,8 @@ All paths below are relative to `/api/autollm`; endpoints are registered when th
 | `GET /campaigns/{id}/trials/{number}/remote-inspection` | Observe remote process/job evidence without reconciling it |
 | `POST /campaigns/{id}/recover` | Recover explicitly selected trials; per-trial outcomes |
 | `POST /campaigns/{id}/baseline-check` | Baseline build/reproducibility/metadata checks without tuning |
-| `POST /campaigns/{id}/start`, `/resume`, `/cancel`, `/report` | Lifecycle actions; reporting uses cached results |
+| `POST /campaigns/{id}/start`, `/resume`, `/cancel` | Campaign lifecycle actions |
+| `POST /campaigns/{id}/report`, `GET /campaigns/{id}/report` | Queue report generation and inspect its receipt; reporting uses saved evidence |
 | `GET /campaigns/{id}/targets`, `PUT/DELETE /campaigns/{id}/targets/{targetId}` | Inspect pool, register an immutable server, remove an idle reconciled server |
 | `POST /campaigns/{id}/targets/{targetId}/drain`, `/resume` | Stop new assignments or recover a server while the campaign is active |
 | `POST /campaigns/{id}/trials/{number}/fail` | End a reconciled blocked trial with an operator reason and release its qualified target |

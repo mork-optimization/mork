@@ -58,6 +58,10 @@ public final class AutoLlmComparisonUtil {
             return progress;
         }
 
+        public synchronized int omittedEvents(Path file) {
+            try { return refresh(file).omitted; }
+            catch (IOException e) { throw new UncheckedIOException(e); }
+        }
         public synchronized Object summary(Path file) {
             try {
                 var progress = refresh(file);

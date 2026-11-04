@@ -48,6 +48,10 @@ public final class AutoLlmCleanup {
             if (refs.containsAll(resource.references())) { OwnershipManifest.verify(resource); delete.add(resource); }
             else retain.put(resource.path(), "Shared references: " + resource.references());
         }
+        // Dataset selections are explicitly approved project assets, never campaign/workspace garbage.
+        for (var resource : delete) if (resource.sessionId() == null)
+            for (Path marker : AutoLlmFileUtil.ownedFiles(Path.of(resource.path()), AutoLlmDatasetLibrary.MARKER, Set.of(".git")))
+                retain.put(marker.getParent().toString(), "Approved project dataset library; outside cleanup scope");
         // Retain both ancestors and descendants of a shared directory as one deletion unit.
         var shared = new ArrayList<String>(retain.keySet());
         for (var resource : new ArrayList<>(delete)) {
@@ -184,6 +188,9 @@ public final class AutoLlmCleanup {
     }
     private Map<String,String> scopeProblems(Plan plan, Set<String> completed) {
         var pending = new LinkedHashMap<String,String>();
+        for (var resource : plan.delete()) if (resource.sessionId() == null && !completed.contains(resource.path()))
+            if (!AutoLlmFileUtil.ownedFiles(Path.of(resource.path()), AutoLlmDatasetLibrary.MARKER, Set.of(".git")).isEmpty())
+                pending.put("dataset-library", "An approved dataset library is inside the deletion scope; create a new cleanup plan");
         for (var dependency : dependencies(plan.delete())) if (!plan.dependencies().contains(dependency)) pending.put("scope", "External dependencies changed; create a new cleanup plan");
         for (var resource : new OwnershipManifest(store.root()).resources()) {
             boolean insideBoundary = false;

@@ -1,6 +1,8 @@
 import { DestroyRef, Injectable, computed, inject, signal } from '@angular/core';
 import { AutoLlmClient } from '../service/autollm-client';
 import {
+  DatasetEntry,
+  DatasetReview,
   ObjectiveModes,
   DatasetSelection,
   CampaignReceipt,
@@ -54,6 +56,14 @@ export class AutoLlmStore {
   readonly objectiveNames = computed(() => Object.keys(this.objectiveModes()));
   readonly objectivesError = signal<string | null>(null);
   readonly resultMode = signal<'MINIMIZE' | 'MAXIMIZE'>('MINIMIZE');
+  readonly report = signal<import('../model/autollm').AutoLlmReportStatus | null>(null);
+  readonly reportError = signal<string | null>(null);
+  readonly reportObjective = signal('');
+  readonly reportMode = signal<'MINIMIZE' | 'MAXIMIZE'>('MINIMIZE');
+  readonly reportObjectives = computed(() => Object.keys(this.report()?.objectives ?? {}));
+  readonly reportBusy = computed(() => ['QUEUED', 'RUNNING'].includes(this.report()?.state ?? ''));
+  private reportRequest: string | undefined;
+  private reportInitialized = false;
   readonly artifactsLoading = signal(false);
   readonly artifactsLoaded = signal(false);
   readonly artifactsError = signal<string | null>(null);
@@ -116,6 +126,9 @@ export class AutoLlmStore {
     );
   });
   readonly activity = signal<AutoLlmActivity[]>([]);
+  readonly datasets = signal<DatasetEntry[]>([]);
+  readonly datasetReview = signal<DatasetReview | null>(null);
+  readonly datasetName = signal('');
   readonly screenings = signal<ScreeningJob[]>([]);
   readonly activeScreening = signal('');
   readonly selectedScreening = signal('');
@@ -240,6 +253,7 @@ export class AutoLlmStore {
           activeTrials.map((trial) => this.client.progress(campaignId, trial.number)),
         ),
         this.refreshRecovery(),
+        this.refreshReport(),
       ]);
       if (selected === this.selection && this.selectedId() === campaignId && !this.destroyed) {
         const next: Record<number, { progress?: AutoLlmProgress; stale: boolean }> = {};
@@ -346,6 +360,12 @@ export class AutoLlmStore {
     this.cleanupReceipt.set(null);
     this.approvalDifferences.set([]);
     this.selectedId.set(id);
+    this.report.set(null);
+    this.reportError.set(null);
+    this.reportObjective.set('');
+    this.reportMode.set('MINIMIZE');
+    this.reportRequest = undefined;
+    this.reportInitialized = false;
     this.startTargets.set([]);
     this.resetComparison();
     this.activeProgress.set({});
@@ -470,6 +490,49 @@ export class AutoLlmStore {
       if (request === this.resultsRequest) this.resultsLoading.set(false);
     }
   }
+  async refreshReport(): Promise<void> {
+    const id = this.selectedId(),
+      selected = this.selection;
+    if (!id) return;
+    const requestId = this.reportRequest;
+    try {
+      const status = await this.client.reportStatus(id, requestId);
+      if (selected !== this.selection || requestId !== this.reportRequest || this.destroyed) return;
+      this.report.set(status);
+      this.reportError.set(null);
+      if (!this.reportInitialized) {
+        this.reportInitialized = true;
+        this.reportObjective.set(status.selection.objective ?? '');
+        this.reportMode.set(status.selection.mode ?? 'MINIMIZE');
+      }
+      if (status.state !== 'RUNNING' && status.state !== 'QUEUED') this.reportRequest = undefined;
+    } catch (e) {
+      if (selected === this.selection && !this.destroyed) this.reportError.set(this.message(e));
+    }
+  }
+  selectReportObjective(objective: string): void {
+    this.reportInitialized = true;
+    this.reportObjective.set(objective);
+    const mode = this.report()?.objectives[objective];
+    if (mode) this.reportMode.set(mode);
+  }
+  async generateReport(): Promise<void> {
+    const id = this.selectedId(),
+      selected = this.selection;
+    if (!id || this.reportBusy()) return;
+    await this.operate(async () => {
+      const objective = this.reportObjective().trim();
+      const status = await this.client.generateReport(
+        id,
+        objective ? { objective, mode: this.reportMode() } : null,
+      );
+      if (selected !== this.selection || this.destroyed) return;
+      this.reportRequest = status.requestId ?? undefined;
+      this.report.set(status);
+      this.reportError.set(null);
+      this.retryNow();
+    });
+  }
   async refreshSummary(): Promise<void> {
     const id = this.selectedId(),
       selection = this.selection;
@@ -519,6 +582,50 @@ export class AutoLlmStore {
     } finally {
       if (request === this.logRequest && !this.destroyed) this.logLoading.set(false);
     }
+  }
+  async loadDatasets(): Promise<void> {
+    const config = this.config();
+    if (!config) return;
+    await this.operate(async () => {
+      this.datasets.set(await this.client.datasets(config));
+    });
+  }
+  async useDataset(id: string): Promise<void> {
+    const config = this.config();
+    if (!config || !id) return;
+    await this.operate(async () => {
+      const entry = await this.client.dataset(config, id);
+      this.config.set({
+        ...config,
+        trainingPath: entry.trainingPath,
+        comparisonPath: entry.comparisonPath,
+      });
+      this.datasetReview.set(null);
+    });
+  }
+  async previewDataset(): Promise<void> {
+    const config = this.config();
+    if (!config) return;
+    this.datasetReview.set(null);
+    await this.operate(async () => {
+      const review = await this.client.previewDataset(config, this.datasetName());
+      this.datasetReview.set(review);
+    });
+  }
+  async publishDataset(): Promise<void> {
+    const review = this.datasetReview(),
+      config = this.config();
+    if (!review || !config) return;
+    await this.operate(async () => {
+      const entry = await this.client.publishDataset(config, review.name, review.digest);
+      this.datasets.set(await this.client.datasets(config));
+      this.config.set({
+        ...config,
+        trainingPath: entry.trainingPath,
+        comparisonPath: entry.comparisonPath,
+      });
+      this.datasetReview.set(null);
+    });
   }
   selectScreening(id: string): void {
     this.selectedScreening.set(id);
@@ -699,10 +806,7 @@ export class AutoLlmStore {
       this.targetStatus.set(await this.client.probeTarget(config));
     });
   }
-  async action(
-    action: 'start' | 'resume' | 'cancel' | 'report',
-    targets: string[] = [],
-  ): Promise<void> {
+  async action(action: 'start' | 'resume' | 'cancel', targets: string[] = []): Promise<void> {
     await this.operate(async () => {
       const id = this.selectedId();
       const campaign = await this.client.action(id, action, targets);

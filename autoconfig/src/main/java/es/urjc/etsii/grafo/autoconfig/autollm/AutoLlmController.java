@@ -43,7 +43,7 @@ public class AutoLlmController {
         if (campaign != null && AutoLlmCleanup.requested(store.directory(campaign))) service.cancel(campaign);
         if (screening != null && AutoLlmCleanup.requested(store.root().resolve("screenings").resolve(screening))) screenings.cancel(screening);
         campaign = service.active(); screening = screenings == null ? null : screenings.active();
-        boolean idle = (campaign == null || !AutoLlmCleanup.requested(store.directory(campaign))) && !service.hasSelectedTargetProbes()
+        boolean idle = (campaign == null || !AutoLlmCleanup.requested(store.directory(campaign))) && !service.hasSelectedTargetProbes() && !service.hasSelectedReports()
                 && (screening == null || !AutoLlmCleanup.requested(store.root().resolve("screenings").resolve(screening)));
         if (idle && scope.shutdown()) return cleanup.launchFinalizer(request.get("digest"), service.defaults());
         return cleanup.apply(request.get("digest"), idle);
@@ -59,7 +59,7 @@ public class AutoLlmController {
         result.put("artifact", artifact == null ? null : artifact.getAbsolutePath());
         result.put("artifactSha256", artifactSha256);
         result.put("baseUrl", "http://127.0.0.1:" + environment.getProperty("local.server.port", environment.getProperty("server.port", "8080")));
-        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL", "RECOVERY_ACTIONS", "FILE_TAIL_PREVIEWS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKSPACE_LOCKS", "SCOPED_CLEANUP", "LOCAL_JOB_RECOVERY"));
+        result.put("features", List.of("LOCAL", "SSH", "SCREENING_JOBS", "DATASET_LIBRARY", "CODEX_PROGRESS", "BYTE_LOG_CURSORS", "STRUCTURED_FAILURES", "SSH_SERVER_POOL", "DYNAMIC_TARGETS", "FAIL_BLOCKED_TRIAL", "RECOVERY_ACTIONS", "FILE_TAIL_PREVIEWS", "ASYNC_TARGET_PREFLIGHT", "COMPACT_OBSERVATIONS", "CAMPAIGN_APPROVAL", "REMOTE_INSPECTION", "CANONICAL_CONFIG", "WORKSPACE_LOCKS", "SCOPED_CLEANUP", "LOCAL_JOB_RECOVERY"));
         return result;
     }
     /** Ordered objective definitions, shared with the experiment monitor. */
@@ -72,6 +72,23 @@ public class AutoLlmController {
     }
     @org.springframework.context.event.EventListener(org.springframework.boot.context.event.ApplicationReadyEvent.class)
     public void saveSession() { new es.urjc.etsii.grafo.autoconfig.autollm.execution.OwnershipManifest(store.root()).directory(store.root(), "workspace", store.root().toString()); AutoLlmFileUtil.write(store.root().resolve("session.json"), capabilities()); }
+    @PostMapping("/datasets/preview") public Object previewDataset(@RequestBody AutoLlmDatasetLibrary.Request request) {
+        return new AutoLlmDatasetLibrary(request.configuration()).preview(request.name());
+    }
+    @PostMapping("/datasets") public Object publishDataset(@RequestBody AutoLlmDatasetLibrary.Request request) {
+        requireMode(); return new AutoLlmDatasetLibrary(request.configuration()).publish(request.name(), request.digest());
+    }
+    @GetMapping("/datasets") public Object datasets(@RequestParam(required = false) String repository, @RequestParam(required = false) String artifact) {
+        return datasetLibrary(repository, artifact).list();
+    }
+    @GetMapping("/datasets/{id}") public Object dataset(@PathVariable String id, @RequestParam(required = false) String repository, @RequestParam(required = false) String artifact) {
+        return datasetLibrary(repository, artifact).get(id);
+    }
+    private AutoLlmDatasetLibrary datasetLibrary(String repository, String artifact) {
+        var defaults = service.defaults(); var p = defaults.project();
+        var project = new AutoLlmConfig.Project(repository == null ? p.repository() : repository, p.ref(), p.buildCommand(), artifact == null ? p.artifact() : artifact, p.runArguments());
+        return new AutoLlmDatasetLibrary(new AutoLlmConfig(project, defaults.workspace(), null, null, null, null, null, null, null, null, null, null, null, null));
+    }
     @PostMapping("/effective-config") public Object effectiveConfig(@RequestBody AutoLlmConfig config) { var normalized = AutoLlmNormalization.normalize(config);
         return Map.of("configuration", normalized, "errors", service.validate(normalized), "summary", AutoLlmSummaryUtil.summarize(normalized, null, Map.of(), normalized.trials()), "digest", AutoLlmFileUtil.canonicalHash(normalized)); }
     @GetMapping("/campaigns/{id}/storage") public AutoLlmStorageReport.Report storage(@PathVariable String id) {
@@ -163,7 +180,16 @@ public class AutoLlmController {
     @PostMapping("/campaigns/{id}/trials/{number}/local-jobs/{jobId}/reconcile") public Object reconcileLocal(@PathVariable String id, @PathVariable int number, @PathVariable String jobId, @RequestBody AutoLlmLocalRecovery.Confirmation request) {
         requireMode(); return service.reconcileLocal(id, number, jobId, request);
     }
-    @PostMapping("/campaigns/{id}/report") public Receipt report(@PathVariable String id) { requireMode(); return receipt(service.report(id), "report", null); }
+    @PostMapping("/campaigns/{id}/report") public AutoLlmHtmlReports.Status report(@PathVariable String id,
+            @RequestBody(required = false) AutoLlmPortableReport.Selection selection) {
+        requireMode();
+        try { return service.report(id, selection); }
+        catch (IllegalArgumentException e) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, e.getMessage(), e); }
+    }
+    @GetMapping("/campaigns/{id}/report") public AutoLlmHtmlReports.Status reportStatus(@PathVariable String id,
+            @RequestParam(required = false) String requestId) {
+        return AutoLlmHtmlReports.status(store.load(id), store.directory(id), requestId);
+    }
     @GetMapping("/campaigns/{id}/targets") public Object targets(@PathVariable String id) { var c = store.load(id); return Map.of("poolRevision", c.poolRevision, "targets", c.targets); }
     @PutMapping("/campaigns/{id}/targets/{targetId}") public Receipt addTarget(@PathVariable String id, @PathVariable String targetId, @RequestBody AutoLlmConfig.Server server) { requireMode(); return receipt(service.addTarget(id, targetId, server), "addTarget", null); }
     @PostMapping("/campaigns/{id}/targets/{targetId}/drain") public Receipt drainTarget(@PathVariable String id, @PathVariable String targetId) { requireMode(); return receipt(service.drainTarget(id, targetId, false), "drainTarget", null); }

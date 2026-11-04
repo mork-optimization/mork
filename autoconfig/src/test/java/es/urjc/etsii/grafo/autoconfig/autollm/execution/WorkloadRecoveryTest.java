@@ -16,12 +16,14 @@ class WorkloadRecoveryTest {
         when(processes.run(any(), any(), any(), anyLong(), anyLong(), anyLong(), any(), anyBoolean(), anyLong()))
                 .thenReturn(new AutoLlmProcessRunner.Result(0, false, 1));
         Path output = temp.resolve("output"); Files.createDirectories(output);
-        Files.createDirectory(output.resolve("collection-completed.json.tmp"));
         var work = new AutoLlmWorkloadExecutor.Workload(List.of("fixture"), temp, output, Map.of(), List.of(), List.of(), 1000, 0, 100, false, 100);
         var executor = new LocalWorkloadExecutor(processes);
-        var failure = assertThrows(AutoLlmFailureUtil.StageException.class, () -> executor.run(work, () -> false));
-        assertEquals("EVIDENCE_COLLECTION", failure.failure().code());
-        Files.delete(output.resolve("collection-completed.json.tmp"));
+        try (var files = mockStatic(AutoLlmFileUtil.class, CALLS_REAL_METHODS)) {
+            files.when(() -> AutoLlmFileUtil.write(eq(output.resolve("collection-completed.json")), any()))
+                    .thenThrow(new java.io.UncheckedIOException(new java.io.IOException("Collection checkpoint write failed")));
+            var failure = assertThrows(AutoLlmFailureUtil.StageException.class, () -> executor.run(work, () -> false));
+            assertEquals("EVIDENCE_COLLECTION", failure.failure().code());
+        }
         assertEquals(0, executor.run(work, () -> false).exitCode());
         assertFalse(Files.exists(output.resolve("collection-failure.json")));
         assertEquals(1, mockingDetails(processes).getInvocations().size());

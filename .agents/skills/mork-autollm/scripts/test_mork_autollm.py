@@ -16,6 +16,59 @@ spec.loader.exec_module(client)
 
 
 class OperatorClientTest(unittest.TestCase):
+    def test_dataset_publication_requires_the_reviewed_digest_and_does_not_launch(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            config = {"workspace": self.root, "project": {"repository": "/repo", "artifact": "module/target/app.jar"}, "trainingPath": "train.index", "comparisonPath": "test.index"}
+            file = Path(self.root) / "config.json"
+            file.write_text(json.dumps(config))
+            digest = "a" * 64
+            code, text, request = self.cli(["dataset", "preview", "--config", str(file), "--name", "Reusable"], [{"digest": digest}])
+            self.assertEqual(code, 0)
+            request.assert_called_once_with("http://localhost", "/datasets/preview", {"configuration": config, "name": "Reusable"}, timeout=120)
+            code, text, request = self.cli(["dataset", "publish", "--config", str(file), "--name", "Reusable", "--digest", digest], [{"id": digest}])
+            self.assertEqual(code, 0)
+            request.assert_called_once_with("http://localhost", "/datasets", {"configuration": config, "name": "Reusable", "digest": digest}, timeout=120)
+            code, text, request = self.cli(["dataset", "get", "--config", str(file), "--id", digest], [{"id": digest}])
+            self.assertEqual(code, 0)
+            self.assertIn("/datasets/" + digest + "?repository=%2Frepo&artifact=module%2Ftarget%2Fapp.jar", request.call_args.args[1])
+            with contextlib.redirect_stderr(io.StringIO()), self.assertRaises(SystemExit):
+                self.cli(["dataset", "publish", "--config", str(file), "--name", "Reusable"], [])
+
+    def test_dataset_lost_publication_response_is_not_replayed(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            config = self.configuration_file(Path(self.root))
+            with patch.object(client, "capabilities"), patch.object(client, "request", side_effect=RuntimeError("response lost")) as request:
+                with self.assertRaisesRegex(RuntimeError, "response lost"):
+                    client.main(["--workspace", self.root, "--url", "http://localhost", "dataset", "publish", "--config", config, "--name", "Saved", "--digest", "a" * 64])
+            self.assertEqual(request.call_count, 1)
+
+    def test_report_polls_receipt_and_downloads_html_without_repeating_post(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            queued = {"requestId": "receipt", "state": "QUEUED", "path": None}
+            done = {"requestId": "receipt", "state": "SUCCEEDED", "path": "reports/report.html"}
+            destination = str(Path(self.root) / "report.html")
+            code, text, request = self.cli(["campaign", "report", "--id", "saved", "--objective", "cost", "--mode", "MINIMIZE", "--output", destination], [queued, done, {"output": destination}])
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(text)["output"], destination)
+            self.assertEqual(request.call_count, 3)
+            self.assertEqual(request.call_args_list[0].args[1:], ("/campaigns/saved/report", {"objective": "cost", "mode": "MINIMIZE"}))
+            self.assertEqual(request.call_args_list[1].args[1], "/campaigns/saved/report?requestId=receipt")
+            self.assertEqual(request.call_args_list[2].kwargs["output"], destination)
+
+    def test_report_lost_response_is_never_replayed(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            with patch.object(client, "capabilities"), patch.object(client, "request", side_effect=RuntimeError("response lost")) as request:
+                with self.assertRaisesRegex(RuntimeError, "response lost"):
+                    client.main(["--workspace", self.root, "--url", "http://localhost", "campaign", "report", "--id", "saved"])
+            self.assertEqual(request.call_count, 1)
+
+    def test_report_requires_an_explicit_direction_with_an_objective(self):
+        with tempfile.TemporaryDirectory() as self.root:
+            with patch.object(client, "capabilities"), patch.object(client, "request") as request:
+                with self.assertRaisesRegex(RuntimeError, "both --objective and --mode"):
+                    client.main(["--workspace", self.root, "--url", "http://localhost", "campaign", "report", "--id", "saved", "--objective", "cost"])
+            request.assert_not_called()
+
     def test_storage_inspects_by_default_and_maintenance_is_explicit(self):
         with tempfile.TemporaryDirectory() as self.root:
             result = {"logicalBytes": 123}
@@ -298,7 +351,7 @@ class OperatorClientTest(unittest.TestCase):
 
     def test_campaign_actions_use_explicit_id_and_correct_method_and_timeout(self):
         self.root = "/work"
-        for action in ("get", "baseline-check", "summary", "start", "resume", "cancel", "report"):
+        for action in ("get", "baseline-check", "summary", "start", "resume", "cancel"):
             with self.subTest(action=action):
                 _, _, request = self.cli(["campaign", action, "--id", "saved", "--timeout", "91"], [{"id": "saved"}])
                 call = request.call_args

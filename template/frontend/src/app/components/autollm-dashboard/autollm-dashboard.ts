@@ -262,6 +262,11 @@ export class AutoLlmDashboard {
   });
   readonly proposalTargets = computed(() => Object.entries(this.store.proposal()?.targets ?? {}));
   readonly targetIds = computed(() => this.store.targets().map((target) => target.id));
+  readonly datasetOverlap = computed(() => {
+    const proposal = this.store.proposal();
+    const testing = new Set(proposal?.testing ?? []);
+    return proposal?.training.filter((path) => testing.has(path)).length ?? 0;
+  });
   readonly datasetSelection = computed<DatasetSelection>(() => {
     const proposal = this.store.proposal();
     const screening = proposal?.screening;
@@ -273,7 +278,8 @@ export class AutoLlmDashboard {
     };
     const testing = proposal?.testing ?? [];
     for (const path of screening?.originalPool ?? screening?.screening?.originalPool ?? []) {
-      if (!testing.includes(path) && !(path in excluded)) excluded[path] = '';
+      if (!testing.includes(path) && !proposal?.training.includes(path) && !(path in excluded))
+        excluded[path] = '';
     }
     return { training: proposal?.training ?? [], testing, excluded };
   });

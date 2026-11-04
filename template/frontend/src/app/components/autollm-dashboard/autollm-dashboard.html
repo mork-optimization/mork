@@ -162,6 +162,73 @@
                       [value]="config.comparisonPath ?? ''"
                       (change)="update('comparisonPath', $event)"
                   /></mat-form-field>
+                  <p>
+                    Configured training and comparison datasets skip screening and splitting. Their
+                    membership is preserved, including any overlap.
+                  </p>
+                  <details (toggle)="$any($event.target).open && store.loadDatasets()">
+                    <summary>Approved project datasets</summary>
+                    <button mat-button [disabled]="store.busy()" (click)="store.loadDatasets()">
+                      Refresh saved datasets
+                    </button>
+                    <mat-form-field appearance="outline">
+                      <mat-label>Saved dataset selection</mat-label>
+                      <select
+                        matNativeControl
+                        [disabled]="store.busy()"
+                        (change)="store.useDataset($any($event.target).value)"
+                      >
+                        <option value="">Select a saved dataset</option>
+                        @for (entry of store.datasets(); track entry.id) {
+                          <option [value]="entry.id">
+                            {{ entry.name }} · {{ entry.trainingCount }} training /
+                            {{ entry.comparisonCount }} comparison · {{ entry.overlap }} shared
+                          </option>
+                        }
+                      </select>
+                    </mat-form-field>
+                    <p>
+                      Saved selections survive campaign cleanup. Saving does not approve or start a
+                      campaign.
+                    </p>
+                    <mat-form-field appearance="outline"
+                      ><mat-label>Selection name</mat-label>
+                      <input
+                        matInput
+                        [ngModel]="store.datasetName()"
+                        (ngModelChange)="
+                          store.datasetName.set($event); store.datasetReview.set(null)
+                        "
+                      />
+                    </mat-form-field>
+                    <button
+                      mat-button
+                      [disabled]="store.busy() || !store.datasetName().trim()"
+                      (click)="store.previewDataset()"
+                    >
+                      Review current datasets for saving
+                    </button>
+                    @if (store.datasetReview(); as review) {
+                      <p>
+                        {{ review.name }} · {{ review.training.length }} training /
+                        {{ review.comparison.length }} comparison
+                      </p>
+                      <details>
+                        <summary>Exact membership, checksums and historical provenance</summary>
+                        <pre>{{ review | json }}</pre>
+                      </details>
+                      <p>
+                        Review digest: <code class="dataset-digest">{{ review.digest }}</code>
+                      </p>
+                      <button
+                        mat-flat-button
+                        [disabled]="store.busy()"
+                        (click)="store.publishDataset()"
+                      >
+                        Approve and save selection
+                      </button>
+                    }
+                  </details>
                   <details>
                     <summary>Prepare a screened dataset</summary>
                     <div class="fields">
@@ -807,9 +874,15 @@
             </div>
           </div>
           <p>
-            Testing includes training instances. These comparisons are not a held-out test of
-            generalization. Review exclusions and effective settings before launch.
+            {{ datasetOverlap() }} instances occur in both training and testing. Review membership,
+            exclusions and effective settings before launch.
           </p>
+          @if (proposal.datasetOrigin) {
+            <details>
+              <summary>Dataset provenance (historical screening)</summary>
+              <pre>{{ proposal.datasetOrigin | json }}</pre>
+            </details>
+          }
           <details>
             <summary>Testing and training membership</summary>
             <mat-form-field appearance="outline" subscriptSizing="dynamic"
@@ -1074,14 +1147,74 @@
                   Cancel campaign
                 </button>
               }
-              @if (campaign.status !== 'DRAFT' && !store.active()) {
-                <button mat-menu-item [disabled]="store.busy()" (click)="store.action('report')">
-                  Regenerate reports
-                </button>
-              }
               <button mat-menu-item (click)="openCleanup()">Review cleanup</button>
             </mat-menu>
           </div>
+          <details class="portable-report">
+            <summary>Portable campaign report</summary>
+            <p>
+              Generate a standalone HTML snapshot with results, component descriptions, timings and
+              token usage. Use your browser’s Print command to save it as PDF.
+            </p>
+            <div class="actions">
+              <label
+                >Report objective
+                <input
+                  list="report-objectives"
+                  [ngModel]="store.reportObjective()"
+                  (ngModelChange)="store.selectReportObjective($event)"
+                  placeholder="Saved primary objective"
+                />
+              </label>
+              <datalist id="report-objectives">
+                @for (objective of store.reportObjectives(); track objective) {
+                  <option [value]="objective"></option>
+                }
+              </datalist>
+              <label
+                >Direction
+                <select
+                  [ngModel]="store.reportMode()"
+                  (ngModelChange)="store.reportMode.set($event)"
+                >
+                  <option value="MINIMIZE">Minimize</option>
+                  <option value="MAXIMIZE">Maximize</option>
+                </select>
+              </label>
+              <button
+                mat-stroked-button
+                [disabled]="store.busy() || store.reportBusy()"
+                (click)="store.generateReport()"
+              >
+                {{ store.report()?.path ? 'Regenerate report' : 'Generate report' }}
+              </button>
+              @if (store.report()?.path; as path) {
+                <a mat-button [href]="store.artifactUrl(path)" download="autollm-report.html"
+                  >Download HTML</a
+                >
+              }
+            </div>
+            @if (store.report(); as report) {
+              <p role="status">
+                {{ report.state }}
+                @if (report.snapshotAt) {
+                  · Snapshot {{ report.snapshotAt | date: 'medium' }}
+                }
+              </p>
+              @if (report.failure) {
+                <p role="alert">
+                  Report generation failed: {{ report.failure }}. Any previous report remains
+                  available.
+                </p>
+              }
+              @if (report.exportFailure) {
+                <p role="alert">Other exports: {{ report.exportFailure }}</p>
+              }
+            }
+            @if (store.reportError(); as error) {
+              <p role="alert">Report status unavailable: {{ error }}</p>
+            }
+          </details>
           @if (!store.proposal() && primaryAction().reason) {
             <p class="muted" role="status">{{ primaryAction().reason }}</p>
           }
@@ -1128,7 +1261,7 @@
             <p class="error" role="alert">{{ problem.message }}</p>
             <p>{{ problem.recovery }}</p>
           }
-          @if (campaign.reportFailure) {
+          @if (campaign.reportFailure && !store.report()) {
             <details>
               <summary>Report export failed</summary>
               <pre>{{ campaign.reportFailure }}</pre>

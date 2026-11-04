@@ -44,7 +44,7 @@ public class AutoLlmFixture {
             System.out.println(json.writeValueAsString(Map.of("type", "item.completed", "item", Map.of("type", "command_execution", "command", "metadata-check", "aggregated_output", Files.readString(log)))));
             if (process.exitValue() != 0) throw new IllegalStateException("Local preparation metadata helper failed");
         }
-        Files.writeString(Path.of(args[output + 1]), json.writeValueAsString(Map.of("inventory", List.of("SimpleAlgorithm"), "metaheuristics", List.of("SimpleAlgorithm"), "components", List.of("FasterInvertedConstructiveNew"), "blacklist", "", "tests", List.of("fixture build"), "limitations", List.of("Deterministic fixture"))));
+        Files.writeString(Path.of(args[output + 1]), json.writeValueAsString(Map.of("inventory", List.of("SimpleAlgorithm"), "metaheuristics", List.of("SimpleAlgorithm"), "components", List.of("FasterInvertedConstructiveNew"), "blacklist", "", "tests", List.of("fixture build"), "limitations", List.of("Deterministic fixture"), "generatedComponents", List.of(Map.of("className", "es.urjc.etsii.grafo.autoconfigtests.create.FasterInvertedConstructiveNew", "role", "Constructive", "description", "Deterministic fixture constructor")))));
         System.out.println("{\"type\":\"turn.completed\"}");
     }
     private static void build() throws Exception {

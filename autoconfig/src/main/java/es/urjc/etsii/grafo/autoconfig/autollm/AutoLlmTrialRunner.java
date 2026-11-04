@@ -196,11 +196,6 @@ public final class AutoLlmTrialRunner {
         c.executionHost = workloads.probe(c.config, root);
         var versions = new LinkedHashMap<>(TargetPreflightUtil.versions(c.executionHost));
         c.versions = Map.copyOf(versions);
-        if (c.config.execution().target() == AutoLlmConfig.Target.SSH) {
-            if (c.screeningPath == null) c.screeningPath = Path.of(c.config.trainingPath()).getParent().getParent().toString();
-            es.urjc.etsii.grafo.autoconfig.screening.RemoteScreeningService.screened(screenedConfig(c));
-            AutoLlmFileUtil.write(root.resolve("control/config.json"), c.config); publish(c);
-        }
         Path codexVersion = preflight.resolve("codex-version");
         runCommand(c, List.of(c.config.codex().executable(), "--version"), repo, codexVersion, 30_000, true);
         versions.put("codex", AutoLlmFailureUtil.tail(codexVersion.resolve("stdout.log"), 4000) + AutoLlmFailureUtil.tail(codexVersion.resolve("stderr.log"), 4000));
@@ -209,17 +204,7 @@ public final class AutoLlmTrialRunner {
             String commit = Files.readString(preflight.resolve("ref/stdout.log")).strip();
             c.config = c.config.withRef(commit);
             Path baseline = root.resolve("baseline/source"); cloneProject(c, commit, baseline, preflight.resolve("clone"));
-            if (c.config.execution().target() == AutoLlmConfig.Target.SSH) {
-                var prepared = es.urjc.etsii.grafo.autoconfig.screening.RemoteScreeningService.screened(screenedConfig(c));
-                if (!commit.equals(prepared.commit())) throw new IllegalStateException("Baseline commit differs from approved screening");
-                Path screeningRoot = Path.of(c.screeningPath);
-                var manifest = AutoLlmFileUtil.read(screeningRoot.resolve("proposal/manifest.json"), es.urjc.etsii.grafo.autoconfig.screening.ScreeningData.Manifest.class);
-                if (!"QUALIFIED_SERVER_POOL".equals(manifest.reusePolicy()) || !prepared.sotaSha256().equals(AutoLlmFileUtil.hash(Path.of(c.config.sotaFile())))) throw new IllegalStateException("Approved selection policy or SOTA changed");
-                Path screened = screeningRoot.resolve(prepared.artifact());
-                if (!prepared.artifactSha256().equals(AutoLlmFileUtil.hash(screened))) throw new IllegalStateException("Approved screening executable changed");
-                Path destination = baseline.resolve(c.config.project().artifact()); Files.createDirectories(destination.getParent()); Files.copy(screened, destination, StandardCopyOption.REPLACE_EXISTING);
-                AutoLlmFileUtil.write(preflight.resolve("build/adopted-screening.json"), Map.of("artifactSha256", prepared.artifactSha256(), "buildEvidence", screeningRoot.resolve(prepared.baseline().buildDirectory()).toString()));
-            } else runCommand(c, c.config.project().buildCommand(), baseline, preflight.resolve("build"), c.config.execution().buildTimeoutMillis(), false);
+            runCommand(c, c.config.project().buildCommand(), baseline, preflight.resolve("build"), c.config.execution().buildTimeoutMillis(), false);
             Path jar = AutoLlmFileUtil.inside(baseline, c.config.project().artifact()); if (!Files.isRegularFile(jar)) throw new IllegalStateException("Build did not produce configured JAR: " + jar);
             if (c.config.execution().target() == AutoLlmConfig.Target.SSH) c.config = workloads.stageInputs(c.config, root);
             child(c, null, jar, preflight.resolve("check"), "--autollm-check", 0, c.config.execution().searchSpaceTimeoutMillis(), List.of());
@@ -388,9 +373,12 @@ public final class AutoLlmTrialRunner {
             }
             if (t.nextStage == LOCAL_PREPARATION) {
                 try (var permit = es.urjc.etsii.grafo.util.ConcurrencyUtil.acquirePermit(buildPermits, this::cancelled)) { runStage(c, t, LOCAL_PREPARATION, (a, dir) -> {
+                    substage(c, a, PreparationStage.BUILD);
                     runCommand(c, c.config.project().buildCommand(), source, dir.resolve("build"), c.config.execution().buildTimeoutMillis(), false);
                     Path jar = source.resolve(c.config.project().artifact());
+                    substage(c, a, PreparationStage.DEPENDENCIES);
                     verifyDependencies(baselineArtifact(c), jar, dir);
+                    substage(c, a, PreparationStage.METADATA);
                     child(c, t, jar, dir.resolve("check"), "--autollm-check", 0, c.config.execution().searchSpaceTimeoutMillis(), List.of());
                     return null;
                 }); } catch (RuntimeException e) {
@@ -607,10 +595,6 @@ public final class AutoLlmTrialRunner {
         if (campaign.trial != null && state.get("jobId") instanceof String job && state.get("connectionRetries") instanceof Number retries)
             campaign.trial.connectionRetries.merge(job, retries.intValue(), Math::max);
         publish(campaign);
-    }
-    private AutoLlmConfig screenedConfig(AutoLlmExecutionContext campaign) {
-        Path proposal = Path.of(campaign.screeningPath).resolve("proposal");
-        return campaign.config.withPaths(proposal.resolve("proposed-train.index").toString(), proposal.resolve("proposed-test.index").toString());
     }
     private void reconcileMetadata(AutoLlmExecutionContext campaign, AutoLlmCampaign.Trial trial, Path source) {
         Path root = executionRoot, directory = root.resolve("metadata");

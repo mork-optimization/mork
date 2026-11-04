@@ -238,6 +238,17 @@ def wait_target_probe(base, probe, deadline):
     return probe
 
 
+def datasets(args, base):
+    config = read_configuration(args)
+    if args.action in ("preview", "publish"):
+        body = {"configuration": config, "name": args.name}
+        if args.action == "publish": body["digest"] = args.digest
+        return request(base, "/datasets/preview" if args.action == "preview" else "/datasets", body, timeout=args.timeout)
+    query = urlencode({"repository": config["project"]["repository"], "artifact": config["project"]["artifact"]})
+    path = "/datasets" + ("/" + quote(args.id, safe="") if args.action == "get" else "")
+    return request(base, path + "?" + query, timeout=args.timeout)
+
+
 def lifecycle(args, base):
     root = "/campaigns" if args.command == "campaign" else "/screenings"
     if args.action == "list":
@@ -262,6 +273,27 @@ def lifecycle(args, base):
         return request(base, path + "/proposal", {"targets": args.target}, timeout=args.timeout)
     if args.action in ("get", "review", "summary", "recovery", "proposal"):
         return request(base, path if args.action == "get" else path + "/" + args.action, timeout=args.timeout, output=getattr(args, "response_output", None))
+    if args.command == "campaign" and args.action in ("report", "report-status"):
+        if args.action == "report-status":
+            query = "?" + urlencode({"requestId": args.request_id}) if args.request_id else ""
+            return request(base, path + "/report" + query, timeout=args.timeout)
+        if bool(args.objective) != bool(args.mode):
+            raise RuntimeError("Provide both --objective and --mode, or omit both to use saved report settings")
+        deadline = time.monotonic() + args.timeout
+        report = request(base, path + "/report", clean({"objective": args.objective, "mode": args.mode}), timeout=min(30, args.timeout))
+        while report["state"] in ("QUEUED", "RUNNING"):
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                return {**report, "message": "Generation continues; inspect campaign report-status with this request ID. Do not resubmit."}
+            report = request(base, path + "/report?" + urlencode({"requestId": report["requestId"]}), timeout=min(10, remaining))
+            if report["state"] in ("QUEUED", "RUNNING"):
+                time.sleep(min(0.25, max(0, deadline - time.monotonic())))
+        if report["state"] == "FAILED":
+            raise RuntimeError("Report generation failed: " + str(report.get("failure")))
+        if args.output:
+            receipt = request(base, path + "/artifact?" + urlencode({"path": report["path"]}), output=args.output, timeout=args.timeout)
+            return {**report, "output": receipt["output"]}
+        return report
     if args.action == "dataset": return request(base, path + "/dataset", read_object(args.selection), method="PUT", timeout=args.timeout)
     if args.action == "edit": return request(base, path + "/draft", read_configuration(args), method="PUT", timeout=args.timeout)
     body = ({"digest": args.proposal_sha256}) if args.action == "approve" else {}
@@ -803,13 +835,19 @@ def lifecycle_commands(commands):
                 action.add_argument("--settings", help="JSON screening settings; omitted values use backend defaults")
                 action.add_argument("--input", required=True, help="Full original instance pool, relative to the configured repository")
                 action.add_argument("--training-fraction", type=float)
-        names = ("get", "probe-status", "baseline-check", "summary", "recovery", "proposal", "approve", "edit", "dataset", "amend-trials", "start", "resume", "cancel", "report") if kind == "campaign" else ("get", "review", "resume", "cancel")
+        names = ("get", "probe-status", "baseline-check", "summary", "recovery", "proposal", "approve", "edit", "dataset", "amend-trials", "start", "resume", "cancel", "report", "report-status") if kind == "campaign" else ("get", "review", "resume", "cancel")
         for name in names:
             action = actions.add_parser(name)
             action.add_argument("--id", required=True, help=f"Saved {kind} ID; mutating commands never select another operation")
             action.add_argument("--timeout", type=positive_seconds, default=3600 if name == "baseline-check" else 30)
             if kind == "campaign" and name in ("start", "proposal"):
                 action.add_argument("--target", action="append", default=[], help="Start only these qualified servers; repeat for an explicit healthy subset")
+            if kind == "campaign" and name == "report":
+                action.add_argument("--objective")
+                action.add_argument("--mode", choices=("MINIMIZE", "MAXIMIZE"))
+                action.add_argument("--output", help="Download the portable HTML report to FILE")
+            if kind == "campaign" and name == "report-status":
+                action.add_argument("--request-id", help="Inspect a specific generation receipt")
             if name == "edit": action.add_argument("--config", required=True)
             if name == "amend-trials": action.add_argument("--trials", required=True, type=bounded_integer(1, 10000))
             if name == "dataset": action.add_argument("--selection", required=True)
@@ -1010,6 +1048,15 @@ def main(argv=None):
     bundle.add_argument("--max-files", dest="maximum_files", type=bounded_integer(1, 64), default=16)
     bundle.add_argument("--max-bytes", dest="maximum_bytes", type=bounded_integer(1024, 64 * 1024 * 1024), default=8 * 1024 * 1024, help="Maximum uncompressed evidence payload; a bounded manifest is additional")
     bundle.add_argument("--timeout", type=positive_seconds, default=10)
+    dataset = commands.add_parser("dataset", help="Review and save approved project dataset selections")
+    actions = dataset.add_subparsers(dest="action", required=True)
+    for name in ("list", "get", "preview", "publish"):
+        action = actions.add_parser(name)
+        action.add_argument("--config", required=True)
+        action.add_argument("--timeout", type=positive_seconds, default=120)
+        if name == "get": action.add_argument("--id", required=True)
+        if name in ("preview", "publish"): action.add_argument("--name", required=True)
+        if name == "publish": action.add_argument("--digest", required=True, type=reviewed_sha256)
     lifecycle_commands(commands)
     servers = commands.add_parser("target", help="List, enroll, drain, recover, or remove campaign servers")
     actions = servers.add_subparsers(dest="action", required=True)
@@ -1104,7 +1151,7 @@ def main(argv=None):
         base = base_url(args)
         capabilities(base, args.workspace)
         operation = {"cleanup": cleanup, "config": configuration, "status": status, "logs": logs, "diagnose": diagnose,
-                  "campaign": lifecycle, "screening": lifecycle, "watch": watch, "target": target, "trial": trial, "remote": operator, "recover": operator, "compare": operator, "storage": operator, "source": operator, "artifact": operator}[args.command]
+                  "dataset": datasets, "campaign": lifecycle, "screening": lifecycle, "watch": watch, "target": target, "trial": trial, "remote": operator, "recover": operator, "compare": operator, "storage": operator, "source": operator, "artifact": operator}[args.command]
         if args.response_output and (args.command in ("watch", "logs") or args.command == "compare" and args.format != "json"):
             with atomic_output(args.response_output) as output_stream, contextlib.redirect_stdout(output_stream):
                 result = operation(args, base)

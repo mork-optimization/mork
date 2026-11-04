@@ -42,6 +42,8 @@ public class AutoLlmCampaign {
     public String id;
     public AutoLlmConfig config;
     public String createdAt;
+    public String startedAt;
+    public String stoppedAt;
     public CampaignStatus status = CampaignStatus.DRAFT;
     public String failure;
     public AutoLlmFailureUtil.Failure problem;
@@ -70,6 +72,8 @@ public class AutoLlmCampaign {
         result.id = this.id;
         result.config = this.config;
         result.createdAt = this.createdAt;
+        result.startedAt = this.startedAt;
+        result.stoppedAt = this.stoppedAt;
         result.status = this.status;
         result.failure = this.failure;
         result.problem = this.problem;

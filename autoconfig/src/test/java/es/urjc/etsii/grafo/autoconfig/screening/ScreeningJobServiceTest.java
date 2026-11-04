@@ -18,7 +18,7 @@ class ScreeningJobServiceTest {
         Files.writeString(repo.resolve("sota.json"), "{}"); Files.writeString(repo.resolve("pool.index"), "input");
         var config = new AutoLlmConfig(new AutoLlmConfig.Project(repo.toString(), "HEAD", List.of("./mvnw", "verify"), "target/app.jar", null), temp.resolve("workspace").toString(), null, null, null,
                 "sota.json", null, null, null, null, null, null, null, new AutoLlmConfig.Execution(32, null, null, null, null, null, null, null, null, null, null));
-        campaigns = new AutoLlmCampaignStore(config); service = new ScreeningJobService(campaigns, mock(AutoLlmProcessRunner.class));
+        campaigns = spy(new AutoLlmCampaignStore(config)); service = new ScreeningJobService(campaigns, mock(AutoLlmProcessRunner.class));
         request = new ScreeningJobService.Request(config, new InstanceScreeningConfig(null, null, null, null, null, null, null, null, null, null, null), "pool.index", null);
     }
     @AfterEach void close() { service.close(); }
@@ -41,14 +41,17 @@ class ScreeningJobServiceTest {
     }
     @Test void failedCheckpointWriteReleasesOwnershipWithoutStartingWork() throws Exception {
         var job = service.create(request);
-        Files.createDirectory(campaigns.root().resolve("screenings").resolve(job.id).resolve("job.json.tmp"));
-        assertThrows(java.io.UncheckedIOException.class, () -> service.resume(job.id)); assertNull(service.active());
+        Path checkpoint = campaigns.root().resolve("screenings").resolve(job.id).resolve("job.json");
+        try (var files = mockStatic(AutoLlmFileUtil.class, CALLS_REAL_METHODS)) {
+            files.when(() -> AutoLlmFileUtil.write(eq(checkpoint), any())).thenThrow(new java.io.UncheckedIOException(new java.io.IOException("Checkpoint write failed")));
+            assertThrows(java.io.UncheckedIOException.class, () -> service.resume(job.id)); assertNull(service.active());
+        }
         assertDoesNotThrow(() -> campaigns.requireReservation(UUID.randomUUID().toString()));
         try (var lock = campaigns.lock()) { assertTrue(lock.lock().isValid()); }
     }
     @Test void failedReservationWriteReleasesScreeningOwnership() throws Exception {
         var job = service.create(request);
-        Files.createDirectory(campaigns.root().resolve("operation-reservation.json.tmp"));
+        doThrow(new java.io.UncheckedIOException(new java.io.IOException("Reservation write failed"))).when(campaigns).reserve(job.id);
         assertThrows(java.io.UncheckedIOException.class, () -> service.resume(job.id));
         assertNull(service.active()); assertEquals("DRAFT", service.load(job.id).status.name());
         try (var lock = campaigns.lock()) { assertTrue(lock.lock().isValid()); }

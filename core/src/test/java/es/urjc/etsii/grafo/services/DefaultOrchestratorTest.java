@@ -88,7 +88,7 @@ class DefaultOrchestratorTest {
                 executor,
                 eventPublisher,
                 lifecycle,
-                resultsSerializer, mock(TimeStatsService.class), new es.urjc.etsii.grafo.monitoring.NormalExperimentRunState<TestSolution, TestInstance>(new es.urjc.etsii.grafo.results.ResultStore<>(), mock(org.springframework.beans.factory.ObjectProvider.class))
+                resultsSerializer, mock(TimeStatsService.class), new es.urjc.etsii.grafo.monitoring.NormalExperimentRunState<TestSolution, TestInstance>(new es.urjc.etsii.grafo.results.ResultStore<>(), mock(org.springframework.beans.factory.ObjectProvider.class)), new es.urjc.etsii.grafo.benchmark.BenchmarkService()
         );
 
         Assertions.assertDoesNotThrow(() -> orchestrator.run());
@@ -119,7 +119,7 @@ class DefaultOrchestratorTest {
         var state = new es.urjc.etsii.grafo.monitoring.NormalExperimentRunState<TestSolution, TestInstance>(new es.urjc.etsii.grafo.results.ResultStore<>(), mock(org.springframework.beans.factory.ObjectProvider.class));
         var orchestrator = new DefaultOrchestrator<>(solver, new BlockConfig(), (InstanceManager<TestInstance>) mock(InstanceManager.class),
                 experiments, Optional.empty(), executor, mock(MorkEventPublisher.class), lifecycle,
-                (ResultsSerializerListener<TestSolution, TestInstance>) mock(ResultsSerializerListener.class), mock(TimeStatsService.class), state);
+                (ResultsSerializerListener<TestSolution, TestInstance>) mock(ResultsSerializerListener.class), mock(TimeStatsService.class), state, new es.urjc.etsii.grafo.benchmark.BenchmarkService());
         Assertions.assertSame(initial, Assertions.assertThrows(IllegalStateException.class, () -> orchestrator.run()));
         Assertions.assertEquals(2, initial.getSuppressed().length);
         Assertions.assertEquals(2, state.status().issueCount());

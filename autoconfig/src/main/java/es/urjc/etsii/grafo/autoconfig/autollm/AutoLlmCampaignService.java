@@ -35,9 +35,10 @@ public class AutoLlmCampaignService {
         this.targetProbes = new AutoLlmTargetProbeService(store, processes);
     }
     public AutoLlmConfig defaults() {
-        return AutoLlmNormalization.normalize(defaults.withPaths(defaults.trainingPath() == null ? instances.getPath("irace") : defaults.trainingPath(),
-                defaults.comparisonPath() == null ? instances.getPath("autollm-comparison") : defaults.comparisonPath()));
+        return AutoLlmNormalization.normalize(defaults.withPaths(defaults.trainingPath() == null ? namedPath("irace") : defaults.trainingPath(),
+                defaults.comparisonPath() == null ? namedPath("autollm-comparison") : defaults.comparisonPath()));
     }
+    private String namedPath(String name) { return instances.getPaths() == null ? null : instances.getPaths().get(name); }
     public List<String> validate(AutoLlmConfig c) {
         c = AutoLlmNormalization.normalize(c);
         var errors = new ArrayList<String>();
@@ -54,8 +55,11 @@ public class AutoLlmCampaignService {
         for (String value : Arrays.asList(c.sotaFile(), c.trainingPath(), c.comparisonPath())) if (value == null || value.isBlank()) errors.add("SOTA, training, and comparison paths are required");
         if (c.sotaFile() != null && !Files.isRegularFile(resolve(repo, c.sotaFile()))) errors.add("SOTA file does not exist");
         if (c.initialConfigurationsFile() != null && !c.initialConfigurationsFile().isBlank() && !Files.isRegularFile(resolve(repo, c.initialConfigurationsFile()))) errors.add("Initial configuration file does not exist");
-        if (c.trainingPath() != null && !Files.exists(resolve(repo, c.trainingPath()))) errors.add("Training input does not exist");
-        if (c.comparisonPath() != null && !Files.exists(resolve(repo, c.comparisonPath()))) errors.add("Comparison input does not exist");
+        try {
+            AutoLlmDatasetLibrary.members(repo, c.trainingPath(), "Training");
+            AutoLlmDatasetLibrary.members(repo, c.comparisonPath(), "Comparison");
+            AutoLlmDatasetLibrary.verifySelection(resolve(repo, c.trainingPath()), resolve(repo, c.comparisonPath()));
+        } catch (RuntimeException e) { errors.add("Invalid datasets: " + e.getMessage()); }
         return errors;
     }
     private AutoLlmCampaign createInternal(AutoLlmConfig requested) {
@@ -79,6 +83,7 @@ public class AutoLlmCampaignService {
             if (!instancePaths.isEmpty()) AutoLlmFileUtil.write(directory.resolve("control/instance-paths.json"), instancePaths);
             var aliases = AutoLlmInputUtil.aliases(resolve(repo, requested.trainingPath()), resolve(repo, requested.comparisonPath()));
             if (!aliases.isEmpty()) AutoLlmFileUtil.write(directory.resolve("control/input-aliases.json"), aliases);
+            AutoLlmFileUtil.write(directory.resolve("control/dataset-origin.json"), AutoLlmDatasetLibrary.provenance(resolve(repo, requested.trainingPath()), resolve(repo, requested.comparisonPath())));
             Files.copy(resolve(repo, requested.sotaFile()), directory.resolve("control/sota.json"), StandardCopyOption.REPLACE_EXISTING);
             var seedJson = new ArrayList<Object>(); for (var seed : seeds) seedJson.add(codec.toJsonTree(seed));
             AutoLlmFileUtil.write(directory.resolve("control/seeds.json"), seedJson);
@@ -127,6 +132,7 @@ public class AutoLlmCampaignService {
     private AutoLlmCampaign.TargetState target(AutoLlmCampaign c, String id) { return PREPARATION_TARGET.equals(id) ? c.localPreparation : c.targets.get(id); }
     private boolean checkingBaseline;
     private volatile long reportSequence;
+    private final Map<String, String> pendingReports = new ConcurrentHashMap<>();
     private final Set<String> reportedAttempts = new HashSet<>();
 
     private <T> T invoke(Callable<T> operation) {
@@ -184,16 +190,7 @@ public class AutoLlmCampaignService {
         if (result.exitCode() != 0) throw new IllegalStateException("Cannot resolve committed baseline; inspect " + evidence);
         try {
             String commit = Files.readString(evidence.resolve("stdout.log")).strip();
-            if (c.config.execution().target() == AutoLlmConfig.Target.SSH || c.screeningPath != null) {
-                var screeningConfig = c.config;
-                if (c.screeningPath != null) {
-                    Path proposal = Path.of(c.screeningPath).resolve("proposal");
-                    screeningConfig = c.config.withPaths(proposal.resolve("proposed-train.index").toString(), proposal.resolve("proposed-test.index").toString());
-                }
-                var prepared = es.urjc.etsii.grafo.autoconfig.screening.RemoteScreeningService.screened(screeningConfig);
-                if (!prepared.commit().equals(commit)) throw new IllegalStateException("Baseline differs from approved screening");
-                if (c.screeningPath == null) c.screeningPath = Path.of(c.config.trainingPath()).getParent().getParent().toString();
-            }
+            AutoLlmDatasetLibrary.verifySelection(Path.of(c.config.trainingPath()), Path.of(c.config.comparisonPath()));
             c.config = c.config.withRef(commit);
             String train = AutoLlmInputUtil.snapshot(root, "training", es.urjc.etsii.grafo.util.InstancePathUtil.list(c.config.trainingPath()));
             String test = AutoLlmInputUtil.snapshot(root, "comparison", es.urjc.etsii.grafo.util.InstancePathUtil.list(c.config.comparisonPath()));
@@ -225,13 +222,13 @@ public class AutoLlmCampaignService {
         }
     }
     public record Proposal(String digest, AutoLlmConfig configuration, List<String> training, List<String> testing,
-                           Object screening, Map<String,Object> targets, String approvedDigest, AutoLlmStorageEstimate.Estimate storage, GenerationSettings generation) {}
+                           Object screening, Object datasetOrigin, int overlap, Map<String,Object> targets, String approvedDigest, AutoLlmStorageEstimate.Estimate storage, GenerationSettings generation) {}
     private Proposal proposalInternal(AutoLlmCampaign c) {
         if (c.baselineCommit == null) throw new IllegalStateException("Run the baseline check before reviewing the campaign");
         verifyCanonical(c);
         var training = es.urjc.etsii.grafo.util.InstancePathUtil.list(c.config.trainingPath());
         var testing = es.urjc.etsii.grafo.util.InstancePathUtil.list(c.config.comparisonPath());
-        if (!new HashSet<>(testing).containsAll(training)) throw new IllegalStateException("Testing must include training");
+        var overlap = new HashSet<>(training); overlap.retainAll(testing);
         var targets = new TreeMap<String,Object>();
         for (var e : c.targets.entrySet()) if (e.getValue().status != TargetStatus.REMOVED) {
             var t = e.getValue();
@@ -249,14 +246,17 @@ public class AutoLlmCampaignService {
             for (var d : proposal.instances()) {
                 String path = localPaths.apply(d.instance());
                 decisions.add(new es.urjc.etsii.grafo.autoconfig.screening.ScreeningData.Decision(path, d.classification(), d.bestObserved(), d.firstPassTtbNanos(), d.confirmations(), d.fastHits(), d.failures(), d.reason()));
-                if (!testing.contains(path)) excluded.put(path, d.reason());
+                if (!testing.contains(path) && !training.contains(path)) excluded.put(path, d.reason());
             }
             screening = Map.of("originalPool", original, "decisions", decisions, "excluded", excluded,
                     "proposalSha256", AutoLlmFileUtil.hash(source.resolve("proposal/proposal.json")));
         }
         Path selection = store.directory(c.id).resolve("control/dataset-decisions.json");
         if (Files.isRegularFile(selection)) screening = Map.of("screening", screening, "selection", AutoLlmFileUtil.read(selection, Object.class));
+        Path origin = store.directory(c.id).resolve("control/dataset-origin.json");
+        Object datasetOrigin = Files.isRegularFile(origin) ? AutoLlmFileUtil.read(origin, Object.class) : Map.of();
         var evidence = new TreeMap<String,Object>();
+        evidence.put("datasetOrigin", datasetOrigin);
         var scope = new TreeMap<String,Object>();
         for (var e : c.targets.entrySet()) if (e.getValue().status != TargetStatus.REMOVED) scope.put(e.getKey(), Map.of("definition", e.getValue().definition, "selected", c.reviewedTargets.contains(e.getKey()), "artifactSha256", e.getValue().baselineArtifactSha256 == null ? "" : e.getValue().baselineArtifactSha256, "allocation", e.getValue().host == null ? Map.of() : Map.of("identity", e.getValue().host.identity(), "workers", e.getValue().host.effectiveWorkers())));
         var proposedConfig = AutoLlmNormalization.normalize(c.proposedTrials == null ? c.config : c.config.withTrials(c.proposedTrials));
@@ -269,7 +269,7 @@ public class AutoLlmCampaignService {
         String digest = AutoLlmFileUtil.canonicalHash(evidence);
         Path snapshot = store.directory(c.id).resolve("control/proposals/" + digest + ".json");
         if (!Files.exists(snapshot)) AutoLlmFileUtil.write(snapshot, evidence);
-        var proposal = new Proposal(digest, proposedConfig, training, testing, screening, targets, c.approvedProposal, AutoLlmStorageEstimate.estimate(c, store.directory(c.id), proposedConfig), GenerationSettings.from(proposedConfig));
+        var proposal = new Proposal(digest, proposedConfig, training, testing, screening, datasetOrigin, overlap.size(), targets, c.approvedProposal, AutoLlmStorageEstimate.estimate(c, store.directory(c.id), proposedConfig), GenerationSettings.from(proposedConfig));
         AutoLlmFileUtil.write(store.directory(c.id).resolve("control/campaign-proposal.json"), proposal);
         return proposal;
     }
@@ -337,18 +337,19 @@ public class AutoLlmCampaignService {
             if (old.status != CampaignStatus.DRAFT) throw new IllegalStateException("Only draft datasets can be edited");
             if (selection.training() == null || selection.testing() == null || selection.excluded() == null) throw new IllegalArgumentException("Provide training, testing and exclusions with reasons");
             var train = new LinkedHashSet<>(selection.training()); var test = new LinkedHashSet<>(selection.testing());
-            if (train.isEmpty() || test.isEmpty() || train.size() != selection.training().size() || test.size() != selection.testing().size() || !test.containsAll(train))
-                throw new IllegalArgumentException("Training/testing must be nonempty, contain no duplicates, and testing must include training");
+            if (train.isEmpty() || test.isEmpty() || train.size() != selection.training().size() || test.size() != selection.testing().size())
+                throw new IllegalArgumentException("Training/testing must be nonempty and contain no duplicates");
             Path root = store.directory(id);
             Path originalPool = root.resolve("control/original-pool.json");
             var original = new LinkedHashSet<>(Files.isRegularFile(originalPool)
                     ? AutoLlmFileUtil.read(originalPool, new TypeReference<List<String>>() {})
                     : es.urjc.etsii.grafo.util.InstancePathUtil.list(old.screeningPath == null ? old.config.comparisonPath() : Path.of(old.screeningPath).resolve("control/original.index").toString()));
-            var accounted = new HashSet<>(test);
+            if (!Files.isRegularFile(originalPool) && old.screeningPath == null) original.addAll(es.urjc.etsii.grafo.util.InstancePathUtil.list(old.config.trainingPath()));
+            var accounted = new HashSet<>(test); accounted.addAll(train);
             for (var e : selection.excluded().entrySet()) {
-                if (e.getValue() == null || e.getValue().isBlank() || !accounted.add(e.getKey())) throw new IllegalArgumentException("Every excluded input needs a reason and cannot also be in testing");
+                if (e.getValue() == null || e.getValue().isBlank() || !accounted.add(e.getKey())) throw new IllegalArgumentException("Every excluded input needs a reason and cannot also be in training or testing");
             }
-            if (!accounted.equals(original)) throw new IllegalArgumentException("Testing plus exclusions must account for the complete original input pool");
+            if (!accounted.equals(original)) throw new IllegalArgumentException("Training, testing and exclusions must account for the complete original input pool");
             try {
                 Path revision = root.resolve("dataset-revisions/" + UUID.randomUUID()); Files.createDirectories(revision);
                 Files.write(revision.resolve("training.index"), train); Files.write(revision.resolve("testing.index"), test);
@@ -358,11 +359,15 @@ public class AutoLlmCampaignService {
                 if (old.screeningPath != null) {
                     Map<String,Map<String,String>> originalInputs = AutoLlmFileUtil.read(Path.of(old.screeningPath).resolve("data/original-inputs.json"), new TypeReference<>() {});
                     var aliases = new LinkedHashMap<String,String>();
-                    for (var e : originalInputs.entrySet()) if (test.contains(e.getValue().get("path"))) aliases.put(e.getKey(), e.getValue().get("path"));
+                    for (var e : originalInputs.entrySet()) if (test.contains(e.getValue().get("path")) || train.contains(e.getValue().get("path"))) aliases.put(e.getKey(), e.getValue().get("path"));
                     AutoLlmFileUtil.write(store.directory(replacement.id).resolve("control/input-aliases.json"), aliases);
                 }
                 AutoLlmFileUtil.write(store.directory(replacement.id).resolve("control/dataset-decisions.json"), selection);
-                AutoLlmFileUtil.write(store.directory(replacement.id).resolve("control/original-pool.json"), original);
+                Path destination = store.directory(replacement.id);
+                AutoLlmFileUtil.write(destination.resolve("control/original-pool.json"), original);
+                replacement.config = replacement.config.withPaths(AutoLlmInputUtil.snapshot(destination, "training", new ArrayList<>(train)), AutoLlmInputUtil.snapshot(destination, "comparison", new ArrayList<>(test)));
+                AutoLlmFileUtil.write(destination.resolve("control/config.json"), replacement.config);
+                if (replacement.screeningPath != null) new OwnershipManifest(store.root()).screeningDependency(Path.of(replacement.screeningPath), destination);
                 store.save(replacement); store.event(id, "dataset-revised", Map.of("campaignId", replacement.id)); return replacement;
             } catch (IOException e) { throw new UncheckedIOException(e); }
         });
@@ -437,6 +442,8 @@ public class AutoLlmCampaignService {
             acquire(c);
             try {
                 pin(c); c.status = CampaignStatus.RUNNING; c.problem = null; c.failure = null;
+                if (c.startedAt == null) c.startedAt = Instant.now().toString();
+                c.stoppedAt = null;
                 for (var target : c.targets.values()) if (target.status != TargetStatus.REMOVED) {
                     target.problem = null; target.assignedTrial = null;
                     target.status = target.draining ? TargetStatus.DRAINING : target.baselineReady ? TargetStatus.READY : TargetStatus.REGISTERED;
@@ -787,6 +794,7 @@ public class AutoLlmCampaignService {
             boolean attention = false; for (var t : current.targets.values()) attention |= t.status == TargetStatus.NEEDS_ATTENTION;
             current.status = attention ? CampaignStatus.NEEDS_ATTENTION : CampaignStatus.WAITING_FOR_TARGETS;
         } else current.status = blocked || pending ? CampaignStatus.NEEDS_ATTENTION : failed ? CampaignStatus.COMPLETED_WITH_FAILURES : CampaignStatus.SUCCEEDED;
+        if (current.status != CampaignStatus.WAITING_FOR_TARGETS) current.stoppedAt = Instant.now().toString();
         save();
         if (current.status != CampaignStatus.WAITING_FOR_TARGETS) reportAsync(true);
     }
@@ -846,17 +854,47 @@ public class AutoLlmCampaignService {
             }
         });
     }
+    private void queueDetachedReport(AutoLlmCampaign snapshot) {
+        String request = UUID.randomUUID().toString(); pendingReports.put(request, snapshot.id);
+        reporting.execute(() -> {
+            try { buildReport(snapshot); }
+            finally { pendingReports.remove(request); }
+        });
+    }
     private void buildReport(AutoLlmCampaign c) {
         Path root = store.directory(c.id);
-        try { CodexEvidenceUtil.report(c, root); reports.report(c, root); c.reportFailure = null; }
-        catch (RuntimeException e) { c.reportFailure = ExceptionUtil.stacktrace(e); store.event(c.id, "report-failed", c.reportFailure); }
-        c.reportUpdatedAt = Instant.now().toString();
+        if (!AutoLlmHtmlReports.available(root)) return;
+        try { buildReport(c, AutoLlmHtmlReports.queued(c, root, null)); }
+        catch (RuntimeException e) { c.reportFailure = e.toString(); }
     }
-    public AutoLlmCampaign report(String id) {
+    private void buildReport(AutoLlmCampaign c, AutoLlmHtmlReports.Status request) {
+        Path root = store.directory(c.id);
+        if (!AutoLlmHtmlReports.available(root)) return;
+        var errors = new ArrayList<String>();
+        try { CodexEvidenceUtil.report(c, root); } catch (RuntimeException e) { errors.add("Usage export: " + e); }
+        try { reports.report(c, root); } catch (RuntimeException e) { errors.add("Excel/JSON export: " + e); }
+        if (!AutoLlmHtmlReports.available(root)) return;
+        var status = AutoLlmHtmlReports.generate(c, root, request, errors.isEmpty() ? null : String.join("; ", errors));
+        c.reportFailure = status.failure() == null ? status.exportFailure() : status.failure();
+        c.reportUpdatedAt = status.finishedAt();
+    }
+    public AutoLlmHtmlReports.Status report(String id, AutoLlmPortableReport.Selection selection) {
         return invoke(() -> {
-            if (active != null) throw new IllegalStateException("Wait for active work before regenerating reports");
-            try (var lock = store.lock()) { var c = store.load(id); buildReport(c); store.save(c); return c; }
+            var c = current != null && current.id.equals(id) ? current.copy() : store.load(id);
+            Path root = store.directory(id);
+            var request = AutoLlmHtmlReports.queued(c, root, selection);
+            pendingReports.put(request.requestId(), id);
+            reporting.execute(() -> {
+                try { buildReport(c, request); }
+                finally { pendingReports.remove(request.requestId()); }
+            });
+            return request;
         });
+    }
+    public boolean hasSelectedReports() {
+        for (String id : pendingReports.values())
+            if (AutoLlmCleanup.requested(store.directory(id)) || AutoLlmCleanup.requested(store.root())) return true;
+        return false;
     }
     public record TargetCheck(Integer parameters, boolean qualified, boolean withinLimit, String directory, AutoLlmFailureUtil.Failure problem) {}
     public record BaselineCheck(int parameters, int maxParameters, boolean withinLimit, boolean ready,
@@ -1084,6 +1122,7 @@ public class AutoLlmCampaignService {
     }
     private void finishCancellation() {
         current.status = AutoLlmCampaignStore.hasUncollectedJobs(store.directory(current.id)) ? CampaignStatus.NEEDS_ATTENTION : current.problem == null ? CampaignStatus.CANCELLED : CampaignStatus.NEEDS_ATTENTION;
+        current.stoppedAt = Instant.now().toString();
         save(); reportAsync(true);
     }
     public Object metadataCheck(String id, int number, String blacklist) {
@@ -1102,6 +1141,7 @@ public class AutoLlmCampaignService {
                     c.status = CampaignStatus.INTERRUPTED;
                     for (var t : c.trials) if (t.status.inProgress()) t.status = TrialStatus.INTERRUPTED;
                     store.save(c);
+                    queueDetachedReport(c.copy());
                 }
             } catch (IllegalStateException ignored) { /* Another controller owns this workspace. */ }
             return null;
@@ -1115,8 +1155,10 @@ public class AutoLlmCampaignService {
                 for (var job : jobs.values()) { stopping.add(job.runner); job.runner.shutdown(); }
                 if (current != null) {
                     current.status = CampaignStatus.INTERRUPTED;
+                    current.stoppedAt = Instant.now().toString();
                     for (var trial : current.trials) if (trial.status.inProgress()) trial.status = TrialStatus.INTERRUPTED;
                     save();
+                    queueDetachedReport(current.copy());
                 }
             }).get(5, TimeUnit.SECONDS);
         } catch (Exception ignored) { /* OS ownership is released when the controller exits. */ }

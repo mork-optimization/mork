@@ -1,10 +1,10 @@
 # Screening trivial instances
 
-The AutoLLM skill requires screening as a preparation step before tuning or final comparison, unless a matching approved selection already exists. It uses a fixed SOTA and proposes a fresh training/testing selection without changing the datasets or existing indexes. Review and explicitly approve the results before using the new indexes.
+Screening is an explicit preparation option when a new selection is needed. Configured nonempty training/comparison datasets and approved project selections skip screening and splitting, locally and over SSH. See the [dataset library](autollm.md#approved-project-dataset-library). Screening uses a fixed SOTA and proposes fresh indexes without changing the original dataset.
 
 ## Dashboard and durable jobs
 
-The AutoLLM dashboard can prepare datasets locally or over SSH before a campaign exists. Choose the execution host, committed project/build/artifact and fixed SOTA, then provide the full original pool and training fraction. The dashboard shows build, warmup, initial measurements, confirmations, selection and approval phases, including completed/total measurement counts and last synchronization. It provides the report, every instance decision and downloadable membership lists before the explicit approval button.
+The AutoLLM dashboard can prepare datasets locally or over SSH before a campaign exists. Choose the execution host, committed project/build/artifact and fixed SOTA, then provide the full original pool and training fraction. The dashboard shows build, warmup, initial measurements, confirmations, selection and approval phases, including completed/total measurement counts and last synchronization. It provides the report, every instance decision and downloadable membership lists for campaign review or optional publication to the approved project dataset library.
 
 For programmatic use, `POST /api/autollm/screenings` accepts:
 
@@ -19,7 +19,7 @@ For programmatic use, `POST /api/autollm/screenings` accepts:
 
 Creation saves a `DRAFT` and returns its ID. Save that ID before `POST /screenings/{id}/resume`. Inspect `GET /screenings` or `/screenings/{id}` after an uncertain response; reuse that job instead of submitting a duplicate. Job settings, mirrors, remote IDs and progress persist under the controller workspace. The same executor and workspace reservation are shared with campaigns. Persistent infrastructure faults pause in `NEEDS_ATTENTION`; resume reattaches saved jobs, and cancellation reconciles their termination and evidence before releasing the reservation.
 
-`GET /screenings/{id}/review` returns the completed report, full decisions, proposed counts, evidence paths and `proposalSha256`. After explicit agreement, send that hash in `POST /screenings/{id}/approve` as `{"proposalSha256":"THE_REVIEWED_HASH"}`. Wait for `APPROVED`, then use the mirror's published `proposal/train.index` and `proposal/test.index`. Approval verifies the existing provenance and evidence rules; it does not start a campaign. Standalone CLI preparation remains available below.
+`GET /screenings/{id}/review` returns the completed report, full decisions, proposed counts, evidence paths and `proposalSha256`. A completed job remains `READY_FOR_REVIEW`; the screening API has no `/approve` operation. Use the mirror's `proposal/proposed-train.index` and `proposal/proposed-test.index` in the campaign draft, then review and approve the campaign. To retain the selection across workspaces and cleanup, use the separate dataset preview/publish workflow. Standalone CLI screening approval remains available below.
 
 The [operator helper](autollm.md#backend-discovery-and-operator-helper) wraps these APIs. Append the following to `python3 .agents/skills/mork-autollm/scripts/mork_autollm.py --workspace /absolute/controller-workspace`:
 
@@ -28,10 +28,9 @@ screening create --config /absolute/campaign.json --settings /absolute/screening
 screening resume --id SAVED_ID
 watch --screening SAVED_ID
 screening review --id SAVED_ID
-screening approve --id SAVED_ID --proposal-sha256 THE_EXACT_REVIEWED_HASH
 ```
 
-`--settings` accepts a JSON object such as `{"python":"/absolute/selector-venv/bin/python3"}` and may be omitted to use backend defaults. Creating a job saves a draft. Watching stops at `AWAITING_APPROVAL`; approval requires the explicitly supplied proposal SHA-256 and is a separate command after review. `screening get`, `list` and `cancel` inspect or manage the same saved jobs.
+`--settings` accepts a JSON object such as `{"python":"/absolute/selector-venv/bin/python3"}` and may be omitted to use backend defaults. Creating a job saves a draft. The job finishes at `READY_FOR_REVIEW`; campaign approval or optional library publication follows a separate review. `screening get`, `list` and `cancel` inspect or manage the same saved jobs.
 
 ## Remote screening
 
@@ -39,13 +38,13 @@ Choose local or remote workload execution before any measurements. Local prepara
 
 Run the local application JAR with `--instance-screening`, the additional SSH configuration, an absolute local SOTA file, the full local input pool and an output directory outside that pool. Set `instance-screening.python` to the prepared **remote** Python interpreter. Use `--server.port=0` when the local dashboard already occupies its usual port.
 
-The controller clones the selected committed source locally, transfers Git/submodule snapshots and original archive containers, and builds/tests the baseline remotely. Baseline selection pins the exact commit before the first build. Each fresh build attempt uses an isolated pristine checkout; failed attempts remain as evidence, while unfinished remote jobs rejoin their original identity. Incremental output or corrections inside a failed checkout cannot qualify a baseline. Fix missing sources/resources on a reviewable project branch and select that commit in a new screening job. A committed-baseline receipt binds the commit, tree, submodules, source inputs, command, host, build evidence and executable hash; reuse and campaign adoption verify that receipt. It freezes that executable, then runs the unchanged sequential screening/selection protocol on the server. Remote jobs retain their watchdogs and can be rejoined after connectivity loss. Resume the same command and output directory; do not duplicate a running job.
+The controller clones the selected committed source locally, transfers Git/submodule snapshots and original archive containers, and builds/tests the baseline remotely. Baseline selection pins the exact commit before the first build. Each fresh build attempt uses an isolated pristine checkout; failed attempts remain as evidence, while unfinished remote jobs rejoin their original identity. Incremental output or corrections inside a failed checkout cannot qualify a baseline. Fix missing sources/resources on a reviewable project branch and select that commit in a new screening job. A committed-baseline receipt binds the commit, tree, submodules, source inputs, command, host, build evidence and executable hash; screening resume and standalone approval verify that receipt. It freezes that executable, then runs the unchanged sequential screening/selection protocol on the server. Remote jobs retain their watchdogs and can be rejoined after connectivity loss. Resume the same command and output directory; do not duplicate a running job.
 
 The command prints the actual local mirror directory, under `<output>/remote-<identity>/proposal`, with the completed report, full lists, proposed indexes and reviewed proposal hash. Its sibling `remote-screening.json` identifies the source commit, frozen JAR, SOTA and execution settings. Preserve this directory, its data and build evidence together; relative published indexes work in the local mirror without editing the reviewed bytes.
 
 Review these completed artifacts locally. Only after explicit user agreement, rerun the local application with `--instance-screening-approve`, the **original output directory**, the same SSH configuration and `--instance-screening.review-sha256=<reviewed hash>`. Approval is delegated to the same server, which checks its host, exact executable and input hashes. The resulting `approved.json` and indexes are mirrored and verified locally.
 
-Set campaign training/comparison paths to the mirror's published `train.index` and `test.index`. The campaign adopts the exact tested baseline artifact, checks host and source identity, and freezes its own copies of the approved inputs. Moving to different hardware or changing the baseline/SOTA/inputs requires a new preparation and review. Locally measured screening evidence cannot qualify a remote campaign. Screening still uses one sequential JVM even when tuning requests 32 workers.
+Set campaign training/comparison paths to the proposed or published indexes, or save their membership in the project library. Campaigns build and validate their selected baseline independently; changing hardware, baseline or SOTA does not force rescreening. Historical timings and exclusions retain their original context. Changing the selected payloads invalidates their saved hashes. Screening itself still uses one sequential JVM even when tuning requests 32 workers.
 
 ## Criterion
 

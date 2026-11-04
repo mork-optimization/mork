@@ -135,24 +135,4 @@ public final class RemoteScreeningService {
         if (result.exitCode() != 0) throw new IllegalStateException("Source discovery failed; inspect " + output);
     }
 
-    public static Preparation screened(AutoLlmConfig config) {
-        Path training = Path.of(config.trainingPath()).toAbsolutePath().normalize(), testing = Path.of(config.comparisonPath()).toAbsolutePath().normalize();
-        Path proposal = training.getParent(), root = proposal.getParent();
-        if (!Set.of("train.index", "proposed-train.index").contains(training.getFileName().toString()) || !Set.of(proposal.resolve("test.index"), proposal.resolve("proposed-test.index")).contains(testing) || !Files.exists(root.resolve("remote-screening.json"))) throw new IllegalStateException("SSH campaigns require screening proposal training/testing indexes");
-        var decision = AutoLlmFileUtil.read(proposal.resolve("proposal.json"), ScreeningData.Proposal.class);
-        ScreeningFileUtil.verifyProposalArtifacts(proposal, decision);
-        var preparation = AutoLlmFileUtil.read(root.resolve("remote-screening.json"), Preparation.class);
-        CommittedBaseline.verify(root, preparation);
-        var manifest = AutoLlmFileUtil.read(proposal.resolve("manifest.json"), ScreeningData.Manifest.class);
-        if (!AutoLlmFileUtil.hash(root.resolve("remote-screening.json")).equals(AutoLlmFileUtil.hash(proposal.resolve("source-metadata.json")))) throw new IllegalStateException("Approved source metadata changed");
-        if (manifest.version() != 3 || !"QUALIFIED_SERVER_POOL".equals(manifest.reusePolicy())) throw new IllegalStateException("Dataset approval does not authorize qualified server-pool reuse");
-        if (!preparation.artifactSha256().equals(manifest.artifactSha256()) || !preparation.sotaSha256().equals(manifest.sotaSha256())) throw new IllegalStateException("Approved executable or SOTA identity changed");
-        if (!manifest.fingerprint().equals(decision.fingerprint())) throw new IllegalStateException("Screening fingerprint changed");
-        var localPaths = AutoLlmExecutionService.localPaths(preparation.config(), root);
-        for (var input : manifest.inputs()) {
-            String local = localPaths.apply(input.path());
-            if (!input.sha256().equals(AutoLlmFileUtil.inputHash(local))) throw new IllegalStateException("Approved input payload changed: " + local);
-        }
-        return preparation;
-    }
 }

@@ -48,6 +48,15 @@ public class AutoLlmCheckOrchestrator<S extends Solution<S,I>, I extends Instanc
             if (!ExecutionJournalUtil.enabled()) throw new IllegalStateException("AutoLLM checks require a child execution directory");
             if (validator.isEmpty()) throw new IllegalStateException("AutoLLM requires a solution validator");
             Context.Configurator.setSolverConfig(solver); Context.Configurator.setBlockConfig(blocks);
+            var objectiveModes = new TreeMap<String, String>();
+            var declaredObjectives = Context.getObjectivesW();
+            if (declaredObjectives != null) for (var entry : declaredObjectives.entrySet()) objectiveModes.put(entry.getKey(), entry.getValue().getFMode().name());
+            String primaryObjective = null;
+            try { var mainObjective = Context.getMainObjective(); if (mainObjective != null) primaryObjective = mainObjective.getName(); }
+            catch (IllegalStateException ignored) { /* Multi-objective projects need an explicit report selection. */ }
+            var reportingMetadata = new LinkedHashMap<String, Object>();
+            reportingMetadata.put("objectives", objectiveModes); reportingMetadata.put("primaryObjective", primaryObjective);
+            ExecutionJournalUtil.write("reporting-metadata.json", reportingMetadata);
             ExecutionJournalUtil.write("readiness.json", Map.of("startedAtMillis", System.currentTimeMillis(), "pid", ProcessHandle.current().pid(), "port", environment.getProperty("local.server.port", Integer.class, 0)));
             for (String arg : args) if (arg.equals("--autollm-inventory")) {
                 ExecutionJournalUtil.write("components.json", components());

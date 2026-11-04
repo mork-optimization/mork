@@ -21,7 +21,7 @@ import es.urjc.etsii.grafo.io.serializers.ResultsSerializerListener;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.solution.SolutionValidator;
 import es.urjc.etsii.grafo.services.ExecutionLifecycleCoordinator;
-import es.urjc.etsii.grafo.util.BenchmarkUtil;
+import es.urjc.etsii.grafo.benchmark.BenchmarkService;
 import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.ExecutionJournalUtil;
 import org.slf4j.Logger;
@@ -53,6 +53,7 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
     private final TimeStatsService timeStats;
     private final ResultsSerializerListener<S, I> resultsSerializer;
     private final NormalExperimentRunState<S, I> runState;
+    private final BenchmarkService benchmark;
 
     /**
      * <p>Constructor for UserExperimentOrchestrator.</p>
@@ -71,7 +72,8 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
             Executor<S, I> executor,
             MorkEventPublisher eventPublisher,
             ExecutionLifecycleCoordinator lifecycleCoordinator,
-            ResultsSerializerListener<S, I> resultsSerializer, TimeStatsService timeStats, NormalExperimentRunState<S, I> runState
+            ResultsSerializerListener<S, I> resultsSerializer, TimeStatsService timeStats, NormalExperimentRunState<S, I> runState,
+            BenchmarkService benchmark
     ) {
         this.solverConfig = solverConfig;
         this.blockConfig = blockConfig;
@@ -84,15 +86,11 @@ public class DefaultOrchestrator<S extends Solution<S, I>, I extends Instance> e
         this.resultsSerializer = resultsSerializer;
         this.timeStats = timeStats;
         this.runState = runState;
+        this.benchmark = benchmark;
     }
 
     protected void runBenchmark() {
-        if (solverConfig.isBenchmark()) {
-            double score = BenchmarkUtil.getBenchmarkScore(this.solverConfig.getSeed());
-            log.info("Benchmark score: {}", score);
-        } else {
-            log.info("Skipping CPU benchmark");
-        }
+        benchmark.prepare(solverConfig);
     }
 
     /**

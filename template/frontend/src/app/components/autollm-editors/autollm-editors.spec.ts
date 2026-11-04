@@ -52,6 +52,20 @@ describe('AutoLLM structured editors', () => {
     expect(editor.selection().training).toEqual(['b']);
     expect(editor.selection().testing).toContain('c');
   });
+  it('preserves independent membership and order, including training-only instances', async () => {
+    const fixture = TestBed.createComponent(AutoLlmDatasetEditor);
+    const initial = { training: ['c', 'a'], testing: ['b', 'a'], excluded: { d: 'Excluded' } };
+    fixture.componentRef.setInput('initial', initial);
+    await fixture.whenStable();
+    const editor = fixture.componentInstance;
+    expect(editor.selection()).toEqual(initial);
+    expect(editor.changed()).toBe(false);
+    editor.update('a', { membership: 'training' });
+    expect(editor.selection()).toEqual({ ...initial, testing: ['b'] });
+    expect(editor.validation()).toBe('');
+    editor.update('c', { membership: 'both' });
+    expect(editor.selection().testing).toEqual(['b', 'c']);
+  });
   it('validates server enrollment and synchronizes advanced JSON with the form', async () => {
     const fixture = TestBed.createComponent(AutoLlmServerEditor);
     fixture.componentRef.setInput('existingIds', ['existing']);

@@ -16,6 +16,11 @@
     <dependencies>
         <dependency>
             <groupId>es.urjc.etsii.grafo</groupId>
+            <artifactId>scimark</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>es.urjc.etsii.grafo</groupId>
             <artifactId>mork-common</artifactId>
         </dependency>
 

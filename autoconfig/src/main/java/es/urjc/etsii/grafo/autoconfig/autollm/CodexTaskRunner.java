@@ -10,8 +10,9 @@ import java.util.function.BooleanSupplier;
 
 @Service
 public class CodexTaskRunner {
+    public record GeneratedComponent(String className, String role, String description) {}
     public record Manifest(List<String> inventory, List<String> metaheuristics, List<String> components,
-                           String blacklist, List<String> tests, List<String> limitations) {}
+                           String blacklist, List<String> tests, List<String> limitations, List<GeneratedComponent> generatedComponents) {}
     public record Result(String threadId, Manifest manifest) {}
     private final AutoLlmProcessRunner processes;
     private final Path codexHome;
@@ -34,6 +35,9 @@ public class CodexTaskRunner {
             var properties = new LinkedHashMap<String, Object>();
             for (String field : List.of("inventory", "metaheuristics", "components", "tests", "limitations")) properties.put(field, Map.of("type", "array", "items", Map.of("type", "string")));
             properties.put("blacklist", Map.of("type", List.of("string", "null")));
+            properties.put("generatedComponents", Map.of("type", "array", "items", Map.of("type", "object",
+                    "properties", Map.of("className", Map.of("type", "string"), "role", Map.of("type", "string"), "description", Map.of("type", "string")),
+                    "required", List.of("className", "role", "description"), "additionalProperties", false)));
             AutoLlmFileUtil.write(output.resolve("schema.json"), Map.of("type", "object", "properties", properties, "required", properties.keySet(), "additionalProperties", false));
             var previousSelection = CodexEvidenceUtil.selection(codexHome, checkout, threadId);
             String requestedModel = config.codex().model();
@@ -103,6 +107,13 @@ public class CodexTaskRunner {
             }
             var manifest = AutoLlmFileUtil.read(output.resolve("manifest.json"), Manifest.class);
             if (manifest.inventory() == null || manifest.metaheuristics() == null || manifest.components() == null || manifest.tests() == null || manifest.limitations() == null) throw new IllegalStateException("Incomplete Codex manifest");
+            if (manifest.generatedComponents() == null) throw new IllegalStateException("Generated component catalog is missing");
+            var names = new HashSet<String>();
+            for (var component : manifest.generatedComponents()) {
+                if (component.className() == null || component.className().isBlank() || component.role() == null || component.role().isBlank()
+                        || component.description() == null || component.description().isBlank() || !names.add(component.className()))
+                    throw new IllegalStateException("Generated components require unique class names, roles and descriptions");
+            }
             return new Result(actualThread, manifest);
         } catch (IOException e) { throw new UncheckedIOException(e); }
     }

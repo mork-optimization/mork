@@ -13,7 +13,11 @@ Reuse established hosts, workspaces, resource limits and authorization. Preserve
 
 Use `backend status` to distinguish the saved address from live health; `backend start` discovers or launches a compatible controller. Restart through saved metadata with `backend restart`. Preserve unrelated controllers and use the matching operator for historical checkpoint versions.
 
-Screen the original pool using Mork's warmed-worker protocol. Keep inconclusive inputs; testing includes training. Screening evidence can feed a campaign draft without separate selection approval. Use proposed training/testing indexes and preserve provenance; never substitute the raw pool for a missing index.
+Check the explicitly configured training and comparison datasets first (`autollm.training-path` / `comparison-path`, or named `instances.path.irace` / `autollm-comparison`). When both are valid, preserve their exact membership and skip screening and splitting, for LOCAL and SSH. Sets may be disjoint or overlapping. Do not infer a selection from the default raw pool or silently replace missing indexes.
+
+Use `dataset list --config FILE` to discover approved project selections across workspaces. `dataset get --config FILE --id ID` verifies a saved entry and returns reusable paths. To save a supplied or screened selection, run `dataset preview --config FILE --name NAME`, show the exact membership, provenance and digest, obtain explicit user approval, then `dataset publish --config FILE --name NAME --digest DIGEST`. Library payloads survive campaign cleanup; saving a selection does not approve a campaign. Baseline/SOTA/host changes permit dataset reuse, while each campaign still builds and validates its own baseline. Historical screening timings retain their original context.
+
+Only when a new selection is needed, explicitly screen the original pool using Mork's warmed-worker protocol. Keep inconclusive inputs; newly screened testing includes training by default. Screening evidence can feed a campaign draft without separate library publication. Use proposed training/testing indexes and preserve provenance.
 
 Require a successful pristine build of the selected committed baseline before screening. Put baseline corrections on a reviewable project branch and select its commit; never rely on cached build output or fixes made only in a disposable campaign checkout.
 

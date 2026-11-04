@@ -416,6 +416,7 @@
                                         <include>errors/</include>
                                         <include>docs/apidocs/</include>
                                         <include>.benchmark</include>
+                                        <include>.mork/.benchmark</include>
                                         <include>irace.Rdata</include>
                                         <include>parameters.txt</include>
                                         <include>plots.pdf</include>

@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
@@ -27,6 +28,31 @@ for (const candidate of candidates) {
 }
 assert.ok(executable, 'Chromium is required. Set MORK_BROWSER to its executable.');
 
+const datasetMutations = [];
+const datasetReview = {
+  digest: 'a'.repeat(64),
+  name: 'Reusable browser dataset',
+  repository: '/repo',
+  artifact: 'target/app.jar',
+  training: ['train-only'],
+  comparison: ['test-only'],
+  hashes: {},
+  aliases: {},
+  provenance: { basis: 'Historical screening fixture' },
+};
+const datasetEntry = {
+  id: datasetReview.digest,
+  name: datasetReview.name,
+  approvedAt: '2026-11-04T00:00:00Z',
+  artifact: datasetReview.artifact,
+  trainingPath: '/repo/.mork/datasets/saved/training.index',
+  comparisonPath: '/repo/.mork/datasets/saved/comparison.index',
+  trainingCount: 1,
+  comparisonCount: 1,
+  overlap: 0,
+  review: datasetReview,
+  files: {},
+};
 const counts = { planned: 6, pending: 0, running: 0, succeeded: 5, failed: 1, cancelled: 0 };
 const status = {
   runId: 'browser-run',
@@ -334,7 +360,15 @@ if (!process.env.MORK_MONITOR_URL) {
       body = { mode: autollmMode ? 'AUTOLLM' : 'STANDARD', eventLogId: 'browser-log' };
     else if (autollmMode && url.pathname.startsWith('/api/autollm/')) {
       const path = url.pathname.slice('/api/autollm/'.length);
-      if (path === 'defaults') body = comparisonConfig;
+      if (path === 'datasets/preview') body = datasetReview;
+      else if (path === 'datasets' && request.method === 'POST') {
+        let payload = '';
+        for await (const chunk of request) payload += chunk;
+        datasetMutations.push(JSON.parse(payload));
+        body = datasetEntry;
+      } else if (path === 'datasets') body = [datasetEntry];
+      else if (path === `datasets/${datasetEntry.id}`) body = datasetEntry;
+      else if (path === 'defaults') body = comparisonConfig;
       else if (path === 'campaigns')
         body = {
           active: comparisonCampaign.status === 'DRAFT' ? '' : comparisonCampaign.id,
@@ -343,7 +377,18 @@ if (!process.env.MORK_MONITOR_URL) {
       else if (path === 'objectives') body = { Cost: 'MINIMIZE', Quality: 'MAXIMIZE' };
       else if (path === 'campaigns/comparison-fixture') body = comparisonCampaign;
       else if (path === 'campaigns/comparison-fixture/status') body = compactCampaign();
-      else if (path.endsWith('/proposal'))
+      else if (path === 'campaigns/comparison-fixture/report') {
+        body = {
+          requestId: 'report-request',
+          state: 'SUCCEEDED',
+          snapshotAt: '2026-11-04T00:00:00Z',
+          selection: { objective: 'Cost', mode: 'MINIMIZE' },
+          objectives: { Cost: 'MINIMIZE' },
+          path: 'reports/report.html',
+          failure: null,
+          exportFailure: null,
+        };
+      } else if (path.endsWith('/proposal'))
         body = {
           digest: 'reviewed-campaign',
           configuration: comparisonConfig,
@@ -1363,6 +1408,53 @@ try {
     await clickText('button', 'New campaign');
     await waitFor(`document.querySelector('mat-stepper')`);
     await waitFor(`document.querySelectorAll('mat-step-header').length === 5`);
+    await clickText('mat-step-header .mat-step-text-label', 'Dataset');
+    await clickText('summary', 'Approved project datasets');
+    await waitFor(
+      `Array.from(document.querySelectorAll('option')).some(option=>option.textContent.includes('Reusable browser dataset'))`,
+    );
+    await evaluate(
+      `{ const option=Array.from(document.querySelectorAll('option')).find(option=>option.textContent.includes('Reusable browser dataset')); const select=option.parentElement; select.value=option.value; select.dispatchEvent(new Event('change',{bubbles:true})); }`,
+    );
+    await waitFor(
+      `Array.from(document.querySelectorAll('input')).some(input=>input.value==='/repo/.mork/datasets/saved/training.index')`,
+    );
+    await evaluate(
+      `{ const field=Array.from(document.querySelectorAll('mat-form-field')).find(field=>field.textContent.includes('Selection name')); const input=field.querySelector('input'); input.value='Reusable browser dataset'; input.dispatchEvent(new Event('input',{bubbles:true})); }`,
+    );
+    await clickText('button', 'Review current datasets for saving');
+    await waitFor(`document.body.textContent.includes('Review digest:')`);
+    assert.equal(datasetMutations.length, 0, 'review never publishes a dataset');
+    await clickText('summary', 'Exact membership, checksums and historical provenance');
+    await writeFile(
+      join(artifacts, 'autollm-dataset-library.png'),
+      Buffer.from((await send('Page.captureScreenshot')).data, 'base64'),
+    );
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    });
+    assert.ok(
+      await evaluate('document.documentElement.scrollWidth <= innerWidth + 2'),
+      'dataset review fits a mobile viewport',
+    );
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1100,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
+    await clickText('button', 'Approve and save selection');
+    await waitFor(`!document.body.textContent.includes('Review digest:')`);
+    assert.equal(datasetMutations.length, 1);
+    assert.equal(datasetMutations[0].digest, datasetReview.digest);
+    assert.equal(
+      approvalMutations.length,
+      0,
+      'saving a dataset never approves or launches a campaign',
+    );
     await clickText('mat-step-header .mat-step-text-label', 'Budget');
     await evaluate(`document.querySelector('mat-stepper').scrollIntoView({block:'start'})`);
     await writeFile(
@@ -1398,7 +1490,7 @@ try {
       await evaluate(
         `Array.from(document.querySelectorAll('app-autollm-dataset-editor select')).map(select=>select.value).join(',')`,
       ),
-      'training,testing,excluded',
+      'both,testing,excluded',
     );
     await writeFile(
       join(artifacts, 'autollm-dataset-editor.png'),
@@ -1429,6 +1521,116 @@ try {
       { action: 'approve', body: { digest: 'reviewed-campaign' } },
       { action: 'start' },
     ]);
+  }
+  if (process.env.MORK_REPORT_HTML) {
+    await send('Network.enable');
+    await send('Network.setBlockedURLs', { urls: ['http://*', 'https://*'] });
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 1440,
+      height: 1000,
+      deviceScaleFactor: 1,
+      mobile: false,
+    });
+    await send('Page.navigate', { url: pathToFileURL(resolve(process.env.MORK_REPORT_HTML)).href });
+    await waitFor(
+      `document.querySelector('#trial-2') && document.body.textContent.includes('Campaign token usage')`,
+    );
+    assert.equal(
+      await evaluate(`document.scripts.length`),
+      0,
+      'saved evidence cannot execute scripts',
+    );
+    assert.equal(
+      await evaluate(`Array.from(document.querySelectorAll('[src],link[rel=stylesheet]')).length`),
+      0,
+      'standalone report has no external assets',
+    );
+    assert.ok(await evaluate(`document.body.textContent.includes('-10.000%')`));
+    assert.ok(
+      await evaluate(`document.body.textContent.includes("<script>alert('x')</script>")`),
+      'hostile description renders as text',
+    );
+    const reportCharts = await evaluate(`(() => {
+      const kinds = ['timeline-elapsed', 'timeline-clock', 'tokens', 'gap', 'outcomes'];
+      return Object.fromEntries(kinds.map(kind => {
+        const figures = [...document.querySelectorAll('[data-chart="' + kind + '"]')];
+        return [kind, { trials: figures.flatMap(figure => [...figure.querySelectorAll('[data-trial]')].map(row => +row.dataset.trial)),
+          rows: figures.map(figure => figure.querySelectorAll('[data-trial]').length),
+          accessible: figures.every(figure => figure.querySelector('svg[role="img"] title') && figure.querySelector('svg desc')) }];
+      }));
+    })()`);
+    for (const [kind, chart] of Object.entries(reportCharts)) {
+      const order =
+        kind === 'gap' || kind === 'outcomes'
+          ? [...chart.trials].sort((a, b) => a - b)
+          : chart.trials;
+      assert.deepEqual(
+        order,
+        Array.from({ length: 27 }, (_, index) => index + 1),
+        kind + ' includes every trial',
+      );
+      assert.ok(
+        chart.rows.every((count) => count > 0 && count <= 12),
+        kind + ' has readable figure blocks',
+      );
+      assert.ok(chart.accessible, kind + ' has accessible image descriptions');
+    }
+    assert.ok(
+      await evaluate(`document.querySelector('#tokens').textContent.includes('unavailable')`),
+      'token coverage is visible',
+    );
+    assert.ok(
+      await evaluate(
+        `document.querySelector('#trial-1').textContent.includes('Generation and repair overhead')`,
+      ),
+    );
+    assert.ok(
+      await evaluate(`document.querySelector('#failures').textContent.includes('GENERATED_TEST')`),
+    );
+    assert.ok(
+      await evaluate(`Array.from(document.querySelectorAll('svg text')).every(text => {
+      const box = text.getBBox(), svg = text.ownerSVGElement.viewBox.baseVal;
+      return box.x >= 0 && box.x + box.width <= svg.width && box.y >= 0 && box.y + box.height <= svg.height;
+    })`),
+      'chart labels fit inside their image',
+    );
+    assert.ok(
+      await evaluate(
+        `(() => { const ids = [...document.querySelectorAll('[id]')].map(node => node.id); return new Set(ids).size === ids.length; })()`,
+      ),
+      'SVG accessibility IDs are unique',
+    );
+    assert.ok(
+      await evaluate(`document.documentElement.scrollWidth <= innerWidth`),
+      'report fits the viewport',
+    );
+    const screenshot = await send('Page.captureScreenshot', { format: 'png' });
+    await writeFile(join(artifacts, 'portable-report.png'), Buffer.from(screenshot.data, 'base64'));
+    for (const section of ['timing', 'tokens', 'performance']) {
+      await evaluate(`document.getElementById('${section}').scrollIntoView()`);
+      const chartScreenshot = await send('Page.captureScreenshot', { format: 'png' });
+      await writeFile(
+        join(artifacts, 'portable-report-' + section + '.png'),
+        Buffer.from(chartScreenshot.data, 'base64'),
+      );
+    }
+    const printed = await send('Page.printToPDF', {
+      printBackground: true,
+      preferCSSPageSize: true,
+    });
+    const pdf = Buffer.from(printed.data, 'base64');
+    assert.ok(pdf.subarray(0, 5).toString() === '%PDF-' && pdf.length > 10000);
+    await writeFile(join(artifacts, 'portable-report.pdf'), pdf);
+    await send('Emulation.setDeviceMetricsOverride', {
+      width: 390,
+      height: 844,
+      deviceScaleFactor: 1,
+      mobile: true,
+    });
+    assert.ok(
+      await evaluate(`document.documentElement.scrollWidth <= innerWidth`),
+      'mobile report fits viewport',
+    );
   }
   assert.deepEqual(errors, [], 'browser runtime errors');
   console.log(

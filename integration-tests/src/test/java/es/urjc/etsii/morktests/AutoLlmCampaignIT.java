@@ -17,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.*;
 class AutoLlmCampaignIT {
     @TempDir(cleanup = org.junit.jupiter.api.io.CleanupMode.ON_SUCCESS) Path temp;
     @Test void realMorkAndIraceCompleteCampaignThroughHttpApi() throws Exception { campaign(false); }
-    @Test void remoteScreeningAndMorkCampaignCompleteThroughSsh() throws Exception { campaign(true); }
+    @Test void approvedScreeningSelectionIsReusedWithANewBaselineThroughSsh() throws Exception { campaign(true); }
     private void campaign(boolean remote) throws Exception {
         Path repo = temp.resolve("baseline"); Files.createDirectories(repo.resolve("src/main/java"));
         Files.writeString(repo.resolve("src/main/java/Original.java"), "public class Original {}\n");
@@ -65,6 +65,15 @@ class AutoLlmCampaignIT {
             while (probe.path("status").asString().equals("RUNNING") && System.currentTimeMillis() < deadline);
             assertEquals("SUCCEEDED", probe.path("status").asString(), probe.toString());
             assertTrue(Files.exists(workspace.resolve("target-probes/" + probeId + "/probe.json")));
+            // Explicit disjoint datasets qualify directly on both execution targets, before any screening exists.
+            var supplied = settings.withPaths("instance.txt", "instance-second.txt");
+            String suppliedId = request(client, base + "/campaigns", AutoLlmFileUtil.JSON.writeValueAsString(supplied)).path("id").asString();
+            var suppliedCheck = request(client, base + "/campaigns/" + suppliedId + "/baseline-check", "{}");
+            assertTrue(suppliedCheck.path("withinLimit").asBoolean(), suppliedCheck.toString());
+            var suppliedProposal = get(client, base + "/campaigns/" + suppliedId + "/proposal");
+            assertEquals(0, suppliedProposal.path("overlap").asInt());
+            assertEquals(1, suppliedProposal.path("training").size()); assertEquals(1, suppliedProposal.path("testing").size());
+            assertFalse(Files.exists(workspace.resolve("screenings")));
             String python = remote ? ssh.ssh.screeningServer().environment().get("MORK_SELECTOR_PYTHON") : Path.of("../example-tsptw/venv/bin/python3").toAbsolutePath().normalize().toString();
             var screening = new InstanceScreeningConfig(repo.resolve("sota.json").toString(), null, 0.000001, 3.0, 1000L, 1, 0.95, python, 1, 1000L, null);
             var screeningRequest = new ScreeningJobService.Request(settings, screening, repo.resolve("training.index").toString(), 0.15);
@@ -87,6 +96,18 @@ class AutoLlmCampaignIT {
             String originalReference = null;
             for (var input : originalInputs.entrySet()) if (input.getValue().get("path").equals(reference)) originalReference = input.getKey();
             assertNotNull(originalReference);
+            var datasetRequest = new AutoLlmDatasetLibrary.Request(settings, "Reusable fixture", null);
+            var datasetReview = request(client, base + "/datasets/preview", AutoLlmFileUtil.JSON.writeValueAsString(datasetRequest));
+            var published = request(client, base + "/datasets", AutoLlmFileUtil.JSON.writeValueAsString(new AutoLlmDatasetLibrary.Request(settings, "Reusable fixture", datasetReview.path("digest").asString())));
+            settings = settings.withPaths(published.path("trainingPath").asString(), published.path("comparisonPath").asString());
+            reference = es.urjc.etsii.grafo.util.InstancePathUtil.list(settings.trainingPath()).getFirst();
+            // Cleanup removes the original screening executable and payloads. Only the project library remains.
+            var cleanup = request(client, base + "/cleanup/plan", AutoLlmFileUtil.JSON.writeValueAsString(new AutoLlmCleanup.Selection("screening", screeningId, null, false, true)));
+            assertEquals(0, cleanup.path("blockers").size(), cleanup.toString());
+            var removed = request(client, base + "/cleanup/apply", AutoLlmFileUtil.JSON.writeValueAsString(Map.of("digest", cleanup.path("digest").asString())));
+            assertEquals("SUCCEEDED", removed.path("status").asString(), removed.toString()); assertFalse(Files.exists(mirror));
+            Files.writeString(repo.resolve("src/main/java/Original.java"), "public class Original { public static final int REVISION = 2; }\n");
+            git(repo, "add", "src/main/java/Original.java"); git(repo, "-c", "user.name=Test", "-c", "user.email=test@example.test", "commit", "-m", "new baseline using saved datasets");
             var arguments = new ArrayList<>(settings.project().runArguments()); arguments.add("--instances.path.reference=" + originalReference);
             settings = new AutoLlmConfig(new AutoLlmConfig.Project(settings.project().repository(), settings.project().ref(), settings.project().buildCommand(), settings.project().artifact(), arguments), settings.workspace(), settings.trials(), settings.seed(), settings.maxParameters(), settings.sotaFile(), settings.initialConfigurationsFile(), settings.trainingPath(), settings.comparisonPath(), settings.codex(), settings.preparation(), settings.tuning(), settings.comparison(), settings.execution());
             String targetId = remote ? "server" : "local";
@@ -205,7 +226,8 @@ class AutoLlmCampaignIT {
                 assertEquals(32, campaign.targets.get("server").host.effectiveWorkers());
                 assertEquals(8, campaign.targets.get("second").host.effectiveWorkers());
                 try (var files = Files.walk(root.resolve(trial.directory).resolve("metadata"))) { assertTrue(files.anyMatch(file -> file.getFileName().toString().equals("check.json"))); }
-                assertTrue(Files.exists(root.resolve("targets/" + targetId + "/baseline-preflight/build/adopted-screening.json")));
+                assertFalse(Files.exists(root.resolve("targets/" + targetId + "/baseline-preflight/build/adopted-screening.json")));
+                assertTrue(Files.exists(root.resolve("targets/" + targetId + "/baseline-preflight/build/stdout.log")));
             }
         } finally { parent.destroy(); if (!parent.waitFor(5, TimeUnit.SECONDS)) parent.destroyForcibly(); new AutoLlmProcessRunner().reconcile(workspace); }
         }

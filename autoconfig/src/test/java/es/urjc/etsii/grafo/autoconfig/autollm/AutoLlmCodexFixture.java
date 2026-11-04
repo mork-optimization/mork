@@ -59,6 +59,7 @@ public class AutoLlmCodexFixture {
         }
         var manifest = new LinkedHashMap<String,Object>();
         for (String field : List.of("inventory", "metaheuristics", "components", "tests", "limitations")) manifest.put(field, List.of());
+        manifest.put("generatedComponents", List.of());
         manifest.put("blacklist", null);
         int position = Arrays.asList(args).indexOf("--output-last-message");
         AutoLlmFileUtil.write(Path.of(args[position + 1]), manifest);

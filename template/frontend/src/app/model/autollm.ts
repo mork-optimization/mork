@@ -511,3 +511,40 @@ export interface ProposalScreening {
   screening?: ProposalScreening;
   selection?: { excluded?: Record<string, string> };
 }
+
+export interface AutoLlmReportStatus {
+  requestId: string | null;
+  state: 'NOT_STARTED' | 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'FAILED';
+  snapshotAt: string | null;
+  finishedAt: string | null;
+  selection: { objective: string | null; mode: 'MINIMIZE' | 'MAXIMIZE' | null };
+  objectives: ObjectiveModes;
+  path: string | null;
+  failure: string | null;
+  exportFailure: string | null;
+}
+
+export interface DatasetReview {
+  digest: string;
+  name: string;
+  repository: string;
+  artifact: string;
+  training: string[];
+  comparison: string[];
+  hashes: Record<string, string>;
+  aliases: Record<string, string>;
+  provenance: unknown;
+}
+export interface DatasetEntry {
+  id: string;
+  name: string;
+  approvedAt: string;
+  artifact: string;
+  trainingPath: string;
+  comparisonPath: string;
+  trainingCount: number;
+  comparisonCount: number;
+  overlap: number;
+  review: DatasetReview;
+  files: Record<string, string>;
+}

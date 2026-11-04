@@ -29,15 +29,31 @@ public final class AutoLlmInputUtil {
 
     /** Preserve original dataset identities when approved screening indexes refer to owned copies. */
     public static Map<String,String> aliases(Path training, Path comparison) {
-        Path proposal = training.getParent();
-        if (proposal == null || !Files.isRegularFile(proposal.resolve("proposal.json"))) return Map.of();
-        Path original = proposal.getParent().resolve("data/original-inputs.json");
-        if (!Files.isRegularFile(original)) return Map.of();
+        var aliases = new LinkedHashMap<String,String>();
         var members = new HashSet<>(InstancePathUtil.list(training.toString()));
         members.addAll(InstancePathUtil.list(comparison.toString()));
-        Map<String,Map<String,String>> manifest = AutoLlmFileUtil.read(original, new TypeReference<>() {});
-        var aliases = new LinkedHashMap<String,String>();
-        for (var entry : manifest.entrySet()) if (members.contains(entry.getValue().get("path"))) aliases.put(entry.getKey(), entry.getValue().get("path"));
+        for (Path index : List.of(training, comparison)) {
+            Path parent = index.getParent();
+            if (Files.isRegularFile(parent.resolve("selection.json"))) {
+                Map<String,String> saved = AutoLlmFileUtil.read(parent.resolve("aliases.json"), new TypeReference<>() {});
+                for (var alias : saved.entrySet()) {
+                    String path = InstancePathUtil.resolve(parent, alias.getValue());
+                    if (members.contains(path)) aliases.put(alias.getKey(), path);
+                }
+            } else if (parent.getParent() != null) {
+                Path original = parent.getParent().resolve("data/original-inputs.json");
+                if (Files.isRegularFile(parent.resolve("proposal.json")) && Files.isRegularFile(original)) {
+                    Map<String,Map<String,String>> manifest = AutoLlmFileUtil.read(original, new TypeReference<>() {});
+                    for (var entry : manifest.entrySet()) if (members.contains(entry.getValue().get("path"))) aliases.put(entry.getKey(), entry.getValue().get("path"));
+                } else {
+                    Path file = parent.getParent().resolve("control/input-aliases.json");
+                    if (Files.isRegularFile(file)) {
+                        Map<String,String> saved = AutoLlmFileUtil.read(file, new TypeReference<>() {});
+                        for (var alias : saved.entrySet()) if (members.contains(alias.getValue())) aliases.put(alias.getKey(), alias.getValue());
+                    }
+                }
+            }
+        }
         return aliases;
     }
 
@@ -71,7 +87,7 @@ public final class AutoLlmInputUtil {
         instances.setPath(paths);
     }
 
-    private static final List<String> PATH_SETTINGS = List.of("control/instance-paths.json", "control/input-aliases.json");
+    private static final List<String> PATH_SETTINGS = List.of("control/instance-paths.json", "control/input-aliases.json", "control/dataset-origin.json");
     public static void addSettingsHashes(Map<String,String> hashes, Path root) {
         for (String file : PATH_SETTINGS) if (Files.isRegularFile(root.resolve(file))) hashes.put(file, AutoLlmFileUtil.hash(root.resolve(file)));
     }

@@ -9,7 +9,8 @@ import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ArrayUtil;
-import es.urjc.etsii.grafo.util.BenchmarkUtil;
+import es.urjc.etsii.grafo.benchmark.BenchmarkReport;
+import es.urjc.etsii.grafo.benchmark.BenchmarkService;
 import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.ExceptionUtil;
 import org.apache.poi.ss.SpreadsheetVersion;
@@ -104,15 +105,19 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     private final ExcelConfig config;
 
     private final InstanceManager<I> instanceManager;
+    private final BenchmarkService benchmark;
     private final ThreadLocal<List<String>> cachedReportInputs = new ThreadLocal<>();
+    private final ThreadLocal<BenchmarkReport> cachedReportMetadata = new ThreadLocal<>();
 
-    /** Explicit input scope for offline reports, without mutating the application's instance configuration. */
-    public void serializeCachedResults(String name, List<WorkUnitResult<S, I>> results, List<String> inputs, Path output) {
+    /** Explicit inputs and execution metadata for offline reports; never infer these from the reporting host. */
+    public void serializeCachedResults(String name, List<WorkUnitResult<S, I>> results, List<String> inputs, Path output, BenchmarkReport metadata) {
+        Objects.requireNonNull(metadata);
         try { java.nio.file.Files.createDirectories(output.toAbsolutePath().getParent()); }
         catch (IOException e) { throw new java.io.UncheckedIOException(e); }
         cachedReportInputs.set(List.copyOf(inputs));
+        cachedReportMetadata.set(metadata);
         try { serializeResults(name, results, output); }
-        finally { cachedReportInputs.remove(); }
+        finally { cachedReportInputs.remove(); cachedReportMetadata.remove(); }
     }
 
     /**
@@ -127,12 +132,14 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             ExcelConfig serializerConfig,
             List<ReferenceResultProvider> referenceResultProviders,
             Optional<ExcelCustomizer> excelCustomizer,
-            InstanceManager<I> instanceManager) {
+            InstanceManager<I> instanceManager,
+            BenchmarkService benchmark) {
         super(serializerConfig, referenceResultProviders);
         this.config = serializerConfig;
         this.maximizing = Context.getMainObjective().getFMode() == FMode.MAXIMIZE;
         this.excelCustomizer = excelCustomizer;
         this.instanceManager = instanceManager;
+        this.benchmark = benchmark;
     }
 
     /** {@inheritDoc} */
@@ -202,33 +209,35 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     }
 
     private void fillOtherDataSheet(XSSFSheet sheet) {
-        var benchmarkInfo = BenchmarkUtil.parseCache();
-        var row0 = sheet.createRow(0);
-        var firstCell = row0.createCell(0);
-        if(benchmarkInfo == null){
-            writeCell(firstCell, "Benchmark disabled, enable to save system info", CType.VALUE);
-            return;
+        var metadata = cachedReportMetadata.get();
+        if (metadata == null) metadata = benchmark.report();
+        writeCell(sheet.createRow(0).createCell(0), "System properties", CType.VALUE);
+        int row = 1;
+        for (var entry : new TreeMap<>(metadata.environment()).entrySet()) {
+            otherDataRow(sheet, row++, entry.getKey(), entry.getValue());
         }
+        otherDataRow(sheet, row++, "Benchmark status", metadata.status().name());
+        otherDataRow(sheet, row++, "Benchmark details", metadata.detail());
+        var measurement = metadata.result();
+        if (measurement == null) return;
+        otherDataRow(sheet, row++, "Benchmark Score", measurement.score());
+        otherDataRow(sheet, row++, "Benchmark units", "Approximate MFLOPS (single-threaded numerical JVM reference)");
+        otherDataRow(sheet, row++, "Benchmark measured at", measurement.measuredAt());
+        otherDataRow(sheet, row++, "Benchmark protocol", measurement.protocol().suite());
+        otherDataRow(sheet, row++, "Benchmark seed", measurement.protocol().seed());
+        otherDataRow(sheet, row++, "Minimum kernel seconds", measurement.protocol().minimumSeconds());
+        var scores = measurement.scores();
+        otherDataRow(sheet, row++, "FFT", scores.fft());
+        otherDataRow(sheet, row++, "SOR", scores.sor());
+        otherDataRow(sheet, row++, "Monte Carlo", scores.monteCarlo());
+        otherDataRow(sheet, row++, "Sparse matrix multiplication", scores.sparseMatmult());
+        otherDataRow(sheet, row, "LU", scores.lu());
+    }
 
-        // Header
-        writeCell(firstCell, "System properties", CType.VALUE);
-
-        // Benchmark score
-        var row1 = sheet.createRow(1);
-        writeCell(row1.createCell(0), "Benchmark Score", CType.VALUE);
-        writeCell(row1.createCell(1), benchmarkInfo.score(), CType.VALUE);
-
-        var row2 = sheet.createRow(2);
-        writeCell(row2.createCell(0), "VM Version", CType.VALUE);
-        writeCell(row2.createCell(1), benchmarkInfo.info().vmVersion(), CType.VALUE);
-
-        var row3 = sheet.createRow(3);
-        writeCell(row3.createCell(0), "Java version", CType.VALUE);
-        writeCell(row3.createCell(1), benchmarkInfo.info().javaVersion(), CType.VALUE);
-
-        var row4 = sheet.createRow(4);
-        writeCell(row4.createCell(0), "N Processors", CType.VALUE);
-        writeCell(row4.createCell(1), benchmarkInfo.info().nProcessors(), CType.VALUE);
+    private void otherDataRow(XSSFSheet sheet, int index, String label, Object value) {
+        var row = sheet.createRow(index);
+        writeCell(row.createCell(0), label, CType.VALUE);
+        writeCell(row.createCell(1), value, CType.VALUE);
     }
 
     private Table createRawTable(XSSFSheet rawSheet, int rawDataRows, int columnCount) {

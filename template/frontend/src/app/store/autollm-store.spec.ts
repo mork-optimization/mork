@@ -20,6 +20,12 @@ describe('AutoLLM campaign lifecycle store', () => {
     ],
   } as AutoLlmCampaign;
   let client: {
+    datasets: ReturnType<typeof vi.fn>;
+    dataset: ReturnType<typeof vi.fn>;
+    previewDataset: ReturnType<typeof vi.fn>;
+    publishDataset: ReturnType<typeof vi.fn>;
+    reportStatus: ReturnType<typeof vi.fn>;
+    generateReport: ReturnType<typeof vi.fn>;
     objectives: ReturnType<typeof vi.fn>;
     detail: ReturnType<typeof vi.fn>;
     status: ReturnType<typeof vi.fn>;
@@ -53,9 +59,59 @@ describe('AutoLLM campaign lifecycle store', () => {
     preview: ReturnType<typeof vi.fn>;
   };
   let store: AutoLlmStore;
+  it('publishes only after review and passes current paths with the reviewed digest', async () => {
+    const draft = {
+      project: { repository: '/repo', artifact: 'target/app.jar' },
+      trainingPath: 'train.index',
+      comparisonPath: 'test.index',
+    } as AutoLlmConfig;
+    store.config.set(draft);
+    store.datasetName.set('Reusable');
+    await store.publishDataset();
+    expect(client.publishDataset).not.toHaveBeenCalled();
+    client.previewDataset.mockResolvedValue({
+      name: 'Reusable',
+      digest: 'reviewed',
+      training: ['a'],
+      comparison: ['b'],
+    });
+    await store.previewDataset();
+    const changed = { ...draft, trainingPath: 'changed.index' };
+    store.config.set(changed);
+    client.publishDataset.mockRejectedValue(new Error('Dataset selection changed'));
+    await store.publishDataset();
+    expect(client.publishDataset).toHaveBeenCalledWith(changed, 'Reusable', 'reviewed');
+    expect(store.error()).toContain('Dataset selection changed');
+    expect(client.approve).not.toHaveBeenCalled();
+    expect(client.create).not.toHaveBeenCalled();
+  });
+  it('verifies a saved dataset before filling the configuration', async () => {
+    store.config.set({ trainingPath: 'old', comparisonPath: 'old' } as AutoLlmConfig);
+    client.dataset.mockResolvedValue({
+      trainingPath: '/library/train.index',
+      comparisonPath: '/library/test.index',
+    });
+    await store.useDataset('saved');
+    expect(store.config()?.trainingPath).toBe('/library/train.index');
+    expect(store.config()?.comparisonPath).toBe('/library/test.index');
+    expect(client.create).not.toHaveBeenCalled();
+  });
   beforeEach(() => {
     vi.useFakeTimers();
     client = {
+      datasets: vi.fn().mockResolvedValue([]),
+      dataset: vi.fn(),
+      previewDataset: vi.fn(),
+      publishDataset: vi.fn(),
+      reportStatus: vi
+        .fn()
+        .mockResolvedValue({
+          state: 'NOT_STARTED',
+          selection: { objective: 'Cost', mode: 'MINIMIZE' },
+          objectives: { Cost: 'MINIMIZE' },
+          path: null,
+        }),
+      generateReport: vi.fn(),
       objectives: vi.fn().mockResolvedValue({ Cost: 'MINIMIZE', Quality: 'MAXIMIZE' }),
       detail: vi.fn().mockResolvedValue(campaign),
       status: vi.fn().mockResolvedValue(campaign),
@@ -144,6 +200,54 @@ describe('AutoLLM campaign lifecycle store', () => {
     });
     store = TestBed.inject(AutoLlmStore);
   });
+  it('loads saved report settings and ignores a late response after switching campaigns', async () => {
+    store.select(campaign.id);
+    await store.refreshReport();
+    expect(store.reportObjective()).toBe('Cost');
+    let resolve!: (value: unknown) => void;
+    client.reportStatus.mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          resolve = r;
+        }),
+    );
+    const pending = store.refreshReport();
+    store.select('another');
+    resolve({ state: 'SUCCEEDED', selection: { objective: 'Old' }, path: 'reports/report.html' });
+    await pending;
+    expect(store.report()).toBeNull();
+    expect(store.reportObjective()).toBe('');
+  });
+  it('submits one report request and retains its receipt while polling', async () => {
+    store.select(campaign.id);
+    store.selectReportObjective('Cost');
+    client.generateReport.mockResolvedValue({
+      requestId: 'request',
+      state: 'QUEUED',
+      selection: { objective: 'Cost', mode: 'MINIMIZE' },
+      objectives: {},
+      path: null,
+    });
+    vi.spyOn(store, 'retryNow').mockImplementation(() => {});
+    await store.generateReport();
+    await store.generateReport();
+    expect(client.generateReport).toHaveBeenCalledTimes(1);
+    expect(client.generateReport).toHaveBeenCalledWith(campaign.id, {
+      objective: 'Cost',
+      mode: 'MINIMIZE',
+    });
+    client.reportStatus.mockResolvedValue({
+      requestId: 'request',
+      state: 'SUCCEEDED',
+      selection: { objective: 'Cost', mode: 'MINIMIZE' },
+      objectives: {},
+      path: 'reports/report.html',
+    });
+    await store.refreshReport();
+    expect(client.reportStatus).toHaveBeenLastCalledWith(campaign.id, 'request');
+    expect(store.report()?.path).toBe('reports/report.html');
+  });
+
   it('does not approve a proposal with an unselected generation model', async () => {
     store.proposal.set({
       digest: 'reviewed',

@@ -332,7 +332,7 @@ public final class CodexEvidenceUtil {
         campaign.codexUsage = aggregate(pooled.values(), complete, partial, unavailable);
         AutoLlmFileUtil.write(root.resolve("reports/llm-usage.json"), Map.of("campaignId", campaign.id, "summary", campaign.codexUsage, "trials", trials));
     }
-    private static Summary aggregate(Collection<Entry> entries, int complete, int partial, int unavailable) {
+    static Summary aggregate(Collection<Entry> entries, int complete, int partial, int unavailable) {
         int attempts = complete + partial + unavailable;
         return new Summary(attempts == 0 ? "NOT_STARTED" : entries.isEmpty() ? "UNAVAILABLE" : partial + unavailable == 0 ? "COMPLETE" : "PARTIAL", total(entries), attempts, complete, partial, unavailable);
     }

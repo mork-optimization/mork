@@ -16,12 +16,6 @@
     </parent>
 
     <dependencies>
-        <!-- BenchmarkUtil Tool -->
-        <dependency>
-            <groupId>es.urjc.etsii.grafo</groupId>
-            <artifactId>scimark</artifactId>
-        </dependency>
-
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>

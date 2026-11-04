@@ -11,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
@@ -131,5 +132,15 @@ class AutoLlmProcessRunnerTest {
             return new AutoLlmProcessRunner().run(List.of("git", "rev-parse", "--verify", "HEAD^{commit}"),
                     temp, temp.resolve("step"), 5000, 0, 50, () -> false, false, 0);
         }
+    }
+    @Test void recoveryIncludesTransferProcessesAndSkipsCheckedOutSourceEvidence() throws Exception {
+        Path output = temp.resolve(".transfer/git");
+        // A deliberately mismatched start time cannot identify this JVM as an owned process.
+        AutoLlmFileUtil.write(output.resolve("owner.json"), Map.of("pid", ProcessHandle.current().pid(), "start", Instant.EPOCH.toString()));
+        AutoLlmFileUtil.write(output.resolve("execution/active.json"), Map.of("evaluation", Map.of("instance", "fixture")));
+        Files.createDirectories(temp.resolve("source")); Files.writeString(temp.resolve("source/owner.json"), "not campaign evidence");
+        new AutoLlmProcessRunner().reconcile(temp);
+        assertTrue(AutoLlmFileUtil.read(output.resolve("execution/active.json"), Map.class).isEmpty());
+        assertEquals("INTERRUPTED", AutoLlmFileUtil.events(output.resolve("execution/events.jsonl")).getFirst().get("state"));
     }
 }

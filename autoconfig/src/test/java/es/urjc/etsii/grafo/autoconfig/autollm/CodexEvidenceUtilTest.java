@@ -54,7 +54,7 @@ class CodexEvidenceUtilTest {
                 org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.anyBoolean(), org.mockito.ArgumentMatchers.anyLong())).thenAnswer(call -> {
             AutoLlmFileUtil.append(output.resolve("stdout.log"), Map.of("type", "thread.started", "thread_id", thread));
             AutoLlmFileUtil.append(output.resolve("stdout.log"), Map.of("type", "turn.completed"));
-            AutoLlmFileUtil.write(output.resolve("manifest.json"), new CodexTaskRunner.Manifest(List.of(), List.of(), List.of(), null, List.of(), List.of()));
+            AutoLlmFileUtil.write(output.resolve("manifest.json"), new CodexTaskRunner.Manifest(List.of(), List.of(), List.of(), null, List.of(), List.of(), List.of()));
             return new AutoLlmProcessRunner.Result(0, false, 1);
         });
         var codex = new CodexTaskRunner(processes, new org.springframework.mock.env.MockEnvironment().withProperty("CODEX_HOME", home().toString()));

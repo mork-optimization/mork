@@ -16,7 +16,7 @@ class AutoLlmReportMemoryIT {
         var curve = new ArrayList<Map<String,Object>>();
         for (int i = 0; i < 1000; i++) curve.add(Map.of("instant", i, "value", 1000 - i));
         String row = AutoLlmFileUtil.JSON.writeValueAsString(Map.of("kind", "evaluation-result", "measured", true,
-                "state", "FAILED", "instance", input.toString(), "curves", Map.of("Cost", curve))) + "\n";
+                "state", "FAILED", "instance", input.toString(), "instanceId", "instance", "algorithm", "IraceProposal", "curves", Map.of("Cost", curve))) + "\n";
         try (var writer = Files.newBufferedWriter(journal)) { for (int i = 0; i < 4000; i++) writer.write(row); }
         Path log = root.resolve("bounded-heap.log");
         var process = new ProcessBuilder(Path.of(System.getProperty("java.home"), "bin/java").toString(), "-Xmx96m", "-XX:+ExitOnOutOfMemoryError", "-cp",
@@ -32,12 +32,17 @@ class AutoLlmReportMemoryIT {
     }
     public static class LowHeapFixture {
         @SuppressWarnings({"rawtypes", "unchecked"})
-        public static void main(String[] args) {
+        public static void main(String[] args) throws Exception {
             Path root = Path.of(args[0]); String input = root.resolve("instance.txt").toString();
             var campaign = new AutoLlmCampaign(); campaign.id = "bounded-heap"; campaign.config = AutoLlmConfig.defaults().withPaths(input, input);
             var target = new AutoLlmCampaign.TargetState(); target.directory = "targets/worker"; target.resolvedConfig = campaign.config; campaign.targets.put("worker", target);
             var trial = new AutoLlmCampaign.Trial(); trial.number = 1; trial.directory = "."; AutoLlmFileUtil.write(root.resolve("control/config.json"), campaign.config); trial.targetId = "worker"; trial.status = AutoLlmCampaign.TrialStatus.FAILED; trial.complete(AutoLlmCampaign.Stage.COMPARISON, "comparison", null); campaign.trials.add(trial);
             new AutoLlmReportService(null).report(campaign, root);
+            var snapshot = AutoLlmPortableReport.build(campaign, root,
+                    new AutoLlmPortableReport.Selection("Cost", es.urjc.etsii.grafo.algorithms.FMode.MINIMIZE), java.time.Instant.now());
+            String html = AutoLlmReportHtml.render(snapshot);
+            if (!html.contains("4000")) throw new AssertionError("Partial report must preserve all recorded failures");
+            Files.writeString(root.resolve("reports/report.html"), html);
         }
     }
 }

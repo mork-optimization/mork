@@ -1,6 +1,9 @@
 package es.urjc.etsii.grafo.io.serializers.excel;
 
 import es.urjc.etsii.grafo.algorithms.FMode;
+import es.urjc.etsii.grafo.benchmark.BenchmarkReport;
+import es.urjc.etsii.grafo.benchmark.BenchmarkResult;
+import es.urjc.etsii.grafo.benchmark.BenchmarkService;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
@@ -29,6 +32,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
@@ -55,7 +59,7 @@ public class ExcelSerializerTest {
     ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references, InstanceManager<TestInstance> instanceManager) {
         var config = new ExcelConfig();
         config.setFolder(p.toFile().getAbsolutePath());
-        return new ExcelSerializer<>(config, references, customizer, instanceManager);
+        return new ExcelSerializer<>(config, references, customizer, instanceManager, new BenchmarkService());
     }
 
     ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references) {
@@ -72,6 +76,62 @@ public class ExcelSerializerTest {
         excel.serializeResults("TestExperiment", new ArrayList<>(), excelPath);
 
         Assertions.assertTrue(Files.exists(excelPath));
+    }
+
+    @Test
+    void benchmarkMetadataComesFromTheExecutionAndOfflineReportsHaveTheirOwnScope(@TempDir Path temp) throws IOException {
+        var service = org.mockito.Mockito.mock(BenchmarkService.class);
+        var config = new ExcelConfig();
+        config.setFolder(temp.toString());
+        var excel = new ExcelSerializer<TestSolution, TestInstance>(config, List.of(), Optional.empty(), TestHelperFactory.emptyInstanceManager(), service);
+        var environment = Map.of("hostname", "solver-host", "java.runtime.version", "test-java");
+        var protocol = new BenchmarkResult.Protocol("scimark-2.2-small", 1234, 2, 1024, 100, 1000, 5000, 100);
+        var scores = new BenchmarkResult.Scores(10, 20, 30, 40, 50);
+        var measured = new BenchmarkResult(1, protocol, "2026-11-04T00:00:00Z", environment, scores, 30);
+        for (var status : List.of(BenchmarkReport.Status.MEASURED, BenchmarkReport.Status.REUSED,
+                BenchmarkReport.Status.DISABLED, BenchmarkReport.Status.UNAVAILABLE)) {
+            boolean hasScore = status == BenchmarkReport.Status.MEASURED || status == BenchmarkReport.Status.REUSED;
+            var metadata = new BenchmarkReport(status, environment, hasScore ? measured : null, status.name());
+            org.mockito.Mockito.when(service.report()).thenReturn(metadata);
+            Path output = temp.resolve(status.name() + ".xlsx");
+            excel.serializeResults("normal", List.of(), output);
+            var values = otherData(output);
+            Assertions.assertEquals(status.name(), values.get("Benchmark status"));
+            Assertions.assertEquals("solver-host", values.get("hostname"));
+            Assertions.assertEquals("test-java", values.get("java.runtime.version"));
+            if (hasScore) {
+                Assertions.assertEquals(30.0, values.get("Benchmark Score"));
+                Assertions.assertEquals(measured.measuredAt(), values.get("Benchmark measured at"));
+                Assertions.assertEquals(50.0, values.get("LU"));
+            } else {
+                Assertions.assertFalse(values.containsKey("Benchmark Score"));
+            }
+        }
+        org.mockito.Mockito.when(service.report()).thenReturn(new BenchmarkReport(BenchmarkReport.Status.REUSED, environment, measured, "Reused"));
+        Path offline = temp.resolve("offline.xlsx");
+        excel.serializeCachedResults("offline", List.of(), List.of(), offline,
+                BenchmarkReport.notRecorded(Map.of("hostname", "remote-execution-host")));
+        var values = otherData(offline);
+        Assertions.assertEquals("NOT_RECORDED", values.get("Benchmark status"));
+        Assertions.assertEquals("Not recorded", values.get("Benchmark details"));
+        Assertions.assertEquals("remote-execution-host", values.get("hostname"));
+        Assertions.assertFalse(values.containsKey("Benchmark Score"));
+        excel.serializeResults("normal", List.of(), temp.resolve("after-offline.xlsx"));
+        Assertions.assertEquals(30.0, otherData(temp.resolve("after-offline.xlsx")).get("Benchmark Score"));
+    }
+
+    private Map<String, Object> otherData(Path path) throws IOException {
+        var data = new HashMap<String, Object>();
+        try (var workbook = new XSSFWorkbook(Files.newInputStream(path))) {
+            for (var row : workbook.getSheet(ExcelSerializer.OTHER_DATA_SHEET)) {
+                if (row.getCell(1) == null) continue;
+                var cell = row.getCell(1);
+                Object value = cell.getCellType() == org.apache.poi.ss.usermodel.CellType.NUMERIC
+                        ? cell.getNumericCellValue() : cell.getStringCellValue();
+                data.put(row.getCell(0).getStringCellValue(), value);
+            }
+        }
+        return data;
     }
 
     @Test
@@ -241,7 +301,7 @@ public class ExcelSerializerTest {
         org.mockito.Mockito.when(manager.getInstance("original")).thenReturn(original);
         org.mockito.Mockito.when(manager.getInstance("target")).thenReturn(target);
         var excel = initExcel(Optional.empty(), temp, List.of(), manager);
-        excel.serializeCachedResults("cached", List.of(), List.of("target"), temp.resolve("target/cached.xlsx"));
+        excel.serializeCachedResults("cached", List.of(), List.of("target"), temp.resolve("target/cached.xlsx"), BenchmarkReport.notRecorded(Map.of()));
         excel.serializeResults("normal", List.of(), temp.resolve("normal.xlsx"));
         try (var cached = new XSSFWorkbook(Files.newInputStream(temp.resolve("target/cached.xlsx")));
              var normal = new XSSFWorkbook(Files.newInputStream(temp.resolve("normal.xlsx")))) {
