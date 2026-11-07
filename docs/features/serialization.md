@@ -20,15 +20,23 @@ For example, by changing the separator to a tab '\t', the format would be TSV.
 
 ## Excel serialization
 
-Experiment data can be exported to the XLSX format, which allows us to create calculated fields with formulas 
-and interactive data automatically without intervention. By default, the Excel file contains two sheets, 
-one with the raw data and another one with an interactive pivot table that allows us to quickly filter and 
-analyze the results.
+Experiment data can be exported to XLSX with these sheets:
 
-The raw results are stored in an Excel table named `RawResultsTable`, and the pivot table uses that table as its
-source. To add results manually, paste rows with the same columns into the first row directly below the raw results
-table, then refresh the pivot table using **Data > Refresh All**. Excel expands the source table automatically, so
-the pivot source range does not need to be edited. The first raw-data header contains the same instructions as a note.
+- **Raw Results** contains successful executions and reference measurements in `RawResultsTable`.
+- **Pivot Table** summarizes those rows. If there are no successful executions, it explains why no summary is available.
+- **Failures** lists unsuccessful executions when present.
+- **Execution Summary** lists total, successful and failed execution counts and the success rate for each algorithm. Reference measurements are excluded.
+- **Other** contains execution counts and benchmark metadata; the optional **Instances** sheet contains instance properties.
+
+Missing reference scores and times are blank and do not contribute numeric measurements to summaries.
+Best-score calculations exclude missing scores. Relative deviation is `ABS(score - best) / ABS(best)`,
+displayed as a percentage. When the best score is zero, deviation is zero for a zero score and blank for
+any other score because relative deviation is undefined. Missing scores also have blank deviation and best-match indicators.
+
+The pivot table and comparison formulas reference `RawResultsTable`. To add results manually, paste rows with
+the same columns into the first row directly below the raw results table, then refresh the pivot table using
+**Data > Refresh All**. Excel expands the table automatically, so the source range does not need to be edited.
+The first raw-data header contains the same instructions as a note. Excel recalculates formulas on opening.
 
 ### Configuring pivot table fields
 
@@ -79,40 +87,91 @@ inside the application.yml file.
     columnGrandTotal: false
 ```
 
-### Adding custom data
+### Customizing the Excel report
 
-You may create charts, new sheets, tables, etc from within your code by extending the `ExcelCustomizer` class, 
-using the method `customize(XSSFWorkbook excelBook)`. The `XSSFWorkbook` is 
-the current opened Excel file.
-Any dependency can be declared in the constructor of your implementation, and it will be automatically be provided at runtime. Example:
+Create a public class extending `ExcelCustomizer`. Dependencies can be supplied through
+its constructor, like other Mork components.
+
+Mork calls `customize(workbook, results)` for each Excel export, after generating the default sheets and
+before saving the file. The hook lets you add charts and custom sheets, and modify the editable default
+sheets:
+
+| Sheet | What you can do inside `customize` |
+| --- | --- |
+| **Pivot Table** | Edit cells, formatting and pivot settings. An export without successful executions has an explanatory message instead of a pivot table. |
+| **Other** | Edit metadata cells or append your own metadata. |
+| Sheets you create | Create and edit cells, formulas, formatting, charts and tables using Apache POI. |
+| **Raw Results**, **Failures**, **Instances**, **Execution Summary** | Their rows are unavailable to the hook. Do not recreate or overwrite these sheets or their rows. |
+
+`XSSFWorkbook` supports editing. The restriction on the last four sheets comes from how Mork writes
+large reports: those rows are streamed separately and merged into the saved file after the hook returns.
+Reading them through the supplied workbook may return no rows even though the saved report contains data.
+The hook does not reopen the completed file for full-workbook editing.
+
+Use the supplied `results` list to create your own views of the data:
+
+- It contains this report's successful and failed executions, in input order. Reference-provider rows are not included.
+- Check `result.success()` before using objective values. Failed executions may have no objectives.
+- Read `result.objectives()`, `result.solutionProperties()` and the execution metadata directly. The list is read-only.
+- `result.solution()` may be null, particularly for offline AutoLLM reports. Using cached values makes a customizer work for both normal and offline exports.
+- Formula cells have not been recalculated yet. Use the supplied results for calculations in Java; Excel recalculates workbook formulas when the report is opened.
+
+The following implementation creates a sheet containing successful executions and appends a note to
+**Other**. Put it in `MyExcelCustomizer.java`, adjusting the package to match your application:
+
 ```java
+package es.urjc.etsii.myproject;
+
+import es.urjc.etsii.grafo.executors.WorkUnitResult;
+import es.urjc.etsii.grafo.io.serializers.excel.ExcelCustomizer;
+import es.urjc.etsii.grafo.io.serializers.excel.ExcelSerializer;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+
+import java.util.List;
+
 public class MyExcelCustomizer extends ExcelCustomizer {
-
-    private final ResultStore<MySolution, MyInstance> resultStore;
-
-    public MyExcelCustomizer(ResultStore<MySolution, MyInstance> resultStore) {
-        this.resultStore = resultStore;
-    }
-
     @Override
-    public void customize(XSSFWorkbook excelBook) {
-        var sheet = excelBook.createSheet("MyCustomSheet");
+    public void customize(XSSFWorkbook workbook, List<? extends WorkUnitResult<?, ?>> results) {
+        var sheet = workbook.createSheet("My Results");
+        var header = sheet.createRow(0);
+        header.createCell(0).setCellValue("Instance");
+        header.createCell(1).setCellValue("Algorithm");
+        header.createCell(2).setCellValue("Main objective");
 
-        var results = this.resultStore.getResultsForExperiment("default");
+        int rowIndex = 1;
         for (var result : results) {
-            double score = result.mainObjectiveValue();
-            long execTime = result.executionTime();
-            var solution = result.solution();
-            
-            // Do some processing and write it to the excel file!
-            sheet.createRow(); 
-            // [...]
+            if (!result.success()) continue;
+            var row = sheet.createRow(rowIndex++);
+            row.createCell(0).setCellValue(result.instanceId());
+            row.createCell(1).setCellValue(result.algorithm().getName());
+            row.createCell(2).setCellValue(result.mainObjectiveValue());
         }
+        sheet.createFreezePane(0, 1);
+        sheet.setColumnWidth(0, 30 * 256);
+        sheet.setColumnWidth(1, 30 * 256);
+        sheet.setColumnWidth(2, 20 * 256);
+
+        var metadata = workbook.getSheet(ExcelSerializer.OTHER_DATA_SHEET);
+        var note = metadata.createRow(metadata.getLastRowNum() + 1);
+        note.createCell(0).setCellValue("My Results contents");
+        note.createCell(1).setCellValue("Successful executions only; reference measurements excluded");
     }
 }
 ```
-See [event docs](events.md) for more information about how the event system works. Generated solutions are available through `ResultStore`, which stores full `WorkUnitResult` instances separately from the lightweight event payloads.
-The customizer is invoked **after** the default Excel sheets are generated and before strong solution references are released, so it can modify the workbook and inspect the complete results.
+
+Modify the supplied workbook in place and return. Mork owns saving and closing it; do not call `write()`
+or `close()` on it, and do not keep it for background work. An exception from the hook fails that export;
+the previous report, if present, is preserved. Custom sheets are held in memory, so large additional
+sheets increase the memory required to export the report.
+
+To add columns to **Raw Results**, define them through your solution's `customProperties()` method
+before execution. Mork captures these values and exports them automatically. Values must be finite
+numbers, strings or booleans; property names must not duplicate the built-in column names.
+
+If you need arbitrary edits to the streamed sheets, open the **completed** `.xlsx` file with
+`XSSFWorkbook` after export and save an edited copy, or edit it in Excel. This is a separate step after
+Mork finishes saving, not code to run inside `customize`. Reopening the file loads the full workbook
+into memory. Editing cells in the saved file does not change Mork's stored execution results.
 
 Mork uses Apache POI 5 to create the XLSX files, see the [official Javadoc](https://poi.apache.org/apidocs/index.html) for more information on how to
 do common operations such as creating new sheets and setting cell values.

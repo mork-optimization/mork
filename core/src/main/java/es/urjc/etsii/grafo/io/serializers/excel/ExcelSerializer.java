@@ -14,35 +14,35 @@ import es.urjc.etsii.grafo.util.Context;
 import es.urjc.etsii.grafo.util.ExceptionUtil;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.DataConsolidateFunction;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.CellStyle;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.ss.usermodel.Table;
 import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.ss.util.CellReference;
-import org.apache.poi.xssf.streaming.SXSSFCell;
 import org.apache.poi.xssf.streaming.SXSSFSheet;
 import org.apache.poi.xssf.streaming.SXSSFWorkbook;
-import org.apache.poi.xssf.usermodel.XSSFCell;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.io.File;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.nio.file.Files;
+import java.nio.file.AtomicMoveNotSupportedException;
+import java.nio.file.StandardCopyOption;
 import java.util.*;
 
-import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetCol.ALG_NAME;
 import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetCol.BEST_KNOWN_FOR_INSTANCE;
 import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetCol.DEV_TO_BEST;
 import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetCol.INSTANCE_NAME;
 import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetCol.IS_BEST_KNOWN;
-import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetCol.ITERATION;
 import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetCol.SCORE;
 import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetCol.TOTAL_TIME;
 import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetCol.TTB;
-import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetCol.getCTypeForIndex;
 import static es.urjc.etsii.grafo.util.TimeUtil.nanosToSecs;
 import static org.apache.poi.ss.util.CellReference.convertNumToColString;
 
@@ -82,15 +82,10 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
      */
     public static final String INSTANCE_SHEET = "Instances";
 
-    /**
-     * Positive infinity value to use in Excel
-     */
-    public static final double POSITIVE_INFINITY = 1e99;
+    /** Execution counts by algorithm, including failures and excluding reference rows. */
+    public static final String EXECUTION_SUMMARY_SHEET = "Execution Summary";
 
-    /**
-     * Negative infinity value to use in Excel
-     */
-    public static final double NEGATIVE_INFINITY = -1e99;
+    static final String PERCENT_NUMBER_FORMAT = "0.00%";
 
     /**
      * Display elapsed times with at most two decimal places while preserving the
@@ -147,83 +142,105 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         writeWorkbook(results, inputs, p, benchmark.report());
     }
 
-    private void writeWorkbook(List<WorkUnitResult<S, I>> results, List<String> inputs, Path p, BenchmarkReport metadata) {
-        log.debug("Exporting result data to XLSX...");
-
-        File f = p.toFile();
-
+    private void writeWorkbook(List<WorkUnitResult<S, I>> results, List<String> inputs, Path output, BenchmarkReport metadata) {
+        Path temporary = null;
         try {
-            var successful = new ArrayList<WorkUnitResult<S, I>>();
-            var failed = new ArrayList<WorkUnitResult<S, I>>();
-            for (var result : results) {
-                if (result.success()) successful.add(result);
-                else failed.add(result);
+            Path destination = output.toAbsolutePath();
+            temporary = Files.createTempFile(destination.getParent(), ".mork-excel-", ".xlsx");
+            writeWorkbookData(results, inputs, temporary, metadata);
+            try {
+                Files.move(temporary, destination, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            } catch (AtomicMoveNotSupportedException e) {
+                Files.move(temporary, destination, StandardCopyOption.REPLACE_EXISTING);
             }
-            validateDataRowCount(FAILURES_SHEET, failed.size());
-            Object[][] instancePropertyData = prepareInstancePropertyData(inputs);
-            String[] customProperties = getCustomPropertyHeaders(successful);
-            String[] headers = getRawHeaders(customProperties);
-            Object[][] rawData = buildRawSheetData(maximizing, successful, referenceResultProviders, headers, customProperties);
-
-            try (var excelBook = new XSSFWorkbook()) {
-                var rawXssfSheet = excelBook.createSheet(RAW_SHEET);
-                headRawSheet(rawXssfSheet, customProperties);
-                var rawTable = createRawTable(rawXssfSheet, rawData.length, headers.length);
-
-                try (
-                        var streamExcelBook = new SXSSFWorkbook(excelBook);
-                        var outputStream = new FileOutputStream(f)
-                ) {
-                    streamExcelBook.setCompressTempFiles(true);
-
-                    // Create XSSF-only sheets after wrapping the workbook so SXSSF does not replace their sheet data.
-                    var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
-                    var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
-                    if (successful.isEmpty()) {
-                        String message = failed.isEmpty() ? "No successful executions to summarize."
-                                : "No successful executions to summarize. See the Failures sheet for failed executions.";
-                        writeCell(pivotSheet.createRow(0).createCell(0), message, CType.VALUE);
-                    } else {
-                        fillPivotSheet(pivotSheet, rawTable);
-                    }
-
-                    // The XSSF header was needed to initialize the table and pivot cache. Stream it with the remaining
-                    // raw data so it is included when SXSSF replaces the sheet data during workbook serialization.
-                    rawXssfSheet.removeRow(rawXssfSheet.getRow(0));
-                    addRawTableInstructions(rawXssfSheet);
-                    var rawSheet = streamExcelBook.getSheet(RAW_SHEET);
-                    headRawSheet(rawSheet, customProperties);
-
-                    // Check and fill instance sheet if appropiate
-                    fillInstanceSheet(excelBook, instancePropertyData);
-
-                    fillOtherDataSheet(otherDataSheet, metadata, successful.size(), failed.size());
-
-                    writeRawSheetData(rawSheet, rawData);
-                    writeFailuresSheet(streamExcelBook, failed);
-
-                    if(this.excelCustomizer.isPresent()){
-                        var realExcelCustomizer = excelCustomizer.get();
-                        log.debug("Calling Excel customizer: {}", realExcelCustomizer.getClass().getSimpleName());
-                        realExcelCustomizer.customize(excelBook);
-                    } else {
-                        log.debug("ExcelCustomizer implementation not found");
-                    }
-                    // Excel should recalculate on open always
-                    streamExcelBook.setForceFormulaRecalculation(true);
-                    streamExcelBook.write(outputStream);
-                    log.debug("XLSX created successfully");
-                }
-            }
+            log.debug("XLSX created successfully: {}", destination);
         } catch (Exception e) {
+            if (temporary != null) {
+                try { Files.deleteIfExists(temporary); }
+                catch (IOException cleanup) { e.addSuppressed(cleanup); }
+            }
             Throwable rootCause = ExceptionUtil.getRootCause(e);
             throw new RuntimeException(String.format(
                     "Exception while trying to save Excel file: %s. Root cause: %s: %s",
-                    f.getAbsolutePath(),
-                    rootCause.getClass().getSimpleName(),
-                    rootCause.getMessage()
-            ), e);
+                    output.toAbsolutePath(), rootCause.getClass().getSimpleName(), rootCause.getMessage()), e);
         }
+    }
+
+    private void writeWorkbookData(List<WorkUnitResult<S, I>> results, List<String> inputs, Path output,
+                                   BenchmarkReport metadata) throws IOException {
+        var successful = new ArrayList<WorkUnitResult<S, I>>();
+        var failed = new ArrayList<WorkUnitResult<S, I>>();
+        for (var result : results) {
+            if (result.success()) successful.add(result);
+            else failed.add(result);
+        }
+        validateDataRowCount(FAILURES_SHEET, failed.size());
+        String[] customProperties = getCustomPropertyHeaders(successful);
+        String[] headers = getRawHeaders(customProperties);
+        var instanceNames = validateSuccessfulResults(successful);
+        long rawRows = successful.size() + (long) referenceResultProviders.size() * instanceNames.size();
+        validateDataRowCount(RAW_SHEET, rawRows);
+
+        try (var excelBook = new XSSFWorkbook()) {
+            var rawXssfSheet = excelBook.createSheet(RAW_SHEET);
+            writeHeader(rawXssfSheet, headers);
+            var rawTable = createRawTable(rawXssfSheet, (int) rawRows, headers.length);
+
+            try (var streamExcelBook = new SXSSFWorkbook(excelBook, 100, true, false)) {
+                // Create editable XSSF-only sheets after wrapping, so SXSSF does not replace their data.
+                var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
+                var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
+                if (successful.isEmpty()) {
+                    String message = failed.isEmpty() ? "No successful executions to summarize."
+                            : "No successful executions to summarize. See the Failures sheet for failed executions.";
+                    writeCell(pivotSheet.createRow(0).createCell(0), message, CType.VALUE);
+                } else {
+                    fillPivotSheet(pivotSheet, rawTable);
+                }
+
+                // The XSSF header initializes the table and pivot cache; stream it with the data afterwards.
+                rawXssfSheet.removeRow(rawXssfSheet.getRow(0));
+                addRawTableInstructions(rawXssfSheet);
+                var rawSheet = streamExcelBook.getSheet(RAW_SHEET);
+                writeHeader(rawSheet, headers);
+                fillInstanceSheet(streamExcelBook, inputs);
+                fillOtherDataSheet(otherDataSheet, metadata, successful.size(), failed.size());
+                writeRawSheetData(rawSheet, successful, instanceNames, customProperties);
+                writeFailuresSheet(streamExcelBook, failed);
+                writeExecutionSummary(streamExcelBook, results);
+
+                if (excelCustomizer.isPresent()) {
+                    excelCustomizer.get().customize(excelBook, List.copyOf(results));
+                }
+                streamExcelBook.setForceFormulaRecalculation(true);
+                try (var outputStream = Files.newOutputStream(output)) {
+                    streamExcelBook.write(outputStream);
+                }
+            }
+        }
+    }
+
+    private void writeExecutionSummary(SXSSFWorkbook workbook, List<WorkUnitResult<S, I>> results) {
+        var counts = new TreeMap<String, long[]>();
+        for (var result : results) {
+            var count = counts.computeIfAbsent(result.algorithm().getName(), ignored -> new long[2]);
+            count[result.success() ? 0 : 1]++;
+        }
+        validateDataRowCount(EXECUTION_SUMMARY_SHEET, counts.size());
+        var sheet = workbook.createSheet(EXECUTION_SUMMARY_SHEET);
+        writeHeader(sheet, new String[]{"Algorithm Name", "Total executions", "Successful executions", "Failed executions", "Success rate"});
+        var percent = workbook.createCellStyle();
+        percent.setDataFormat(workbook.createDataFormat().getFormat(PERCENT_NUMBER_FORMAT));
+        int index = 1;
+        for (var entry : counts.entrySet()) {
+            var count = entry.getValue();
+            long total = count[0] + count[1];
+            var row = sheet.createRow(index++);
+            writeValues(row, entry.getKey(), total, count[0], count[1], (double) count[0] / total);
+            row.getCell(4).setCellStyle(percent);
+        }
+        sheet.createFreezePane(0, 1);
+        sheet.setAutoFilter(new CellRangeAddress(0, counts.size(), 0, 4));
     }
 
     private void fillOtherDataSheet(XSSFSheet sheet, BenchmarkReport metadata, int successful, int failed) {
@@ -289,7 +306,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     }
 
     private Table createRawTable(XSSFSheet rawSheet, int rawDataRows, int columnCount) {
-        int lastRow = Math.max(1, rawDataRows - 1);
+        int lastRow = Math.max(1, rawDataRows);
         var tableArea = new AreaReference(
                 new CellReference(0, 0),
                 new CellReference(lastRow, columnCount - 1),
@@ -317,59 +334,27 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         comment.setString(creationHelper.createRichTextString(RAW_TABLE_INSTRUCTIONS));
     }
 
-    protected void fillInstanceSheet(XSSFWorkbook excelBook, Object[][] instancePropertyData) {
-        if(!this.config.isInstanceSheetEnabled()){
-            log.debug("Instance sheet disabled");
+    private void fillInstanceSheet(SXSSFWorkbook workbook, List<String> inputs) {
+        if (!config.isInstanceSheetEnabled()) return;
+        var sheet = workbook.createSheet(INSTANCE_SHEET);
+        var keys = new TreeSet<>(Instance.getUniquePropertiesKeys()).toArray(new String[0]);
+        if (keys.length == 0) {
+            writeValues(sheet.createRow(0), "Instance sheet is enabled but no properties found for any instance, remember to define properties using Instance::setProperty. If you do not want to use this feature, set serializers.xlsx.instance-sheet-enabled to false");
             return;
         }
-
-        log.debug("Creating instance sheet...");
-        var sheet = excelBook.createSheet(INSTANCE_SHEET);
-
-        // Write matrix data to cell Excel sheet
-        for (int i = 0; i < instancePropertyData.length; i++) {
-            var row = sheet.createRow(i);
-            var rowData = instancePropertyData[i];
-            for (int j = 0; j < rowData.length; j++) {
-                var cell = row.createCell(j);
-                writeCell(cell, rowData[j], CType.VALUE);
-            }
-        }
-        log.debug("Instance sheet created");
-    }
-
-    private Object[][] prepareInstancePropertyData(List<String> inputs) {
-        if(!this.config.isInstanceSheetEnabled()){
-            return new Object[0][];
-        }
-
-        var keys = Instance.getUniquePropertiesKeys().toArray(new String[0]);
-
-        if (keys.length == 0) {
-            log.debug("Instance sheet enabled, but no data available, skipping");
-            return new Object[][]{{"Instance sheet is enabled but no properties found for any instance, remember to define properties using Instance::setProperty. If you do not want to use this feature, set serializers.xlsx.instance-sheet-enabled to false"}};
-        }
-        return getInstancePropertyData(inputs, keys);
-    }
-
-    private Object[][] getInstancePropertyData(List<String> inputs, String[] keys) {
-        List<Object[]> properties = new ArrayList<>();
-        Object[] header = new Object[keys.length + 1];
-        header[0] = "Instance name";
-        System.arraycopy(keys, 0, header, 1, keys.length);
-        properties.add(header);
+        validateDataRowCount(INSTANCE_SHEET, inputs.size());
+        writeHeader(sheet, ArrayUtil.merge(new String[]{"Instance name"}, keys));
+        int index = 1;
         for (String path : inputs) {
             var instance = instanceManager.getInstance(path);
-            Object[] row = new Object[keys.length+1];
-            row[0] = instance.getId();
+            var row = sheet.createRow(index++);
+            writeCell(row.createCell(0), instance.getId(), CType.VALUE);
             for (int i = 0; i < keys.length; i++) {
                 Object value = instance.getPropertyOrDefault(keys[i], "");
                 validateInstancePropertyValue(keys[i], value, instance);
-                row[i+1] = value;
+                writeCell(row.createCell(i + 1), value, CType.VALUE);
             }
-            properties.add(row);
         }
-        return properties.toArray(new Object[0][]);
     }
 
     private static void validateInstancePropertyValue(String propertyName, Object value, Instance instance) {
@@ -411,10 +396,12 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             pivotTable.addRowLabel(RawSheetCol.ALG_NAME.getIndex());      // Algorithm labels in rows
         }
 
-        if (maximizing) {
-            pivotTable.addColumnLabel(DataConsolidateFunction.MAX, RawSheetCol.SCORE.getIndex(), "Max. score");
-        } else {
-            pivotTable.addColumnLabel(DataConsolidateFunction.MIN, RawSheetCol.SCORE.getIndex(), "Min. score");
+        if (config.isBestScoreEnabled()) {
+            if (maximizing) {
+                pivotTable.addColumnLabel(DataConsolidateFunction.MAX, RawSheetCol.SCORE.getIndex(), "Max. score");
+            } else {
+                pivotTable.addColumnLabel(DataConsolidateFunction.MIN, RawSheetCol.SCORE.getIndex(), "Min. score");
+            }
         }
 
         // Optional fields
@@ -454,11 +441,11 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         }
 
         if(config.isMinDevToBestKnownEnabled()){
-            pivotTable.addColumnLabel(DataConsolidateFunction.MIN, RawSheetCol.DEV_TO_BEST.getIndex(), "Min. %Dev2Best");
+            pivotTable.addColumnLabel(DataConsolidateFunction.MIN, RawSheetCol.DEV_TO_BEST.getIndex(), "Min. %Dev2Best", PERCENT_NUMBER_FORMAT);
         }
 
         if(config.isAvgDevToBestKnownEnabled()){
-            pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, RawSheetCol.DEV_TO_BEST.getIndex(), "Avg. %Dev2Best");
+            pivotTable.addColumnLabel(DataConsolidateFunction.AVERAGE, RawSheetCol.DEV_TO_BEST.getIndex(), "Avg. %Dev2Best", PERCENT_NUMBER_FORMAT);
         }
     }
 
@@ -558,13 +545,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         ARRAY_FORMULA
     }
 
-    private Object[][] buildRawSheetData(
-            boolean maximizing,
-            List<? extends WorkUnitResult<?, ?>> results,
-            List<ReferenceResultProvider> referenceResultProviders,
-            String[] headers,
-            String[] customProperties
-    ) {
+    private Set<String> validateSuccessfulResults(List<WorkUnitResult<S, I>> results) {
         var mainObjName = Context.getMainObjective().getName();
         var instanceNames = new LinkedHashSet<String>();
         for (var result : results) {
@@ -576,82 +557,72 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             }
             instanceNames.add(result.instanceId());
         }
+        return instanceNames;
+    }
 
-        int customPropertiesStartIndex = headers.length - customProperties.length;
-
-        int nColumns = headers.length;
-        long rowsForProvider = (long) referenceResultProviders.size() * instanceNames.size();
-        long dataRowCount = results.size() + rowsForProvider;
-        validateDataRowCount(RAW_SHEET, dataRowCount);
-        int cutOff = results.size() + 1;
-        int nRows = Math.toIntExact(dataRowCount + 1);
-
-        // Create matrix data
-        Object[][] data = new Object[nRows][nColumns];
-        data[0] = headers;
-
-        for (int i = 1; i < cutOff; i++) {
-            var r = results.get(i - 1);
-
-            data[i][INSTANCE_NAME.getIndex()] = r.instanceId();
-            data[i][ALG_NAME.getIndex()] = r.algorithm().getName();
-            data[i][ITERATION.getIndex()] = r.iteration();
-            data[i][SCORE.getIndex()] = r.objectives().get(mainObjName);
-            data[i][TOTAL_TIME.getIndex()] = nanosToSecs(r.executionTime());
-            data[i][TTB.getIndex()] = nanosToSecs(r.timeToTarget());
-            int excelRowIndex = i + 1; // Current row +1 because Excel starts indexing rows on 1.
-
-            // MINIFS/MAXIFS (scores, instancenames, instancename)
-            String function = "_xlfn." + (maximizing ? "MAXIFS" : "MINIFS");
-            String refInstanceNameCol = INSTANCE_NAME.getExcelColIdx() + ":" + INSTANCE_NAME.getExcelColIdx();
-            String refScoreCol = SCORE.getExcelColIdx() + ":" + SCORE.getExcelColIdx();
-            String refCurrentInstance = INSTANCE_NAME.getExcelColIdx() + excelRowIndex;
-            String refBestKnownForInstance = BEST_KNOWN_FOR_INSTANCE.getExcelColIdx() + excelRowIndex;
-            String refCurrentScore = SCORE.getExcelColIdx() + excelRowIndex;
-
-            data[i][BEST_KNOWN_FOR_INSTANCE.getIndex()] = String.format("%s(%s, %s, %s)", function, refScoreCol, refInstanceNameCol, refCurrentInstance);
-            data[i][IS_BEST_KNOWN.getIndex()] = String.format("IF(%s=%s,1,0)", refBestKnownForInstance, refCurrentScore);
-            data[i][DEV_TO_BEST.getIndex()] = String.format("ABS(%s-%s)/%s", refCurrentScore, refBestKnownForInstance, refBestKnownForInstance);
-            
-            // Fill custom properties
-            var solutionProps = r.solutionProperties();
+    private void writeRawSheetData(SXSSFSheet sheet, List<WorkUnitResult<S, I>> results,
+                                   Set<String> instanceNames, String[] customProperties) {
+        var workbook = sheet.getWorkbook();
+        var timeStyle = workbook.createCellStyle();
+        timeStyle.setDataFormat(workbook.createDataFormat().getFormat(TIME_NUMBER_FORMAT));
+        var percentStyle = workbook.createCellStyle();
+        percentStyle.setDataFormat(workbook.createDataFormat().getFormat(PERCENT_NUMBER_FORMAT));
+        String objective = Context.getMainObjective().getName();
+        int index = 1;
+        for (var result : results) {
+            var row = sheet.createRow(index++);
+            writeValues(row, result.instanceId(), result.algorithm().getName(), result.iteration(),
+                    result.objectives().get(objective), secondsOrBlank(result.executionTime()), secondsOrBlank(result.timeToTarget()));
+            writeComparisonColumns(row, timeStyle, percentStyle);
             for (int j = 0; j < customProperties.length; j++) {
-                String propName = customProperties[j];
-                data[i][customPropertiesStartIndex + j] = solutionProps.get(propName);
+                writeCell(row.createCell(RawSheetCol.values().length + j), result.solutionProperties().get(customProperties[j]), CType.VALUE);
             }
         }
-
-        int currentRow = cutOff;
-        for (String instanceName : instanceNames) {
-            for(var provider: referenceResultProviders){
-                var refResult = provider.getValueFor(instanceName);
-                double refScore = refResult.getScores().getOrDefault(mainObjName, Double.NaN);
-
-                data[currentRow][INSTANCE_NAME.getIndex()] = instanceName;
-                data[currentRow][ALG_NAME.getIndex()] = provider.getProviderName();
-                data[currentRow][ITERATION.getIndex()] = 0;
-                data[currentRow][SCORE.getIndex()] = nanInfiniteFilter(maximizing, refScore);
-                data[currentRow][TOTAL_TIME.getIndex()] = nanInfiniteFilter(false, refResult.getTimeInSeconds());
-                data[currentRow][TTB.getIndex()] = nanInfiniteFilter(false, refResult.getTimeToBestInSeconds());
-
-
-                int excelRowIndex = currentRow + 1; // Current row +1 because Excel starts indexing rows on 1.
-                // MINIFS/MAXIFS (scores, instancenames, instancename)
-                String function = "_xlfn." + (maximizing ? "MAXIFS" : "MINIFS");
-                String refInstanceNameCol = INSTANCE_NAME.getExcelColIdx() + ":" + INSTANCE_NAME.getExcelColIdx();
-                String refScoreCol = SCORE.getExcelColIdx() + ":" + SCORE.getExcelColIdx();
-                String refCurrentInstance = INSTANCE_NAME.getExcelColIdx() + excelRowIndex;
-                String refBestKnownForInstance = BEST_KNOWN_FOR_INSTANCE.getExcelColIdx() + excelRowIndex;
-                String refCurrentScore = SCORE.getExcelColIdx() + excelRowIndex;
-
-                data[currentRow][BEST_KNOWN_FOR_INSTANCE.getIndex()] = String.format("%s(%s, %s, %s)", function, refScoreCol, refInstanceNameCol, refCurrentInstance);
-                data[currentRow][IS_BEST_KNOWN.getIndex()] = String.format("IF(%s=%s,1,0)", refBestKnownForInstance, refCurrentScore);
-                data[currentRow][DEV_TO_BEST.getIndex()] = String.format("ABS(%s-%s)/%s", refCurrentScore, refBestKnownForInstance, refBestKnownForInstance);
-                currentRow++;
+        for (String instance : instanceNames) {
+            for (var provider : referenceResultProviders) {
+                var reference = provider.getValueFor(instance);
+                var row = sheet.createRow(index++);
+                writeValues(row, instance, provider.getProviderName(), 0,
+                        finiteOrBlank(reference.getScores().get(objective)),
+                        finiteOrBlank(reference.getTimeInSeconds()), finiteOrBlank(reference.getTimeToBestInSeconds()));
+                writeComparisonColumns(row, timeStyle, percentStyle);
+                for (int j = 0; j < customProperties.length; j++) {
+                    row.createCell(RawSheetCol.values().length + j).setBlank();
+                }
             }
         }
+        if (results.isEmpty()) {
+            var row = sheet.createRow(1);
+            for (int j = 0; j < RawSheetCol.values().length + customProperties.length; j++) row.createCell(j).setBlank();
+        }
+    }
 
-        return data;
+    private void writeComparisonColumns(Row row, CellStyle timeStyle, CellStyle percentStyle) {
+        int index = row.getRowNum() + 1;
+        String score = SCORE.getExcelColIdx() + index;
+        String best = BEST_KNOWN_FOR_INSTANCE.getExcelColIdx() + index;
+        String scores = RAW_TABLE + "[" + SCORE.getName() + "]";
+        String instances = RAW_TABLE + "[" + INSTANCE_NAME.getName() + "]";
+        String function = "_xlfn." + (maximizing ? "MAXIFS" : "MINIFS");
+        // Exclude blank reference scores, which must never compete as zero-valued solutions.
+        writeCell(row.createCell(BEST_KNOWN_FOR_INSTANCE.getIndex()),
+                String.format("%s(%s,%s,%s,%s,\"<>\")", function, scores, instances, INSTANCE_NAME.getExcelColIdx() + index, scores), CType.FORMULA);
+        writeCell(row.createCell(IS_BEST_KNOWN.getIndex()),
+                String.format("IF(ISNUMBER(%s),IF(%s=%s,1,0),\"\")", score, best, score), CType.FORMULA);
+        // Relative deviation against zero is undefined unless the score is also zero.
+        writeCell(row.createCell(DEV_TO_BEST.getIndex()),
+                String.format("IF(ISNUMBER(%s),IF(%s=0,IF(%s=0,0,\"\"),ABS(%s-%s)/ABS(%s)),\"\")", score, best, score, score, best, best), CType.FORMULA);
+        row.getCell(TOTAL_TIME.getIndex()).setCellStyle(timeStyle);
+        row.getCell(TTB.getIndex()).setCellStyle(timeStyle);
+        row.getCell(DEV_TO_BEST.getIndex()).setCellStyle(percentStyle);
+    }
+
+    private static Double finiteOrBlank(Double value) {
+        return value != null && Double.isFinite(value) ? value : null;
+    }
+
+    private static Double secondsOrBlank(long nanos) {
+        return nanos < 0 ? null : nanosToSecs(nanos);
     }
 
     static void validateDataRowCount(String sheetName, long dataRowCount) {
@@ -666,55 +637,12 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         }
     }
 
-    private void writeRawSheetData(SXSSFSheet rawSheet, Object[][] data) {
-        if (data.length == 1) {
-            var blankRow = rawSheet.createRow(1);
-            for (int j = 0; j < data[0].length; j++) {
-                blankRow.createCell(j).setBlank();
-            }
-            return;
-        }
-
-        for (int i = 1; i < data.length; i++) {
-            var row = rawSheet.createRow(i);
-            for (int j = 0; j < data[i].length; j++) {
-                var cell = row.createCell(j);
-                writeCell(cell, data[i][j], getCTypeForIndex(j));
-            }
-        }
+    private static void writeHeader(Sheet sheet, String[] headers) {
+        writeValues(sheet.createRow(0), (Object[]) headers);
     }
 
-    private void headRawSheet(XSSFSheet rawSheet, String[] customProperties) {
-        String[] headers = getRawHeaders(customProperties);
-        var headerRow = rawSheet.createRow(0);
-        for (int i = 0; i < headers.length; i++) {
-            var cell = headerRow.createCell(i);
-            writeCell(cell, headers[i], CType.VALUE);
-        }
-    }
-
-    public void headRawSheet(SXSSFSheet rawSheet, String[] customProperties) {
-        // Create headers
-        String[] headers = getRawHeaders(customProperties);
-        var headerRow = rawSheet.createRow(0);
-        for (int i = 0; i < headers.length; i++) {
-            var cell = headerRow.createCell(i);
-            writeCell(cell, headers[i], CType.VALUE);
-        }
-    }
-
-    /**
-     * Transform NaNs and other special double values to valid values in Excel
-     *
-     * @param maximizing true if this is a maximizing problem, false otherwise
-     * @param value value to transform
-     * @return transformed value
-     */
-    protected static double nanInfiniteFilter(boolean maximizing, double value){
-        if(Double.isFinite(value)){
-            return value;
-        }
-        return maximizing ? ExcelSerializer.NEGATIVE_INFINITY : ExcelSerializer.POSITIVE_INFINITY;
+    private static void writeValues(Row row, Object... values) {
+        for (int i = 0; i < values.length; i++) writeCell(row.createCell(i), values[i], CType.VALUE);
     }
 
     /**
@@ -724,55 +652,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
      * @param d value to write
      * @param type hints how the value should be interpreted. May or may not be honored.
      */
-    protected static void writeCell(SXSSFCell cell, Object d, CType type) {
-        if(d == null){
-            cell.setBlank();
-            return;
-        }
-        switch (type) {
-            case FORMULA -> {
-                if (!(d instanceof String)) {
-                    throw invalidFormulaCellValue(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), d);
-                }
-                cell.setCellFormula((String) d);
-            }
-            case ARRAY_FORMULA -> {
-                if (!(d instanceof String)) {
-                    throw invalidFormulaCellValue(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), d);
-                }
-                String[] parts = ((String) d).split("·");
-                if (parts.length != 2) {
-                    throw new IllegalArgumentException(String.format(
-                            "Invalid setArrayFormula at Excel sheet '%s' cell %s: %s",
-                            cell.getSheet().getSheetName(),
-                            excelCellAddress(cell.getRowIndex(), cell.getColumnIndex()),
-                            d
-                    ));
-                }
-                cell.getSheet().setArrayFormula(parts[0], CellRangeAddress.valueOf(parts[1]));
-            }
-            case VALUE -> {
-                switch (d) {
-                    case Number n -> {
-                        validateFiniteNumber(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), n);
-                        cell.setCellValue(n.doubleValue());
-                    }
-                    case String s -> cell.setCellValue(s);
-                    case Boolean b -> cell.setCellValue(b);
-                    default -> throw invalidValueCellValue(cell.getSheet().getSheetName(), cell.getRowIndex(), cell.getColumnIndex(), d);
-                }
-            }
-        }
-    }
-
-    /**
-     * Write value to sheet cell
-     *
-     * @param cell cell where value will be written
-     * @param d value to write
-     * @param type hints how the value should be interpreted. May or may not be honored.
-     */
-    protected static void writeCell(XSSFCell cell, Object d, CType type) {
+    protected static void writeCell(Cell cell, Object d, CType type) {
         if(d == null){
             cell.setBlank();
             return;

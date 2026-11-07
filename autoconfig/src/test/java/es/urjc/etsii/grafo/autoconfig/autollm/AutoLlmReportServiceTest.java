@@ -8,7 +8,7 @@ import es.urjc.etsii.grafo.io.serializers.excel.ExcelSerializer;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
+import org.junit.jupiter.params.provider.CsvSource;
 import java.nio.file.*;
 import java.util.*;
 import static org.junit.jupiter.api.Assertions.*;
@@ -25,8 +25,8 @@ class AutoLlmReportServiceTest {
         Files.writeString(journal, "{broken}\n{\"value\":1}\n");
         assertThrows(RuntimeException.class, () -> AutoLlmFileUtil.forEachEvent(journal, row -> {}));
     }
-    @ParameterizedTest @ValueSource(booleans = {false, true}) @SuppressWarnings({"rawtypes", "unchecked"})
-    void groupsWorkbooksByTargetAndRetainsFailedRowsWithTheirProvenance(boolean remote) throws Exception {
+    @ParameterizedTest @CsvSource({"false,false", "false,true", "true,false", "true,true"}) @SuppressWarnings({"rawtypes", "unchecked"})
+    void groupsWorkbooksByTargetAndRetainsFailedRowsWithTheirProvenance(boolean remote, boolean allFailed) throws Exception {
         Path input = root.resolve("instance.txt"); Files.writeString(input, "input");
         var config = AutoLlmConfig.defaults().withPaths(input.toString(), input.toString());
         var campaign = new AutoLlmCampaign(); campaign.id = UUID.randomUUID().toString(); campaign.config = config;
@@ -50,9 +50,9 @@ class AutoLlmReportServiceTest {
             var trial = new AutoLlmCampaign.Trial(); trial.number = campaign.trials.size() + 1; trial.directory = trialDirectory; AutoLlmFileUtil.write(root.resolve(trialDirectory).resolve("control/config.json"), target.resolvedConfig); trial.targetId = id; trial.targetRevision = trial.number;
             trial.status = id.equals("a") ? AutoLlmCampaign.TrialStatus.SUCCEEDED : AutoLlmCampaign.TrialStatus.FAILED; trial.complete(AutoLlmCampaign.Stage.COMPARISON, trialDirectory + "/comparison", null); campaign.trials.add(trial);
             for (String algorithm : List.of("SOTA", "IraceProposal")) {
-                var row = new LinkedHashMap<String,Object>(); row.put("kind", "evaluation-result"); row.put("measured", true); row.put("state", id.equals("b") && algorithm.equals("IraceProposal") ? "FAILED" : "SUCCEEDED");
+                var row = new LinkedHashMap<String,Object>(); row.put("kind", "evaluation-result"); row.put("measured", true); row.put("state", id.equals("b") && (allFailed || algorithm.equals("IraceProposal")) ? "FAILED" : "SUCCEEDED");
                 row.put("id", UUID.randomUUID().toString()); row.put("instance", eventInstance); row.put("instanceId", "instance"); row.put("algorithm", algorithm); row.put("iteration", "0"); row.put("seed", 42);
-                row.put("objectives", Map.of("cost", 3)); row.put("properties", Map.of()); row.put("executionTimeNanos", 100); row.put("timeToBestNanos", 50);
+                row.put("objectives", row.get("state").equals("SUCCEEDED") ? Map.of("cost", 3) : Map.of()); row.put("properties", Map.of()); row.put("executionTimeNanos", 100); row.put("timeToBestNanos", 50);
                 AutoLlmFileUtil.append(root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.COMPARISON)).resolve("execution/events.jsonl"), row);
             }
             Path comparison = root.resolve(trial.outputDirectory(AutoLlmCampaign.Stage.COMPARISON));
@@ -65,7 +65,12 @@ class AutoLlmReportServiceTest {
         new AutoLlmReportService(excel).report(campaign, root);
         assertEquals(Set.of(root.resolve("reports/targets/a/campaign.xlsx"), root.resolve("reports/targets/b/campaign.xlsx")), captured.keySet());
         assertEquals(2, captured.get(root.resolve("reports/targets/a/campaign.xlsx")).size());
-        assertEquals(1, captured.get(root.resolve("reports/targets/b/campaign.xlsx")).size());
+        assertEquals(2, captured.get(root.resolve("reports/targets/b/campaign.xlsx")).size());
+        var failed = captured.get(root.resolve("reports/targets/b/campaign.xlsx")).getLast();
+        assertFalse(failed.success());
+        assertEquals(!allFailed, captured.get(root.resolve("reports/targets/b/campaign.xlsx")).getFirst().success());
+        assertTrue(failed.objectives().isEmpty());
+        assertEquals("b", failed.solutionProperties().get("Execution target"));
         var portable = AutoLlmFileUtil.JSON.readTree(Files.readString(root.resolve("reports/comparison-rows.json")));
         assertEquals(4, portable.size()); assertEquals("FAILED", portable.get(3).path("state").asString());
         assertEquals(input.toString(), portable.get(3).path("instance").asString());
@@ -77,6 +82,6 @@ class AutoLlmReportServiceTest {
         new AutoLlmReportService(excel).report(campaign, root);
         assertEquals(reportHash, AutoLlmFileUtil.hash(root.resolve("reports/comparison-rows.json")), "Compression must preserve every exported report row");
         assertEquals(2, captured.get(root.resolve("reports/targets/a/campaign.xlsx")).size());
-        assertEquals(1, captured.get(root.resolve("reports/targets/b/campaign.xlsx")).size());
+        assertEquals(2, captured.get(root.resolve("reports/targets/b/campaign.xlsx")).size());
     }
 }

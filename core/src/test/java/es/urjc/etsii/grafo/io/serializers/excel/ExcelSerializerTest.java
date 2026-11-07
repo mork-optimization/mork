@@ -7,6 +7,7 @@ import es.urjc.etsii.grafo.benchmark.BenchmarkService;
 import es.urjc.etsii.grafo.executors.WorkUnit;
 import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
+import es.urjc.etsii.grafo.experiment.reference.ReferenceResult;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Objective;
@@ -194,6 +195,143 @@ public class ExcelSerializerTest {
                     "Customized",
                     workbook.getSheet(ExcelSerializer.PIVOT_SHEET).getRow(10).getCell(0).getStringCellValue()
             );
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {false, true})
+    void failedReplacementPreservesExistingWorkbook(boolean cached, @TempDir Path temp) throws IOException {
+        Path output = temp.resolve("report.xlsx");
+        var data = solutionGenerator();
+        export(initExcel(Optional.empty(), temp), data, output, cached);
+        byte[] original = Files.readAllBytes(output);
+        var failing = new ExcelCustomizer() {
+            @Override
+            public void customize(XSSFWorkbook workbook, List<? extends WorkUnitResult<?, ?>> results) {
+                throw new IllegalStateException("Customizer failed after rows were written");
+            }
+        };
+        var excel = initExcel(Optional.of(failing), temp);
+        Assertions.assertThrows(RuntimeException.class, () -> export(excel, data, output, cached));
+        Assertions.assertArrayEquals(original, Files.readAllBytes(output));
+        try (var files = Files.newDirectoryStream(temp)) {
+            for (Path file : files) Assertions.assertEquals(output, file, "Temporary export must be removed");
+        }
+        export(initExcel(Optional.empty(), temp), List.of(), output, cached);
+        try (var workbook = new XSSFWorkbook(Files.newInputStream(output))) {
+            Assertions.assertTrue(workbook.getSheet(ExcelSerializer.PIVOT_SHEET).getPivotTables().isEmpty());
+        }
+    }
+
+    @ParameterizedTest
+    @CsvSource({"MINIMIZE,-10,-8,0.2", "MAXIMIZE,-8,-10,0.25", "MINIMIZE,2,4,1", "MAXIMIZE,4,2,0.5",
+            "MINIMIZE,0,2,", "MAXIMIZE,0,-2,", "MINIMIZE,0,0,0", "MAXIMIZE,0,0,0"})
+    void comparisonsHandleSignedScoresAndMissingReferences(FMode mode, double best, double other, Double gap,
+                                                         @TempDir Path temp) throws IOException {
+        Context.Configurator.setObjectives(Objective.of("Test", mode, TestSolution::getScore, TestMove::getScoreChange));
+        var references = new ArrayList<ReferenceResultProvider>();
+        for (Double missing : java.util.Arrays.asList(null, Double.NaN, Double.POSITIVE_INFINITY, Double.NEGATIVE_INFINITY)) {
+            references.add(new ReferenceResultProvider() {
+                @Override public String getProviderName() { return "Reference " + missing; }
+                @Override public ReferenceResult getValueFor(String instance) {
+                    var result = new ReferenceResult().setTimeInSeconds(3.5);
+                    if (missing != null) result.addScore("Test", missing);
+                    return result;
+                }
+            });
+        }
+        var data = List.of(
+                TestHelperFactory.solutionGenerated("instance", "experiment", "algorithm", 0, best, 10, 8),
+                TestHelperFactory.solutionGenerated("instance", "experiment", "algorithm", 1, other, 10, 8));
+        Path output = temp.resolve("comparison.xlsx");
+        export(initExcel(Optional.empty(), temp, references), data, output, true);
+        try (var workbook = new XSSFWorkbook(Files.newInputStream(output))) {
+            var raw = workbook.getSheet(ExcelSerializer.RAW_SHEET);
+            String bestFormula = raw.getRow(1).getCell(8).getCellFormula();
+            Assertions.assertTrue(bestFormula.contains("RawResultsTable[Score]"));
+            Assertions.assertTrue(bestFormula.contains("RawResultsTable[Instance Name]"));
+            Assertions.assertTrue(bestFormula.endsWith("RawResultsTable[Score],\"<>\")"));
+            // POI 5.5.1 Countif.StringMatcher rejects NumberEval for the <> criterion.
+            // Check the exported best-score formula above; evaluate deviations against known best values.
+            for (int i = 1; i < 7; i++) {
+                raw.getRow(i).getCell(8).removeFormula();
+                raw.getRow(i).getCell(8).setCellValue(best);
+            }
+            var evaluator = workbook.getCreationHelper().createFormulaEvaluator();
+            Assertions.assertEquals(0, evaluator.evaluate(raw.getRow(1).getCell(7)).getNumberValue());
+            var actualGap = evaluator.evaluate(raw.getRow(2).getCell(7));
+            if (gap == null) Assertions.assertEquals("", actualGap.getStringValue());
+            else Assertions.assertEquals(gap, actualGap.getNumberValue(), 1e-12);
+            Assertions.assertEquals(ExcelSerializer.PERCENT_NUMBER_FORMAT, raw.getRow(2).getCell(7).getCellStyle().getDataFormatString());
+            for (int rowIndex = 3; rowIndex < 7; rowIndex++) {
+                var row = raw.getRow(rowIndex);
+                Assertions.assertEquals(CellType.BLANK, row.getCell(3).getCellType());
+                Assertions.assertEquals(3.5, row.getCell(4).getNumericCellValue());
+                Assertions.assertEquals(CellType.BLANK, row.getCell(5).getCellType());
+                Assertions.assertEquals("", evaluator.evaluate(row.getCell(6)).getStringValue());
+                Assertions.assertEquals("", evaluator.evaluate(row.getCell(7)).getStringValue());
+                Assertions.assertEquals(best, evaluator.evaluate(row.getCell(8)).getNumberValue());
+            }
+            // Table references must include a newly appended result after expanding the table.
+            var added = raw.createRow(7);
+            added.createCell(0).setCellValue("instance");
+            double improved = mode == FMode.MINIMIZE ? best - 1 : best + 1;
+            added.createCell(3).setCellValue(improved);
+            workbook.getTable(ExcelSerializer.RAW_TABLE).setArea(new AreaReference("A1:I8", SpreadsheetVersion.EXCEL2007));
+            var tokens = org.apache.poi.ss.formula.FormulaParser.parse(bestFormula,
+                    org.apache.poi.xssf.usermodel.XSSFEvaluationWorkbook.create(workbook),
+                    org.apache.poi.ss.formula.FormulaType.CELL, workbook.getSheetIndex(raw));
+            int ranges = 0;
+            for (var token : tokens) {
+                if (token instanceof org.apache.poi.ss.formula.ptg.AreaPtgBase area) {
+                    Assertions.assertEquals(1, area.getFirstRow());
+                    Assertions.assertEquals(7, area.getLastRow());
+                    ranges++;
+                }
+            }
+            Assertions.assertEquals(3, ranges, "Score and instance table references must expand with the table");
+        }
+    }
+
+    @Test
+    void streamedRowsAndReportDataRemainAvailableAfterFlushing(@TempDir Path temp) throws IOException {
+        var data = new ArrayList<WorkUnitResult<TestSolution, TestInstance>>();
+        for (int i = 0; i < 500; i++) {
+            data.add(TestHelperFactory.solutionGenerated("instance", "experiment", "algorithm", i, i, 10, 8).withoutSolution());
+        }
+        data.add(failedResult("instance", -1, 501));
+        var customizer = new ExcelCustomizer() {
+            @Override
+            public void customize(XSSFWorkbook workbook, List<? extends WorkUnitResult<?, ?>> results) {
+                Assertions.assertEquals(data, results);
+                Assertions.assertThrows(UnsupportedOperationException.class, results::clear);
+                var sheet = workbook.createSheet("Custom report");
+                sheet.createRow(0).createCell(0).setCellValue(results.get(499).objectives().get("Test"));
+                sheet.createRow(1).createCell(0).setCellValue(results.get(500).success());
+            }
+        };
+        Path output = temp.resolve("streamed.xlsx");
+        export(initExcel(Optional.of(customizer), temp), data, output, true);
+        try (var workbook = new XSSFWorkbook(Files.newInputStream(output))) {
+            var raw = workbook.getSheet(ExcelSerializer.RAW_SHEET);
+            Assertions.assertEquals(501, raw.getPhysicalNumberOfRows());
+            Assertions.assertEquals(0, raw.getRow(1).getCell(3).getNumericCellValue());
+            Assertions.assertEquals(499, raw.getRow(500).getCell(3).getNumericCellValue());
+            Assertions.assertEquals("A1:I501", workbook.getTable(ExcelSerializer.RAW_TABLE).getArea().formatAsString());
+            var custom = workbook.getSheet("Custom report");
+            Assertions.assertEquals(499, custom.getRow(0).getCell(0).getNumericCellValue());
+            Assertions.assertFalse(custom.getRow(1).getCell(0).getBooleanCellValue());
+            var counts = workbook.getSheet(ExcelSerializer.EXECUTION_SUMMARY_SHEET);
+            long total = 0, successful = 0, failed = 0;
+            for (var row : counts) {
+                if (row.getRowNum() == 0) continue;
+                total += (long) row.getCell(1).getNumericCellValue();
+                successful += (long) row.getCell(2).getNumericCellValue();
+                failed += (long) row.getCell(3).getNumericCellValue();
+            }
+            Assertions.assertEquals(501, total);
+            Assertions.assertEquals(500, successful);
+            Assertions.assertEquals(1, failed);
         }
     }
 
@@ -509,6 +647,11 @@ public class ExcelSerializerTest {
             Assertions.assertTrue(pivot.getRow(0).getCell(0).getStringCellValue().contains("Failures"));
             var failures = workbook.getSheet(ExcelSerializer.FAILURES_SHEET);
             Assertions.assertEquals(failed.size() + 1, failures.getPhysicalNumberOfRows());
+            var summary = workbook.getSheet(ExcelSerializer.EXECUTION_SUMMARY_SHEET).getRow(1);
+            Assertions.assertEquals(150, summary.getCell(1).getNumericCellValue());
+            Assertions.assertEquals(0, summary.getCell(2).getNumericCellValue());
+            Assertions.assertEquals(150, summary.getCell(3).getNumericCellValue());
+            Assertions.assertEquals(0, summary.getCell(4).getNumericCellValue());
             Assertions.assertEquals(CellType.BLANK, failures.getRow(1).getCell(6).getCellType());
             for (int i = 0; i < failed.size(); i++) {
                 var row = failures.getRow(i + 1);
@@ -573,7 +716,7 @@ public class ExcelSerializerTest {
         private boolean called;
 
         @Override
-        public void customize(XSSFWorkbook excelBook) {
+        public void customize(XSSFWorkbook excelBook, List<? extends WorkUnitResult<?, ?>> results) {
             called = true;
             excelBook.getSheet(ExcelSerializer.PIVOT_SHEET).createRow(10).createCell(0).setCellValue("Customized");
         }
