@@ -4,17 +4,21 @@ import es.urjc.etsii.grafo.algorithms.FMode;
 import es.urjc.etsii.grafo.benchmark.BenchmarkReport;
 import es.urjc.etsii.grafo.benchmark.BenchmarkResult;
 import es.urjc.etsii.grafo.benchmark.BenchmarkService;
+import es.urjc.etsii.grafo.executors.WorkUnit;
+import es.urjc.etsii.grafo.executors.WorkUnitResult;
 import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.testutil.TestHelperFactory;
+import es.urjc.etsii.grafo.testutil.TestAlgorithm;
 import es.urjc.etsii.grafo.testutil.TestInstance;
 import es.urjc.etsii.grafo.testutil.TestMove;
 import es.urjc.etsii.grafo.testutil.TestSolution;
 import es.urjc.etsii.grafo.util.Context;
 import org.apache.poi.ss.SpreadsheetVersion;
 import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.CellType;
 import org.apache.poi.ss.util.AreaReference;
 import org.apache.poi.ss.util.CellReference;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -24,6 +28,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.io.File;
 import java.io.FileInputStream;
@@ -37,6 +44,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 
 import static es.urjc.etsii.grafo.testutil.TestHelperFactory.referencesGenerator;
 import static es.urjc.etsii.grafo.testutil.TestHelperFactory.solutionGenerator;
@@ -46,14 +54,14 @@ public class ExcelSerializerTest {
     private static final Objective<TestMove, TestSolution, TestInstance> OBJ_MAX = Objective.of("Test", FMode.MAXIMIZE, TestSolution::getScore, TestMove::getScoreChange);
 
     @BeforeAll
-    static void configureObjectives() {
+    static void configureHeadlessMode() {
         System.setProperty("java.awt.headless", "true");
-        Context.Configurator.setObjectives(OBJ_MAX);
     }
 
     @BeforeEach
     void cleanInstance() {
         Instance.resetProperties();
+        Context.Configurator.setObjectives(OBJ_MAX);
     }
 
     ExcelSerializer<TestSolution, TestInstance> initExcel(Optional<ExcelCustomizer> customizer, Path p, List<ReferenceResultProvider> references, InstanceManager<TestInstance> instanceManager) {
@@ -145,7 +153,12 @@ public class ExcelSerializerTest {
             Assertions.assertNotNull(table);
             Assertions.assertEquals("A1:I2", table.getArea().formatAsString());
             Assertions.assertEquals(2, workbook.getSheet(ExcelSerializer.RAW_SHEET).getPhysicalNumberOfRows());
+            Assertions.assertNull(workbook.getSheet(ExcelSerializer.FAILURES_SHEET));
+            var pivot = workbook.getSheet(ExcelSerializer.PIVOT_SHEET);
+            Assertions.assertTrue(pivot.getPivotTables().isEmpty());
+            Assertions.assertTrue(pivot.getRow(0).getCell(0).getStringCellValue().contains("No successful executions"));
         }
+        Assertions.assertEquals(0.0, otherData(temp.resolve("test.xlsx")).get("Total executions"));
     }
 
     @Test
@@ -403,14 +416,157 @@ public class ExcelSerializerTest {
         Assertions.assertTrue(exception.getMessage().contains("Root cause: IllegalArgumentException"));
     }
 
+    @ParameterizedTest(name = "{0}, cached={1}")
+    @CsvSource({"MINIMIZE, false", "MINIMIZE, true", "MAXIMIZE, false", "MAXIMIZE, true"})
+    void failedExecutionsStayOutOfPerformanceSummaries(FMode mode, boolean cached, @TempDir Path temp) throws IOException {
+        var objective = Objective.of("Test", mode, TestSolution::getScore, TestMove::getScoreChange);
+        Context.Configurator.setObjectives(objective);
+        boolean maximizing = mode == FMode.MAXIMIZE;
+        double sign = maximizing ? -1 : 1;
+        var provider = org.mockito.Mockito.spy(referencesGenerator(sign, 0.5).getFirst());
+        var references = List.of(provider);
+        var knownFailure = failedResult("shared", 2_500_000_000L, 7);
+        var unknownFailure = failedResult("failed-only", -1, 8);
+        var data = List.of(
+                knownFailure,
+                TestHelperFactory.solutionGenerated("shared", "TestExperiment", "working", 0, sign * 5, 1_000_000_000L, 500_000_000L),
+                TestHelperFactory.solutionGenerated("shared", "TestExperiment", "working", 1, sign * 2, 1_000_000_000L, 500_000_000L),
+                unknownFailure);
+        var customizer = new RecordingExcelCustomizer();
+        var excel = initExcel(Optional.of(customizer), temp, references);
+        Path output = temp.resolve(mode + "-" + cached + ".xlsx");
+        export(excel, data, output, cached);
+        Assertions.assertTrue(customizer.called);
+        org.mockito.Mockito.verify(provider, org.mockito.Mockito.times(1)).getValueFor("shared");
+        org.mockito.Mockito.verify(provider, org.mockito.Mockito.never()).getValueFor("failed-only");
+        try (var workbook = new XSSFWorkbook(Files.newInputStream(output))) {
+            var raw = workbook.getSheet(ExcelSerializer.RAW_SHEET);
+            Assertions.assertEquals("A1:I4", workbook.getTable(ExcelSerializer.RAW_TABLE).getArea().formatAsString());
+            Assertions.assertEquals(4, raw.getPhysicalNumberOfRows());
+            Assertions.assertEquals(9, raw.getRow(0).getLastCellNum());
+            Assertions.assertEquals(sign * 5, raw.getRow(1).getCell(3).getNumericCellValue());
+            Assertions.assertEquals(sign * 2, raw.getRow(2).getCell(3).getNumericCellValue());
+            Assertions.assertEquals(sign, raw.getRow(3).getCell(3).getNumericCellValue());
+            Assertions.assertEquals("TestProvider", raw.getRow(3).getCell(1).getStringCellValue());
+            for (int i = 1; i <= 3; i++) {
+                var row = raw.getRow(i);
+                Assertions.assertEquals("shared", row.getCell(0).getStringCellValue());
+                Assertions.assertEquals(CellType.FORMULA, row.getCell(6).getCellType());
+                Assertions.assertEquals(CellType.FORMULA, row.getCell(7).getCellType());
+                Assertions.assertTrue(row.getCell(8).getCellFormula().startsWith("_xlfn." + (maximizing ? "MAXIFS" : "MINIFS")));
+            }
+            var pivot = workbook.getSheet(ExcelSerializer.PIVOT_SHEET).getPivotTables().getFirst();
+            Assertions.assertEquals(maximizing ? "max" : "min",
+                    pivot.getCTPivotTableDefinition().getDataFields().getDataFieldArray(0).getSubtotal().toString());
+            Assertions.assertEquals(ExcelSerializer.RAW_TABLE,
+                    pivot.getPivotCacheDefinition().getCTPivotCacheDefinition().getCacheSource().getWorksheetSource().getName());
+
+            var failures = workbook.getSheet(ExcelSerializer.FAILURES_SHEET);
+            Assertions.assertEquals(3, failures.getPhysicalNumberOfRows());
+            var expectedHeaders = List.of("Result ID", "Instance Name", "Instance Path", "Algorithm Name", "Iteration", "Status", "Total Time (s)");
+            for (int i = 0; i < expectedHeaders.size(); i++) {
+                Assertions.assertEquals(expectedHeaders.get(i), failures.getRow(0).getCell(i).getStringCellValue());
+            }
+            var first = failures.getRow(1);
+            Assertions.assertEquals(knownFailure.resultId().toString(), first.getCell(0).getStringCellValue());
+            Assertions.assertEquals("shared", first.getCell(1).getStringCellValue());
+            Assertions.assertEquals(knownFailure.instancePath(), first.getCell(2).getStringCellValue());
+            Assertions.assertEquals("broken", first.getCell(3).getStringCellValue());
+            Assertions.assertEquals("7", first.getCell(4).getStringCellValue());
+            Assertions.assertEquals("FAILED", first.getCell(5).getStringCellValue());
+            Assertions.assertEquals(2.5, first.getCell(6).getNumericCellValue());
+            Assertions.assertEquals(ExcelSerializer.TIME_NUMBER_FORMAT, first.getCell(6).getCellStyle().getDataFormatString());
+            Assertions.assertEquals("failed-only", failures.getRow(2).getCell(1).getStringCellValue());
+            Assertions.assertEquals(CellType.BLANK, failures.getRow(2).getCell(6).getCellType());
+        }
+        var metadata = otherData(output);
+        Assertions.assertEquals(4.0, metadata.get("Total executions"));
+        Assertions.assertEquals(2.0, metadata.get("Successful executions"));
+        Assertions.assertEquals(2.0, metadata.get("Failed executions"));
+        Assertions.assertEquals("Successful executions only", metadata.get("Performance summaries"));
+    }
+
+    @ParameterizedTest(name = "cached={0}")
+    @ValueSource(booleans = {false, true})
+    void allFailedExecutionsProduceADiagnosticWorkbook(boolean cached, @TempDir Path temp) throws IOException {
+        var failed = new ArrayList<WorkUnitResult<TestSolution, TestInstance>>();
+        // Exceed the streaming row window so failures are also retained after rows are flushed.
+        for (int i = 0; i < 150; i++) {
+            failed.add(failedResult("failed-" + i, i == 0 ? -1 : 1_250_000_000L, i));
+        }
+        var customizer = new RecordingExcelCustomizer();
+        var excel = initExcel(Optional.of(customizer), temp, referencesGenerator(123, 1));
+        Path output = temp.resolve("all-failed-" + cached + ".xlsx");
+        export(excel, failed, output, cached);
+        Assertions.assertTrue(customizer.called);
+        try (var workbook = new XSSFWorkbook(Files.newInputStream(output))) {
+            Assertions.assertEquals("A1:I2", workbook.getTable(ExcelSerializer.RAW_TABLE).getArea().formatAsString());
+            var raw = workbook.getSheet(ExcelSerializer.RAW_SHEET);
+            Assertions.assertEquals(2, raw.getPhysicalNumberOfRows());
+            for (var cell : raw.getRow(1)) Assertions.assertEquals(CellType.BLANK, cell.getCellType());
+            var pivot = workbook.getSheet(ExcelSerializer.PIVOT_SHEET);
+            Assertions.assertTrue(pivot.getPivotTables().isEmpty());
+            Assertions.assertTrue(pivot.getRow(0).getCell(0).getStringCellValue().contains("Failures"));
+            var failures = workbook.getSheet(ExcelSerializer.FAILURES_SHEET);
+            Assertions.assertEquals(failed.size() + 1, failures.getPhysicalNumberOfRows());
+            Assertions.assertEquals(CellType.BLANK, failures.getRow(1).getCell(6).getCellType());
+            for (int i = 0; i < failed.size(); i++) {
+                var row = failures.getRow(i + 1);
+                Assertions.assertEquals(failed.get(i).resultId().toString(), row.getCell(0).getStringCellValue());
+                Assertions.assertEquals("FAILED", row.getCell(5).getStringCellValue());
+                if (i > 0) Assertions.assertEquals(1.25, row.getCell(6).getNumericCellValue());
+            }
+        }
+        var metadata = otherData(output);
+        Assertions.assertEquals(150.0, metadata.get("Total executions"));
+        Assertions.assertEquals(0.0, metadata.get("Successful executions"));
+        Assertions.assertEquals(150.0, metadata.get("Failed executions"));
+    }
+
+    @Test
+    void successfulResultsRequireAFiniteMainObjective(@TempDir Path temp) {
+        var excel = initExcel(Optional.empty(), temp);
+        var values = List.of(Map.<String, Double>of(), Map.of("Other", 1.0), Map.of("Test", Double.NaN),
+                Map.of("Test", Double.POSITIVE_INFINITY), Map.of("Test", Double.NEGATIVE_INFINITY));
+        for (var objectives : values) {
+            var result = new WorkUnitResult<TestSolution, TestInstance>(UUID.randomUUID(), true,
+                    "experiment", "instance.txt", "invalid-instance", new TestAlgorithm("invalid-algorithm"),
+                    "7", null, objectives, Map.of(), 0, 0, null);
+            var exception = Assertions.assertThrows(RuntimeException.class,
+                    () -> excel.serializeResults("experiment", List.of(result), temp.resolve("invalid.xlsx")));
+            Assertions.assertInstanceOf(IllegalArgumentException.class, exception.getCause());
+            var message = exception.getCause().getMessage();
+            Assertions.assertTrue(message.contains("invalid-instance"));
+            Assertions.assertTrue(message.contains("invalid-algorithm"));
+            Assertions.assertTrue(message.contains("iteration '7'"));
+            Assertions.assertTrue(message.contains("objective 'Test'"));
+            Assertions.assertTrue(message.contains("finite"));
+        }
+    }
+
+    private WorkUnitResult<TestSolution, TestInstance> failedResult(String instance, long time, int iteration) {
+        var work = new WorkUnit<>(UUID.randomUUID(), "experiment", "instances/" + instance + ".txt",
+                new TestAlgorithm("broken"), iteration);
+        return WorkUnitResult.failure(work.resultId(), work, instance, time, -1);
+    }
+
+    private void export(ExcelSerializer<TestSolution, TestInstance> excel, List<WorkUnitResult<TestSolution, TestInstance>> results,
+                        Path output, boolean cached) {
+        if (cached) excel.serializeCachedResults(results, List.of(), output, BenchmarkReport.notRecorded(Map.of()));
+        else excel.serializeResults("experiment", results, output);
+    }
+
     @Test
     void rejectsMoreRowsThanExcelSupports() {
         int maxDataRows = SpreadsheetVersion.EXCEL2007.getMaxRows() - 1;
-        var exception = Assertions.assertThrows(
-                IllegalArgumentException.class,
-                () -> ExcelSerializer.validateRawDataRowCount((long) maxDataRows + 1)
-        );
-        Assertions.assertTrue(exception.getMessage().contains(String.valueOf(maxDataRows)));
+        for (var sheet : List.of(ExcelSerializer.RAW_SHEET, ExcelSerializer.FAILURES_SHEET)) {
+            Assertions.assertDoesNotThrow(() -> ExcelSerializer.validateDataRowCount(sheet, maxDataRows));
+            var exception = Assertions.assertThrows(
+                    IllegalArgumentException.class,
+                    () -> ExcelSerializer.validateDataRowCount(sheet, (long) maxDataRows + 1));
+            Assertions.assertTrue(exception.getMessage().contains(sheet));
+            Assertions.assertTrue(exception.getMessage().contains(String.valueOf(maxDataRows)));
+        }
     }
 
     private static final class RecordingExcelCustomizer extends ExcelCustomizer {

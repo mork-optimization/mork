@@ -6,7 +6,6 @@ import es.urjc.etsii.grafo.experiment.reference.ReferenceResultProvider;
 import es.urjc.etsii.grafo.io.Instance;
 import es.urjc.etsii.grafo.io.InstanceManager;
 import es.urjc.etsii.grafo.io.serializers.ResultsSerializer;
-import es.urjc.etsii.grafo.solution.Objective;
 import es.urjc.etsii.grafo.solution.Solution;
 import es.urjc.etsii.grafo.util.ArrayUtil;
 import es.urjc.etsii.grafo.benchmark.BenchmarkReport;
@@ -33,7 +32,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.util.*;
-import java.util.stream.Collectors;
 
 import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetCol.ALG_NAME;
 import static es.urjc.etsii.grafo.io.serializers.excel.RawSheetCol.BEST_KNOWN_FOR_INSTANCE;
@@ -60,6 +58,9 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
      * Raw sheet name
      */
     public static final String RAW_SHEET = "Raw Results";
+
+    /** Failed executions, excluded from performance summaries. */
+    public static final String FAILURES_SHEET = "Failures";
 
     /**
      * Raw results table name
@@ -152,10 +153,17 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         File f = p.toFile();
 
         try {
+            var successful = new ArrayList<WorkUnitResult<S, I>>();
+            var failed = new ArrayList<WorkUnitResult<S, I>>();
+            for (var result : results) {
+                if (result.success()) successful.add(result);
+                else failed.add(result);
+            }
+            validateDataRowCount(FAILURES_SHEET, failed.size());
             Object[][] instancePropertyData = prepareInstancePropertyData(inputs);
-            String[] customProperties = getCustomPropertyHeaders(results);
+            String[] customProperties = getCustomPropertyHeaders(successful);
             String[] headers = getRawHeaders(customProperties);
-            Object[][] rawData = buildRawSheetData(maximizing, results, referenceResultProviders, headers, customProperties);
+            Object[][] rawData = buildRawSheetData(maximizing, successful, referenceResultProviders, headers, customProperties);
 
             try (var excelBook = new XSSFWorkbook()) {
                 var rawXssfSheet = excelBook.createSheet(RAW_SHEET);
@@ -171,7 +179,13 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
                     // Create XSSF-only sheets after wrapping the workbook so SXSSF does not replace their sheet data.
                     var pivotSheet = excelBook.createSheet(PIVOT_SHEET);
                     var otherDataSheet = excelBook.createSheet(OTHER_DATA_SHEET);
-                    fillPivotSheet(pivotSheet, rawTable);
+                    if (successful.isEmpty()) {
+                        String message = failed.isEmpty() ? "No successful executions to summarize."
+                                : "No successful executions to summarize. See the Failures sheet for failed executions.";
+                        writeCell(pivotSheet.createRow(0).createCell(0), message, CType.VALUE);
+                    } else {
+                        fillPivotSheet(pivotSheet, rawTable);
+                    }
 
                     // The XSSF header was needed to initialize the table and pivot cache. Stream it with the remaining
                     // raw data so it is included when SXSSF replaces the sheet data during workbook serialization.
@@ -183,9 +197,10 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
                     // Check and fill instance sheet if appropiate
                     fillInstanceSheet(excelBook, instancePropertyData);
 
-                    fillOtherDataSheet(otherDataSheet, metadata);
+                    fillOtherDataSheet(otherDataSheet, metadata, successful.size(), failed.size());
 
                     writeRawSheetData(rawSheet, rawData);
+                    writeFailuresSheet(streamExcelBook, failed);
 
                     if(this.excelCustomizer.isPresent()){
                         var realExcelCustomizer = excelCustomizer.get();
@@ -211,12 +226,16 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         }
     }
 
-    private void fillOtherDataSheet(XSSFSheet sheet, BenchmarkReport metadata) {
+    private void fillOtherDataSheet(XSSFSheet sheet, BenchmarkReport metadata, int successful, int failed) {
         writeCell(sheet.createRow(0).createCell(0), "System properties", CType.VALUE);
         int row = 1;
         for (var entry : new TreeMap<>(metadata.environment()).entrySet()) {
             otherDataRow(sheet, row++, entry.getKey(), entry.getValue());
         }
+        otherDataRow(sheet, row++, "Total executions", successful + failed);
+        otherDataRow(sheet, row++, "Successful executions", successful);
+        otherDataRow(sheet, row++, "Failed executions", failed);
+        otherDataRow(sheet, row++, "Performance summaries", "Successful executions only");
         otherDataRow(sheet, row++, "Benchmark status", metadata.status().name());
         otherDataRow(sheet, row++, "Benchmark details", metadata.detail());
         var measurement = metadata.result();
@@ -239,6 +258,34 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         var row = sheet.createRow(index);
         writeCell(row.createCell(0), label, CType.VALUE);
         writeCell(row.createCell(1), value, CType.VALUE);
+    }
+
+    private void writeFailuresSheet(SXSSFWorkbook workbook, List<WorkUnitResult<S, I>> failed) {
+        if (failed.isEmpty()) return;
+
+        var sheet = workbook.createSheet(FAILURES_SHEET);
+        String[] headers = {"Result ID", "Instance Name", "Instance Path", "Algorithm Name", "Iteration", "Status", "Total Time (s)"};
+        var header = sheet.createRow(0);
+        for (int i = 0; i < headers.length; i++) {
+            writeCell(header.createCell(i), headers[i], CType.VALUE);
+        }
+        var timeStyle = workbook.createCellStyle();
+        timeStyle.setDataFormat(workbook.createDataFormat().getFormat(TIME_NUMBER_FORMAT));
+        int index = 1;
+        for (var result : failed) {
+            var row = sheet.createRow(index++);
+            writeCell(row.createCell(0), result.resultId().toString(), CType.VALUE);
+            writeCell(row.createCell(1), result.instanceId(), CType.VALUE);
+            writeCell(row.createCell(2), result.instancePath(), CType.VALUE);
+            writeCell(row.createCell(3), result.algorithm().getName(), CType.VALUE);
+            writeCell(row.createCell(4), result.iteration(), CType.VALUE);
+            writeCell(row.createCell(5), "FAILED", CType.VALUE);
+            var time = row.createCell(6);
+            writeCell(time, result.executionTime() >= 0 ? nanosToSecs(result.executionTime()) : null, CType.VALUE);
+            time.setCellStyle(timeStyle);
+        }
+        sheet.createFreezePane(0, 1);
+        sheet.setAutoFilter(new CellRangeAddress(0, failed.size(), 0, headers.length - 1));
     }
 
     private Table createRawTable(XSSFSheet rawSheet, int rawDataRows, int columnCount) {
@@ -490,42 +537,6 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
     }
 
     /**
-     * Get best result for a given instance
-     *
-     * @param results our results
-     * @param providers reference values
-     * @param maximizing true if this is a maximizing problem, false otherwise
-     * @return best value known for a given instance
-     */
-    protected static Map<String, Double> bestResultPerInstance(Objective<?, ?, ?> objective, List<? extends WorkUnitResult<?, ?>> results, List<ReferenceResultProvider> providers, boolean maximizing) {
-
-        Map<String, Double> ourBestValuePerInstance = results
-                .stream()
-                .collect(Collectors.toMap(
-                        WorkUnitResult::instanceId,
-                        result -> result.objectives().get(objective.getName()),
-                        (a, b) -> maximizing ? Math.max(a, b) : Math.min(a, b)
-                ));
-
-        Map<String, Double> bestValuePerInstance = new HashMap<>();
-
-        for(var instance: ourBestValuePerInstance.keySet()){
-            double best = ourBestValuePerInstance.get(instance);
-            for(var reference: providers){
-                var optionalValue = reference.getValueFor(instance).getScore(objective.getName());
-                if(maximizing){
-                    best = Math.max(best, optionalValue.orElse(ExcelSerializer.NEGATIVE_INFINITY));
-                } else {
-                    best = Math.min(best, optionalValue.orElse(ExcelSerializer.POSITIVE_INFINITY));
-                }
-            }
-            bestValuePerInstance.put(instance, best);
-        }
-
-        return bestValuePerInstance;
-    }
-
-    /**
      * Value types to use as hint when serializing to Excel cells.
      * Necessary because for example we cannot determine if a string is a formula,
      * an array formula or should be interpreted as a literal
@@ -554,23 +565,30 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
             String[] headers,
             String[] customProperties
     ) {
-        // Best values per instance
-        Map<String, Double> bestValuesPerInstance = bestResultPerInstance(Context.getMainObjective(), results, referenceResultProviders, maximizing);
+        var mainObjName = Context.getMainObjective().getName();
+        var instanceNames = new LinkedHashSet<String>();
+        for (var result : results) {
+            var value = result.objectives().get(mainObjName);
+            if (value == null || !Double.isFinite(value)) {
+                throw new IllegalArgumentException(String.format(
+                        "Successful result for instance '%s', algorithm '%s', iteration '%s' must contain a finite value for objective '%s', but found %s",
+                        result.instanceId(), result.algorithm().getName(), result.iteration(), mainObjName, value));
+            }
+            instanceNames.add(result.instanceId());
+        }
 
         int customPropertiesStartIndex = headers.length - customProperties.length;
 
         int nColumns = headers.length;
-        long rowsForProvider = (long) referenceResultProviders.size() * bestValuesPerInstance.size();
+        long rowsForProvider = (long) referenceResultProviders.size() * instanceNames.size();
         long dataRowCount = results.size() + rowsForProvider;
-        validateRawDataRowCount(dataRowCount);
+        validateDataRowCount(RAW_SHEET, dataRowCount);
         int cutOff = results.size() + 1;
         int nRows = Math.toIntExact(dataRowCount + 1);
 
         // Create matrix data
         Object[][] data = new Object[nRows][nColumns];
         data[0] = headers;
-
-        var mainObjName = Context.getMainObjective().getName();
 
         for (int i = 1; i < cutOff; i++) {
             var r = results.get(i - 1);
@@ -604,7 +622,7 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         }
 
         int currentRow = cutOff;
-        for(String instanceName: bestValuesPerInstance.keySet()){
+        for (String instanceName : instanceNames) {
             for(var provider: referenceResultProviders){
                 var refResult = provider.getValueFor(instanceName);
                 double refScore = refResult.getScores().getOrDefault(mainObjName, Double.NaN);
@@ -636,12 +654,13 @@ public class ExcelSerializer<S extends Solution<S,I>, I extends Instance>  exten
         return data;
     }
 
-    static void validateRawDataRowCount(long dataRowCount) {
+    static void validateDataRowCount(String sheetName, long dataRowCount) {
         int maxDataRows = SpreadsheetVersion.EXCEL2007.getMaxRows() - 1;
         if (dataRowCount > maxDataRows) {
             throw new IllegalArgumentException(String.format(
-                    "Cannot export %s raw result rows to XLSX: Excel supports at most %s data rows after the header",
+                    "Cannot export %s data rows to Excel sheet '%s': Excel supports at most %s data rows after the header",
                     dataRowCount,
+                    sheetName,
                     maxDataRows
             ));
         }

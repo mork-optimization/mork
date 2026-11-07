@@ -57,8 +57,24 @@ class AutoLlmStorageEstimateTest {
         assertEquals("UNKNOWN", estimate.workers().get("b").assessment());
         assertNull(estimate.workers().get("b").capacity().availableBytes());
         assertEquals(12345L, estimate.workers().get("b").capacity().lastKnownAvailableBytes());
-        assertTrue(estimate.approvalLine().contains("WARNING: may not fit with 20% headroom on a"));
+        // The controller can also be at risk on a real low-space filesystem.
+        var atRisk = estimate.controller().assessment().equals("MAY_NOT_FIT") ? "controller, a" : "a";
+        assertTrue(estimate.approvalLine().contains("WARNING: may not fit with 20% headroom on " + atRisk));
         assertTrue(estimate.approvalLine().contains("WARNING: capacity unavailable on b"));
+    }
+    @Test void warningIncludesControllerWhenItAlsoMayNotFit() {
+        var range = new AutoLlmStorageEstimate.Range(1, 2);
+        var worker = new AutoLlmStorageEstimate.Location("user@a", "/worker", range, capacity(1), "MAY_NOT_FIT", Map.of());
+        var workers = Map.of("a", worker);
+        var controllerWithSpace = new AutoLlmStorageEstimate.Location("controller", "/controller", range,
+                capacity(Long.MAX_VALUE), "WITHIN_ESTIMATE", Map.of());
+        var controllerWithoutSpace = new AutoLlmStorageEstimate.Location("controller", "/controller", range,
+                capacity(1), "MAY_NOT_FIT", Map.of());
+
+        assertTrue(AutoLlmStorageEstimate.approvalLine(controllerWithSpace, workers)
+                .contains("WARNING: may not fit with 20% headroom on a"));
+        assertTrue(AutoLlmStorageEstimate.approvalLine(controllerWithoutSpace, workers)
+                .contains("WARNING: may not fit with 20% headroom on controller, a"));
     }
     @Test void remainingTrialsAndEvaluationBudgetDriveAdditionalEvidence() throws Exception {
         var campaign = campaign(4);
